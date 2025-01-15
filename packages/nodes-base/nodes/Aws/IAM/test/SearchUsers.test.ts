@@ -1,32 +1,32 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { awsRequest, searchUsers } from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	awsRequest: jest.fn(),
-	searchUsers: jest.fn(),
-}));
+import { searchUsers } from '../GenericFunctions';
 
 describe('searchUsers', () => {
-	let mockContext: ILoadOptionsFunctions;
-	const mockAwsRequest = awsRequest as jest.Mock;
-	const mockSearchUsers = searchUsers as jest.Mock;
+	const mockRequestWithAuthentication = jest.fn();
+
+	const mockContext = {
+		helpers: {
+			requestWithAuthentication: mockRequestWithAuthentication,
+		},
+		getNodeParameter: jest.fn(),
+		getCredentials: jest.fn(),
+	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockContext = {
-			requestWithAuthentication: jest.fn(),
-		} as unknown as ILoadOptionsFunctions;
-
-		mockAwsRequest.mockClear();
-		mockSearchUsers.mockClear();
+		jest.clearAllMocks();
 	});
 
 	it('should return a list of users when API responds with users', async () => {
-		mockSearchUsers.mockImplementation(async () => {
-			const users = [{ UserName: 'Alice' }, { UserName: 'Bob' }];
-
-			return {
-				results: users.map((user) => ({ name: user.UserName, value: user.UserName })),
-			};
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			ListUsersResponse: {
+				ListUsersResult: {
+					Users: [{ UserName: 'Alice' }, { UserName: 'Bob' }],
+				},
+			},
+			NextToken: 'nextTokenValue',
 		});
 
 		const result = await searchUsers.call(mockContext);
@@ -39,18 +39,29 @@ describe('searchUsers', () => {
 	});
 
 	it('should return an empty array when API responds with no users', async () => {
-		mockSearchUsers.mockImplementation(async () => {
-			return { results: [] };
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			ListUsersResponse: {
+				ListUsersResult: {
+					Users: [],
+				},
+			},
+			NextToken: 'nextTokenValue',
 		});
-
 		const result = await searchUsers.call(mockContext);
 
 		expect(result.results).toEqual([]);
 	});
 
 	it('should return an empty array when Users key is missing in response', async () => {
-		mockSearchUsers.mockImplementation(async () => {
-			return { results: [] };
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			ListUsersResponse: {
+				ListUsersResult: {},
+			},
+			NextToken: 'nextTokenValue',
 		});
 
 		const result = await searchUsers.call(mockContext);
@@ -58,31 +69,16 @@ describe('searchUsers', () => {
 		expect(result.results).toEqual([]);
 	});
 
-	it('should filter results when a filter string is provided', async () => {
-		mockSearchUsers.mockImplementation(async (filter) => {
-			const users = [{ UserName: 'Alice' }, { UserName: 'Bob' }, { UserName: 'Charlie' }];
-
-			return {
-				results: users
-					.filter((user) => !filter || user.UserName.includes(filter))
-					.map((user) => ({ name: user.UserName, value: user.UserName })),
-			};
-		});
-
-		const result = await searchUsers.call(mockContext, 'Bob');
-
-		expect(result.results).toEqual([{ name: 'Bob', value: 'Bob' }]);
-	});
-
 	it('should sort results alphabetically by UserName', async () => {
-		mockSearchUsers.mockImplementation(async () => {
-			const users = [{ UserName: 'Charlie' }, { UserName: 'Alice' }, { UserName: 'Bob' }];
-
-			return {
-				results: users
-					.map((user) => ({ name: user.UserName, value: user.UserName }))
-					.sort((a, b) => a.name.localeCompare(b.name)),
-			};
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			ListUsersResponse: {
+				ListUsersResult: {
+					Users: [{ UserName: 'Alice' }, { UserName: 'Charlie' }, { UserName: 'Bob' }],
+				},
+			},
+			NextToken: 'nextTokenValue',
 		});
 
 		const result = await searchUsers.call(mockContext);

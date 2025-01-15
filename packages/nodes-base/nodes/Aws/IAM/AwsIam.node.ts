@@ -18,9 +18,17 @@ export class AwsIam implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message: 'Please select a parameter in the options to modify the post',
+				message: 'Please select a parameter in the additional fields to update the user',
 				displayCondition:
 					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
+				type: 'warning',
+			},
+			{
+				message: 'Please select a parameter in the additional fields to update the group',
+				displayCondition:
+					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 				type: 'warning',

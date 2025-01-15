@@ -1,20 +1,40 @@
-import { processUsersResponse } from '../GenericFunctions'; // Adjust the import path as needed
-import { ApplicationError } from 'n8n-workflow'; // Assuming ApplicationError is imported from n8n-workflow
+import { processUsersResponse } from '../GenericFunctions';
 
 describe('processUsersResponse', () => {
 	let mockContext: any;
-	let items: any[];
-	let response: any;
+	let mockGetNodeParameter: jest.Mock;
 
 	beforeEach(() => {
+		mockGetNodeParameter = jest.fn();
 		mockContext = {
-			// Add mock context properties or methods if needed
+			getNodeParameter: mockGetNodeParameter,
 		};
-		items = [{ json: { someKey: 'someValue' } }];
 	});
 
-	test('should process users response correctly', async () => {
-		response = {
+	it('should process a single user response correctly (GetUserResponse)', async () => {
+		const response = {
+			body: {
+				GetUserResponse: {
+					GetUserResult: {
+						User: { UserName: 'user1', UserId: '1' },
+					},
+					ResponseMetadata: {},
+				},
+			},
+			statusCode: 200,
+			statusMessage: 'OK',
+			headers: {},
+		};
+
+		mockGetNodeParameter.mockReturnValue('get');
+
+		const result = await processUsersResponse.call(mockContext, [], response);
+
+		expect(result).toEqual({ UserName: 'user1', UserId: '1' });
+	});
+
+	it('should process multiple users response correctly (ListUsersResponse)', async () => {
+		const response = {
 			body: {
 				ListUsersResponse: {
 					ListUsersResult: {
@@ -23,44 +43,20 @@ describe('processUsersResponse', () => {
 							{ UserName: 'user2', UserId: '2' },
 						],
 					},
+					ResponseMetadata: {},
 				},
 			},
+			statusCode: 200,
+			statusMessage: 'OK',
+			headers: {},
 		};
 
-		const result = await processUsersResponse.call(mockContext, items, response);
+		mockGetNodeParameter.mockReturnValue('getAll');
+
+		const result = await processUsersResponse.call(mockContext, [], response);
 
 		expect(result).toHaveLength(2);
-		expect(result[0].json).toEqual({ UserName: 'user1', UserId: '1' });
-		expect(result[1].json).toEqual({ UserName: 'user2', UserId: '2' });
-	});
-
-	test('should return an empty array if response contains no users', async () => {
-		response = {
-			body: {
-				ListUsersResponse: {
-					ListUsersResult: {
-						Users: [],
-					},
-				},
-			},
-		};
-
-		const result = await processUsersResponse.call(mockContext, items, response);
-
-		expect(result).toEqual([]);
-	});
-
-	test('should throw an error if Users array is missing', async () => {
-		response = {
-			body: {
-				ListUsersResponse: {
-					ListUsersResult: {},
-				},
-			},
-		};
-
-		await expect(processUsersResponse.call(mockContext, items, response)).rejects.toThrowError(
-			new ApplicationError('Unexpected response format: No users found.'),
-		);
+		expect(result[0]).toEqual({ UserName: 'user1', UserId: '1' });
+		expect(result[1]).toEqual({ UserName: 'user2', UserId: '2' });
 	});
 });

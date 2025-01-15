@@ -108,7 +108,7 @@ describe('GenericFunctions - awsRequest', () => {
 		);
 	});
 
-	test('should handle unexpected error structures gracefully', async () => {
+	test('should handle unexpected error structures', async () => {
 		mockRequestWithAuthentication.mockRejectedValueOnce({
 			cause: { error: { message: 'Something went wrong' } },
 		});

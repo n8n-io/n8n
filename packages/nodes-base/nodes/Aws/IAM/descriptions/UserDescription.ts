@@ -3,7 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	handleErrorPostReceive,
 	handlePagination,
-	presendFields,
+	presendUserFields,
 	processUsersResponse,
 	simplifyData,
 } from '../GenericFunctions';
@@ -28,7 +28,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Add user to group',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -47,7 +47,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Create user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -66,7 +66,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -85,7 +85,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -103,7 +103,7 @@ export const userOperations: INodeProperties[] = [
 				description: 'Retrieve a list of users',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 						paginate: true,
 						preSend: [presendTest, presendFields],
 					},
@@ -118,7 +118,17 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processUsersResponse, simplifyData, handleErrorPostReceive],
+						postReceive: [
+							simplifyData,
+							handleErrorPostReceive,
+							processUsersResponse,
+							// 	{
+							// 	type: 'rootProperty',
+							// 	properties: {
+							// 		property: 'ListUsersResponse.ListUsersResult.Users',
+							// 	},
+							// }
+						],
 					},
 				},
 				action: 'Get many users',
@@ -130,7 +140,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Remove user from group',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -149,7 +159,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Update user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -183,8 +193,8 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -470,8 +480,8 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
