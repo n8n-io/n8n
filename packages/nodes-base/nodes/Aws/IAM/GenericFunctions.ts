@@ -188,6 +188,7 @@ export async function processUsersResponse(
 	const actionType = this.getNodeParameter('operation');
 	let responseBody;
 	let data;
+	console.log('Initial data', response.body);
 
 	if (!response.body) {
 		return [];
@@ -243,8 +244,8 @@ export async function handlePagination(
 				if (!returnAll && aggregatedResult.length >= limit) {
 					return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 				}
-
-				nextPageToken = page.json.PaginationToken as string | undefined;
+				if (page.json.PaginationToken)
+					nextPageToken = page.json.PaginationToken as string | undefined;
 			}
 		} else if (responseData && typeof responseData === 'object') {
 			aggregatedResult.push(responseData as IDataObject);
