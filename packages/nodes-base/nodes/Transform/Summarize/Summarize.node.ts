@@ -18,7 +18,7 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-
+import { generatePairedItemData } from '../../../utils/utilities';
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Summarize',
@@ -320,21 +320,6 @@ export class Summarize implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 
-		try {
-			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
-		} catch (error) {
-			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
-				const itemData = generatePairedItemData(items.length);
-				const fieldNotFoundHint: NodeExecutionHint = {
-					message: error.message,
-					location: 'outputPane',
-				};
-				return new NodeExecutionOutput([[{ json: {}, pairedItem: itemData }]], [fieldNotFoundHint]);
-			} else {
-				throw error;
-			}
-		}
-
 		const aggregationResult = splitData(
 			fieldsToSplitBy,
 			newItems,
@@ -342,6 +327,29 @@ export class Summarize implements INodeType {
 			options,
 			getValue,
 		);
+
+		try {
+			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+		} catch (error) {
+			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
+				// const itemData = generatePairedItemData(items.length); // deleted from return array
+				const fieldNotFoundHint: NodeExecutionHint = {
+					message: error.message,
+					location: 'outputPane',
+				};
+				const { pairedItems, ...json } = aggregationResult;
+				const executionData: INodeExecutionData = {
+					json,
+					pairedItem: ((pairedItems as number[]) || []).map((index: number) => ({
+						item: index,
+					})),
+				};
+				return new NodeExecutionOutput([[executionData]], [fieldNotFoundHint]);
+				// return new NodeExecutionOutput([[{ json: aggregationResult }]], [fieldNotFoundHint]);
+			} else {
+				throw error;
+			}
+		}
 
 		if (options.outputFormat === 'singleItem') {
 			const executionData: INodeExecutionData = {
