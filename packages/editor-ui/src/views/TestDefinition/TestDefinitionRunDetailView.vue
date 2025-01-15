@@ -5,8 +5,8 @@ import { useRouter } from 'vue-router';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { N8nCard, N8nText } from 'n8n-design-system';
-import TestDefinitionTable from '@/components/TestDefinition/shared/TestDefinitionTable.vue';
-import type { TestDefinitionTableColumn } from '@/components/TestDefinition/shared/TestDefinitionTable.vue';
+import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue';
+import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { get } from 'lodash-es';
 import type { ExecutionSummaryWithScopes } from '@/Interface';
@@ -36,7 +36,7 @@ const filteredTestCases = computed(() => {
 });
 
 const columns = computed(
-	(): Array<TestDefinitionTableColumn<TestCase>> => [
+	(): Array<TestTableColumn<TestCase>> => [
 		{
 			prop: 'id',
 			width: 200,
@@ -193,7 +193,7 @@ onMounted(async () => {
 			<div v-if="isLoading" :class="$style.loading">
 				<n8n-loading :loading="true" :rows="5" />
 			</div>
-			<TestDefinitionTable
+			<TestTableBase
 				v-else
 				:data="filteredTestCases"
 				:columns="columns"
@@ -205,10 +205,10 @@ onMounted(async () => {
 
 <style module lang="scss">
 .container {
-	padding: var(--spacing-xl) var(--spacing-l);
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
+	margin: auto;
 }
 
 .backButton {

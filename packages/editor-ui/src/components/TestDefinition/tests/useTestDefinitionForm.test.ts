@@ -42,7 +42,7 @@ describe('useTestDefinitionForm', () => {
 	it('should initialize with default props', () => {
 		const { state } = useTestDefinitionForm();
 
-		expect(state.value.description).toBe('');
+		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
 		expect(state.value.metrics).toEqual([]);
@@ -70,7 +70,7 @@ describe('useTestDefinitionForm', () => {
 		expect(fetchSpy).toBeCalled();
 		expect(fetchMetricsSpy).toBeCalledWith(TEST_DEF_A.id);
 		expect(state.value.name.value).toEqual(TEST_DEF_A.name);
-		expect(state.value.description).toEqual(TEST_DEF_A.description);
+		expect(state.value.description.value).toEqual(TEST_DEF_A.description);
 		expect(state.value.tags.value).toEqual([TEST_DEF_A.annotationTagId]);
 		expect(state.value.evaluationWorkflow.value).toEqual(TEST_DEF_A.evaluationWorkflowId);
 		expect(state.value.metrics).toEqual([
@@ -88,7 +88,7 @@ describe('useTestDefinitionForm', () => {
 		await loadTestData('unknown-id');
 		expect(fetchSpy).toBeCalled();
 		// Should remain unchanged since no definition found
-		expect(state.value.description).toBe('');
+		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
 		expect(state.value.metrics).toEqual([]);
@@ -112,7 +112,7 @@ describe('useTestDefinitionForm', () => {
 		const createSpy = vi.spyOn(useTestDefinitionStore(), 'create').mockResolvedValue(TEST_DEF_NEW);
 
 		state.value.name.value = TEST_DEF_NEW.name;
-		state.value.description = TEST_DEF_NEW.description ?? '';
+		state.value.description.value = TEST_DEF_NEW.description ?? '';
 
 		const newTest = await createTest('123');
 		expect(createSpy).toBeCalledWith({
@@ -143,7 +143,7 @@ describe('useTestDefinitionForm', () => {
 		const updateSpy = vi.spyOn(useTestDefinitionStore(), 'update').mockResolvedValue(updatedBTest);
 
 		state.value.name.value = TEST_DEF_B.name;
-		state.value.description = TEST_DEF_B.description ?? '';
+		state.value.description.value = TEST_DEF_B.description ?? '';
 
 		const updatedTest = await updateTest(TEST_DEF_A.id);
 		expect(updateSpy).toBeCalledWith({
@@ -166,7 +166,7 @@ describe('useTestDefinitionForm', () => {
 			.mockRejectedValue(new Error('Update Failed'));
 
 		state.value.name.value = 'Test';
-		state.value.description = 'Some description';
+		state.value.description.value = 'Some description';
 
 		await expect(updateTest(TEST_DEF_A.id)).rejects.toThrow('Update Failed');
 		expect(updateSpy).toBeCalled();
