@@ -647,6 +647,25 @@ describe('Projects in Public API', () => {
 				testServer.license.enable('feat:projectRole:admin');
 			});
 
+			it("should reject with 400 if the payload can't be validated", async () => {
+				// ARRANGE
+				const owner = await createOwnerWithApiKey();
+
+				// ACT
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.patch('/projects/1234/users/1235')
+					// role does not exist
+					.send({ role: 'project:boss' })
+					.expect(400);
+
+				// ASSERT
+				expect(response.body).toHaveProperty(
+					'message',
+					"Invalid enum value. Expected 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
+				);
+			});
+
 			it("should change a user's role in a project", async () => {
 				const owner = await createOwnerWithApiKey();
 				const project = await createTeamProject('shared-project', owner);
