@@ -1,3 +1,46 @@
+# [1.75.0](https://github.com/n8n-io/n8n/compare/n8n@1.74.0...n8n@1.75.0) (2025-01-15)
+
+
+### Bug Fixes
+
+* **core:** AugmentObject should check for own propeties correctly ([#12534](https://github.com/n8n-io/n8n/issues/12534)) ([0cdf393](https://github.com/n8n-io/n8n/commit/0cdf39374305e6bbcedb047db7d3756168e6e89e))
+* **core:** Disallow code generation in task runner ([#12522](https://github.com/n8n-io/n8n/issues/12522)) ([35b6180](https://github.com/n8n-io/n8n/commit/35b618098b7d23e272bf77b55c172dbe531c821f))
+* **core:** Fix node exclusion on the frontend types ([#12544](https://github.com/n8n-io/n8n/issues/12544)) ([b2cbed9](https://github.com/n8n-io/n8n/commit/b2cbed9865888f6f3bc528984d4091d86a88f0d6))
+* **core:** Fix orchestration flow with expired license ([#12444](https://github.com/n8n-io/n8n/issues/12444)) ([ecff3b7](https://github.com/n8n-io/n8n/commit/ecff3b732a028d7225bfbed4ffc65dc20c4ed608))
+* **core:** Fix Sentry error reporting on task runners ([#12495](https://github.com/n8n-io/n8n/issues/12495)) ([88c0838](https://github.com/n8n-io/n8n/commit/88c0838dd72f11646bdb3586223d6c16631cccab))
+* **core:** Improve cyclic dependency check in the DI container ([#12600](https://github.com/n8n-io/n8n/issues/12600)) ([c3c4a20](https://github.com/n8n-io/n8n/commit/c3c4a200024fb08afb9380357d1490c6707c5ec3))
+* **core:** Only show personal credentials in the personal space ([#12433](https://github.com/n8n-io/n8n/issues/12433)) ([8a42d55](https://github.com/n8n-io/n8n/commit/8a42d55d91f4a37fff5669d52d52428b3a4ddd44))
+* **core:** Prefix package name in `supportedNodes` on generated types as well ([#12514](https://github.com/n8n-io/n8n/issues/12514)) ([4a1a999](https://github.com/n8n-io/n8n/commit/4a1a9993624c92dd81f5418f9268cb93878069ab))
+* **core:** Prevent prototype pollution in task runner ([#12588](https://github.com/n8n-io/n8n/issues/12588)) ([bdf266c](https://github.com/n8n-io/n8n/commit/bdf266cf55032d05641b20dce8804412dc93b6d5))
+* **core:** Prevent prototype pollution of internal classes in task runner ([#12610](https://github.com/n8n-io/n8n/issues/12610)) ([eceee7f](https://github.com/n8n-io/n8n/commit/eceee7f3f8899d200b1c5720087cc494eec22e6a))
+* **core:** Use timing safe function to compare runner auth tokens ([#12485](https://github.com/n8n-io/n8n/issues/12485)) ([8fab98f](https://github.com/n8n-io/n8n/commit/8fab98f3f1f767d05825d24cbf155d56375fdb3e))
+* **core:** Validate values which are intentionally 0 ([#12382](https://github.com/n8n-io/n8n/issues/12382)) ([562506e](https://github.com/n8n-io/n8n/commit/562506e92aeb26423145801bff80037e5ce2ac46))
+* Don't break oauth credentials when updating them and allow fixing broken oauth credentials by repeating the authorization flow ([#12563](https://github.com/n8n-io/n8n/issues/12563)) ([73897c7](https://github.com/n8n-io/n8n/commit/73897c7662a432834eb6f9d0f9ace8d986c1acb5))
+* **editor:** Don't show toolsUnused notice if run had errors ([#12529](https://github.com/n8n-io/n8n/issues/12529)) ([3ec5b28](https://github.com/n8n-io/n8n/commit/3ec5b2850c47057032e61c2acdbdfc1dcdd931f7))
+* **editor:** Ensure proper "AI Template" URL construction in node creator ([#12566](https://github.com/n8n-io/n8n/issues/12566)) ([13bf69f](https://github.com/n8n-io/n8n/commit/13bf69f75c67bc37a37013e776525768676a4b88))
+* **editor:** Fix NDV resize handle and scrollbar overlapping ([#12509](https://github.com/n8n-io/n8n/issues/12509)) ([c28f302](https://github.com/n8n-io/n8n/commit/c28f302c2f863bd7aa73ad52e5d040f927e33220))
+* **editor:** Fix parameter input validation ([#12532](https://github.com/n8n-io/n8n/issues/12532)) ([6711cbc](https://github.com/n8n-io/n8n/commit/6711cbcc641a2fc70f5c15a7e2dcc640a3f98b66))
+* **editor:** Fix selection rectangle context menu on new canvas ([#12584](https://github.com/n8n-io/n8n/issues/12584)) ([c8e3c53](https://github.com/n8n-io/n8n/commit/c8e3c5399efde93486c1dd5c373cb2c5ff8a0691))
+* **editor:** Fix the `openselectivenodecreator` custom action on new canvas ([#12580](https://github.com/n8n-io/n8n/issues/12580)) ([2110e9a](https://github.com/n8n-io/n8n/commit/2110e9a0513b8c36beb85302e0d38a2658ea5d6e))
+* **editor:** Fix workflow initilisation for test definition routes & add unit tests ([#12507](https://github.com/n8n-io/n8n/issues/12507)) ([2775f61](https://github.com/n8n-io/n8n/commit/2775f617ae5c267c0a1ce7a54d05d4077cdbc0f7))
+* **editor:** Make clicking item in RLC work the first time on small screens ([#12585](https://github.com/n8n-io/n8n/issues/12585)) ([479933f](https://github.com/n8n-io/n8n/commit/479933fbd5c88e783827960e018abb979de8a039))
+* **editor:** Make sure code editors work correctly in fullscreen ([#12597](https://github.com/n8n-io/n8n/issues/12597)) ([aa1f3a7](https://github.com/n8n-io/n8n/commit/aa1f3a7d989883d55df3777775b8d7d336f6e3b7))
+* **editor:** Override selected nodes on single click without Meta/Ctrl key ([#12549](https://github.com/n8n-io/n8n/issues/12549)) ([02c2d5e](https://github.com/n8n-io/n8n/commit/02c2d5e71d15b9292fddd585f47bd8334da468c5))
+* **editor:** Show NDV errors when opening existing nodes with errors ([#12567](https://github.com/n8n-io/n8n/issues/12567)) ([bee7267](https://github.com/n8n-io/n8n/commit/bee7267fe38ab12a79fa4ec0e775f45d98d48aa5))
+* **editor:** Swap Activate/Deactivate texts in FloatingToolbar ([#12526](https://github.com/n8n-io/n8n/issues/12526)) ([44679b4](https://github.com/n8n-io/n8n/commit/44679b42aa1e14bc7069bee47d0a91ca84b1dba4))
+* **editor:** Update filter and feedback for source control ([#12504](https://github.com/n8n-io/n8n/issues/12504)) ([865fc21](https://github.com/n8n-io/n8n/commit/865fc21276727e8d88ccee0355147904b81c4421))
+* **editor:** Update selected node when navigating via flowing nodes ([#12581](https://github.com/n8n-io/n8n/issues/12581)) ([88659d8](https://github.com/n8n-io/n8n/commit/88659d8a2901786c894902e19466f395bcdaab8e))
+* **Google Calendar Node:** Updates and fixes ([#10715](https://github.com/n8n-io/n8n/issues/10715)) ([7227a29](https://github.com/n8n-io/n8n/commit/7227a29845fd178ced4d281597c62e7a03245456))
+* **Spotify Node:** Fix issue with null values breaking the response ([#12080](https://github.com/n8n-io/n8n/issues/12080)) ([a56a462](https://github.com/n8n-io/n8n/commit/a56a46259d257003c813103578260d625b3f17dd))
+
+
+### Features
+
+* **editor:** Make node credential select searchable ([#12497](https://github.com/n8n-io/n8n/issues/12497)) ([91277c4](https://github.com/n8n-io/n8n/commit/91277c44f1cf3f334b3b50d47d7dcc79b11c7c63))
+* **editor:** Persist sidebar collapsed status preference ([#12505](https://github.com/n8n-io/n8n/issues/12505)) ([dba7d46](https://github.com/n8n-io/n8n/commit/dba7d46f3ec91d26a597a50dede7b6ca292c728f))
+
+
+
 # [1.74.0](https://github.com/n8n-io/n8n/compare/n8n@1.73.0...n8n@1.74.0) (2025-01-08)
 
 
