@@ -1,7 +1,7 @@
 <script
 	setup
 	lang="ts"
-	generic="Value, Item extends { name: string; tooltip: string; defaultValue: Value }"
+	generic="Value, Item extends { name: string; defaultValue: Value; tooltip?: string }"
 >
 import { computed } from 'vue';
 
@@ -9,60 +9,69 @@ defineSlots<{
 	displayItem: (props: Item) => unknown;
 }>();
 
-type TagListProps = {
+type PillListProps = {
 	inputs: Item[];
 };
 
-const props = withDefaults(defineProps<TagListProps>(), {
+const props = withDefaults(defineProps<PillListProps>(), {
 	inputs: () => [],
 });
 
+// Record<inputs[k].name, currentValue>
 const selectedItems = defineModel<Record<string, Value>>({ required: true });
 const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x] as const)));
 
-const visibleTags = computed(() => {
-	return props.inputs.filter((tag) => !selectedItems.value.hasOwnProperty(tag.name));
+const visiblePills = computed(() => {
+	return props.inputs.filter((pill) => !selectedItems.value.hasOwnProperty(pill.name));
 });
 
 const sortedSelectedItems = computed(() => {
-	return Object.keys(selectedItems.value)
-		.map((name) => ({ name, item: inputMap.value[name] }))
-		.toSorted((a, b) => (a[0] < b[0] ? -1 : 1));
+	return [...Object.keys(selectedItems.value).map((name) => inputMap.value[name])].sort((a, b) =>
+		a.name[0] < b.name[0] ? -1 : 1,
+	);
 });
 
 function addToSelectedItems(name: string) {
 	selectedItems.value[name] = inputMap.value[name].defaultValue;
 }
 
-function removeItem(name: string) {
+function removeFromSelectedItems(name: string) {
 	delete selectedItems.value[name];
 }
 </script>
 
 <template>
 	<div>
-		<div :class="$style.tagContainer">
+		<div :class="$style.pillContainer">
 			<span
-				v-for="item in visibleTags.toSorted((a, b) => (a.name < b.name ? -1 : 1))"
+				v-for="item in [...visiblePills].sort((a, b) => (a.name < b.name ? -1 : 1))"
 				:key="item.name"
-				:class="$style.tagCell"
+				:class="$style.pillCell"
+				:data-test-id="`pill-list-pill-${item.name}`"
 				@click="addToSelectedItems(item.name)"
 			>
 				+ Add a {{ item.name }}
 			</span>
 		</div>
-		<div v-for="item in sortedSelectedItems" :key="item.name" :class="$style.slotComboContainer">
+		<div
+			v-for="item in sortedSelectedItems"
+			:key="item.name"
+			:class="$style.slotComboContainer"
+			:data-test-id="`pill-list-slot-${item.name}`"
+		>
 			<N8nIconButton
 				type="tertiary"
 				text
 				:class="$style.slotRemoveIcon"
 				size="mini"
 				icon="trash"
-				:data-test-id="`tag-listremove-field-button-${item.name}`"
-				@click="removeItem(item.name)"
+				:data-test-id="`pill-list-remove-slot-${item.name}`"
+				@click="removeFromSelectedItems(item.name)"
 			/>
 			<div :class="$style.slotContainer">
-				<slot name="displayItem" v-bind="item.item">{ Empty TagList slot}</slot>
+				<slot name="displayItem" v-bind="item"
+					>Empty slot with v-bind: {{ JSON.stringify(item) }}</slot
+				>
 			</div>
 		</div>
 	</div>
@@ -80,27 +89,12 @@ function removeItem(name: string) {
 	flex-grow: 1;
 }
 
-.slotRemoveIcon {
-	// flex-shrink: 1;
-}
-
-.grid {
-	display: grid;
-	grid-row-gap: var(--spacing-s);
-	grid-column-gap: var(--spacing-2xs);
-}
-
-.gridMulti {
-	composes: grid;
-	grid-template-columns: repeat(2, 1fr);
-}
-
-.tagContainer {
+.pillContainer {
 	width: 100%;
 	flex-wrap: wrap;
 	display: flex;
 }
-.tagCell {
+.pillCell {
 	display: flex;
 	margin: var(--spacing-4xs) var(--spacing-3xs) 0 0;
 

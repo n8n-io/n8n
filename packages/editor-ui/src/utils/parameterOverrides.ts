@@ -102,10 +102,7 @@ export class FromAiOverride implements ParameterOverride {
 		if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))
 			return false;
 
-		return (
-			(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
-			'options' !== props.parameter.type
-		);
+		return !props.parameter.noDataExpression && 'options' !== props.parameter.type;
 	}
 }
 

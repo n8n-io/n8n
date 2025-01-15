@@ -17,7 +17,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nButton, N8nInputLabel, N8nTagList } from 'n8n-design-system';
+import { N8nButton, N8nInputLabel, N8nPillList } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
 import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -381,7 +381,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
-		<N8nTagList
+		<N8nPillList
 			v-if="isContentOverride && parameterOverrides"
 			v-model="parameterOverrides.extraPropValues"
 			:inputs="
@@ -395,7 +395,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 				<ParameterInputFull
 					:parameter="{
 						name,
-						displayName: name,
+						displayName: name[0].toUpperCase() + name.slice(1),
 						type: 'string',
 						default: defaultValue,
 						noDataExpression: true,
@@ -415,7 +415,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					"
 				/>
 			</template>
-		</N8nTagList>
+		</N8nPillList>
 	</N8nInputLabel>
 
 	<!-- badges to add extra fields from overrides go here -->
