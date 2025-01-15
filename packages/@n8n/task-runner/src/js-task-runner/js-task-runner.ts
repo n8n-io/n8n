@@ -221,7 +221,7 @@ export class JsTaskRunner extends TaskRunner {
 					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
 
 				const taskResult = runInContext(
-					`globalThis.global = globalThis; ${preventPrototypeManipulation} module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 					{ timeout: this.taskTimeout * 1000 },
 				) as Promise<TaskResultData['result']>;
