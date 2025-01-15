@@ -1,10 +1,10 @@
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
+import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../composables/workflow';
 import { META_KEY } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
-import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../composables/workflow';
 
 const nodeCreator = new NodeCreator();
 
