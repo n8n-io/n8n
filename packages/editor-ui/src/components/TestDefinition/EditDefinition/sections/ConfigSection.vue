@@ -43,7 +43,6 @@ const emit = defineEmits<{
 const locale = useI18n();
 
 function updateChangedFieldsKeys(key: string) {
-	console.log('🚀 ~ updateChangedFieldsKeys ~ key:', key);
 	changedFieldsKeys.value.push(key);
 }
 

@@ -16,10 +16,6 @@ export function useTestDefinitionForm() {
 	const evaluationsStore = useTestDefinitionStore();
 	const tagsStore = useAnnotationTagsStore();
 
-	const tagsById = computed(() => tagsStore.tagsById);
-	const tagUsageCount = computed(
-		() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
-	);
 	// State initialization
 	const state = ref<EvaluationFormState>({
 		name: {
@@ -47,9 +43,10 @@ export function useTestDefinitionForm() {
 	});
 
 	const isSaving = ref(false);
-	const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
+	// const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
 	const fields = ref<FormRefs>({} as FormRefs);
 
+	// const fieldsIssues = computed(() => evaluationsStore.getFieldIssues(state.value));
 	// A computed mapping of editable fields to their states
 	// This ensures TS knows the exact type of each field.
 	const editableFields: ComputedRef<{
@@ -105,7 +102,6 @@ export function useTestDefinitionForm() {
 		if (isSaving.value) return;
 
 		isSaving.value = true;
-		fieldsIssues.value = [];
 
 		try {
 			const params = {
@@ -143,52 +139,13 @@ export function useTestDefinitionForm() {
 		});
 		isSaving.value = true;
 		await Promise.all(promises);
-		updateRunFieldIssues();
 		isSaving.value = false;
 	};
 
-	const updateRunFieldIssues = () => {
-		const issues: Array<{ field: string; message: string }> = [];
-
-		const evaluationTagId = state.value.tags.value[0];
-		if (!evaluationTagId) {
-			issues.push({
-				field: 'tags',
-				message: 'No evaluation tag set',
-			});
-		} else {
-			// Check if there are executions for this tag
-			if (tagUsageCount.value === 0) {
-				issues.push({
-					field: 'tags',
-					message: 'No executions added to this tag',
-				});
-			}
-		}
-
-		if (!state.value.evaluationWorkflow.value) {
-			issues.push({
-				field: 'evaluationWorkflow',
-				message: 'No evaluation workflow set',
-			});
-		}
-
-		if (state.value.metrics.filter((metric) => metric.name).length === 0) {
-			issues.push({
-				field: 'metrics',
-				message: 'No metrics set',
-			});
-		}
-
-		fieldsIssues.value = issues;
-	};
-
 	const updateTest = async (testId: string) => {
-		console.log('🚀 ~ updateTest ~ testId:', testId);
 		if (isSaving.value) return;
 
 		isSaving.value = true;
-		updateRunFieldIssues();
 
 		try {
 			if (!testId) {
@@ -276,8 +233,6 @@ export function useTestDefinitionForm() {
 		state,
 		fields,
 		isSaving: computed(() => isSaving.value),
-		fieldsIssues: computed(() => fieldsIssues.value),
-		updateRunFieldIssues,
 		deleteMetric,
 		updateMetrics,
 		loadTestData,

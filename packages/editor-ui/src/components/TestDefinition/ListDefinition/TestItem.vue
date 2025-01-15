@@ -1,72 +1,20 @@
 <script setup lang="ts">
-import type { TestListItem } from '@/components/TestDefinition/types';
+import type { TestListItem, TestItemAction } from '@/components/TestDefinition/types';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
 
 export interface TestItemProps {
 	test: TestListItem;
+	actions: TestItemAction[];
 }
 
-const props = defineProps<TestItemProps>();
+defineProps<TestItemProps>();
 const locale = useI18n();
 
-const emit = defineEmits<{
-	'run-test': [testId: string];
+defineEmits<{
 	'view-details': [testId: string];
-	'edit-test': [testId: string];
-	'delete-test': [testId: string];
 }>();
-
-const { confirm } = useMessage();
-
-const actions = [
-	{
-		icon: 'play',
-		id: 'run',
-		event: () => emit('run-test', props.test.id),
-		tooltip: locale.baseText('testDefinition.runTest'),
-	},
-	{
-		icon: 'list',
-		id: 'view',
-		event: () => emit('view-details', props.test.id),
-		tooltip: locale.baseText('testDefinition.viewDetails'),
-	},
-	{
-		icon: 'pen',
-		id: 'edit',
-		event: () => emit('edit-test', props.test.id),
-		tooltip: locale.baseText('testDefinition.editTest'),
-	},
-	{
-		icon: 'trash',
-		id: 'delete',
-		event: onDeleteTest,
-		tooltip: locale.baseText('testDefinition.deleteTest'),
-	},
-];
-
-async function onDeleteTest() {
-	const deleteConfirmed = await confirm(
-		locale.baseText('testDefinition.deleteTest.warning', { adjustToNumber: props.test.testCases }),
-		locale.baseText('testDefinition.deleteTest'),
-		{
-			type: 'warning',
-			confirmButtonText: locale.baseText('generic.delete'),
-			cancelButtonText: locale.baseText('generic.cancel'),
-			closeOnClickModal: true,
-		},
-	);
-
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
-	}
-
-	emit('delete-test', props.test.id);
-}
 </script>
 
 <template>
@@ -108,18 +56,21 @@ async function onDeleteTest() {
 		</div>
 
 		<div :class="$style.actions">
-			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top" :show-after="1000">
-				<template #content>
-					{{ action.tooltip }}
-				</template>
+			<n8n-tooltip
+				v-for="action in actions"
+				:key="action.icon"
+				placement="top"
+				:show-after="1000"
+				:content="action.tooltip(test.id)"
+			>
 				<component
 					:is="n8nIconButton"
 					:icon="action.icon"
 					:data-test-id="`${action.id}-test-button-${test.id}`"
 					type="tertiary"
 					size="mini"
-					:disabled="action.disabled"
-					@click.stop="action.event"
+					:disabled="action?.disabled ? action.disabled(test.id) : false"
+					@click.stop="action.event(test.id)"
 				/>
 			</n8n-tooltip>
 		</div>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import TestItem from './TestItem.vue';
-import type { TestListItem } from '@/components/TestDefinition/types';
+import type { TestListItem, TestItemAction } from '@/components/TestDefinition/types';
 export interface TestListProps {
 	tests: TestListItem[];
+	actions: TestItemAction[];
 }
 
 defineEmits<{ 'create-test': [] }>();
@@ -19,7 +20,7 @@ const locale = useI18n();
 				@click="$emit('create-test')"
 			/>
 		</div>
-		<TestItem v-for="test in tests" :key="test.id" :test="test" v-bind="$attrs" />
+		<TestItem v-for="test in tests" :key="test.id" :test="test" :actions="actions" />
 	</div>
 </template>
 

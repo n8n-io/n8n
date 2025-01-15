@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
-import { VIEWS } from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
@@ -78,7 +78,7 @@ async function runTest() {
 async function onDeleteRuns(runsToDelete: TestRunRecord[]) {
 	const { confirm } = useMessage();
 
-	const deleteConfirmed = await confirm(locale.baseText('Delete runs'), {
+	const deleteConfirmed = await confirm(locale.baseText('testDefinition.deleteTest'), {
 		type: 'warning',
 		confirmButtonText: locale.baseText(
 			'settings.log-streaming.destinationDelete.confirmButtonText',
@@ -112,7 +112,7 @@ onMounted(async () => {
 			<N8nLoading :rows="5" />
 			<N8nLoading :rows="10" />
 		</template>
-		<div :class="$style.details" v-else-if="runs.length > 0">
+		<div v-else-if="runs.length > 0" :class="$style.details">
 			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
 			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" @delete-runs="onDeleteRuns" />
 		</div>

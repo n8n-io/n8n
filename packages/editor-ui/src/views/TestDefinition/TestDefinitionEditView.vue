@@ -29,7 +29,6 @@ const uiStore = useUIStore();
 
 const {
 	state,
-	fieldsIssues,
 	isSaving,
 	cancelEditing,
 	loadTestData,
@@ -54,11 +53,9 @@ const tagUsageCount = computed(
 const hasRuns = computed(() => runs.value.length > 0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
-const runTestTooltip = computed(() => {
-	const issues = fieldsIssues.value.map((issue) => issue.message).join('\n');
-	return `Complete the configuration below to run the test: <br>
- - ${issues}`;
-});
+
+const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value));
+
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {
 		toast.showMessage({
@@ -72,7 +69,6 @@ onMounted(async () => {
 		});
 		return; // Add early return to prevent loading if feature is disabled
 	}
-	void tagsStore.fetchAll({ withUsageCount: true });
 	if (testId.value) {
 		await loadTestData(testId.value);
 	} else {
@@ -189,11 +185,11 @@ watch(
 		>
 			<template #runTestTooltip>
 				<template v-if="fieldsIssues.length > 0">
-					<div>Complete the configuration below to run the test:</div>
+					<div>{{ locale.baseText('testDefinition.completeConfig') }}</div>
 					<div v-for="issue in fieldsIssues" :key="issue.field">- {{ issue.message }}</div>
 				</template>
 				<template v-if="isRunning">
-					<div>Test is running. Please wait for it to finish.</div>
+					{{ locale.baseText('testDefinition.testIsRunning') }}
 				</template>
 			</template>
 		</HeaderSection>

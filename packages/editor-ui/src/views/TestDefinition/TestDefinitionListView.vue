@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import EmptyState from '@/components/TestDefinition/ListDefinition/EmptyState.vue';
 import TestsList from '@/components/TestDefinition/ListDefinition/TestsList.vue';
-import type { TestExecution, TestListItem } from '@/components/TestDefinition/types';
+import type {
+	TestExecution,
+	TestItemAction,
+	TestListItem,
+} from '@/components/TestDefinition/types';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import { useMessage } from '@/composables/useMessage';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
@@ -17,6 +22,38 @@ const testDefinitionStore = useTestDefinitionStore();
 const isLoading = ref(false);
 const toast = useToast();
 const locale = useI18n();
+const { confirm } = useMessage();
+
+const actions = computed<TestItemAction[]>(() => [
+	{
+		icon: 'play',
+		id: 'run',
+		event: onRunTest,
+		disabled: isRunDisabled,
+		tooltip: (testId) =>
+			isRunDisabled(testId)
+				? getDisabledRunTooltip(testId)
+				: locale.baseText('testDefinition.runTest'),
+	},
+	{
+		icon: 'list',
+		id: 'view',
+		event: onViewDetails,
+		tooltip: () => locale.baseText('testDefinition.viewDetails'),
+	},
+	{
+		icon: 'pen',
+		id: 'edit',
+		event: onEditTest,
+		tooltip: () => locale.baseText('testDefinition.editTest'),
+	},
+	{
+		icon: 'trash',
+		id: 'delete',
+		event: onDeleteTest,
+		tooltip: () => locale.baseText('testDefinition.deleteTest'),
+	},
+]);
 
 const tests = computed<TestListItem[]>(() => {
 	return (
@@ -32,6 +69,7 @@ const tests = computed<TestListItem[]>(() => {
 			tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
 			testCases: testDefinitionStore.testRunsByTestId[test.id]?.length ?? 0,
 			execution: getTestExecution(test.id),
+			fieldsIssues: testDefinitionStore.getFieldIssues(test.id),
 		}));
 });
 
@@ -42,6 +80,18 @@ function getTagName(tagId: string) {
 	const matchingTag = allTags.value.find((t) => t.id === tagId);
 
 	return matchingTag?.name ?? '';
+}
+function getDisabledRunTooltip(testId: string) {
+	if (isTestRunning(testId)) {
+		return locale.baseText('testDefinition.testIsRunning');
+	}
+
+	const issues = testDefinitionStore
+		.getFieldIssues(testId)
+		?.map((i) => i.message)
+		.join('<br />- ');
+
+	return `${locale.baseText('testDefinition.completeConfig')} <br /> - ${issues}`;
 }
 
 function getTestExecution(testId: string): TestExecution {
@@ -65,6 +115,13 @@ function getTestExecution(testId: string): TestExecution {
 	return mockExecutions;
 }
 
+function isTestRunning(testId: string) {
+	return testDefinitionStore.lastRunByTestId[testId]?.status === 'running';
+}
+
+function isRunDisabled(testId: string) {
+	return isTestRunning(testId) || testDefinitionStore.getFieldIssues(testId)?.length > 0;
+}
 // Action handlers
 function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
@@ -93,11 +150,26 @@ async function onViewDetails(testId: string) {
 	void router.push({ name: VIEWS.TEST_DEFINITION_RUNS, params: { testId } });
 }
 
-function onEditTest(testId: number) {
+function onEditTest(testId: string) {
 	void router.push({ name: VIEWS.TEST_DEFINITION_EDIT, params: { testId } });
 }
 
 async function onDeleteTest(testId: string) {
+	const deleteConfirmed = await confirm(
+		locale.baseText('testDefinition.deleteTest.warning'),
+		locale.baseText('testDefinition.deleteTest'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText('generic.delete'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+			closeOnClickModal: true,
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
 	await testDefinitionStore.deleteById(testId);
 
 	toast.showMessage({
@@ -112,12 +184,9 @@ async function loadInitialData() {
 		// Add guard to prevent multiple loading states
 		isLoading.value = true;
 		try {
-			await Promise.all([
-				tagsStore.fetchAll(),
-				testDefinitionStore.fetchAll({
-					workflowId: router.currentRoute.value.params.name as string,
-				}),
-			]);
+			await testDefinitionStore.fetchAll({
+				workflowId: router.currentRoute.value.params.name as string,
+			});
 			isLoading.value = false;
 		} catch (error) {
 			toast.showError(error, locale.baseText('testDefinition.list.loadError'));
@@ -127,7 +196,7 @@ async function loadInitialData() {
 	}
 }
 
-onMounted(() => {
+onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {
 		toast.showMessage({
 			title: locale.baseText('testDefinition.notImplemented'),
@@ -140,8 +209,8 @@ onMounted(() => {
 		});
 		return; // Add early return to prevent loading if feature is disabled
 	}
-
-	void loadInitialData();
+	await loadInitialData();
+	tests.value.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
 });
 </script>
 
@@ -157,15 +226,7 @@ onMounted(() => {
 				data-test-id="test-definition-empty-state"
 				@create-test="onCreateTest"
 			/>
-			<TestsList
-				v-else
-				:tests="tests"
-				@create-test="onCreateTest"
-				@run-test="onRunTest"
-				@view-details="onViewDetails"
-				@edit-test="onEditTest"
-				@delete-test="onDeleteTest"
-			/>
+			<TestsList v-else :tests="tests" :actions="actions" @view-details="onViewDetails" />
 		</template>
 	</div>
 </template>
