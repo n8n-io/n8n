@@ -187,4 +187,24 @@ BQIDAQAB
 			expires_in: 86400,
 		},
 	},
+	spotifyOAuth2Api: {
+		accessTokenUrl: 'https://accounts.spotify.com/api/token',
+		authQueryParameters: '',
+		authUrl: 'https://accounts.spotify.com/authorize',
+		authentication: 'header',
+		clientId: 'CLIENT_ID',
+		clientSecret: 'CLIENT_SECRET',
+		grantType: 'authorizationCode',
+		oauthTokenData: {
+			access_token: 'ACCESS_TOKEN',
+			expires_in: 3600,
+			refresh_token: 'REFRESH_TOKEN',
+			scope:
+				'playlist-read-private playlist-read-collaborative user-modify-playback-state user-library-read user-follow-read playlist-modify-private playlist-modify-public user-read-playback-state user-read-currently-playing user-read-recently-played',
+			token_type: 'Bearer',
+		},
+		scope:
+			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
+		server: 'https://api.spotify.com/',
+	},
 } as const;

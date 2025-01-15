@@ -35,7 +35,7 @@ describe('CanvasEdge', () => {
 				hovered: true,
 			},
 		});
-		await userEvent.hover(getByTestId('edge-label-wrapper'));
+		await userEvent.hover(getByTestId('edge-label'));
 		const deleteButton = getByTestId('delete-connection-button');
 
 		await userEvent.click(deleteButton);
@@ -49,7 +49,7 @@ describe('CanvasEdge', () => {
 				hovered: true,
 			},
 		});
-		await userEvent.hover(getByTestId('edge-label-wrapper'));
+		await userEvent.hover(getByTestId('edge-label'));
 
 		const addButton = getByTestId('add-connection-button');
 
@@ -65,7 +65,7 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		await userEvent.hover(getByTestId('edge-label-wrapper'));
+		await userEvent.hover(getByTestId('edge-label'));
 
 		expect(() => getByTestId('add-connection-button')).toThrow();
 		expect(() => getByTestId('delete-connection-button')).toThrow();
