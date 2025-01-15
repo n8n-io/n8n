@@ -71,10 +71,10 @@ const edgeLabelStyle = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => {
-	const translateY = isConnectorStraight ? "-150%" : "-50%"
+	const translateY = isConnectorStraight.value ? "-150%" : "-50%"
 
 	return {
-		transform: `translate(-50%, ${translateY}) translate(${labelPosition.value[0]}px, calc(${labelPosition.value[1]}px)`,
+		transform: `translate(-50%, ${translateY}) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
 		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
