@@ -1,6 +1,7 @@
 import set from 'lodash/set';
+import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject, Expression } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -108,15 +109,21 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private preventPrototypePollution() {
-		if (process.env.NODE_ENV === 'test') return; // needed for Jest
+		// Freeze globals, except for Jest
+		if (process.env.NODE_ENV !== 'test') {
+			Object.getOwnPropertyNames(globalThis)
+				// @ts-expect-error globalThis does not have string in index signature
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.map((name) => globalThis[name])
+				.filter((value) => typeof value === 'function')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.forEach((fn) => Object.freeze(fn.prototype));
+		}
 
-		Object.getOwnPropertyNames(globalThis)
-			// @ts-expect-error globalThis does not have string in index signature
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-			.map((name) => globalThis[name])
-			.filter((value) => typeof value === 'function')
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-			.forEach((fn) => Object.freeze(fn.prototype));
+		// Freeze internal classes
+		[Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration]
+			.map((constructor) => constructor.prototype)
+			.forEach(Object.freeze);
 	}
 
 	async executeTask(
@@ -478,7 +485,7 @@ export class JsTaskRunner extends TaskRunner {
 	 * @param dataProxy The data proxy object that provides access to built-ins
 	 * @param additionalProperties Additional properties to add to the context
 	 */
-	private buildContext(
+	buildContext(
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
