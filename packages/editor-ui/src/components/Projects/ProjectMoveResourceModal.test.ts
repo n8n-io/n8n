@@ -10,6 +10,7 @@ import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceM
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
@@ -26,6 +27,7 @@ const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 let telemetry: ReturnType<typeof useTelemetry>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let credentialsStore: MockedStore<typeof useCredentialsStore>;
 
 describe('ProjectMoveResourceModal', () => {
 	beforeEach(() => {
@@ -33,6 +35,7 @@ describe('ProjectMoveResourceModal', () => {
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		credentialsStore = mockedStore(useCredentialsStore);
 	});
 
 	it('should send telemetry when mounted', async () => {
@@ -136,6 +139,35 @@ describe('ProjectMoveResourceModal', () => {
 		projectsStore.currentProjectId = currentProjectId;
 		projectsStore.availableProjects = [destinationProject];
 		workflowsStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
+		credentialsStore.fetchAllCredentials.mockResolvedValueOnce([
+			{
+				id: '1',
+				name: 'PG Credential',
+				createdAt: '2021-01-01T00:00:00Z',
+				updatedAt: '2021-01-01T00:00:00Z',
+				type: 'postgres',
+				scopes: ['credential:share'],
+				isManaged: false,
+			},
+			{
+				id: '2',
+				name: 'Notion Credential',
+				createdAt: '2021-01-01T00:00:00Z',
+				updatedAt: '2021-01-01T00:00:00Z',
+				type: 'notion',
+				scopes: ['credential:share'],
+				isManaged: false,
+			},
+			{
+				id: '3',
+				name: 'Another Credential',
+				createdAt: '2021-01-01T00:00:00Z',
+				updatedAt: '2021-01-01T00:00:00Z',
+				type: 'another',
+				scopes: ['credential:share'],
+				isManaged: false,
+			},
+		]);
 
 		const props = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,

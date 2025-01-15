@@ -36,8 +36,8 @@ const telemetry = useTelemetry();
 
 const filter = ref('');
 const projectId = ref<string | null>(null);
-const usedCredentials = ref<ICredentialsResponse[]>([]);
-const inAccessibleCredentials = ref<IUsedCredential[]>([]);
+const shareableCredentials = ref<ICredentialsResponse[]>([]);
+const unShareableCredentials = ref<IUsedCredential[]>([]);
 const shareUsedCredentials = ref(false);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
@@ -86,7 +86,7 @@ const moveResource = async () => {
 			props.data.resourceType,
 			props.data.resource.id,
 			selectedProject.value.id,
-			shareUsedCredentials.value ? usedCredentials.value.map((c) => c.id) : undefined,
+			shareUsedCredentials.value ? shareableCredentials.value.map((c) => c.id) : undefined,
 		);
 		closeModal();
 		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
@@ -157,11 +157,15 @@ onMounted(async () => {
 			credentialsStore.fetchAllCredentials(),
 		]);
 
-		usedCredentials.value = credentials.filter((credential) =>
-			(workflow.usedCredentials ?? []).find((c) => c.id === credential.id),
+		shareableCredentials.value = (credentials ?? []).filter(
+			(credential) =>
+				(workflow?.usedCredentials ?? []).find((c) => c.id === credential.id) &&
+				getResourcePermissions(credential.scopes).credential.share,
 		);
-		inAccessibleCredentials.value = (workflow.usedCredentials ?? []).filter(
-			(credential) => !credentialsStore.getCredentialById(credential.id),
+		unShareableCredentials.value = (workflow?.usedCredentials ?? []).filter(
+			(credential) =>
+				!getResourcePermissions(credentialsStore.getCredentialById(credential.id)?.scopes)
+					.credential.share,
 		);
 	}
 });
@@ -242,7 +246,7 @@ onMounted(async () => {
 						}}</span
 					>
 					<N8nCheckbox
-						v-if="usedCredentials.length"
+						v-if="shareableCredentials.length"
 						v-model="shareUsedCredentials"
 						:class="$style.textBlock"
 						data-test-id="project-move-resource-modal-checkbox-all"
@@ -253,14 +257,14 @@ onMounted(async () => {
 									<span :class="$style.tooltipText">
 										{{
 											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
-												adjustToNumber: usedCredentials.length,
-												interpolate: { number: usedCredentials.length },
+												adjustToNumber: shareableCredentials.length,
+												interpolate: { number: shareableCredentials.length },
 											})
 										}}
 									</span>
 									<template #content>
 										<ul :class="$style.credentialsList">
-											<li v-for="credential in usedCredentials" :key="credential.id">
+											<li v-for="credential in shareableCredentials" :key="credential.id">
 												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
 													{{ credential.name }}
 												</router-link>
@@ -271,7 +275,7 @@ onMounted(async () => {
 							</template>
 						</i18n-t>
 					</N8nCheckbox>
-					<span v-if="inAccessibleCredentials.length" :class="$style.textBlock">
+					<span v-if="unShareableCredentials.length" :class="$style.textBlock">
 						<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
 							<template #credentials>
 								<N8nTooltip placement="top">
@@ -280,7 +284,7 @@ onMounted(async () => {
 									}}</span>
 									<template #content>
 										<ul :class="$style.credentialsList">
-											<li v-for="credential in inAccessibleCredentials" :key="credential.id">
+											<li v-for="credential in unShareableCredentials" :key="credential.id">
 												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
 													{{ credential.name }}
 												</router-link>
