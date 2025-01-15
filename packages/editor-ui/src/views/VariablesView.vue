@@ -383,8 +383,8 @@ onMounted(() => {
 
 	.variables-key-column,
 	.variables-usage-column {
-		width: 300px;
-		min-width: 300px;
+		width: 25%;
+		min-width: 200px;
 	}
 
 	.variables-value-column {

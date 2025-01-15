@@ -83,10 +83,10 @@ const handleSubmit = () => {
 				class="key-input"
 				label=""
 				name="value"
-				data-test-id="variable-row-key-input"
+				data-test-id="variable-row-value-input"
 				:placeholder="i18n.baseText('variables.editing.value.placeholder')"
 				type="textarea"
-				autosize
+				:autosize="{ minRows: 1, maxRows: 6 }"
 				size="medium"
 				:maxlength="VALUE_MAX_LENGTH"
 				:validate-on-blur="validateOnBlur"
