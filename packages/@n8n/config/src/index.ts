@@ -7,7 +7,6 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
-import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
@@ -61,9 +60,6 @@ export class GlobalConfig {
 
 	@Nested
 	nodes: NodesConfig;
-
-	@Nested
-	externalStorage: ExternalStorageConfig;
 
 	@Nested
 	workflows: WorkflowsConfig;

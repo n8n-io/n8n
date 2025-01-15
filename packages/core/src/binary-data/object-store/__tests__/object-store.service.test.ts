@@ -3,6 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
+import type { S3Config } from '@/binary-data/object-store/s3.config';
 import { writeBlockedMessage } from '@/binary-data/object-store/utils';
 
 jest.mock('axios');
@@ -18,6 +19,12 @@ const mockError = new Error('Something went wrong!');
 const fileId =
 	'workflows/ObogjVbqpNOQpiyV/executions/999/binary_data/71f6209b-5d48-41a2-a224-80d529d8bb32';
 const mockBuffer = Buffer.from('Test data');
+const s3Config = mock<S3Config>({
+	host: mockHost,
+	bucket: mockBucket,
+	credentials: mockCredentials,
+	protocol: 'https',
+});
 
 const toDeletionXml = (filename: string) => `<Delete>
 <Object><Key>${filename}</Key></Object>
@@ -26,9 +33,9 @@ const toDeletionXml = (filename: string) => `<Delete>
 let objectStoreService: ObjectStoreService;
 
 beforeEach(async () => {
-	objectStoreService = new ObjectStoreService(mock());
+	objectStoreService = new ObjectStoreService(mock(), s3Config);
 	mockAxios.request.mockResolvedValueOnce({ status: 200 }); // for checkConnection
-	await objectStoreService.init(mockHost, mockBucket, mockCredentials);
+	await objectStoreService.init();
 	jest.restoreAllMocks();
 });
 

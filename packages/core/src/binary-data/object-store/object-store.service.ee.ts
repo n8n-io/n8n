@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { sign } from 'aws4';
-import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
+import type { Request as Aws4Options } from 'aws4';
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
 import { ApplicationError } from 'n8n-workflow';
@@ -9,43 +9,42 @@ import type { Readable } from 'stream';
 
 import { Logger } from '@/logging/logger';
 
-import type {
-	Bucket,
-	ConfigSchemaCredentials,
-	ListPage,
-	MetadataResponseHeaders,
-	RawListPage,
-	RequestOptions,
-} from './types';
+import { S3Config } from './s3.config';
+import type { ListPage, MetadataResponseHeaders, RawListPage, RequestOptions } from './types';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
 import type { BinaryData } from '../types';
 
 @Service()
 export class ObjectStoreService {
-	private host = '';
-
-	private bucket: Bucket = { region: '', name: '' };
-
-	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
+	private baseUrl: string;
 
 	private isReady = false;
 
 	private isReadOnly = false;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly s3Config: S3Config,
+	) {
+		const { host, bucket, protocol } = s3Config;
 
-	async init(host: string, bucket: Bucket, credentials: ConfigSchemaCredentials) {
-		this.host = host;
-		this.bucket.name = bucket.name;
-		this.bucket.region = bucket.region;
+		if (host === '') {
+			throw new ApplicationError(
+				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
+			);
+		}
 
-		this.credentials = {
-			accessKeyId: credentials.accessKey,
-			secretAccessKey: credentials.accessSecret,
-		};
+		if (bucket.name === '') {
+			throw new ApplicationError(
+				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
+			);
+		}
 
+		this.baseUrl = `${protocol}://${host}/${bucket.name}`;
+	}
+
+	async init() {
 		await this.checkConnection();
-
 		this.setReady(true);
 	}
 
@@ -65,7 +64,7 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
-		return await this.request('HEAD', this.host, this.bucket.name);
+		return await this.request('HEAD', '');
 	}
 
 	/**
@@ -84,9 +83,7 @@ export class ObjectStoreService {
 		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
 		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
 
-		const path = `/${this.bucket.name}/${filename}`;
-
-		return await this.request('PUT', this.host, path, { headers, body: buffer });
+		return await this.request('PUT', filename, { headers, body: buffer });
 	}
 
 	/**
@@ -97,9 +94,7 @@ export class ObjectStoreService {
 	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
 	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
 	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }) {
-		const path = `${this.bucket.name}/${fileId}`;
-
-		const { data } = await this.request('GET', this.host, path, {
+		const { data } = await this.request('GET', fileId, {
 			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
 		});
 
@@ -116,9 +111,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
 	async getMetadata(fileId: string) {
-		const path = `${this.bucket.name}/${fileId}`;
-
-		const response = await this.request('HEAD', this.host, path);
+		const response = await this.request('HEAD', fileId);
 
 		return response.headers as MetadataResponseHeaders;
 	}
@@ -129,9 +122,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
 	async deleteOne(fileId: string) {
-		const path = `${this.bucket.name}/${fileId}`;
-
-		return await this.request('DELETE', this.host, path);
+		return await this.request('DELETE', fileId);
 	}
 
 	/**
@@ -154,9 +145,7 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		const path = `${this.bucket.name}/?delete`;
-
-		return await this.request('POST', this.host, path, { headers, body });
+		return await this.request('POST', '?delete', { headers, body });
 	}
 
 	/**
@@ -192,7 +181,7 @@ export class ObjectStoreService {
 
 		if (nextPageToken) qs['continuation-token'] = nextPageToken;
 
-		const { data } = await this.request('GET', this.host, this.bucket.name, { qs });
+		const { data } = await this.request('GET', '', { qs });
 
 		if (typeof data !== 'string') {
 			throw new TypeError(`Expected XML string but received ${typeof data}`);
@@ -215,18 +204,6 @@ export class ObjectStoreService {
 		return page as ListPage;
 	}
 
-	private toPath(rawPath: string, qs?: Record<string, string | number>) {
-		const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-
-		if (!qs) return path;
-
-		const qsParams = Object.entries(qs)
-			.map(([key, value]) => `${key}=${value}`)
-			.join('&');
-
-		return path.concat(`?${qsParams}`);
-	}
-
 	private async blockWrite(filename: string): Promise<AxiosResponse> {
 		const logMessage = writeBlockedMessage(filename);
 
@@ -243,16 +220,30 @@ export class ObjectStoreService {
 
 	private async request<T>(
 		method: Method,
-		host: string,
 		rawPath = '',
 		{ qs, headers, body, responseType }: RequestOptions = {},
 	) {
-		const path = this.toPath(rawPath, qs);
+		const {
+			host,
+			bucket: { region },
+		} = this.s3Config;
+		let url = this.baseUrl;
+		if (rawPath && rawPath !== '/') {
+			url = `${url}/${rawPath}`;
+		}
+		if (qs) {
+			url +=
+				'?' +
+				Object.entries(qs)
+					.map(([key, value]) => `${key}=${value}`)
+					.join('&');
+		}
+		const path = new URL(url).pathname;
 
 		const optionsToSign: Aws4Options = {
 			method,
 			service: 's3',
-			region: this.bucket.region,
+			region,
 			host,
 			path,
 		};
@@ -260,11 +251,15 @@ export class ObjectStoreService {
 		if (headers) optionsToSign.headers = headers;
 		if (body) optionsToSign.body = body;
 
-		const signedOptions = sign(optionsToSign, this.credentials);
+		const { accessKey, accessSecret } = this.s3Config.credentials;
+		const signedOptions = sign(optionsToSign, {
+			accessKeyId: accessKey,
+			secretAccessKey: accessSecret,
+		});
 
 		const config: AxiosRequestConfig = {
 			method,
-			url: `https://${host}${path}`,
+			url,
 			headers: signedOptions.headers,
 		};
 
