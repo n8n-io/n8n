@@ -109,7 +109,7 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private preventPrototypePollution() {
-		// Freeze globals. Needed for Jest
+		// Freeze globals, except for Jest
 		if (process.env.NODE_ENV !== 'test') {
 			Object.getOwnPropertyNames(globalThis)
 				// @ts-expect-error globalThis does not have string in index signature
