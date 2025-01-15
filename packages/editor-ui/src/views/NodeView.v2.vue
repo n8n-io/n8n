@@ -1075,7 +1075,9 @@ const isExecutionDisabled = computed(() => {
 	return !containsTriggerNodes.value || allTriggerNodesDisabled.value;
 });
 
-const isRunWorkflowButtonVisible = computed(() => !isOnlyChatTriggerNodeActive.value);
+const isRunWorkflowButtonVisible = computed(
+	() => !isOnlyChatTriggerNodeActive.value || chatTriggerNodePinnedData.value,
+);
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );
