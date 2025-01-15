@@ -1,29 +1,21 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { searchUsers } from '../GenericFunctions';
+
+import { googleApiRequestAllItems } from '../GenericFunctions';
+import { searchUsers } from '../SearchFunctions';
+
+jest.mock('../GenericFunctions');
 
 describe('GenericFunctions - searchUsers', () => {
-	const mockGoogleApiRequestAllItems = jest.fn();
-
-	const mockContext = {
-		googleApiRequestAllItems: mockGoogleApiRequestAllItems,
-	} as unknown as ILoadOptionsFunctions;
+	const mockContext = {} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockGoogleApiRequestAllItems.mockClear();
+		(googleApiRequestAllItems as jest.Mock).mockClear();
 	});
 
-	it('should return a list of users when API responds with users', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValueOnce([
-			{
-				id: '1',
-				name: { fullName: 'John Doe' },
-				primaryEmail: 'john.doe@example.com',
-			},
-			{
-				id: '2',
-				name: { fullName: 'Jane Smith' },
-				primaryEmail: 'jane.smith@example.com',
-			},
+	it('should return a list of users when googleApiRequestAllItems returns users', async () => {
+		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
+			{ id: '1', name: { fullName: 'John Doe' } },
+			{ id: '2', name: { fullName: 'Jane Smith' } },
 		]);
 
 		const result = await searchUsers.call(mockContext);
@@ -34,7 +26,8 @@ describe('GenericFunctions - searchUsers', () => {
 				{ name: 'Jane Smith', value: '2' },
 			],
 		});
-		expect(mockGoogleApiRequestAllItems).toHaveBeenCalledWith(
+		expect(googleApiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(googleApiRequestAllItems).toHaveBeenCalledWith(
 			'users',
 			'GET',
 			'/directory/v1/users',
@@ -43,11 +36,19 @@ describe('GenericFunctions - searchUsers', () => {
 		);
 	});
 
-	it('should return an empty array when API responds with no users', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([]);
+	it('should return an empty array when googleApiRequestAllItems returns no users', async () => {
+		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
 
 		const result = await searchUsers.call(mockContext);
 
 		expect(result).toEqual({ results: [] });
+		expect(googleApiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(googleApiRequestAllItems).toHaveBeenCalledWith(
+			'users',
+			'GET',
+			'/directory/v1/users',
+			{},
+			{ customer: 'my_customer' },
+		);
 	});
 });

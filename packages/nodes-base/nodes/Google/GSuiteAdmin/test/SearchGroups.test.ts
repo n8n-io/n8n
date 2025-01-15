@@ -1,21 +1,19 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { searchGroups } from '../GenericFunctions';
+
+import { googleApiRequestAllItems } from '../GenericFunctions';
+import { searchGroups } from '../SearchFunctions';
+
+jest.mock('../GenericFunctions');
 
 describe('GenericFunctions - searchGroups', () => {
-	const mockGoogleApiRequestAllItems = jest.fn();
-
-	const mockContext = {
-		helpers: {
-			requestOAuth2: mockGoogleApiRequestAllItems,
-		},
-	} as unknown as ILoadOptionsFunctions;
+	const mockContext = {} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockGoogleApiRequestAllItems.mockClear();
+		(googleApiRequestAllItems as jest.Mock).mockClear();
 	});
-	//TODO - this test not works
-	it('should return a list of groups when API responds with groups', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([
+
+	it('should return a list of groups when googleApiRequestAllItems returns groups', async () => {
+		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
 			{
 				kind: 'admin#directory#group',
 				id: '01302m922pmp3e4',
@@ -40,13 +38,29 @@ describe('GenericFunctions - searchGroups', () => {
 				{ name: 'NewOness', value: '01x0gk373c9z46j' },
 			],
 		});
+		expect(googleApiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(googleApiRequestAllItems).toHaveBeenCalledWith(
+			'groups',
+			'GET',
+			'/directory/v1/groups',
+			{},
+			{ customer: 'my_customer' },
+		);
 	});
 
-	it('should return an empty array when API responds with no groups', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([]);
+	it('should return an empty array when googleApiRequestAllItems returns no groups', async () => {
+		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
 
 		const result = await searchGroups.call(mockContext);
 
 		expect(result).toEqual({ results: [] });
+		expect(googleApiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(googleApiRequestAllItems).toHaveBeenCalledWith(
+			'groups',
+			'GET',
+			'/directory/v1/groups',
+			{},
+			{ customer: 'my_customer' },
+		);
 	});
 });
