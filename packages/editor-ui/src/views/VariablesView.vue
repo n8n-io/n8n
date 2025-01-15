@@ -230,6 +230,7 @@ onMounted(() => {
 		:type-props="{ columns }"
 		:loading="isLoading"
 		@update:filters="updateFilter"
+		@click:add="addEmptyVariableForm"
 	>
 		<template #header>
 			<n8n-heading size="2xlarge" class="mb-m">
