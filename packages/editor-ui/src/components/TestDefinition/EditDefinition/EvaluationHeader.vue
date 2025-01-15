@@ -18,8 +18,8 @@ const locale = useI18n();
 <template>
 	<div :class="$style.header">
 		<n8n-icon-button
-			icon="arrow-left"
 			:class="$style.backButton"
+			icon="arrow-left"
 			type="tertiary"
 			:title="locale.baseText('testDefinition.edit.backButtonTitle')"
 			@click="$router.back()"
@@ -55,8 +55,6 @@ const locale = useI18n();
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	margin-bottom: var(--spacing-l);
 
 	&:hover {
 		.editInputButton {
@@ -86,12 +84,13 @@ const locale = useI18n();
 
 .editInputButton {
 	--button-font-color: var(--prim-gray-490);
-	opacity: 0;
+	opacity: 0.2;
 	border: none;
 }
 
 .backButton {
 	--button-font-color: var(--color-text-light);
 	border: none;
+	padding-left: 0;
 }
 </style>

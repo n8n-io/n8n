@@ -3,6 +3,7 @@ import {
 	onBeforeUnmount,
 	onMounted,
 	ref,
+	toRef,
 	toValue,
 	watch,
 	watchEffect,
@@ -47,7 +48,7 @@ export const useExpressionEditor = ({
 	autocompleteTelemetry,
 	isReadOnly = false,
 }: {
-	editorRef: Ref<HTMLElement | undefined>;
+	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
@@ -69,6 +70,7 @@ export const useExpressionEditor = ({
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
+	const isDirty = ref(false);
 
 	const updateSegments = (): void => {
 		const state = editor.value?.state;
@@ -155,6 +157,7 @@ export const useExpressionEditor = ({
 	const debouncedUpdateSegments = debounce(updateSegments, 200);
 
 	function onEditorUpdate(viewUpdate: ViewUpdate) {
+		isDirty.value = true;
 		autocompleteStatus.value = completionStatus(viewUpdate.view.state);
 		updateSelection(viewUpdate);
 
@@ -178,7 +181,7 @@ export const useExpressionEditor = ({
 		dragging.value = false;
 	}
 
-	watch(editorRef, () => {
+	watch(toRef(editorRef), () => {
 		const parent = toValue(editorRef);
 
 		if (!parent) return;
@@ -462,5 +465,6 @@ export const useExpressionEditor = ({
 		select,
 		selectAll,
 		focus,
+		isDirty,
 	};
 };

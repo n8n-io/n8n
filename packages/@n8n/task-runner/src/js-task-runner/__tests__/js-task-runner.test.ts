@@ -50,7 +50,7 @@ describe('JsTaskRunner', () => {
 				...jsRunnerOpts,
 			},
 			sentryConfig: {
-				sentryDsn: '',
+				dsn: '',
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
@@ -302,6 +302,7 @@ describe('JsTaskRunner', () => {
 				['typeof clearInterval', 'function'],
 				['typeof clearImmediate', 'function'],
 			],
+			eval: [['eval("1+2")', 3]],
 			'JS built-ins': [
 				['typeof btoa', 'function'],
 				['typeof atob', 'function'],
@@ -1339,6 +1340,77 @@ describe('JsTaskRunner', () => {
 			jest.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 			task.cleanup();
+		});
+	});
+
+	describe('prototype pollution prevention', () => {
+		const checkPrototypeIntact = () => {
+			const obj: Record<string, unknown> = {};
+			expect(obj.maliciousKey).toBeUndefined();
+		};
+
+		test('Object.setPrototypeOf should no-op for local object', async () => {
+			checkPrototypeIntact();
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+					Object.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
+		});
+
+		test('Reflect.setPrototypeOf should no-op for local object', async () => {
+			checkPrototypeIntact();
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+					Reflect.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
+		});
+
+		test('Object.setPrototypeOf should no-op for incoming object', async () => {
+			checkPrototypeIntact();
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = $input.first();
+					Object.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
+		});
+
+		test('Reflect.setPrototypeOf should no-op for incoming object', async () => {
+			checkPrototypeIntact();
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = $input.first();
+					Reflect.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
 		});
 	});
 });

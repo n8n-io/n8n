@@ -10,13 +10,13 @@ export interface EditableField<T = string> {
 export interface EditableFormState {
 	name: EditableField<string>;
 	tags: EditableField<string[]>;
+	description: EditableField<string>;
 }
 
 export interface EvaluationFormState extends EditableFormState {
-	description: string;
 	evaluationWorkflow: INodeParameterResourceLocator;
 	metrics: TestMetricRecord[];
-	mockedNodes: Array<{ name: string }>;
+	mockedNodes: Array<{ name: string; id: string }>;
 }
 
 export interface TestExecution {
@@ -24,6 +24,7 @@ export interface TestExecution {
 	errorRate: number | null;
 	metrics: Record<string, number>;
 	status: TestRunRecord['status'];
+	id: string | null;
 }
 
 export interface TestListItem {

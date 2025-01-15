@@ -1,10 +1,9 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
-import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
@@ -21,11 +20,17 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:sourceControl', 'feat:sharing'],
 });
 
+let sourceControlPreferencesService: SourceControlPreferencesService;
+
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	Container.get(SourceControlPreferencesService).isSourceControlConnected = () => true;
+	sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+	await sourceControlPreferencesService.setPreferences({
+		connected: true,
+		keyGeneratorType: 'rsa',
+	});
 });
 
 describe('GET /sourceControl/preferences', () => {
@@ -65,19 +70,11 @@ describe('GET /sourceControl/preferences', () => {
 	});
 
 	test('refreshing key pairsshould return new rsa key', async () => {
-		config.set('sourceControl.defaultKeyPairType', 'rsa');
-		await authOwnerAgent
-			.post('/source-control/generate-key-pair')
-			.send()
-			.expect(200)
-			.expect((res) => {
-				expect(
-					Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType,
-				).toBe('rsa');
-				expect(res.body.data).toHaveProperty('publicKey');
-				expect(res.body.data).toHaveProperty('keyGeneratorType');
-				expect(res.body.data.keyGeneratorType).toBe('rsa');
-				expect(res.body.data.publicKey).toContain('ssh-rsa');
-			});
+		const res = await authOwnerAgent.post('/source-control/generate-key-pair').send().expect(200);
+
+		expect(res.body.data).toHaveProperty('publicKey');
+		expect(res.body.data).toHaveProperty('keyGeneratorType');
+		expect(res.body.data.keyGeneratorType).toBe('rsa');
+		expect(res.body.data.publicKey).toContain('ssh-rsa');
 	});
 });

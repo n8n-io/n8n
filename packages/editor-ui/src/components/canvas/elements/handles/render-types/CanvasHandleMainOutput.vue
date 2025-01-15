@@ -83,7 +83,6 @@ function onClickAdd() {
 			<CanvasHandlePlus
 				v-if="!isConnected && !isReadOnly"
 				v-show="isHandlePlusVisible"
-				data-test-id="canvas-handle-plus"
 				:data-plus-type="plusType"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
