@@ -17,7 +17,7 @@ describe('N8nPillList', () => {
 		const wrapper = render(N8nPillList, {
 			props: {
 				modelValue: {},
-				inputs: [{ name: 'propA', defaultValue: '' }],
+				inputs: [{ name: 'propA', initialValue: '' }],
 			},
 		});
 
@@ -40,9 +40,9 @@ describe('N8nPillList', () => {
 					propA: 'propA value',
 				},
 				inputs: [
-					{ name: 'propA', defaultValue: '' },
-					{ name: 'propB', defaultValue: 3 },
-					{ name: 'propC', defaultValue: true },
+					{ name: 'propA', initialValue: '' },
+					{ name: 'propB', initialValue: 3 },
+					{ name: 'propC', initialValue: true },
 				],
 			},
 		});

@@ -6,7 +6,7 @@ exports[`N8nPillList > renders multiple elements with some pre-selected 1`] = `
   <div class="slotComboContainer" data-test-id="pill-list-slot-propA"><button class="button button tertiary mini text withIcon square slotRemoveIcon slotRemoveIcon" aria-live="polite" data-test-id="pill-list-remove-slot-propA"><span class="icon"><span class="n8n-text compact size-xsmall regular n8n-icon n8n-icon"><!----></span></span>
       <!--v-if-->
     </button>
-    <div class="slotContainer">Empty slot with v-bind: {"name":"propA","defaultValue":""}</div>
+    <div class="slotContainer">Empty slot with v-bind: {"name":"propA","initialValue":"propA value"}</div>
   </div>
 </div>"
 `;

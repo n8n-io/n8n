@@ -12,30 +12,30 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
+	setup: () => ({ args: { ...args, modelValue: undefined }, model: args.modelValue }),
 	props: Object.keys(argTypes),
 	// Generics make this difficult to type
 	components: N8nPillList as never,
-	template: '<n8n-pill-list v-bind="args"  />',
+	template: '<n8n-pill-list v-bind="args" v-model="model" />',
 });
 
 export const PillList = Template.bind({});
 PillList.args = {
 	modelValue: {
-		propC: 'propC value that will be changed in the slot',
+		propC: 'propC pre-existing initial value',
 	},
 	inputs: [
 		{
 			name: 'propA',
-			default: 'propA default',
+			initialValue: false,
 		},
 		{
 			name: 'propB',
-			default: 'propB default',
+			initialValue: 0,
 		},
 		{
 			name: 'propC',
-			default: 'propC default',
+			initialValue: 'propC default',
 		},
 	],
 };
