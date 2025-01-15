@@ -4,6 +4,7 @@ import { META_KEY } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
+import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../composables/workflow';
 
 const nodeCreator = new NodeCreator();
 
@@ -38,15 +39,7 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodes: () =>
-			cy.ifCanvasVersion(
-				() => cy.getByTestId('canvas-node'),
-				() =>
-					cy
-						.getByTestId('canvas-node')
-						.not('[data-node-type="n8n-nodes-internal.addNodes"]')
-						.not('[data-node-type="n8n-nodes-base.stickyNote"]'),
-			),
+		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		nodeIssuesByName: (nodeName: string) =>
@@ -110,7 +103,7 @@ export class WorkflowPage extends BasePage {
 		disabledNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.node-box.disabled'),
-				() => cy.get('[data-test-id*="node"][class*="disabled"]'),
+				() => cy.get('[data-canvas-node-render-type][class*="disabled"]'),
 			),
 		selectedNodes: () =>
 			cy.ifCanvasVersion(
@@ -303,56 +296,55 @@ export class WorkflowPage extends BasePage {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		duplicateNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('duplicate');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('duplicate');
 		},
 		deleteNodeFromContextMenu: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('delete');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('delete');
 		},
 		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
-			this.actions.openContextMenu(nodeTypeName, options);
-			this.actions.contextMenuAction('execute');
+			openContextMenu(nodeTypeName, options);
+			clickContextMenuAction('execute');
 		},
 		addStickyFromContextMenu: () => {
-			this.actions.openContextMenu();
-			this.actions.contextMenuAction('add_sticky');
+			openContextMenu();
+			clickContextMenuAction('add_sticky');
 		},
 		renameNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('rename');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('rename');
 		},
 		copyNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('copy');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('copy');
 		},
 		contextMenuAction: (action: string) => {
 			this.getters.contextMenuAction(action).click();
 		},
 		disableNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('toggle_activation');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('toggle_activation');
 		},
 		pinNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
-			this.actions.contextMenuAction('toggle_pin');
+			openContextMenu(nodeTypeName);
+			clickContextMenuAction('toggle_pin');
 		},
 		openNodeFromContextMenu: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName, { method: 'overflow-button' });
-			this.actions.contextMenuAction('open');
+			openContextMenu(nodeTypeName, { method: 'overflow-button' });
+			clickContextMenuAction('open');
 		},
 		selectAllFromContextMenu: () => {
-			this.actions.openContextMenu();
-			this.actions.contextMenuAction('select_all');
+			openContextMenu();
+			clickContextMenuAction('select_all');
 		},
 		deselectAll: () => {
 			cy.ifCanvasVersion(
 				() => {
-					this.actions.openContextMenu();
-					this.actions.contextMenuAction('deselect_all');
+					openContextMenu();
+					clickContextMenuAction('deselect_all');
 				},
-				// rightclick doesn't work with vueFlow canvas
-				() => this.getters.nodeViewBackground().click('topLeft'),
+				() => getCanvasPane().click('topLeft'),
 			);
 		},
 		openExpressionEditorModal: () => {
@@ -431,7 +423,7 @@ export class WorkflowPage extends BasePage {
 		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
-				this.getters.nodeView().trigger('wheel', {
+				this.getters.canvasViewport().trigger('wheel', {
 					force: true,
 					bubbles: true,
 					ctrlKey: true,

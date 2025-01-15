@@ -9,12 +9,13 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import type {
+import {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
+	CanvasNodeRenderType,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -23,7 +24,7 @@ import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeTool
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasNodeKey } from '@/constants';
+import { CanvasNodeKey, STICKY_NODE_TYPE } from '@/constants';
 import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -106,6 +107,12 @@ const classes = computed(() => ({
 	selected: props.selected,
 	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
+
+const dataTestId = computed(() =>
+	[CanvasNodeRenderType.StickyNote, CanvasNodeRenderType.AddNodes].includes(props.data.type)
+		? undefined
+		: 'canvas-node',
+);
 
 /**
  * Event bus
@@ -330,7 +337,7 @@ onBeforeUnmount(() => {
 <template>
 	<div
 		:class="classes"
-		data-test-id="canvas-node"
+		:data-test-id="dataTestId"
 		:data-node-name="data.name"
 		:data-node-type="data.type"
 	>
