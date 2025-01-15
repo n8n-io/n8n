@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { computed, ref } from 'vue';
-import type { TestDefinitionTableColumn } from '../shared/TestDefinitionTable.vue';
-import TestDefinitionTable from '../shared/TestDefinitionTable.vue';
+import type { TestTableColumn } from '../shared/TestTableBase.vue';
+import TestTableBase from '../shared/TestTableBase.vue';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
@@ -29,7 +29,7 @@ const metrics = computed(() => {
 	}, [] as string[]);
 });
 
-const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => {
+const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 	return [
 		{
 			prop: 'runNumber',
@@ -58,6 +58,8 @@ const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => 
 			label: locale.baseText('testDefinition.listRuns.runDate'),
 			sortable: true,
 			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
+			sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
+				new Date(a.runAt).getTime() - new Date(b.runAt).getTime(),
 		},
 
 		...metrics.value.map((metric) => ({
@@ -81,13 +83,16 @@ function deleteRuns() {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.footer">
+		<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
+			locale.baseText('testDefinition.edit.pastRuns')
+		}}</N8nHeading>
+		<div :class="$style.header">
 			<n8n-button
 				v-show="selectedRows.length > 0"
 				type="danger"
 				:class="$style.activator"
-				:size="'medium'"
-				:icon="'trash'"
+				size="medium"
+				icon="trash"
 				data-test-id="delete-runs-button"
 				@click="deleteRuns"
 			>
@@ -98,7 +103,7 @@ function deleteRuns() {
 				}}
 			</n8n-button>
 		</div>
-		<TestDefinitionTable
+		<TestTableBase
 			:data="runs"
 			:columns="columns"
 			selectable
@@ -116,5 +121,6 @@ function deleteRuns() {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	flex: 1;
 }
 </style>

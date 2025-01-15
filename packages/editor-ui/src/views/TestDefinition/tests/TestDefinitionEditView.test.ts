@@ -75,7 +75,7 @@ describe('TestDefinitionEditView', () => {
 		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			state: ref({
 				name: { value: '', isEditing: false, tempValue: '' },
-				description: '',
+				description: { value: '', isEditing: false, tempValue: '' },
 				tags: { value: [], tempValue: [], isEditing: false },
 				evaluationWorkflow: { mode: 'list', value: '', __rl: true },
 				metrics: [],
@@ -273,7 +273,7 @@ describe('TestDefinitionEditView', () => {
 				...vi.mocked(useTestDefinitionForm)(),
 				state: ref({
 					name: { value: 'Test', isEditing: false, tempValue: '' },
-					description: '',
+					description: { value: '', isEditing: false, tempValue: '' },
 					tags: { value: ['tag1'], tempValue: [], isEditing: false },
 					evaluationWorkflow: { mode: 'list', value: 'workflow1', __rl: true },
 					metrics: [],
