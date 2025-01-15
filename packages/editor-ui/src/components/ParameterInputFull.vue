@@ -19,6 +19,7 @@ import {
 } from 'n8n-workflow';
 import { N8nButton, N8nInputLabel, N8nTagList } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
+import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type Props = {
@@ -54,112 +55,40 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 
+const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
+
 const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
-const FROM_AI_DENYLIST = ['toolWorkflow', 'toolCode', 'toolHttpRequest'];
-
-const fromAiOverride = {
-	overridePlaceholder: 'Defined automatically by the model',
-	icon: 'plus',
-	output: '={{ [marker] $fromAI([key], [type], [default], [description]) }}',
-	providers: {
-		marker: '/* n8n-auto-generated-override */',
-		key: (props: Props) => props.parameter.name, // todo - need to check these
-		type: (props: Props) => fieldTypeToFromAiType(props), // todo - infer boolean, number and other matching types
-	},
-	extraProps: {
-		description: {
-			default: '',
-			placeholder: 'Description of how the model should define this value',
-		},
-	} as Record<string, { default: string; placeholder: string }>,
-};
 const selectedFields = ref<string[]>([]);
-// const extraPropValues = ref<Record<keyof (typeof fromAiOverride)['extraProps'], string>>(
-const extraPropValues = ref<Record<string, string>>(
-	Object.fromEntries(Object.entries(fromAiOverride.extraProps).map((x) => [x[0], x[1].default])),
+
+const node = computed(() => ndvStore.activeNode);
+const parameterOverrides = ref<ParameterOverride | null>(
+	makeOverrideValue(
+		props,
+		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+	),
 );
 
-function fieldTypeToFromAiType(props: Props) {
-	switch (props.parameter.type) {
-		case 'boolean':
-			return 'boolean';
-		case 'number':
-			return 'number';
-		case 'string':
-		default:
-			return 'string';
-	}
-}
-
-function buildValueFromOverride(excludeMarker: boolean) {
-	const {
-		providers: { marker, key, type },
-		extraProps,
-	} = fromAiOverride;
-	const providedExtraProps = Object.fromEntries(
-		Object.entries(extraPropValues.value).filter((x) => selectedFields.value.includes(x[0])),
-	);
-	return `={{ ${excludeMarker ? '' : marker} $fromAI('${key(props)}', '${providedExtraProps?.description ?? extraProps.description.default}', '${type(props)}') }}`;
-}
-
-function isOverrideValue(s: string) {
-	return s.startsWith('={{ /* n8n-auto-generated-override */ $fromAI(');
-}
-
-function parseOverrides(s: string): Partial<typeof extraPropValues.value> | null {
-	/*
-		Approaches:
-		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts - unclear where to move it
-		- Fun and dangerous: Use eval, see below
-	*/
-	if (!isOverrideValue(s)) return null;
-
-	const fromAI = (...args: unknown[]) => args;
-	const fns = `const $fromAI = ${fromAI}; const $fromAi = ${fromAI}; const $fromai = ${fromAI};`;
-	const cursor = '={{ /* n8n-auto-generated-override */ '.length;
-	const end = '}}'.length;
-
-	let params: unknown[] = [];
-	try {
-		// `eval?.` is an indirect evaluation, outside of local scope
-		const code = `${fns} ${s.slice(cursor, -end)}`;
-		params = eval?.(code) ?? [];
-	} catch (e) {}
-	return {
-		// key: params[0],
-		description: params[1] as string | undefined,
-		// type: (params[2] as string) ?? undefined,
-		// todo - parse the string to get the values
-	};
-}
-
-const isContentOverride = computed(() => isOverrideValue(props.value?.toString() ?? ''));
-const canBeContentOverride = computed(() => {
-	if (!node.value) return false;
-
-	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
-
-	if (FROM_AI_DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false)) return false;
-
-	const codex = nodeType?.codex;
-	if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))
-		return false;
-
-	return (
-		(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
-		!isResourceLocator.value &&
-		'options' !== props.parameter.type
+onMounted(() => {
+	parameterOverrides.value = makeOverrideValue(
+		props,
+		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 });
 
-const ndvStore = useNDVStore();
-const nodeTypesStore = useNodeTypesStore();
+const isContentOverride = computed(() =>
+	parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
+);
+const canBeContentOverride = computed(() => {
+	if (!node.value || isResourceLocator.value) return false;
 
-const node = computed(() => ndvStore.activeNode);
+	return parameterOverrides.value !== null;
+});
+
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
 
 const isResourceLocator = computed(
@@ -179,20 +108,8 @@ const showExpressionSelector = computed(() =>
 
 const isReadOnlyParameter = computed(
 	() =>
-		props.isReadOnly || props.parameter.disabledOptions !== undefined || isContentOverride.value,
+		props.isReadOnly || props.parameter.disabledOptions !== undefined || !!isContentOverride.value,
 );
-
-onMounted(() => {
-	if (isOverrideValue(props.value?.toString() ?? '')) {
-		const x = parseOverrides(props.value?.toString() ?? '') ?? {};
-		for (const [key, value] of Object.entries(x)) {
-			if (value === undefined || value === fromAiOverride.extraProps[key].default) continue;
-
-			extraPropValues.value[key] = value;
-			selectedFields.value.push(key);
-		}
-	}
-});
 
 function onFocus() {
 	focused.value = true;
@@ -356,7 +273,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					() => {
 						valueChanged({
 							name: props.path,
-							value: buildValueFromOverride(false),
+							value: parameterOverrides?.buildValueFromOverride(props, false),
 						});
 					}
 				"
@@ -389,7 +306,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						<AiStarsIcon />
 					</div>
 					<N8nInput
-						:model-value="fromAiOverride.overridePlaceholder"
+						:model-value="parameterOverrides?.overridePlaceholder"
 						disabled
 						type="text"
 						size="small"
@@ -405,7 +322,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 								valueChanged({
 									node: node?.name,
 									name: props.path,
-									value: buildValueFromOverride(true),
+									value: parameterOverrides?.buildValueFromOverride(props, true),
 								});
 							}
 						"
@@ -444,7 +361,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 									() => {
 										valueChanged({
 											name: props.path,
-											value: buildValueFromOverride(false),
+											value: parameterOverrides?.buildValueFromOverride(props, false),
 										});
 									}
 								"
@@ -476,7 +393,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		<N8nTagList
 			v-if="isContentOverride"
 			v-model="selectedFields"
-			:inputs="Object.keys(fromAiOverride.extraProps).map((x) => ({ name: x }))"
+			:inputs="Object.keys(parameterOverrides?.extraProps ?? {}).map((x) => ({ name: x }))"
 		>
 			<template #displayItem="{ name }">
 				<ParameterInputFull
@@ -487,15 +404,15 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						default: '',
 						noDataExpression: true,
 					}"
-					:value="extraPropValues[name]"
+					:value="parameterOverrides?.extraPropValues[name]"
 					:path="`${path}.tags.${name}`"
 					input-size="small"
 					@update="
 						(x) => {
-							extraPropValues[name] = x.value as never;
+							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value as never;
 							valueChanged({
 								name: props.path,
-								value: buildValueFromOverride(false),
+								value: parameterOverrides?.buildValueFromOverride(props, false),
 							});
 						}
 					"
