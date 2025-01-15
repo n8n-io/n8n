@@ -171,7 +171,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		checkConnections();
-		// cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 4);
+
 		WorkflowPage.actions.executeWorkflow();
 		WorkflowPage.getters.stopExecutionButton().should('not.exist');
 

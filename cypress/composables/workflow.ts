@@ -160,10 +160,7 @@ export function getNodeCreatorPlusButton() {
 }
 
 export function getCanvasNodes() {
-	return cy.ifCanvasVersion(
-		() => cy.getByTestId('canvas-node'),
-		() => cy.getByTestId('canvas-node'),
-	);
+	return cy.getByTestId('canvas-node');
 }
 
 export function getCanvasNodeByName(nodeName: string) {
