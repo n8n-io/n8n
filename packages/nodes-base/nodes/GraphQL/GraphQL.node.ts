@@ -510,21 +510,16 @@ export class GraphQL implements INodeType {
 						},
 					});
 				} else {
-					if (
-						typeof response === 'string' &&
-						(JSON.parse(response) as IDataObject).errorMessage &&
-						requestFormat === 'graphql'
-					) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Error in GraphQL request. Please try using the Request format "JSON" instead.',
-						);
-					} else {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Response body is not valid JSON. Change "Response Format" to "String"',
-							{ itemIndex },
-						);
+					if (typeof response === 'string') {
+						try {
+							response = JSON.parse(response);
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Response body is not valid JSON. Change "Response Format" to "String"',
+								{ itemIndex },
+							);
+						}
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
