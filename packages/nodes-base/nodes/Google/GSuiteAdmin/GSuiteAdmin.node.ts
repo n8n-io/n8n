@@ -655,10 +655,6 @@ export class GSuiteAdmin implements INodeType {
 					if (operation === 'removeFromGroup') {
 						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
 						const userId = (this.getNodeParameter('userId', i) as IDataObject).value;
-						const body: IDataObject = {
-							email: userId,
-							role: 'MEMBER',
-						};
 
 						await googleApiRequest.call(
 							this,
