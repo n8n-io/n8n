@@ -1,10 +1,10 @@
 <script setup lang="ts" generic="T">
 import { useI18n } from '@/composables/useI18n';
-import type { TestDefinitionTableColumn } from './TestDefinitionTable.vue';
+import type { TestTableColumn } from './TestTableBase.vue';
 import { useRouter } from 'vue-router';
 
 defineProps<{
-	column: TestDefinitionTableColumn<T>;
+	column: TestTableColumn<T>;
 	row: T;
 }>();
 
@@ -44,7 +44,7 @@ function hasProperty(row: unknown, prop: string): row is Record<string, unknown>
 	return typeof row === 'object' && row !== null && prop in row;
 }
 
-const getCellContent = (column: TestDefinitionTableColumn<T>, row: T) => {
+const getCellContent = (column: TestTableColumn<T>, row: T) => {
 	if (column.formatter) {
 		return column.formatter(row);
 	}
