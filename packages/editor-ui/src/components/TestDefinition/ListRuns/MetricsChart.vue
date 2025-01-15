@@ -45,11 +45,11 @@ watchEffect(() => {
 <template>
 	<div v-if="availableMetrics.length > 0" :class="$style.metricsChartContainer">
 		<div :class="$style.chartHeader">
-			<N8nText>{{ locale.baseText('testDefinition.listRuns.metricsOverTime') }}</N8nText>
 			<N8nSelect
 				:model-value="selectedMetric"
 				:class="$style.metricSelect"
 				placeholder="Select metric"
+				size="small"
 				@update:model-value="emit('update:selectedMetric', $event)"
 			>
 				<N8nOption
@@ -59,6 +59,7 @@ watchEffect(() => {
 					:value="metric"
 				/>
 			</N8nSelect>
+			<N8nText>{{ locale.baseText('testDefinition.listRuns.metricsOverTime') }}</N8nText>
 		</div>
 		<div :class="$style.chartWrapper">
 			<Line
@@ -74,17 +75,17 @@ watchEffect(() => {
 
 <style lang="scss" module>
 .metricsChartContainer {
-	margin: var(--spacing-m) 0;
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
 	box-shadow: var(--box-shadow-base);
 
 	.chartHeader {
 		display: flex;
-		justify-content: space-between;
+		justify-content: flex-start;
 		align-items: center;
+		gap: var(--spacing-s);
 		margin-bottom: var(--spacing-m);
-		padding: var(--spacing-s);
+		padding: var(--spacing-xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
@@ -100,7 +101,7 @@ watchEffect(() => {
 
 	.chartWrapper {
 		position: relative;
-		height: 400px;
+		height: var(--metrics-chart-height, 400px);
 		width: 100%;
 		padding: var(--spacing-s);
 	}

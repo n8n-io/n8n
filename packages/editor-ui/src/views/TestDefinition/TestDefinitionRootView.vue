@@ -21,5 +21,16 @@ onMounted(initWorkflow);
 </script>
 
 <template>
-	<router-view />
+	<div :class="$style.evaluationsView">
+		<router-view />
+	</div>
 </template>
+
+<style module lang="scss">
+.evaluationsView {
+	width: 100%;
+	height: 100%;
+	margin: auto;
+	padding: var(--spacing-xl) var(--spacing-l);
+}
+</style>

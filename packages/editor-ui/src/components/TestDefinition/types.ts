@@ -10,10 +10,10 @@ export interface EditableField<T = string> {
 export interface EditableFormState {
 	name: EditableField<string>;
 	tags: EditableField<string[]>;
+	description: EditableField<string>;
 }
 
 export interface EvaluationFormState extends EditableFormState {
-	description: string;
 	evaluationWorkflow: INodeParameterResourceLocator;
 	metrics: TestMetricRecord[];
 	mockedNodes: Array<{ name: string; id: string }>;
