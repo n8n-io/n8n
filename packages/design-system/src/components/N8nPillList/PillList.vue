@@ -1,8 +1,4 @@
-<script
-	setup
-	lang="ts"
-	generic="Value, Item extends { name: string; defaultValue: Value; tooltip?: string }"
->
+<script setup lang="ts" generic="Value, Item extends { name: string; defaultValue: Value }">
 import { computed } from 'vue';
 
 defineSlots<{
