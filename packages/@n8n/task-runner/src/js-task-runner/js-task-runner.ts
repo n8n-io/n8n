@@ -115,7 +115,8 @@ export class JsTaskRunner extends TaskRunner {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
 			.map((name) => globalThis[name])
 			.filter((value) => typeof value === 'function')
-			.forEach(Object.freeze);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+			.forEach((fn) => Object.freeze(fn.prototype));
 	}
 
 	async executeTask(
