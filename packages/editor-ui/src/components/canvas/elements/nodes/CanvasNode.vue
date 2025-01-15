@@ -9,22 +9,21 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import {
+import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
-	CanvasNodeRenderType,
 } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasNodeKey, STICKY_NODE_TYPE } from '@/constants';
+import { CanvasNodeKey } from '@/constants';
 import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
