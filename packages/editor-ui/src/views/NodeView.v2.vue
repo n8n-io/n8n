@@ -924,11 +924,13 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.on('openChat', onOpenChat);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.off('openChat', onOpenChat);
 }
 
 /**
