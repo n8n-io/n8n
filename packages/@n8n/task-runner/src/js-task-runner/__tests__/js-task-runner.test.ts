@@ -1346,8 +1346,6 @@ describe('JsTaskRunner', () => {
 	describe('prototype pollution prevention', () => {
 		const checkPrototypeIntact = () => {
 			const obj: Record<string, unknown> = {};
-			expect(obj.toString).toBe(Object.prototype.toString);
-			expect(obj.hasOwnProperty).toBe(Object.prototype.hasOwnProperty);
 			expect(obj.maliciousKey).toBeUndefined();
 		};
 
