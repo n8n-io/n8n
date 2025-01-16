@@ -1,10 +1,53 @@
 <html>
-	<script>
-		(function messageParent() {
-			const broadcastChannel = new BroadcastChannel('oauth-callback');
-			broadcastChannel.postMessage('success');
-		})();
-	</script>
-
-	Got connected. The window can be closed now.
+	<head>
+		<style>
+			body {
+				font-family: 'Open Sans', sans-serif;
+				background-color: #2e793d;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				height: 100vh;
+				margin: 0;
+				font-weight: 400;
+			}
+			.container {
+				text-align: center;
+				background-color: #ffffff;
+				padding: 3rem 4rem;
+				border-radius: 10px;
+				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+			}
+			h1 {
+				color: #185fb0;
+				font-size: 2.5rem;
+				margin-bottom: 0.5rem;
+			}
+			h2 {
+				color: #333333;
+				font-size: 1.5rem;
+				margin-bottom: 1rem;
+			}
+			p {
+				color: #666666;
+				font-size: 1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class='container'>
+			<h1>Success!</h1>
+			<h2>Congrats on getting connected 🎉</h2>
+			<p>This window will close automatically in 5 seconds.</p>
+		</div>
+		<script type="text/javascript">
+			(function messageParent() {
+				const broadcastChannel = new BroadcastChannel('oauth-callback');
+				broadcastChannel.postMessage('success');
+			})();
+			(function autoclose(){
+				setTimeout(function() { window.close(); }, 5000);
+			})();
+		</script>
+	</body>
 </html>
