@@ -57,6 +57,13 @@ export class MicrosoftStorageSharedKeyApi implements ICredentialType {
 				}
 			}
 		}
+		if (requestOptions.headers) {
+			for (const [key, value] of Object.entries(requestOptions.headers)) {
+				if (value === undefined) {
+					delete requestOptions.headers[key];
+				}
+			}
+		}
 
 		requestOptions.method ??= 'GET';
 		requestOptions.headers ??= {};

@@ -1,6 +1,21 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import type {
+	DeclarativeRestApiSettings,
+	IDataObject,
+	IExecutePaginationFunctions,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
+	INodeProperties,
+	ResourceMapperValue,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	parseContainerGetProperties,
+	parseContainerList,
+} from '../GenericFunctions';
 
 export const containerOperations: INodeProperties[] = [
 	{
@@ -28,7 +43,15 @@ export const containerOperations: INodeProperties[] = [
 						url: '=/{{ $parameter["container"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "created": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Create container',
@@ -47,7 +70,15 @@ export const containerOperations: INodeProperties[] = [
 						url: '=/{{ $parameter["container"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "deleted": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Delete container',
@@ -66,7 +97,24 @@ export const containerOperations: INodeProperties[] = [
 						url: '=/{{ $parameter["container"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							async function (
+								this: IExecuteSingleFunctions,
+								_data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								const result = await parseContainerGetProperties(response.headers);
+								return [
+									{
+										json: {
+											name: (this.getNodeParameter('container') as ResourceMapperValue).value,
+											...result,
+										},
+									},
+								];
+							},
+						],
 					},
 				},
 				action: 'Get container',
@@ -85,7 +133,21 @@ export const containerOperations: INodeProperties[] = [
 						url: '/',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							async function (
+								this: IExecuteSingleFunctions,
+								data: INodeExecutionData[],
+								_response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								const result = await parseContainerList(data[0].json as unknown as string);
+								return [
+									{
+										json: result,
+									},
+								];
+							},
+						],
 					},
 				},
 				action: 'Get many container',
@@ -108,8 +170,149 @@ const createFields: INodeProperties[] = [
 		},
 		placeholder: 'e.g. mycontainer',
 		required: true,
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const container = this.getNodeParameter('container') as string;
+						if (container.length < 3 || container.length > 63) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"'Container Name' must be from 3 through 63 characters long",
+							);
+						}
+						if (/[A-Z]/.test(container)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"All letters  in 'Container Name' must be lowercase",
+							);
+						}
+						if (!/^[a-z0-9-]+$/.test(container)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"'Container Name' can contain only letters, numbers, and the hyphen/minus (-) character",
+							);
+						}
+						if (!/^[a-z0-9].*[a-z0-9]$/.test(container)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"'Container Name' must start or end with a letter or number",
+							);
+						}
+						if (/--/.test(container)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"Consecutive hyphens are not permitted in 'Container Name'",
+							);
+						}
+
+						return requestOptions;
+					},
+				],
+			},
+		},
 		type: 'string',
 		validateType: 'string',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['container'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Access Level',
+				name: 'accessLevel',
+				default: '',
+				options: [
+					{
+						name: 'Blob',
+						value: 'blob',
+						description:
+							"Specifies public read access for blobs. Blob data within this container can be read via anonymous request, but container data isn't available. Clients can't enumerate blobs within the container via anonymous request.",
+					},
+					{
+						name: 'Container',
+						value: 'container',
+						description:
+							"Specifies full public read access for container and blob data. Clients can enumerate blobs within the container via anonymous request, but they can't enumerate containers within the storage account.",
+					},
+					{
+						name: 'Private',
+						value: '',
+						description: 'Container data is private to the account owner',
+					},
+				],
+				routing: {
+					request: {
+						headers: {
+							'x-ms-blob-public-access': '={{ $value || undefined }}',
+						},
+					},
+				},
+				type: 'options',
+				validateType: 'options',
+			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				default: [],
+				description: 'A name-value pair to associate with the container as metadata',
+				options: [
+					{
+						name: 'metadataValues',
+						displayName: 'Metadata',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								default: '',
+								description: 'Names must adhere to the naming rules for C# identifiers',
+								type: 'string',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								default: '',
+								type: 'string',
+							},
+						],
+					},
+				],
+				placeholder: 'Add metadata',
+				routing: {
+					send: {
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								requestOptions.headers ??= {};
+								const metadata = this.getNodeParameter('additionalFields.metadata') as IDataObject;
+								for (const data of metadata.metadataValues as IDataObject[]) {
+									requestOptions.headers[`x-ms-meta-${data.fieldName as string}`] =
+										data.fieldValue as string;
+								}
+								return requestOptions;
+							},
+						],
+					},
+				},
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
+		],
+		type: 'collection',
 	},
 ];
 
@@ -199,14 +402,28 @@ const getAllFields: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [
-					async function (
-						this: IExecuteSingleFunctions,
-						requestOptions: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> {
-						return requestOptions;
-					},
-				],
+				paginate: '={{ $value }}',
+			},
+			operations: {
+				async pagination(
+					this: IExecutePaginationFunctions,
+					requestOptions: DeclarativeRestApiSettings.ResultOptions,
+				): Promise<INodeExecutionData[]> {
+					let executions: INodeExecutionData[] = [];
+					let marker: string | undefined = undefined;
+					requestOptions.options.qs ??= {};
+
+					do {
+						requestOptions.options.qs.marker = marker;
+						const responseData = await this.makeRoutingRequest(requestOptions);
+						marker = responseData[0].json.nextMarker as string | undefined;
+						executions = executions.concat(
+							(responseData[0].json.containers as IDataObject[]).map((item) => ({ json: item })),
+						);
+					} while (marker);
+
+					return executions;
+				},
 			},
 		},
 		type: 'boolean',
@@ -228,6 +445,17 @@ const getAllFields: INodeProperties[] = [
 				property: 'maxresults',
 				type: 'query',
 				value: '={{ $value }}',
+			},
+			output: {
+				postReceive: [
+					async function (
+						this: IExecuteSingleFunctions,
+						data: INodeExecutionData[],
+						_response: IN8nHttpFullResponse,
+					): Promise<INodeExecutionData[]> {
+						return (data[0].json.containers as IDataObject[]).map((item) => ({ json: item }));
+					},
+				],
 			},
 		},
 		type: 'number',
@@ -259,41 +487,40 @@ const getAllFields: INodeProperties[] = [
 		type: 'string',
 		validateType: 'string',
 	},
-	// {
-	// 	displayName: 'Fields',
-	// 	name: 'fields',
-	// 	default: [],
-	// 	description: 'The fields to add to the output',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['container'],
-	// 			operation: ['getAll'],
-	// 			output: ['fields'],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			name: 'Metadata',
-	// 			value: 'metadata',
-	// 		},
-	// 		{
-	// 			name: 'Deleted',
-	// 			value: 'deleted',
-	// 		},
-	// 		{
-	// 			name: 'System',
-	// 			value: 'system',
-	// 		},
-	// 	],
-	// 	routing: {
-	// 		send: {
-	// 			property: 'include',
-	// 			type: 'query',
-	// 			value: '={{ $value.join(",") }}',
-	// 		},
-	// 	},
-	// 	type: 'multiOptions',
-	// },
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		default: [],
+		description: 'The fields to add to the output',
+		displayOptions: {
+			show: {
+				resource: ['container'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				name: 'Metadata',
+				value: 'metadata',
+			},
+			{
+				name: 'Deleted',
+				value: 'deleted',
+			},
+			{
+				name: 'System',
+				value: 'system',
+			},
+		],
+		routing: {
+			send: {
+				property: 'include',
+				type: 'query',
+				value: '={{ $value.join(",") || undefined }}',
+			},
+		},
+		type: 'multiOptions',
+	},
 ];
 
 export const containerFields: INodeProperties[] = [

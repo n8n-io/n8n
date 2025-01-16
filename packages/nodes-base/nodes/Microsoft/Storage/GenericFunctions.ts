@@ -15,7 +15,8 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { parseString } from 'xml2js';
+import { Parser } from 'xml2js';
+import { firstCharLowerCase, parseBooleans, parseNumbers } from 'xml2js/lib/processors';
 
 import { compareHeader } from './compare-header';
 
@@ -56,7 +57,7 @@ export async function microsoftApiRequest(
 	qs?: IDataObject,
 	headers?: IDataObject,
 	url?: string,
-): Promise<any> {
+): Promise<string> {
 	const authentication = this.getNodeParameter('authentication', 0) as 'oAuth2' | 'sharedKey';
 	const credentialsType =
 		authentication === 'oAuth2' ? 'microsoftStorageOAuth2Api' : 'microsoftStorageSharedKeyApi';
@@ -72,20 +73,14 @@ export async function microsoftApiRequest(
 		qs,
 	};
 
-	const response = await this.helpers.requestWithAuthentication.call(
+	// XML response
+	const response = (await this.helpers.requestWithAuthentication.call(
 		this,
 		credentialsType,
 		options,
-	);
+	)) as string;
 
-	return await new Promise((resolve, reject) => {
-		parseString(response as string, {}, (error, data) => {
-			if (error) {
-				return reject(error);
-			}
-			resolve(data);
-		});
-	});
+	return response;
 }
 
 export async function microsoftApiPaginateRequest(
@@ -139,6 +134,54 @@ export async function handleErrorPostReceive(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
+		const resource = this.getNodeParameter('resource') as string;
+		const operation = this.getNodeParameter('operation') as string;
+
+		const parser = new Parser({
+			explicitArray: false,
+			tagNameProcessors: [firstCharLowerCase],
+		});
+		const { error } =
+			((await parser.parseStringPromise(data[0].json as unknown as string)) as {
+				error: {
+					code: string;
+					message: string;
+				};
+			}) ?? {};
+
+		if (resource === 'blob') {
+			if (operation === 'create') {
+			} else if (operation === 'delete') {
+			} else if (operation === 'get') {
+			} else if (operation === 'getAll') {
+			}
+		} else if (resource === 'container') {
+			if (operation === 'create') {
+				if (error?.code === 'ContainerAlreadyExists') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'The specified container already exists',
+						description: "Use a unique value for 'Container Name' and try again",
+					});
+				}
+			} else if (operation === 'delete') {
+				if (error?.code === 'ContainerNotFound') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: "The required container doesn't match any existing one",
+						description:
+							"Double-check the value in the parameter 'Container to Delete' and try again",
+					});
+				}
+			} else if (operation === 'get') {
+				if (error?.code === 'ContainerNotFound') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: "The required container doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Container to Get' and try again",
+					});
+				}
+			} else if (operation === 'getAll') {
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, { parseXml: true });
 	}
 
@@ -198,6 +241,82 @@ export function getCanonicalizedResourceString(
 	}
 
 	return canonicalizedResourceString;
+}
+
+export async function parseContainerList(
+	xml: string,
+): Promise<{ containers: IDataObject[]; maxResults?: number; nextMarker?: string }> {
+	const parser = new Parser({
+		explicitArray: false,
+		tagNameProcessors: [firstCharLowerCase],
+		valueProcessors: [
+			function (value, name) {
+				if (
+					[
+						'hasImmutabilityPolicy',
+						'hasLegalHold',
+						'preventEncryptionScopeOverride',
+						'isImmutableStorageWithVersioningEnabled',
+					].includes(name)
+				) {
+					return parseBooleans(value);
+				} else if (['maxResults', 'remainingRetentionDays'].includes(name)) {
+					return parseNumbers(value);
+				}
+				return value;
+			},
+		],
+	});
+	const data = (await parser.parseStringPromise(xml)) as {
+		enumerationResults: {
+			containers: { container: IDataObject | IDataObject[] };
+			maxResults: number;
+			nextMarker: string;
+			prefix: string;
+		};
+	};
+
+	if (typeof data.enumerationResults.containers !== 'object') {
+		// No items
+		return { containers: [] };
+	}
+
+	if (!Array.isArray(data.enumerationResults.containers.container)) {
+		// Single item
+		data.enumerationResults.containers.container = [data.enumerationResults.containers.container];
+	}
+
+	return {
+		containers: data.enumerationResults.containers.container,
+		maxResults: data.enumerationResults.maxResults,
+		nextMarker: data.enumerationResults.nextMarker,
+	};
+}
+
+export async function parseContainerGetProperties(headers: IDataObject): Promise<IDataObject> {
+	const data: IDataObject = {
+		properties: {
+			lastModified: headers['last-modified'],
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			etag: headers['etag'],
+			leaseStatus: headers['x-ms-lease-status'],
+			leaseState: headers['x-ms-lease-state'],
+			leaseDuration: headers['x-ms-lease-duration'],
+			publicAccess: headers['x-ms-blob-public-access'],
+			hasImmutabilityPolicy: parseBooleans(headers['x-ms-has-immutability-policy'] as string),
+			hasLegalHold: parseBooleans(headers['x-ms-has-legal-hold'] as string),
+		},
+	};
+
+	const metadataKeys = Object.keys(headers).filter((x) => x.startsWith('x-ms-meta-'));
+	if (metadataKeys.length > 0) {
+		data.metadata = {};
+		for (const key of metadataKeys) {
+			(data.metadata as IDataObject)[key.replace('x-ms-meta-', '')] = headers[key];
+		}
+	}
+
+	return data;
 }
 
 export async function getBlobs(
@@ -272,19 +391,12 @@ export async function getContainers(
 		response = await microsoftApiRequest.call(this, 'GET', '/', {}, qs);
 	}
 
-	const containers: Array<{
-		name: string;
-	}> =
-		response.EnumerationResults.Containers[0] !== ''
-			? response.EnumerationResults.Containers[0].Container.map((x: any) => ({
-					name: x.Name[0],
-				}))
-			: [];
+	const result = await parseContainerList(response as string);
 
-	const results: INodeListSearchItems[] = containers
+	const results: INodeListSearchItems[] = result.containers
 		.map((c) => ({
-			name: c.name,
-			value: c.name,
+			name: c.name as string,
+			value: c.name as string,
 		}))
 		.sort((a, b) =>
 			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
@@ -292,7 +404,7 @@ export async function getContainers(
 
 	return {
 		results,
-		paginationToken: (response.EnumerationResults.NextMarker[0] as string) || undefined,
+		paginationToken: result.nextMarker,
 	};
 	/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 }
