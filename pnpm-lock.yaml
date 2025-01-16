@@ -693,6 +693,9 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
+      luxon:
+        specifier: 'catalog:'
+        version: 3.4.4
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -709,9 +712,6 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195
-      luxon:
-        specifier: 'catalog:'
-        version: 3.4.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
