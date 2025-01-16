@@ -423,7 +423,14 @@ function getInitialInputMode(
 				:class="$style.noOutputData"
 			>
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					i18n.baseText('ndv.input.noOutputData.title')
+					i18n.baseText(
+						inputMode === 'debugging'
+							? 'ndv.input.debugging.noOutputData.title'
+							: 'ndv.input.noOutputData.title',
+					)
+				}}</N8nText>
+				<N8nText tag="div" color="text-dark" size="medium" v-if="inputMode === 'debugging'">{{
+					i18n.baseText('ndv.input.debugging.noOutputData.description')
 				}}</N8nText>
 				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
@@ -441,6 +448,7 @@ function getInitialInputMode(
 						:transparent="true"
 						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
 						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+				:class="$style.executePreviousButton"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						@execute="onNodeExecute"
@@ -512,15 +520,15 @@ function getInitialInputMode(
 	margin-left: auto;
 }
 .noOutputData {
-	max-width: 180px;
-
-	> *:first-child {
-		margin-bottom: var(--spacing-m);
-	}
+	max-width: 250px;
 
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
+}
+
+.executePreviousButton {
+	margin-top: var(--spacing-m);
 }
 
 .recoveredOutputData {
