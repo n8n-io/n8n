@@ -5,7 +5,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, useCssModule, toRef } from 'vue';
+import { computed, toRef, useCssModule } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 
@@ -70,9 +70,13 @@ const edgeLabelStyle = computed(() => ({
 	color: edgeColor.value,
 }));
 
+const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);
+
 const edgeToolbarStyle = computed(() => {
+	const translateY = isConnectorStraight.value ? '-150%' : '-50%';
+
 	return {
-		transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px,${labelPosition.value[1]}px)`,
+		transform: `translate(-50%, ${translateY}) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
 		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
