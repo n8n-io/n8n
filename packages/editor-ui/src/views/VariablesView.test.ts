@@ -188,19 +188,29 @@ describe('VariablesView', () => {
 				},
 			]);
 
-			const { getByTestId, queryAllByTestId, getByLabelText } = renderComponent();
+			const { getByTestId, queryAllByTestId, getByLabelText, queryAllByLabelText } =
+				renderComponent();
 			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
 
 			expect(queryAllByTestId('variables-row').length).toBe(2);
 
 			await userEvent.hover(queryAllByTestId('variables-row')[0]);
-
 			expect(queryAllByTestId('variable-row-delete-button')[0]).toBeVisible();
 			await userEvent.click(queryAllByTestId('variable-row-delete-button')[0]);
 
-			const message = getByLabelText('Delete variable');
-			expect(message).toBeVisible();
-			await userEvent.click(within(message).getByText('Delete'));
+			// Cancel
+			expect(getByLabelText('Delete variable')).toBeVisible();
+			await userEvent.click(within(getByLabelText('Delete variable')).getByText('Cancel'));
+			expect(environmentsStore.deleteVariable).not.toHaveBeenCalled();
+
+			await userEvent.hover(queryAllByTestId('variables-row')[0]);
+			expect(queryAllByTestId('variable-row-delete-button')[0]).toBeVisible();
+			await userEvent.click(queryAllByTestId('variable-row-delete-button')[0]);
+
+			// Delete
+			const dialog = queryAllByLabelText('Delete variable').at(-1);
+			expect(dialog).toBeVisible();
+			await userEvent.click(within(dialog as HTMLElement).getByText('Delete'));
 
 			expect(environmentsStore.deleteVariable).toHaveBeenCalledWith(environmentsStore.variables[0]);
 		});

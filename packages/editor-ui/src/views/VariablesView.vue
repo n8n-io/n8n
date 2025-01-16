@@ -27,7 +27,14 @@ import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useAsyncState } from '@vueuse/core';
 import { pickBy } from 'lodash-es';
-import { N8nButton, N8nTooltip, N8nActionBox, N8nInputLabel, N8nCheckbox } from 'n8n-design-system';
+import {
+	N8nButton,
+	N8nTooltip,
+	N8nActionBox,
+	N8nInputLabel,
+	N8nCheckbox,
+	N8nBadge,
+} from 'n8n-design-system';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -270,7 +277,7 @@ onMounted(() => {
 				/>
 
 				<N8nCheckbox
-					label="Needs attention"
+					label="Value missing"
 					data-test-id="credential-filter-setup-needed"
 					:model-value="filters.setupNeeded"
 					@update:model-value="setKeyValue('setupNeeded', $event)"
@@ -307,15 +314,13 @@ onMounted(() => {
 
 			<tr v-else data-test-id="variables-row">
 				<td>
-					<div class="name-row">
-						<span class="ellipsis">
-							{{ data.key }}
-						</span>
-						<N8nBadge v-if="!data.value" class="ml-3xs" theme="warning"> Needs attention </N8nBadge>
-					</div>
+					{{ data.key }}
 				</td>
 				<td>
-					{{ data.value }}
+					<template v-if="data.value">
+						{{ data.value }}
+					</template>
+					<N8nBadge v-else class="ml-3xs" theme="warning"> Value missing </N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />
@@ -360,16 +365,6 @@ onMounted(() => {
 .action-buttons {
 	opacity: 0;
 	transition: opacity 0.2s ease;
-}
-
-.name-row {
-	display: flex;
-}
-
-.ellipsis {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
 }
 
 :deep(.datatable) {
