@@ -239,7 +239,7 @@ describe('InstanceSettings', () => {
 			},
 		);
 
-		test.each(['kubelet', 'containerd'])(
+		test.each(['docker', 'kubelet', 'containerd'])(
 			'should return true if /proc/self/mountinfo contains %s',
 			(str) => {
 				mockFs.existsSync.mockReturnValueOnce(false);

@@ -158,7 +158,12 @@ export class InstanceSettings {
 		} catch {}
 		try {
 			const cgroupV2 = readFileSync('/proc/self/mountinfo', 'utf8');
-			if (cgroupV2.includes('kubelet') || cgroupV2.includes('containerd')) return true;
+			if (
+				cgroupV2.includes('docker') ||
+				cgroupV2.includes('kubelet') ||
+				cgroupV2.includes('containerd')
+			)
+				return true;
 		} catch {}
 		return false;
 	}
