@@ -7,7 +7,7 @@ defineSlots<{
 
 type PillListProps = {
 	inputs: Item[];
-	disabled: boolean;
+	disabled?: boolean;
 };
 
 const props = withDefaults(defineProps<PillListProps>(), {
