@@ -21,7 +21,7 @@ type Context = {
 
 type FromAiOverrideExtraProps = 'description';
 type ExtraPropValue = {
-	defaultValue: string;
+	initialValue: string;
 	tooltip: string;
 };
 
@@ -39,7 +39,7 @@ export class FromAiOverride implements ParameterOverride {
 
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
 		description: {
-			defaultValue: '',
+			initialValue: '',
 			tooltip: 'Description of how the model should define this value',
 		},
 	};
@@ -66,7 +66,7 @@ export class FromAiOverride implements ParameterOverride {
 
 	buildValueFromOverride(props: Context, excludeMarker: boolean) {
 		const { key, type } = this.providers;
-		return `={{ ${excludeMarker ? '' : FromAiOverride.MARKER} $fromAI('${key(props)}', '${this.extraPropValues?.description?.toString() ?? this.extraProps.description.defaultValue}', '${type(props)}') }}`;
+		return `={{ ${excludeMarker ? '' : FromAiOverride.MARKER} $fromAI('${key(props)}', '${this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue}', '${type(props)}') }}`;
 	}
 
 	parseOverrides(s: string): Record<keyof typeof this.extraProps, string | undefined> | null {
@@ -118,7 +118,7 @@ export function makeOverrideValue(
 		for (const [key, value] of Object.entries(existingOverrides ?? {})) {
 			if (
 				value === undefined ||
-				value === fromAiOverride.extraProps[key as FromAiOverrideExtraProps].defaultValue
+				value === fromAiOverride.extraProps[key as FromAiOverrideExtraProps].initialValue
 			)
 				continue;
 

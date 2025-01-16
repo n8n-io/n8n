@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="Value, Item extends { name: string; defaultValue: Value }">
+<script setup lang="ts" generic="Value, Item extends { name: string; initialValue: Value }">
 import { computed } from 'vue';
 
 defineSlots<{
@@ -13,8 +13,11 @@ const props = withDefaults(defineProps<PillListProps>(), {
 	inputs: () => [],
 });
 
-// Record<inputs[k].name, currentValue>
+// Record<inputs[k].name, initialValue>
+// Note that only the keys will stay up to date to reflect selected keys
+// Whereas the values will not automatically update if the related slot value is updated
 const selectedItems = defineModel<Record<string, Value>>({ required: true });
+
 const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x] as const)));
 
 const visiblePills = computed(() => {
@@ -22,13 +25,16 @@ const visiblePills = computed(() => {
 });
 
 const sortedSelectedItems = computed(() => {
-	return [...Object.keys(selectedItems.value).map((name) => inputMap.value[name])].sort((a, b) =>
-		a.name[0] < b.name[0] ? -1 : 1,
-	);
+	return [
+		...Object.entries(selectedItems.value).map(([name, initialValue]) => ({
+			...inputMap.value[name],
+			initialValue,
+		})),
+	].sort((a, b) => (a.name[0] < b.name[0] ? -1 : 1));
 });
 
 function addToSelectedItems(name: string) {
-	selectedItems.value[name] = inputMap.value[name].defaultValue;
+	selectedItems.value[name] = inputMap.value[name].initialValue;
 }
 
 function removeFromSelectedItems(name: string) {

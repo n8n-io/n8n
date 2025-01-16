@@ -391,13 +391,13 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 				}))
 			"
 		>
-			<template #displayItem="{ name, tooltip, defaultValue }">
+			<template #displayItem="{ name, tooltip, initialValue }">
 				<ParameterInputFull
 					:parameter="{
 						name,
 						displayName: name[0].toUpperCase() + name.slice(1),
 						type: 'string',
-						default: defaultValue,
+						default: initialValue,
 						noDataExpression: true,
 					}"
 					:tooltip="tooltip"
