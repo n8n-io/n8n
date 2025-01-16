@@ -18,7 +18,6 @@ import ResourcesListLayout, {
 	type IResource,
 	type IFilters,
 } from '@/components/layouts/ResourcesListLayout.vue';
-// import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
