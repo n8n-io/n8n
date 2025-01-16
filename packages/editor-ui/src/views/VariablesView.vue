@@ -65,6 +65,7 @@ const removeEditableVariable = (variableId: string) => {
 	editableVariables.value = editableVariables.value.filter((id) => id !== variableId);
 	variableForms.value.delete(variableId);
 };
+
 const addEmptyVariableForm = () => {
 	const variable = { id: uid(TEMPORARY_VARIABLE_UID_BASE), key: '', value: '' };
 	variableForms.value.set(variable.id, variable);
@@ -297,8 +298,8 @@ onMounted(() => {
 		<template #default="{ data }">
 			<VariablesForm
 				v-if="editableVariables.includes(data.id)"
-				data-test-id="variables-row"
 				:key="data.id"
+				data-test-id="variables-row"
 				:variable="data"
 				@submit="handleSubmit"
 				@cancel="removeEditableVariable(data.id)"
