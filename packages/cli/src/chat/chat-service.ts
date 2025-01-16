@@ -90,6 +90,7 @@ export class ChatService {
 			ws,
 			query: { sessionId, executionId },
 		} = req;
+
 		if (!sessionId) {
 			ws.send('The query parameter "sessionId" is missing!');
 			ws.close(1008);
@@ -132,6 +133,7 @@ export class ChatService {
 		const session = this.sessions.get(sessionId);
 		if (session) {
 			session.executionId = executionId;
+			return;
 		}
 
 		throw new NotFoundError(`The session "${sessionId}" does not exist.`);

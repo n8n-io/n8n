@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useFileDialog } from '@vueuse/core';
+import { v4 as uuidv4 } from 'uuid';
 import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
@@ -8,6 +9,7 @@ import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import ChatFile from './ChatFile.vue';
+import type { ChatMessage } from '../types';
 
 export interface ChatInputProps {
 	placeholder?: string;
@@ -137,10 +139,42 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const messageText = input.value;
 	input.value = '';
 	isSubmitting.value = true;
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
-	isSubmitting.value = false;
-	resetFileDialog();
-	files.value = null;
+	if (chatStore.ws && chatStore.waitingForResponse.value) {
+		const sentMessage: ChatMessage = {
+			id: uuidv4(),
+			text: messageText,
+			sender: 'user',
+			createdAt: new Date().toISOString(),
+		};
+
+		chatStore.messages.value.push(sentMessage);
+		chatStore.ws.send(
+			JSON.stringify({
+				sessionId: chatStore.currentSessionId.value,
+				action: 'sendMessage',
+				chatInput: messageText,
+			}),
+		);
+	} else {
+		const baseUrl = new URL(options.webhookUrl).origin;
+		chatStore.ws = new WebSocket(
+			`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value as string}`,
+		);
+		chatStore.ws.onmessage = (e) => {
+			const newMessage: ChatMessage = {
+				id: uuidv4(),
+				text: e.data,
+				sender: 'bot',
+				createdAt: new Date().toISOString(),
+			};
+
+			chatStore.messages.value.push(newMessage);
+		};
+		await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+		isSubmitting.value = false;
+		resetFileDialog();
+		files.value = null;
+	}
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {

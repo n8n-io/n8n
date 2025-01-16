@@ -33,6 +33,7 @@ import type {
 import {
 	ApplicationError,
 	BINARY_ENCODING,
+	CHAT_TRIGGER_NODE_TYPE,
 	createDeferredPromise,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -59,6 +60,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { ChatService } from '../chat/chat-service';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -550,6 +552,11 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		if (workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE) {
+			const sessionId = webhookResultData.workflowData[0][0].json.sessionId as string;
+			Container.get(ChatService).updateSessionExecutionId(sessionId, executionId);
+		}
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			res.redirect(`${additionalData.formWaitingBaseUrl}/${executionId}`);
