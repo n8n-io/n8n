@@ -326,6 +326,13 @@ export function renderForm({
 	res.render('form-trigger', data);
 }
 
+export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
+	return nodes.some(
+		(n) =>
+			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
+	);
+};
+
 export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
@@ -406,12 +413,7 @@ export async function formWebhook(
 			const connectedNodes = context.getChildNodes(context.getNode().name, {
 				includeNodeParameters: true,
 			});
-			const hasNextPage = connectedNodes.some(
-				(n) =>
-					n.type === FORM_NODE_TYPE ||
-					(n.type === WAIT_NODE_TYPE &&
-						['form', 'webhook'].includes((n.parameters?.resume as string) || '')),
-			);
+			const hasNextPage = isFormConnected(connectedNodes);
 
 			if (hasNextPage) {
 				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
