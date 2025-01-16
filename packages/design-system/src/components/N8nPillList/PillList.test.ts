@@ -65,4 +65,37 @@ describe('N8nPillList', () => {
 
 		expect(wrapper.html()).toMatchSnapshot();
 	});
+
+	it('renders disabled collection and clicks do not modify', async () => {
+		const wrapper = render(N8nPillList, {
+			props: {
+				modelValue: {
+					propB: 'propB value',
+				},
+				disabled: true,
+				inputs: [
+					{ name: 'propA', initialValue: '' },
+					{ name: 'propB', initialValue: '' },
+					{ name: 'propC', initialValue: '' },
+				],
+			},
+		});
+
+		expect(wrapper.getByTestId('pill-list-pill-propA')).toBeInTheDocument();
+		expect(wrapper.getByTestId('pill-list-slot-propB')).toBeInTheDocument();
+		expect(wrapper.queryByTestId('pill-list-pill-propB')).not.toBeInTheDocument();
+		expect(wrapper.getByTestId('pill-list-pill-propC')).toBeInTheDocument();
+
+		await fireEvent.click(wrapper.getByTestId('pill-list-pill-propA'));
+
+		expect(wrapper.getByTestId('pill-list-pill-propA')).toBeInTheDocument();
+		expect(wrapper.queryByTestId('pill-list-slot-propA')).not.toBeInTheDocument();
+
+		await fireEvent.click(wrapper.getByTestId('pill-list-remove-slot-propB'));
+
+		expect(wrapper.getByTestId('pill-list-slot-propB')).toBeInTheDocument();
+		expect(wrapper.queryByTestId('pill-list-pill-propB')).not.toBeInTheDocument();
+
+		expect(wrapper.html()).toMatchSnapshot();
+	});
 });
