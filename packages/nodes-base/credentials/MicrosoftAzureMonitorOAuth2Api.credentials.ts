@@ -1,18 +1,18 @@
 import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class MicrosoftLogAnalyticsOAuth2Api implements ICredentialType {
-	name = 'microsoftLogAnalyticsOAuth2Api';
+export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
+	name = 'microsoftAzureMonitorOAuth2Api';
 
-	displayName = 'Microsoft Log Analytics OAuth2 API';
+	displayName = 'Microsoft Azure Monitor OAuth2 API';
 
 	extends = ['microsoftOAuth2Api'];
 
-	documentationUrl = 'microsoftloganalytics';
+	documentationUrl = 'microsoftazuremonitor';
 
 	icon: Icon = 'file:icons/Microsoft.svg';
 
 	httpRequestNode = {
-		name: 'Microsoft Log Analytics',
+		name: 'Microsoft Azure Monitor',
 		docsUrl: 'https://learn.microsoft.com/en-us/azure/azure-monitor/logs/api/request-format',
 		apiBaseUrlPlaceholder: 'https://api.loganalytics.azure.com/v1/workspaces/[workspace_id]/query',
 	};

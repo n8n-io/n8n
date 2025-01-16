@@ -176,11 +176,11 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		mauticOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
 		},
+		microsoftAzureMonitorOAuth2Api: {
+			tokenExpiredStatusCode: 403,
+		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',
-		},
-		microsoftLogAnalyticsOAuth2Api: {
-			tokenExpiredStatusCode: 403,
 		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
