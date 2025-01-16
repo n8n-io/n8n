@@ -343,7 +343,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
-						:can-be-override="canBeContentOverride"
+						:can-be-overridden="canBeContentOverride"
 						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"
@@ -497,6 +497,13 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	padding-left: 8px;
 	width: 22px;
 	text-align: center;
+	border: none;
+}
+
+.overrideInput {
+	> div > input {
+		border: none;
+	}
 }
 
 .options {

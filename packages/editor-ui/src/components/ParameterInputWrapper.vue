@@ -45,7 +45,7 @@ type Props = {
 	eventSource?: string;
 	label?: IParameterLabel;
 	eventBus?: EventBus;
-	canBeOverride?: boolean;
+	canBeOverridden?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -229,7 +229,7 @@ defineExpose({
 			:rows="rows"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
-			:can-be-override="canBeOverride"
+			:can-be-overridden="canBeOverridden"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"

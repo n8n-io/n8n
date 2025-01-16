@@ -91,7 +91,7 @@ type Props = {
 	hideIssues?: boolean;
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
-	canBeOverride?: boolean;
+	canBeOverridden?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -430,7 +430,7 @@ const isTextarea = computed(
 );
 
 const parameterInputClasses = computed(() => {
-	const classes: { [c: string]: boolean } = {
+	const classes: Record<string, boolean> = {
 		droppable: props.droppable,
 		activeDrop: props.activeDrop,
 	};
@@ -1068,8 +1068,8 @@ onUpdated(async () => {
 				$style.parameterInput,
 				'ignore-key-press-canvas',
 				{
-					[$style.hardRightCornersInput]: canBeOverride,
-					[$style.noRightBorder]: canBeOverride && isSingleLineInput,
+					[$style.hardRightCornersInput]: canBeOverridden,
+					[$style.noRightBorder]: canBeOverridden && isSingleLineInput,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -1552,6 +1552,7 @@ onUpdated(async () => {
 			</div>
 		</div>
 		<div
+			v-if="$slots.overrideButton"
 			:class="[
 				$style.overrideButton,
 				{ [$style.overrideButtonStandalone]: isSwitch, [$style.overrideButtonInline]: !isSwitch },

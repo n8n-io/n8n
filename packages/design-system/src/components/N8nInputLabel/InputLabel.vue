@@ -93,8 +93,8 @@ const addTargetBlank = (html: string) =>
 			</label>
 			<div
 				v-if="$slots.persistentOptions"
-				:class="$style.persistentOptions"
-				:data-test-id="`${inputName}-parameter-input-options-container-1`"
+				class="pl-4xs"
+				:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
 			>
 				<slot name="persistentOptions" />
 			</div>
@@ -225,10 +225,6 @@ const addTargetBlank = (html: string) =>
 
 .underline {
 	border-bottom: var(--border-base);
-}
-
-.persistentOptions {
-	padding-left: var(--spacing-4xs);
 }
 
 :root .tooltipPopper {

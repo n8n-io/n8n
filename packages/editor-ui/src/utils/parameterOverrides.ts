@@ -46,7 +46,7 @@ export class FromAiOverride implements ParameterOverride {
 
 	static readonly PATH_DENYLIST = ['parameters.name', 'parameters.description'];
 
-	readonly overridePlaceholder = 'Defined automatically by the model';
+	readonly overridePlaceholder = i18n.baseText('parameterOverride.overridePanelText');
 
 	readonly providers = {
 		key: (props: Context) => sanitizeFromAiParameterName(props.parameter.displayName),
