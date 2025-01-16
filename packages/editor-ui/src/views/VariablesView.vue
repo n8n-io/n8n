@@ -155,20 +155,19 @@ const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 	}
 };
 
-type Filters = IFilters & { setupNeeded?: boolean };
+type Filters = IFilters & { incomplete?: boolean };
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
 const filters = computed<Filters>(
-	() =>
-		({ ...route.query, setupNeeded: route.query.setupNeeded?.toString() === 'true' }) as Filters,
+	() => ({ ...route.query, incomplete: route.query.incomplete?.toString() === 'true' }) as Filters,
 );
 
 const handleFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
 	const iResource = resource as EnvironmentVariable;
 	const filtersToApply = newFilters as Filters;
 
-	if (filtersToApply.setupNeeded) {
+	if (filtersToApply.incomplete) {
 		matches = matches && !iResource.value;
 	}
 
@@ -278,9 +277,9 @@ onMounted(() => {
 
 				<N8nCheckbox
 					label="Value missing"
-					data-test-id="credential-filter-setup-needed"
-					:model-value="filters.setupNeeded"
-					@update:model-value="setKeyValue('setupNeeded', $event)"
+					data-test-id="variable-filter-incomplete"
+					:model-value="filters.incomplete"
+					@update:model-value="setKeyValue('incomplete', $event)"
 				/>
 			</div>
 		</template>

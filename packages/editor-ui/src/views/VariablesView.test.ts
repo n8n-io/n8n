@@ -244,4 +244,57 @@ describe('VariablesView', () => {
 			expect(environmentsStore.updateVariable).toHaveBeenCalledWith(newVariable);
 		});
 	});
+
+	describe('filter', () => {
+		it('should filter by incomplete', async () => {
+			userWithPrivileges([
+				{
+					id: '1',
+					key: 'a',
+					value: 'a',
+				},
+				{
+					id: '2',
+					key: 'b',
+					value: '',
+				},
+			]);
+
+			const { getByTestId, queryAllByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+
+			expect(queryAllByTestId('variables-row').length).toBe(2);
+			await userEvent.click(getByTestId('variable-filter-incomplete'));
+
+			expect(queryAllByTestId('variables-row').length).toBe(1);
+		});
+	});
+
+	describe('sorting', () => {
+		it('should sort by name (asc | desc)', async () => {
+			userWithPrivileges([
+				{
+					id: '1',
+					key: 'a',
+					value: 'a',
+				},
+				{
+					id: '2',
+					key: 'b',
+					value: 'b',
+				},
+			]);
+
+			const { getByTestId, queryAllByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('resources-list-add')).toBeVisible());
+
+			expect(queryAllByTestId('variables-row').length).toBe(2);
+			expect(queryAllByTestId('variables-row')[0].querySelector('td')?.textContent).toBe('a');
+
+			await userEvent.click(getByTestId('resources-list-sort'));
+			await userEvent.click(queryAllByTestId('resources-list-sort-item')[1]);
+
+			expect(queryAllByTestId('variables-row')[0].querySelector('td')?.textContent).toBe('b');
+		});
+	});
 });
