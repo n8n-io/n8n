@@ -307,10 +307,12 @@ onMounted(() => {
 
 			<tr v-else data-test-id="variables-row">
 				<td>
-					{{ data.key }}
-					<N8nBadge v-if="!data.value" class="ml-3xs" theme="warning">
-						{{ i18n.baseText('credentials.item.needsSetup') }}
-					</N8nBadge>
+					<div class="name-row">
+						<span class="ellipsis">
+							{{ data.key }}
+						</span>
+						<N8nBadge v-if="!data.value" class="ml-3xs" theme="warning"> Needs attention </N8nBadge>
+					</div>
 				</td>
 				<td>
 					{{ data.value }}
@@ -360,6 +362,16 @@ onMounted(() => {
 	transition: opacity 0.2s ease;
 }
 
+.name-row {
+	display: flex;
+}
+
+.ellipsis {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
 :deep(.datatable) {
 	white-space: nowrap;
 
@@ -380,16 +392,6 @@ onMounted(() => {
 
 	.variables-actions-column {
 		width: 170px;
-	}
-
-	.variables-key-column,
-	.variables-usage-column {
-		width: 25%;
-		min-width: 200px;
-	}
-
-	.variables-value-column {
-		width: 100%;
 	}
 }
 </style>
