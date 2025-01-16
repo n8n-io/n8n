@@ -1,4 +1,5 @@
-import type { INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeParameterValueType, NodePropertyTypes } from 'n8n-workflow';
+import { i18n } from '@/plugins/i18n';
 
 export interface ParameterOverride {
 	readonly overridePlaceholder: string;
@@ -12,35 +13,51 @@ export interface ParameterOverride {
 type Context = {
 	parameter: {
 		name: string;
-		type: string;
+		displayName: string;
+		type: NodePropertyTypes;
 		noDataExpression?: boolean;
 		typeOptions?: { editor?: string };
 	};
 	value: NodeParameterValueType;
+	path: string;
 };
 
 type FromAiOverrideExtraProps = 'description';
 type ExtraPropValue = {
 	initialValue: string;
 	tooltip: string;
+	type: NodePropertyTypes;
 };
+
+function sanitizeFromAiParameterName(s: string) {
+	s = s.replace(/[^a-zA-Z0-9\-]/g, '_');
+
+	if (s.length >= 64) {
+		s = s.slice(0, 63);
+	}
+
+	return s;
+}
 
 export class FromAiOverride implements ParameterOverride {
 	static readonly MARKER = '/* n8n-auto-generated-override */';
 
-	static readonly DENYLIST = ['toolWorkflow', 'toolCode', 'toolHttpRequest'];
+	static readonly NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
+
+	static readonly PATH_DENYLIST = ['parameters.name', 'parameters.description'];
 
 	readonly overridePlaceholder = 'Defined automatically by the model';
 
 	readonly providers = {
-		key: (props: Context) => props.parameter.name,
+		key: (props: Context) => sanitizeFromAiParameterName(props.parameter.displayName),
 		type: (props: Context) => this.fieldTypeToFromAiType(props),
 	};
 
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
 		description: {
 			initialValue: '',
-			tooltip: 'Description of how the model should define this value',
+			type: 'string',
+			tooltip: i18n.baseText('parameterOverride.descriptionTooltip'),
 		},
 	};
 
@@ -96,7 +113,10 @@ export class FromAiOverride implements ParameterOverride {
 	}
 
 	static canBeContentOverride(props: Context, nodeType: INodeTypeDescription | null) {
-		if (FromAiOverride.DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false)) return false;
+		if (FromAiOverride.NODE_DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false))
+			return false;
+
+		if (FromAiOverride.PATH_DENYLIST.includes(props.path)) return false;
 
 		const codex = nodeType?.codex;
 		if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))

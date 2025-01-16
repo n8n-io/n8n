@@ -17,7 +17,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nButton, N8nInputLabel, N8nPillList } from 'n8n-design-system';
+import { N8nButton, N8nInputLabel, N8nPillList, N8nTooltip } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
 import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -218,6 +218,10 @@ function onDrop(newParamValue: string) {
 	}, 200);
 }
 
+const showOverrideButton = computed(
+	() => canBeContentOverride.value && !isContentOverride.value && !isReadOnlyParameter.value,
+);
+
 // When switching to read-only mode, reset the value to the default value
 watch(
 	() => props.isReadOnly,
@@ -249,28 +253,29 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		color="text-dark"
 	>
 		<template
-			v-if="
-				!isSingleLineInput &&
-				canBeContentOverride &&
-				!isContentOverride &&
-				optionsPosition === 'top'
-			"
+			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
 		>
-			<N8nButton
-				:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
-				type="tertiary"
-				@click="
-					() => {
-						valueChanged({
-							name: props.path,
-							value: parameterOverrides?.buildValueFromOverride(props, false),
-						});
-					}
-				"
-			>
-				<AiStarsIcon />
-			</N8nButton>
+			<N8nTooltip>
+				<template #content>
+					<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
+				</template>
+
+				<N8nButton
+					:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
+					type="tertiary"
+					@click="
+						() => {
+							valueChanged({
+								name: props.path,
+								value: parameterOverrides?.buildValueFromOverride(props, false),
+							});
+						}
+					"
+				>
+					<AiStarsIcon />
+				</N8nButton>
+			</N8nTooltip>
 		</template>
 
 		<template v-if="displayOptions && optionsPosition === 'top'" #options>
@@ -298,11 +303,13 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					</div>
 					<N8nInput
 						:model-value="parameterOverrides?.overridePlaceholder"
+						:class="$style.overrideInput"
 						disabled
 						type="text"
 						size="small"
 					/>
 					<N8nIconButton
+						v-if="!isReadOnly"
 						type="tertiary"
 						:class="['n8n-input', $style.closeButton]"
 						outline="false"
@@ -344,21 +351,29 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						@blur="onBlur"
 						@drop="onDrop"
 					>
-						<template v-if="canBeContentOverride && isSingleLineInput" #overrideButton>
-							<N8nButton
-								:class="[$style.overrideButton]"
-								type="tertiary"
-								@click="
-									() => {
-										valueChanged({
-											name: props.path,
-											value: parameterOverrides?.buildValueFromOverride(props, false),
-										});
-									}
-								"
-							>
-								<AiStarsIcon />
-							</N8nButton>
+						<template v-if="showOverrideButton && isSingleLineInput" #overrideButton>
+							<N8nTooltip>
+								<template #content>
+									<div>
+										{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}
+									</div>
+								</template>
+
+								<N8nButton
+									:class="[$style.overrideButton]"
+									type="tertiary"
+									@click="
+										() => {
+											valueChanged({
+												name: props.path,
+												value: parameterOverrides?.buildValueFromOverride(props, false),
+											});
+										}
+									"
+								>
+									<AiStarsIcon />
+								</N8nButton>
+							</N8nTooltip>
 						</template>
 					</ParameterInputWrapper>
 				</div>
@@ -384,23 +399,26 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		<N8nPillList
 			v-if="isContentOverride && parameterOverrides"
 			v-model="parameterOverrides.extraPropValues"
+			:class="$style.overridePillList"
 			:inputs="
 				Object.entries(parameterOverrides.extraProps).map(([name, prop]) => ({
 					name,
 					...prop,
 				}))
 			"
+			:disabled="isReadOnly"
 		>
-			<template #displayItem="{ name, tooltip, initialValue }">
+			<template #displayItem="{ name, tooltip, initialValue, type }">
 				<ParameterInputFull
 					:parameter="{
 						name,
 						displayName: name[0].toUpperCase() + name.slice(1),
-						type: 'string',
+						type,
 						default: initialValue,
 						noDataExpression: true,
+						description: tooltip,
 					}"
-					:tooltip="tooltip"
+					:is-read-only="isReadOnly"
 					:value="parameterOverrides?.extraPropValues[name]"
 					:path="`${path}.tags.${name}`"
 					input-size="small"
@@ -442,6 +460,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 .closeButton {
 	padding: 0px 8px 3px; // the icon used is off-center vertically
 	border: 0px;
+	color: var(--color-text-base);
 }
 
 .overrideButton {
@@ -491,5 +510,9 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	&.visible {
 		opacity: 1;
 	}
+}
+
+.overridePillList {
+	margin-top: var(--spacing-2xs);
 }
 </style>
