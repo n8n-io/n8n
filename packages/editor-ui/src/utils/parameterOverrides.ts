@@ -44,7 +44,12 @@ export class FromAiOverride implements ParameterOverride {
 
 	static readonly NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
-	static readonly PATH_DENYLIST = ['parameters.name', 'parameters.description'];
+	static readonly PATH_DENYLIST = [
+		'parameters.name',
+		'parameters.description',
+		// This is used in e.g. the telegram node if the dropdown selects manual mode
+		'parameters.toolDescription',
+	];
 
 	readonly overridePlaceholder = i18n.baseText('parameterOverride.overridePanelText');
 

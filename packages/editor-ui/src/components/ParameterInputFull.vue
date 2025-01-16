@@ -273,7 +273,7 @@ function handleOverrideClick() {
 					type="tertiary"
 					@click="handleOverrideClick"
 				>
-					<AiStarsIcon />
+					<AiStarsIcon :class="$style.aiStarsIcon" />
 				</N8nButton>
 			</N8nTooltip>
 		</template>
@@ -302,7 +302,7 @@ function handleOverrideClick() {
 					:class="$style.contentOverrideContainer"
 				>
 					<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
-						<AiStarsIcon />
+						<AiStarsIcon :class="$style.aiStarsIcon" />
 					</div>
 					<N8nInput
 						:model-value="parameterOverrides?.overridePlaceholder"
@@ -367,7 +367,7 @@ function handleOverrideClick() {
 									type="tertiary"
 									@click="handleOverrideClick"
 								>
-									<AiStarsIcon />
+									<AiStarsIcon :class="$style.aiStarsIcon" />
 								</N8nButton>
 							</N8nTooltip>
 						</template>
@@ -420,7 +420,7 @@ function handleOverrideClick() {
 					input-size="small"
 					@update="
 						(x) => {
-							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value as never;
+							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value;
 							valueChanged({
 								name: props.path,
 								value: parameterOverrides?.buildValueFromOverride(props, false),
@@ -463,10 +463,11 @@ function handleOverrideClick() {
 	border: 0px;
 	height: 30px;
 	width: 30px;
-	background: var(--color-background-base);
+	background-color: var(--color-foreground-base);
+	color: var(--color-foreground-xdark);
 
 	&:hover {
-		background: var(--color-secondary);
+		background-color: var(--color-secondary);
 	}
 }
 
