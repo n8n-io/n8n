@@ -101,42 +101,42 @@ export class GSuiteAdmin implements INodeType {
 					value: schema.schemaName,
 				}));
 			},
-			async getSchemaFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-				this.getExecutionId();
-				if (additionalFields.customFields) {
-				} else {
-					return [
-						{
-							name: 'Invalid Schema: Missing schemaName.',
-							value: '',
-						},
-					];
-				}
-				const customFields = (additionalFields.customFields as IDataObject)
-					.fieldValues as IDataObject[];
-				const schemaName = customFields?.[0]?.schemaName as string;
+			// async getSchemaFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// 	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
+			// 	this.getExecutionId();
+			// 	if (additionalFields.customFields) {
+			// 	} else {
+			// 		return [
+			// 			{
+			// 				name: 'Invalid Schema: Missing schemaName.',
+			// 				value: '',
+			// 			},
+			// 		];
+			// 	}
+			// 	const customFields = (additionalFields.customFields as IDataObject)
+			// 		.fieldValues as IDataObject[];
+			// 	const schemaName = customFields?.[0]?.schemaName as string;
 
-				try {
-					const schema = await googleApiRequest.call(
-						this,
-						'GET',
-						`/directory/v1/customer/my_customer/schemas/${schemaName}`,
-					);
+			// 	try {
+			// 		const schema = await googleApiRequest.call(
+			// 			this,
+			// 			'GET',
+			// 			`/directory/v1/customer/my_customer/schemas/${schemaName}`,
+			// 		);
 
-					if (schema.fields && Array.isArray(schema.fields)) {
-						return schema.fields.map((field: { fieldName: string; displayName: string }) => ({
-							name: field.displayName || field.fieldName,
-							value: field.fieldName,
-						}));
-					} else {
-					}
-				} catch (error) {
-					console.error('Error fetching schema fields:', error);
-				}
+			// 		if (schema.fields && Array.isArray(schema.fields)) {
+			// 			return schema.fields.map((field: { fieldName: string; displayName: string }) => ({
+			// 				name: field.displayName || field.fieldName,
+			// 				value: field.fieldName,
+			// 			}));
+			// 		} else {
+			// 		}
+			// 	} catch (error) {
+			// 		console.error('Error fetching schema fields:', error);
+			// 	}
 
-				return [];
-			},
+			// 	return [];
+			// },
 			async getOrgUnits(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const orgUnits = await googleApiRequest.call(

@@ -545,18 +545,18 @@ export const userFields: INodeProperties[] = [
 							{
 								displayName: 'Field Name or ID',
 								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptionsDependsOn: [
-										'additionalFields.test',
-										'additionalFields.customFields.fieldValues[0].schemaName',
-									],
-									loadOptionsMethod: 'getSchemaFields',
-								},
+								type: 'string',
+								// type: 'options',
+								// typeOptions: {
+								// 	loadOptionsDependsOn: [
+								// 		'additionalFields.test',
+								// 		'additionalFields.customFields.fieldValues[0].schemaName',
+								// 	],
+								// 	loadOptionsMethod: 'getSchemaFields',
+								// },
 								default: '',
 								required: true,
-								description:
-									'Select the field from the selected schema. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+								description: 'Enter a field name from the selected schema',
 							},
 							{
 								displayName: 'Value',
@@ -1532,15 +1532,15 @@ export const userFields: INodeProperties[] = [
 							{
 								displayName: 'Field Name or ID',
 								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getSchemaFields',
-									loadOptionsDependsOn: ['customFields.fieldValues.schema.schemaName'],
-								},
+								type: 'string',
+								// type: 'options',
+								// typeOptions: {
+								// 	loadOptionsMethod: 'getSchemaFields',
+								// 	loadOptionsDependsOn: ['customFields.fieldValues.schema.schemaName'],
+								// },
 								default: '',
 								required: true,
-								description:
-									'Select the field from the selected schema. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+								description: 'Enter a field name from the selected schema',
 							},
 							{
 								displayName: 'Value',
