@@ -403,9 +403,14 @@ export async function formWebhook(
 		}
 
 		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name);
+			const connectedNodes = context.getChildNodes(context.getNode().name, {
+				includeNodeParameters: true,
+			});
 			const hasNextPage = connectedNodes.some(
-				(n) => n.type === FORM_NODE_TYPE || n.type === WAIT_NODE_TYPE,
+				(n) =>
+					n.type === FORM_NODE_TYPE ||
+					(n.type === WAIT_NODE_TYPE &&
+						['form', 'webhook'].includes((n.parameters?.resume as string) || '')),
 			);
 
 			if (hasNextPage) {
