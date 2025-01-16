@@ -70,6 +70,8 @@ const edgeLabelStyle = computed(() => ({
 	color: edgeColor.value,
 }));
 
+const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);
+
 const edgeToolbarStyle = computed(() => {
 	const translateY = isConnectorStraight.value ? '-150%' : '-50%';
 
@@ -94,8 +96,6 @@ const renderData = computed(() =>
 const segments = computed(() => renderData.value.segments);
 
 const labelPosition = computed(() => renderData.value.labelPosition);
-
-const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
