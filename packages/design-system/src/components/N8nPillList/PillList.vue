@@ -7,10 +7,12 @@ defineSlots<{
 
 type PillListProps = {
 	inputs: Item[];
+	disabled: boolean;
 };
 
 const props = withDefaults(defineProps<PillListProps>(), {
 	inputs: () => [],
+	disabled: false,
 });
 
 // Record<inputs[k].name, initialValue>
@@ -50,7 +52,7 @@ function removeFromSelectedItems(name: string) {
 				:key="item.name"
 				:class="$style.pillCell"
 				:data-test-id="`pill-list-pill-${item.name}`"
-				@click="addToSelectedItems(item.name)"
+				@click="!props.disabled && addToSelectedItems(item.name)"
 			>
 				+ Add a {{ item.name }}
 			</span>
@@ -61,14 +63,12 @@ function removeFromSelectedItems(name: string) {
 			:class="$style.slotComboContainer"
 			:data-test-id="`pill-list-slot-${item.name}`"
 		>
-			<N8nIconButton
-				type="tertiary"
-				text
+			<N8nIcon
 				:class="$style.slotRemoveIcon"
-				size="mini"
-				icon="trash"
+				size="xsmall"
+				:icon="disabled ? 'none' : 'trash'"
 				:data-test-id="`pill-list-remove-slot-${item.name}`"
-				@click="removeFromSelectedItems(item.name)"
+				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>
 			<div :class="$style.slotContainer">
 				<slot name="displayItem" v-bind="item"
@@ -84,7 +84,7 @@ function removeFromSelectedItems(name: string) {
 	display: flex;
 	flex-direction: row;
 	flex-grow: 1;
-	margin-top: var(--spacing-2xs);
+	gap: var(--spacing-2xs);
 }
 
 .slotContainer {
@@ -98,7 +98,7 @@ function removeFromSelectedItems(name: string) {
 }
 .pillCell {
 	display: flex;
-	margin: var(--spacing-4xs) var(--spacing-3xs) 0 0;
+	margin-right: var(--spacing-3xs);
 
 	min-width: max-content;
 	border-radius: var(--border-radius-base);
@@ -110,6 +110,17 @@ function removeFromSelectedItems(name: string) {
 
 	:hover {
 		color: var(--color-primary);
+	}
+}
+
+.slotRemoveIcon {
+	color: var(--color-text-light);
+	height: 10px;
+	width: 10px;
+	margin-top: 3px;
+
+	:hover {
+		cursor: pointer;
 	}
 }
 </style>
