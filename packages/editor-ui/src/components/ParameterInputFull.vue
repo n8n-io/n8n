@@ -448,7 +448,7 @@ function handleOverrideClick() {
 	display: flex;
 	gap: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
-	background: var(--color-background-base);
+	background-color: var(--color-foreground-base);
 }
 
 .overrideCloseButton {
@@ -493,10 +493,15 @@ function handleOverrideClick() {
 	width: 22px;
 	text-align: center;
 	border: none;
+	color: var(--color-foreground-xdark);
+	background-color: var(--color-foreground-base);
 }
 
 .overrideInput {
-	> div > input {
+	* > input {
+		background-color: var(
+			--color-foreground-base
+		) !important; // Need important to overwrite the styling in input
 		border: none;
 	}
 }
