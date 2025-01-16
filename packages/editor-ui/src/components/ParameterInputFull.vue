@@ -55,13 +55,13 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 
-const ndvStore = useNDVStore();
-const nodeTypesStore = useNodeTypesStore();
-
 const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
+
+const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => ndvStore.activeNode);
 const parameterOverrides = ref<ParameterOverride | null>(
@@ -71,8 +71,8 @@ const parameterOverrides = ref<ParameterOverride | null>(
 	),
 );
 
-const isContentOverride = computed(() =>
-	parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
+const isContentOverride = computed(
+	() => !!parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
 );
 const canBeContentOverride = computed(() => {
 	if (!node.value || isResourceLocator.value) return false;
@@ -297,7 +297,10 @@ function handleOverrideClick() {
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<div v-if="canBeContentOverride && isContentOverride" :class="$style.contentOverride">
+				<div
+					v-if="canBeContentOverride && isContentOverride"
+					:class="$style.contentOverrideContainer"
+				>
 					<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
 						<AiStarsIcon />
 					</div>
@@ -311,7 +314,7 @@ function handleOverrideClick() {
 					<N8nIconButton
 						v-if="!isReadOnly"
 						type="tertiary"
-						:class="['n8n-input', $style.closeButton]"
+						:class="['n8n-input', $style.overrideCloseButton]"
 						outline="false"
 						icon="xmark"
 						size="xsmall"
@@ -428,8 +431,6 @@ function handleOverrideClick() {
 			</template>
 		</N8nPillList>
 	</N8nInputLabel>
-
-	<!-- badges to add extra fields from overrides go here -->
 </template>
 
 <style lang="scss" module>
@@ -443,14 +444,14 @@ function handleOverrideClick() {
 	}
 }
 
-.contentOverride {
+.contentOverrideContainer {
 	display: flex;
 	gap: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	background: var(--color-background-base);
 }
 
-.closeButton {
+.overrideCloseButton {
 	padding: 0px 8px 3px; // the icon used is off-center vertically
 	border: 0px;
 	color: var(--color-text-base);
@@ -499,6 +500,11 @@ function handleOverrideClick() {
 	}
 }
 
+// @Review double check margin here for pill list with and without pill
+.overridePillList {
+	margin-top: var(--spacing-2xs);
+}
+
 .options {
 	position: absolute;
 	bottom: -22px;
@@ -510,9 +516,5 @@ function handleOverrideClick() {
 	&.visible {
 		opacity: 1;
 	}
-}
-
-.overridePillList {
-	margin-top: var(--spacing-2xs);
 }
 </style>

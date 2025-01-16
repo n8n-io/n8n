@@ -438,6 +438,7 @@ const parameterInputClasses = computed(() => {
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
 	} else {
+		// @review: verify this is ok for textarea
 		classes['parameter-value-container'] = true;
 	}
 
@@ -971,9 +972,9 @@ const isSingleLineInput = computed(() => {
 	 *
 	 * If we move the overrideButton to the options row due to going multiline,
 	 * the text area gains more width and might return to single line.
-	 * This then causes the overrideButton to move inline, causing a loop and flickering UI.
+	 * This then causes the overrideButton to move inline, creating a loop which results in flickering UI.
 	 *
-	 * To avoid this, we treat 2 rows of input as single line, if we are already single line.
+	 * To avoid this, we treat 2 rows of input as single line if we were already single line.
 	 */
 	if (isSingleLineInput.value) {
 		return height.value <= 70;
@@ -1073,7 +1074,6 @@ onUpdated(async () => {
 				},
 			]"
 			:style="parameterInputWrapperStyle"
-			data-test-id="parameter-input-wrapper-in-input"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
@@ -1141,6 +1141,7 @@ onUpdated(async () => {
 				"
 				:class="[$style.parameterInput]"
 			>
+				<!-- @review: confirm the style above is needed -->
 				<el-dialog
 					width="calc(100% - var(--spacing-3xl))"
 					:class="$style.modal"
