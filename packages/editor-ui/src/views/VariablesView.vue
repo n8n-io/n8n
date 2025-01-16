@@ -270,7 +270,7 @@ onMounted(() => {
 				/>
 
 				<N8nCheckbox
-					:label="i18n.baseText('credentials.filters.setup')"
+					label="Needs attention"
 					data-test-id="credential-filter-setup-needed"
 					:model-value="filters.setupNeeded"
 					@update:model-value="setKeyValue('setupNeeded', $event)"
