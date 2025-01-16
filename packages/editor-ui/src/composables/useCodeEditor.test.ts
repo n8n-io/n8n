@@ -1,34 +1,14 @@
 import { renderComponent } from '@/__tests__/render';
 import { EditorView } from '@codemirror/view';
 import { createTestingPinia } from '@pinia/testing';
-import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useCodeEditor } from './useCodeEditor';
 import userEvent from '@testing-library/user-event';
 
-// vi.mock('@/composables/useAutocompleteTelemetry', () => ({
-// 	useAutocompleteTelemetry: vi.fn(),
-// }));
-//
-// vi.mock('@/stores/ndv.store', () => ({
-// 	useNDVStore: vi.fn(() => ({
-// 		activeNode: { type: 'n8n-nodes-base.test' },
-// 	})),
-// }));
-
 describe('useCodeEditor', () => {
-	// const mockResolveExpression = () => {
-	// 	const mock = vi.fn();
-	// 	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-	// 		...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
-	// 		resolveExpression: mock,
-	// 	});
-	//
-	// 	return mock;
-	// };
-
 	const defaultOptions: Omit<Parameters<typeof useCodeEditor>[0], 'editorRef'> = {
 		language: 'javaScript',
 	};
