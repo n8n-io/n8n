@@ -65,7 +65,6 @@ import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
 	N8nButton,
-	N8nRoute,
 	N8nCallout,
 	N8nIconButton,
 	N8nInfoTip,
