@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
@@ -12,16 +13,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
+import { N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nRadioButtons, N8nTooltip, N8nText } from 'n8n-design-system';
-import { storeToRefs } from 'pinia';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -71,7 +71,7 @@ const telemetry = useTelemetry();
 
 const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
-const inputMode = ref<MappingMode>('debugging');
+
 const mappedNode = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
@@ -88,6 +88,9 @@ const {
 	focusedMappableInput,
 	isMappingOnboarded: isUserOnboarded,
 } = storeToRefs(ndvStore);
+
+const inputMode = ref<MappingMode>(getInitialInputMode());
+
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
 	const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
@@ -332,6 +335,17 @@ function onConnectionHelpClick() {
 
 function activatePane() {
 	emit('activatePane');
+}
+
+function getInitialInputMode(): MappingMode {
+	const rootNodeName = activeNode.value
+		? props.workflow.getChildNodes(activeNode.value.name, 'ALL_NON_MAIN').at(0)
+		: undefined;
+
+		// If input data doesn't exist, show mapping mode by default
+	return !rootNodeName || !workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNodeName]
+		? 'mapping'
+		: 'debugging';
 }
 </script>
 
