@@ -16,7 +16,7 @@ import type {
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
-} from '../helpers/interfaces';
+} from '../v2/helpers/interfaces';
 
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
@@ -29,6 +29,7 @@ const getPostgresConfig = (
 		user: credentials.user,
 		password: credentials.password,
 		keepAlive: true,
+		max: credentials.maxConnections,
 	};
 
 	if (options.connectionTimeout) {
