@@ -7,6 +7,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
+import { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -89,7 +90,7 @@ const {
 	isMappingOnboarded: isUserOnboarded,
 } = storeToRefs(ndvStore);
 
-const inputMode = ref<MappingMode>(getInitialInputMode());
+const inputMode = ref<MappingMode>(getInitialInputMode(workflowsStore, activeNode.value));
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
@@ -337,15 +338,18 @@ function activatePane() {
 	emit('activatePane');
 }
 
-function getInitialInputMode(): MappingMode {
-	const rootNodeName = activeNode.value
-		? props.workflow.getChildNodes(activeNode.value.name, 'ALL_NON_MAIN').at(0)
+function getInitialInputMode(
+	store: typeof workflowsStore,
+	activeNode: INodeUi | null,
+): MappingMode {
+	const rootNodeName = activeNode
+		? props.workflow.getChildNodes(activeNode.name, 'ALL_NON_MAIN').at(0)
 		: undefined;
 
-		// If input data doesn't exist, show mapping mode by default
-	return !rootNodeName || !workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNodeName]
-		? 'mapping'
-		: 'debugging';
+	// If input data doesn't exist, show mapping mode by default
+	return rootNodeName && store.getWorkflowExecution?.data?.resultData.runData[rootNodeName]
+		? 'debugging'
+		: 'mapping';
 }
 </script>
 
