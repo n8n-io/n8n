@@ -179,6 +179,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',
 		},
+		microsoftLogAnalyticsOAuth2Api: {
+			tokenExpiredStatusCode: 403,
+		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
 		},

@@ -222,6 +222,7 @@
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftGraphSecurityOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOAuth2Api.credentials.js",
+      "dist/credentials/MicrosoftLogAnalyticsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOneDriveOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOutlookOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftSharePointOAuth2Api.credentials.js",
