@@ -237,6 +237,13 @@ const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
 );
+
+function handleOverrideClick() {
+	valueChanged({
+		name: props.path,
+		value: parameterOverrides.value?.buildValueFromOverride(props, false),
+	});
+}
 </script>
 
 <template>
@@ -264,14 +271,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 				<N8nButton
 					:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
 					type="tertiary"
-					@click="
-						() => {
-							valueChanged({
-								name: props.path,
-								value: parameterOverrides?.buildValueFromOverride(props, false),
-							});
-						}
-					"
+					@click="handleOverrideClick"
 				>
 					<AiStarsIcon />
 				</N8nButton>
@@ -362,14 +362,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 								<N8nButton
 									:class="[$style.overrideButton]"
 									type="tertiary"
-									@click="
-										() => {
-											valueChanged({
-												name: props.path,
-												value: parameterOverrides?.buildValueFromOverride(props, false),
-											});
-										}
-									"
+									@click="handleOverrideClick"
 								>
 									<AiStarsIcon />
 								</N8nButton>
