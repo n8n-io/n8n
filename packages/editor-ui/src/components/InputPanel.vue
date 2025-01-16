@@ -448,7 +448,7 @@ function getInitialInputMode(
 						:transparent="true"
 						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
 						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-				:class="$style.executePreviousButton"
+						:class="$style.executePreviousButton"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						@execute="onNodeExecute"
