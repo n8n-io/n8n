@@ -1,4 +1,5 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
+import { mockInstance } from 'n8n-core/test/utils';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
@@ -6,6 +7,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createUserShell } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -19,9 +21,11 @@ let testDefinition: TestDefinition;
 let otherTestDefinition: TestDefinition;
 let ownerShell: User;
 
+const testRunner = mockInstance(TestRunnerService);
+
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'evaluation'],
-	enabledFeatures: ['feat:sharing'],
+	enabledFeatures: ['feat:sharing', 'feat:multipleMainInstances'],
 });
 
 beforeAll(async () => {
@@ -57,13 +61,13 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 		expect(resp.body.data).toEqual([]);
 	});
 
-	test('should retrieve 404 if test definition does not exist', async () => {
+	test('should return 404 if test definition does not exist', async () => {
 		const resp = await authOwnerAgent.get('/evaluation/test-definitions/123/runs');
 
 		expect(resp.statusCode).toBe(404);
 	});
 
-	test('should retrieve 404 if user does not have access to test definition', async () => {
+	test('should return 404 if user does not have access to test definition', async () => {
 		const resp = await authOwnerAgent.get(
 			`/evaluation/test-definitions/${otherTestDefinition.id}/runs`,
 		);
@@ -93,7 +97,7 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun1 = await testRunRepository.createTestRun(testDefinition.id);
 		// Mark as running just to make a slight delay between the runs
-		await testRunRepository.markAsRunning(testRun1.id);
+		await testRunRepository.markAsRunning(testRun1.id, 10);
 		const testRun2 = await testRunRepository.createTestRun(testDefinition.id);
 
 		// Fetch the first page
@@ -151,7 +155,7 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
 		);
 	});
 
-	test('should retrieve 404 if test run does not exist', async () => {
+	test('should return 404 if test run does not exist', async () => {
 		const resp = await authOwnerAgent.get(
 			`/evaluation/test-definitions/${testDefinition.id}/runs/123`,
 		);
@@ -159,7 +163,7 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
 		expect(resp.statusCode).toBe(404);
 	});
 
-	test('should retrieve 404 if user does not have access to test definition', async () => {
+	test('should return 404 if user does not have access to test definition', async () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(otherTestDefinition.id);
 
@@ -218,7 +222,7 @@ describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () =>
 		expect(testRunAfterDelete).toBeNull();
 	});
 
-	test('should retrieve 404 if test run does not exist', async () => {
+	test('should return 404 if test run does not exist', async () => {
 		const resp = await authOwnerAgent.delete(
 			`/evaluation/test-definitions/${testDefinition.id}/runs/123`,
 		);
@@ -226,12 +230,55 @@ describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () =>
 		expect(resp.statusCode).toBe(404);
 	});
 
-	test('should retrieve 404 if user does not have access to test definition', async () => {
+	test('should return 404 if user does not have access to test definition', async () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(otherTestDefinition.id);
 
 		const resp = await authOwnerAgent.delete(
 			`/evaluation/test-definitions/${otherTestDefinition.id}/runs/${testRun.id}`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+});
+
+describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', () => {
+	test('should cancel test run', async () => {
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun = await testRunRepository.createTestRun(testDefinition.id);
+
+		jest.spyOn(testRunRepository, 'markAsCancelled');
+
+		const resp = await authOwnerAgent.post(
+			`/evaluation/test-definitions/${testDefinition.id}/runs/${testRun.id}/cancel`,
+		);
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual({ success: true });
+
+		expect(testRunner.cancelTestRun).toHaveBeenCalledWith(testRun.id);
+	});
+
+	test('should return 404 if test run does not exist', async () => {
+		const resp = await authOwnerAgent.post(
+			`/evaluation/test-definitions/${testDefinition.id}/runs/123/cancel`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 if test definition does not exist', async () => {
+		const resp = await authOwnerAgent.post('/evaluation/test-definitions/123/runs/123/cancel');
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 if user does not have access to test definition', async () => {
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun = await testRunRepository.createTestRun(otherTestDefinition.id);
+
+		const resp = await authOwnerAgent.post(
+			`/evaluation/test-definitions/${otherTestDefinition.id}/runs/${testRun.id}/cancel`,
 		);
 
 		expect(resp.statusCode).toBe(404);

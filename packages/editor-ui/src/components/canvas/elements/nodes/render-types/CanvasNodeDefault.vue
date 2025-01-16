@@ -158,7 +158,7 @@ function openContextMenu(event: MouseEvent) {
 	--configurable-node--icon-offset: 40px;
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
-	--canvas-node--status-icons-offset: var(--spacing-2xs);
+	--canvas-node--status-icons-offset: var(--spacing-3xs);
 
 	position: relative;
 	height: var(--canvas-node--height);
@@ -200,6 +200,12 @@ function openContextMenu(event: MouseEvent) {
 			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
+
+		justify-content: flex-start;
+
+		:global(.n8n-node-icon) {
+			margin-left: var(--configurable-node--icon-offset);
+		}
 
 		.description {
 			top: unset;

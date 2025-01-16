@@ -1,9 +1,9 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { Credentials } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
-import Container from 'typedi';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/interfaces';

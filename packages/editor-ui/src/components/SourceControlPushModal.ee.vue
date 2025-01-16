@@ -31,16 +31,15 @@ import {
 	N8nInfoTip,
 } from 'n8n-design-system';
 import {
+	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
 	SOURCE_CONTROL_FILE_LOCATION,
-	type SourceControlledFileStatus,
-	type SourceControlAggregatedFile,
-} from '@/types/sourceControl.types';
+} from '@n8n/api-types';
 import { orderBy, groupBy } from 'lodash-es';
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
 
 const loadingService = useLoadingService();
@@ -50,49 +49,48 @@ const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 
+type SourceControlledFileStatus = SourceControlledFile['status'];
+
 type Changes = {
-	tags: SourceControlAggregatedFile[];
-	variables: SourceControlAggregatedFile[];
-	credentials: SourceControlAggregatedFile[];
-	workflows: SourceControlAggregatedFile[];
-	currentWorkflow?: SourceControlAggregatedFile;
+	tags: SourceControlledFile[];
+	variables: SourceControlledFile[];
+	credentials: SourceControlledFile[];
+	workflows: SourceControlledFile[];
+	currentWorkflow?: SourceControlledFile;
 };
 
-const classifyFilesByType = (
-	files: SourceControlAggregatedFile[],
-	currentWorkflowId?: string,
-): Changes =>
+const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: string): Changes =>
 	files.reduce<Changes>(
 		(acc, file) => {
 			// do not show remote workflows that are not yet created locally during push
 			if (
-				file.location === SOURCE_CONTROL_FILE_LOCATION.REMOTE &&
-				file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW &&
-				file.status === SOURCE_CONTROL_FILE_STATUS.CREATED
+				file.location === SOURCE_CONTROL_FILE_LOCATION.remote &&
+				file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+				file.status === SOURCE_CONTROL_FILE_STATUS.created
 			) {
 				return acc;
 			}
 
-			if (file.type === SOURCE_CONTROL_FILE_TYPE.VARIABLES) {
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.variables) {
 				acc.variables.push(file);
 				return acc;
 			}
 
-			if (file.type === SOURCE_CONTROL_FILE_TYPE.TAGS) {
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.tags) {
 				acc.tags.push(file);
 				return acc;
 			}
 
-			if (file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW && currentWorkflowId === file.id) {
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow && currentWorkflowId === file.id) {
 				acc.currentWorkflow = file;
 			}
 
-			if (file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW) {
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow) {
 				acc.workflows.push(file);
 				return acc;
 			}
 
-			if (file.type === SOURCE_CONTROL_FILE_TYPE.CREDENTIAL) {
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.credential) {
 				acc.credentials.push(file);
 				return acc;
 			}
@@ -139,7 +137,7 @@ const toggleSelected = (id: string) => {
 	}
 };
 
-const maybeSelectCurrentWorkflow = (workflow?: SourceControlAggregatedFile) =>
+const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFile) =>
 	workflow && selectedChanges.value.add(workflow.id);
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
@@ -152,15 +150,15 @@ const resetFilters = () => {
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
 		label: 'New',
-		value: SOURCE_CONTROL_FILE_STATUS.CREATED,
+		value: SOURCE_CONTROL_FILE_STATUS.created,
 	},
 	{
 		label: 'Modified',
-		value: SOURCE_CONTROL_FILE_STATUS.MODIFIED,
+		value: SOURCE_CONTROL_FILE_STATUS.modified,
 	},
 	{
 		label: 'Deleted',
-		value: SOURCE_CONTROL_FILE_STATUS.DELETED,
+		value: SOURCE_CONTROL_FILE_STATUS.deleted,
 	},
 ] as const;
 
@@ -188,10 +186,10 @@ const filteredWorkflows = computed(() => {
 });
 
 const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
-	[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 1,
-	[SOURCE_CONTROL_FILE_STATUS.RENAMED]: 2,
-	[SOURCE_CONTROL_FILE_STATUS.CREATED]: 3,
-	[SOURCE_CONTROL_FILE_STATUS.DELETED]: 4,
+	[SOURCE_CONTROL_FILE_STATUS.modified]: 1,
+	[SOURCE_CONTROL_FILE_STATUS.renamed]: 2,
+	[SOURCE_CONTROL_FILE_STATUS.created]: 3,
+	[SOURCE_CONTROL_FILE_STATUS.deleted]: 4,
 } as const;
 const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
 	statusPriority[status] ?? 0;
@@ -250,7 +248,7 @@ function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 }
 
-function renderUpdatedAt(file: SourceControlAggregatedFile) {
+function renderUpdatedAt(file: SourceControlledFile) {
 	const currentYear = new Date().getFullYear().toString();
 
 	return i18n.baseText('settings.sourceControl.lastUpdated', {
@@ -338,9 +336,9 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 	const statusToBadgeThemeMap: Partial<
 		Record<SourceControlledFileStatus, 'success' | 'danger' | 'warning'>
 	> = {
-		[SOURCE_CONTROL_FILE_STATUS.CREATED]: 'success',
-		[SOURCE_CONTROL_FILE_STATUS.DELETED]: 'danger',
-		[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 'warning',
+		[SOURCE_CONTROL_FILE_STATUS.created]: 'success',
+		[SOURCE_CONTROL_FILE_STATUS.deleted]: 'danger',
+		[SOURCE_CONTROL_FILE_STATUS.modified]: 'warning',
 	} as const;
 	return statusToBadgeThemeMap[status];
 };
@@ -454,11 +452,11 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 						@update:model-value="toggleSelected(file.id)"
 					>
 						<span>
-							<N8nText v-if="file.status === SOURCE_CONTROL_FILE_STATUS.DELETED" color="text-light">
-								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW">
+							<N8nText v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted" color="text-light">
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
 									Deleted Workflow:
 								</span>
-								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.CREDENTIAL">
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
 									Deleted Credential:
 								</span>
 								<strong>{{ file.name || file.id }}</strong>

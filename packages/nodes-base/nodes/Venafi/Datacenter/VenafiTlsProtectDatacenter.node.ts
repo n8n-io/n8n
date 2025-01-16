@@ -7,10 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
-
 import { certificateFields, certificateOperations } from './CertificateDescription';
-
+import { venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
 import { policyFields, policyOperations } from './PolicyDescription';
 
 export class VenafiTlsProtectDatacenter implements INodeType {

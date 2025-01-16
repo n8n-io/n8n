@@ -381,6 +381,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
+		workflowsStore.setNodePristine(node.name, false);
 		setNodeActiveByName(node.name);
 	}
 
@@ -1887,6 +1888,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
+		workflowData.meta = {
+			...workflowData.meta,
+			...workflowsStore.workflow.meta,
+			instanceId: rootStore.instanceId,
+		};
+
 		await clipboard.copy(JSON.stringify(workflowData, null, 2));
 
 		telemetry.track('User copied nodes', {
@@ -1917,7 +1924,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		workflowsStore.setWorkflowExecutionData(data);
 
-		if (data.mode !== 'manual') {
+		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});
 		}
 

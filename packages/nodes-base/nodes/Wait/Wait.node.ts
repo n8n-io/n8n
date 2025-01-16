@@ -9,6 +9,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '../../utils/utilities';
+import {
+	formDescription,
+	formFields,
+	respondWithOptions,
+	formRespondMode,
+	formTitle,
+	appendAttributionToForm,
+} from '../Form/common.descriptions';
+import { formWebhook } from '../Form/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -20,17 +30,6 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from '../Webhook/description';
-
-import {
-	formDescription,
-	formFields,
-	respondWithOptions,
-	formRespondMode,
-	formTitle,
-	appendAttributionToForm,
-} from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
-import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
 
 const toWaitAmount: INodeProperties = {

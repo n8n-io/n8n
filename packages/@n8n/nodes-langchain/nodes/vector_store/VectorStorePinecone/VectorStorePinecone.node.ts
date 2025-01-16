@@ -56,7 +56,7 @@ export class VectorStorePinecone extends createVectorStoreNode({
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',
 		description: 'Work with your data in Pinecone Vector Store',
-		icon: 'file:pinecone.svg',
+		icon: { light: 'file:pinecone.svg', dark: 'file:pinecone.dark.svg' },
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 		credentials: [
@@ -65,7 +65,7 @@ export class VectorStorePinecone extends createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,

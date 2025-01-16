@@ -9,17 +9,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
+import { collectionFields, collectionOperations } from './CollectionDescription';
+import { documentFields, documentOperations } from './DocumentDescription';
 import {
 	fullDocumentToJson,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	jsonToDocument,
 } from './GenericFunctions';
-
-import { collectionFields, collectionOperations } from './CollectionDescription';
-
-import { documentFields, documentOperations } from './DocumentDescription';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {

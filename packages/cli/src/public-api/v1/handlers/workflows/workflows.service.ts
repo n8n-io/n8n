@@ -1,7 +1,7 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { Container } from 'typedi';
 
-import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
@@ -46,7 +46,10 @@ export async function getSharedWorkflow(
 			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
-		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
+		relations: [
+			...insertIf(!Container.get(GlobalConfig).tags.disabled, ['workflow.tags']),
+			'workflow',
+		],
 	});
 }
 

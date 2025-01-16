@@ -228,7 +228,7 @@ export class VectorStorePGVector extends createVectorStoreNode({
 				testedBy: 'postgresConnectionTest',
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve'],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	sharedFields,
 	insertFields,

@@ -1,9 +1,11 @@
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
+import { mock } from 'jest-mock-extended';
 import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
+import type { Logger } from '@/logging/logger';
 
 jest.mock('@sentry/node', () => ({
 	init: jest.fn(),
@@ -15,7 +17,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const errorReporter = new ErrorReporter();
+	const errorReporter = new ErrorReporter(mock());
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
@@ -98,6 +100,62 @@ describe('ErrorReporter', () => {
 		])('should ignore if originalException is %s', async (_, originalException) => {
 			const result = await errorReporter.beforeSend(event, { originalException });
 			expect(result).toBeNull();
+		});
+
+		describe('beforeSendFilter', () => {
+			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
+				const errorReporter = new ErrorReporter(mock());
+				// @ts-expect-error - beforeSendFilter is private
+				errorReporter.beforeSendFilter = beforeSendFilter;
+				return errorReporter;
+			};
+
+			it('should filter out based on the beforeSendFilter', async () => {
+				const beforeSendFilter = jest.fn().mockReturnValue(true);
+				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
+				const hint = { originalException: new Error() };
+
+				const result = await errorReporter.beforeSend(event, hint);
+
+				expect(result).toBeNull();
+				expect(beforeSendFilter).toHaveBeenCalledWith(event, hint);
+			});
+
+			it('should not filter out when beforeSendFilter returns false', async () => {
+				const beforeSendFilter = jest.fn().mockReturnValue(false);
+				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
+				const hint = { originalException: new Error() };
+
+				const result = await errorReporter.beforeSend(event, hint);
+
+				expect(result).toEqual(event);
+				expect(beforeSendFilter).toHaveBeenCalledWith(event, hint);
+			});
+		});
+	});
+
+	describe('error', () => {
+		let error: ApplicationError;
+		let logger: Logger;
+		let errorReporter: ErrorReporter;
+		const metadata = undefined;
+
+		beforeEach(() => {
+			error = new ApplicationError('Test error');
+			logger = mock<Logger>();
+			errorReporter = new ErrorReporter(logger);
+		});
+
+		it('should include stack trace for error-level `ApplicationError`', () => {
+			error.level = 'error';
+			errorReporter.error(error);
+			expect(logger.error).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
+		});
+
+		it('should exclude stack trace for warning-level `ApplicationError`', () => {
+			error.level = 'warning';
+			errorReporter.error(error);
+			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
 		});
 	});
 });

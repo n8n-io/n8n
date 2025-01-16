@@ -934,6 +934,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `execution-throttled` event', () => {
 			const event: RelayEventMap['execution-throttled'] = {
 				executionId: 'exec123456',
+				type: 'production',
 			};
 
 			eventService.emit('execution-throttled', event);
@@ -942,6 +943,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.execution.throttled',
 				payload: {
 					executionId: 'exec123456',
+					type: 'production',
 				},
 			});
 		});

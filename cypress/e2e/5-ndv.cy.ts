@@ -1,6 +1,10 @@
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
+import { clickCreateNewCredential, setParameterSelectByContent } from '../composables/ndv';
+import {
+	EDIT_FIELDS_SET_NODE_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+	NOTION_NODE_NAME,
+} from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 
@@ -63,26 +67,6 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
 		cy.shouldNotHaveConsoleErrors();
-	});
-
-	it('should disconect Switch outputs if rules order was changed', () => {
-		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', 'NDV test switch reorder');
-		workflowPage.actions.zoomToFit();
-
-		workflowPage.actions.executeWorkflow();
-		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('2 items').should('exist');
-		cy.contains('span', 'first').should('exist');
-		ndv.getters.backToCanvas().click();
-
-		workflowPage.actions.openNode('Switch');
-		cy.get('.cm-line').realMouseMove(100, 100);
-		cy.get('.fa-angle-down').first().click();
-		ndv.getters.backToCanvas().click();
-		workflowPage.actions.executeWorkflow();
-		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('2 items').should('exist');
-		cy.contains('span', 'zero').should('exist');
 	});
 
 	it('should show correct validation state for resource locator params', () => {
@@ -379,15 +363,71 @@ describe('NDV', () => {
 		ndv.getters.nodeExecuteButton().should('be.visible');
 	});
 
-	it('should allow editing code in fullscreen in the Code node', () => {
+	it('should allow editing code in fullscreen in the code editors', () => {
+		// Code (JavaScript)
 		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
 		ndv.actions.openCodeEditorFullscreen();
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
-		cy.wait(200);
+		cy.wait(200); // allow change to emit before closing modal
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
+		ndv.actions.close();
+
+		// SQL
+		workflowPage.actions.addNodeToCanvas('Postgres', true, true, 'Execute a SQL query');
+		ndv.actions.openCodeEditorFullscreen();
+
+		ndv.getters
+			.codeEditorFullscreen()
+			.type('{selectall}')
+			.type('{backspace}')
+			.type('SELECT * FROM workflows');
+		ndv.getters.codeEditorFullscreen().should('contain.text', 'SELECT * FROM workflows');
+		cy.wait(200);
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters
+			.parameterInput('query')
+			.get('.cm-content')
+			.should('contain.text', 'SELECT * FROM workflows');
+		ndv.actions.close();
+
+		// HTML
+		workflowPage.actions.addNodeToCanvas('HTML', true, true, 'Generate HTML template');
+		ndv.actions.openCodeEditorFullscreen();
+
+		ndv.getters
+			.codeEditorFullscreen()
+			.type('{selectall}')
+			.type('{backspace}')
+			.type('<div>Hello World');
+		ndv.getters.codeEditorFullscreen().should('contain.text', '<div>Hello World</div>');
+		cy.wait(200);
+
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters
+			.parameterInput('html')
+			.get('.cm-content')
+			.should('contain.text', '<div>Hello World</div>');
+		ndv.actions.close();
+
+		// JSON
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		setParameterSelectByContent('mode', 'JSON');
+		ndv.actions.openCodeEditorFullscreen();
+		ndv.getters
+			.codeEditorFullscreen()
+			.type('{selectall}')
+			.type('{backspace}')
+			.type('{ "key": "value" }', { parseSpecialCharSequences: false });
+		ndv.getters.codeEditorFullscreen().should('contain.text', '{ "key": "value" }');
+		cy.wait(200);
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters
+			.parameterInput('jsonOutput')
+			.get('.cm-content')
+			.should('contain.text', '{ "key": "value" }');
 	});
 
 	it('should not retrieve remote options when a parameter value changes', () => {

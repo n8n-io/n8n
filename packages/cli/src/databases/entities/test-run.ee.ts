@@ -7,7 +7,7 @@ import {
 } from '@/databases/entities/abstract-entity';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 
-type TestRunStatus = 'new' | 'running' | 'completed' | 'error';
+type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
@@ -35,4 +35,23 @@ export class TestRun extends WithTimestampsAndStringId {
 
 	@Column(jsonColumnType, { nullable: true })
 	metrics: AggregatedTestRunMetrics;
+
+	/**
+	 * Total number of the test cases, matching the filter condition of the test definition (specified annotationTag)
+	 */
+	@Column('integer', { nullable: true })
+	totalCases: number;
+
+	/**
+	 * Number of test cases that passed (evaluation workflow was executed successfully)
+	 */
+	@Column('integer', { nullable: true })
+	passedCases: number;
+
+	/**
+	 * Number of failed test cases
+	 * (any unexpected exception happened during the execution or evaluation workflow ended with an error)
+	 */
+	@Column('integer', { nullable: true })
+	failedCases: number;
 }

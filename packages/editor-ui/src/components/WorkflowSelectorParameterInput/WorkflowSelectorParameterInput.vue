@@ -324,6 +324,7 @@ const onAddResourceClicked = () => {
 									ref="input"
 									:model-value="expressionDisplayValue"
 									:path="path"
+									:is-read-only="isReadOnly"
 									:rows="3"
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"
