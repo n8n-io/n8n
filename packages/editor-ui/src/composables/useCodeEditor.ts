@@ -30,7 +30,6 @@ import {
 } from '@codemirror/view';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { html } from 'codemirror-lang-html-n8n';
-import { debounce } from 'lodash-es';
 import { jsonParse, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import {
@@ -47,6 +46,7 @@ import {
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
+import { useDebounceFn } from '@vueuse/core';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -85,7 +85,6 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
-	const lastChange = ref<ViewUpdate>();
 	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
@@ -154,9 +153,10 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		}
 	}
 
-	const emitChanges = debounce((update: ViewUpdate) => {
+	const emitChanges = useDebounceFn((update: ViewUpdate) => {
 		onChange(update);
 	}, 300);
+	const lastChangePromise = ref(Promise.resolve());
 
 	function onEditorUpdate(update: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(update.view.state);
@@ -164,8 +164,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 		if (update.docChanged) {
 			hasChanges.value = true;
-			lastChange.value = update;
-			emitChanges(update);
+			lastChangePromise.value = emitChanges(update);
 		}
 	}
 
@@ -358,7 +357,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		document.addEventListener('click', blurOnClickOutside);
 	});
 
-	onBeforeUnmount(() => {
+	onBeforeUnmount(async () => {
 		document.removeEventListener('click', blurOnClickOutside);
 
 		if (editor.value) {
@@ -369,7 +368,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				// Code is too large, localStorage quota exceeded
 				localStorage.removeItem(storedStateId.value);
 			}
-			if (lastChange.value) onChange(lastChange.value);
+			await lastChangePromise.value;
 			editor.value.destroy();
 		}
 	});
