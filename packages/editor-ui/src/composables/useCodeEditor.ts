@@ -46,7 +46,8 @@ import {
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
-import { useDebounceFn } from '@vueuse/core';
+import { debounce } from 'lodash-es';
+import { ignoreUpdateAnnotation } from '../utils/forceParse';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -153,18 +154,23 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		}
 	}
 
-	const emitChanges = useDebounceFn((update: ViewUpdate) => {
+	const emitChanges = debounce((update: ViewUpdate) => {
 		onChange(update);
 	}, 300);
-	const lastChangePromise = ref(Promise.resolve());
+	const lastChange = ref<ViewUpdate>();
 
 	function onEditorUpdate(update: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(update.view.state);
 		updateSelection(update);
 
-		if (update.docChanged) {
+		const shouldIgnoreUpdate = update.transactions.some((tr) =>
+			tr.annotation(ignoreUpdateAnnotation),
+		);
+
+		if (update.docChanged && !shouldIgnoreUpdate) {
+			lastChange.value = update;
 			hasChanges.value = true;
-			lastChangePromise.value = emitChanges(update);
+			emitChanges(update);
 		}
 	}
 
@@ -357,7 +363,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		document.addEventListener('click', blurOnClickOutside);
 	});
 
-	onBeforeUnmount(async () => {
+	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
 
 		if (editor.value) {
@@ -368,7 +374,10 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				// Code is too large, localStorage quota exceeded
 				localStorage.removeItem(storedStateId.value);
 			}
-			await lastChangePromise.value;
+
+			if (lastChange.value) {
+				onChange(lastChange.value);
+			}
 			editor.value.destroy();
 		}
 	});

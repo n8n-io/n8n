@@ -96,28 +96,8 @@ describe('useCodeEditor', () => {
 
 		await user.type(input, 'test');
 
-		// Rerender will unmount and remount the component
-		// This should trigger the debounced change to be emitted
-		// Because we have `await lastChangePromise` in the unmounted hook
-		// Unmount is delayed until the last change is emitted
-		await renderResult.rerender({ key: 'old' });
-
-		const snapshotBeforeUnmount = renderResult.html();
-		expect(onChange).not.toHaveBeenCalled();
-
-		// The last change should be emitted after unmount
-		vi.advanceTimersByTime(300);
+		renderResult.unmount();
 
 		expect(onChange.mock.calls[0][0].state.doc.toString()).toEqual('test');
-
-		// This should rerender the component after unmounting
-		await renderResult.rerender({ key: 'new' });
-
-		const snapshotAfterUnmount = renderResult.html();
-
-		expect(snapshotBeforeUnmount).not.toEqual(snapshotAfterUnmount);
-		expect(snapshotBeforeUnmount.split('\n').length).toBeGreaterThan(
-			snapshotAfterUnmount.split('\n').length,
-		);
 	});
 });
