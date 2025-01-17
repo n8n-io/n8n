@@ -38,9 +38,9 @@ export function setWorkflowExecutionMetadata(
 		Logger.error('Custom data key over 50 characters long. Truncating to 50 characters.');
 	}
 	if (val.length > 255) {
-		Logger.error('Custom data value over 255 characters long. Truncating to 255 characters.');
+		Logger.error('Custom data value over 512 characters long. Truncating to 512 characters.');
 	}
-	executionData.resultData.metadata[key.slice(0, 50)] = val.slice(0, 255);
+	executionData.resultData.metadata[key.slice(0, 50)] = val.slice(0, 512);
 }
 
 export function setAllWorkflowExecutionMetadata(
