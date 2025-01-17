@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-import type { INode } from 'Interfaces';
-
 import { NodeOperationError } from './errors';
+import type { INode } from './Interfaces';
 import { jsonParse } from './utils';
 
 export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
