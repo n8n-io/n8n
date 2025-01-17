@@ -530,14 +530,14 @@ describe('Langchain Integration', () => {
 		workflowPage.actions.executeNode('Node 1');
 
 		getManualChatModal().should('exist');
-		sendManualChatMessage('Test')
+		sendManualChatMessage('Test');
 
 		getManualChatMessages().should('contain', 'this_my_field_1');
 		cy.getByTestId('refresh-session-button').click();
 		cy.get('button').contains('Reset').click();
 		getManualChatMessages().should('not.exist');
 
-		sendManualChatMessage('Another test')
+		sendManualChatMessage('Another test');
 		getManualChatMessages().should('contain', 'this_my_field_3');
 		getManualChatMessages().should('contain', 'this_my_field_4');
 	});
@@ -555,14 +555,14 @@ describe('Langchain Integration', () => {
 		ndv.actions.execute();
 
 		getManualChatModal().should('exist');
-		sendManualChatMessage('Test')
+		sendManualChatMessage('Test');
 
 		getManualChatMessages().should('contain', 'this_my_field_1');
 		cy.getByTestId('refresh-session-button').click();
 		cy.get('button').contains('Reset').click();
 		getManualChatMessages().should('not.exist');
 
-		sendManualChatMessage('Another test')
+		sendManualChatMessage('Another test');
 		getManualChatMessages().should('contain', 'this_my_field_3');
 		getManualChatMessages().should('contain', 'this_my_field_4');
 	});
