@@ -290,14 +290,9 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowsStore, 'setActive');
+			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
 			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowsStore, 'setWorkflowName');
-			const setWorkflowSettingsSpy = vi.spyOn(workflowsStore, 'setWorkflowSettings');
-			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
-			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
-			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
-			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
@@ -306,20 +301,12 @@ describe('useWorkflowHelpers', () => {
 			initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith(true);
+			expect(setWorkflowSpy).toHaveBeenCalledWith(workflowData);
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',
 				setStateDirty: false,
 			});
-			expect(setWorkflowSettingsSpy).toHaveBeenCalledWith({
-				executionOrder: 'v1',
-				timezone: 'DEFAULT',
-			});
-			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('1');
-			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
 			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: '1',

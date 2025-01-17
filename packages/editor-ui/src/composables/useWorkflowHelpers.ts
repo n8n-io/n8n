@@ -1151,17 +1151,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowsStore.setActive(workflowData.active || false);
+
+		workflowsStore.setWorkflow(workflowData);
+
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
 		if (workflowData.usedCredentials) {
 			workflowsStore.setUsedCredentials(workflowData.usedCredentials);

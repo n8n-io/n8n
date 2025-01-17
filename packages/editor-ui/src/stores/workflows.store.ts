@@ -773,6 +773,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.scopes = scopes;
 	}
 
+	function setWorkflowHomeProject(homeProject: IWorkflowDb['homeProject']): void {
+		workflow.value.homeProject = homeProject;
+	}
+
 	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
 		workflow.value.meta = metadata;
 	}
@@ -1711,6 +1715,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addWorkflowTagIds,
 		removeWorkflowTagId,
 		setWorkflowScopes,
+		setWorkflowHomeProject,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
 		setWorkflow,

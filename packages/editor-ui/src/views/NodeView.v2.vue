@@ -371,6 +371,10 @@ async function initializeRoute(force = false) {
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await initializeDebugMode();
 		}
+
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+			workflowsStore.workflow.homeProject,
+		);
 	}
 }
 
