@@ -109,8 +109,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		debugger;
-
 		const workflow = workflowHelpers.getCurrentWorkflow();
 
 		if (uiStore.isActionActive['workflowRunning']) {
