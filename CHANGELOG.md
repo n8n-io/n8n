@@ -1,3 +1,12 @@
+## [1.74.3](https://github.com/n8n-io/n8n/compare/n8n@1.74.2...n8n@1.74.3) (2025-01-17)
+
+
+### Bug Fixes
+
+* **Postgres Chat Memory Node:** Do not terminate the connection pool ([#12674](https://github.com/n8n-io/n8n/issues/12674)) ([61f8ea7](https://github.com/n8n-io/n8n/commit/61f8ea7e976c0db8d159aa12b23dae45d92fe916))
+
+
+
 ## [1.74.2](https://github.com/n8n-io/n8n/compare/n8n@1.74.1...n8n@1.74.2) (2025-01-17)
 
 
