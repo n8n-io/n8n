@@ -142,19 +142,30 @@ export class InstanceSettings {
 	}
 
 	/**
-	 * Whether this instance is running inside a Docker container.
-	 *
-	 * Based on: https://github.com/sindresorhus/is-docker
+	 * Whether this instance is running inside a Docker/Podman/Kubernetes container.
 	 */
 	@Memoized
 	get isDocker() {
+		if (existsSync('/.dockerenv') || existsSync('/run/.containerenv')) return true;
 		try {
-			return (
-				existsSync('/.dockerenv') || readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
-			);
-		} catch {
-			return false;
-		}
+			const cgroupV1 = readFileSync('/proc/self/cgroup', 'utf8');
+			if (
+				cgroupV1.includes('docker') ||
+				cgroupV1.includes('kubepods') ||
+				cgroupV1.includes('containerd')
+			)
+				return true;
+		} catch {}
+		try {
+			const cgroupV2 = readFileSync('/proc/self/mountinfo', 'utf8');
+			if (
+				cgroupV2.includes('docker') ||
+				cgroupV2.includes('kubelet') ||
+				cgroupV2.includes('containerd')
+			)
+				return true;
+		} catch {}
+		return false;
 	}
 
 	update(newSettings: WritableSettings) {
