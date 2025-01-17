@@ -272,6 +272,13 @@ export async function executeWebhook(
 				node: workflowStartNode,
 			});
 		} catch (err) {
+			Container.get(Logger).debug(
+				`Error in handling webhook request ${req.method} ${req.path}: ${err.message}`,
+				{
+					stacktrace: err.stack,
+				},
+			);
+
 			// Send error response to webhook caller
 			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
 				? 'Form'

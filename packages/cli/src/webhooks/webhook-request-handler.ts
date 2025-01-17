@@ -54,10 +54,17 @@ class WebhookRequestHandler {
 					response.headers,
 				);
 			}
+
+			Container.get(Logger).debug(`Response to webhook request ${req.method} ${req.path}`, {
+				data: JSON.stringify(response),
+			});
 		} catch (e) {
 			const error = ensureError(e);
 			Container.get(Logger).debug(
 				`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
+				{
+					stacktrace: error.stack,
+				},
 			);
 
 			return ResponseHelper.sendErrorResponse(res, error);
