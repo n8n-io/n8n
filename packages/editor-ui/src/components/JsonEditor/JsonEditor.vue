@@ -17,7 +17,7 @@ import {
 
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
@@ -36,6 +36,7 @@ const emit = defineEmits<{
 const jsonEditorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);
 const editorState = ref<EditorState | null>(null);
+const isDirty = ref(false);
 
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
@@ -65,6 +66,7 @@ const extensions = computed(() => {
 			bracketMatching(),
 			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
+				isDirty.value = true;
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
 			}),
@@ -75,6 +77,12 @@ const extensions = computed(() => {
 
 onMounted(() => {
 	createEditor();
+});
+
+onBeforeUnmount(() => {
+	if (!editor.value) return;
+	if (isDirty.value) emit('update:modelValue', editor.value.state.doc.toString());
+	editor.value.destroy();
 });
 
 watch(

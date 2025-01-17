@@ -385,10 +385,10 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Execution
 
-	private executionThrottled({ executionId }: RelayEventMap['execution-throttled']) {
+	private executionThrottled({ executionId, type }: RelayEventMap['execution-throttled']) {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.throttled',
-			payload: { executionId },
+			payload: { executionId, type },
 		});
 	}
 

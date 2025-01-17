@@ -331,6 +331,15 @@ export const useTestDefinitionStore = defineStore(
 			return result;
 		};
 
+		const cancelTestRun = async (testDefinitionId: string, testRunId: string) => {
+			const result = await testDefinitionsApi.cancelTestRun(
+				rootStore.restApiContext,
+				testDefinitionId,
+				testRunId,
+			);
+			return result;
+		};
+
 		const deleteTestRun = async (params: { testDefinitionId: string; runId: string }) => {
 			const result = await testDefinitionsApi.deleteTestRun(rootStore.restApiContext, params);
 			if (result.success) {
@@ -439,6 +448,7 @@ export const useTestDefinitionStore = defineStore(
 			fetchTestRuns,
 			getTestRun,
 			startTestRun,
+			cancelTestRun,
 			deleteTestRun,
 			cleanupPolling,
 			getFieldIssues,

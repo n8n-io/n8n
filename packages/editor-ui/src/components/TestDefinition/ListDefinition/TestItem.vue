@@ -3,6 +3,7 @@ import type { TestListItem, TestItemAction } from '@/components/TestDefinition/t
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
+import { computed } from 'vue';
 
 export interface TestItemProps {
 	test: TestListItem;
