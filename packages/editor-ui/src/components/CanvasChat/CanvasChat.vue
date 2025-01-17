@@ -201,7 +201,7 @@ async function createExecutionPromise() {
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 	try {
-		const runWorkflowOptions = {
+		const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
 			triggerNode: payload.triggerNode,
 			nodeData: payload.nodeData,
 			source: payload.source,
