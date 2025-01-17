@@ -1,3 +1,14 @@
+## [1.75.1](https://github.com/n8n-io/n8n/compare/n8n@1.75.0...n8n@1.75.1) (2025-01-17)
+
+
+### Bug Fixes
+
+* **editor:** Defer crypto.randomUUID call in CodeNodeEditor ([#12630](https://github.com/n8n-io/n8n/issues/12630)) ([4ba62e4](https://github.com/n8n-io/n8n/commit/4ba62e4d599abeea3e9ebee681141ecee44a30e1))
+* **editor:** Fix Code node bug erasing and overwriting code when switching between nodes ([#12637](https://github.com/n8n-io/n8n/issues/12637)) ([021e08f](https://github.com/n8n-io/n8n/commit/021e08f17c42c047ec63a061d7c99b8373823d48))
+* **Execute Workflow Node:** Pass binary data to sub-workflow ([#12635](https://github.com/n8n-io/n8n/issues/12635)) ([8007623](https://github.com/n8n-io/n8n/commit/80076237d607176d8069b58a0272a461443060e2))
+
+
+
 # [1.75.0](https://github.com/n8n-io/n8n/compare/n8n@1.74.0...n8n@1.75.0) (2025-01-15)
 
 
