@@ -21,12 +21,14 @@ export function getEdgeRenderData(
 	} = {},
 ) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
+	const isConnectorStraight = sourceY === targetY;
 
 	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionType.Main) {
 		const segment = getBezierPath(props);
 		return {
 			segments: [segment],
 			labelPosition: [segment[1], segment[2]],
+			isConnectorStraight,
 		};
 	}
 
@@ -59,5 +61,6 @@ export function getEdgeRenderData(
 	return {
 		segments: [firstSegment, secondSegment],
 		labelPosition: [firstSegmentTargetX, firstSegmentTargetY],
+		isConnectorStraight,
 	};
 }
