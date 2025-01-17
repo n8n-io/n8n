@@ -40,7 +40,7 @@ function sanitizeFromAiParameterName(s: string) {
 }
 
 export class FromAiOverride implements ParameterOverride {
-	static readonly MARKER = '/* n8n-auto-generated-override */';
+	static readonly MARKER = '/* n8n-auto-generated-fromAi-override */';
 
 	static readonly NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
