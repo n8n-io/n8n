@@ -27,7 +27,7 @@ catalog:
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.23.8
+  zod: 3.24.1
   '@langchain/core': 0.3.30
 
 catalogs:
