@@ -711,11 +711,13 @@ export class WorkflowDataProxy {
 			return new ExpressionError(message, {
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
-				type: 'paired_item_no_info',
 				functionality: 'pairedItem',
-				descriptionKey: 'pairedItemPinned',
+				descriptionKey: isScriptingNode(nodeCause, that.workflow)
+					? 'pairedItemNoInfoCodeNode'
+					: 'pairedItemNoInfo',
 				nodeCause,
 				causeDetailed: `Missing pairedItem data (node '${nodeCause}' probably didn't supply it)`,
+				type: 'paired_item_no_info',
 			});
 		};
 

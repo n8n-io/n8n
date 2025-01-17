@@ -110,7 +110,10 @@ describe('NDV', () => {
 		ndv.actions.execute();
 		ndv.getters
 			.nodeRunErrorMessage()
-			.should('have.text', 'Info for expression missing from previous node');
+			.should(
+				'have.text',
+				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+			);
 		ndv.getters
 			.nodeRunErrorDescription()
 			.should(

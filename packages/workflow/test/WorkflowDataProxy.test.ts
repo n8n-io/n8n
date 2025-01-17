@@ -440,7 +440,7 @@ describe('WorkflowDataProxy', () => {
 							runIndex: 0,
 							itemIndex: 0,
 							type: 'paired_item_no_info',
-							descriptionKey: 'pairedItemPinned',
+							descriptionKey: 'pairedItemNoInfo',
 							nodeCause: 'Edit Fields',
 							causeDetailed:
 								"Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
@@ -466,7 +466,7 @@ describe('WorkflowDataProxy', () => {
 						runIndex: 0,
 						itemIndex: 0,
 						type: 'paired_item_no_info',
-						descriptionKey: 'pairedItemPinned',
+						descriptionKey: 'pairedItemNoInfo',
 						nodeCause: 'Edit Fields',
 						causeDetailed: "Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
 					},
