@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { TestListItem } from '@/components/TestDefinition/types';
+import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
+import { computed } from 'vue';
 
 export interface TestItemProps {
 	test: TestListItem;
@@ -15,47 +17,69 @@ const emit = defineEmits<{
 	'view-details': [testId: string];
 	'edit-test': [testId: string];
 	'delete-test': [testId: string];
+	'cancel-test-run': [testId: string, testRunId: string | null];
 }>();
 
 const actions = [
 	{
 		icon: 'play',
+		id: 'run',
 		event: () => emit('run-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.runTest'),
+		show: () => props.test.execution.status !== 'running',
+	},
+	{
+		icon: 'stop',
+		id: 'cancel',
+		event: () => emit('cancel-test-run', props.test.id, props.test.execution.id),
+		tooltip: locale.baseText('testDefinition.cancelTestRun'),
+		show: () => props.test.execution.status === 'running',
 	},
 	{
 		icon: 'list',
+		id: 'view',
 		event: () => emit('view-details', props.test.id),
 		tooltip: locale.baseText('testDefinition.viewDetails'),
 	},
 	{
 		icon: 'pen',
+		id: 'edit',
 		event: () => emit('edit-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.editTest'),
 	},
 	{
 		icon: 'trash',
+		id: 'delete',
 		event: () => emit('delete-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.deleteTest'),
 	},
 ];
+
+const visibleActions = computed(() => actions.filter((action) => action.show?.() ?? true));
 </script>
 
 <template>
-	<div :class="$style.testItem" @click="$emit('view-details', test.id)">
+	<div
+		:class="$style.testItem"
+		:data-test-id="`test-item-${test.id}`"
+		@click="$emit('view-details', test.id)"
+	>
 		<div :class="$style.testInfo">
 			<div :class="$style.testName">
 				{{ test.name }}
-				<n8n-tag v-if="test.tagName" :text="test.tagName" />
 			</div>
 			<div :class="$style.testCases">
-				{{ locale.baseText('testDefinition.list.testCases', { adjustToNumber: test.testCases }) }}
-				<n8n-loading v-if="!test.execution.lastRun" :loading="true" :rows="1" />
-				<span v-else>{{
-					locale.baseText('testDefinition.list.lastRun', {
-						interpolate: { lastRun: test.execution.lastRun },
-					})
-				}}</span>
+				<n8n-text size="small">
+					{{ locale.baseText('testDefinition.list.testRuns', { adjustToNumber: test.testCases }) }}
+				</n8n-text>
+				<template v-if="test.execution.status === 'running'">
+					{{ locale.baseText('testDefinition.list.running') }}
+					<n8n-spinner />
+				</template>
+				<span v-else-if="test.execution.lastRun">
+					{{ locale.baseText('testDefinition.list.lastRun') }}
+					<TimeAgo :date="test.execution.lastRun" />
+				</span>
 			</div>
 		</div>
 
@@ -68,18 +92,24 @@ const actions = [
 				}}
 			</div>
 			<div v-for="(value, key) in test.execution.metrics" :key="key" :class="$style.metric">
-				{{ key }}: {{ value ?? '-' }}
+				{{ key }}: {{ value.toFixed(2) ?? '-' }}
 			</div>
 		</div>
 
 		<div :class="$style.actions">
-			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top" :show-after="1000">
+			<n8n-tooltip
+				v-for="action in visibleActions"
+				:key="action.icon"
+				placement="top"
+				:show-after="1000"
+			>
 				<template #content>
 					{{ action.tooltip }}
 				</template>
 				<component
 					:is="n8nIconButton"
 					:icon="action.icon"
+					:data-test-id="`${action.id}-test-button-${test.id}`"
 					type="tertiary"
 					size="mini"
 					@click.stop="action.event"
@@ -115,7 +145,6 @@ const actions = [
 	align-items: center;
 	gap: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-4xs);
 	font-size: var(--font-size-s);
 }
 

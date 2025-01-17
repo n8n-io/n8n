@@ -1,3 +1,4 @@
+import { AiAssistantConfig } from './configs/aiAssistant.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -17,6 +18,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
@@ -121,4 +123,10 @@ export class GlobalConfig {
 
 	@Nested
 	diagnostics: DiagnosticsConfig;
+
+	@Nested
+	aiAssistant: AiAssistantConfig;
+
+	@Nested
+	tags: TagsConfig;
 }

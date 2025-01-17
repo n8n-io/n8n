@@ -1,4 +1,5 @@
 import type {
+	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
 	IExecuteData,
@@ -27,7 +28,6 @@ import {
 	copyInputItems,
 	normalizeItems,
 	constructExecutionMetaData,
-	getInputConnectionData,
 	assertBinaryData,
 	getBinaryDataBuffer,
 	copyBinaryFile,
@@ -36,9 +36,11 @@ import {
 	getSSHTunnelFunctions,
 	getFileSystemHelperFunctions,
 	getCheckProcessedHelperFunctions,
+	detectBinaryEncoding,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];
@@ -95,6 +97,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
 		this.nodeHelpers = {
@@ -128,7 +131,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		settings: unknown,
 		itemIndex: number,
 	): Promise<Result<T, E>> {
-		return await this.additionalData.startAgentJob<T, E>(
+		return await this.additionalData.startRunnerTask<T, E>(
 			this.additionalData,
 			jobType,
 			settings,
@@ -149,7 +152,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(

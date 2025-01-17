@@ -1,26 +1,37 @@
-import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
+import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Service } from 'typedi';
 
-import { InstanceSettings } from './InstanceSettings';
+import type { InstanceType } from './InstanceSettings';
+import { Logger } from './logging/logger';
+
+type ErrorReporterInitOptions = {
+	serverType: InstanceType | 'task_runner';
+	dsn: string;
+	release: string;
+	environment: string;
+	serverName: string;
+	/**
+	 * Function to allow filtering out errors before they are sent to Sentry.
+	 * Return true if the error should be filtered out.
+	 */
+	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
+};
 
 @Service()
 export class ErrorReporter {
-	private initialized = false;
-
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
 	private report: (error: Error | string, options?: ReportingOptions) => void;
 
-	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
-	) {
+	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
+
+	constructor(private readonly logger: Logger) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
 	}
@@ -33,35 +44,37 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
+				const msg = [
+					e.message + context,
+					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
+				].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				LoggerProxy.error(msg, meta);
+				this.logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
 		}
 	}
 
-	async init() {
-		if (this.initialized) return;
+	async shutdown(timeoutInMs = 1000) {
+		await close(timeoutInMs);
+	}
 
+	async init({
+		beforeSendFilter,
+		dsn,
+		serverType,
+		release,
+		environment,
+		serverName,
+	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
-		const dsn = this.globalConfig.sentry.backendDsn;
-		if (!dsn) {
-			this.initialized = true;
-			return;
-		}
+		if (!dsn) return;
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
-
-		const {
-			N8N_VERSION: release,
-			ENVIRONMENT: environment,
-			DEPLOYMENT_NAME: serverName,
-		} = process.env;
 
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
@@ -98,36 +111,37 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', this.instanceSettings.instanceType);
+		setTag('server_type', serverType);
 
 		this.report = (error, options) => captureException(error, options);
-
-		this.initialized = true;
+		this.beforeSendFilter = beforeSendFilter;
 	}
 
-	async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
+	async beforeSend(event: ErrorEvent, hint: EventHint) {
+		let { originalException } = hint;
+
 		if (!originalException) return null;
 
 		if (originalException instanceof Promise) {
 			originalException = await originalException.catch((error) => error as Error);
 		}
 
-		if (originalException instanceof AxiosError) return null;
-
 		if (
-			originalException instanceof Error &&
-			originalException.name === 'QueryFailedError' &&
-			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => originalException.message.includes(errMsg))
+			this.beforeSendFilter?.(event, {
+				...hint,
+				originalException,
+			})
 		) {
 			return null;
 		}
 
-		if (originalException instanceof ApplicationError) {
-			const { level, extra, tags } = originalException;
-			if (level === 'warning') return null;
-			event.level = level;
-			if (extra) event.extra = { ...event.extra, ...extra };
-			if (tags) event.tags = { ...event.tags, ...tags };
+		if (originalException instanceof AxiosError) return null;
+
+		if (this.isIgnoredSqliteError(originalException)) return null;
+		if (this.isApplicationError(originalException)) {
+			if (this.isIgnoredApplicationError(originalException)) return null;
+
+			this.extractEventDetailsFromApplicationError(event, originalException);
 		}
 
 		if (
@@ -151,6 +165,7 @@ export class ErrorReporter {
 	}
 
 	error(e: unknown, options?: ReportingOptions) {
+		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
 	}
@@ -167,5 +182,32 @@ export class ErrorReporter {
 		if (e instanceof Error) return e;
 		if (typeof e === 'string') return new ApplicationError(e);
 		return;
+	}
+
+	/** @returns true if the error should be filtered out */
+	private isIgnoredSqliteError(error: unknown) {
+		return (
+			error instanceof Error &&
+			error.name === 'QueryFailedError' &&
+			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
+		);
+	}
+
+	private isApplicationError(error: unknown): error is ApplicationError {
+		return error instanceof ApplicationError;
+	}
+
+	private isIgnoredApplicationError(error: ApplicationError) {
+		return error.level === 'warning';
+	}
+
+	private extractEventDetailsFromApplicationError(
+		event: ErrorEvent,
+		originalException: ApplicationError,
+	) {
+		const { level, extra, tags } = originalException;
+		event.level = level;
+		if (extra) event.extra = { ...event.extra, ...extra };
+		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 }

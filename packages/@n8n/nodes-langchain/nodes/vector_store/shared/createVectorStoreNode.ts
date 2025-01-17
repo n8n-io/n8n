@@ -3,6 +3,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import { DynamicTool } from 'langchain/tools';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -17,18 +18,25 @@ import type {
 	INodeListSearchResult,
 	Icon,
 	INodePropertyOptions,
+	ThemeIconColor,
 } from 'n8n-workflow';
 
+import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { processDocument } from './processDocuments';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
+type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
 
-const DEFAULT_OPERATION_MODES: NodeOperationMode[] = ['load', 'insert', 'retrieve'];
+const DEFAULT_OPERATION_MODES: NodeOperationMode[] = [
+	'load',
+	'insert',
+	'retrieve',
+	'retrieve-as-tool',
+];
 
 interface NodeMeta {
 	displayName: string;
@@ -36,11 +44,12 @@ interface NodeMeta {
 	description: string;
 	docsUrl: string;
 	icon: Icon;
+	iconColor?: ThemeIconColor;
 	credentials?: INodeCredentialDescription[];
 	operationModes?: NodeOperationMode[];
 }
 
-interface VectorStoreNodeConstructorArgs {
+export interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
 	methods?: {
 		listSearch?: {
@@ -71,10 +80,13 @@ interface VectorStoreNodeConstructorArgs {
 	) => Promise<VectorStore>;
 }
 
-function transformDescriptionForOperationMode(fields: INodeProperties[], mode: NodeOperationMode) {
+function transformDescriptionForOperationMode(
+	fields: INodeProperties[],
+	mode: NodeOperationMode | NodeOperationMode[],
+) {
 	return fields.map((field) => ({
 		...field,
-		displayOptions: { show: { mode: [mode] } },
+		displayOptions: { show: { mode: Array.isArray(mode) ? mode : [mode] } },
 	}));
 }
 
@@ -99,10 +111,18 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			action: 'Add documents to vector store',
 		},
 		{
-			name: 'Retrieve Documents (For Agent/Chain)',
+			name: 'Retrieve Documents (As Vector Store for Chain/Tool)',
 			value: 'retrieve',
-			description: 'Retrieve documents from vector store to be used with AI nodes',
-			action: 'Retrieve documents for AI processing',
+			description: 'Retrieve documents from vector store to be used as vector store with AI nodes',
+			action: 'Retrieve documents for Chain/Tool as Vector Store',
+			outputConnectionType: NodeConnectionType.AiVectorStore,
+		},
+		{
+			name: 'Retrieve Documents (As Tool for AI Agent)',
+			value: 'retrieve-as-tool',
+			description: 'Retrieve documents from vector store to be used as tool with AI nodes',
+			action: 'Retrieve documents for AI Agent as Tool',
+			outputConnectionType: NodeConnectionType.AiTool,
 		},
 		{
 			name: 'Update Documents',
@@ -124,6 +144,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
+			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			version: 1,
 			defaults: {
@@ -132,7 +153,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			codex: {
 				categories: ['AI'],
 				subcategories: {
-					AI: ['Vector Stores', 'Root Nodes'],
+					AI: ['Vector Stores', 'Tools', 'Root Nodes'],
+					Tools: ['Other Tools'],
 				},
 				resources: {
 					primaryDocumentation: [
@@ -149,6 +171,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const mode = parameters?.mode;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
 
+				if (mode === 'retrieve-as-tool') {
+					return inputs;
+				}
+
 				if (['insert', 'load', 'update'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
 				}
@@ -162,6 +188,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			outputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode ?? 'retrieve';
+
+				if (mode === 'retrieve-as-tool') {
+					return [{ displayName: "Tool", type: "${NodeConnectionType.AiTool}"}]
+				}
+
 				if (mode === 'retrieve') {
 					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
 				}
@@ -182,6 +213,37 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					displayOptions: {
 						show: {
 							mode: ['retrieve'],
+						},
+					},
+				},
+				{
+					displayName: 'Name',
+					name: 'toolName',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'Name of the vector store',
+					placeholder: 'e.g. company_knowledge_base',
+					validateType: 'string-alphanumeric',
+					displayOptions: {
+						show: {
+							mode: ['retrieve-as-tool'],
+						},
+					},
+				},
+				{
+					displayName: 'Description',
+					name: 'toolDescription',
+					type: 'string',
+					default: '',
+					required: true,
+					typeOptions: { rows: 2 },
+					description:
+						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					placeholder: `e.g. ${args.meta.description}`,
+					displayOptions: {
+						show: {
+							mode: ['retrieve-as-tool'],
 						},
 					},
 				},
@@ -210,7 +272,19 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					description: 'Number of top results to fetch from vector store',
 					displayOptions: {
 						show: {
-							mode: ['load'],
+							mode: ['load', 'retrieve-as-tool'],
+						},
+					},
+				},
+				{
+					displayName: 'Include Metadata',
+					name: 'includeDocumentMetadata',
+					type: 'boolean',
+					default: true,
+					description: 'Whether or not to include document metadata',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve-as-tool'],
 						},
 					},
 				},
@@ -228,7 +302,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					},
 				},
-				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
+				...transformDescriptionForOperationMode(args.loadFields ?? [], [
+					'load',
+					'retrieve-as-tool',
+				]),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
 			],
@@ -267,10 +344,16 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						filter,
 					);
 
+					const includeDocumentMetadata = this.getNodeParameter(
+						'includeDocumentMetadata',
+						itemIndex,
+						true,
+					) as boolean;
+
 					const serializedDocs = docs.map(([doc, score]) => {
 						const document = {
-							metadata: doc.metadata,
 							pageContent: doc.pageContent,
+							...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
 						};
 
 						return {
@@ -377,12 +460,12 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load" and "insert" operation modes are supported with execute',
+				'Only the "load", "update" and "insert" operation modes are supported with execute',
 			);
 		}
 
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
+			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 			const filter = getMetadataFiltersValues(this, itemIndex);
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
@@ -396,9 +479,54 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				};
 			}
 
+			if (mode === 'retrieve-as-tool') {
+				const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
+				const toolName = this.getNodeParameter('toolName', itemIndex) as string;
+				const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+				const includeDocumentMetadata = this.getNodeParameter(
+					'includeDocumentMetadata',
+					itemIndex,
+					true,
+				) as boolean;
+
+				const vectorStoreTool = new DynamicTool({
+					name: toolName,
+					description: toolDescription,
+					func: async (input) => {
+						const vectorStore = await args.getVectorStoreClient(
+							this,
+							filter,
+							embeddings,
+							itemIndex,
+						);
+						const embeddedPrompt = await embeddings.embedQuery(input);
+						const documents = await vectorStore.similaritySearchVectorWithScore(
+							embeddedPrompt,
+							topK,
+							filter,
+						);
+						return documents
+							.map((document) => {
+								if (includeDocumentMetadata) {
+									return { type: 'text', text: JSON.stringify(document[0]) };
+								}
+								return {
+									type: 'text',
+									text: JSON.stringify({ pageContent: document[0].pageContent }),
+								};
+							})
+							.filter((document) => !!document);
+					},
+				});
+
+				return {
+					response: logWrapper(vectorStoreTool, this),
+				};
+			}
+
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "retrieve" operation mode is supported to supply data',
+				'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
 			);
 		}
 	};

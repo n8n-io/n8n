@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
 	ExecutionBaseError,
 	IExecuteData,
@@ -12,16 +13,18 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
+	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
 	assertBinaryData,
 	constructExecutionMetaData,
 	copyInputItems,
+	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 	getCheckProcessedHelperFunctions,
@@ -30,10 +33,10 @@ import {
 	getSSHTunnelFunctions,
 	normalizeItems,
 	returnJsonArray,
-	getInputConnectionData,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
@@ -85,6 +88,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
 			normalizeItems,
@@ -107,7 +111,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
@@ -137,7 +141,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	/** @deprecated create a context object with inputData for every runIndex */
 	addInputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
@@ -166,9 +170,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	/** @deprecated Switch to WorkflowExecute to store output on runExecutionData.resultData.runData */
 	addOutputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		currentNodeRunIndex: number,
-		data: INodeExecutionData[][],
+		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
 	): void {
 		const nodeName = this.node.name;
@@ -192,17 +196,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	async addExecutionDataFunctions(
 		type: 'input' | 'output',
 		data: INodeExecutionData[][] | ExecutionBaseError,
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		sourceNodeName: string,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
 	): Promise<void> {
-		if (connectionType === NodeConnectionType.Main) {
-			throw new ApplicationError('Setting type is not supported for main connection', {
-				extra: { type },
-			});
-		}
-
 		const {
 			additionalData,
 			runExecutionData,
@@ -258,23 +256,16 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			if (additionalData.sendDataToUI) {
-				additionalData.sendDataToUI('nodeExecuteBefore', {
-					executionId: additionalData.executionId,
-					nodeName,
-				});
-			}
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteBefore', [nodeName]);
 		} else {
 			// Outputs
 			taskData.executionTime = new Date().getTime() - taskData.startTime;
 
-			if (additionalData.sendDataToUI) {
-				additionalData.sendDataToUI('nodeExecuteAfter', {
-					executionId: additionalData.executionId,
-					nodeName,
-					data: taskData,
-				});
-			}
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteAfter', [
+				nodeName,
+				taskData,
+				this.runExecutionData,
+			]);
 
 			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
 				runExecutionData.executionData!.metadata = {};

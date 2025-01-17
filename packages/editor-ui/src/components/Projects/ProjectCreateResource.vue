@@ -8,6 +8,7 @@ type Action = {
 };
 defineProps<{
 	actions: Action[];
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,7 +26,7 @@ const emit = defineEmits<{
 			:teleported="false"
 			@action="emit('action', $event)"
 		>
-			<N8nIconButton :class="[$style.buttonGroupDropdown]" icon="angle-down" />
+			<N8nIconButton :disabled="disabled" :class="[$style.buttonGroupDropdown]" icon="angle-down" />
 		</N8nActionToggle>
 	</div>
 </template>

@@ -10,6 +10,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
@@ -23,8 +24,9 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown } from 'n8n-design-system';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from 'n8n-design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
+import Logo from './Logo/Logo.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -35,6 +37,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
+const sourceControlStore = useSourceControlStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -165,10 +168,6 @@ const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const logoPath = computed(
-	() => basePath.value + (isCollapsed.value ? 'static/logo/collapsed.svg' : uiStore.logo),
-);
-
 const hasVersionUpdates = computed(
 	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
 );
@@ -186,12 +185,9 @@ onMounted(async () => {
 		});
 	}
 
-	await nextTick(() => {
-		uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
-		fullyExpanded.value = !isCollapsed.value;
-	});
-
 	becomeTemplateCreatorStore.startMonitoringCta();
+
+	await nextTick(onResizeEnd);
 });
 
 onBeforeUnmount(() => {
@@ -274,27 +270,28 @@ const handleSelect = (key: string) => {
 	}
 };
 
-const onResize = (event: UIEvent) => {
-	void callDebounced(onResizeEnd, { debounceTime: 100 }, event);
-};
+function onResize() {
+	void callDebounced(onResizeEnd, { debounceTime: 250 });
+}
 
-const onResizeEnd = async (event: UIEvent) => {
-	const browserWidth = (event.target as Window).outerWidth;
-	await checkWidthAndAdjustSidebar(browserWidth);
-};
-
-const checkWidthAndAdjustSidebar = async (width: number) => {
-	if (width < 900) {
+async function onResizeEnd() {
+	if (window.outerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
-		await nextTick();
-		fullyExpanded.value = !isCollapsed.value;
+	} else {
+		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
 	}
-};
+
+	void nextTick(() => {
+		fullyExpanded.value = !isCollapsed.value;
+	});
+}
 
 const {
 	menu,
 	handleSelect: handleMenuSelect,
 	createProjectAppendSlotName,
+	createWorkflowsAppendSlotName,
+	createCredentialsAppendSlotName,
 	projectsLimitReachedMessage,
 	upgradeLabel,
 } = useGlobalEntityCreation();
@@ -321,7 +318,30 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<Logo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			>
+				<N8nTooltip
+					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
+					placement="bottom"
+				>
+					<template #content>
+						<i18n-t keypath="readOnlyEnv.tooltip">
+							<template #link>
+								<N8nLink
+									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
+									size="small"
+								>
+									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
+								</N8nLink>
+							</template>
+						</i18n-t>
+					</template>
+					<N8nIcon icon="lock" size="xsmall" :class="$style.readOnlyEnvironmentIcon" />
+				</N8nTooltip>
+			</Logo>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -329,6 +349,24 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				@select="handleMenuSelect"
 			>
 				<N8nIconButton icon="plus" type="secondary" outline />
+				<template #[createWorkflowsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createCredentialsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
 				<template #[createProjectAppendSlotName]="{ item }">
 					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
 						<N8nButton
@@ -451,15 +489,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 90px;
+		padding-top: 100px;
 
 		.logo {
 			flex-direction: column;
-			gap: 16px;
-		}
-
-		.logo img {
-			left: 0;
+			gap: 12px;
 		}
 	}
 }
@@ -546,5 +580,15 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	:global(#help) {
 		display: none;
 	}
+}
+
+.readOnlyEnvironmentIcon {
+	display: inline-block;
+	color: white;
+	background-color: var(--color-warning);
+	align-self: center;
+	padding: 2px;
+	border-radius: var(--border-radius-small);
+	margin: 5px 5px 0;
 }
 </style>

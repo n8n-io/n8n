@@ -12,7 +12,7 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "develop": "cd ..; pnpm dev",
+    "develop": "cd ..; pnpm dev:e2e:server",
     "start": "cd ..; pnpm start"
   },
   "devDependencies": {

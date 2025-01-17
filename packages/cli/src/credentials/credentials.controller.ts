@@ -1,6 +1,8 @@
+import { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -18,12 +20,12 @@ import {
 	RestController,
 	ProjectScope,
 } from '@/decorators';
+import { Param, Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -49,10 +51,15 @@ export class CredentialsController {
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getMany(req: CredentialRequest.GetMany) {
+	async getMany(
+		req: CredentialRequest.GetMany,
+		_res: unknown,
+		@Query query: CredentialsGetManyRequestQuery,
+	) {
 		const credentials = await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
-			includeScopes: req.query.includeScopes,
+			includeScopes: query.includeScopes,
+			includeData: query.includeData,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -82,21 +89,22 @@ export class CredentialsController {
 
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
-	async getOne(req: CredentialRequest.Get) {
+	async getOne(
+		req: CredentialRequest.Get,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: CredentialsGetOneRequestQuery,
+	) {
 		const { shared, ...credential } = this.license.isSharingEnabled()
 			? await this.enterpriseCredentialsService.getOne(
 					req.user,
-					req.params.credentialId,
+					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
 					// the scopes and always decrypt the data if the user has the permissions
 					// to do so.
-					req.query.includeData === 'true',
+					query.includeData,
 				)
-			: await this.credentialsService.getOne(
-					req.user,
-					req.params.credentialId,
-					req.query.includeData === 'true',
-				);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -147,32 +155,22 @@ export class CredentialsController {
 
 	@Post('/')
 	async createCredentials(req: CredentialRequest.Create) {
-		const newCredential = await this.credentialsService.prepareCreateData(req.body);
-
-		const encryptedData = this.credentialsService.createEncryptedData(null, newCredential);
-		const { shared, ...credential } = await this.credentialsService.save(
-			newCredential,
-			encryptedData,
-			req.user,
-			req.body.projectId,
-		);
+		const newCredential = await this.credentialsService.createCredential(req.body, req.user);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
-			credential.id,
+			newCredential.id,
 		);
 
 		this.eventService.emit('credentials-created', {
 			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
+			credentialType: newCredential.type,
+			credentialId: newCredential.id,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
 		});
 
-		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
-
-		return { ...credential, scopes };
+		return newCredential;
 	}
 
 	@Patch('/:credentialId')
@@ -196,7 +194,11 @@ export class CredentialsController {
 			);
 		}
 
-		const decryptedData = this.credentialsService.decrypt(credential);
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		const decryptedData = this.credentialsService.decrypt(credential, true);
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,

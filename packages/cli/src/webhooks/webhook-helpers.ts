@@ -7,9 +7,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type express from 'express';
 import get from 'lodash/get';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -37,16 +38,16 @@ import {
 	FORM_NODE_TYPE,
 	NodeOperationError,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 import { finished } from 'stream/promises';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -453,7 +454,7 @@ export async function executeWebhook(
 		}
 
 		let pinData: IPinData | undefined;
-		const usePinData = executionMode === 'manual';
+		const usePinData = ['manual', 'evaluation'].includes(executionMode);
 		if (usePinData) {
 			pinData = workflowData.pinData;
 			runExecutionData.resultData.pinData = pinData;
@@ -530,6 +531,15 @@ export async function executeWebhook(
 						{ executionId, workflowId: workflow.id },
 					);
 				});
+		}
+
+		if (
+			config.getEnv('executions.mode') === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' &&
+			runData.executionMode === 'manual'
+		) {
+			assert(runData.executionData);
+			runData.executionData.isTestWebhook = true;
 		}
 
 		// Start now to run the workflow

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { AnnotationVote } from 'n8n-workflow';
-import Container from 'typedi';
 
 import type { ExecutionData } from '@/databases/entities/execution-data';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';

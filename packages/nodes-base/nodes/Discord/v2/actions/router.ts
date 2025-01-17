@@ -1,14 +1,13 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { discordApiRequest } from '../transport';
-import { checkAccessToGuild } from '../helpers/utils';
-
-import * as message from './message';
 import * as channel from './channel';
 import * as member from './member';
-import * as webhook from './webhook';
+import * as message from './message';
 import type { Discord } from './node.type';
+import * as webhook from './webhook';
+import { checkAccessToGuild } from '../helpers/utils';
+import { discordApiRequest } from '../transport';
 
 export async function router(this: IExecuteFunctions) {
 	let returnData: INodeExecutionData[] = [];

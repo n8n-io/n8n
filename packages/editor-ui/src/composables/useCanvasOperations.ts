@@ -52,6 +52,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
+	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 } from '@/types';
@@ -380,6 +381,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
+		workflowsStore.setNodePristine(node.name, false);
 		setNodeActiveByName(node.name);
 	}
 
@@ -1230,11 +1232,63 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		});
 	}
 
+	function revalidateNodeConnections(id: string, connectionMode: CanvasConnectionMode) {
+		const node = workflowsStore.getNodeById(id);
+		const isInput = connectionMode === CanvasConnectionMode.Input;
+		if (!node) {
+			return;
+		}
+
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const connections = mapLegacyConnectionsToCanvasConnections(
+			workflowsStore.workflow.connections,
+			workflowsStore.workflow.nodes,
+		);
+
+		connections.forEach((connection) => {
+			const isRelevantConnection = isInput ? connection.target === id : connection.source === id;
+
+			if (isRelevantConnection) {
+				const otherNodeId = isInput ? connection.source : connection.target;
+
+				const otherNode = workflowsStore.getNodeById(otherNodeId);
+				if (!otherNode || !connection.data) {
+					return;
+				}
+
+				const [firstNode, secondNode] = isInput ? [otherNode, node] : [node, otherNode];
+
+				if (
+					!isConnectionAllowed(
+						firstNode,
+						secondNode,
+						connection.data.source,
+						connection.data.target,
+					)
+				) {
+					void nextTick(() => deleteConnection(connection));
+				}
+			}
+		});
+	}
+
+	function revalidateNodeInputConnections(id: string) {
+		return revalidateNodeConnections(id, CanvasConnectionMode.Input);
+	}
+
+	function revalidateNodeOutputConnections(id: string) {
+		return revalidateNodeConnections(id, CanvasConnectionMode.Output);
+	}
+
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		sourceConnection: IConnection,
-		targetConnection: IConnection,
+		sourceConnection: IConnection | CanvasConnectionPort,
+		targetConnection: IConnection | CanvasConnectionPort,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
@@ -1834,6 +1888,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
+		workflowData.meta = {
+			...workflowData.meta,
+			...workflowsStore.workflow.meta,
+			instanceId: rootStore.instanceId,
+		};
+
 		await clipboard.copy(JSON.stringify(workflowData, null, 2));
 
 		telemetry.track('User copied nodes', {
@@ -1864,7 +1924,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		workflowsStore.setWorkflowExecutionData(data);
 
-		if (data.mode !== 'manual') {
+		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});
 		}
 
@@ -1908,6 +1968,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		deleteConnection,
 		revertDeleteConnection,
 		deleteConnectionsByNodeId,
+		revalidateNodeInputConnections,
+		revalidateNodeOutputConnections,
 		isConnectionAllowed,
 		filterConnectionsByNodes,
 		importWorkflowData,

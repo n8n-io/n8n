@@ -28,15 +28,27 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '@/composables/useCanvas';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import {
+	createCanvasConnectionHandleString,
+	insertSpacersBetweenEndpoints,
+} from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import { isEqual } from 'lodash-es';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 };
+
+const slots = defineSlots<{
+	toolbar?: (props: {
+		inputs: (typeof mainInputs)['value'];
+		outputs: (typeof mainOutputs)['value'];
+		data: CanvasNodeData;
+	}) => void;
+}>();
 
 const emit = defineEmits<{
 	add: [id: string, handle: string];
@@ -47,6 +59,8 @@ const emit = defineEmits<{
 	activate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
+	'update:inputs': [id: string];
+	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 }>();
 
@@ -59,15 +73,25 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle } = useCanvas();
 
+/*
+  Toolbar slot classes
+*/
+const nodeClasses = ref<string[]>([]);
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
-	useNodeConnections({
-		inputs,
-		outputs,
-		connections,
-	});
+const {
+	mainInputs,
+	nonMainInputs,
+	requiredNonMainInputs,
+	mainOutputs,
+	nonMainOutputs,
+	isValidConnection,
+} = useNodeConnections({
+	inputs,
+	outputs,
+	connections,
+});
 
 const isDisabled = computed(() => props.data.disabled);
 
@@ -80,6 +104,7 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
+	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
 
 /**
@@ -89,7 +114,7 @@ const classes = computed(() => ({
 const canvasNodeEventBus = ref(createEventBus<CanvasNodeEventBusEvents>());
 
 function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
-	if (event.ids.includes(props.id)) {
+	if (event.ids.includes(props.id) && canvasNodeEventBus.value) {
 		canvasNodeEventBus.value.emit(event.action, event.payload);
 	}
 }
@@ -98,23 +123,15 @@ function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
  * Inputs
  */
 
+const nonMainInputsWithSpacer = computed(() =>
+	insertSpacersBetweenEndpoints(nonMainInputs.value, requiredNonMainInputs.value.length),
+);
+
 const mappedInputs = computed(() => {
 	return [
-		...mainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Left,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Bottom,
-				offsetAxis: 'left',
-			}),
-		),
-	];
+		...mainInputs.value.map(mainInputsMappingFn),
+		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -123,21 +140,9 @@ const mappedInputs = computed(() => {
 
 const mappedOutputs = computed(() => {
 	return [
-		...mainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Right,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Top,
-				offsetAxis: 'left',
-			}),
-		),
-	];
+		...mainOutputs.value.map(mainOutputsMappingFn),
+		...nonMainOutputs.value.map(nonMainOutputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -163,10 +168,14 @@ const createEndpointMappingFn =
 		offsetAxis: 'top' | 'left';
 	}) =>
 	(
-		endpoint: CanvasConnectionPort,
+		endpoint: CanvasConnectionPort | null,
 		index: number,
-		endpoints: CanvasConnectionPort[],
-	): CanvasElementPortWithRenderData => {
+		endpoints: Array<CanvasConnectionPort | null>,
+	): CanvasElementPortWithRenderData | undefined => {
+		if (!endpoint) {
+			return;
+		}
+
 		const handleId = createCanvasConnectionHandleString({
 			mode,
 			type: endpoint.type,
@@ -190,6 +199,30 @@ const createEndpointMappingFn =
 			},
 		};
 	};
+
+const mainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Left,
+	offsetAxis: 'top',
+});
+
+const nonMainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Bottom,
+	offsetAxis: 'left',
+});
+
+const mainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Right,
+	offsetAxis: 'top',
+});
+
+const nonMainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Top,
+	offsetAxis: 'left',
+});
 
 /**
  * Events
@@ -230,6 +263,12 @@ function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
 
+function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
+	nodeClasses.value = add
+		? [...new Set([...nodeClasses.value, className])]
+		: nodeClasses.value.filter((c) => c !== className);
+}
+
 /**
  * Provide
  */
@@ -265,17 +304,36 @@ watch(
 	},
 );
 
+watch(inputs, (newValue, oldValue) => {
+	if (!isEqual(newValue, oldValue)) {
+		emit('update:inputs', props.id);
+	}
+});
+
+watch(outputs, (newValue, oldValue) => {
+	if (!isEqual(newValue, oldValue)) {
+		emit('update:outputs', props.id);
+	}
+});
+
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.on('update:node:class', onUpdateClass);
 });
 
 onBeforeUnmount(() => {
 	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.off('update:node:class', onUpdateClass);
 });
 </script>
 
 <template>
-	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
+	<div
+		:class="classes"
+		data-test-id="canvas-node"
+		:data-node-name="data.name"
+		:data-node-type="data.type"
+	>
 		<template
 			v-for="source in mappedOutputs"
 			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
@@ -285,9 +343,10 @@ onBeforeUnmount(() => {
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
-				:data-node-name="label"
+				:data-node-name="data.name"
 				data-test-id="canvas-node-output-handle"
-				:data-handle-index="source.index"
+				:data-index="source.index"
+				:data-connection-type="source.type"
 				@add="onAdd"
 			/>
 		</template>
@@ -302,14 +361,19 @@ onBeforeUnmount(() => {
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				data-test-id="canvas-node-input-handle"
-				:data-handle-index="target.index"
-				:data-node-name="label"
+				:data-index="target.index"
+				:data-connection-type="target.type"
+				:data-node-name="data.name"
 				@add="onAdd"
 			/>
 		</template>
 
+		<template v-if="slots.toolbar">
+			<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
+		</template>
+
 		<CanvasNodeToolbar
-			v-if="nodeTypeDescription"
+			v-else-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
