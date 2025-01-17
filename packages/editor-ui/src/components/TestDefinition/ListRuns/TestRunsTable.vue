@@ -4,9 +4,8 @@ import { computed, ref } from 'vue';
 import type { TestTableColumn } from '../shared/TestTableBase.vue';
 import TestTableBase from '../shared/TestTableBase.vue';
 import { convertToDisplayDate } from '@/utils/typesUtils';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useMessage } from '@/composables/useMessage';
 
 const emit = defineEmits<{
 	getRunDetail: [run: TestRunRecord];
@@ -78,26 +77,6 @@ function onSelectionChange(runs: TestRunRecord[]) {
 }
 
 async function deleteRuns() {
-	const { confirm } = useMessage();
-
-	const deleteConfirmed = await confirm(
-		locale.baseText('Delete runs'),
-		locale.baseText('Delete runs'),
-		{
-			type: 'warning',
-			confirmButtonText: locale.baseText(
-				'settings.log-streaming.destinationDelete.confirmButtonText',
-			),
-			cancelButtonText: locale.baseText(
-				'settings.log-streaming.destinationDelete.cancelButtonText',
-			),
-		},
-	);
-
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
-	}
-
 	emit('deleteRuns', selectedRows.value);
 }
 </script>

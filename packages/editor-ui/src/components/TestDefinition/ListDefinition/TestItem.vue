@@ -10,12 +10,16 @@ export interface TestItemProps {
 	actions: TestItemAction[];
 }
 
-defineProps<TestItemProps>();
+const props = defineProps<TestItemProps>();
 const locale = useI18n();
 
 defineEmits<{
 	'view-details': [testId: string];
 }>();
+
+const visibleActions = computed(() =>
+	props.actions.filter((action) => action.show?.(props.test.id) ?? true),
+);
 </script>
 
 <template>
@@ -58,7 +62,7 @@ defineEmits<{
 
 		<div :class="$style.actions">
 			<n8n-tooltip
-				v-for="action in actions"
+				v-for="action in visibleActions"
 				:key="action.icon"
 				placement="top"
 				:show-after="1000"

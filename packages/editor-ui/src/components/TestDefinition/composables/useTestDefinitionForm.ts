@@ -5,7 +5,6 @@ import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.e
 import type { N8nInput } from 'n8n-design-system';
 import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
 import type { EditableField, EditableFormState, EvaluationFormState } from '../types';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 type FormRefs = {
 	nameInput: ComponentPublicInstance<typeof N8nInput>;
@@ -14,7 +13,6 @@ type FormRefs = {
 
 export function useTestDefinitionForm() {
 	const evaluationsStore = useTestDefinitionStore();
-	const tagsStore = useAnnotationTagsStore();
 
 	// State initialization
 	const state = ref<EvaluationFormState>({

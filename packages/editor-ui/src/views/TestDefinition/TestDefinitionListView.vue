@@ -36,6 +36,13 @@ const actions = computed<TestItemAction[]>(() => [
 				: locale.baseText('testDefinition.runTest'),
 	},
 	{
+		icon: 'stop',
+		id: 'cancel',
+		event: onCancelTestRun,
+		tooltip: () => locale.baseText('testDefinition.cancelTestRun'),
+		show: (testId) => isTestRunning(testId),
+	},
+	{
 		icon: 'list',
 		id: 'view',
 		event: onViewDetails,
@@ -148,8 +155,9 @@ async function onRunTest(testId: string) {
 	}
 }
 
-async function onCancelTestRun(testId: string, testRunId: string | null) {
+async function onCancelTestRun(testId: string) {
 	try {
+		const testRunId = testDefinitionStore.lastRunByTestId[testId]?.id;
 		// FIXME: testRunId might be null for a short period of time between user clicking start and the test run being created and fetched. Just ignore it for now.
 		if (!testRunId) {
 			throw new Error('Failed to cancel test run');

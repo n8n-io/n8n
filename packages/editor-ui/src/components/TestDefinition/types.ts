@@ -13,6 +13,7 @@ export interface TestItemAction {
 	event: (testId: string) => void | Promise<void>;
 	tooltip: (testId: string) => string;
 	disabled?: (testId: string) => boolean;
+	show?: (testId: string) => boolean;
 }
 
 export interface EditableFormState {
