@@ -12,12 +12,12 @@ defineSlots<{
 	displayItem: (props: Item) => unknown;
 }>();
 
-type PillListProps = {
+type SelectableListProps = {
 	inputs: Item[];
 	disabled?: boolean;
 };
 
-const props = withDefaults(defineProps<PillListProps>(), {
+const props = withDefaults(defineProps<SelectableListProps>(), {
 	inputs: () => [],
 	disabled: false,
 });
@@ -29,9 +29,9 @@ const selectedItems = defineModel<Record<string, Value>>({ required: true });
 
 const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x] as const)));
 
-const visiblePills = computed(() => {
+const visibleSelectables = computed(() => {
 	return props.inputs
-		.filter((pill) => !selectedItems.value.hasOwnProperty(pill.name))
+		.filter((selectable) => !selectedItems.value.hasOwnProperty(selectable.name))
 		.sort(itemComparator);
 });
 
@@ -59,12 +59,12 @@ function itemComparator(a: Item, b: Item) {
 
 <template>
 	<div>
-		<div :class="$style.pillContainer">
+		<div :class="$style.selectableContainer">
 			<span
-				v-for="item in visiblePills"
+				v-for="item in visibleSelectables"
 				:key="item.name"
-				:class="$style.pillCell"
-				:data-test-id="`pill-list-pill-${item.name}`"
+				:class="$style.selectableCell"
+				:data-test-id="`selectable-list-selectable-${item.name}`"
 				@click="!props.disabled && addToSelectedItems(item.name)"
 			>
 				<slot name="addItem" v-bind="item"
@@ -76,13 +76,13 @@ function itemComparator(a: Item, b: Item) {
 			v-for="item in sortedSelectedItems"
 			:key="item.name"
 			:class="$style.slotComboContainer"
-			:data-test-id="`pill-list-slot-${item.name}`"
+			:data-test-id="`selectable-list-slot-${item.name}`"
 		>
 			<N8nIcon
 				:class="$style.slotRemoveIcon"
 				size="xsmall"
 				:icon="disabled ? 'none' : 'trash'"
-				:data-test-id="`pill-list-remove-slot-${item.name}`"
+				:data-test-id="`selectable-list-remove-slot-${item.name}`"
 				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>
 			<div :class="$style.slotContainer">
@@ -104,12 +104,12 @@ function itemComparator(a: Item, b: Item) {
 	flex-grow: 1;
 }
 
-.pillContainer {
+.selectableContainer {
 	width: 100%;
 	flex-wrap: wrap;
 	display: flex;
 }
-.pillCell {
+.selectableCell {
 	display: flex;
 	margin-right: var(--spacing-3xs);
 

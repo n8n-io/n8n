@@ -1,10 +1,10 @@
 import type { StoryFn } from '@storybook/vue3';
 
-import N8nPillList from './PillList.vue';
+import N8nSelectableList from './SelectableList.vue';
 
 export default {
-	title: 'Modules/PillList',
-	component: N8nPillList,
+	title: 'Modules/SelectableList',
+	component: N8nSelectableList,
 	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -18,13 +18,13 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	}),
 	props: Object.keys(argTypes),
 	// Generics make this difficult to type
-	components: N8nPillList as never,
+	components: N8nSelectableList as never,
 	template:
-		'<n8n-pill-list v-bind="args" v-model="model"><template #displayItem="{ name }">Slot content for {{name}}</template></n8n-pill-list>',
+		'<n8n-selectable-list v-bind="args" v-model="model"><template #displayItem="{ name }">Slot content for {{name}}</template></n8n-selectable-list>',
 });
 
-export const PillList = Template.bind({});
-PillList.args = {
+export const SelectableList = Template.bind({});
+SelectableList.args = {
 	modelValue: {
 		propC: 'propC pre-existing initial value',
 	},
