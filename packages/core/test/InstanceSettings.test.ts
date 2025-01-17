@@ -214,33 +214,58 @@ describe('InstanceSettings', () => {
 		});
 
 		it('should return true if /.dockerenv exists', () => {
-			mockFs.existsSync.calledWith('/.dockerenv').mockReturnValueOnce(true);
+			mockFs.existsSync.mockImplementation((path) => path === '/.dockerenv');
 			expect(settings.isDocker).toBe(true);
 			expect(mockFs.existsSync).toHaveBeenCalledWith('/.dockerenv');
 			expect(mockFs.readFileSync).not.toHaveBeenCalledWith('/proc/self/cgroup', 'utf8');
 		});
 
-		it('should return true if /proc/self/cgroup contains docker', () => {
-			mockFs.existsSync.calledWith('/.dockerenv').mockReturnValueOnce(false);
-			mockFs.readFileSync
-				.calledWith('/proc/self/cgroup', 'utf8')
-				.mockReturnValueOnce('docker cgroup');
-
+		it('should return true if /run/.containerenv exists', () => {
+			mockFs.existsSync.mockImplementation((path) => path === '/run/.containerenv');
 			expect(settings.isDocker).toBe(true);
-			expect(mockFs.existsSync).toHaveBeenCalledWith('/.dockerenv');
-			expect(mockFs.readFileSync).toHaveBeenCalledWith('/proc/self/cgroup', 'utf8');
+			expect(mockFs.existsSync).toHaveBeenCalledWith('/run/.containerenv');
+			expect(mockFs.readFileSync).not.toHaveBeenCalledWith('/proc/self/cgroup', 'utf8');
 		});
+
+		test.each(['docker', 'kubepods', 'containerd'])(
+			'should return true if /proc/self/cgroup contains %s',
+			(str) => {
+				mockFs.existsSync.mockReturnValueOnce(false);
+				mockFs.readFileSync.calledWith('/proc/self/cgroup', 'utf8').mockReturnValueOnce(str);
+
+				expect(settings.isDocker).toBe(true);
+				expect(mockFs.existsSync).toHaveBeenCalledWith('/.dockerenv');
+				expect(mockFs.readFileSync).toHaveBeenCalledWith('/proc/self/cgroup', 'utf8');
+			},
+		);
+
+		test.each(['docker', 'kubelet', 'containerd'])(
+			'should return true if /proc/self/mountinfo contains %s',
+			(str) => {
+				mockFs.existsSync.mockReturnValueOnce(false);
+				mockFs.readFileSync.calledWith('/proc/self/cgroup', 'utf8').mockReturnValueOnce('');
+				mockFs.readFileSync.calledWith('/proc/self/mountinfo', 'utf8').mockReturnValueOnce(str);
+
+				expect(settings.isDocker).toBe(true);
+				expect(mockFs.existsSync).toHaveBeenCalledWith('/.dockerenv');
+				expect(mockFs.readFileSync).toHaveBeenCalledWith('/proc/self/cgroup', 'utf8');
+				expect(mockFs.readFileSync).toHaveBeenCalledWith('/proc/self/mountinfo', 'utf8');
+			},
+		);
 
 		it('should return false if no docker indicators are found', () => {
 			mockFs.existsSync.calledWith('/.dockerenv').mockReturnValueOnce(false);
 			mockFs.readFileSync.calledWith('/proc/self/cgroup', 'utf8').mockReturnValueOnce('');
+			mockFs.readFileSync.calledWith('/proc/self/mountinfo', 'utf8').mockReturnValueOnce('');
 			expect(settings.isDocker).toBe(false);
 		});
 
-		it('should return false if checking for docker throws an error', () => {
-			mockFs.existsSync.calledWith('/.dockerenv').mockImplementationOnce(() => {
-				throw new Error('Access denied');
+		it('should return false if reading any of these files throws an error', () => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.readFileSync.mockImplementation(() => {
+				throw new Error('File not found');
 			});
+
 			expect(settings.isDocker).toBe(false);
 		});
 
