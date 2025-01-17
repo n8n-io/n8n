@@ -1,7 +1,14 @@
 <script setup lang="ts" generic="Value, Item extends { name: string; initialValue: Value }">
 import { computed } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
+
+const { t } = useI18n();
+
 defineSlots<{
+	// This slot is used to display a selectable item
+	addItem: (props: Item) => unknown;
+	// This slot is used to display a selected item
 	displayItem: (props: Item) => unknown;
 }>();
 
@@ -23,16 +30,18 @@ const selectedItems = defineModel<Record<string, Value>>({ required: true });
 const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x] as const)));
 
 const visiblePills = computed(() => {
-	return props.inputs.filter((pill) => !selectedItems.value.hasOwnProperty(pill.name));
+	return props.inputs
+		.filter((pill) => !selectedItems.value.hasOwnProperty(pill.name))
+		.sort(itemComparator);
 });
 
 const sortedSelectedItems = computed(() => {
-	return [
-		...Object.entries(selectedItems.value).map(([name, initialValue]) => ({
+	return Object.entries(selectedItems.value)
+		.map(([name, initialValue]) => ({
 			...inputMap.value[name],
 			initialValue,
-		})),
-	].sort((a, b) => (a.name[0] < b.name[0] ? -1 : 1));
+		}))
+		.sort(itemComparator);
 });
 
 function addToSelectedItems(name: string) {
@@ -42,19 +51,25 @@ function addToSelectedItems(name: string) {
 function removeFromSelectedItems(name: string) {
 	delete selectedItems.value[name];
 }
+
+function itemComparator(a: Item, b: Item) {
+	return a.name.localeCompare(b.name);
+}
 </script>
 
 <template>
 	<div>
 		<div :class="$style.pillContainer">
 			<span
-				v-for="item in [...visiblePills].sort((a, b) => (a.name < b.name ? -1 : 1))"
+				v-for="item in visiblePills"
 				:key="item.name"
 				:class="$style.pillCell"
 				:data-test-id="`pill-list-pill-${item.name}`"
 				@click="!props.disabled && addToSelectedItems(item.name)"
 			>
-				+ Add a {{ item.name }}
+				<slot name="addItem" v-bind="item"
+					>{{ t('selectableList.addDefault') }} {{ item.name }}</slot
+				>
 			</span>
 		</div>
 		<div
@@ -71,9 +86,7 @@ function removeFromSelectedItems(name: string) {
 				@click="!disabled && removeFromSelectedItems(item.name)"
 			/>
 			<div :class="$style.slotContainer">
-				<slot name="displayItem" v-bind="item"
-					>Empty slot with v-bind: {{ JSON.stringify(item) }}</slot
-				>
+				<slot name="displayItem" v-bind="item" />
 			</div>
 		</div>
 	</div>

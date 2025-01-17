@@ -12,11 +12,15 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args: { ...args, modelValue: undefined }, model: args.modelValue }),
+	setup: () => ({
+		args: { ...args, modelValue: undefined },
+		model: args.modelValue,
+	}),
 	props: Object.keys(argTypes),
 	// Generics make this difficult to type
 	components: N8nPillList as never,
-	template: '<n8n-pill-list v-bind="args" v-model="model" />',
+	template:
+		'<n8n-pill-list v-bind="args" v-model="model"><template #displayItem="{ name }">Slot content for {{name}}</template></n8n-pill-list>',
 });
 
 export const PillList = Template.bind({});
@@ -26,16 +30,16 @@ PillList.args = {
 	},
 	inputs: [
 		{
-			name: 'propA',
-			initialValue: false,
+			name: 'propC',
+			initialValue: 'propC default',
 		},
 		{
 			name: 'propB',
 			initialValue: 0,
 		},
 		{
-			name: 'propC',
-			initialValue: 'propC default',
+			name: 'propA',
+			initialValue: false,
 		},
 	],
 };
