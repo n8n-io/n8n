@@ -90,6 +90,7 @@ const toggleExpand = async () => {
 
 	&.small {
 		width: 80%;
+		margin-left: auto;
 	}
 }
 .icon {

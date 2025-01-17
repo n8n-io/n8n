@@ -1,5 +1,7 @@
+import { Container } from '@n8n/di';
 import type express from 'express';
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import { Logger } from 'n8n-core';
+import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 
 import * as ResponseHelper from '@/response-helper';
 import type {
@@ -52,8 +54,14 @@ class WebhookRequestHandler {
 					response.headers,
 				);
 			}
-		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
+		} catch (e) {
+			const error = ensureError(e);
+			Container.get(Logger).debug(
+				`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
+				{ stacktrace: error.stack },
+			);
+
+			return ResponseHelper.sendErrorResponse(res, error);
 		}
 	}
 

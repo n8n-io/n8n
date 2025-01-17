@@ -308,8 +308,13 @@ async function initializeData() {
 async function initializeRoute(force = false) {
 	// In case the workflow got saved we do not have to run init
 	// as only the route changed but all the needed data is already loaded
-	if (route.params.action === 'workflowSave') {
+
+	if (route.query.action === 'workflowSave') {
 		uiStore.stateIsDirty = false;
+		// Remove the action from the query
+		await router.replace({
+			query: { ...route.query, action: undefined },
+		});
 		return;
 	}
 
@@ -924,11 +929,13 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.on('openChat', onOpenChat);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.off('openChat', onOpenChat);
 }
 
 /**
@@ -1073,7 +1080,9 @@ const isExecutionDisabled = computed(() => {
 	return !containsTriggerNodes.value || allTriggerNodesDisabled.value;
 });
 
-const isRunWorkflowButtonVisible = computed(() => !isOnlyChatTriggerNodeActive.value);
+const isRunWorkflowButtonVisible = computed(
+	() => !isOnlyChatTriggerNodeActive.value || chatTriggerNodePinnedData.value,
+);
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );

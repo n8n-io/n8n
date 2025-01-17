@@ -182,7 +182,7 @@ function onRetryMenuItemSelect(action: string): void {
 @import '@/styles/variables';
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--color-foreground-xlight);
+	--execution-list-item-background: var(--execution-card-background);
 	--execution-list-item-highlight-background: var(--color-warning-tint-1);
 
 	display: flex;
@@ -200,7 +200,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--color-foreground-light);
+			--execution-list-item-background: var(--execution-card-background-hover);
 		}
 	}
 
