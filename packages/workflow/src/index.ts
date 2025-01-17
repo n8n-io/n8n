@@ -4,7 +4,6 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
-export * from './AIParametersParser';
 export * from './errors';
 export * from './Constants';
 export * from './Cron';
@@ -14,6 +13,7 @@ export * from './Interfaces';
 export * from './MessageEventBus';
 export * from './ExecutionStatus';
 export * from './Expression';
+export * from './FromAIParseUtils';
 export * from './NodeHelpers';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
