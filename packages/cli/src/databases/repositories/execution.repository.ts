@@ -287,7 +287,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { executionData, metadata, annotation, ...rest } = execution;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
 
-		if (execution.status === 'success' && executionData.data === '[]') {
+		if (execution.status === 'success' && executionData?.data === '[]') {
 			this.errorReporter.error('Found successful execution where data is empty stringified array', {
 				extra: {
 					executionId: execution.id,
