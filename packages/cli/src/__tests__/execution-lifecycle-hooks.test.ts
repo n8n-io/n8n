@@ -1,3 +1,4 @@
+import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
 import { ExpressionError, WorkflowHooks } from 'n8n-workflow';
@@ -253,7 +254,7 @@ describe('Execution Lifecycle Hooks', () => {
 						type: 'executionFinished',
 						data: {
 							executionId,
-							rawData: '[{"resultData":"1"},{"runData":"2"},{}]',
+							rawData: stringify(successfulRun.data),
 							status: 'success',
 							workflowId: 'test-workflow-id',
 						},
@@ -262,7 +263,7 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('should set the status to waiting when waitTill is set', async () => {
+			it('should send executionWaiting push event', async () => {
 				await hooks.executeHookFunctions('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(push.send).toHaveBeenCalledWith(
@@ -275,7 +276,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			describe('saving static data', () => {
-				it('should skip saving staic data for manual executions', async () => {
+				it('should skip saving static data for manual executions', async () => {
 					hooks.mode = 'manual';
 
 					await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, staticData]);
