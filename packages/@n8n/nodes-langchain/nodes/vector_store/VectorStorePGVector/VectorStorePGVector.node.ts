@@ -272,7 +272,9 @@ export class VectorStorePGVector extends createVectorStoreNode({
 			'cosine',
 		) as DistanceStrategy;
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, config);
+		setTimeout(() => vectorStore.client?.release(), 30_000);
+		return vectorStore;
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
