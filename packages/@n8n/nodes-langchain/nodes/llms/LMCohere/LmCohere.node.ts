@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { Cohere } from '@langchain/cohere';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,8 +8,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Cohere } from '@langchain/cohere';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmCohere implements INodeType {
@@ -99,6 +101,7 @@ export class LmCohere implements INodeType {
 			apiKey: credentials.apiKey as string,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

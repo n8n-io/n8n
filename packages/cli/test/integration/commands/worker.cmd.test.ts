@@ -1,24 +1,24 @@
 process.argv[2] = 'worker';
 
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
-import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { TaskRunnerProcess } from '@/runners/task-runner-process';
-import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -26,7 +26,7 @@ import { mockInstance } from '../../shared/mocking';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
-Container.get(TaskRunnersConfig).disabled = false;
+Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);

@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	readonly: false,
 	clearable: false,
 	rows: 2,
-	maxlength: Infinity,
+	maxlength: undefined,
 	title: '',
 	name: () => uid('input'),
 	autocomplete: 'off',
@@ -81,6 +81,7 @@ defineExpose({ focus, blur, select });
 		:clearable="clearable"
 		:rows="rows"
 		:title="title"
+		:maxlength="maxlength"
 		v-bind="$attrs"
 	>
 		<template v-if="$slots.prepend" #prepend>

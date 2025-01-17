@@ -14,6 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	rootNode: INodeUi;
@@ -23,6 +24,7 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
+const i18n = useI18n();
 const { debounce } = useDebounce();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
@@ -245,7 +247,7 @@ defineExpose({
 										Add {{ connection.displayName }}
 										<template v-if="hasInputIssues(connection.type)">
 											<TitledList
-												:title="`${$locale.baseText('node.issues')}:`"
+												:title="`${i18n.baseText('node.issues')}:`"
 												:items="nodeInputIssues[connection.type]"
 											/>
 										</template>
@@ -285,7 +287,7 @@ defineExpose({
 											{{ node.node.name }}
 											<template v-if="node.issues">
 												<TitledList
-													:title="`${$locale.baseText('node.issues')}:`"
+													:title="`${i18n.baseText('node.issues')}:`"
 													:items="node.issues"
 												/>
 											</template>

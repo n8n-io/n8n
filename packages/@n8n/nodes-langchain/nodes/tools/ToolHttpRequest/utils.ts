@@ -1,5 +1,5 @@
 import { Readability } from '@mozilla/readability';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 import { JSDOM } from 'jsdom';
 import get from 'lodash/get';

@@ -4,19 +4,15 @@ import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { ProjectTypes } from '@/types/projects.types';
+
+const props = defineProps<{
+	showSettings?: boolean;
+}>();
 
 const locale = useI18n();
 const route = useRoute();
 
-const projectsStore = useProjectsStore();
-
 const selectedTab = ref<RouteRecordName | null | undefined>('');
-const projectPermissions = computed(
-	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
-);
 const options = computed(() => {
 	const projectId = route?.params?.projectId;
 	const to = projectId
@@ -29,6 +25,10 @@ const options = computed(() => {
 					name: VIEWS.PROJECTS_CREDENTIALS,
 					params: { projectId },
 				},
+				executions: {
+					name: VIEWS.PROJECTS_EXECUTIONS,
+					params: { projectId },
+				},
 			}
 		: {
 				workflows: {
@@ -36,6 +36,9 @@ const options = computed(() => {
 				},
 				credentials: {
 					name: VIEWS.CREDENTIALS,
+				},
+				executions: {
+					name: VIEWS.EXECUTIONS,
 				},
 			};
 	const tabs = [
@@ -49,13 +52,14 @@ const options = computed(() => {
 			value: to.credentials.name,
 			to: to.credentials,
 		},
+		{
+			label: locale.baseText('mainSidebar.executions'),
+			value: to.executions.name,
+			to: to.executions,
+		},
 	];
 
-	if (
-		projectId &&
-		projectPermissions.value.update &&
-		projectsStore.currentProject?.type === ProjectTypes.Team
-	) {
+	if (props.showSettings) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,
@@ -75,13 +79,5 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.projectTabs">
-		<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
-	</div>
+	<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
 </template>
-
-<style module lang="scss">
-.projectTabs {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
-}
-</style>

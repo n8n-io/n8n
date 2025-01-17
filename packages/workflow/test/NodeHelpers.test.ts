@@ -1,5 +1,6 @@
 import {
 	NodeConnectionType,
+	type INodeIssues,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -9,10 +10,9 @@ import {
 import {
 	getNodeParameters,
 	getNodeHints,
-	isSingleExecution,
 	isSubNodeType,
 	applyDeclarativeNodeOptionParameters,
-	convertNodeToAiTool,
+	getParameterIssues,
 } from '@/NodeHelpers';
 import type { Workflow } from '@/Workflow';
 
@@ -3542,34 +3542,6 @@ describe('NodeHelpers', () => {
 		});
 	});
 
-	describe('isSingleExecution', () => {
-		test('should determine based on node parameters if it would be executed once', () => {
-			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.code', { mode: 'runOnceForEachItem' })).toEqual(
-				false,
-			);
-			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', { mode: 'each' })).toEqual(false);
-			expect(isSingleExecution('n8n-nodes-base.crateDb', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.crateDb', { operation: 'update' })).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.timescaleDb', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.timescaleDb', { operation: 'update' })).toEqual(
-				true,
-			);
-			expect(isSingleExecution('n8n-nodes-base.microsoftSql', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'update' })).toEqual(
-				true,
-			);
-			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'delete' })).toEqual(
-				true,
-			);
-			expect(isSingleExecution('n8n-nodes-base.questDb', {})).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
-			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
-		});
-	});
-
 	describe('isSubNodeType', () => {
 		const tests: Array<[boolean, Pick<INodeTypeDescription, 'outputs'> | null]> = [
 			[false, null],
@@ -3638,169 +3610,642 @@ describe('NodeHelpers', () => {
 		});
 	});
 
-	describe('convertNodeToAiTool', () => {
-		let fullNodeWrapper: { description: INodeTypeDescription };
-
-		beforeEach(() => {
-			fullNodeWrapper = {
-				description: {
-					displayName: 'Test Node',
-					name: 'testNode',
-					group: ['test'],
-					description: 'A test node',
-					version: 1,
-					defaults: {},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
-					properties: [],
-				},
+	describe('getParameterIssues', () => {
+		const tests: Array<{
+			description: string;
+			input: {
+				nodeProperties: INodeProperties;
+				nodeValues: INodeParameters;
+				path: string;
+				node: INode;
 			};
-		});
+			output: INodeIssues;
+		}> = [
+			{
+				description:
+					'Fixed collection::Should not return issues if minimum or maximum field count is not set',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+			{
+				description:
+					'Fixed collection::Should not return issues if field count is within the specified range',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							minRequiredFields: 1,
+							maxAllowedFields: 3,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+			{
+				description:
+					'Fixed collection::Should return an issue if field count is lower than minimum specified',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							minRequiredFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {
+					parameters: {
+						workflowInputs: ['At least 1 field is required.'],
+					},
+				},
+			},
+			{
+				description:
+					'Fixed collection::Should return an issue if field count is higher than maximum specified',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							maxAllowedFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {
+					parameters: {
+						workflowInputs: ['At most 1 field is allowed.'],
+					},
+				},
+			},
+			{
+				description: 'Fixed collection::Should not return issues if the collection is hidden',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							maxAllowedFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'somethingElse',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+		];
 
-		it('should modify the name and displayName correctly', () => {
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name).toBe('testNodeTool');
-			expect(result.description.displayName).toBe('Test Node Tool');
-		});
+		for (const testData of tests) {
+			test(testData.description, () => {
+				const result = getParameterIssues(
+					testData.input.nodeProperties,
+					testData.input.nodeValues,
+					testData.input.path,
+					testData.input.node,
+				);
+				expect(result).toEqual(testData.output);
+			});
+		}
+	});
 
-		it('should update inputs and outputs', () => {
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.inputs).toEqual([]);
-			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
-		});
+	describe('getParameterIssues, required parameters validation', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
 
-		it('should remove the usableAsTool property', () => {
-			fullNodeWrapper.description.usableAsTool = true;
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.usableAsTool).toBeUndefined();
-		});
+		it('Should validate required dateTime parameters if empty string', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Date Time',
+				name: 'testDateTime',
+				type: 'dateTime',
+				default: '',
+				required: true,
+			};
+			const nodeValues: INodeParameters = {
+				testDateTime: '',
+			};
 
-		it("should add toolDescription property if it doesn't exist", () => {
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			const toolDescriptionProp = result.description.properties.find(
-				(prop) => prop.name === 'toolDescription',
-			);
-			expect(toolDescriptionProp).toBeDefined();
-			expect(toolDescriptionProp?.type).toBe('string');
-			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
-		});
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
 
-		it('should set codex categories correctly', () => {
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.codex).toEqual({
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Other Tools'],
+			expect(result).toEqual({
+				parameters: {
+					testDateTime: ['Parameter "Date Time" is required.'],
 				},
 			});
 		});
 
-		it('should preserve existing properties', () => {
-			const existingProp: INodeProperties = {
-				displayName: 'Existing Prop',
-				name: 'existingProp',
-				type: 'string',
-				default: 'test',
+		it('Should validate required dateTime parameters if empty undefined', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Date Time',
+				name: 'testDateTime',
+				type: 'dateTime',
+				default: '',
+				required: true,
 			};
-			fullNodeWrapper.description.properties = [existingProp];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
-			expect(result.description.properties).toContainEqual(existingProp);
-		});
+			const nodeValues: INodeParameters = {
+				testDateTime: undefined,
+			};
 
-		it('should handle nodes with resource property', () => {
-			const resourceProp: INodeProperties = {
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [{ name: 'User', value: 'user' }],
-				default: 'user',
-			};
-			fullNodeWrapper.description.properties = [resourceProp];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
-		});
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
 
-		it('should handle nodes with operation property', () => {
-			const operationProp: INodeProperties = {
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [{ name: 'Create', value: 'create' }],
-				default: 'create',
-			};
-			fullNodeWrapper.description.properties = [operationProp];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(operationProp);
-		});
-
-		it('should handle nodes with both resource and operation properties', () => {
-			const resourceProp: INodeProperties = {
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [{ name: 'User', value: 'user' }],
-				default: 'user',
-			};
-			const operationProp: INodeProperties = {
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [{ name: 'Create', value: 'create' }],
-				default: 'create',
-			};
-			fullNodeWrapper.description.properties = [resourceProp, operationProp];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
-			expect(result.description.properties[4]).toEqual(operationProp);
-		});
-
-		it('should handle nodes with empty properties', () => {
-			fullNodeWrapper.description.properties = [];
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2);
-			expect(result.description.properties[1].name).toBe('toolDescription');
-		});
-
-		it('should handle nodes with existing codex property', () => {
-			fullNodeWrapper.description.codex = {
-				categories: ['Existing'],
-				subcategories: {
-					Existing: ['Category'],
-				},
-			};
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.codex).toEqual({
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Other Tools'],
+			expect(result).toEqual({
+				parameters: {
+					testDateTime: ['Parameter "Date Time" is required.'],
 				},
 			});
-		});
-
-		it('should handle nodes with very long names', () => {
-			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
-			fullNodeWrapper.description.displayName =
-				'Very Long Node Name That Exceeds Normal Limits'.repeat(10);
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name.endsWith('Tool')).toBe(true);
-			expect(result.description.displayName.endsWith('Tool')).toBe(true);
-		});
-
-		it('should handle nodes with special characters in name and displayName', () => {
-			fullNodeWrapper.description.name = 'special@#$%Node';
-			fullNodeWrapper.description.displayName = 'Special @#$% Node';
-			const result = convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.name).toBe('special@#$%NodeTool');
-			expect(result.description.displayName).toBe('Special @#$% Node Tool');
 		});
 	});
 });

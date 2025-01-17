@@ -1,14 +1,11 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
-import { sortByProperty } from '@/utils/sortUtils';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 type Props = {
 	collapsed: boolean;
@@ -17,35 +14,26 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const router = useRouter();
 const locale = useI18n();
-const toast = useToast();
 const projectsStore = useProjectsStore();
-const uiStore = useUIStore();
+const globalEntityCreation = useGlobalEntityCreation();
 
-const isCreatingProject = ref(false);
-const isComponentMounted = ref(false);
+const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
+const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
+
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
-	label: locale.baseText('projects.menu.home'),
+	label: locale.baseText('projects.menu.overview'),
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
 	},
 }));
-const addProject = computed<IMenuItem>(() => ({
-	id: 'addProject',
-	label: locale.baseText('projects.menu.addProject'),
-	icon: 'plus',
-	disabled:
-		!isComponentMounted.value || isCreatingProject.value || !projectsStore.canCreateProjects,
-	isLoading: isCreatingProject.value,
-}));
 
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: props.collapsed ? undefined : 'layer-group',
+	icon: project.icon,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -57,7 +45,7 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 const personalProject = computed<IMenuItem>(() => ({
 	id: projectsStore.personalProject?.id ?? '',
 	label: locale.baseText('projects.menu.personal'),
-	icon: props.collapsed ? undefined : 'user',
+	icon: 'user',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -66,46 +54,9 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
-const addProjectClicked = async () => {
-	isCreatingProject.value = true;
-
-	try {
-		const newProject = await projectsStore.createProject({
-			name: locale.baseText('projects.settings.newProjectName'),
-		});
-		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
-		toast.showMessage({
-			title: locale.baseText('projects.settings.save.successful.title', {
-				interpolate: { projectName: newProject.name ?? '' },
-			}),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, locale.baseText('projects.error.title'));
-	} finally {
-		isCreatingProject.value = false;
-	}
-};
-
-const displayProjects = computed(() =>
-	sortByProperty(
-		'name',
-		projectsStore.myProjects.filter((p) => p.type === 'team'),
-	),
+const showAddFirstProject = computed(
+	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
 );
-
-const canCreateProjects = computed(
-	() => projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectFeatureEnabled,
-);
-
-const goToUpgrade = async () => {
-	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
-};
-
-onMounted(async () => {
-	await nextTick();
-	isComponentMounted.value = true;
-});
 </script>
 
 <template>
@@ -122,11 +73,20 @@ onMounted(async () => {
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
-			:class="$style.projectsLabel"
+			:class="[$style.projectsLabel]"
 			tag="h3"
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
+			<N8nButton
+				v-if="projectsStore.canCreateProjects"
+				icon="plus"
+				text
+				data-test-id="project-plus-button"
+				:disabled="isCreatingProject"
+				:class="$style.plusBtn"
+				@click="globalEntityCreation.createProject"
+			/>
 		</N8nText>
 		<ElMenu
 			v-if="projectsStore.isTeamProjectFeatureEnabled"
@@ -153,39 +113,22 @@ onMounted(async () => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<N8nTooltip
-			v-if="canCreateProjects"
-			placement="right"
-			:disabled="projectsStore.canCreateProjects"
+		<N8nButton
+			v-if="showAddFirstProject"
+			:class="[
+				$style.addFirstProjectBtn,
+				{
+					[$style.collapsed]: props.collapsed,
+				},
+			]"
+			:disabled="isCreatingProject"
+			type="secondary"
+			icon="plus"
+			data-test-id="add-first-project-button"
+			@click="globalEntityCreation.createProject"
 		>
-			<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs mb-m">
-				<N8nMenuItem
-					:item="addProject"
-					:compact="props.collapsed"
-					:handle-select="addProjectClicked"
-					mode="tabs"
-					data-test-id="add-project-menu-item"
-				/>
-			</ElMenu>
-			<template #content>
-				<i18n-t keypath="projects.create.limitReached">
-					<template #planName>{{ props.planName }}</template>
-					<template #limit>
-						{{
-							locale.baseText('projects.create.limit', {
-								adjustToNumber: projectsStore.teamProjectsLimit,
-								interpolate: { num: String(projectsStore.teamProjectsLimit) },
-							})
-						}}
-					</template>
-					<template #link>
-						<a :class="$style.upgradeLink" href="#" @click="goToUpgrade">
-							{{ locale.baseText('projects.create.limitReached.link') }}
-						</a>
-					</template>
-				</i18n-t>
-			</template>
-		</N8nTooltip>
+			{{ locale.baseText('projects.menu.addFirstProject') }}
+		</N8nButton>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
@@ -197,6 +140,11 @@ onMounted(async () => {
 	width: 100%;
 	overflow: hidden;
 	align-items: start;
+	&:hover {
+		.plusBtn {
+			display: block;
+		}
+	}
 }
 
 .projectItems {
@@ -215,12 +163,39 @@ onMounted(async () => {
 }
 
 .projectsLabel {
-	margin: 0 var(--spacing-xs) var(--spacing-s);
+	display: flex;
+	justify-content: space-between;
+	margin: 0 0 var(--spacing-s) var(--spacing-xs);
 	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
 	color: var(--color-text-base);
+
+	&.collapsed {
+		padding: 0;
+		margin-left: 0;
+		justify-content: center;
+	}
+}
+
+.plusBtn {
+	margin: 0;
+	padding: 0;
+	color: var(--color-text-lighter);
+	display: none;
+}
+
+.addFirstProjectBtn {
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-3xs);
+	margin: 0 var(--spacing-m) var(--spacing-m);
+
+	&.collapsed {
+		> span:last-child {
+			display: none;
+		}
+	}
 }
 </style>
 

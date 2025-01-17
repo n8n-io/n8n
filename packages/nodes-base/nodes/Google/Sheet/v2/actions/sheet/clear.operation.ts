@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import type { SheetProperties } from '../../helpers/GoogleSheets.types';
+
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import {
 	getColumnName,
 	getColumnNumber,

@@ -31,6 +31,11 @@ export class ExecutionEntity {
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 
+	/**
+	 * Whether the execution finished sucessfully.
+	 *
+	 * @deprecated Use `status` instead
+	 */
 	@Column()
 	finished: boolean;
 

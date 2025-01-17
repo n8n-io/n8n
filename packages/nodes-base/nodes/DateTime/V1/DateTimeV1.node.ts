@@ -1,3 +1,6 @@
+import set from 'lodash/set';
+import { DateTime as LuxonDateTime } from 'luxon';
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,14 +11,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { deepCopy, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import set from 'lodash/set';
-
-import moment from 'moment-timezone';
-
-import { DateTime as LuxonDateTime } from 'luxon';
 
 function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
@@ -65,7 +61,7 @@ const versionDescription: INodeTypeDescription = {
 	properties: [
 		{
 			displayName:
-				"More powerful date functionality is available in <a href='https://docs.n8n.io/code/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
+				"More powerful date functionality is available in <a href='https://docs.n8n.io/code/cookbook/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
 			name: 'noticeDateTime',
 			type: 'notice',
 			default: '',

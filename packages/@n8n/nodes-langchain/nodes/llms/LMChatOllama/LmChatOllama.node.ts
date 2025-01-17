@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { ChatOllamaInput } from '@langchain/ollama';
+import { ChatOllama } from '@langchain/ollama';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,10 +10,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatOllamaInput } from '@langchain/ollama';
-import { ChatOllama } from '@langchain/ollama';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOllama implements INodeType {
@@ -64,6 +67,7 @@ export class LmChatOllama implements INodeType {
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

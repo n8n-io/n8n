@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { SafetySetting } from '@google/generative-ai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,11 +8,12 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import type { SafetySetting } from '@google/generative-ai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { additionalOptions } from '../gemini-common/additional-options';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,6 +140,7 @@ export class LmChatGoogleGemini implements INodeType {
 
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
+			baseUrl: credentials.host as string,
 			modelName,
 			topK: options.topK,
 			topP: options.topP,
@@ -144,6 +148,7 @@ export class LmChatGoogleGemini implements INodeType {
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

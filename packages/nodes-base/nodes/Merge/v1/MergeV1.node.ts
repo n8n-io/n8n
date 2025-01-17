@@ -1,5 +1,4 @@
 import get from 'lodash/get';
-
 import type {
 	IExecuteFunctions,
 	GenericValue,
@@ -11,8 +10,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../utils/utilities';
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class MergeV1 implements INodeType {
 	description: INodeTypeDescription;

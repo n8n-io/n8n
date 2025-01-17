@@ -1,5 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
+import { Logger } from 'n8n-core';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -15,7 +17,6 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -38,7 +39,6 @@ import type {
 	IWorkflowDb,
 } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -66,6 +66,7 @@ export const schemaGetExecutionsQueryFilter = {
 		startedBefore: { type: 'date-time' },
 		annotationTags: { type: 'array', items: { type: 'string' } },
 		vote: { type: 'string' },
+		projectId: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -250,7 +251,7 @@ export class ExecutionService {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.', error);
 			}
 		}
 
@@ -463,29 +464,12 @@ export class ExecutionService {
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
-		if (execution.mode === 'manual') {
-			// manual executions in scaling mode are processed by main
-			return await this.stopInRegularMode(execution);
-		}
-
 		if (this.activeExecutions.has(execution.id)) {
 			this.activeExecutions.stopExecution(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {
 			this.waitTracker.stopExecution(execution.id);
-		}
-
-		const { ScalingService } = await import('@/scaling/scaling.service');
-		const scalingService = Container.get(ScalingService);
-		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
-
-		const job = jobs.find(({ data }) => data.executionId === execution.id);
-
-		if (job) {
-			await scalingService.stopJob(job);
-		} else {
-			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
@@ -503,7 +487,7 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(
+	async annotate(
 		executionId: string,
 		updateData: ExecutionRequest.ExecutionUpdatePayload,
 		sharedWorkflowIds: string[],

@@ -14,16 +14,13 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { SYSTEM_MESSAGE } from './prompt';
-import {
-	isChatInstance,
-	getPromptInputByType,
-	getConnectedTools,
-} from '../../../../../utils/helpers';
+import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
 	getOptionalOutputParsers,
 	type N8nOutputParser,
-} from '../../../../../utils/output_parsers/N8nOutputParser';
+} from '@utils/output_parsers/N8nOutputParser';
+
+import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
 	const schema =
@@ -33,7 +30,7 @@ function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, an
 }
 
 async function extractBinaryMessages(ctx: IExecuteFunctions) {
-	const binaryData = ctx.getInputData(0, 'main')?.[0]?.binary ?? {};
+	const binaryData = ctx.getInputData()?.[0]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			.filter((data) => data.mimeType.startsWith('image/'))
@@ -206,10 +203,28 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will try to parse the output manually
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
 			const finalResponse = (steps as AgentFinish).returnValues;
-			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
-				string,
-				unknown
-			>;
+			let parserInput: string;
+
+			if (finalResponse instanceof Object) {
+				if ('output' in finalResponse) {
+					try {
+						// If the output is an object, we will try to parse it as JSON
+						// this is because parser expects stringified JSON object like { "output": { .... } }
+						// so we try to parse the output before wrapping it and then stringify it
+						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+					} catch (error) {
+						// If parsing of the output fails, we will use the raw output
+						parserInput = finalResponse.output;
+					}
+				} else {
+					// If the output is not an object, we will stringify it as it is
+					parserInput = JSON.stringify(finalResponse);
+				}
+			} else {
+				parserInput = finalResponse;
+			}
+
+			const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
 			return handleParsedStepOutput(returnValues);
 		}
 		return handleAgentFinishOutput(steps);
@@ -240,14 +255,16 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
-		['placeholder', '{agent_scratchpad}'],
 	];
 
-	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
+	const hasBinaryData = this.getInputData()?.[0]?.binary !== undefined;
 	if (hasBinaryData && passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(this);
 		messages.push(binaryMessage);
 	}
+	// We add the agent scratchpad last, so that the agent will not run in loops
+	// by adding binary messages between each interaction
+	messages.push(['placeholder', '{agent_scratchpad}']);
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 
 	const agent = createToolCallingAgent({

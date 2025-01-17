@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
-import type { INodeCreateElement, NodeFilterType } from '@/Interface';
+import type { INodeCreateElement, NodeCreateElement, NodeFilterType } from '@/Interface';
 import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	HTTP_REQUEST_NODE_TYPE,
@@ -23,9 +23,10 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
+import { useActions } from '../composables/useActions';
+import type { INodeParameters } from 'n8n-workflow';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -36,17 +37,25 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
-const { mergedNodes, actions } = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
+const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+
+function getFilteredActions(node: NodeCreateElement) {
+	const nodeActions = actions?.[node.key] || [];
+	if (activeViewStack.value.actionsFilter) {
+		return activeViewStack.value.actionsFilter(nodeActions);
+	}
+	return nodeActions;
+}
 
 function selectNodeType(nodeTypes: string[]) {
 	emit('nodeTypeSelected', nodeTypes);
@@ -83,15 +92,27 @@ function onSelected(item: INodeCreateElement) {
 			sections: item.properties.sections,
 		});
 
-		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}
 
 	if (item.type === 'node') {
-		const nodeActions = actions?.[item.key] || [];
+		const nodeActions = getFilteredActions(item);
+
+		// If there is only one action, use it
+		if (nodeActions.length === 1) {
+			selectNodeType([item.key]);
+			setAddedNodeActionParameters({
+				name: nodeActions[0].defaults.name ?? item.properties.displayName,
+				key: item.key,
+				value: nodeActions[0].values as INodeParameters,
+			});
+			return;
+		}
+
 		// Only show actions if there are more than one or if the view is not an AI subcategory
-		if (nodeActions.length <= 1 || activeViewStack.value.hideActions) {
+		if (nodeActions.length === 0 || activeViewStack.value.hideActions) {
 			selectNodeType([item.key]);
 			return;
 		}
@@ -153,9 +174,6 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
-		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
-			link: item.properties.url,
-		});
 	}
 }
 
@@ -163,7 +181,7 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = actions?.[item.key] || [];
+	const nodeActions = getFilteredActions(item);
 	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
@@ -184,7 +202,7 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = actions?.[item.key] || [];
+	const nodeActions = getFilteredActions(item);
 	const hasActions = nodeActions.length > 0;
 
 	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_VIEW;
@@ -250,7 +268,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
-			:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>

@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import type {
 	IDataObject,
 	INode,
@@ -7,16 +8,13 @@ import type {
 	NodeApiError,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
-	Workflow,
 	NodeOperationError,
-	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,
@@ -221,18 +219,6 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	}
 
 	return workflow;
-}
-
-export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
-	let startNode;
-	if (
-		data.startNodes?.length === 1 &&
-		Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
-	) {
-		startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
-	}
-
-	return startNode;
 }
 
 export async function getVariables(): Promise<IDataObject> {

@@ -31,7 +31,7 @@ const { debounce } = useDebounce();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const search = ref(props.modelValue ?? '');
-const opened = ref(false);
+const opened = ref(!!search.value);
 const placeholder = computed(() => {
 	if (props.paneType === 'output') {
 		return locale.baseText('ndv.search.placeholder.output');

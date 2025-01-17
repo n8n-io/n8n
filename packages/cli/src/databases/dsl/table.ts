@@ -50,8 +50,8 @@ export class CreateTable extends TableOperation {
 		ref: {
 			tableName: string;
 			columnName: string;
-			onDelete?: 'CASCADE';
-			onUpdate?: 'CASCADE';
+			onDelete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL';
+			onUpdate?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL';
 			name?: string;
 		},
 	) {

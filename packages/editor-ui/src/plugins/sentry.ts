@@ -7,6 +7,10 @@ const ignoredErrors = [
 	{ instanceof: AxiosError },
 	{ instanceof: ResponseError, message: /ECONNREFUSED/ },
 	{ instanceof: ResponseError, message: "Can't connect to n8n." },
+	{ instanceof: ResponseError, message: 'Unauthorized' },
+	{ instanceof: RangeError, message: /Position \d+ is out of range for changeset of length \d+/ },
+	{ instanceof: RangeError, message: /Invalid change range \d+ to \d+/ },
+	{ instanceof: RangeError, message: /Selection points outside of document$/ },
 	{ instanceof: Error, message: /ResizeObserver/ },
 ] as const;
 

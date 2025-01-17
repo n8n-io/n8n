@@ -20,9 +20,10 @@ export function mapLegacyConnectionsToCanvasConnections(
 
 		fromConnectionTypes.forEach((fromConnectionType) => {
 			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
-			fromPorts.forEach((toPorts, fromIndex) => {
-				toPorts.forEach((toPort) => {
-					const toId = nodes.find((node) => node.name === toPort.node)?.id ?? '';
+			fromPorts?.forEach((toPorts, fromIndex) => {
+				toPorts?.forEach((toPort) => {
+					const toNodeName = toPort.node;
+					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
 					const toConnectionType = toPort.type as NodeConnectionType;
 					const toIndex = toPort.index;
 
@@ -53,12 +54,13 @@ export function mapLegacyConnectionsToCanvasConnections(
 							sourceHandle,
 							targetHandle,
 							data: {
-								fromNodeName,
 								source: {
+									node: fromNodeName,
 									index: fromIndex,
 									type: fromConnectionType,
 								},
 								target: {
+									node: toNodeName,
 									index: toIndex,
 									type: toConnectionType,
 								},
@@ -207,4 +209,24 @@ export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 			node2.y + node2.height <= node1.y
 		)
 	);
+}
+
+export function insertSpacersBetweenEndpoints<T>(
+	endpoints: T[],
+	requiredEndpointsCount = 0,
+	minEndpointsCount = 4,
+) {
+	const endpointsWithSpacers: Array<T | null> = [...endpoints];
+	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
+	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
+
+	// Insert `null` in between required non-main inputs and non-required non-main inputs
+	// to separate them visually if there are less than 4 inputs in total
+	if (endpointsWithSpacers.length < minEndpointsCount) {
+		for (let i = 0; i < spacerCount; i++) {
+			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
+		}
+	}
+
+	return endpointsWithSpacers;
 }

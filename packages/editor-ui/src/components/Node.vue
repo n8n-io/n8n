@@ -9,7 +9,6 @@ import {
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
-	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import type {
 	ExecutionSummary,
@@ -18,7 +17,12 @@ import type {
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import type { StyleValue } from 'vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import xss from 'xss';
@@ -271,7 +275,7 @@ const nodeClass = computed(() => {
 const nodeExecutionStatus = computed(() => {
 	const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[props.name];
 	if (nodeExecutionRunData) {
-		return nodeExecutionRunData.filter(Boolean)[0]?.executionStatus ?? '';
+		return nodeExecutionRunData.filter(Boolean)?.[0]?.executionStatus ?? '';
 	}
 	return '';
 });
@@ -345,7 +349,7 @@ const waiting = computed(() => {
 				return i18n.baseText('node.theNodeIsWaitingFormCall');
 			}
 			const waitDate = new Date(workflowExecution.waitTill);
-			if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+			if (waitDate.getTime() === WAIT_INDEFINITELY.getTime()) {
 				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 			}
 			return i18n.baseText('node.nodeIsWaitingTill', {

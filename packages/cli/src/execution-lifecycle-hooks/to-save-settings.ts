@@ -18,20 +18,20 @@ export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
 		PROGRESS: config.getEnv('executions.saveExecutionProgress'),
 	};
 
+	const {
+		saveDataErrorExecution = DEFAULTS.ERROR,
+		saveDataSuccessExecution = DEFAULTS.SUCCESS,
+		saveManualExecutions = DEFAULTS.MANUAL,
+		saveExecutionProgress = DEFAULTS.PROGRESS,
+	} = workflowSettings;
+
 	return {
-		error: workflowSettings.saveDataErrorExecution
-			? workflowSettings.saveDataErrorExecution !== 'none'
-			: DEFAULTS.ERROR !== 'none',
-		success: workflowSettings.saveDataSuccessExecution
-			? workflowSettings.saveDataSuccessExecution !== 'none'
-			: DEFAULTS.SUCCESS !== 'none',
-		manual:
-			workflowSettings === undefined || workflowSettings.saveManualExecutions === 'DEFAULT'
-				? DEFAULTS.MANUAL
-				: (workflowSettings.saveManualExecutions ?? DEFAULTS.MANUAL),
-		progress:
-			workflowSettings === undefined || workflowSettings.saveExecutionProgress === 'DEFAULT'
-				? DEFAULTS.PROGRESS
-				: (workflowSettings.saveExecutionProgress ?? DEFAULTS.PROGRESS),
+		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution === 'all',
+		success:
+			saveDataSuccessExecution === 'DEFAULT'
+				? DEFAULTS.SUCCESS
+				: saveDataSuccessExecution === 'all',
+		manual: saveManualExecutions === 'DEFAULT' ? DEFAULTS.MANUAL : saveManualExecutions,
+		progress: saveExecutionProgress === 'DEFAULT' ? DEFAULTS.PROGRESS : saveExecutionProgress,
 	};
 }

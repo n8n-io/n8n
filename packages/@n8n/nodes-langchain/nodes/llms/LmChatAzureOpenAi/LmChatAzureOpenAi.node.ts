@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ChatOpenAI } from '@langchain/openai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,8 +8,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOpenAI } from '@langchain/openai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAzureOpenAi implements INodeType {
@@ -167,6 +169,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
+			endpoint?: string;
 		}>('azureOpenAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -183,9 +186,11 @@ export class LmChatAzureOpenAi implements INodeType {
 
 		const model = new ChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
-			azureOpenAIApiInstanceName: credentials.resourceName,
+			// instance name only needed to set base url
+			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
 			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
+			azureOpenAIEndpoint: credentials.endpoint,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
@@ -195,6 +200,7 @@ export class LmChatAzureOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

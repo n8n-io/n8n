@@ -72,7 +72,7 @@ The base text file for each locale is located at `/packages/editor-ui/src/plugin
 cp ./packages/editor-ui/src/plugins/i18n/locales/en.json ./packages/editor-ui/src/plugins/i18n/locales/de.json
 ```
 
-2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `$locale.baseText(key)`, e.g. `$locale.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
+2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `i18n.baseText(key)`, e.g. `i18n.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
 
 > **Note**: If you cannot find a string in the new base text file, either it does not belong to base text (i.e., the string might be part of header text, credential text, or node text), or the string might belong to the backend, where i18n is currently unsupported.
 

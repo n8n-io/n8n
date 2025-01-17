@@ -63,4 +63,35 @@ describe('TaskRunnerNodeTypes', () => {
 			});
 		});
 	});
+
+	describe('addNodeTypeDescriptions', () => {
+		it('should add new node types', () => {
+			const nodeTypes = new TaskRunnerNodeTypes(TYPES);
+
+			const nodeTypeDescriptions = [
+				{ name: 'new-type', version: 1 },
+				{ name: 'new-type', version: 2 },
+			] as INodeTypeDescription[];
+
+			nodeTypes.addNodeTypeDescriptions(nodeTypeDescriptions);
+
+			expect(nodeTypes.getByNameAndVersion('new-type', 1)).toEqual({
+				description: { name: 'new-type', version: 1 },
+			});
+			expect(nodeTypes.getByNameAndVersion('new-type', 2)).toEqual({
+				description: { name: 'new-type', version: 2 },
+			});
+		});
+	});
+
+	describe('onlyUnknown', () => {
+		it('should return only unknown node types', () => {
+			const nodeTypes = new TaskRunnerNodeTypes(TYPES);
+
+			const candidate = { name: 'unknown', version: 1 };
+
+			expect(nodeTypes.onlyUnknown([candidate])).toEqual([candidate]);
+			expect(nodeTypes.onlyUnknown([SINGLE_VERSIONED])).toEqual([]);
+		});
+	});
 });

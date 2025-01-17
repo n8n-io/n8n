@@ -134,13 +134,6 @@ const outputTypeParsers: {
 						} else if (content.id.includes('SystemMessage')) {
 							message = `**System Message:** ${message}`;
 						}
-						if (
-							execData.action &&
-							typeof execData.action !== 'object' &&
-							execData.action !== 'getMessages'
-						) {
-							message = `## Action: ${execData.action}\n\n${message}`;
-						}
 
 						return message;
 					}
@@ -148,6 +141,9 @@ const outputTypeParsers: {
 				})
 				.join('\n\n');
 
+			if (responseText.length === 0) {
+				return fallbackParser(execData);
+			}
 			return {
 				type: 'markdown',
 				data: responseText,

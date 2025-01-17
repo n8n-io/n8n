@@ -1,34 +1,36 @@
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { nextTick } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
-export default defineComponent({
-	name: 'IntersectionObserved',
-	props: {
-		enabled: {
-			type: Boolean,
-			default: false,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
+const props = withDefaults(
+	defineProps<{
+		enabled: boolean;
+		eventBus: EventBus;
+	}>(),
+	{
+		enabled: false,
+		default: () => createEventBus(),
 	},
-	async mounted() {
-		if (!this.enabled) {
-			return;
-		}
+);
 
-		await this.$nextTick();
-		this.eventBus.emit('observe', this.$refs.observed);
-	},
-	beforeUnmount() {
-		if (this.enabled) {
-			this.eventBus.emit('unobserve', this.$refs.observed);
-		}
-	},
+const observed = ref<IntersectionObserver | null>(null);
+
+onMounted(async () => {
+	if (!props.enabled) {
+		return;
+	}
+
+	await nextTick();
+
+	props.eventBus.emit('observe', observed.value);
+});
+
+onBeforeUnmount(() => {
+	if (props.enabled) {
+		props.eventBus.emit('unobserve', observed.value);
+	}
 });
 </script>
 

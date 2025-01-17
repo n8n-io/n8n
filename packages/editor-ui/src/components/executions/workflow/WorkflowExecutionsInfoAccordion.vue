@@ -26,6 +26,7 @@ const props = withDefaults(
 	},
 );
 
+const i18n = useI18n();
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
 const locale = useI18n();
@@ -190,7 +191,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 <template>
 	<N8nInfoAccordion
 		:class="[$style.accordion, 'mt-2xl']"
-		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
+		:title="i18n.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
 		:initially-expanded="shouldExpandAccordion"
 		:header-icon="accordionIcon"
@@ -199,16 +200,14 @@ async function onSaveWorkflowClick(): Promise<void> {
 	>
 		<template #customContent>
 			<footer class="mt-2xs">
-				{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer') }}
+				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
 				<N8nTooltip :disabled="!isNewWorkflow">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
-								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink')
+								i18n.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink')
 							}}</N8nLink>
-							{{
-								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText')
-							}}
+							{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
 						</div>
 					</template>
 					<N8nLink
@@ -216,7 +215,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>
-						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
+						{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
 					</N8nLink>
 				</N8nTooltip>
 			</footer>

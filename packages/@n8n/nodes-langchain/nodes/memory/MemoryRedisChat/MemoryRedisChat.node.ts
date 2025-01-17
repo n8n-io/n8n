@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { RedisChatMessageHistoryInput } from '@langchain/redis';
+import { RedisChatMessageHistory } from '@langchain/redis';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import {
 	NodeOperationError,
 	type INodeType,
@@ -7,15 +10,19 @@ import {
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
-import type { RedisChatMessageHistoryInput } from '@langchain/redis';
-import { RedisChatMessageHistory } from '@langchain/redis';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
+
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	contextWindowLengthProperty,
+	expressionSessionKeyProperty,
+} from '../descriptions';
 
 export class MemoryRedisChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +30,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -86,6 +93,7 @@ export class MemoryRedisChat implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.4),
 			sessionKeyProperty,
 			{
 				displayName: 'Session Time To Live',
@@ -120,6 +128,7 @@ export class MemoryRedisChat implements INodeType {
 			socket: {
 				host: credentials.host as string,
 				port: credentials.port as number,
+				tls: credentials.ssl === true,
 			},
 			database: credentials.database as number,
 		};

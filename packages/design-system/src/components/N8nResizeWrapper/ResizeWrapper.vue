@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
+
+import { directionsCursorMaps, type Direction, type ResizeData } from 'n8n-design-system/types';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
@@ -21,19 +23,6 @@ function getSize(min: number, virtual: number, gridSize: number): number {
 	return min;
 }
 
-const directionsCursorMaps = {
-	right: 'ew-resize',
-	top: 'ns-resize',
-	bottom: 'ns-resize',
-	left: 'ew-resize',
-	topLeft: 'nw-resize',
-	topRight: 'ne-resize',
-	bottomLeft: 'sw-resize',
-	bottomRight: 'se-resize',
-} as const;
-
-type Direction = keyof typeof directionsCursorMaps;
-
 interface ResizeProps {
 	isResizingEnabled?: boolean;
 	height?: number;
@@ -43,6 +32,7 @@ interface ResizeProps {
 	scale?: number;
 	gridSize?: number;
 	supportedDirections?: Direction[];
+	outset?: boolean;
 }
 
 const props = withDefaults(defineProps<ResizeProps>(), {
@@ -53,18 +43,11 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	minWidth: 0,
 	scale: 1,
 	gridSize: 20,
+	outset: false,
 	supportedDirections: () => [],
 });
 
-export interface ResizeData {
-	height: number;
-	width: number;
-	dX: number;
-	dY: number;
-	x: number;
-	y: number;
-	direction: Direction;
-}
+const $style = useCssModule();
 
 const emit = defineEmits<{
 	resizestart: [];
@@ -90,6 +73,11 @@ const state = {
 	x: ref(0),
 	y: ref(0),
 };
+
+const classes = computed(() => ({
+	[$style.resize]: true,
+	[$style.outset]: props.outset,
+}));
 
 const mouseMove = (event: MouseEvent) => {
 	event.preventDefault();
@@ -168,7 +156,7 @@ const resizerMove = (event: MouseEvent) => {
 </script>
 
 <template>
-	<div :class="$style.resize">
+	<div :class="classes">
 		<div
 			v-for="direction in enabledDirections"
 			:key="direction"
@@ -182,6 +170,10 @@ const resizerMove = (event: MouseEvent) => {
 
 <style lang="scss" module>
 .resize {
+	--resizer--size: 12px;
+	--resizer--side-offset: -2px;
+	--resizer--corner-offset: -3px;
+
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -194,66 +186,71 @@ const resizerMove = (event: MouseEvent) => {
 }
 
 .right {
-	width: 12px;
+	width: var(--resizer--size);
 	height: 100%;
-	top: -2px;
-	right: -2px;
+	top: var(--resizer--side-offset);
+	right: var(--resizer--side-offset);
 	cursor: ew-resize;
 }
 
 .top {
 	width: 100%;
-	height: 12px;
-	top: -2px;
-	left: -2px;
+	height: var(--resizer--size);
+	top: var(--resizer--side-offset);
+	left: var(--resizer--side-offset);
 	cursor: ns-resize;
 }
 
 .bottom {
 	width: 100%;
-	height: 12px;
-	bottom: -2px;
-	left: -2px;
+	height: var(--resizer--size);
+	bottom: var(--resizer--side-offset);
+	left: var(--resizer--side-offset);
 	cursor: ns-resize;
 }
 
 .left {
-	width: 12px;
+	width: var(--resizer--size);
 	height: 100%;
-	top: -2px;
-	left: -2px;
+	top: var(--resizer--side-offset);
+	left: var(--resizer--side-offset);
 	cursor: ew-resize;
 }
 
 .topLeft {
-	width: 12px;
-	height: 12px;
-	top: -3px;
-	left: -3px;
+	width: var(--resizer--size);
+	height: var(--resizer--size);
+	top: var(--resizer--corner-offset);
+	left: var(--resizer--corner-offset);
 	cursor: nw-resize;
 }
 
 .topRight {
-	width: 12px;
-	height: 12px;
-	top: -3px;
-	right: -3px;
+	width: var(--resizer--size);
+	height: var(--resizer--size);
+	top: var(--resizer--corner-offset);
+	right: var(--resizer--corner-offset);
 	cursor: ne-resize;
 }
 
 .bottomLeft {
-	width: 12px;
-	height: 12px;
-	bottom: -3px;
-	left: -3px;
+	width: var(--resizer--size);
+	height: var(--resizer--size);
+	bottom: var(--resizer--corner-offset);
+	left: var(--resizer--corner-offset);
 	cursor: sw-resize;
 }
 
 .bottomRight {
-	width: 12px;
-	height: 12px;
-	bottom: -3px;
-	right: -3px;
+	width: var(--resizer--size);
+	height: var(--resizer--size);
+	bottom: var(--resizer--corner-offset);
+	right: var(--resizer--corner-offset);
 	cursor: se-resize;
+}
+
+.outset {
+	--resizer--side-offset: calc(-1 * var(--resizer--size) + 2px);
+	--resizer--corner-offset: calc(-1 * var(--resizer--size) + 3px);
 }
 </style>

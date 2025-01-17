@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { GlobalConfig } from '../src/index';
 
@@ -150,7 +150,6 @@ describe('GlobalConfig', () => {
 		},
 		workflows: {
 			defaultName: 'My workflow',
-			onboardingFlowDisabled: false,
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 		},
 		endpoints: {
@@ -222,19 +221,24 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: true,
-			mode: 'internal_childprocess',
+			enabled: false,
+			mode: 'internal',
 			path: '/runners',
 			authToken: '',
 			listenAddress: '127.0.0.1',
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
-			launcherPath: '',
-			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
+			maxConcurrency: 10,
+			taskTimeout: 300,
+			heartbeatInterval: 30,
 		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
+			n8nVersion: '',
+			environment: '',
+			deploymentName: '',
 		},
 		logging: {
 			level: 'info',
@@ -263,6 +267,36 @@ describe('GlobalConfig', () => {
 			activationKey: '',
 			tenantId: 1,
 			cert: '',
+		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
+		},
+		executions: {
+			pruneData: true,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10_000,
+			pruneDataHardDeleteBuffer: 1,
+			pruneDataIntervals: {
+				hardDelete: 15,
+				softDelete: 60,
+			},
+		},
+		diagnostics: {
+			enabled: true,
+			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
+			posthogConfig: {
+				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
+				apiHost: 'https://ph.n8n.io',
+			},
+		},
+		aiAssistant: {
+			baseUrl: '',
+		},
+		tags: {
+			disabled: false,
 		},
 	};
 
