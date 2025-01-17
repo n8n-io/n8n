@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { jsonParse } from './utils';
 
+/**
+ * This file contains the logic for parsing node parameters and extracting $fromAI calls
+ */
+
 export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
 export type FromAIArgument = {
 	key: string;
@@ -11,10 +15,6 @@ export type FromAIArgument = {
 };
 
 class ParseError extends Error {}
-
-/**
- * This file encapsulates the logic for parsing node parameters and extracting $fromAI calls
- */
 
 /**
  * Generates a Zod schema based on the provided FromAIArgument placeholder.
