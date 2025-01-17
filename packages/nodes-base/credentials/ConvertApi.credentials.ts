@@ -1,5 +1,6 @@
 import type {
 	IAuthenticateGeneric,
+	Icon,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -8,15 +9,14 @@ import type {
 export class ConvertApi implements ICredentialType {
 	name = 'convertApi';
 
-	displayName = 'Convert API';
+	displayName = 'ConvertAPI';
 
 	documentationUrl = 'convertapi';
 
-	// Replace logo later
-	icon = { light: 'file:icons/Auth0.svg', dark: 'file:icons/Auth0.dark.svg' } as const;
+	icon: Icon = 'file:icons/ConvertApi.png';
 
 	httpRequestNode = {
-		name: 'Convert API',
+		name: 'ConvertAPI',
 		docsUrl: 'https://docs.convertapi.com/docs/getting-started',
 		apiBaseUrlPlaceholder: 'https://v2.convertapi.com/user',
 	};
@@ -45,7 +45,18 @@ export class ConvertApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://v2.convertapi.com',
-			url: '/user',
+			url: '/convert/docx/to/pdf',
+			ignoreHttpStatusErrors: true,
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'Code',
+					value: 4013,
+					message: 'API Token or Secret is invalid.',
+				},
+			},
+		],
 	};
 }
