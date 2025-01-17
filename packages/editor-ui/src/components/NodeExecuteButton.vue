@@ -319,6 +319,7 @@ async function onClick() {
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
 		ndvStore.setActiveNodeName(null);
+		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
 		await stopWaitingForWebhook();
