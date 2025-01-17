@@ -43,12 +43,8 @@ export function useTestDefinitionForm() {
 	});
 
 	const isSaving = ref(false);
-	// const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
 	const fields = ref<FormRefs>({} as FormRefs);
 
-	// const fieldsIssues = computed(() => evaluationsStore.getFieldIssues(state.value));
-	// A computed mapping of editable fields to their states
-	// This ensures TS knows the exact type of each field.
 	const editableFields: ComputedRef<{
 		name: EditableField<string>;
 		tags: EditableField<string[]>;
