@@ -37,7 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	language: 'javaScript',
 	isReadOnly: false,
 	rows: 4,
-	id: crypto.randomUUID(),
+	id: () => crypto.randomUUID(),
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
