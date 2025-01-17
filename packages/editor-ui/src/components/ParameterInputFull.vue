@@ -17,7 +17,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nButton, N8nInputLabel, N8nPillList, N8nTooltip } from 'n8n-design-system';
+import { N8nButton, N8nInputLabel, N8nSelectableList, N8nTooltip } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
 import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -238,7 +238,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
 );
 
-function handleOverrideClick() {
+function updateOverriddenValue() {
 	valueChanged({
 		name: props.path,
 		value: parameterOverrides.value?.buildValueFromOverride(props, false),
@@ -271,7 +271,7 @@ function handleOverrideClick() {
 				<N8nButton
 					:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
 					type="tertiary"
-					@click="handleOverrideClick"
+					@click="updateOverriddenValue"
 				>
 					<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 				</N8nButton>
@@ -365,7 +365,7 @@ function handleOverrideClick() {
 								<N8nButton
 									:class="[$style.overrideButton]"
 									type="tertiary"
-									@click="handleOverrideClick"
+									@click="updateOverriddenValue"
 								>
 									<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 								</N8nButton>
@@ -392,10 +392,10 @@ function handleOverrideClick() {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
-		<N8nPillList
+		<N8nSelectableList
 			v-if="isContentOverride && parameterOverrides"
 			v-model="parameterOverrides.extraPropValues"
-			:class="$style.overridePillList"
+			:class="$style.overrideSelectableList"
 			:inputs="
 				Object.entries(parameterOverrides.extraProps).map(([name, prop]) => ({
 					name,
@@ -416,20 +416,17 @@ function handleOverrideClick() {
 					}"
 					:is-read-only="isReadOnly"
 					:value="parameterOverrides?.extraPropValues[name]"
-					:path="`${path}.tags.${name}`"
+					:path="`${path}.${name}`"
 					input-size="small"
 					@update="
 						(x) => {
 							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value;
-							valueChanged({
-								name: props.path,
-								value: parameterOverrides?.buildValueFromOverride(props, false),
-							});
+							updateOverriddenValue();
 						}
 					"
 				/>
 			</template>
-		</N8nPillList>
+		</N8nSelectableList>
 	</N8nInputLabel>
 </template>
 
@@ -505,7 +502,7 @@ function handleOverrideClick() {
 	}
 }
 
-.overridePillList {
+.overrideSelectableList {
 	margin-top: var(--spacing-2xs);
 }
 
