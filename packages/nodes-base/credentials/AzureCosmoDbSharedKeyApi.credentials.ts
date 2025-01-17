@@ -12,8 +12,6 @@ export class AzureCosmoDbSharedKeyApi implements ICredentialType {
 
 	displayName = 'Azure Cosmo DB API';
 
-	extends = ['microsoftOAuth2Api'];
-
 	documentationUrl = 'azureCosmoDb';
 
 	properties: INodeProperties[] = [
@@ -37,7 +35,7 @@ export class AzureCosmoDbSharedKeyApi implements ICredentialType {
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
-			type: 'hidden',
+			type: 'string',
 			default: '=https://{{ $self["database"] }}.documents.azure.com',
 		},
 	];

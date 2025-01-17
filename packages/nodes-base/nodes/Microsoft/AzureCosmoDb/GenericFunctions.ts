@@ -38,7 +38,6 @@ export function getAuthorizationTokenUsingMasterKey(
 ): string {
 	const key = Buffer.from(masterKey, 'base64');
 
-	// Construct the payload string
 	const payload =
 		`${verb.toLowerCase()}\n` +
 		`${resourceType.toLowerCase()}\n` +

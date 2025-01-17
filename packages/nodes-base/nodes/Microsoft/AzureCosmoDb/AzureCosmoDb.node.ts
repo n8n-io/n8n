@@ -20,7 +20,7 @@ export class AzureCosmoDb implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
-				name: 'azureCosmoDBSharedKeyApi',
+				name: 'azureCosmoDbSharedKeyApi',
 				required: true,
 				displayOptions: {
 					show: {
@@ -52,15 +52,15 @@ export class AzureCosmoDb implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Item',
-						value: 'item',
+						name: 'Collections',
+						value: 'collections',
 					},
 					{
-						name: 'Container',
-						value: 'container',
+						name: 'Documents',
+						value: 'documents',
 					},
 				],
-				default: 'container',
+				default: 'collections',
 			},
 		],
 	};
