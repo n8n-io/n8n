@@ -497,6 +497,8 @@ function updateOverriddenValue() {
 
 .overrideInput {
 	* > input {
+		padding-left: 0;
+		// We need this in light mode
 		background-color: var(--color-foreground-base) !important;
 		border: none;
 	}
