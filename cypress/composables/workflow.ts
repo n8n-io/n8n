@@ -108,7 +108,7 @@ export function getNodes() {
 
 export function getNodeByName(name: string) {
 	return cy.ifCanvasVersion(
-		() => cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0),
+		() => cy.getByTestId('canvas-node').filter(`:contains(${name})`).eq(0),
 		() => cy.getByTestId('canvas-node').filter(`[data-node-name="${name}"]`).eq(0),
 	);
 }
