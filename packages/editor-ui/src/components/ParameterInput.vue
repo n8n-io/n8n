@@ -437,8 +437,8 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
-	} else {
-		// @review: verify this is ok for textarea
+	}
+	{
 		classes['parameter-value-container'] = true;
 	}
 
@@ -1066,7 +1066,6 @@ onUpdated(async () => {
 
 		<div
 			:class="[
-				$style.parameterInput,
 				'ignore-key-press-canvas',
 				{
 					[$style.hardRightCornersInput]: canBeOverridden,
@@ -1139,9 +1138,7 @@ onUpdated(async () => {
 					['json', 'string'].includes(parameter.type) ||
 					remoteParameterOptionsLoadingIssues !== null
 				"
-				:class="[$style.parameterInput]"
 			>
-				<!-- @review: confirm the style above is needed -->
 				<el-dialog
 					width="calc(100% - var(--spacing-3xl))"
 					:class="$style.modal"

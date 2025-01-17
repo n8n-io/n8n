@@ -273,7 +273,7 @@ function handleOverrideClick() {
 					type="tertiary"
 					@click="handleOverrideClick"
 				>
-					<AiStarsIcon :class="$style.aiStarsIcon" />
+					<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 				</N8nButton>
 			</N8nTooltip>
 		</template>
@@ -367,7 +367,7 @@ function handleOverrideClick() {
 									type="tertiary"
 									@click="handleOverrideClick"
 								>
-									<AiStarsIcon :class="$style.aiStarsIcon" />
+									<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 								</N8nButton>
 							</N8nTooltip>
 						</template>
@@ -467,6 +467,7 @@ function handleOverrideClick() {
 	color: var(--color-foreground-xdark);
 
 	&:hover {
+		color: var(--color-foreground-xdark);
 		background-color: var(--color-secondary);
 	}
 }
@@ -499,14 +500,11 @@ function handleOverrideClick() {
 
 .overrideInput {
 	* > input {
-		background-color: var(
-			--color-foreground-base
-		) !important; // Need important to overwrite the styling in input
+		background-color: var(--color-foreground-base) !important;
 		border: none;
 	}
 }
 
-// @Review double check margin here for pill list with and without pill
 .overridePillList {
 	margin-top: var(--spacing-2xs);
 }
