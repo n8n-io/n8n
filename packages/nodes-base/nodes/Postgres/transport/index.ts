@@ -186,7 +186,7 @@ export async function configurePostgres(
 		nodeVersion: options.nodeVersion as unknown as string,
 		fallBackHandler,
 		cleanUpHandler: async ({ db }) => {
-			await db.$pool.end();
+			if (!db.$pool.ended) await db.$pool.end();
 		},
 	});
 }
