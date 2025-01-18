@@ -18,6 +18,7 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
+import { fields } from '../../Contentful/AssetDescription';
 // import { generatePairedItemData } from '../../../utils/utilities';
 // [ria] not needed
 export class Summarize implements INodeType {
@@ -329,24 +330,29 @@ export class Summarize implements INodeType {
 			getValue,
 		);
 
+		const fieldsNotFound: NodeExecutionHint[] = [];
 		try {
 			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
 		} catch (error) {
 			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
-				// const itemData = generatePairedItemData(items.length); // deleted from return array
 				const fieldNotFoundHint: NodeExecutionHint = {
 					message: error instanceof Error ? error.message : String(error),
 					location: 'outputPane',
 				};
-				const { pairedItems, ...json } = aggregationResult;
-				const executionData: INodeExecutionData = {
-					json,
-					pairedItem: ((pairedItems as number[]) || []).map((index: number) => ({
-						item: index,
-					})),
-				};
-				return new NodeExecutionOutput([[executionData]], [fieldNotFoundHint]);
-				// return new NodeExecutionOutput([[{ json: aggregationResult }]], [fieldNotFoundHint]);
+				fieldsNotFound.push(fieldNotFoundHint);
+				// const executionOutput = Object.keys(aggregationResult).reduce(
+				// 	(acc, key) => {
+				// 		const { pairedItem, ...json } = aggregationResult;
+				// 		acc[key] = json;
+				// 		return acc;
+				// 	},
+				// 	{} as { [key: string]: any },
+				// );
+				// return new NodeExecutionOutput(
+				// 	[[{ json: executionOutput }, { json: executionOutput }], [{ json: executionOutput }]],
+				// 	[fieldNotFoundHint],
+				// aggregationResult.fieldnotfoundhint = fieldNotFoundHint;
+				// );
 			} else {
 				throw error;
 			}
@@ -381,7 +387,8 @@ export class Summarize implements INodeType {
 					})),
 				};
 			});
-			return [executionData];
+			return new NodeExecutionOutput([executionData], fieldsNotFound);
 		}
 	}
 }
+// testing: if node version >1 return output needs to have fieldsnotFound
