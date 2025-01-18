@@ -305,8 +305,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		console.log('messages', messages);
-
 		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
 			body,
 		})) as ChatCompletion;
