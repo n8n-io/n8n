@@ -65,7 +65,6 @@ import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
 	N8nButton,
-	N8nRoute,
 	N8nCallout,
 	N8nIconButton,
 	N8nInfoTip,
@@ -1253,10 +1252,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function onExecutionHistoryNavigate() {
-	ndvStore.setActiveNodeName(null);
-}
-
 function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	if (task.parentExecution) {
 		return i18n.baseText('runData.openParentExecution', {
@@ -1630,11 +1625,6 @@ defineExpose({ enterEditMode });
 				<N8nText>
 					{{ i18n.baseText('runData.trimmedData.message') }}
 				</N8nText>
-				<N8nButton size="small" @click="onExecutionHistoryNavigate">
-					<N8nRoute :to="`/workflow/${workflowsStore.workflowId}/executions`">
-						{{ i18n.baseText('runData.trimmedData.button') }}
-					</N8nRoute>
-				</N8nButton>
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
