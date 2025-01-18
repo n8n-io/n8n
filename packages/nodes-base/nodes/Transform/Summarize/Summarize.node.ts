@@ -18,7 +18,8 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-import { generatePairedItemData } from '../../../utils/utilities';
+// import { generatePairedItemData } from '../../../utils/utilities';
+// [ria] not needed
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Summarize',
@@ -334,7 +335,7 @@ export class Summarize implements INodeType {
 			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
 				// const itemData = generatePairedItemData(items.length); // deleted from return array
 				const fieldNotFoundHint: NodeExecutionHint = {
-					message: error.message,
+					message: error instanceof Error ? error.message : String(error),
 					location: 'outputPane',
 				};
 				const { pairedItems, ...json } = aggregationResult;
