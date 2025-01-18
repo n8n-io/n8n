@@ -413,8 +413,15 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 
 const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
 	if (!hasRemoteMethod.value) {
-		// Options are already given
-		return props.parameter.options as INodePropertyOptions[];
+		const options = props.parameter.options as INodePropertyOptions[];
+		const nodeValue = ndvStore.activeNode as INodeUi;
+		if (!nodeValue) {
+			return options;
+		}
+
+		const nodeValues = nodeValue.parameters ?? {};
+		const visibleOptions = options.filter((option) => nodeHelpers.displayParameter(nodeValues, option, '', nodeValue));
+		return visibleOptions;
 	}
 
 	// Options get loaded from server
