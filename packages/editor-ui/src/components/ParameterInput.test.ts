@@ -233,4 +233,52 @@ describe('ParameterInput.vue', () => {
 
 		expect(emitted('update')).toBeUndefined();
 	});
+
+	test('should handle the visibility of the options parameter based on displayOptions', async () => {
+		const roleParameter = {
+			displayName: 'Role',
+			name: 'role',
+			type: 'options',
+			default: 'user',
+			options: [
+				{
+					name: 'User',
+					value: 'user',
+				},
+				{
+					name: 'Assistant',
+					value: 'assistant',
+				},
+				{
+					name: 'System',
+					value: 'system',
+					displayOptions: {
+						hide: {
+							'@version': [1],
+						},
+					},
+				},
+			],
+		};
+
+		const { container, baseElement } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'role',
+				parameter: roleParameter,
+				modelValue: 'user',
+			},
+		});
+
+		const selectInput = container.querySelector('input') as HTMLInputElement;
+		expect(selectInput).toBeInTheDocument();
+
+		await userEvent.click(selectInput);
+
+		await waitFor(() => {
+			expect(baseElement).toHaveTextContent('User');
+			expect(baseElement).toHaveTextContent('Assistant');
+			expect(baseElement).not.toHaveTextContent('System');
+		});
+	});
 });
