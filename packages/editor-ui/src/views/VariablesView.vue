@@ -318,7 +318,7 @@ onMounted(() => {
 					<template v-if="data.value">
 						{{ data.value }}
 					</template>
-					<N8nBadge v-else class="ml-3xs" theme="warning"> Value missing </N8nBadge>
+					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />

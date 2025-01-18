@@ -156,14 +156,20 @@ function getThStyle(column: DatatableColumn) {
 	th {
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
-		padding: 10px 18px;
+		padding: 10px 8px;
 	}
 
 	td {
 		font-size: var(--font-size-s);
-		padding: 3px 15px;
+		padding: 3px 8px;
 		height: 47px;
 		width: auto;
+		&:first-child {
+			padding-left: 16px;
+		}
+		&:last-child {
+			padding-right: 16px;
+		}
 	}
 
 	th,
