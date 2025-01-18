@@ -420,7 +420,9 @@ const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
 		}
 
 		const nodeValues = nodeValue.parameters ?? {};
-		const visibleOptions = options.filter((option) => nodeHelpers.displayParameter(nodeValues, option, '', nodeValue));
+		const visibleOptions = options.filter((option) =>
+			nodeHelpers.displayParameter(nodeValues, option, '', nodeValue),
+		);
 		return visibleOptions;
 	}
 

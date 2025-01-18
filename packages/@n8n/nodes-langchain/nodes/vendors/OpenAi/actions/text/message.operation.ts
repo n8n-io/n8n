@@ -10,7 +10,10 @@ import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
+import {
+	MODELS_NOT_SUPPORT_FUNCTION_CALLS,
+	MODELS_NOT_SUPPORT_SYSTEM_ROLE,
+} from '../../helpers/constants';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
@@ -65,6 +68,11 @@ const properties: INodeProperties[] = [
 								value: 'system',
 								description:
 									"Usually used to set the model's behavior or context for the next user message",
+								displayOptions: {
+									hide: {
+										modelId: MODELS_NOT_SUPPORT_SYSTEM_ROLE,
+									},
+								},
 							},
 						],
 						default: 'user',
@@ -296,6 +304,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				content: functionResponse,
 			});
 		}
+
+		console.log('messages', messages);
 
 		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
 			body,

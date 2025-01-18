@@ -20,3 +20,10 @@ export const MODELS_NOT_SUPPORT_FUNCTION_CALLS = [
 	'tts-1-1106',
 	'text-embedding-ada-002',
 ];
+
+export const MODELS_NOT_SUPPORT_SYSTEM_ROLE = [
+	'o1-mini',
+	'o1-mini-2024-09-12',
+	'o1-preview',
+	'o1-preview-2024-09-12',
+];
