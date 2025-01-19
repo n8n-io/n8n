@@ -414,7 +414,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
 	if (!hasRemoteMethod.value) {
 		const options = props.parameter.options as INodePropertyOptions[];
-		const nodeValue = ndvStore.activeNode as INodeUi;
+		const nodeValue = ndvStore.activeNode!;
 		if (!nodeValue) {
 			return options;
 		}
