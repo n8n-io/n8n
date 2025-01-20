@@ -2385,6 +2385,8 @@
 	"variables.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create variables",
 	"variables.empty.notAllowedToCreate.heading": "{name}, start using variables",
 	"variables.empty.notAllowedToCreate.description": "Ask your n8n instance owner to create the variables you need. Once configured, you can utilize them in your workflows using the syntax $vars.MY_VAR.",
+	"variables.filters.active": "Some variables may be hidden since filters are applied.",
+	"variables.filters.active.reset": "Remove filters",
 	"variables.noResults": "No variables found",
 	"variables.sort.nameAsc": "Sort by name (A-Z)",
 	"variables.sort.nameDesc": "Sort by name (Z-A)",
