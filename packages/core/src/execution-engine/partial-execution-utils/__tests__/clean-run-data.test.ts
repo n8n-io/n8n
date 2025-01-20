@@ -123,6 +123,7 @@ describe('cleanRunData', () => {
 		});
 	});
 
+	//               ►
 	//  ┌─────┐     ┌────────┐
 	//  │node1├─────►rootNode│
 	//  └─────┘     └───▲────┘
@@ -156,6 +157,7 @@ describe('cleanRunData', () => {
 		});
 	});
 
+	//            ►
 	// ┌─────┐   ┌─────┐    ┌────────┐
 	// │node1├───►node2├────►rootNode│
 	// └─────┘   └─────┘    └───▲────┘
@@ -192,6 +194,14 @@ describe('cleanRunData', () => {
 		});
 	});
 
+	//           ►
+	// ┌─────┐  ┌────────┐  ┌────────┐
+	// │node1├──►rootNode├──►rootNode│
+	// └─────┘  └───▲────┘  └───▲────┘
+	//              │           │
+	//              │       ┌───┴───┐
+	//              └───────┤subNode│
+	//                      └───────┘
 	test('removes run data of sub nodes as well if the sub node is shared between multiple root nodes', () => {
 		// ARRANGE
 		const node1 = createNodeData({ name: 'Node1' });
