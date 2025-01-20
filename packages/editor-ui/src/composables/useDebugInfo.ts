@@ -96,12 +96,12 @@ export function useDebugInfo() {
 	};
 
 	const pruningInfo = () => {
-		if (!settingsStore.pruning.isEnabled) return { enabled: false } as const;
+		if (!settingsStore.pruning?.isEnabled) return { enabled: false } as const;
 
 		return {
 			enabled: true,
-			maxAge: `${settingsStore.pruning.maxAge} hours`,
-			maxCount: `${settingsStore.pruning.maxCount} executions`,
+			maxAge: `${settingsStore.pruning?.maxAge} hours`,
+			maxCount: `${settingsStore.pruning?.maxCount} executions`,
 		} as const;
 	};
 

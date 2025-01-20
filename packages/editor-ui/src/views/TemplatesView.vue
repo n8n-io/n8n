@@ -30,7 +30,7 @@ withDefaults(defineProps<Props>(), {
 .template {
 	display: flex;
 	width: 100%;
-	max-width: 1280px;
+	max-width: var(--content-container-width);
 	padding: var(--spacing-l) var(--spacing-l) 0;
 	justify-content: center;
 	@media (min-width: 1200px) {

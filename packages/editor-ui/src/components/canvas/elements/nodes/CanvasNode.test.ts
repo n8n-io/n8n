@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { NodeConnectionType } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
-import { createCanvasNodeProps } from '@/__tests__/data';
+import { createCanvasNodeProps, createCanvasProvide } from '@/__tests__/data';
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -19,7 +19,14 @@ beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
 
-	renderComponent = createComponentRenderer(CanvasNode, { pinia });
+	renderComponent = createComponentRenderer(CanvasNode, {
+		pinia,
+		global: {
+			provide: {
+				...createCanvasProvide(),
+			},
+		},
+	});
 });
 
 describe('CanvasNode', () => {
@@ -76,6 +83,33 @@ describe('CanvasNode', () => {
 
 			expect(inputHandles.length).toBe(3);
 			expect(outputHandles.length).toBe(2);
+		});
+
+		it('should insert spacers after required non-main input handle', () => {
+			const { getAllByTestId } = renderComponent({
+				props: {
+					...createCanvasNodeProps({
+						data: {
+							inputs: [
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.AiAgent, index: 0, required: true },
+								{ type: NodeConnectionType.AiTool, index: 0 },
+							],
+							outputs: [],
+						},
+					}),
+				},
+				global: {
+					stubs: {
+						Handle: true,
+					},
+				},
+			});
+
+			const inputHandles = getAllByTestId('canvas-node-input-handle');
+
+			expect(inputHandles[1]).toHaveStyle('left: 20%');
+			expect(inputHandles[2]).toHaveStyle('left: 80%');
 		});
 	});
 

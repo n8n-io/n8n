@@ -1,9 +1,7 @@
 import nock from 'nock';
 
 import * as deleteDrive from '../../../../v2/actions/drive/deleteDrive.operation';
-
 import * as transport from '../../../../v2/transport';
-
 import { createMockExecuteFunction, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {

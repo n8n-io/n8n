@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
-import { CREDENTIAL_EDIT_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
@@ -11,12 +10,37 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
+import { RecycleScroller } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { refDebounced } from '@vueuse/core';
+import {
+	N8nHeading,
+	N8nText,
+	N8nLink,
+	N8nCheckbox,
+	N8nInput,
+	N8nIcon,
+	N8nButton,
+	N8nBadge,
+	N8nNotice,
+	N8nPopover,
+	N8nSelect,
+	N8nOption,
+	N8nInputLabel,
+	N8nInfoTip,
+} from 'n8n-design-system';
+import {
+	type SourceControlledFile,
+	SOURCE_CONTROL_FILE_STATUS,
+	SOURCE_CONTROL_FILE_TYPE,
+	SOURCE_CONTROL_FILE_LOCATION,
+} from '@n8n/api-types';
+import { orderBy, groupBy } from 'lodash-es';
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
-
-const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
@@ -25,170 +49,206 @@ const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 
-const staged = ref<Record<string, boolean>>({});
-const files = ref<SourceControlAggregatedFile[]>(
-	props.data.status.filter((file, index, self) => {
-		// do not show remote workflows that are not yet created locally during push
-		if (file.location === 'remote' && file.type === 'workflow' && file.status === 'created') {
-			return false;
-		}
-		return self.findIndex((f) => f.id === file.id) === index;
-	}) || [],
-);
+type SourceControlledFileStatus = SourceControlledFile['status'];
 
-const commitMessage = ref('');
-const loading = ref(true);
-const context = ref<'workflow' | 'workflows' | 'credentials' | ''>('');
-
-const statusToBadgeThemeMap: Record<string, string> = {
-	created: 'success',
-	deleted: 'danger',
-	modified: 'warning',
-	renamed: 'warning',
+type Changes = {
+	tags: SourceControlledFile[];
+	variables: SourceControlledFile[];
+	credentials: SourceControlledFile[];
+	workflows: SourceControlledFile[];
+	currentWorkflow?: SourceControlledFile;
 };
 
-const isSubmitDisabled = computed(() => {
-	return !commitMessage.value || Object.values(staged.value).every((value) => !value);
-});
+const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: string): Changes =>
+	files.reduce<Changes>(
+		(acc, file) => {
+			// do not show remote workflows that are not yet created locally during push
+			if (
+				file.location === SOURCE_CONTROL_FILE_LOCATION.remote &&
+				file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+				file.status === SOURCE_CONTROL_FILE_STATUS.created
+			) {
+				return acc;
+			}
 
-const workflowId = computed(() => {
-	if (context.value === 'workflow') {
-		return route.params.name as string;
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.variables) {
+				acc.variables.push(file);
+				return acc;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.tags) {
+				acc.tags.push(file);
+				return acc;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow && currentWorkflowId === file.id) {
+				acc.currentWorkflow = file;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow) {
+				acc.workflows.push(file);
+				return acc;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.credential) {
+				acc.credentials.push(file);
+				return acc;
+			}
+
+			return acc;
+		},
+		{ tags: [], variables: [], credentials: [], workflows: [], currentWorkflow: undefined },
+	);
+
+const userNotices = computed(() => {
+	const messages: string[] = [];
+
+	if (changes.value.credentials.length) {
+		const { created, deleted, modified } = groupBy(changes.value.credentials, 'status');
+
+		messages.push(
+			`${created?.length ?? 0} new credentials added, ${deleted?.length ?? 0} deleted and ${modified?.length ?? 0} changed`,
+		);
 	}
 
-	return '';
+	if (changes.value.variables.length) {
+		messages.push('At least one new variable has been added or modified');
+	}
+
+	if (changes.value.tags.length) {
+		messages.push('At least one new tag has been added or modified');
+	}
+
+	return messages;
 });
+const workflowId = computed(
+	() =>
+		([VIEWS.WORKFLOW].includes(route.name as VIEWS) && route.params.name?.toString()) || undefined,
+);
 
-const sortedFiles = computed(() => {
-	const statusPriority: Record<string, number> = {
-		modified: 1,
-		renamed: 2,
-		created: 3,
-		deleted: 4,
-	};
+const changes = computed(() => classifyFilesByType(props.data.status, workflowId.value));
 
-	return [...files.value].sort((a, b) => {
-		if (context.value === 'workflow') {
-			if (a.id === workflowId.value) {
-				return -1;
-			} else if (b.id === workflowId.value) {
-				return 1;
-			}
+const selectedChanges = ref<Set<string>>(new Set());
+const toggleSelected = (id: string) => {
+	if (selectedChanges.value.has(id)) {
+		selectedChanges.value.delete(id);
+	} else {
+		selectedChanges.value.add(id);
+	}
+};
+
+const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFile) =>
+	workflow && selectedChanges.value.add(workflow.id);
+onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
+
+const filters = ref<{ status?: SourceControlledFileStatus }>({});
+const filtersApplied = computed(() => Boolean(Object.keys(filters.value).length));
+const resetFilters = () => {
+	filters.value = {};
+};
+
+const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
+	{
+		label: 'New',
+		value: SOURCE_CONTROL_FILE_STATUS.created,
+	},
+	{
+		label: 'Modified',
+		value: SOURCE_CONTROL_FILE_STATUS.modified,
+	},
+	{
+		label: 'Deleted',
+		value: SOURCE_CONTROL_FILE_STATUS.deleted,
+	},
+] as const;
+
+const search = ref('');
+const debouncedSearch = refDebounced(search, 250);
+
+const filterCount = computed(() =>
+	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
+);
+
+const filteredWorkflows = computed(() => {
+	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+
+	return changes.value.workflows.filter((workflow) => {
+		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
+			return false;
 		}
 
-		if (statusPriority[a.status] < statusPriority[b.status]) {
-			return -1;
-		} else if (statusPriority[a.status] > statusPriority[b.status]) {
-			return 1;
+		if (filters.value.status && filters.value.status !== workflow.status) {
+			return false;
 		}
 
-		return (a.updatedAt ?? 0) < (b.updatedAt ?? 0)
-			? 1
-			: (a.updatedAt ?? 0) > (b.updatedAt ?? 0)
-				? -1
-				: 0;
+		return true;
 	});
 });
 
-const selectAll = computed(() => {
-	return files.value.every((file) => staged.value[file.file]);
-});
+const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
+	[SOURCE_CONTROL_FILE_STATUS.modified]: 1,
+	[SOURCE_CONTROL_FILE_STATUS.renamed]: 2,
+	[SOURCE_CONTROL_FILE_STATUS.created]: 3,
+	[SOURCE_CONTROL_FILE_STATUS.deleted]: 4,
+} as const;
+const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
+	statusPriority[status] ?? 0;
 
-const workflowFiles = computed(() => {
-	return files.value.filter((file) => file.type === 'workflow');
-});
-
-const stagedWorkflowFiles = computed(() => {
-	return workflowFiles.value.filter((workflow) => staged.value[workflow.file]);
-});
-
-const selectAllIndeterminate = computed(() => {
-	return (
-		stagedWorkflowFiles.value.length > 0 &&
-		stagedWorkflowFiles.value.length < workflowFiles.value.length
+const sortedWorkflows = computed(() => {
+	const sorted = orderBy(
+		filteredWorkflows.value,
+		[
+			// keep the current workflow at the top of the list
+			({ id }) => id === changes.value.currentWorkflow?.id,
+			({ status }) => getPriorityByStatus(status),
+			'updatedAt',
+		],
+		['desc', 'asc', 'desc'],
 	);
+
+	return sorted;
 });
 
-onMounted(async () => {
-	context.value = getContext();
-	try {
-		staged.value = getStagedFilesByContext(files.value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
-	} finally {
-		loading.value = false;
+const commitMessage = ref('');
+const isSubmitDisabled = computed(() => {
+	if (!commitMessage.value.trim()) {
+		return true;
 	}
+
+	const toBePushed =
+		changes.value.credentials.length +
+		changes.value.tags.length +
+		changes.value.variables.length +
+		selectedChanges.value.size;
+	if (toBePushed <= 0) {
+		return true;
+	}
+
+	return false;
 });
+
+const selectAll = computed(
+	() =>
+		selectedChanges.value.size > 0 && selectedChanges.value.size === sortedWorkflows.value.length,
+);
+
+const selectAllIndeterminate = computed(
+	() => selectedChanges.value.size > 0 && selectedChanges.value.size < sortedWorkflows.value.length,
+);
 
 function onToggleSelectAll() {
 	if (selectAll.value) {
-		files.value.forEach((file) => {
-			if (!defaultStagedFileTypes.includes(file.type)) {
-				staged.value[file.file] = false;
-			}
-		});
+		selectedChanges.value.clear();
 	} else {
-		files.value.forEach((file) => {
-			if (!defaultStagedFileTypes.includes(file.type)) {
-				staged.value[file.file] = true;
-			}
-		});
+		selectedChanges.value = new Set(changes.value.workflows.map((file) => file.id));
 	}
-}
-
-function getContext() {
-	if (route.fullPath.startsWith('/workflows')) {
-		return 'workflows';
-	} else if (
-		route.fullPath.startsWith('/credentials') ||
-		uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open
-	) {
-		return 'credentials';
-	} else if (route.fullPath.startsWith('/workflow/')) {
-		return 'workflow';
-	}
-
-	return '';
-}
-
-function getStagedFilesByContext(
-	filesByContext: SourceControlAggregatedFile[],
-): Record<string, boolean> {
-	const stagedFiles = filesByContext.reduce(
-		(acc, file) => {
-			acc[file.file] = false;
-			return acc;
-		},
-		{} as Record<string, boolean>,
-	);
-
-	filesByContext.forEach((file) => {
-		if (defaultStagedFileTypes.includes(file.type)) {
-			stagedFiles[file.file] = true;
-		}
-
-		if (context.value === 'workflow') {
-			if (file.type === 'workflow' && file.id === workflowId.value) {
-				stagedFiles[file.file] = true;
-			}
-		}
-	});
-
-	return stagedFiles;
-}
-
-function setStagedStatus(file: SourceControlAggregatedFile, status: boolean) {
-	staged.value = {
-		...staged.value,
-		[file.file]: status,
-	};
 }
 
 function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 }
 
-function renderUpdatedAt(file: SourceControlAggregatedFile) {
+function renderUpdatedAt(file: SourceControlledFile) {
 	const currentYear = new Date().getFullYear().toString();
 
 	return i18n.baseText('settings.sourceControl.lastUpdated', {
@@ -208,9 +268,46 @@ async function onCommitKeyDownEnter() {
 	}
 }
 
-async function commitAndPush() {
-	const fileNames = files.value.filter((file) => staged.value[file.file]);
+const successNotificationMessage = () => {
+	const messages: string[] = [];
 
+	if (selectedChanges.value.size) {
+		messages.push(
+			i18n.baseText('generic.workflow', {
+				adjustToNumber: selectedChanges.value.size,
+				interpolate: { count: selectedChanges.value.size },
+			}),
+		);
+	}
+
+	if (changes.value.credentials.length) {
+		messages.push(
+			i18n.baseText('generic.credential', {
+				adjustToNumber: changes.value.credentials.length,
+				interpolate: { count: changes.value.credentials.length },
+			}),
+		);
+	}
+
+	if (changes.value.variables.length) {
+		messages.push(i18n.baseText('generic.variable_plural'));
+	}
+
+	if (changes.value.tags.length) {
+		messages.push(i18n.baseText('generic.tag_plural'));
+	}
+
+	return [
+		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
+		i18n.baseText('settings.sourceControl.modals.push.success.description'),
+	].join(' ');
+};
+
+async function commitAndPush() {
+	const files = changes.value.tags
+		.concat(changes.value.variables)
+		.concat(changes.value.credentials)
+		.concat(changes.value.workflows.filter((file) => selectedChanges.value.has(file.id)));
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
 
@@ -218,12 +315,12 @@ async function commitAndPush() {
 		await sourceControlStore.pushWorkfolder({
 			force: true,
 			commitMessage: commitMessage.value,
-			fileNames,
+			fileNames: files,
 		});
 
 		toast.showToast({
 			title: i18n.baseText('settings.sourceControl.modals.push.success.title'),
-			message: i18n.baseText('settings.sourceControl.modals.push.success.description'),
+			message: successNotificationMessage(),
 			type: 'success',
 		});
 	} catch (error) {
@@ -233,159 +330,205 @@ async function commitAndPush() {
 	}
 }
 
-function getStatusText(file: SourceControlAggregatedFile): string {
-	if (file.status === 'deleted') {
-		return i18n.baseText('settings.sourceControl.status.deleted');
-	}
-
-	if (file.status === 'created') {
-		return i18n.baseText('settings.sourceControl.status.created');
-	}
-
-	if (file.status === 'modified') {
-		return i18n.baseText('settings.sourceControl.status.modified');
-	}
-
-	return i18n.baseText('settings.sourceControl.status.renamed');
-}
+const getStatusText = (status: SourceControlledFileStatus) =>
+	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
+const getStatusTheme = (status: SourceControlledFileStatus) => {
+	const statusToBadgeThemeMap: Partial<
+		Record<SourceControlledFileStatus, 'success' | 'danger' | 'warning'>
+	> = {
+		[SOURCE_CONTROL_FILE_STATUS.created]: 'success',
+		[SOURCE_CONTROL_FILE_STATUS.deleted]: 'danger',
+		[SOURCE_CONTROL_FILE_STATUS.modified]: 'warning',
+	} as const;
+	return statusToBadgeThemeMap[status];
+};
 </script>
 
 <template>
 	<Modal
 		width="812px"
-		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
 		max-height="80%"
+		:custom-class="$style.sourceControlPush"
 	>
-		<template #content>
-			<div :class="$style.container">
-				<div v-if="files.length > 0">
-					<div v-if="workflowFiles.length > 0">
-						<n8n-text tag="div" class="mb-l">
-							{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
-							<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-								{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-							</n8n-link>
-						</n8n-text>
+		<template #header>
+			<N8nHeading tag="h1" size="xlarge">
+				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
+			</N8nHeading>
+			<div class="mt-l">
+				<N8nText tag="div">
+					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
+					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+					</N8nLink>
+				</N8nText>
 
-						<n8n-checkbox
-							:class="$style.selectAll"
-							:indeterminate="selectAllIndeterminate"
-							:model-value="selectAll"
-							data-test-id="source-control-push-modal-toggle-all"
-							@update:model-value="onToggleSelectAll"
-						>
-							<n8n-text bold tag="strong">
-								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
-							</n8n-text>
-							<n8n-text v-show="workflowFiles.length > 0" tag="strong">
-								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
-							</n8n-text>
-						</n8n-checkbox>
-
-						<n8n-checkbox
-							v-for="file in sortedFiles"
-							:key="file.file"
-							:class="[
-								'scopedListItem',
-								$style.listItem,
-								{ [$style.hiddenListItem]: defaultStagedFileTypes.includes(file.type) },
-							]"
-							data-test-id="source-control-push-modal-file-checkbox"
-							:model-value="staged[file.file]"
-							@update:model-value="setStagedStatus(file, !staged[file.file])"
-						>
-							<span>
-								<n8n-text v-if="file.status === 'deleted'" color="text-light">
-									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
-									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
-									<strong>{{ file.name || file.id }}</strong>
-								</n8n-text>
-								<n8n-text v-else bold> {{ file.name }} </n8n-text>
-								<n8n-text
-									v-if="file.updatedAt"
-									tag="p"
-									class="mt-0"
-									color="text-light"
-									size="small"
-								>
-									{{ renderUpdatedAt(file) }}
-								</n8n-text>
-							</span>
-							<span>
-								<n8n-badge v-if="workflowId === file.id && file.type === 'workflow'" class="mr-2xs">
-									Current workflow
-								</n8n-badge>
-								<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-									{{ getStatusText(file) }}
-								</n8n-badge>
-							</span>
-						</n8n-checkbox>
-					</div>
-					<n8n-notice v-else class="mt-0">
-						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
-							<template #link>
-								<n8n-link size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
-									{{
-										i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo')
-									}}
-								</n8n-link>
-							</template>
-						</i18n-t>
-					</n8n-notice>
-
-					<n8n-text bold tag="p" class="mt-l mb-2xs">
-						{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
-					</n8n-text>
-					<n8n-input
-						v-model="commitMessage"
-						type="text"
-						:placeholder="
-							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
-						"
-						@keydown.enter="onCommitKeyDownEnter"
-					/>
-				</div>
-				<div v-else-if="!loading">
-					<n8n-notice class="mt-0 mb-0">
-						{{ i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate') }}
-					</n8n-notice>
-				</div>
+				<N8nNotice v-if="userNotices.length" class="mt-xs" :compact="false">
+					<ul class="ml-m">
+						<li v-for="notice in userNotices" :key="notice">{{ notice }}</li>
+					</ul>
+				</N8nNotice>
 			</div>
+
+			<div v-if="changes.workflows.length" :class="[$style.filers]" class="mt-l">
+				<N8nCheckbox
+					:class="$style.selectAll"
+					:indeterminate="selectAllIndeterminate"
+					:model-value="selectAll"
+					data-test-id="source-control-push-modal-toggle-all"
+					@update:model-value="onToggleSelectAll"
+				>
+					<N8nText bold tag="strong">
+						{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+					</N8nText>
+					<N8nText tag="strong">
+						({{ selectedChanges.size }}/{{ sortedWorkflows.length }})
+					</N8nText>
+				</N8nCheckbox>
+				<N8nPopover trigger="click" width="304" style="align-self: normal">
+					<template #reference>
+						<N8nButton
+							icon="filter"
+							type="tertiary"
+							style="height: 100%"
+							:active="Boolean(filterCount)"
+							data-test-id="source-control-filter-dropdown"
+						>
+							<N8nBadge v-show="filterCount" theme="primary" class="mr-4xs">
+								{{ filterCount }}
+							</N8nBadge>
+							{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+						</N8nButton>
+					</template>
+					<N8nInputLabel
+						:label="i18n.baseText('workflows.filters.status')"
+						:bold="false"
+						size="small"
+						color="text-base"
+						class="mb-3xs"
+					/>
+					<N8nSelect v-model="filters.status" data-test-id="source-control-status-filter" clearable>
+						<N8nOption
+							v-for="option in statusFilterOptions"
+							:key="option.label"
+							data-test-id="source-control-status-filter-option"
+							v-bind="option"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nPopover>
+				<N8nInput
+					v-model="search"
+					data-test-id="source-control-push-search"
+					:placeholder="i18n.baseText('workflows.search.placeholder')"
+					clearable
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+			</div>
+		</template>
+		<template #content>
+			<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
+				{{ i18n.baseText('workflows.filters.active') }}
+				<N8nLink size="small" data-test-id="source-control-filters-reset" @click="resetFilters">
+					{{ i18n.baseText('workflows.filters.active.reset') }}
+				</N8nLink>
+			</N8nInfoTip>
+			<RecycleScroller
+				v-if="sortedWorkflows.length"
+				:class="[$style.scroller]"
+				:items="sortedWorkflows"
+				:item-size="69"
+				key-field="id"
+			>
+				<template #default="{ item: file }">
+					<N8nCheckbox
+						:class="['scopedListItem', $style.listItem]"
+						data-test-id="source-control-push-modal-file-checkbox"
+						:model-value="selectedChanges.has(file.id)"
+						@update:model-value="toggleSelected(file.id)"
+					>
+						<span>
+							<N8nText v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted" color="text-light">
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
+									Deleted Workflow:
+								</span>
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
+									Deleted Credential:
+								</span>
+								<strong>{{ file.name || file.id }}</strong>
+							</N8nText>
+							<N8nText v-else bold> {{ file.name }} </N8nText>
+							<N8nText v-if="file.updatedAt" tag="p" class="mt-0" color="text-light" size="small">
+								{{ renderUpdatedAt(file) }}
+							</N8nText>
+						</span>
+						<span :class="[$style.badges]">
+							<N8nBadge
+								v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
+								class="mr-2xs"
+							>
+								Current workflow
+							</N8nBadge>
+							<N8nBadge :theme="getStatusTheme(file.status)">
+								{{ getStatusText(file.status) }}
+							</N8nBadge>
+						</span>
+					</N8nCheckbox>
+				</template>
+			</RecycleScroller>
 		</template>
 
 		<template #footer>
+			<N8nText bold tag="p" class="mb-2xs">
+				{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
+			</N8nText>
+			<N8nInput
+				v-model="commitMessage"
+				data-test-id="source-control-push-modal-commit"
+				:placeholder="i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')"
+				@keydown.enter="onCommitKeyDownEnter"
+			/>
+
 			<div :class="$style.footer">
-				<n8n-button type="tertiary" class="mr-2xs" @click="close">
+				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
-				</n8n-button>
-				<n8n-button type="primary" :disabled="isSubmitDisabled" @click="commitAndPush">
+				</N8nButton>
+				<N8nButton
+					data-test-id="source-control-push-modal-submit"
+					type="primary"
+					:disabled="isSubmitDisabled"
+					@click="commitAndPush"
+				>
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style module lang="scss">
-.container > * {
-	overflow-wrap: break-word;
+.filers {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
-.actionButtons {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
+.selectAll {
+	flex-shrink: 0;
+	margin-bottom: 0;
+}
+
+.scroller {
+	max-height: 380px;
 }
 
 .listItem {
-	display: flex;
-	width: 100%;
 	align-items: center;
-	margin: var(--spacing-2xs) 0 var(--spacing-2xs);
 	padding: var(--spacing-xs);
-	cursor: pointer;
 	transition: border 0.3s ease;
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
@@ -394,37 +537,32 @@ function getStatusText(file: SourceControlAggregatedFile): string {
 		border-color: var(--color-foreground-dark);
 	}
 
-	&:first-child {
-		margin-top: 0;
+	:global(.el-checkbox__label) {
+		display: flex;
+		width: 100%;
+		justify-content: space-between;
+		align-items: center;
 	}
 
-	&:last-child {
-		margin-bottom: 0;
-	}
-
-	&.hiddenListItem {
-		display: none !important;
+	:global(.el-checkbox__inner) {
+		transition: none;
 	}
 }
 
-.selectAll {
-	float: left;
-	clear: both;
-	margin: 0 0 var(--spacing-2xs);
+.badges {
+	display: flex;
 }
 
 .footer {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
+	margin-top: 20px;
 }
-</style>
 
-<style scoped lang="scss">
-.scopedListItem :deep(.el-checkbox__label) {
-	display: flex;
-	width: 100%;
-	justify-content: space-between;
-	align-items: center;
+.sourceControlPush {
+	:global(.el-dialog__header) {
+		padding-bottom: var(--spacing-xs);
+	}
 }
 </style>

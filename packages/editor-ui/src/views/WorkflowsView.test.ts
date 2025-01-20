@@ -5,10 +5,9 @@ import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import { STORES, VIEWS } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
-import { usePostHog } from '@/stores/posthog.store';
-import type { Cloud, IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, IWorkflowDb } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { Project } from '@/types/projects.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -73,9 +72,7 @@ describe('WorkflowsView', () => {
 
 		describe('when onboardingExperiment -> False', () => {
 			const pinia = createTestingPinia({ initialState });
-			const posthog = mockedStore(usePostHog);
 			const sourceControl = mockedStore(useSourceControlStore);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.control);
 
 			const projectsStore = mockedStore(useProjectsStore);
 
@@ -110,44 +107,6 @@ describe('WorkflowsView', () => {
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
-		});
-
-		describe('should show courses and templates link for sales users', () => {
-			it('for cloudUser', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUserCloudInfo = { role: 'Sales' } as Cloud.UserAccount;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-
-			it('for personalizationAnswers', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUser = { personalizationAnswers: { role: 'Sales' } } as IUser;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-		});
-
-		it('should show courses and templates link for onboardingExperiment', () => {
-			const pinia = createTestingPinia({ initialState });
-
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const posthog = mockedStore(usePostHog);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant);
-
-			const { getAllByTestId } = renderComponent({ pinia });
-
-			expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
 		});
 	});
 

@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
-import {
-	NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL,
-	SAMPLE_SUBWORKFLOW_WORKFLOW,
-	SAMPLE_SUBWORKFLOW_WORKFLOW_ID,
-	VIEWS,
-} from '@/constants';
+import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL, VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDataCreate } from '@/Interface';
+import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 
 const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
@@ -21,11 +17,10 @@ const route = useRoute();
 const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
-	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW_ID) {
+	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId) {
 		await openSampleSubworkflow();
 		return;
 	}
-
 	try {
 		loadingService.startLoading();
 		const template = await templateStore.getFixedWorkflowTemplate(templateId);

@@ -1,24 +1,24 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
-import {
-	type IExecuteWorkflowInfo,
-	type IWorkflowExecuteAdditionalData,
-	type ExecuteWorkflowOptions,
-	type IRun,
-	type INodeExecutionData,
+import type {
+	IExecuteWorkflowInfo,
+	IWorkflowExecuteAdditionalData,
+	ExecuteWorkflowOptions,
+	IRun,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import Container from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { SecretsHelper } from '@/secrets-helpers';
+import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';
@@ -50,6 +50,7 @@ const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionDa
 		mode: 'manual',
 		startedAt: new Date(),
 		status: 'new',
+		waitTill: undefined,
 	});
 
 const getCancelablePromise = async (run: IRun) =>
@@ -114,7 +115,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 	});
 
 	describe('executeWorkflow', () => {
-		const runWithData = getMockRun({ lastNodeOutput: [[{ json: { test: 1 } }]] });
+		const runWithData = getMockRun({
+			lastNodeOutput: [[{ json: { test: 1 } }]],
+		});
 
 		beforeEach(() => {
 			workflowRepository.get.mockResolvedValue(
@@ -158,6 +161,23 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(executionRepository.setRunning).toHaveBeenCalledWith(EXECUTION_ID);
+		});
+
+		it('should return waitTill property when workflow execution is waiting', async () => {
+			const waitTill = new Date();
+			runWithData.waitTill = waitTill;
+
+			const response = await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			expect(response).toEqual({
+				data: runWithData.data.resultData.runData[LAST_NODE_EXECUTED][0].data!.main,
+				executionId: EXECUTION_ID,
+				waitTill,
+			});
 		});
 	});
 
@@ -229,6 +249,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 						],
 						waitingExecution: {},
 						waitingExecutionSource: {},
+					},
+					parentExecution: {
+						executionId: '123',
+						workflowId: '567',
 					},
 					resultData: { runData: {} },
 					startData: {},

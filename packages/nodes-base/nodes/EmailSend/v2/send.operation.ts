@@ -9,11 +9,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import { updateDisplayOptions } from '@utils/utilities';
+
 import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
@@ -167,7 +167,7 @@ const properties: INodeProperties[] = [
 				description: 'Email address of BCC recipient',
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,

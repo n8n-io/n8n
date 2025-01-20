@@ -1,4 +1,3 @@
-import { URLSearchParams } from 'url';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -10,10 +9,9 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
+import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { wrapData } from '../../utils/utilities';
 import { nextCloudApiRequest } from './GenericFunctions';
 function parseResponseData(responseData: string | object | any[]): object | any[] | string {
 	// Check if the responseData is a string
@@ -30,6 +28,7 @@ function parseResponseData(responseData: string | object | any[]): object | any[
 	// If it's not a string, return the data as is (it should be an object or array)
 	return responseData;
 }
+import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {

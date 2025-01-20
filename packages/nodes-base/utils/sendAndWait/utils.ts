@@ -1,13 +1,27 @@
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
-import type { INodeProperties, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
-import type { IEmail } from './interfaces';
-import { escapeHtml } from '../utilities';
+import {
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	tryToParseJsonToFormFields,
+	updateDisplayOptions,
+} from 'n8n-workflow';
+import type {
+	INodeProperties,
+	IExecuteFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	FormFieldsParameter,
+} from 'n8n-workflow';
+
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
 	createEmailBody,
 } from './email-templates';
+import type { IEmail } from './interfaces';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import { escapeHtml } from '../utilities';
 
 type SendAndWaitConfig = {
 	title: string;
@@ -16,7 +30,14 @@ type SendAndWaitConfig = {
 	options: Array<{ label: string; value: string; style: string }>;
 };
 
-export const MESSAGE_PREFIX = 'ACTION REQUIRED: ';
+type FormResponseTypeOptions = {
+	messageButtonLabel?: string;
+	responseFormTitle?: string;
+	responseFormDescription?: string;
+	responseFormButtonLabel?: string;
+};
+
+const INPUT_FIELD_IDENTIFIER = 'field-0';
 
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
@@ -57,8 +78,31 @@ export function getSendAndWaitProperties(
 			default: '',
 			required: true,
 			typeOptions: {
-				rows: 5,
+				rows: 4,
 			},
+		},
+		{
+			displayName: 'Response Type',
+			name: 'responseType',
+			type: 'options',
+			default: 'approval',
+			options: [
+				{
+					name: 'Approval',
+					value: 'approval',
+					description: 'User can approve/disapprove from within the message',
+				},
+				{
+					name: 'Free Text',
+					value: 'freeText',
+					description: 'User can submit a response via a form',
+				},
+				{
+					name: 'Custom Form',
+					value: 'customForm',
+					description: 'User can submit a response via a custom form',
+				},
+			],
 		},
 		{
 			displayName: 'Approval Options',
@@ -134,15 +178,61 @@ export function getSendAndWaitProperties(
 					],
 				},
 			],
+			displayOptions: {
+				show: {
+					responseType: ['approval'],
+				},
+			},
+		},
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			formFieldsProperties,
+		),
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [
+				{
+					displayName: 'Message Button Label',
+					name: 'messageButtonLabel',
+					type: 'string',
+					default: 'Respond',
+				},
+				{
+					displayName: 'Response Form Title',
+					name: 'responseFormTitle',
+					description: 'Title of the form that the user can access to provide their response',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Response Form Description',
+					name: 'responseFormDescription',
+					description: 'Description of the form that the user can access to provide their response',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Response Form Button Label',
+					name: 'responseFormButtonLabel',
+					type: 'string',
+					default: 'Submit',
+				},
+			],
+			displayOptions: {
+				show: {
+					responseType: ['freeText', 'customForm'],
+				},
+			},
 		},
 		...additionalProperties,
-		{
-			displayName:
-				'Use the wait node for more complex approval flows. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
-			name: 'useWaitNotice',
-			type: 'notice',
-			default: '',
-		},
 	];
 
 	return updateDisplayOptions(
@@ -157,7 +247,136 @@ export function getSendAndWaitProperties(
 }
 
 // Webhook Function --------------------------------------------------------------
+const getFormResponseCustomizations = (context: IWebhookFunctions) => {
+	const message = context.getNodeParameter('message', '') as string;
+	const options = context.getNodeParameter('options', {}) as FormResponseTypeOptions;
+
+	let formTitle = '';
+	if (options.responseFormTitle) {
+		formTitle = options.responseFormTitle;
+	}
+
+	let formDescription = message;
+	if (options.responseFormDescription) {
+		formDescription = options.responseFormDescription;
+	}
+	formDescription = formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+
+	let buttonLabel = 'Submit';
+	if (options.responseFormButtonLabel) {
+		buttonLabel = options.responseFormButtonLabel;
+	}
+
+	return {
+		formTitle,
+		formDescription,
+		buttonLabel,
+	};
+};
+
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
+	const method = this.getRequestObject().method;
+	const res = this.getResponseObject();
+	const responseType = this.getNodeParameter('responseType', 'approval') as
+		| 'approval'
+		| 'freeText'
+		| 'customForm';
+
+	if (responseType === 'freeText') {
+		if (method === 'GET') {
+			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+
+			const data = prepareFormData({
+				formTitle,
+				formDescription,
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				buttonLabel,
+				redirectUrl: undefined,
+				formFields: [
+					{
+						fieldLabel: 'Response',
+						fieldType: 'textarea',
+						requiredField: true,
+					},
+				],
+				testRun: false,
+				query: {},
+			});
+
+			res.render('form-trigger', data);
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+		if (method === 'POST') {
+			const data = this.getBodyData().data as IDataObject;
+
+			return {
+				webhookResponse: ACTION_RECORDED_PAGE,
+				workflowData: [[{ json: { data: { text: data[INPUT_FIELD_IDENTIFIER] } } }]],
+			};
+		}
+	}
+
+	if (responseType === 'customForm') {
+		const defineForm = this.getNodeParameter('defineForm', 'fields') as 'fields' | 'json';
+		let fields: FormFieldsParameter = [];
+
+		if (defineForm === 'json') {
+			try {
+				const jsonOutput = this.getNodeParameter('jsonOutput', '', {
+					rawExpressions: true,
+				}) as string;
+
+				fields = tryToParseJsonToFormFields(resolveRawData(this, jsonOutput));
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error.message, {
+					description: error.message,
+				});
+			}
+		} else {
+			fields = this.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+		}
+
+		if (method === 'GET') {
+			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+
+			const data = prepareFormData({
+				formTitle,
+				formDescription,
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				buttonLabel,
+				redirectUrl: undefined,
+				formFields: fields,
+				testRun: false,
+				query: {},
+			});
+
+			res.render('form-trigger', data);
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+		if (method === 'POST') {
+			const returnItem = await prepareFormReturnItem(this, fields, 'production', true);
+			const json = returnItem.json;
+
+			delete json.submittedAt;
+			delete json.formMode;
+
+			returnItem.json = { data: json };
+
+			return {
+				webhookResponse: ACTION_RECORDED_PAGE,
+				workflowData: [[returnItem]],
+			};
+		}
+	}
+
 	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
@@ -168,7 +387,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 // Send and Wait Config -----------------------------------------------------------
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
-	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim());
+	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
+		.replace(/\\n/g, '\n')
+		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
 	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
 	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
@@ -187,7 +408,16 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		options: [],
 	};
 
-	if (approvalOptions.approvalType === 'double') {
+	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
+
+	if (responseType === 'freeText' || responseType === 'customForm') {
+		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;
+		config.options.push({
+			label,
+			value: 'true',
+			style: 'primary',
+		});
+	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
 		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
 		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
@@ -245,7 +475,7 @@ export function createEmail(context: IExecuteFunctions) {
 
 	const email: IEmail = {
 		to,
-		subject: `${MESSAGE_PREFIX}${config.title}`,
+		subject: config.title,
 		body: '',
 		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
 	};

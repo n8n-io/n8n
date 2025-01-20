@@ -1,7 +1,6 @@
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-
 import { get } from 'lodash';
 import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 
 export const node: INode = {
 	id: '11',

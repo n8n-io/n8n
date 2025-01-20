@@ -7,14 +7,15 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { N8nItemListOutputParser } from '../../../utils/output_parsers/N8nItemListOutputParser';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Item List Output Parser',
 		name: 'outputParserItemList',
 		icon: 'fa:bars',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Return the results as separate items',

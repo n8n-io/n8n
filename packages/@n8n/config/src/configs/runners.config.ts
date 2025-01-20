@@ -24,7 +24,7 @@ export class TaskRunnersConfig {
 	authToken: string = '';
 
 	/** IP address task runners server should listen on */
-	@Env('N8N_RUNNERS_SERVER_PORT')
+	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT')
 	port: number = 5679;
 
 	/** IP address task runners server should listen on */
@@ -39,19 +39,25 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
 	maxOldSpaceSize: string = '';
 
-	/** How many concurrent tasks can a runner execute at a time */
+	/**
+	 * How many concurrent tasks can a runner execute at a time
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
+	 */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
-	maxConcurrency: number = 5;
+	maxConcurrency: number = 10;
 
-	/** Should the output of deduplication be asserted for correctness */
-	@Env('N8N_RUNNERS_ASSERT_DEDUPLICATION_OUTPUT')
-	assertDeduplicationOutput: boolean = false;
-
-	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted and the runner restarted. Must be greater than 0. */
+	/**
+	 * How long (in seconds) a task is allowed to take for completion, else the
+	 * task will be aborted. (In internal mode, the runner will also be
+	 * restarted.) Must be greater than 0.
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 60;
+	taskTimeout: number = 300; // 5 minutes
 
-	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted and the runner restarted. Must be greater than 0. */
+	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
 }

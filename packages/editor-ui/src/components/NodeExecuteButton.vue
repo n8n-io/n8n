@@ -287,6 +287,7 @@ async function onClick() {
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				5,
 			);
 			if (!updateInformation) return;
 
@@ -318,6 +319,7 @@ async function onClick() {
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
 		ndvStore.setActiveNodeName(null);
+		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
 		await stopWaitingForWebhook();

@@ -51,5 +51,6 @@ export const newCredential = (
 	updatedAt: faker.date.past().toISOString(),
 	id: faker.string.alphanumeric({ length: 16 }),
 	name: faker.commerce.productName(),
+	isManaged: false,
 	...opts,
 });

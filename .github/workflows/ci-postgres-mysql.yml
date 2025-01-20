@@ -106,7 +106,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 20000
+        run: pnpm test:mariadb --testTimeout 30000
 
   postgres:
     name: Postgres

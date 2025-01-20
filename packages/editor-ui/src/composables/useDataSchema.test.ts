@@ -1,5 +1,5 @@
 import jp from 'jsonpath';
-import { useDataSchema } from '@/composables/useDataSchema';
+import { useDataSchema, useFlattenSchema } from '@/composables/useDataSchema';
 import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -647,5 +647,41 @@ describe('useDataSchema', () => {
 				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 			},
 		);
+	});
+});
+
+describe('useFlattenSchema', () => {
+	it('flattens a schema', () => {
+		const schema: Schema = {
+			path: '',
+			type: 'object',
+			value: [
+				{
+					key: 'obj',
+					path: '.obj',
+					type: 'object',
+					value: [
+						{
+							key: 'foo',
+							path: '.obj.foo',
+							type: 'object',
+							value: [
+								{
+									key: 'nested',
+									path: '.obj.foo.nested',
+									type: 'string',
+									value: 'bar',
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		expect(
+			useFlattenSchema().flattenSchema({
+				schema,
+			}).length,
+		).toBe(3);
 	});
 });

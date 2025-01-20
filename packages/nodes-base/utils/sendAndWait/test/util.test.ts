@@ -1,12 +1,12 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import {
 	getSendAndWaitProperties,
 	getSendAndWaitConfig,
 	createEmail,
 	sendAndWaitWebhook,
-	MESSAGE_PREFIX,
 } from '../utils';
 
 describe('Send and Wait utils tests', () => {
@@ -159,7 +159,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(email).toEqual({
 				to: 'test@example.com',
-				subject: `${MESSAGE_PREFIX}Test subject`,
+				subject: 'Test subject',
 				body: '',
 				htmlBody: expect.stringContaining('Test message'),
 			});
@@ -207,6 +207,163 @@ describe('Send and Wait utils tests', () => {
 				webhookResponse: expect.any(String),
 				workflowData: [[{ json: { data: { approved: false } } }]],
 			});
+		});
+
+		it('should handle freeText GET webhook', async () => {
+			const mockRender = jest.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'freeText',
+					message: 'Test message',
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				noWebhookResponse: true,
+			});
+
+			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+				testRun: false,
+				validForm: true,
+				formTitle: '',
+				formDescription: 'Test message',
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
+				formFields: [
+					{
+						id: 'field-0',
+						errorId: 'error-field-0',
+						label: 'Response',
+						inputRequired: 'form-required',
+						defaultValue: '',
+						isTextarea: true,
+					},
+				],
+				appendAttribution: true,
+				buttonLabel: 'Submit',
+			});
+		});
+
+		it('should handle freeText POST webhook', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+			} as any);
+
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: {
+					'field-0': 'test value',
+				},
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'freeText',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toEqual([[{ json: { data: { text: 'test value' } } }]]);
+		});
+
+		it('should handle customForm GET webhook', async () => {
+			const mockRender = jest.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Test message',
+					defineForm: 'fields',
+					'formFields.values': [{ label: 'Field 1', fieldType: 'text', requiredField: true }],
+					options: {
+						responseFormTitle: 'Test title',
+						responseFormDescription: 'Test description',
+						responseFormButtonLabel: 'Test button',
+					},
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				noWebhookResponse: true,
+			});
+
+			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+				testRun: false,
+				validForm: true,
+				formTitle: 'Test title',
+				formDescription: 'Test description',
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
+				formFields: [
+					{
+						id: 'field-0',
+						errorId: 'error-field-0',
+						inputRequired: 'form-required',
+						defaultValue: '',
+						isInput: true,
+						type: 'text',
+					},
+				],
+				appendAttribution: true,
+				buttonLabel: 'Test button',
+			});
+		});
+
+		it('should handle customForm POST webhook', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'test 1',
+							fieldType: 'text',
+						},
+					],
+				};
+				return params[parameterName];
+			});
+
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: {
+					'field-0': 'test value',
+				},
+			} as any);
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
 		});
 	});
 });

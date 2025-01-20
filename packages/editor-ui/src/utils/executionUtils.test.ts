@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
-	openPopUpWindow,
+	openFormPopupWindow,
 	executionFilterToQueryFilter,
 	waitingNodeTooltip,
 } from './executionUtils';
@@ -15,7 +15,7 @@ vi.mock('./executionUtils', async () => {
 	const actual = await vi.importActual('./executionUtils');
 	return {
 		...actual,
-		openPopUpWindow: vi.fn(),
+		openFormPopupWindow: vi.fn(),
 	};
 });
 
@@ -86,7 +86,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openPopUpWindow).not.toHaveBeenCalled();
+		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});
 
 	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
@@ -119,7 +119,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openPopUpWindow).not.toHaveBeenCalled();
+		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});
 
 	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
@@ -146,7 +146,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openPopUpWindow).not.toHaveBeenCalled();
+		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});
 
 	describe('executionFilterToQueryFilter()', () => {

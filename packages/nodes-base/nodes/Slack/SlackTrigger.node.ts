@@ -13,8 +13,8 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { slackApiRequestAllItems } from './V2/GenericFunctions';
 import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
+import { slackApiRequestAllItems } from './V2/GenericFunctions';
 
 export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {

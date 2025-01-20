@@ -7,8 +7,18 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '../../utils/utilities';
+import {
+	formDescription,
+	formFields,
+	respondWithOptions,
+	formRespondMode,
+	formTitle,
+	appendAttributionToForm,
+} from '../Form/common.descriptions';
+import { formWebhook } from '../Form/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -20,17 +30,6 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from '../Webhook/description';
-
-import {
-	formDescription,
-	formFields,
-	respondWithOptions,
-	formRespondMode,
-	formTitle,
-	appendAttributionToForm,
-} from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
-import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
 
 const toWaitAmount: INodeProperties = {
@@ -516,7 +515,7 @@ export class Wait extends Webhook {
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
-		let waitTill = new Date(WAIT_TIME_UNLIMITED);
+		let waitTill = WAIT_INDEFINITELY;
 		const limitWaitTime = context.getNodeParameter('limitWaitTime', 0);
 
 		if (limitWaitTime === true) {

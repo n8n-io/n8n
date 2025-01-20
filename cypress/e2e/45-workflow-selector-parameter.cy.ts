@@ -94,10 +94,14 @@ describe('Workflow Selector Parameter', () => {
 			.findChildByTestId('rlc-item')
 			.eq(0)
 			.find('span')
-			.should('have.text', 'Create a new sub-workflow');
+			.should('contain.text', 'Create a'); // Due to some inconsistency we're sometimes in a project and sometimes not, this covers both cases
 
 		getVisiblePopper().findChildByTestId('rlc-item').eq(0).click();
 
-		cy.get('@windowOpen').should('be.calledWith', '/workflows/onboarding/0?sampleSubWorkflows=0');
+		const SAMPLE_SUBWORKFLOW_TEMPLATE_ID = 'VMiAxXa3lCAizGB5f7dVZQSFfg3FtHkdTKvLuupqBls=';
+		cy.get('@windowOpen').should(
+			'be.calledWith',
+			`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_TEMPLATE_ID}?sampleSubWorkflows=0`,
+		);
 	});
 });

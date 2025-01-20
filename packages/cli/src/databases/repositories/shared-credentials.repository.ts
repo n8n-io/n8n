@@ -1,12 +1,12 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { RoleService } from '@/services/role.service';
 
 import type { Project } from '../entities/project';
-import type { ProjectRole } from '../entities/project-relation';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/shared-credentials';
 import type { User } from '../entities/user';
 

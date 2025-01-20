@@ -1,3 +1,6 @@
+import type { Response } from 'express';
+import isbot from 'isbot';
+import { DateTime } from 'luxon';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -16,18 +19,14 @@ import {
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
-
+import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
-
-import { DateTime } from 'luxon';
-import isbot from 'isbot';
-import type { Response } from 'express';
-import { getResolvables } from '../../utils/utilities';
 
 export function prepareFormData({
 	formTitle,
 	formDescription,
+	formSubmittedHeader,
 	formSubmittedText,
 	redirectUrl,
 	formFields,
@@ -49,6 +48,7 @@ export function prepareFormData({
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	formSubmittedHeader?: string;
 }) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -63,6 +63,7 @@ export function prepareFormData({
 		validForm,
 		formTitle,
 		formDescription,
+		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
 		formFields: [],
@@ -325,6 +326,13 @@ export function renderForm({
 	res.render('form-trigger', data);
 }
 
+export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
+	return nodes.some(
+		(n) =>
+			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
+	);
+};
+
 export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
@@ -402,10 +410,10 @@ export async function formWebhook(
 		}
 
 		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name);
-			const hasNextPage = connectedNodes.some(
-				(n) => n.type === FORM_NODE_TYPE || n.type === WAIT_NODE_TYPE,
-			);
+			const connectedNodes = context.getChildNodes(context.getNode().name, {
+				includeNodeParameters: true,
+			});
+			const hasNextPage = isFormConnected(connectedNodes);
 
 			if (hasNextPage) {
 				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;

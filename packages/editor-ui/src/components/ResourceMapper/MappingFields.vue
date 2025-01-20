@@ -21,7 +21,14 @@ import {
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
-import { N8nIconButton, N8nInputLabel, N8nOption, N8nSelect, N8nTooltip } from 'n8n-design-system';
+import {
+	N8nIcon,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nTooltip,
+} from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 
 interface Props {
@@ -37,11 +44,13 @@ interface Props {
 	refreshInProgress: boolean;
 	teleported?: boolean;
 	isReadOnly?: boolean;
+	isDataStale?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	isReadOnly: false,
+	isDataStale: false,
 });
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
@@ -310,6 +319,27 @@ defineExpose({
 					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
+				<div v-if="props.isDataStale && !props.refreshInProgress" :class="$style.staleDataWarning">
+					<N8nTooltip>
+						<template #content>
+							<span>{{
+								locale.baseText('resourceMapper.staleDataWarning.tooltip', {
+									interpolate: { fieldWord: pluralFieldWordCapitalized },
+								})
+							}}</span>
+						</template>
+						<N8nIcon icon="exclamation-triangle" size="small" color="warning" />
+					</N8nTooltip>
+					<N8nIconButton
+						icon="refresh"
+						type="tertiary"
+						size="small"
+						:text="true"
+						:title="locale.baseText('generic.refresh')"
+						:disabled="props.refreshInProgress"
+						@click="onParameterActionSelected('refreshFieldList')"
+					/>
+				</div>
 			</template>
 		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
@@ -360,7 +390,7 @@ defineExpose({
 					:title="
 						locale.baseText('resourceMapper.removeField', {
 							interpolate: {
-								fieldWord: singularFieldWordCapitalized,
+								fieldWord: singularFieldWord,
 							},
 						})
 					"
@@ -391,7 +421,7 @@ defineExpose({
 			<N8nSelect
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
-						interpolate: { fieldWord: singularFieldWordCapitalized },
+						interpolate: { fieldWord: singularFieldWord },
 					})
 				"
 				size="small"
@@ -441,5 +471,12 @@ defineExpose({
 .addOption {
 	margin-top: var(--spacing-l);
 	padding: 0 0 0 var(--spacing-s);
+}
+
+.staleDataWarning {
+	display: flex;
+	height: var(--spacing-m);
+	align-items: baseline;
+	gap: var(--spacing-5xs);
 }
 </style>

@@ -94,7 +94,12 @@ describe('Form Node', () => {
 			);
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
@@ -122,7 +127,12 @@ describe('Form Node', () => {
 		it('should return form data for POST request', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
@@ -162,7 +172,7 @@ describe('Form Node', () => {
 			]);
 		});
 
-		it('should handle completion operation', async () => {
+		it('should handle completion operation and render completion page', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'operation') return 'completion';
@@ -171,10 +181,16 @@ describe('Form Node', () => {
 				if (paramName === 'respondWith') return 'text';
 				if (paramName === 'completionTitle') return 'Test Title';
 				if (paramName === 'completionMessage') return 'Test Message';
+				if (paramName === 'redirectUrl') return '';
 				return {};
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 
@@ -187,16 +203,55 @@ describe('Form Node', () => {
 			);
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
 			mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-				[`${testExecutionId}-${formCompletionNodeName}`]: { redirectUrl: '' },
-			});
 
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponseObject.render).toHaveBeenCalledWith(
-				'form-trigger-completion',
-				expect.any(Object),
+			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: 'test',
+				formTitle: 'test',
+				message: 'Test Message',
+				title: 'Test Title',
+			});
+		});
+
+		it('should handle completion operation and redirect', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'jsonOutput') return '[]';
+				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'completionTitle') return 'Test Title';
+				if (paramName === 'completionMessage') return 'Test Message';
+				if (paramName === 'redirectUrl') return 'https://n8n.io';
+				return {};
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
+
+			const mockResponseObject = {
+				render: jest.fn(),
+				redirect: jest.fn(),
+				send: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.send).toHaveBeenCalledWith(
+				'<html><head><meta http-equiv="refresh" content="0; url=https://n8n.io"></head></html>',
 			);
 		});
 	});

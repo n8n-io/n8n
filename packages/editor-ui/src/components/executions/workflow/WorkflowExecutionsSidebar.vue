@@ -13,6 +13,9 @@ import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { isComponentPublicInstance } from '@/utils/typeGuards';
 import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
+import { useSettingsStore } from '@/stores/settings.store';
+import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
@@ -36,6 +39,8 @@ const router = useRouter();
 const i18n = useI18n();
 
 const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const mountedItems = ref<string[]>([]);
 const autoScrollDeps = ref<AutoScrollDeps>({
@@ -48,6 +53,17 @@ const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
+
+/**
+ * Calculate the number of executions counted towards the production executions concurrency limit.
+ * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
+ */
+const runningExecutionsCount = computed(() => {
+	return props.executions.filter(
+		(execution) =>
+			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
+	).length;
+});
 
 watch(
 	() => route,
@@ -162,6 +178,10 @@ function scrollToActiveCard(): void {
 		}
 	}
 }
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
+};
 </script>
 
 <template>
@@ -174,6 +194,14 @@ function scrollToActiveCard(): void {
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
 			</n8n-heading>
+
+			<ConcurrentExecutionsHeader
+				v-if="settingsStore.isConcurrencyEnabled"
+				:running-executions-count="runningExecutionsCount"
+				:concurrency-cap="settingsStore.concurrency"
+				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				@go-to-upgrade="goToUpgrade"
+			/>
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
@@ -244,6 +272,7 @@ function scrollToActiveCard(): void {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	position: relative;
 }
 
 .heading {
@@ -293,9 +322,10 @@ function scrollToActiveCard(): void {
 	bottom: 0;
 	margin-left: calc(-1 * var(--spacing-l));
 	border-top: var(--border-base);
+	width: 100%;
 
 	& > div {
-		width: 309px;
+		width: 100%;
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}

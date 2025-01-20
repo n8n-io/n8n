@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -21,19 +22,14 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
-import {
-	ExecutionCancelledError,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
@@ -46,7 +42,6 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -125,6 +120,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
@@ -163,7 +159,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -203,7 +205,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		ErrorReporter.error(
+		this.errorReporter.error(
 			new ApplicationError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
@@ -284,6 +286,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const { executionData, metadata, annotation, ...rest } = execution;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
+
+		if (execution.status === 'success' && executionData?.data === '[]') {
+			this.errorReporter.error('Found successful execution where data is empty stringified array', {
+				extra: {
+					executionId: execution.id,
+					workflowId: executionData?.workflowData.id,
+				},
+			});
+		}
 
 		return {
 			...rest,
@@ -981,7 +992,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

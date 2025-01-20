@@ -21,6 +21,8 @@ import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestDefinition } from './test-definition.ee';
+import { TestMetric } from './test-metric.ee';
+import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
@@ -60,4 +62,6 @@ export const entities = {
 	ApiKey,
 	ProcessedData,
 	TestDefinition,
+	TestMetric,
+	TestRun,
 };

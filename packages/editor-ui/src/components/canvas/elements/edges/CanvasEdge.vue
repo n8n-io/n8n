@@ -5,14 +5,14 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, useCssModule, toRef } from 'vue';
+import { computed, toRef, useCssModule } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { getCustomPath } from './utils/edgePath';
+import { getEdgeRenderData } from './utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
 	delete: [connection: Connection];
-	'update:hovered': [hovered: boolean];
+	'update:label:hovered': [hovered: boolean];
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
@@ -44,8 +44,6 @@ const edgeColor = computed(() => {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
-	} else if (status.value === 'running') {
-		return 'var(--color-primary)';
 	} else if (!isMainConnection.value) {
 		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
@@ -72,10 +70,13 @@ const edgeLabelStyle = computed(() => ({
 	color: edgeColor.value,
 }));
 
+const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);
+
 const edgeToolbarStyle = computed(() => {
-	const [, labelX, labelY] = path.value;
+	const translateY = isConnectorStraight.value ? '-150%' : '-50%';
+
 	return {
-		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+		transform: `translate(-50%, ${translateY}) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
 		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
@@ -86,11 +87,15 @@ const edgeToolbarClasses = computed(() => ({
 	selected: props.selected,
 }));
 
-const path = computed(() =>
-	getCustomPath(props, {
+const renderData = computed(() =>
+	getEdgeRenderData(props, {
 		connectionType: connectionType.value,
 	}),
 );
+
+const segments = computed(() => renderData.value.segments);
+
+const labelPosition = computed(() => renderData.value.labelPosition);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -108,29 +113,37 @@ function onDelete() {
 }
 
 function onEdgeLabelMouseEnter() {
-	emit('update:hovered', true);
+	emit('update:label:hovered', true);
 }
 
 function onEdgeLabelMouseLeave() {
-	emit('update:hovered', false);
+	emit('update:label:hovered', false);
 }
 </script>
 
 <template>
-	<BaseEdge
-		:id="id"
-		:class="edgeClasses"
-		:style="edgeStyle"
-		:path="path[0]"
-		:marker-end="markerEnd"
-		:interaction-width="40"
-	/>
+	<g
+		data-test-id="edge"
+		:data-source-node-name="data.source?.node"
+		:data-target-node-name="data.target?.node"
+	>
+		<BaseEdge
+			v-for="(segment, index) in segments"
+			:id="`${id}-${index}`"
+			:key="segment[0]"
+			:class="edgeClasses"
+			:style="edgeStyle"
+			:path="segment[0]"
+			:marker-end="markerEnd"
+			:interaction-width="40"
+		/>
+	</g>
 
 	<EdgeLabelRenderer>
 		<div
-			data-test-id="edge-label-wrapper"
-			:data-source-node-name="sourceNode?.label"
-			:data-target-node-name="targetNode?.label"
+			data-test-id="edge-label"
+			:data-source-node-name="data.source?.node"
+			:data-target-node-name="data.target?.node"
 			:data-edge-status="status"
 			:style="edgeToolbarStyle"
 			:class="edgeToolbarClasses"

@@ -87,7 +87,7 @@ describe('SigninView', () => {
 		expect(usersStore.loginWithCreds).toHaveBeenCalledWith({
 			email: 'test@n8n.io',
 			password: 'password',
-			mfaToken: undefined,
+			mfaCode: undefined,
 			mfaRecoveryCode: undefined,
 		});
 

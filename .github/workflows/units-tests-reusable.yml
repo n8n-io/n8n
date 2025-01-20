@@ -22,6 +22,10 @@ on:
         required: false
         default: false
         type: boolean
+      ignoreTurboCache:
+        required: false
+        default: false
+        type: boolean
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov upload token.'
@@ -32,6 +36,7 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     env:
+      TURBO_FORCE: ${{ inputs.ignoreTurboCache }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
       - uses: actions/checkout@v4.1.1
@@ -49,7 +54,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        if: inputs.collectCoverage != true
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Build
@@ -74,6 +78,6 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: inputs.collectCoverage
-        uses: codecov/codecov-action@v4.5.0
+        uses: codecov/codecov-action@v5.1.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
