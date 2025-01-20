@@ -161,28 +161,24 @@ export function reducePayloadSizeOrThrow(
 	error: Error,
 	averageTokenLength = 4,
 ) {
-	try {
-		let remainingTokensToReduce = calculateRemainingTokens(error);
+	let remainingTokensToReduce = calculateRemainingTokens(error);
 
-		const [remaining, parentNodesTokenCount] = trimParentNodesSchema(
-			payload,
-			remainingTokensToReduce,
-			averageTokenLength,
-		);
+	const [remaining, parentNodesTokenCount] = trimParentNodesSchema(
+		payload,
+		remainingTokensToReduce,
+		averageTokenLength,
+	);
 
-		remainingTokensToReduce = remaining;
+	remainingTokensToReduce = remaining;
 
-		remainingTokensToReduce = trimInputSchemaProperties(
-			payload,
-			remainingTokensToReduce,
-			averageTokenLength,
-			parentNodesTokenCount,
-		);
+	remainingTokensToReduce = trimInputSchemaProperties(
+		payload,
+		remainingTokensToReduce,
+		averageTokenLength,
+		parentNodesTokenCount,
+	);
 
-		if (remainingTokensToReduce > 0) throw error;
-	} catch (e) {
-		throw e;
-	}
+	if (remainingTokensToReduce > 0) throw error;
 }
 
 export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
