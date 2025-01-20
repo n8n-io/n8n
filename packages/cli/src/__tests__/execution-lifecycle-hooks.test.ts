@@ -500,6 +500,10 @@ describe('Execution Lifecycle Hooks', () => {
 					saveDataSuccessExecution: 'none',
 					saveDataErrorExecution: 'all',
 				};
+				const hooks = getWorkflowHooksWorkerMain('webhook', executionId, workflowData, {
+					pushRef,
+					retryOf,
+				});
 
 				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
 
@@ -514,6 +518,10 @@ describe('Execution Lifecycle Hooks', () => {
 					saveDataSuccessExecution: 'all',
 					saveDataErrorExecution: 'none',
 				};
+				const hooks = getWorkflowHooksWorkerMain('webhook', executionId, workflowData, {
+					pushRef,
+					retryOf,
+				});
 
 				await hooks.executeHookFunctions('workflowExecuteAfter', [failedRun, {}]);
 
