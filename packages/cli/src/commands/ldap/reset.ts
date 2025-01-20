@@ -110,7 +110,7 @@ export class Reset extends BaseCommand {
 		}
 
 		for (const credential of ownedCredentials) {
-			await Container.get(CredentialsService).delete(credential);
+			await Container.get(CredentialsService).delete(owner, credential.id);
 		}
 
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
