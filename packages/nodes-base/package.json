@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.74.0",
+  "version": "1.75.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -217,6 +217,7 @@
       "dist/credentials/MetabaseApi.credentials.js",
       "dist/credentials/MessageBirdApi.credentials.js",
       "dist/credentials/MetabaseApi.credentials.js",
+      "dist/credentials/MicrosoftAzureMonitorOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftDynamicsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftEntraOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",

@@ -92,4 +92,6 @@ export declare namespace TestRunsRequest {
 	type GetOne = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
 
 	type Delete = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
+
+	type Cancel = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
 }
