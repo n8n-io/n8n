@@ -518,4 +518,52 @@ describe('Langchain Integration', () => {
 
 		getRunDataInfoCallout().should('not.exist');
 	});
+
+	it('should execute up to Node 1 when using partial execution', () => {
+		const workflowPage = new WorkflowPage();
+
+		cy.visit(workflowPage.url);
+		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
+		workflowPage.actions.zoomToFit();
+
+		getManualChatModal().should('not.exist');
+		workflowPage.actions.executeNode('Node 1');
+
+		getManualChatModal().should('exist');
+		sendManualChatMessage('Test');
+
+		getManualChatMessages().should('contain', 'this_my_field_1');
+		cy.getByTestId('refresh-session-button').click();
+		cy.get('button').contains('Reset').click();
+		getManualChatMessages().should('not.exist');
+
+		sendManualChatMessage('Another test');
+		getManualChatMessages().should('contain', 'this_my_field_3');
+		getManualChatMessages().should('contain', 'this_my_field_4');
+	});
+
+	it('should execute up to Node 1 when using partial execution', () => {
+		const workflowPage = new WorkflowPage();
+		const ndv = new NDV();
+
+		cy.visit(workflowPage.url);
+		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
+		workflowPage.actions.zoomToFit();
+
+		getManualChatModal().should('not.exist');
+		openNode('Node 1');
+		ndv.actions.execute();
+
+		getManualChatModal().should('exist');
+		sendManualChatMessage('Test');
+
+		getManualChatMessages().should('contain', 'this_my_field_1');
+		cy.getByTestId('refresh-session-button').click();
+		cy.get('button').contains('Reset').click();
+		getManualChatMessages().should('not.exist');
+
+		sendManualChatMessage('Another test');
+		getManualChatMessages().should('contain', 'this_my_field_3');
+		getManualChatMessages().should('contain', 'this_my_field_4');
+	});
 });
