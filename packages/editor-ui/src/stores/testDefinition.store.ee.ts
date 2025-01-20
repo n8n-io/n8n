@@ -5,6 +5,10 @@ import * as testDefinitionsApi from '@/api/testDefinition.ee';
 import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { useAnnotationTagsStore } from './tags.store';
+import { useI18n } from '@/composables/useI18n';
+
+type FieldIssue = { field: string; message: string };
 
 export const useTestDefinitionStore = defineStore(
 	STORES.TEST_DEFINITION,
@@ -16,11 +20,13 @@ export const useTestDefinitionStore = defineStore(
 		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
+		const fieldsIssues = ref<Record<string, FieldIssue[]>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
-
+		const tagsStore = useAnnotationTagsStore();
+		const locale = useI18n();
 		// Computed
 		const allTestDefinitions = computed(() => {
 			return Object.values(testDefinitionsById.value).sort((a, b) =>
@@ -100,6 +106,8 @@ export const useTestDefinitionStore = defineStore(
 			);
 		});
 
+		const getFieldIssues = (testId: string) => fieldsIssues.value[testId] || [];
+
 		// Methods
 		const setAllTestDefinitions = (definitions: TestDefinitionRecord[]) => {
 			testDefinitionsById.value = definitions.reduce(
@@ -144,13 +152,18 @@ export const useTestDefinitionStore = defineStore(
 			}
 		};
 
+		const fetchMetricsForAllTests = async () => {
+			const testDefinitions = Object.values(testDefinitionsById.value);
+			await Promise.all(testDefinitions.map(async (testDef) => await fetchMetrics(testDef.id)));
+		};
+
 		const fetchTestDefinition = async (id: string) => {
 			const testDefinition = await testDefinitionsApi.getTestDefinition(
 				rootStore.restApiContext,
 				id,
 			);
 			testDefinitionsById.value[testDefinition.id] = testDefinition;
-
+			updateRunFieldIssues(id);
 			return testDefinition;
 		};
 
@@ -178,7 +191,11 @@ export const useTestDefinitionStore = defineStore(
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
 				fetchedAll.value = true;
 
-				await fetchRunsForAllTests();
+				await Promise.all([
+					tagsStore.fetchAll({ withUsageCount: true }),
+					fetchRunsForAllTests(),
+					fetchMetricsForAllTests(),
+				]);
 				return retrievedDefinitions;
 			} finally {
 				loading.value = false;
@@ -203,6 +220,7 @@ export const useTestDefinitionStore = defineStore(
 				params,
 			);
 			upsertTestDefinitions([createdDefinition]);
+			updateRunFieldIssues(createdDefinition.id);
 			return createdDefinition;
 		};
 
@@ -216,6 +234,7 @@ export const useTestDefinitionStore = defineStore(
 				updateParams,
 			);
 			upsertTestDefinitions([updatedDefinition]);
+			updateRunFieldIssues(params.id);
 			return updatedDefinition;
 		};
 
@@ -240,9 +259,9 @@ export const useTestDefinitionStore = defineStore(
 			try {
 				const metrics = await testDefinitionsApi.getTestMetrics(rootStore.restApiContext, testId);
 				metrics.forEach((metric) => {
-					metricsById.value[metric.id] = metric;
+					metricsById.value[metric.id] = { ...metric, testDefinitionId: testId };
 				});
-				return metrics;
+				return metrics.map((metric) => ({ ...metric, testDefinitionId: testId }));
 			} finally {
 				loading.value = false;
 			}
@@ -253,7 +272,7 @@ export const useTestDefinitionStore = defineStore(
 			testDefinitionId: string;
 		}): Promise<testDefinitionsApi.TestMetricRecord> => {
 			const metric = await testDefinitionsApi.createTestMetric(rootStore.restApiContext, params);
-			metricsById.value[metric.id] = metric;
+			metricsById.value[metric.id] = { ...metric, testDefinitionId: params.testDefinitionId };
 			return metric;
 		};
 
@@ -261,7 +280,9 @@ export const useTestDefinitionStore = defineStore(
 			params: testDefinitionsApi.TestMetricRecord,
 		): Promise<testDefinitionsApi.TestMetricRecord> => {
 			const metric = await testDefinitionsApi.updateTestMetric(rootStore.restApiContext, params);
-			metricsById.value[metric.id] = metric;
+			metricsById.value[metric.id] = { ...metric, testDefinitionId: params.testDefinitionId };
+
+			updateRunFieldIssues(params.testDefinitionId);
 			return metric;
 		};
 
@@ -271,6 +292,8 @@ export const useTestDefinitionStore = defineStore(
 			await testDefinitionsApi.deleteTestMetric(rootStore.restApiContext, params);
 			const { [params.id]: deleted, ...rest } = metricsById.value;
 			metricsById.value = rest;
+
+			updateRunFieldIssues(params.testDefinitionId);
 		};
 
 		// Test Runs Methods
@@ -296,6 +319,7 @@ export const useTestDefinitionStore = defineStore(
 		const getTestRun = async (params: { testDefinitionId: string; runId: string }) => {
 			const run = await testDefinitionsApi.getTestRun(rootStore.restApiContext, params);
 			testRunsById.value[run.id] = run;
+			updateRunFieldIssues(params.testDefinitionId);
 			return run;
 		};
 
@@ -346,6 +370,52 @@ export const useTestDefinitionStore = defineStore(
 			pollingTimeouts.value = {};
 		};
 
+		const updateRunFieldIssues = (testId: string) => {
+			const issues: FieldIssue[] = [];
+			const testDefinition = testDefinitionsById.value[testId];
+
+			if (!testDefinition) {
+				return;
+			}
+
+			if (!testDefinition.annotationTagId) {
+				issues.push({
+					field: 'tags',
+					message: locale.baseText('testDefinition.configError.noEvaluationTag'),
+				});
+			} else {
+				const tagUsageCount = tagsStore.tagsById[testDefinition.annotationTagId]?.usageCount ?? 0;
+
+				if (tagUsageCount === 0) {
+					issues.push({
+						field: 'tags',
+						message: locale.baseText('testDefinition.configError.noExecutionsAddedToTag'),
+					});
+				}
+			}
+
+			if (!testDefinition.evaluationWorkflowId) {
+				issues.push({
+					field: 'evaluationWorkflow',
+					message: locale.baseText('testDefinition.configError.noEvaluationWorkflow'),
+				});
+			}
+
+			const metrics = metricsByTestId.value[testId] || [];
+			if (metrics.filter((metric) => metric.name).length === 0) {
+				issues.push({
+					field: 'metrics',
+					message: locale.baseText('testDefinition.configError.noMetrics'),
+				});
+			}
+
+			fieldsIssues.value = {
+				...fieldsIssues.value,
+				[testId]: issues,
+			};
+			return issues;
+		};
+
 		return {
 			// State
 			fetchedAll,
@@ -381,6 +451,8 @@ export const useTestDefinitionStore = defineStore(
 			cancelTestRun,
 			deleteTestRun,
 			cleanupPolling,
+			getFieldIssues,
+			updateRunFieldIssues,
 		};
 	},
 	{},
