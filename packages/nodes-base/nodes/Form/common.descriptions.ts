@@ -190,6 +190,11 @@ export const formFields: INodeProperties = {
 					name: 'formatDate',
 					type: 'notice',
 					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
 				},
 				{
 					displayName: 'Required Field',
