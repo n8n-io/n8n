@@ -14,6 +14,6 @@ export type ProjectIcon = z.infer<typeof projectIconSchema>;
 
 export const projectRelationSchema = z.object({
 	userId: z.string().min(1),
-	role: projectRoleSchema.exclude(['project:personalOwner']),
+	role: projectRoleSchema,
 });
 export type ProjectRelation = z.infer<typeof projectRelationSchema>;
