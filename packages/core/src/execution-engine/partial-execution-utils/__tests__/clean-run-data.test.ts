@@ -123,6 +123,7 @@ describe('cleanRunData', () => {
 		});
 	});
 
+	//               ►
 	//  ┌─────┐     ┌────────┐
 	//  │node1├─────►rootNode│
 	//  └─────┘     └───▲────┘
@@ -156,6 +157,7 @@ describe('cleanRunData', () => {
 		});
 	});
 
+	//            ►
 	// ┌─────┐   ┌─────┐    ┌────────┐
 	// │node1├───►node2├────►rootNode│
 	// └─────┘   └─────┘    └───▲────┘
@@ -185,6 +187,44 @@ describe('cleanRunData', () => {
 
 		// ACT
 		const newRunData = cleanRunData(runData, graph, new Set([node2]));
+
+		// ASSERT
+		expect(newRunData).toEqual({
+			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
+		});
+	});
+
+	//           ►
+	// ┌─────┐  ┌────────┐  ┌────────┐
+	// │node1├──►rootNode├──►rootNode│
+	// └─────┘  └───▲────┘  └───▲────┘
+	//              │           │
+	//              │       ┌───┴───┐
+	//              └───────┤subNode│
+	//                      └───────┘
+	test('removes run data of sub nodes as well if the sub node is shared between multiple root nodes', () => {
+		// ARRANGE
+		const node1 = createNodeData({ name: 'Node1' });
+		const rootNode1 = createNodeData({ name: 'Root Node 1' });
+		const rootNode2 = createNodeData({ name: 'Root Node 2' });
+		const subNode = createNodeData({ name: 'Sub Node' });
+		const graph = new DirectedGraph()
+			.addNodes(node1, rootNode1, rootNode2, subNode)
+			.addConnections(
+				{ from: node1, to: rootNode1 },
+				{ from: rootNode1, to: rootNode2 },
+				{ from: subNode, to: rootNode1, type: NodeConnectionType.AiLanguageModel },
+				{ from: subNode, to: rootNode2, type: NodeConnectionType.AiLanguageModel },
+			);
+		const runData: IRunData = {
+			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
+			[rootNode1.name]: [toITaskData([{ data: { value: 1 } }])],
+			[rootNode2.name]: [toITaskData([{ data: { value: 2 } }])],
+			[subNode.name]: [toITaskData([{ data: { value: 3 } }])],
+		};
+
+		// ACT
+		const newRunData = cleanRunData(runData, graph, new Set([rootNode1]));
 
 		// ASSERT
 		expect(newRunData).toEqual({
