@@ -7,7 +7,6 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
-import { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -90,7 +89,25 @@ const {
 	isMappingOnboarded: isUserOnboarded,
 } = storeToRefs(ndvStore);
 
-const inputMode = ref<MappingMode>(getInitialInputMode(workflowsStore, activeNode.value));
+const rootNode = computed(() => {
+	if (!activeNode.value) return null;
+
+	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+});
+
+/**
+ * True if active node itself is the root node or its root node has run
+ */
+const isRootNodeOrHasRootNodeRun = computed((): boolean => {
+	return rootNode.value
+		? !!workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+		: true;
+});
+
+const inputMode = ref<MappingMode>(
+	// If input data from the root node doesn't exist, show mapping mode by default
+	isRootNodeOrHasRootNodeRun.value ? 'debugging' : 'mapping',
+);
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
@@ -162,12 +179,6 @@ const isExecutingPrevious = computed(() => {
 	return false;
 });
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
-const rootNode = computed(() => {
-	if (!activeNode.value) return null;
-
-	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
-});
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
@@ -336,20 +347,6 @@ function onConnectionHelpClick() {
 
 function activatePane() {
 	emit('activatePane');
-}
-
-function getInitialInputMode(
-	store: typeof workflowsStore,
-	activeNode: INodeUi | null,
-): MappingMode {
-	const rootNodeName = activeNode
-		? props.workflow.getChildNodes(activeNode.name, 'ALL_NON_MAIN').at(0)
-		: undefined;
-
-	// If input data doesn't exist, show mapping mode by default
-	return rootNodeName && store.getWorkflowExecution?.data?.resultData.runData[rootNodeName]
-		? 'debugging'
-		: 'mapping';
 }
 </script>
 
