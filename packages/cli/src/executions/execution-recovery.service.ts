@@ -73,7 +73,7 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || execution.status === 'success') return null;
+		if (!execution || (execution.status === 'success' && execution.data)) return null;
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 
