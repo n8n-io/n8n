@@ -419,16 +419,19 @@ function activatePane() {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					i18n.baseText(
-						inputMode === 'debugging'
-							? 'ndv.input.debugging.noOutputData.title'
-							: 'ndv.input.noOutputData.title',
-					)
-				}}</N8nText>
-				<N8nText tag="div" color="text-dark" size="medium" v-if="inputMode === 'debugging'">{{
-					i18n.baseText('ndv.input.debugging.noOutputData.description')
-				}}</N8nText>
+				<template v-if="isMappingMode || isRootNodeOrHasRootNodeRun">
+					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+						i18n.baseText('ndv.input.noOutputData.title')
+					}}</N8nText>
+				</template>
+				<template v-else>
+					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+						i18n.baseText('ndv.input.rootNodeHasNotRun.title')
+					}}</N8nText>
+					<N8nText tag="div" color="text-dark" size="medium">{{
+						i18n.baseText('ndv.input.rootNodeHasNotRun.description')
+					}}</N8nText>
+				</template>
 				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
