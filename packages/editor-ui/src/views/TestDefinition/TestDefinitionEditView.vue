@@ -54,7 +54,7 @@ const hasRuns = computed(() => runs.value.length > 0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
 
-const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value));
+const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value) ?? []);
 
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {

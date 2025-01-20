@@ -375,7 +375,7 @@ export const useTestDefinitionStore = defineStore(
 			const testDefinition = testDefinitionsById.value[testId];
 
 			if (!testDefinition) {
-				throw new Error('Test definition not found');
+				return;
 			}
 
 			if (!testDefinition.annotationTagId) {

@@ -30,6 +30,7 @@ const actions = computed<TestItemAction[]>(() => [
 		id: 'run',
 		event: onRunTest,
 		disabled: isRunDisabled,
+		show: (testId) => !isTestRunning(testId),
 		tooltip: (testId) =>
 			isRunDisabled(testId)
 				? getDisabledRunTooltip(testId)
@@ -89,10 +90,6 @@ function getTagName(tagId: string) {
 	return matchingTag?.name ?? '';
 }
 function getDisabledRunTooltip(testId: string) {
-	if (isTestRunning(testId)) {
-		return locale.baseText('testDefinition.testIsRunning');
-	}
-
 	const issues = testDefinitionStore
 		.getFieldIssues(testId)
 		?.map((i) => i.message)
@@ -129,7 +126,7 @@ function isTestRunning(testId: string) {
 }
 
 function isRunDisabled(testId: string) {
-	return isTestRunning(testId) || testDefinitionStore.getFieldIssues(testId)?.length > 0;
+	return testDefinitionStore.getFieldIssues(testId)?.length > 0;
 }
 // Action handlers
 function onCreateTest() {
@@ -203,7 +200,6 @@ async function onDeleteTest(testId: string) {
 	if (deleteConfirmed !== MODAL_CONFIRM) {
 		return;
 	}
-
 	await testDefinitionStore.deleteById(testId);
 
 	toast.showMessage({
@@ -260,7 +256,13 @@ onMounted(async () => {
 				data-test-id="test-definition-empty-state"
 				@create-test="onCreateTest"
 			/>
-			<TestsList v-else :tests="tests" :actions="actions" @view-details="onViewDetails" />
+			<TestsList
+				v-else
+				:tests="tests"
+				:actions="actions"
+				@view-details="onViewDetails"
+				@create-test="onCreateTest"
+			/>
 		</template>
 	</div>
 </template>

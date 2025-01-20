@@ -7,7 +7,7 @@ export interface TestListProps {
 	actions: TestItemAction[];
 }
 
-defineEmits<{ 'create-test': [] }>();
+defineEmits<{ 'create-test': []; 'view-details': [testId: string] }>();
 defineProps<TestListProps>();
 const locale = useI18n();
 </script>
@@ -20,7 +20,13 @@ const locale = useI18n();
 				@click="$emit('create-test')"
 			/>
 		</div>
-		<TestItem v-for="test in tests" :key="test.id" :test="test" :actions="actions" />
+		<TestItem
+			v-for="test in tests"
+			:key="test.id"
+			:test="test"
+			:actions="actions"
+			@view-details="$emit('view-details', test.id)"
+		/>
 	</div>
 </template>
 

@@ -751,6 +751,7 @@
 	"executionsList.selected": "{count} execution selected: | {count} executions selected:",
 	"executionsList.selectAll": "Select {executionNum} finished execution | Select all {executionNum} finished executions",
 	"executionsList.test": "Test execution",
+	"executionsList.evaluation": "Evaluation execution",
 	"executionsList.showError.handleDeleteSelected.title": "Problem deleting executions",
 	"executionsList.showError.loadMore.title": "Problem loading executions",
 	"executionsList.showError.loadWorkflows.title": "Problem loading workflows",
