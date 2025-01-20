@@ -192,12 +192,21 @@ export class PayPalTrigger implements INodeType {
 			} catch (error) {
 				throw error;
 			}
+
 			if (webhook.verification_status !== 'SUCCESS') {
+				this.logger.warn('Webhook verification failed', {
+					request: body,
+					response: webhook,
+				});
 				return {};
 			}
 		} else {
+			this.logger.warn('Missing headers for webhook verification', {
+				headerData,
+			});
 			return {};
 		}
+
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};

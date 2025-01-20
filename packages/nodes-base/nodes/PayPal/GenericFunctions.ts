@@ -70,6 +70,9 @@ export async function payPalApiRequest(
 		json: true,
 	};
 	try {
+		this.logger.debug('Making PayPal API request', {
+			options,
+		});
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
