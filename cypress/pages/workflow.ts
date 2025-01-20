@@ -281,67 +281,74 @@ export class WorkflowPage extends BasePage {
 			nodeTypeName?: string,
 			{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
 		) => {
-			const target = nodeTypeName
-				? this.getters.canvasNodeByName(nodeTypeName)
-				: this.getters.nodeViewBackground();
+			cy.ifCanvasVersion(
+				() => {
+					const target = nodeTypeName
+						? this.getters.canvasNodeByName(nodeTypeName)
+						: this.getters.nodeViewBackground();
 
-			if (method === 'right-click') {
-				target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
-			} else {
-				target.realHover();
-				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
-			}
+					if (method === 'right-click') {
+						target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
+					} else {
+						target.realHover();
+						target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+					}
+				},
+				() => {
+					openContextMenu(nodeTypeName, { method, anchor });
+				},
+			);
 		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		duplicateNode: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('duplicate');
 		},
 		deleteNodeFromContextMenu: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('delete');
 		},
 		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
-			openContextMenu(nodeTypeName, options);
+			this.actions.openContextMenu(nodeTypeName, options);
 			clickContextMenuAction('execute');
 		},
 		addStickyFromContextMenu: () => {
-			openContextMenu();
+			this.actions.openContextMenu();
 			clickContextMenuAction('add_sticky');
 		},
 		renameNode: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('rename');
 		},
 		copyNode: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('copy');
 		},
 		contextMenuAction: (action: string) => {
 			this.getters.contextMenuAction(action).click();
 		},
 		disableNode: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('toggle_activation');
 		},
 		pinNode: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName);
+			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('toggle_pin');
 		},
 		openNodeFromContextMenu: (nodeTypeName: string) => {
-			openContextMenu(nodeTypeName, { method: 'overflow-button' });
+			this.actions.openContextMenu(nodeTypeName, { method: 'overflow-button' });
 			clickContextMenuAction('open');
 		},
 		selectAllFromContextMenu: () => {
-			openContextMenu();
+			this.actions.openContextMenu();
 			clickContextMenuAction('select_all');
 		},
 		deselectAll: () => {
 			cy.ifCanvasVersion(
 				() => {
-					openContextMenu();
+					this.actions.openContextMenu();
 					clickContextMenuAction('deselect_all');
 				},
 				() => getCanvasPane().click('topLeft'),
