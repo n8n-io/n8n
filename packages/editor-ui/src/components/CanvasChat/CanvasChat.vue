@@ -201,11 +201,18 @@ async function createExecutionPromise() {
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 	try {
-		const response = await runWorkflow({
+		const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
 			triggerNode: payload.triggerNode,
 			nodeData: payload.nodeData,
 			source: payload.source,
-		});
+		};
+
+		if (workflowsStore.chatPartialExecutionDestinationNode) {
+			runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
+			workflowsStore.chatPartialExecutionDestinationNode = null;
+		}
+
+		const response = await runWorkflow(runWorkflowOptions);
 
 		if (response) {
 			await createExecutionPromise();

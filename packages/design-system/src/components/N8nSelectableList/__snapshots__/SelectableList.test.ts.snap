@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nSelectableList > renders disabled collection and clicks do not modify 1`] = `
+"<div>
+  <div class="selectableContainer"><span class="selectableCell" data-test-id="selectable-list-selectable-propA">+ Add a propA</span><span class="selectableCell" data-test-id="selectable-list-selectable-propC">+ Add a propC</span></div>
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propB"><span class="n8n-text compact size-xsmall regular n8n-icon slotRemoveIcon slotRemoveIcon n8n-icon slotRemoveIcon slotRemoveIcon" data-test-id="selectable-list-remove-slot-propB"><!----></span>
+    <div class="slotContainer"></div>
+  </div>
+</div>"
+`;
+
+exports[`N8nSelectableList > renders multiple elements with some pre-selected 1`] = `
+"<div>
+  <div class="selectableContainer"><span class="selectableCell" data-test-id="selectable-list-selectable-propB">+ Add a propB</span><span class="selectableCell" data-test-id="selectable-list-selectable-propD">+ Add a propD</span></div>
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propA"><span class="n8n-text compact size-xsmall regular n8n-icon slotRemoveIcon slotRemoveIcon n8n-icon slotRemoveIcon slotRemoveIcon" data-test-id="selectable-list-remove-slot-propA"><!----></span>
+    <div class="slotContainer"></div>
+  </div>
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propC"><span class="n8n-text compact size-xsmall regular n8n-icon slotRemoveIcon slotRemoveIcon n8n-icon slotRemoveIcon slotRemoveIcon" data-test-id="selectable-list-remove-slot-propC"><!----></span>
+    <div class="slotContainer"></div>
+  </div>
+</div>"
+`;
+
+exports[`N8nSelectableList > renders when empty 1`] = `
+"<div>
+  <div class="selectableContainer"></div>
+</div>"
+`;

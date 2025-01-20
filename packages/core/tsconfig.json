@@ -4,7 +4,8 @@
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"@test/*": ["../test/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
