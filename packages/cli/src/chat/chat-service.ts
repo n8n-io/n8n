@@ -133,6 +133,7 @@ export class ChatService {
 		const session = this.sessions.get(sessionId);
 		if (session) {
 			session.executionId = executionId;
+			console.log('Chat connections updated', this.sessions);
 			return;
 		}
 

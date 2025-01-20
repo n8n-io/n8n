@@ -139,6 +139,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const messageText = input.value;
 	input.value = '';
 	isSubmitting.value = true;
+
 	if (chatStore.ws && chatStore.waitingForResponse.value) {
 		const sentMessage: ChatMessage = {
 			id: uuidv4(),
@@ -155,11 +156,14 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 				chatInput: messageText,
 			}),
 		);
-	} else {
+		return;
+	}
+
+	// if webhookUrl is not defined onSubmit is called from integrated chat
+	// do not setup websocket as it would be handled by th integrated chat
+	if (options.webhookUrl && chatStore.currentSessionId.value) {
 		const baseUrl = new URL(options.webhookUrl).origin;
-		chatStore.ws = new WebSocket(
-			`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value as string}`,
-		);
+		chatStore.ws = new WebSocket(`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}`);
 		chatStore.ws.onmessage = (e) => {
 			const newMessage: ChatMessage = {
 				id: uuidv4(),
@@ -170,11 +174,12 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 			chatStore.messages.value.push(newMessage);
 		};
-		await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
-		isSubmitting.value = false;
-		resetFileDialog();
-		files.value = null;
 	}
+
+	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+	isSubmitting.value = false;
+	resetFileDialog();
+	files.value = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
