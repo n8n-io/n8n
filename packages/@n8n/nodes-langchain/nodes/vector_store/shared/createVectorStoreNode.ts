@@ -78,6 +78,7 @@ export interface VectorStoreNodeConstructorArgs {
 		embeddings: Embeddings,
 		itemIndex: number,
 	) => Promise<VectorStore>;
+	releaseVectorStoreClient?: (vectorStore: VectorStore) => void;
 }
 
 function transformDescriptionForOperationMode(
@@ -334,38 +335,42 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						embeddings,
 						itemIndex,
 					);
-					const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-					const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+					try {
+						const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+						const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
-					const embeddedPrompt = await embeddings.embedQuery(prompt);
-					const docs = await vectorStore.similaritySearchVectorWithScore(
-						embeddedPrompt,
-						topK,
-						filter,
-					);
+						const embeddedPrompt = await embeddings.embedQuery(prompt);
+						const docs = await vectorStore.similaritySearchVectorWithScore(
+							embeddedPrompt,
+							topK,
+							filter,
+						);
 
-					const includeDocumentMetadata = this.getNodeParameter(
-						'includeDocumentMetadata',
-						itemIndex,
-						true,
-					) as boolean;
+						const includeDocumentMetadata = this.getNodeParameter(
+							'includeDocumentMetadata',
+							itemIndex,
+							true,
+						) as boolean;
 
-					const serializedDocs = docs.map(([doc, score]) => {
-						const document = {
-							pageContent: doc.pageContent,
-							...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
-						};
+						const serializedDocs = docs.map(([doc, score]) => {
+							const document = {
+								pageContent: doc.pageContent,
+								...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
+							};
 
-						return {
-							json: { document, score },
-							pairedItem: {
-								item: itemIndex,
-							},
-						};
-					});
+							return {
+								json: { document, score },
+								pairedItem: {
+									item: itemIndex,
+								},
+							};
+						});
 
-					resultData.push(...serializedDocs);
-					logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+						resultData.push(...serializedDocs);
+						logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+					} finally {
+						args.releaseVectorStoreClient?.(vectorStore);
+					}
 				}
 
 				return [resultData];
@@ -427,24 +432,28 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						itemIndex,
 					);
 
-					const { processedDocuments, serializedDocuments } = await processDocument(
-						loader,
-						itemData,
-						itemIndex,
-					);
+					try {
+						const { processedDocuments, serializedDocuments } = await processDocument(
+							loader,
+							itemData,
+							itemIndex,
+						);
 
-					if (processedDocuments?.length !== 1) {
-						throw new NodeOperationError(this.getNode(), 'Single document per item expected');
+						if (processedDocuments?.length !== 1) {
+							throw new NodeOperationError(this.getNode(), 'Single document per item expected');
+						}
+
+						resultData.push(...serializedDocuments);
+
+						// Use ids option to upsert instead of insert
+						await vectorStore.addDocuments(processedDocuments, {
+							ids: [documentId],
+						});
+
+						logAiEvent(this, 'ai-vector-store-updated');
+					} finally {
+						args.releaseVectorStoreClient?.(vectorStore);
 					}
-
-					resultData.push(...serializedDocuments);
-
-					// Use ids option to upsert instead of insert
-					await vectorStore.addDocuments(processedDocuments, {
-						ids: [documentId],
-					});
-
-					logAiEvent(this, 'ai-vector-store-updated');
 				}
 
 				return [resultData];
@@ -467,7 +476,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 				return {
-					response: logWrapper(vectorStore, this),
+					response: logWrapper(vectorStore, this, () =>
+						args.releaseVectorStoreClient?.(vectorStore),
+					),
 				};
 			}
 
@@ -491,23 +502,28 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							embeddings,
 							itemIndex,
 						);
-						const embeddedPrompt = await embeddings.embedQuery(input);
-						const documents = await vectorStore.similaritySearchVectorWithScore(
-							embeddedPrompt,
-							topK,
-							filter,
-						);
-						return documents
-							.map((document) => {
-								if (includeDocumentMetadata) {
-									return { type: 'text', text: JSON.stringify(document[0]) };
-								}
-								return {
-									type: 'text',
-									text: JSON.stringify({ pageContent: document[0].pageContent }),
-								};
-							})
-							.filter((document) => !!document);
+
+						try {
+							const embeddedPrompt = await embeddings.embedQuery(input);
+							const documents = await vectorStore.similaritySearchVectorWithScore(
+								embeddedPrompt,
+								topK,
+								filter,
+							);
+							return documents
+								.map((document) => {
+									if (includeDocumentMetadata) {
+										return { type: 'text', text: JSON.stringify(document[0]) };
+									}
+									return {
+										type: 'text',
+										text: JSON.stringify({ pageContent: document[0].pageContent }),
+									};
+								})
+								.filter((document) => !!document);
+						} finally {
+							args.releaseVectorStoreClient?.(vectorStore);
+						}
 					},
 				});
 

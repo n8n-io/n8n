@@ -106,6 +106,7 @@ export function logWrapper(
 		| N8nBinaryLoader
 		| N8nJsonLoader,
 	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
+	cleanupFn?: () => void,
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
@@ -412,6 +413,8 @@ export function logWrapper(
 
 						logAiEvent(executeFunctions, 'ai-vector-store-searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+
+						cleanupFn?.();
 
 						return response;
 					};
