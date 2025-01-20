@@ -24,10 +24,13 @@ export async function jiraSoftwareCloudApiRequest(
 
 	let domain = '';
 	let credentialType: string;
+	let allowUnauthorizedCerts = false;
 
 	if (jiraVersion === 'server') {
 		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
 		credentialType = 'jiraSoftwareServerApi';
+		allowUnauthorizedCerts = (await this.getCredentials('jiraSoftwareCloudApi'))
+			.allowUnauthorizedCerts as boolean;
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';
@@ -44,6 +47,7 @@ export async function jiraSoftwareCloudApiRequest(
 		uri: uri || `${domain}/rest${endpoint}`,
 		body,
 		json: true,
+		rejectUnauthorized: !allowUnauthorizedCerts,
 	};
 
 	if (Object.keys(option).length !== 0) {
