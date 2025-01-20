@@ -28,7 +28,12 @@ function sanitizeHtml(text: string) {
 	return sanitize(text, {
 		allowedTags: [
 			'b',
+			'div',
 			'i',
+			'iframe',
+			'img',
+			'video',
+			'source',
 			'em',
 			'strong',
 			'a',
@@ -48,8 +53,11 @@ function sanitizeHtml(text: string) {
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
+			img: ['src', 'alt', 'width', 'height'],
+			video: ['*'],
+			iframe: ['*'],
+			source: ['*'],
 		},
-		nonBooleanAttributes: ['*'],
 	});
 }
 
@@ -149,6 +157,9 @@ export function prepareFormData({
 			input.selectOptions = fieldOptions.map((e) => e.option);
 		} else if (fieldType === 'textarea') {
 			input.isTextarea = true;
+		} else if (fieldType === 'html') {
+			input.isHtml = true;
+			input.html = field.html as string;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
@@ -409,7 +420,14 @@ export async function formWebhook(
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
-	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+	const formFields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
+		(field) => {
+			if (field.fieldType === 'html') {
+				field.html = sanitizeHtml(field.html as string);
+			}
+			return field;
+		},
+	);
 	const method = context.getRequestObject().method;
 
 	checkResponseModeConfiguration(context);
