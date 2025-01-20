@@ -33,6 +33,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
