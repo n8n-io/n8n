@@ -7,6 +7,15 @@ export interface EditableField<T = string> {
 	isEditing: boolean;
 }
 
+export interface TestItemAction {
+	icon: string;
+	id: string;
+	event: (testId: string) => void | Promise<void>;
+	tooltip: (testId: string) => string;
+	disabled?: (testId: string) => boolean;
+	show?: (testId: string) => boolean;
+}
+
 export interface EditableFormState {
 	name: EditableField<string>;
 	tags: EditableField<string[]>;
@@ -33,4 +42,5 @@ export interface TestListItem {
 	tagName: string;
 	testCases: number;
 	execution: TestExecution;
+	fieldsIssues?: Array<{ field: string; message: string }>;
 }
