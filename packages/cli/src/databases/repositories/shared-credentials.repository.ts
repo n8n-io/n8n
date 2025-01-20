@@ -97,7 +97,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		options:
 			| { scopes: Scope[] }
 			| { projectRoles: ProjectRole[]; credentialRoles: CredentialSharingRole[] },
+		trx?: EntityManager,
 	) {
+		trx = trx ?? this.manager;
+
 		const projectRoles =
 			'scopes' in options
 				? this.roleService.rolesWithScope('project', options.scopes)
@@ -107,7 +110,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				? this.roleService.rolesWithScope('credential', options.scopes)
 				: options.credentialRoles;
 
-		const sharings = await this.find({
+		console.log('projectRoles', projectRoles);
+		console.log('credentialRoles', credentialRoles);
+
+		const sharings = await trx.find(SharedCredentials, {
 			where: {
 				role: In(credentialRoles),
 				project: {
@@ -118,6 +124,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				},
 			},
 		});
+		console.log('sharings', sharings);
 		return sharings.map((s) => s.credentialsId);
 	}
 

@@ -15,7 +15,11 @@ import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 
 import { mockInstance } from '../../shared/mocking';
-import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import {
+	affixRoleToSaveCredential,
+	getCredentialSharings,
+	shareCredentialWithUsers,
+} from '../shared/db/credentials';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
@@ -1600,6 +1604,60 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(workflowFromDB).toMatchObject({ active: false });
+	});
+
+	test.todo(
+		'owner transfers workflow from project they are not part of, e.g. test global cred sharing scope',
+	);
+	test.todo(
+		'member transfers workflow from personal project to team project and wf contains a credential that they can use but not share',
+	);
+	test.todo('...');
+
+	test.only('foo', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', owner);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
+
+		// ACT
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		expect(response.body).toEqual({ data: { credentialsNotAllowedToShare: [] } });
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
 	});
 
 	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {

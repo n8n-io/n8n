@@ -7,12 +7,14 @@ import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -37,6 +39,8 @@ export class EnterpriseWorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 	) {}
 
 	async shareWithProjects(
@@ -248,7 +252,13 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
-	async transferOne(user: User, workflowId: string, destinationProjectId: string) {
+	async transferOne(
+		user: User,
+		workflowId: string,
+		destinationProjectId: string,
+		shareCredentials: string[] = [],
+	) {
+		console.log('shareCredentials', shareCredentials);
 		// 1. get workflow
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:move',
@@ -307,6 +317,30 @@ export class EnterpriseWorkflowService {
 			);
 		});
 
+		// 8. share credentials into the destination project
+		let credentialsNotAllowedToShare: string[] = [];
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			const allCredentials = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole(
+				[user.id],
+				{ scopes: ['credential:share'] },
+				trx,
+			);
+			console.log('allCredentials', allCredentials);
+			const credentialsAllowedToShare = allCredentials.filter((c) => shareCredentials.includes(c));
+			console.log('credentialsAllowedToShare', credentialsAllowedToShare);
+			credentialsNotAllowedToShare = allCredentials.filter((c) => !shareCredentials.includes(c));
+			console.log('credentialsNotAllowedToShare', credentialsNotAllowedToShare);
+
+			for (const credentialId of credentialsAllowedToShare) {
+				await this.enterpriseCredentialsService.shareWithProjects(
+					user,
+					credentialId,
+					[destinationProject.id],
+					trx,
+				);
+			}
+		});
+
 		// 8. try to activate it again if it was active
 		if (wasActive) {
 			try {
@@ -333,6 +367,6 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		return;
+		return { credentialsNotAllowedToShare };
 	}
 }
