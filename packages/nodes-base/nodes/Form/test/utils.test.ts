@@ -5,9 +5,16 @@ import type {
 	INode,
 	IWebhookFunctions,
 	MultiPartFormData,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 
-import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
+import {
+	formWebhook,
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+	isFormConnected,
+} from '../utils';
 
 describe('FormTrigger, formWebhook', () => {
 	beforeEach(() => {
@@ -719,5 +726,38 @@ describe('resolveRawData', () => {
 		expect(resolveRawData(mockContext, input)).toBe(
 			'Address object: {"street":"123 Main St","zipCode":"10001","country":"USA"}.',
 		);
+	});
+});
+
+describe('FormTrigger, isFormConnected', () => {
+	it('should return false if Wait node is connected but resume parameter is not form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'timeInterval',
+				},
+			}),
+		]);
+		expect(result).toBe(false);
+	});
+	it('should return true if Wait node is connected and resume parameter is form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'form',
+				},
+			}),
+		]);
+		expect(result).toBe(true);
+	});
+	it('should return true if Form node is connected', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.form',
+			}),
+		]);
+		expect(result).toBe(true);
 	});
 });
