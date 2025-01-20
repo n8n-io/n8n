@@ -16,12 +16,48 @@ import {
 	WAIT_NODE_TYPE,
 	jsonParse,
 } from 'n8n-workflow';
+import sanitize from 'sanitize-html';
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
 import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
+
+function sanitizeHtml(text: string) {
+	return sanitize(text, {
+		allowedTags: [
+			'b',
+			'i',
+			'em',
+			'strong',
+			'a',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+			'h5',
+			'h6',
+			'u',
+			'sub',
+			'sup',
+			'code',
+			'pre',
+			'span',
+			'br',
+		],
+		allowedAttributes: {
+			a: ['href', 'target', 'rel'],
+		},
+		nonBooleanAttributes: ['*'],
+	});
+}
+
+export function createDescriptionMetadata(description: string) {
+	return description === ''
+		? 'n8n form'
+		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
 
 export function prepareFormData({
 	formTitle,
@@ -63,6 +99,7 @@ export function prepareFormData({
 		validForm,
 		formTitle,
 		formDescription,
+		formDescriptionMetadata: createDescriptionMetadata(formDescription),
 		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
@@ -380,7 +417,7 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
