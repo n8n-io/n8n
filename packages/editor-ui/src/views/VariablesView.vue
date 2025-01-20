@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { computed, ref, useTemplateRef, onMounted } from 'vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -10,17 +10,30 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
+import VariablesForm from '@/components/VariablesForm.vue';
+import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 
-import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import VariablesRow from '@/components/VariablesRow.vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 import { getResourcePermissions } from '@/permissions';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useAsyncState } from '@vueuse/core';
+import { pickBy } from 'lodash-es';
+import {
+	N8nButton,
+	N8nTooltip,
+	N8nActionBox,
+	N8nInputLabel,
+	N8nCheckbox,
+	N8nBadge,
+} from 'n8n-design-system';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -30,184 +43,94 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
-const documentTitle = useDocumentTitle();
-const pageRedirectionHelper = usePageRedirectionHelper();
-let sourceControlStoreUnsubscribe = () => {};
+const route = useRoute();
+const router = useRouter();
 
-const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
+const layoutRef = useTemplateRef<InstanceType<typeof ResourcesListLayout>>('layoutRef');
 
 const { showError } = useToast();
 
 const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
-const allVariables = ref<EnvironmentVariable[]>([]);
-const editMode = ref<Record<string, boolean>>({});
-const loading = ref(false);
-
 const permissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
+
+const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables, [], {
+	immediate: true,
+});
 
 const isFeatureEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
-const variablesToResources = computed((): IResource[] =>
-	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
-);
+const variableForms = ref<Map<string, EnvironmentVariable>>(new Map());
+const editableVariables = ref<string[]>([]);
+const addToEditableVariables = (variableId: string) => editableVariables.value.push(variableId);
+const removeEditableVariable = (variableId: string) => {
+	editableVariables.value = editableVariables.value.filter((id) => id !== variableId);
+	variableForms.value.delete(variableId);
+};
+
+const addEmptyVariableForm = () => {
+	const variable = { id: uid(TEMPORARY_VARIABLE_UID_BASE), key: '', value: '' };
+	variableForms.value.set(variable.id, variable);
+
+	// Reset pagination
+	if (layoutRef.value?.currentPage !== 1) {
+		layoutRef.value?.setCurrentPage(1);
+	}
+
+	addToEditableVariables(variable.id);
+	telemetry.track('User clicked add variable button');
+};
+
+const variables = computed(() => [...variableForms.value.values(), ...environmentsStore.variables]);
 
 const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
-const datatableColumns = computed<DatatableColumn[]>(() => [
-	{
-		id: 0,
-		path: 'name',
-		label: i18n.baseText('variables.table.key'),
-		classes: ['variables-key-column'],
-	},
-	{
-		id: 1,
-		path: 'value',
-		label: i18n.baseText('variables.table.value'),
-		classes: ['variables-value-column'],
-	},
-	{
-		id: 2,
-		path: 'usage',
-		label: i18n.baseText('variables.table.usage'),
-		classes: ['variables-usage-column'],
-	},
-	...(isFeatureEnabled.value
-		? [
-				{
-					id: 3,
-					path: 'actions',
-					label: '',
-				},
-			]
-		: []),
-]);
+const columns = computed(() => {
+	const cols: DatatableColumn[] = [
+		{
+			id: 0,
+			path: 'name',
+			label: i18n.baseText('variables.table.key'),
+			classes: ['variables-key-column'],
+		},
+		{
+			id: 1,
+			path: 'value',
+			label: i18n.baseText('variables.table.value'),
+			classes: ['variables-value-column'],
+		},
+		{
+			id: 2,
+			path: 'usage',
+			label: i18n.baseText('variables.table.usage'),
+			classes: ['variables-usage-column'],
+		},
+	];
 
-const contextBasedTranslationKeys = computed(() => uiStore.contextBasedTranslationKeys);
+	if (!isFeatureEnabled.value) return cols;
 
-const newlyAddedVariableIds = ref<string[]>([]);
-
-const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
-	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-		return -1;
-	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-		return 1;
-	} else if (
-		newlyAddedVariableIds.value.includes(a.id) &&
-		newlyAddedVariableIds.value.includes(b.id)
-	) {
-		return newlyAddedVariableIds.value.indexOf(a.id) - newlyAddedVariableIds.value.indexOf(b.id);
-	} else if (newlyAddedVariableIds.value.includes(a.id)) {
-		return -1;
-	} else if (newlyAddedVariableIds.value.includes(b.id)) {
-		return 1;
-	}
-
-	return direction === 'asc'
-		? displayName(a).trim().localeCompare(displayName(b).trim())
-		: displayName(b).trim().localeCompare(displayName(a).trim());
-};
-const sortFns = {
-	nameAsc: (a: IResource, b: IResource) => {
-		return nameSortFn(a, b, 'asc');
-	},
-	nameDesc: (a: IResource, b: IResource) => {
-		return nameSortFn(a, b, 'desc');
-	},
-};
-
-function resetNewVariablesList() {
-	newlyAddedVariableIds.value = [];
-}
-
-const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
-	id: data.id,
-	key: data.name,
-	value: 'value' in data ? (data.value ?? '') : '',
+	return cols.concat({ id: 3, path: 'actions', label: '', classes: ['variables-actions-column'] });
 });
 
-const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
-	id: data.id,
-	name: data.key,
-	value: 'value' in data ? data.value : '',
-});
-
-async function initialize() {
-	if (!isFeatureEnabled.value) return;
-	loading.value = true;
-	await environmentsStore.fetchAllVariables();
-
-	allVariables.value = [...environmentsStore.variables];
-	loading.value = false;
-}
-
-function addTemporaryVariable() {
-	const temporaryVariable: EnvironmentVariable = {
-		id: uid(TEMPORARY_VARIABLE_UID_BASE),
-		key: '',
-		value: '',
-	};
-
-	if (layoutRef.value) {
-		// Reset scroll position
-		if (layoutRef.value.$refs.listWrapperRef) {
-			(layoutRef.value.$refs.listWrapperRef as HTMLDivElement).scrollTop = 0;
-		}
-
-		// Reset pagination
-		if (layoutRef.value.currentPage !== 1) {
-			layoutRef.value.setCurrentPage(1);
-		}
-	}
-
-	allVariables.value.unshift(temporaryVariable);
-	editMode.value[temporaryVariable.id] = true;
-
-	telemetry.track('User clicked add variable button');
-}
-
-async function saveVariable(data: IResource) {
-	const variable = resourceToEnvironmentVariable(data);
+const handleSubmit = async (variable: EnvironmentVariable) => {
 	try {
-		if (typeof variable.id === 'string' && variable.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			const { id, ...rest } = variable;
-			const updatedVariable = await environmentsStore.createVariable(rest);
-			allVariables.value.unshift(updatedVariable);
-			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
-			newlyAddedVariableIds.value.unshift(updatedVariable.id);
+		const { id, ...rest } = variable;
+		if (id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+			await environmentsStore.createVariable(rest);
 		} else {
-			const updatedVariable = await environmentsStore.updateVariable(variable);
-			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
-			allVariables.value.push(updatedVariable);
-			toggleEditing(environmentVariableToResource(updatedVariable));
+			await environmentsStore.updateVariable(variable);
 		}
+		removeEditableVariable(id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.save'));
 	}
-}
+};
 
-function toggleEditing(data: IResource) {
-	editMode.value = {
-		...editMode.value,
-		[data.id]: !editMode.value[data.id],
-	};
-}
-
-function cancelEditing(data: IResource) {
-	if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
-	} else {
-		toggleEditing(data);
-	}
-}
-
-async function deleteVariable(data: IResource) {
-	const variable = resourceToEnvironmentVariable(data);
+const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 	try {
 		const confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', {
@@ -225,57 +148,95 @@ async function deleteVariable(data: IResource) {
 		}
 
 		await environmentsStore.deleteVariable(variable);
-		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+		removeEditableVariable(variable.id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
 	}
-}
+};
+
+type Filters = IFilters & { incomplete?: boolean };
+const updateFilter = (state: Filters) => {
+	void router.replace({ query: pickBy(state) as LocationQueryRaw });
+};
+const filters = computed<Filters>(
+	() => ({ ...route.query, incomplete: route.query.incomplete?.toString() === 'true' }) as Filters,
+);
+
+const handleFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iResource = resource as EnvironmentVariable;
+	const filtersToApply = newFilters as Filters;
+
+	if (filtersToApply.incomplete) {
+		matches = matches && !iResource.value;
+	}
+
+	return matches;
+};
+
+const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
+	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		return -1;
+	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		return 1;
+	}
+
+	return direction === 'asc'
+		? displayName(a).trim().localeCompare(displayName(b).trim())
+		: displayName(b).trim().localeCompare(displayName(a).trim());
+};
+const sortFns = {
+	nameAsc: (a: IResource, b: IResource) => nameSortFn(a, b, 'asc'),
+	nameDesc: (a: IResource, b: IResource) => nameSortFn(a, b, 'desc'),
+};
+
+const unavailableNoticeProps = computed(() => ({
+	emoji: '👋',
+	heading: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.title),
+	description: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.description),
+	buttonText: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.button),
+	buttonType: 'secondary' as const,
+	'onClick:button': goToUpgrade,
+	'data-test-id': 'unavailable-resources-list',
+}));
 
 function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('variables', 'upgrade-variables');
+	void usePageRedirectionHelper().goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: IResource) {
-	return resource.name;
+	return (resource as EnvironmentVariable).key;
 }
 
-onBeforeMount(() => {
-	sourceControlStoreUnsubscribe = sourceControlStore.$onAction(({ name, after }) => {
-		if (name === 'pullWorkfolder' && after) {
-			after(() => {
-				void initialize();
-			});
-		}
-	});
-});
-
-onBeforeUnmount(() => {
-	sourceControlStoreUnsubscribe();
+sourceControlStore.$onAction(({ name, after }) => {
+	if (name === 'pullWorkfolder' && after) {
+		after(() => {
+			void execute();
+		});
+	}
 });
 
 onMounted(() => {
-	documentTitle.set(i18n.baseText('variables.heading'));
+	useDocumentTitle().set(i18n.baseText('variables.heading'));
 });
 </script>
 
 <template>
 	<ResourcesListLayout
 		ref="layoutRef"
-		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
-		:resources="variablesToResources"
-		:initialize="initialize"
+		:resources="variables"
+		:filters="filters"
+		:additional-filters-handler="handleFilter"
 		:shareable="false"
 		:display-name="displayName"
 		:sort-fns="sortFns"
 		:sort-options="['nameAsc', 'nameDesc']"
-		:show-filters-dropdown="false"
 		type="datatable"
-		:type-props="{ columns: datatableColumns }"
-		:loading="loading"
-		@sort="resetNewVariablesList"
-		@click:add="addTemporaryVariable"
+		:type-props="{ columns }"
+		:loading="isLoading"
+		@update:filters="updateFilter"
+		@click:add="addEmptyVariableForm"
 	>
 		<template #header>
 			<n8n-heading size="2xlarge" class="mb-m">
@@ -283,66 +244,50 @@ onMounted(() => {
 			</n8n-heading>
 		</template>
 		<template #add-button>
-			<n8n-tooltip placement="top" :disabled="canCreateVariables">
+			<N8nTooltip placement="top" :disabled="canCreateVariables">
 				<div>
-					<n8n-button
+					<N8nButton
 						size="large"
 						block
 						:disabled="!canCreateVariables"
 						data-test-id="resources-list-add"
-						@click="addTemporaryVariable"
+						@click="addEmptyVariableForm"
 					>
 						{{ i18n.baseText(`variables.add`) }}
-					</n8n-button>
+					</N8nButton>
 				</div>
 				<template #content>
 					<span v-if="!isFeatureEnabled">{{
-						i18n.baseText(`variables.add.unavailable${allVariables.length === 0 ? '.empty' : ''}`)
+						i18n.baseText(`variables.add.unavailable${variables.length === 0 ? '.empty' : ''}`)
 					}}</span>
 					<span v-else>{{ i18n.baseText('variables.add.onlyOwnerCanCreate') }}</span>
 				</template>
-			</n8n-tooltip>
+			</N8nTooltip>
+		</template>
+		<template #filters="{ setKeyValue }">
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.status')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+
+				<N8nCheckbox
+					label="Value missing"
+					data-test-id="variable-filter-incomplete"
+					:model-value="filters.incomplete"
+					@update:model-value="setKeyValue('incomplete', $event)"
+				/>
+			</div>
 		</template>
 		<template v-if="!isFeatureEnabled" #preamble>
-			<n8n-action-box
-				class="mb-m"
-				data-test-id="unavailable-resources-list"
-				emoji="👋"
-				:heading="
-					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
-				"
-				:description="
-					i18n.baseText(
-						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
-					)
-				"
-				:button-text="
-					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
-				"
-				button-type="secondary"
-				@click:button="goToUpgrade"
-			/>
+			<N8nActionBox class="mb-m" v-bind="unavailableNoticeProps" />
 		</template>
 		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
-			<n8n-action-box
-				v-if="!isFeatureEnabled"
-				data-test-id="unavailable-resources-list"
-				emoji="👋"
-				:heading="
-					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
-				"
-				:description="
-					i18n.baseText(
-						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
-					)
-				"
-				:button-text="
-					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
-				"
-				button-type="secondary"
-				@click:button="goToUpgrade"
-			/>
-			<n8n-action-box
+			<N8nActionBox v-if="!isFeatureEnabled" v-bind="unavailableNoticeProps" />
+			<N8nActionBox
 				v-else-if="!canCreateVariables"
 				data-test-id="cannot-create-variables"
 				emoji="👋"
@@ -356,72 +301,90 @@ onMounted(() => {
 			/>
 		</template>
 		<template #default="{ data }">
-			<VariablesRow
+			<VariablesForm
+				v-if="editableVariables.includes(data.id)"
 				:key="data.id"
-				:editing="editMode[data.id]"
-				:data="data"
-				@save="saveVariable"
-				@edit="toggleEditing"
-				@cancel="cancelEditing"
-				@delete="deleteVariable"
+				data-test-id="variables-row"
+				:variable="data"
+				@submit="handleSubmit"
+				@cancel="removeEditableVariable(data.id)"
 			/>
+
+			<tr v-else data-test-id="variables-row">
+				<td>
+					{{ data.key }}
+				</td>
+				<td>
+					<template v-if="data.value">
+						{{ data.value }}
+					</template>
+					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
+				</td>
+				<td>
+					<VariablesUsageBadge v-if="data.key" :name="data.key" />
+				</td>
+				<td v-if="isFeatureEnabled" align="right">
+					<div class="action-buttons">
+						<N8nTooltip :disabled="permissions.update" placement="top">
+							<N8nButton
+								data-test-id="variable-row-edit-button"
+								type="tertiary"
+								class="mr-xs"
+								:disabled="!permissions.update"
+								@click="addToEditableVariables(data.id)"
+							>
+								{{ i18n.baseText('variables.row.button.edit') }}
+							</N8nButton>
+							<template #content>
+								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
+							</template>
+						</N8nTooltip>
+						<N8nTooltip :disabled="permissions.delete" placement="top">
+							<N8nButton
+								data-test-id="variable-row-delete-button"
+								type="tertiary"
+								:disabled="!permissions.delete"
+								@click="handleDeleteVariable(data)"
+							>
+								{{ i18n.baseText('variables.row.button.delete') }}
+							</N8nButton>
+							<template #content>
+								{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
+							</template>
+						</N8nTooltip>
+					</div>
+				</td>
+			</tr>
 		</template>
 	</ResourcesListLayout>
 </template>
 
-<style lang="scss" module>
-.type-input {
-	--max-width: 265px;
-}
-
-.sidebarContainer ul {
-	padding: 0 !important;
-}
-</style>
-
 <style lang="scss" scoped>
-@use 'n8n-design-system/css/common/var.scss';
+.action-buttons {
+	opacity: 0;
+	transition: opacity 0.2s ease;
+}
 
-.variables-view {
-	:deep(.datatable) {
-		table {
-			table-layout: fixed;
-		}
+:deep(.datatable) {
+	white-space: nowrap;
 
-		th,
-		td {
-			width: 25%;
-
-			@media screen and (max-width: var.$md) {
-				width: 33.33%;
-			}
-
-			&.variables-value-column,
-			&.variables-key-column,
-			&.variables-usage-column {
-				> div {
-					width: 100%;
-
-					> span {
-						max-width: 100%;
-						overflow: hidden;
-						text-overflow: ellipsis;
-						white-space: nowrap;
-						height: 18px;
-					}
-
-					> div {
-						width: 100%;
-					}
-				}
+	table tr {
+		&:hover {
+			.action-buttons {
+				opacity: 1;
 			}
 		}
+	}
 
-		.variables-usage-column {
-			@media screen and (max-width: var.$md) {
-				display: none;
-			}
+	@media screen and (max-width: $breakpoint-sm) {
+		table tr th:nth-child(3),
+		table tr td:nth-child(3) {
+			display: none;
 		}
+	}
+
+	.variables-actions-column {
+		width: 170px;
 	}
 }
 </style>

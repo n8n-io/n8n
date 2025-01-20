@@ -68,7 +68,10 @@ export class VariablesPage extends BasePage {
 		},
 		setRowValue: (row: Chainable<JQuery<HTMLElement>>, field: 'key' | 'value', value: string) => {
 			row.within(() => {
-				cy.getByTestId(`variable-row-${field}-input`).type('{selectAll}{del}').type(value);
+				cy.getByTestId(`variable-row-${field}-input`)
+					.find('input, textarea')
+					.type('{selectAll}{del}')
+					.type(value);
 			});
 		},
 		cancelRowEditing: (row: Chainable<JQuery<HTMLElement>>) => {
