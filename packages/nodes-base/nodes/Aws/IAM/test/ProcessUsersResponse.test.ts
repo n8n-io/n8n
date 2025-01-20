@@ -30,7 +30,7 @@ describe('processUsersResponse', () => {
 
 		const result = await processUsersResponse.call(mockContext, [], response);
 
-		expect(result).toEqual({ UserName: 'user1', UserId: '1' });
+		expect(result).toEqual([{ UserName: 'user1', UserId: '1' }]);
 	});
 
 	it('should process multiple users response correctly (ListUsersResponse)', async () => {

@@ -14,14 +14,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
-export async function presendTest(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	console.log('requestOptions', requestOptions);
-	return requestOptions;
-}
-
 type User = {
 	Arn: string;
 	CreateDate: number;
@@ -45,7 +37,6 @@ type GetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
 			Users: IDataObject[];
-			PaginationToken: string;
 		};
 	};
 };
@@ -175,9 +166,7 @@ export async function processGroupsResponse(
 		throw new ApplicationError('Unexpected response format: No groups found.');
 	}
 
-	const executionData = data.map((group) => group);
-
-	return executionData;
+	return data;
 }
 
 export async function processUsersResponse(
@@ -188,7 +177,6 @@ export async function processUsersResponse(
 	const actionType = this.getNodeParameter('operation');
 	let responseBody;
 	let data;
-	console.log('Initial data', response.body);
 
 	if (!response.body) {
 		return [];
@@ -196,18 +184,16 @@ export async function processUsersResponse(
 	if (actionType === 'get') {
 		responseBody = response.body as GetUserResponseBody;
 		data = responseBody.GetUserResponse.GetUserResult.User as User;
-		return data;
 	} else if (actionType === 'getAll') {
 		responseBody = response.body as GetAllUsersResponseBody;
 		data = responseBody.ListUsersResponse.ListUsersResult.Users as User[];
 	}
 
 	if (!Array.isArray(data)) {
-		return [];
+		return [data];
 	}
 
-	const userData = data.map((user) => user);
-	return userData;
+	return data;
 }
 
 export async function handlePagination(
@@ -237,24 +223,28 @@ export async function handlePagination(
 		}
 
 		const responseData = await this.makeRoutingRequest(resultOptions);
+
 		if (responseData && Array.isArray(responseData)) {
 			for (const page of responseData) {
-				aggregatedResult.push(page.json);
+				if (page) {
+					aggregatedResult.push(page);
 
-				if (!returnAll && aggregatedResult.length >= limit) {
-					return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
+					if (!returnAll && aggregatedResult.length >= limit) {
+						return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
+					}
 				}
-				if (page.json.PaginationToken)
-					nextPageToken = page.json.PaginationToken as string | undefined;
 			}
 		} else if (responseData && typeof responseData === 'object') {
 			aggregatedResult.push(responseData as IDataObject);
 
-			nextPageToken = (responseData as IDataObject).PaginationToken as string | undefined;
+			nextPageToken =
+				((responseData as IDataObject).PaginationToken as string | undefined) || undefined;
 
 			if (!returnAll && aggregatedResult.length >= limit) {
 				return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 			}
+		} else {
+			nextPageToken = undefined;
 		}
 	} while (nextPageToken);
 
@@ -497,7 +487,7 @@ export async function searchGroups(
 export async function simplifyData(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
+): Promise<any> {
 	const simple = this.getNodeParameter('simple') as boolean;
 
 	if (!simple) {
@@ -505,9 +495,11 @@ export async function simplifyData(
 	}
 
 	const processedUsers: User[] = [];
+	items.map((item) => {
+		const isNested =
+			item.json && typeof item.json === 'object' && Object.keys(item.json).length > 0;
+		const user = isNested ? (item.json as User) : (item as unknown as User);
 
-	items.forEach((item) => {
-		const user = item.json as User;
 		processedUsers.push({
 			Arn: user.Arn,
 			CreateDate: user.CreateDate,
@@ -516,8 +508,5 @@ export async function simplifyData(
 			UserName: user.UserName,
 		});
 	});
-
-	return processedUsers.map((user) => ({
-		json: user,
-	}));
+	return processedUsers;
 }
