@@ -42,9 +42,9 @@ export const formDescription: INodeProperties = {
 };
 
 export const formFields: INodeProperties = {
-	displayName: 'Form Fields',
+	displayName: 'Form Elements',
 	name: 'formFields',
-	placeholder: 'Add Form Field',
+	placeholder: 'Add Form Element',
 	type: 'fixedCollection',
 	default: { values: [{ label: '', fieldType: 'text' }] },
 	typeOptions: {
@@ -66,7 +66,7 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
-					displayName: 'Field Type',
+					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
