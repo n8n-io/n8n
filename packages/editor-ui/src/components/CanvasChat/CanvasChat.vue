@@ -206,28 +206,36 @@ async function createExecutionPromise() {
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 	try {
-		const response = await runWorkflow({
+		const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
 			triggerNode: payload.triggerNode,
 			nodeData: payload.nodeData,
 			source: payload.source,
-		});
-		ws.value = new WebSocket(
-			`${rootStore.urlBaseEditor}chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
-		);
-
-		ws.value.onmessage = (event) => {
-			const newMessage: ChatMessage & { sessionId: string } = {
-				text: event.data,
-				sender: 'bot',
-				createdAt: new Date().toISOString(),
-				sessionId: currentSessionId.value,
-				id: uuid(),
-			};
-			messages.value.push(newMessage);
-			setLoadingState(false);
 		};
 
+		if (workflowsStore.chatPartialExecutionDestinationNode) {
+			runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
+			workflowsStore.chatPartialExecutionDestinationNode = null;
+		}
+
+		const response = await runWorkflow(runWorkflowOptions);
+
 		if (response) {
+			ws.value = new WebSocket(
+				`${rootStore.urlBaseEditor}chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+			);
+
+			ws.value.onmessage = (event) => {
+				const newMessage: ChatMessage & { sessionId: string } = {
+					text: event.data,
+					sender: 'bot',
+					createdAt: new Date().toISOString(),
+					sessionId: currentSessionId.value,
+					id: uuid(),
+				};
+				messages.value.push(newMessage);
+				setLoadingState(false);
+			};
+
 			await createExecutionPromise();
 			workflowsStore.appendChatMessage(payload.message);
 			return response;

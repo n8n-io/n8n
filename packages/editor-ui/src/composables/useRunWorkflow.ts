@@ -164,6 +164,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+			}
+
+			if (options.triggerNode && options.nodeData) {
 				triggerToStartFrom = {
 					name: options.triggerNode,
 					data: options.nodeData,
@@ -174,7 +177,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
-					destinationNodeType === CHAT_TRIGGER_NODE_TYPE)
+					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
+				options.source !== 'RunData.ManualChatMessage'
 			) {
 				const startNode = workflow.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -186,6 +190,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
+						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
 						workflowsStore.setPanelOpen('chat', true);
 						return;
 					}
