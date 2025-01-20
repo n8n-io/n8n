@@ -47,11 +47,10 @@ export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 
 const variablesToast = {
 	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
-	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () =>
+	message: h(RouterLink, { to: { name: VIEWS.VARIABLES }, query: { incomplete: 'true' } }, () =>
 		i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
 	),
 	type: 'info' as const,
-	closeOnClick: true,
 	duration: 0,
 };
 
@@ -61,7 +60,6 @@ const credentialsToast = {
 		i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
 	),
 	type: 'info' as const,
-	closeOnClick: true,
 	duration: 0,
 };
 
