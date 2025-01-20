@@ -7,7 +7,6 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -18,6 +17,7 @@ import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
+import { useNDVStore } from '../stores/ndv.store';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
@@ -428,9 +428,18 @@ function activatePane() {
 					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
 						i18n.baseText('ndv.input.rootNodeHasNotRun.title')
 					}}</N8nText>
-					<N8nText tag="div" color="text-dark" size="medium">{{
-						i18n.baseText('ndv.input.rootNodeHasNotRun.description')
-					}}</N8nText>
+					<N8nText tag="div" color="text-dark" size="medium">
+						<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<template #link>
+								<a
+									href="#"
+									data-test-id="switch-to-mapping-mode-link"
+									@click.prevent="onInputModeChange('mapping')"
+									>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
+								>
+							</template>
+						</i18n-t>
+					</N8nText>
 				</template>
 				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>

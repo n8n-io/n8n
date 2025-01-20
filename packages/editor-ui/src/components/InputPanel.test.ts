@@ -6,10 +6,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import {
-	IRunData,
 	NodeConnectionType,
 	type IConnections,
 	type INodeExecutionData,
+	type IRunData,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '../__tests__/utils';
