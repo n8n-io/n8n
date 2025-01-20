@@ -98,10 +98,10 @@ onMounted(async () => {
 			<N8nLoading :rows="5" />
 			<N8nLoading :rows="10" />
 		</template>
-		<template v-else-if="runs.length > 0">
+		<div :class="$style.details" v-else-if="runs.length > 0">
 			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
 			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" @delete-runs="onDeleteRuns" />
-		</template>
+		</div>
 		<template v-else>
 			<N8nActionBox
 				:heading="locale.baseText('testDefinition.listRuns.noRuns')"
@@ -114,16 +114,24 @@ onMounted(async () => {
 </template>
 <style module lang="scss">
 .container {
-	padding: var(--spacing-xl) var(--spacing-l);
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
+	margin: auto;
+	display: flex;
+	flex-direction: column;
 }
 .backButton {
 	color: var(--color-text-base);
 }
 .description {
-	margin-top: var(--spacing-xs);
+	margin: var(--spacing-s) 0;
 	display: block;
+}
+.details {
+	display: flex;
+	height: 100%;
+	flex-direction: column;
+	gap: var(--spacing-xl);
 }
 </style>

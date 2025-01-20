@@ -36,7 +36,7 @@ import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
-import { clearPopupWindowState } from '../utils/executionUtils';
+import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/executionUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
@@ -237,18 +237,51 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return false;
 			}
 
+			let showedSuccessToast = false;
+
 			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
 			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = { workflowId, data: parse(rawData), status };
 			} else {
-				const execution = await workflowsStore.fetchExecutionDataById(executionId);
-				if (!execution?.data) return false;
-				executionData = {
-					workflowId: execution.workflowId,
-					data: parse(execution.data as unknown as string),
-					status: execution.status,
-				};
+				uiStore.setProcessingExecutionResults(true);
+
+				/**
+				 * On successful completion without data, we show a success toast
+				 * immediately, even though we still need to fetch and deserialize the
+				 * full execution data, to minimize perceived latency.
+				 */
+				if (receivedData.type === 'executionFinished' && receivedData.data.status === 'success') {
+					workflowHelpers.setDocumentTitle(
+						workflowsStore.getWorkflowById(receivedData.data.workflowId)?.name,
+						'IDLE',
+					);
+					uiStore.removeActiveAction('workflowRunning');
+					toast.showMessage({
+						title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+						type: 'success',
+					});
+					showedSuccessToast = true;
+				}
+
+				let execution: IExecutionResponse | null;
+
+				try {
+					execution = await workflowsStore.fetchExecutionDataById(executionId);
+					if (!execution?.data) {
+						uiStore.setProcessingExecutionResults(false);
+						return false;
+					}
+
+					executionData = {
+						workflowId: execution.workflowId,
+						data: parse(execution.data as unknown as string),
+						status: execution.status,
+					};
+				} catch {
+					uiStore.setProcessingExecutionResults(false);
+					return false;
+				}
 			}
 
 			const iRunExecutionData: IRunExecutionData = {
@@ -261,10 +294,13 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const activeRunData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 				if (activeRunData) {
 					for (const key of Object.keys(activeRunData)) {
+						if (hasTrimmedItem(activeRunData[key])) continue;
 						iRunExecutionData.resultData.runData[key] = activeRunData[key];
 					}
 				}
 			}
+
+			uiStore.setProcessingExecutionResults(false);
 
 			let runDataExecutedErrorMessage = getExecutionError(iRunExecutionData);
 
@@ -410,7 +446,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					}
 				}
 			} else {
-				// Workflow did execute without a problem
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 
 				const execution = workflowsStore.getWorkflowExecution;
@@ -441,7 +476,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							type: 'success',
 						});
 					}
-				} else {
+				} else if (!showedSuccessToast) {
 					toast.showMessage({
 						title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 						type: 'success',
@@ -451,8 +486,9 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			// It does not push the runData as it got already pushed with each
 			// node that did finish. For that reason copy in here the data
-			// which we already have.
-			if (workflowsStore.getWorkflowRunData) {
+			// which we already have. But if the run data in the store is trimmed,
+			// we skip copying so we use the full data from the final message.
+			if (workflowsStore.getWorkflowRunData && !hasTrimmedData(workflowsStore.getWorkflowRunData)) {
 				iRunExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
 			}
 
@@ -493,6 +529,22 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
+
+			/**
+			 * When we receive a placeholder in `nodeExecuteAfter`, we fake the items
+			 * to be the same count as the data the placeholder is standing in for.
+			 * This prevents the items count from jumping up when the execution
+			 * finishes and the full data replaces the placeholder.
+			 */
+			if (
+				pushData.itemCount &&
+				pushData.data?.data?.main &&
+				Array.isArray(pushData.data.data.main[0]) &&
+				pushData.data.data.main[0].length < pushData.itemCount
+			) {
+				pushData.data.data.main[0]?.push(...new Array(pushData.itemCount - 1).fill({ json: {} }));
+			}
+
 			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {

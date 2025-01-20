@@ -36,6 +36,7 @@ const uiStore = useUIStore();
 const {
 	state,
 	fieldsIssues,
+	isSaving,
 	cancelEditing,
 	loadTestData,
 	createTest,
@@ -52,13 +53,15 @@ const allTags = computed(() => tagsStore.allTags);
 const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
-
+const appliedTheme = computed(() => uiStore.appliedTheme);
 const tagUsageCount = computed(
 	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
 );
-
+const hasRuns = computed(() => runs.value.length > 0);
 const nodePinningModal = ref<ModalState | null>(null);
 const modalContentWidth = ref(0);
+const showConfig = ref(true);
+const selectedMetric = ref<string>('');
 
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {
@@ -135,12 +138,16 @@ const runs = computed(() =>
 	),
 );
 
-async function onDeleteRuns(runs: TestRunRecord[]) {
+async function onDeleteRuns(toDelete: TestRunRecord[]) {
 	await Promise.all(
-		runs.map(async (run) => {
+		toDelete.map(async (run) => {
 			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });
 		}),
 	);
+}
+
+function toggleConfig() {
+	showConfig.value = !showConfig.value;
 }
 
 // Debounced watchers for auto-saving
@@ -164,29 +171,82 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.formContent">
-			<!-- Name -->
-			<EvaluationHeader
-				v-model="state.name"
-				:class="{ 'has-issues': hasIssues('name') }"
-				:start-editing="startEditing"
-				:save-changes="saveChanges"
-				:handle-keydown="handleKeydown"
-			/>
-			<div :class="$style.panelBlock">
-				<!-- Description -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="locale.baseText('testDefinition.edit.description')"
-					:expanded="false"
-				>
-					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-					<template #cardContent>
-						<DescriptionInput v-model="state.description" />
-					</template>
-				</EvaluationStep>
+	<div :class="[$style.container, { [$style.noRuns]: !hasRuns }]">
+		<div :class="$style.headerSection">
+			<div :class="$style.headerMeta">
+				<div :class="$style.name">
+					<EvaluationHeader
+						v-model="state.name"
+						:class="{ 'has-issues': hasIssues('name') }"
+						:start-editing="startEditing"
+						:save-changes="saveChanges"
+						:handle-keydown="handleKeydown"
+					/>
+					<div :class="$style.lastSaved">
+						<template v-if="isSaving">
+							{{ locale.baseText('testDefinition.edit.saving') }}
+						</template>
+						<template v-else> {{ locale.baseText('testDefinition.edit.saved') }} </template>
+					</div>
+				</div>
+				<DescriptionInput
+					v-model="state.description"
+					:start-editing="startEditing"
+					:save-changes="saveChanges"
+					:handle-keydown="handleKeydown"
+					:class="$style.descriptionInput"
+				/>
+			</div>
+			<div :class="$style.controls">
+				<n8n-button
+					v-if="runs.length > 0"
+					size="small"
+					:icon="showConfig ? 'eye-slash' : 'eye'"
+					data-test-id="toggle-config-button"
+					:label="
+						showConfig
+							? locale.baseText('testDefinition.edit.hideConfig')
+							: locale.baseText('testDefinition.edit.showConfig')
+					"
+					type="tertiary"
+					@click="toggleConfig"
+				/>
+				<n8n-button
+					v-if="state.evaluationWorkflow.value && state.tags.value.length > 0"
+					:class="$style.runTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('testDefinition.runTest')"
+					type="primary"
+					@click="runTest"
+				/>
+				<n8n-button
+					v-else
+					:class="$style.runTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('testDefinition.edit.saveTest')"
+					type="primary"
+					@click="onSaveTest"
+				/>
+			</div>
+		</div>
 
+		<div :class="$style.content">
+			<div v-if="runs.length > 0" :class="$style.runs">
+				<!-- Metrics Chart -->
+				<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
+				<!-- Past Runs Table -->
+				<TestRunsTable
+					:class="$style.runsTable"
+					:runs="runs"
+					:selectable="true"
+					data-test-id="past-runs-table"
+					@delete-runs="onDeleteRuns"
+				/>
+			</div>
+
+			<div :class="[$style.panelBlock, { [$style.hidden]: !showConfig }]">
 				<div :class="$style.panelIntro">
 					{{ locale.baseText('testDefinition.edit.step.intro') }}
 				</div>
@@ -286,37 +346,6 @@ watch(
 					</template>
 				</EvaluationStep>
 			</div>
-
-			<n8n-button
-				v-if="state.evaluationWorkflow.value && state.tags.value.length > 0"
-				:class="$style.runTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="locale.baseText('testDefinition.runTest')"
-				type="primary"
-				@click="runTest"
-			/>
-			<n8n-button
-				v-else
-				:class="$style.runTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="'Save Test'"
-				type="primary"
-				@click="onSaveTest"
-			/>
-		</div>
-		<!-- Past Runs Table -->
-		<div v-if="runs.length > 0" :class="$style.runsTable">
-			<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
-				locale.baseText('testDefinition.edit.pastRuns')
-			}}</N8nHeading>
-			<TestRunsTable
-				:runs="runs"
-				:selectable="true"
-				data-test-id="past-runs-table"
-				@delete-runs="onDeleteRuns"
-			/>
 		</div>
 
 		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
@@ -338,52 +367,102 @@ watch(
 
 <style module lang="scss">
 .container {
-	--evaluation-edit-panel-width: 35rem;
-	width: 100%;
+	--evaluation-edit-panel-width: 24rem;
+	--metrics-chart-height: 10rem;
 	height: 100%;
-	overflow: hidden;
-	padding: var(--spacing-s);
-	display: grid;
-	grid-template-columns: minmax(auto, var(--evaluation-edit-panel-width)) 1fr;
-	gap: var(--spacing-2xl);
-}
-
-.formContent {
-	width: 100%;
-	min-width: fit-content;
-	padding-bottom: 10px;
-	overflow: hidden;
 	display: flex;
 	flex-direction: column;
+
+	@media (min-height: 56rem) {
+		--metrics-chart-height: 16rem;
+	}
+
+	@include mixins.breakpoint('lg-and-up') {
+		--evaluation-edit-panel-width: 30rem;
+	}
 }
-.runsTableTotal {
-	display: block;
-	margin-bottom: var(--spacing-xs);
+
+.content {
+	display: flex;
+	overflow-y: hidden;
+	position: relative;
+
+	.noRuns & {
+		justify-content: center;
+		overflow-y: auto;
+	}
 }
-.runsTable {
-	flex-shrink: 1;
-	max-width: 100%;
-	max-height: 80vh;
+
+.headerSection {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	background-color: var(--color-background-light);
+	width: 100%;
+}
+
+.headerMeta {
+	max-width: 50%;
+}
+
+.name {
+	display: flex;
+	align-items: center;
+
+	.lastSaved {
+		font-size: var(--font-size-s);
+		color: var(--color-text-light);
+	}
+}
+
+.descriptionInput {
+	margin-top: var(--spacing-2xs);
+}
+
+.runs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-m);
+	flex: 1;
+	padding-top: var(--spacing-3xs);
 	overflow: auto;
+
+	@media (min-height: 56rem) {
+		margin-top: var(--spacing-2xl);
+	}
 }
-.runsTableHeading {
-	display: block;
-	margin-bottom: var(--spacing-xl);
-}
+
 .panelBlock {
-	max-width: var(--evaluation-edit-panel-width, 35rem);
+	width: var(--evaluation-edit-panel-width);
 	display: grid;
+	height: 100%;
 	overflow-y: auto;
-	min-height: 0;
+	flex-shrink: 0;
+	padding-bottom: var(--spacing-l);
+	margin-left: var(--spacing-2xl);
+	transition: width 0.2s ease;
+
+	&.hidden {
+		margin-left: 0;
+		width: 0;
+		overflow: hidden;
+		flex-shrink: 1;
+	}
+
+	.noRuns & {
+		overflow-y: initial;
+	}
 }
+
 .panelIntro {
 	font-size: var(--font-size-m);
 	color: var(--color-text-dark);
-	margin-top: var(--spacing-s);
+
 	justify-self: center;
 	position: relative;
 	display: block;
 }
+
 .step {
 	position: relative;
 
@@ -391,10 +470,13 @@ watch(
 		margin-top: var(--spacing-m);
 	}
 }
+
 .introArrow {
 	--arrow-height: 1.5rem;
+	margin-bottom: -1rem;
 	justify-self: center;
 }
+
 .evaluationArrows {
 	--arrow-height: 22rem;
 	display: flex;
@@ -405,38 +487,9 @@ watch(
 	margin-bottom: -100%;
 	z-index: 0;
 }
-.footer {
-	margin-top: var(--spacing-xl);
+
+.controls {
 	display: flex;
-	justify-content: flex-start;
-}
-
-.workflow {
-	padding: var(--spacing-l);
-	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
-}
-
-.workflowSteps {
-	display: grid;
-	gap: var(--spacing-2xs);
-	max-width: 42rem;
-	margin: 0 auto;
-}
-
-.sideBySide {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	gap: var(--spacing-2xs);
-	justify-items: end;
-	align-items: start;
-}
-.mockedNodesLabel {
-	min-height: 1.5rem;
-	display: block;
-}
-.runTestButton {
-	margin-top: var(--spacing-m);
+	gap: var(--spacing-s);
 }
 </style>

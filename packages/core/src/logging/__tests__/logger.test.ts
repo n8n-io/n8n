@@ -7,7 +7,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
 
-import type { InstanceSettingsConfig } from '@/InstanceSettingsConfig';
+import type { InstanceSettingsConfig } from '@/instance-settings/instance-settings-config';
 
 import { Logger } from '../logger';
 

@@ -31,6 +31,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
+	NodeFilterType,
 	ToggleNodeCreatorOptions,
 	WorkflowDataWithTemplateId,
 	XYPosition,
@@ -307,8 +308,13 @@ async function initializeData() {
 async function initializeRoute(force = false) {
 	// In case the workflow got saved we do not have to run init
 	// as only the route changed but all the needed data is already loaded
-	if (route.params.action === 'workflowSave') {
+
+	if (route.query.action === 'workflowSave') {
 		uiStore.stateIsDirty = false;
+		// Remove the action from the query
+		await router.replace({
+			query: { ...route.query, action: undefined },
+		});
 		return;
 	}
 
@@ -923,11 +929,13 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.on('openChat', onOpenChat);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
+	nodeViewEventBus.off('openChat', onOpenChat);
 }
 
 /**
@@ -996,7 +1004,11 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 }
 
 async function onSwitchActiveNode(nodeName: string) {
+	const node = workflowsStore.getNodeByName(nodeName);
+	if (!node) return;
+
 	setNodeActiveByName(nodeName);
+	selectNodes([node.id]);
 }
 
 async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
@@ -1068,7 +1080,9 @@ const isExecutionDisabled = computed(() => {
 	return !containsTriggerNodes.value || allTriggerNodesDisabled.value;
 });
 
-const isRunWorkflowButtonVisible = computed(() => !isOnlyChatTriggerNodeActive.value);
+const isRunWorkflowButtonVisible = computed(
+	() => !isOnlyChatTriggerNodeActive.value || chatTriggerNodePinnedData.value,
+);
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );
@@ -1385,7 +1399,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
-				isProductionExecutionPreview.value = json.executionMode !== 'manual';
+				isProductionExecutionPreview.value =
+					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
 				await onOpenExecution(json.executionId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
@@ -1554,13 +1569,15 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openSelectiveNodeCreator',
 		action: ({
+			creatorview: creatorView,
 			connectiontype: connectionType,
 			node,
 		}: {
+			creatorview: NodeFilterType;
 			connectiontype: NodeConnectionType;
 			node: string;
 		}) => {
-			void onOpenSelectiveNodeCreator(node, connectionType);
+			nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, creatorView });
 		},
 	});
 
