@@ -37,6 +37,7 @@ import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
 import { N8nNotice, N8nIconButton, N8nInputLabel, N8nText, N8nIcon } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
+import { computedWithControl } from '@vueuse/core';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -98,22 +99,29 @@ const nodeType = computed(() => {
 	return null;
 });
 
-const filteredParameters = computed(() => {
-	const parameters = props.parameters.filter((parameter: INodeProperties) =>
-		displayNodeParameter(parameter),
-	);
+const filteredParameters = computedWithControl(
+	() => props.parameters,
+	() => {
+		const parameters = props.parameters.filter((parameter: INodeProperties) =>
+			displayNodeParameter(parameter),
+		);
 
-	const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.activeNode;
 
-	if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
-		return updateFormTriggerParameters(parameters, activeNode.name);
-	}
-	if (activeNode && activeNode.type === WAIT_NODE_TYPE && activeNode.parameters.resume === 'form') {
-		return updateWaitParameters(parameters, activeNode.name);
-	}
+		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, activeNode.name);
+		}
+		if (
+			activeNode &&
+			activeNode.type === WAIT_NODE_TYPE &&
+			activeNode.parameters.resume === 'form'
+		) {
+			return updateWaitParameters(parameters, activeNode.name);
+		}
 
-	return parameters;
-});
+		return parameters;
+	},
+);
 
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
@@ -610,10 +618,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>
-			<div
-				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
-				class="parameter-item"
-			>
+			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"

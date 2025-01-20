@@ -3,6 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { STORES } from '@/constants';
 import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
+
+vi.mock('@/composables/useWorkflowHelpers', () => {
+	return { useWorkflowHelpers: vi.fn(() => ({ resolveExpression: vi.fn(() => 'topSecret') })) };
+});
 
 describe('ParameterInputWrapper.vue', () => {
 	beforeEach(() => {
@@ -12,6 +17,7 @@ describe('ParameterInputWrapper.vue', () => {
 	afterEach(() => {
 		cleanupAppModals();
 	});
+
 	test('should resolve expression', async () => {
 		const { getByTestId } = renderComponent(ParameterInputWrapper, {
 			pinia: createTestingPinia({
@@ -34,9 +40,6 @@ describe('ParameterInputWrapper.vue', () => {
 			},
 			global: {
 				mocks: {
-					$workflowHelpers: {
-						resolveExpression: vi.fn(() => 'topSecret'),
-					},
 					$ndvStore: {
 						activeNode: vi.fn(() => ({ test: 'test' })),
 					},
@@ -44,6 +47,6 @@ describe('ParameterInputWrapper.vue', () => {
 			},
 		});
 
-		expect(getByTestId('parameter-input-hint')).toHaveTextContent('[ERROR: ]');
+		await waitFor(() => expect(getByTestId('parameter-input-hint')).toHaveTextContent('topSecret'));
 	});
 });

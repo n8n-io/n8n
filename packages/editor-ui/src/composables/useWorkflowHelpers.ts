@@ -70,7 +70,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
-type ResolveParameterOptions = {
+export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
 	inputNodeName?: string;
 	inputRunIndex?: number;
@@ -749,7 +749,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
+		console.log('===resolveExpression', resolveParameter(parameters, opts));
 		const returnData: IDataObject | null = resolveParameter(parameters, opts);
+		console.log('===resolveExpression', returnData);
 		if (!returnData) {
 			return null;
 		}
