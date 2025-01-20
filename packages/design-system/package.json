@@ -20,8 +20,8 @@
   },
   "devDependencies": {
     "@n8n/storybook": "workspace:*",
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/user-event": "^14.6.0",
     "@testing-library/vue": "^8.1.0",
     "@types/markdown-it": "^13.0.9",
     "@types/markdown-it-emoji": "^2.0.2",
