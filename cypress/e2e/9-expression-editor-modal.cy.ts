@@ -81,7 +81,7 @@ describe('Expression editor modal', () => {
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');
 		});
 
-		it.only('should resolve input: $json,$input,$(nodeName)', () => {
+		it('should resolve input: $json,$input,$(nodeName)', () => {
 			// Previous nodes have not run, input is empty
 			WorkflowPage.getters.expressionModalInput().clear();
 			WorkflowPage.getters.expressionModalInput().click().type('{{ $json.myStr');
