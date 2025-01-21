@@ -6,7 +6,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy, ADD_FORM_NOTICE } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 
@@ -100,7 +100,7 @@ const nodeType = computed(() => {
 });
 
 const filteredParameters = computedWithControl(
-	() => props.parameters,
+	[() => props.parameters, () => props.nodeValues] as WatchSource[],
 	() => {
 		const parameters = props.parameters.filter((parameter: INodeProperties) =>
 			displayNodeParameter(parameter),

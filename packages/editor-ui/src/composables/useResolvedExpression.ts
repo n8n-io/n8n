@@ -44,8 +44,6 @@ export function useResolvedExpression({
 			return { ok: true, result: '' };
 		}
 
-		console.log('=====', toValue(expression));
-
 		let options: ResolveParameterOptions = {
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),

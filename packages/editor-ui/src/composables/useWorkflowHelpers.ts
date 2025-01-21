@@ -749,9 +749,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		console.log('===resolveExpression', resolveParameter(parameters, opts));
 		const returnData: IDataObject | null = resolveParameter(parameters, opts);
-		console.log('===resolveExpression', returnData);
 		if (!returnData) {
 			return null;
 		}
