@@ -1,3 +1,7 @@
+// Disable task runners until we have fixed the "run test workflows" test
+// to mock the Code Node execution
+process.env.N8N_RUNNERS_ENABLED = 'false';
+
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
 // If you update the tests, please update the diagrams as well.
 // If you add a test, please create a new diagram.
@@ -9,8 +13,6 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { TaskRunnersConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { pick } from 'lodash';
 import type {
@@ -50,11 +52,6 @@ import { WorkflowExecute } from '../workflow-execute';
 const nodeTypes = Helpers.NodeTypes();
 
 describe('WorkflowExecute', () => {
-	const taskRunnersConfig = Container.get(TaskRunnersConfig);
-	// Disable task runners until we have fixed the "run test workflows" test
-	// to mock the Code Node execution
-	taskRunnersConfig.enabled = false;
-
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
