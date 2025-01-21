@@ -6,7 +6,6 @@ import {
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	AI_ASSISTANT_MAX_CONTENT_LENGTH,
 } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
@@ -32,7 +31,6 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { getObjectSizeInKB } from '@/utils/objectUtils';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
