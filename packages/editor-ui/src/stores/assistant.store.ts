@@ -282,6 +282,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
+		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
