@@ -19,6 +19,12 @@ export const searchInObject = (obj: ObjectOrArray, searchString: string): boolea
 			: entry?.toString().toLowerCase().includes(searchString.toLowerCase()),
 	);
 
+/**
+ * Calculate the size of a stringified object in KB.
+ * @param {unknown} obj - The object to calculate the size of
+ * @returns {number} The size of the object in KB
+ * @throws {Error} If the object is not serializable
+ */
 export const getObjectSizeInKB = (obj: unknown): number => {
 	if (obj === null || obj === undefined) {
 		return 0;

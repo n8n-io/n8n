@@ -13,14 +13,14 @@ export function chatWithAssistant(
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void {
-	const payloadSize = getObjectSizeInKB(payload.payload);
-	if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
-		try {
+	try {
+		const payloadSize = getObjectSizeInKB(payload.payload);
+		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
 			useAIAssistantHelpers().trimPayloadSize(payload);
-		} catch (e) {
-			onError(e);
-			return;
 		}
+	} catch (e) {
+		onError(e);
+		return;
 	}
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,

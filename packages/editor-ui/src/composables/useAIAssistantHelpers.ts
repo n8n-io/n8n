@@ -280,7 +280,7 @@ export const useAIAssistantHelpers = () => {
 				}
 			}
 			// If the payload is still too big, remove the whole context object
-			if (getObjectSizeInKB(requestPayload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+			if (getRequestPayloadSize(payload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
 				requestPayload.context = undefined;
 			}
 			// For error helper, remove parameters from the active node object
@@ -289,8 +289,19 @@ export const useAIAssistantHelpers = () => {
 			requestPayload.node.parameters = {};
 		}
 		// If the payload is still too big, throw an error that will be shown to the user
-		if (getObjectSizeInKB(requestPayload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+		if (getRequestPayloadSize(payload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
 			throw new Error(locale.baseText('aiAssistant.payloadTooBig.message'));
+		}
+	};
+
+	/**
+	 * Get the size of the request payload in KB, returns 0 if the payload is not a valid object
+	 */
+	const getRequestPayloadSize = (payload: ChatRequest.RequestPayload): number => {
+		try {
+			return getObjectSizeInKB(payload.payload);
+		} catch (error) {
+			return 0;
 		}
 	};
 
