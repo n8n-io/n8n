@@ -9,6 +9,8 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { pick } from 'lodash';
 import type {
@@ -48,6 +50,11 @@ import { WorkflowExecute } from '../workflow-execute';
 const nodeTypes = Helpers.NodeTypes();
 
 describe('WorkflowExecute', () => {
+	const taskRunnersConfig = Container.get(TaskRunnersConfig);
+	// Disable task runners until we have fixed the "run test workflows" test
+	// to mock the Code Node execution
+	taskRunnersConfig.enabled = false;
+
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 

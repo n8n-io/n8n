@@ -28,7 +28,7 @@ import {
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
-} from '../workflow-execute-additional-data';
+} from '../execution-lifecycle-hooks';
 
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);
