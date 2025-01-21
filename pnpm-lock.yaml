@@ -803,8 +803,8 @@ importers:
         specifier: 1.13.0
         version: 1.13.0
       '@n8n_io/license-sdk':
-        specifier: 2.14.1
-        version: 2.14.1
+        specifier: 2.14.2
+        version: 2.14.2
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -4504,8 +4504,8 @@ packages:
     resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.14.1':
-    resolution: {integrity: sha512-NLr/BuRp2t0sQaHmgeEPt9kYruZTm6DMvqcxBZqhfjDT7hzM7fJDUKRI/ocUUElnuXNdZ8dXY1wYEyX+NwPfMw==}
+  '@n8n_io/license-sdk@2.14.2':
+    resolution: {integrity: sha512-g+f2aW2vFL7VTNiL6Vak+dm9P4eJEpxJ7/Nqzp6d1YHsMixM0YeU8CPWeCCddgZW2pF0viyogpuF3L7uplv6ww==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -16969,7 +16969,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
-  '@n8n_io/license-sdk@2.14.1':
+  '@n8n_io/license-sdk@2.14.2':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
@@ -19920,9 +19920,9 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.7.4(debug@4.3.7):
+  axios@1.7.4(debug@4.4.0):
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.7)
+      follow-redirects: 1.15.6(debug@4.4.0)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -22198,6 +22198,10 @@ snapshots:
     optionalDependencies:
       debug: 4.3.7
 
+  follow-redirects@1.15.6(debug@4.4.0):
+    optionalDependencies:
+      debug: 4.4.0
+
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -22797,9 +22801,9 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 18.16.16
       '@types/tough-cookie': 4.0.2
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4(debug@4.4.0)
       camelcase: 6.3.0
-      debug: 4.3.7
+      debug: 4.4.0
       dotenv: 16.4.5
       extend: 3.0.2
       file-type: 16.5.4
