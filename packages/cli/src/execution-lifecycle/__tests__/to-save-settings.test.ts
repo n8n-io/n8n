@@ -1,5 +1,6 @@
 import config from '@/config';
-import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
+
+import { toSaveSettings } from '../to-save-settings';
 
 afterEach(() => {
 	config.load(config.default);
