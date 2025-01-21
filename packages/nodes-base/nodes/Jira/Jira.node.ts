@@ -307,7 +307,7 @@ export class Jira implements INodeType {
 						'GET',
 					);
 
-					for (const field of Object.keys(fields) ?? []) {
+					for (const field of Object.keys(fields || {})) {
 						if (field.startsWith('customfield_')) {
 							returnData.push({
 								name: fields[field].name,
