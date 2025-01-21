@@ -258,6 +258,7 @@ const onAddResourceClicked = () => {
 			}"
 			:width="width"
 			:event-bus="eventBus"
+			:value="modelValue"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
