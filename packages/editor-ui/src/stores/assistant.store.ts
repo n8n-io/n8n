@@ -439,30 +439,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			context: visualContext,
 			question: userMessage,
 		};
-		const payloadSize = getObjectSizeInKB(payload);
-		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
-			// Remove parameters from the active node object
-			if (payload.context?.activeNodeInfo?.node) {
-				payload.context.activeNodeInfo.node.parameters = {};
-			}
-			// also remove parameters from all nodes in the workflow and execution data
-			if (payload.context?.currentWorkflow) {
-				payload.context.currentWorkflow?.nodes?.forEach((node) => {
-					node.parameters = {};
-				});
-			}
-			if (payload.context?.executionData?.runData) {
-				payload.context.executionData.runData = {};
-			}
-			if (
-				payload.context?.executionData?.error &&
-				'node' in payload.context?.executionData?.error
-			) {
-				if (payload.context?.executionData?.error?.node) {
-					payload.context.executionData.error.node.parameters = {};
-				}
-			}
-		}
 		if (credentialType) {
 			payload = {
 				...payload,
@@ -527,11 +503,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			executionSchema: schemas,
 			authType,
 		};
-		const payloadSize = getObjectSizeInKB(payload);
-		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
-			// Remove parameters property from payload.node
-			payload.node.parameters = {};
-		}
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{

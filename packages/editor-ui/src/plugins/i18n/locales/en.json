@@ -156,6 +156,7 @@
 	"aiAssistant.newSessionModal.question": "Are you sure you want to start a new session?",
 	"aiAssistant.newSessionModal.confirm": "Start new session",
 	"aiAssistant.serviceError.message": "Unable to connect to n8n's AI service ({message})",
+	"aiAssistant.payloadTooBig.message": "Payload size is too big, try removing unnecessary data from the workflow and try again.",
 	"aiAssistant.codeUpdated.message.title": "Assistant modified workflow",
 	"aiAssistant.codeUpdated.message.body1": "Open the",
 	"aiAssistant.codeUpdated.message.body2": "node to see the changes",

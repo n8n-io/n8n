@@ -14,9 +14,10 @@ import { executionDataToJson, getMainAuthField, getNodeAuthOptions } from '@/uti
 import type { ChatRequest } from '@/types/assistant.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDataSchema } from './useDataSchema';
-import { VIEWS } from '@/constants';
+import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/constants';
 import { useI18n } from './useI18n';
 import type { IWorkflowDb } from '@/Interface';
+import { getObjectSizeInKB } from '@/utils/objectUtils';
 
 const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG];
 const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];
@@ -251,6 +252,48 @@ export const useAIAssistantHelpers = () => {
 		nodes: workflow.nodes,
 	});
 
+	/**
+	 * Reduces AI Assistant request payload size to make it fit the supported content length.
+	 * If, after two passes, the payload is still too big, throws an error
+	 */
+	const trimPayloadSize = (payload: ChatRequest.RequestPayload): void => {
+		const requestPayload = payload.payload;
+		// For support chat, remove parameters from the active node object and all nodes in the workflow
+		if (requestPayload.type === 'init-support-chat') {
+			if (requestPayload.context?.activeNodeInfo?.node) {
+				requestPayload.context.activeNodeInfo.node.parameters = {};
+			}
+			if (requestPayload.context?.currentWorkflow) {
+				requestPayload.context.currentWorkflow?.nodes?.forEach((node) => {
+					node.parameters = {};
+				});
+			}
+			if (requestPayload.context?.executionData?.runData) {
+				requestPayload.context.executionData.runData = {};
+			}
+			if (
+				requestPayload.context?.executionData?.error &&
+				'node' in requestPayload.context?.executionData?.error
+			) {
+				if (requestPayload.context?.executionData?.error?.node) {
+					requestPayload.context.executionData.error.node.parameters = {};
+				}
+			}
+			// If the payload is still too big, remove the whole context object
+			if (getObjectSizeInKB(requestPayload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+				requestPayload.context = undefined;
+			}
+			// For error helper, remove parameters from the active node object
+			// This will leave just the error, user info and basic node structure in the payload
+		} else if (requestPayload.type === 'init-error-helper') {
+			requestPayload.node.parameters = {};
+		}
+		// If the payload is still too big, throw an error that will be shown to the user
+		if (getObjectSizeInKB(requestPayload) > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+			throw new Error(locale.baseText('aiAssistant.payloadTooBig.message'));
+		}
+	};
+
 	return {
 		processNodeForAssistant,
 		getNodeInfoForAssistant,
@@ -261,5 +304,6 @@ export const useAIAssistantHelpers = () => {
 		getReferencedNodes,
 		simplifyResultData,
 		simplifyWorkflowForAssistant,
+		trimPayloadSize,
 	};
 };
