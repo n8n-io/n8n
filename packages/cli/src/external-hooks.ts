@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -51,6 +50,7 @@ export class ExternalHooks {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
+					// eslint-disable-next-line @typescript-eslint/no-var-requires
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (e) {
@@ -96,9 +96,5 @@ export class ExternalHooks {
 		for (const externalHookFunction of this.externalHooks[hookName]) {
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
-	}
-
-	exists(hookName: string): boolean {
-		return !!this.externalHooks[hookName];
 	}
 }

@@ -2271,6 +2271,7 @@ export interface IWorkflowExecuteHooks {
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow?: Workflow, data?: IRunExecutionData) => Promise<void>>;
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
+	nodeFetchedData?: Array<(workflowId: string, node: INode) => Promise<void>>;
 }
 
 export interface IWorkflowExecutionDataProcess {
