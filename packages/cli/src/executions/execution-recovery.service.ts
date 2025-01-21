@@ -204,6 +204,6 @@ export class ExecutionRecoveryService {
 			status: execution.status,
 		};
 
-		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
+		await externalHooks.runHook('workflowExecuteAfter', [run]);
 	}
 }

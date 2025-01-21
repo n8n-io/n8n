@@ -9,10 +9,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ITriggerFunctions,
-	WorkflowHooks,
 	IRun,
 } from 'n8n-workflow';
 
+import { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { TriggersAndPollers } from '../triggers-and-pollers';
 
 describe('TriggersAndPollers', () => {
@@ -23,15 +23,8 @@ describe('TriggersAndPollers', () => {
 	});
 	const nodeTypes = mock<INodeTypes>();
 	const workflow = mock<Workflow>({ nodeTypes });
-	const hookFunctions = mock<WorkflowHooks['hookFunctions']>({
-		sendResponse: [],
-		workflowExecuteAfter: [],
-	});
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({
-		hooks: {
-			hookFunctions,
-		},
-	});
+	const hooks = new ExecutionLifecycleHooks('trigger', 'execution-id', mock());
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
 	const triggersAndPollers = new TriggersAndPollers();
 
 	beforeEach(() => {
@@ -75,6 +68,8 @@ describe('TriggersAndPollers', () => {
 			beforeEach(() => {
 				nodeType.trigger = triggerFn;
 				triggerFn.mockResolvedValue({ workflowId: '123' });
+				hooks.callbacks.sendResponse = [];
+				hooks.callbacks.workflowExecuteAfter = [];
 			});
 
 			it('should handle promise resolution', async () => {
@@ -98,8 +93,7 @@ describe('TriggersAndPollers', () => {
 
 				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise);
 
-				expect(hookFunctions.sendResponse?.length).toBe(1);
-				await hookFunctions.sendResponse![0]?.({ testResponse: true });
+				await hooks.runHook('sendResponse', [{ testResponse: true }]);
 				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
 			});
 
@@ -111,10 +105,10 @@ describe('TriggersAndPollers', () => {
 				await runTriggerHelper('manual');
 				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise, donePromise);
 
-				await hookFunctions.sendResponse![0]?.({ testResponse: true });
+				await hooks.runHook('sendResponse', [{ testResponse: true }]);
 				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
 
-				await hookFunctions.workflowExecuteAfter?.[0]?.(mockRunData, {});
+				await hooks.runHook('workflowExecuteAfter', [mockRunData, {}]);
 				expect(donePromise.resolve).toHaveBeenCalledWith(mockRunData);
 			});
 		});

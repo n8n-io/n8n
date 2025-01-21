@@ -256,12 +256,12 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			await additionalData.hooks?.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName]);
 		} else {
 			// Outputs
 			taskData.executionTime = new Date().getTime() - taskData.startTime;
 
-			await additionalData.hooks?.executeHookFunctions('nodeExecuteAfter', [
+			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,
 				taskData,
 				this.runExecutionData,

@@ -125,30 +125,29 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = getWorkflowHooksWorkerExecuter(
+		const lifecycleHooks = getWorkflowHooksWorkerExecuter(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
 			{ retryOf: execution.retryOf as string, pushRef },
 		);
+		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const msg: RespondToWebhookMessage = {
-					kind: 'respond-to-webhook',
-					executionId,
-					response: this.encodeWebhookResponse(response),
-					workerId: this.instanceSettings.hostId,
-				};
+		lifecycleHooks.addCallback('sendResponse', async (response) => {
+			const msg: RespondToWebhookMessage = {
+				kind: 'respond-to-webhook',
+				executionId,
+				response: this.encodeWebhookResponse(response),
+				workerId: this.instanceSettings.hostId,
+			};
 
-				await job.progress(msg);
-			},
-		];
+			await job.progress(msg);
+		});
 
 		additionalData.executionId = executionId;
 

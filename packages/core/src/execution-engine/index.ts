@@ -1,4 +1,8 @@
 export * from './active-workflows';
+export {
+	ExecutionLifecycleHooks,
+	ExecutionHooksOptionalParameters,
+} from './execution-lifecycle-hooks';
 export * from './routing-node';
 export * from './node-execution-context';
 export * from './partial-execution-utils';
