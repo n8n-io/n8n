@@ -6,6 +6,7 @@ import {
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
+	AI_ASSISTANT_MAX_CONTENT_LENGTH,
 } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
@@ -31,6 +32,7 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { getObjectSizeInKB } from '@/utils/objectUtils';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -280,7 +282,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
-		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(
 			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
@@ -438,6 +439,30 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			context: visualContext,
 			question: userMessage,
 		};
+		const payloadSize = getObjectSizeInKB(payload);
+		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+			// Remove parameters from the active node object
+			if (payload.context?.activeNodeInfo?.node) {
+				payload.context.activeNodeInfo.node.parameters = {};
+			}
+			// also remove parameters from all nodes in the workflow and execution data
+			if (payload.context?.currentWorkflow) {
+				payload.context.currentWorkflow?.nodes?.forEach((node) => {
+					node.parameters = {};
+				});
+			}
+			if (payload.context?.executionData?.runData) {
+				payload.context.executionData.runData = {};
+			}
+			if (
+				payload.context?.executionData?.error &&
+				'node' in payload.context?.executionData?.error
+			) {
+				if (payload.context?.executionData?.error?.node) {
+					payload.context.executionData.error.node.parameters = {};
+				}
+			}
+		}
 		if (credentialType) {
 			payload = {
 				...payload,
@@ -487,24 +512,30 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		openChat();
 
 		streaming.value = true;
+		const payload: ChatRequest.RequestPayload['payload'] = {
+			role: 'user',
+			type: 'init-error-helper',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			error: context.error,
+			node: assistantHelpers.processNodeForAssistant(context.node, [
+				'position',
+				'parameters.notice',
+			]),
+			nodeInputData,
+			executionSchema: schemas,
+			authType,
+		};
+		const payloadSize = getObjectSizeInKB(payload);
+		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+			// Remove parameters property from payload.node
+			payload.node.parameters = {};
+		}
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-error-helper',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					error: context.error,
-					node: assistantHelpers.processNodeForAssistant(context.node, [
-						'position',
-						'parameters.notice',
-					]),
-					nodeInputData,
-					executionSchema: schemas,
-					authType,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
