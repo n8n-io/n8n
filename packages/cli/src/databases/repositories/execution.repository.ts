@@ -388,6 +388,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...executionInformation
 		} = execution;
 
+		const executionData: Partial<ExecutionData> = {};
+
+		if (workflowData) executionData.workflowData = workflowData;
+		if (data) executionData.data = stringify(data);
+
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
@@ -398,12 +403,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				await this.update({ id: executionId }, executionInformation);
 			}
 
-			if (data ?? workflowData) {
-				const executionData: Partial<ExecutionData> = {};
-
-				if (data) executionData.data = stringify(data);
-				if (workflowData) executionData.workflowData = workflowData;
-
+			if (Object.keys(executionData).length > 0) {
 				// @ts-expect-error Fix typing
 				await this.executionDataRepository.update({ executionId }, executionData);
 			}
@@ -418,12 +418,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				await tx.update(ExecutionEntity, { id: executionId }, executionInformation);
 			}
 
-			if (data ?? workflowData) {
-				const executionData: Partial<ExecutionData> = {};
-
-				if (workflowData) executionData.workflowData = workflowData;
-				if (data) executionData.data = stringify(data);
-
+			if (Object.keys(executionData).length > 0) {
 				// @ts-expect-error Fix typing
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
