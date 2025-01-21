@@ -96,10 +96,11 @@ const rootNode = computed(() => {
 });
 
 const inputMode = ref<MappingMode>(
-	// If input data from the root node doesn't exist, show mapping mode by default
-	rootNode.value && !workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
-		? 'mapping'
-		: 'debugging',
+	// Show debugging mode by default only when the node has already run
+	activeNode.value &&
+		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+		? 'debugging'
+		: 'mapping',
 );
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');

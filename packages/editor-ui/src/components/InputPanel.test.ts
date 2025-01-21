@@ -115,16 +115,16 @@ describe('InputPanel', () => {
 		expect(container).toMatchSnapshot();
 	});
 
-	it("opens mapping tab by default if the root node hasn't run yet", async () => {
-		const { findByTestId } = render({});
+	it("opens mapping tab by default if the node hasn't run yet", async () => {
+		const { findByTestId } = render({ currentNodeName: 'Tool' });
 
 		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
 		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
 	});
 
-	it('opens debugging tab by default if the root node has already run', async () => {
-		const { findByTestId } = render({}, undefined, {
-			Agent: [
+	it('opens debugging tab by default if the node has already run', async () => {
+		const { findByTestId } = render({ currentNodeName: 'Tool' }, undefined, {
+			Tool: [
 				{
 					startTime: 0,
 					executionTime: 0,
