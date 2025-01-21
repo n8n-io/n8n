@@ -20,6 +20,7 @@ import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
+import { TestRunExecutionsMappingRepository } from '@/databases/repositories/test-run-executions-mapping.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NodeTypes } from '@/node-types';
@@ -48,6 +49,7 @@ export class TestRunnerService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
+		private readonly testRunExecutionsMappingRepository: TestRunExecutionsMappingRepository,
 		private readonly testMetricRepository: TestMetricRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly errorReporter: ErrorReporter,
@@ -261,6 +263,21 @@ export class TestRunnerService {
 					.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
 					.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 					.getMany();
+
+			const testRunExecutions = this.testRunExecutionsMappingRepository.create(
+				pastExecutions.map(({ id }) => ({
+					testRun: {
+						id: testRun.id,
+					},
+					pastExecution: {
+						id,
+					},
+					status: 'new',
+				})),
+			);
+
+			// Add all past executions to the test run
+			await this.testRunExecutionsMappingRepository.save(testRunExecutions);
 
 			this.logger.debug('Found past executions', { count: pastExecutions.length });
 

@@ -22,6 +22,7 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestDefinition } from './test-definition.ee';
 import { TestMetric } from './test-metric.ee';
+import { TestRunExecutionMapping } from './test-run-executions.ee';
 import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
@@ -64,4 +65,5 @@ export const entities = {
 	TestDefinition,
 	TestMetric,
 	TestRun,
+	TestRunExecutionMapping,
 };
