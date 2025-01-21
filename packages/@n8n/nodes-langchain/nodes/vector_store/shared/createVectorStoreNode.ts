@@ -392,13 +392,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					);
 					resultData.push(...serializedDocuments);
 
-					try {
-						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						logAiEvent(this, 'ai-vector-store-populated');
-					} catch (error) {
-						throw error;
-					}
+					logAiEvent(this, 'ai-vector-store-populated');
 				}
 
 				return [resultData];
@@ -443,16 +439,12 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 					resultData.push(...serializedDocuments);
 
-					try {
-						// Use ids option to upsert instead of insert
-						await vectorStore.addDocuments(processedDocuments, {
-							ids: [documentId],
-						});
+					// Use ids option to upsert instead of insert
+					await vectorStore.addDocuments(processedDocuments, {
+						ids: [documentId],
+					});
 
-						logAiEvent(this, 'ai-vector-store-updated');
-					} catch (error) {
-						throw error;
-					}
+					logAiEvent(this, 'ai-vector-store-updated');
 				}
 
 				return [resultData];
