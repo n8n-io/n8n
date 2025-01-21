@@ -3,7 +3,6 @@ import {
 	type IExecuteFunctions,
 	type IDataObject,
 	NodeExecutionOutput,
-	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
@@ -12,19 +11,8 @@ import { Summarize } from '../Summarize.node';
 import { checkIfFieldExists, type Aggregations } from '../utils';
 
 const workflows = getWorkflowFilenames(__dirname);
-describe('Test Summarize Node', () => testWorkflows(workflows));
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	NodeExecutionOutput: jest.fn().mockImplementation((data) => ({
-		data,
-		at(index: number): INodeExecutionData {
-			return (this.data as INodeExecutionData[])[index];
-		},
-	})),
-}));
-
-describe('Test Summarize Node, execute', () => {
+describe('Test Summarize Node', () => {
 	testWorkflows(workflows);
 
 	let summarizeNode: Summarize;
@@ -39,6 +27,7 @@ describe('Test Summarize Node, execute', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
+	// fails
 	it('should handle field not found with hints in version 1.1', async () => {
 		const node = new Summarize();
 		const context = {
