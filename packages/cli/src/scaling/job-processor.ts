@@ -13,7 +13,7 @@ import type PCancelable from 'p-cancelable';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { getWorkflowHooksWorkerExecuter } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks';
+import { getWorkflowHooksWorkerExecuter } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

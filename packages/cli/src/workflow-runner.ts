@@ -26,7 +26,7 @@ import {
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
-} from '@/execution-lifecycle-hooks/execution-lifecycle-hooks';
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';

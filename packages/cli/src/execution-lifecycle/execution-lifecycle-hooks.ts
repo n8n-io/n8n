@@ -18,20 +18,21 @@ import type {
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
-import { executeErrorWorkflow } from '@/execution-lifecycle-hooks/execute-error-workflow';
-import { restoreBinaryDataId } from '@/execution-lifecycle-hooks/restore-binary-data-id';
-import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
-import {
-	determineFinalExecutionStatus,
-	prepareExecutionDataForDbUpdate,
-	updateExistingExecution,
-} from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
-import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { executeErrorWorkflow } from './execute-error-workflow';
+import { restoreBinaryDataId } from './restore-binary-data-id';
+import { saveExecutionProgress } from './save-execution-progress';
+import {
+	determineFinalExecutionStatus,
+	prepareExecutionDataForDbUpdate,
+	updateExistingExecution,
+} from './shared/shared-hook-functions';
+import { toSaveSettings } from './to-save-settings';
 
 /**
  * Returns hook functions to push data to Editor-UI

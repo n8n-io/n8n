@@ -37,7 +37,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-import { getWorkflowHooksIntegrated } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks';
+import { getWorkflowHooksIntegrated } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExternalHooks } from '@/external-hooks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';

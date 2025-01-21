@@ -9,7 +9,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventService } from '@/events/event.service';
-import { getWorkflowHooksMain } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks';
+import { getWorkflowHooksMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
 
