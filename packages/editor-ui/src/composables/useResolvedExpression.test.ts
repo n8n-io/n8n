@@ -81,7 +81,7 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('[ERROR: Test error]');
 	});
 
-	it.only('should debounce updates', async () => {
+	it('should debounce updates', async () => {
 		const resolveExpressionSpy = mockResolveExpression().mockReturnValue(4);
 		const expression = ref('={{ testValue }}');
 
