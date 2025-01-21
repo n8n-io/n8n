@@ -18,9 +18,7 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-import { fields } from '../../Contentful/AssetDescription';
-// import { generatePairedItemData } from '../../../utils/utilities';
-// [ria] not needed
+
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Summarize',
@@ -352,7 +350,7 @@ export class Summarize implements INodeType {
 					item: index,
 				})),
 			};
-			return [[executionData]];
+			return new NodeExecutionOutput([[executionData]], fieldsNotFound);
 		} else {
 			if (!fieldsToSplitBy.length) {
 				const { pairedItems, ...json } = aggregationResult;
@@ -362,7 +360,7 @@ export class Summarize implements INodeType {
 						item: index,
 					})),
 				};
-				return [[executionData]];
+				return new NodeExecutionOutput([[executionData]], fieldsNotFound);
 			}
 			const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 			const executionData = returnData.map((item) => {
