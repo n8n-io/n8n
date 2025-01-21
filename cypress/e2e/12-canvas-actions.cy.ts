@@ -184,7 +184,11 @@ describe('Canvas Actions', () => {
 				.last()
 				.findChildByTestId('execute-node-button')
 				.click({ force: true });
+
+			successToast().should('have.length', 1);
+
 			WorkflowPage.actions.executeNode(CODE_NODE_NAME);
+
 			successToast().should('have.length', 2);
 			successToast().should('contain.text', 'Node executed successfully');
 		});
