@@ -122,7 +122,6 @@ const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 
 const expressionOutput = computed(() => {
 	if (isExpression.value && resolvedExpressionString.value) {
-		console.log('RESOLVED', resolvedExpressionString.value);
 		return resolvedExpressionString.value;
 	}
 
