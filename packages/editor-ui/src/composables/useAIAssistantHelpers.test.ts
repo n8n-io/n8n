@@ -4,6 +4,7 @@ import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { IWorkflowDb } from '@/Interface';
+import type { ChatRequest } from '@/types/assistant.types';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -547,5 +548,123 @@ describe('Simplify assistant payloads', () => {
 		for (const nodeName of Object.keys(simplifiedResultData.runData)) {
 			expect(simplifiedResultData.runData[nodeName][0]).not.toHaveProperty('data');
 		}
+	});
+});
+
+describe('Trim Payload Size', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it("[Payload size ok] Should send the whole payload if it's not too large", () => {
+		const payload: ChatRequest.RequestPayload = {
+			payload: {
+				role: 'user',
+				type: 'init-error-helper',
+				user: {
+					firstName: 'Milorad',
+				},
+				error: {
+					name: 'NodeOperationError',
+					message: "Referenced node doesn't exist",
+					description:
+						"The node <strong>'Hey'</strong> doesn't exist, but it's used in an expression here.",
+				},
+				node: {
+					position: [0, 0],
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: {
+								'0': {
+									id: '0957fbdb-a021-413b-9d42-fc847666f999',
+									name: 'text',
+									value: 'Lorem ipsum dolor sit amet',
+									type: 'string',
+								},
+								'1': {
+									id: '8efecfa7-8df7-492e-83e7-3d517ad03e60',
+									name: 'foo',
+									value: {
+										value: "={{ $('Hey').json.name }}",
+										resolvedExpressionValue:
+											'Error in expression: "Referenced node doesn\'t exist"',
+									},
+									type: 'string',
+								},
+							},
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					id: '6dc70bf3-ba54-4481-b9f5-ce255bdd5fb8',
+					name: 'This is fine',
+				},
+				executionSchema: [],
+			},
+		};
+		aiAssistantHelpers.trimPayloadSize(payload);
+		expect(payload).toEqual(payload);
+	});
+
+	it('[Payload size too large] Should trim active node parameters in error helper payload', () => {
+		const payload: ChatRequest.RequestPayload = {
+			payload: {
+				role: 'user',
+				type: 'init-error-helper',
+				user: {
+					firstName: 'Milorad',
+				},
+				error: {
+					name: 'NodeOperationError',
+					message: "Referenced node doesn't exist",
+					description:
+						"The node <strong>'Hey'</strong> doesn't exist, but it's used in an expression here.",
+				},
+				node: {
+					position: [0, 0],
+					parameters: {
+						mode: 'manual',
+						duplicateItem: false,
+						assignments: {
+							assignments: {
+								'0': {
+									id: '0957fbdb-a021-413b-9d42-fc847666f999',
+									name: 'text',
+									value:
+										'Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet',
+									type: 'string',
+								},
+								'1': {
+									id: '8efecfa7-8df7-492e-83e7-3d517ad03e60',
+									name: 'foo',
+									value: {
+										value: "={{ $('Hey').json.name }}",
+										resolvedExpressionValue:
+											'Error in expression: "Referenced node doesn\'t exist"',
+									},
+									type: 'string',
+								},
+							},
+						},
+						includeOtherFields: false,
+						options: {},
+					},
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					id: '6dc70bf3-ba54-4481-b9f5-ce255bdd5fb8',
+					name: 'This is fine',
+				},
+				executionSchema: [],
+			},
+		};
+		aiAssistantHelpers.trimPayloadSize(payload);
+		expect((payload.payload as ChatRequest.InitErrorHelper).node.parameters).toEqual({});
 	});
 });
