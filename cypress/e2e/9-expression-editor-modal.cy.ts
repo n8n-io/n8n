@@ -81,7 +81,7 @@ describe('Expression editor modal', () => {
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');
 		});
 
-		it('should resolve input: $json,$input,$(nodeName)', () => {
+		it.only('should resolve input: $json,$input,$(nodeName)', () => {
 			// Previous nodes have not run, input is empty
 			WorkflowPage.getters.expressionModalInput().clear();
 			WorkflowPage.getters.expressionModalInput().click().type('{{ $json.myStr');
@@ -105,7 +105,7 @@ describe('Expression editor modal', () => {
 			// Run workflow
 			cy.get('body').type('{esc}');
 			ndv.actions.close();
-			WorkflowPage.actions.executeNode('No Operation');
+			WorkflowPage.actions.executeNode('No Operation, do nothing', { anchor: 'topLeft' });
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openExpressionEditorModal();
 
