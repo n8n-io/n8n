@@ -24,7 +24,7 @@ import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
 
-function sanitizeHtml(text: string) {
+export function sanitizeHtml(text: string) {
 	return sanitize(text, {
 		allowedTags: [
 			'b',
