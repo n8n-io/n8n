@@ -30,6 +30,15 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { EvaluationMetrics } from './evaluation-metrics.ee';
 import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
 
+interface TestRunMetadata {
+	testRunId: string;
+	userId: string;
+}
+
+interface TestCaseRunMetadata extends TestRunMetadata {
+	pastExecutionId: string;
+}
+
 /**
  * This service orchestrates the running of test cases.
  * It uses the test definitions to find
@@ -105,7 +114,7 @@ export class TestRunnerService {
 		pastExecutionData: IRunExecutionData,
 		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
-		userId: string,
+		metadata: TestCaseRunMetadata,
 		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
 		// Do not run if the test run is cancelled
@@ -128,7 +137,7 @@ export class TestRunnerService {
 			runData: {},
 			pinData,
 			workflowData: { ...workflow, pinData },
-			userId,
+			userId: metadata.userId,
 			partialExecutionVersion: '1',
 		};
 
@@ -140,6 +149,13 @@ export class TestRunnerService {
 		abortSignal.addEventListener('abort', () => {
 			this.activeExecutions.stopExecution(executionId);
 		});
+
+		// Update status of the test run execution mapping
+		await this.testRunExecutionsMappingRepository.markAsRunning(
+			metadata.testRunId,
+			metadata.pastExecutionId,
+			executionId,
+		);
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -155,7 +171,7 @@ export class TestRunnerService {
 		expectedData: IRunData,
 		actualData: IRunData,
 		abortSignal: AbortSignal,
-		testRunId?: string,
+		metadata: TestCaseRunMetadata,
 	) {
 		// Do not run if the test run is cancelled
 		if (abortSignal.aborted) {
@@ -175,9 +191,9 @@ export class TestRunnerService {
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
 		// FIXME: This is a hack to add the testRunId to the evaluation workflow execution data
 		// So that we can fetch all execution runs for a test run
-		if (testRunId && data.executionData) {
+		if (metadata.testRunId && data.executionData) {
 			data.executionData.resultData.metadata = {
-				testRunId,
+				testRunId: metadata.testRunId,
 			};
 		}
 		data.executionMode = 'evaluation';
@@ -190,6 +206,13 @@ export class TestRunnerService {
 		abortSignal.addEventListener('abort', () => {
 			this.activeExecutions.stopExecution(executionId);
 		});
+
+		// Update status of the test run execution mapping
+		await this.testRunExecutionsMappingRepository.markAsEvaluationRunning(
+			metadata.testRunId,
+			metadata.pastExecutionId,
+			executionId,
+		);
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -250,6 +273,12 @@ export class TestRunnerService {
 
 		const abortSignal = abortController.signal;
 		try {
+			// Metadata to use during the test run
+			const testRunMetadata = {
+				testRunId: testRun.id,
+				userId: user.id,
+			};
+
 			// 1. Make test cases from previous executions
 
 			// Select executions with the annotation tag and workflow ID of the test.
@@ -264,20 +293,11 @@ export class TestRunnerService {
 					.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 					.getMany();
 
-			const testRunExecutions = this.testRunExecutionsMappingRepository.create(
-				pastExecutions.map(({ id }) => ({
-					testRun: {
-						id: testRun.id,
-					},
-					pastExecution: {
-						id,
-					},
-					status: 'new',
-				})),
-			);
-
 			// Add all past executions to the test run
-			await this.testRunExecutionsMappingRepository.save(testRunExecutions);
+			await this.testRunExecutionsMappingRepository.createBatch(
+				testRun.id,
+				pastExecutions.map((e) => e.id),
+			);
 
 			this.logger.debug('Found past executions', { count: pastExecutions.length });
 
@@ -311,13 +331,18 @@ export class TestRunnerService {
 
 					const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
+					const testCaseMetadata = {
+						...testRunMetadata,
+						pastExecutionId,
+					};
+
 					// Run the test case and wait for it to finish
 					const testCaseExecution = await this.runTestCase(
 						workflow,
 						executionData,
 						pastExecution.executionData.workflowData,
 						test.mockedNodes,
-						user.id,
+						testCaseMetadata,
 						abortSignal,
 					);
 
@@ -342,7 +367,7 @@ export class TestRunnerService {
 						originalRunData,
 						testCaseRunData,
 						abortSignal,
-						testRun.id,
+						testCaseMetadata,
 					);
 					assert(evalExecution);
 
@@ -355,6 +380,10 @@ export class TestRunnerService {
 						await this.testRunRepository.incrementFailed(testRun.id);
 					} else {
 						await this.testRunRepository.incrementPassed(testRun.id);
+						await this.testRunExecutionsMappingRepository.markAsCompleted(
+							testRun.id,
+							pastExecutionId,
+						);
 					}
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case

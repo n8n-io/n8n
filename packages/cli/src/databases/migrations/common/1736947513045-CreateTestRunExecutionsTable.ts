@@ -24,17 +24,17 @@ export class CreateTestRunExecutionsTable1736947513045 implements ReversibleMigr
 				onDelete: 'CASCADE',
 			})
 			.withForeignKey('pastExecutionId', {
-				tableName: 'execution',
+				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
 			.withForeignKey('executionId', {
-				tableName: 'execution',
+				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
 			.withForeignKey('evaluationExecutionId', {
-				tableName: 'execution',
+				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			}).withTimestamps;

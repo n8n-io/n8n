@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, OneToOne, RelationId } from '@n8n/typeorm';
 
 import {
 	datetimeColumnType,
@@ -22,17 +22,29 @@ export class TestRunExecutionMapping extends WithStringId {
 	})
 	pastExecution: ExecutionEntity | null;
 
+	@Column()
+	@RelationId((mapping: TestRunExecutionMapping) => mapping.pastExecution)
+	pastExecutionId: string;
+
 	@OneToOne('ExecutionEntity', {
 		onDelete: 'SET NULL',
 		nullable: true,
 	})
 	execution: ExecutionEntity | null;
 
+	@Column()
+	@RelationId((mapping: TestRunExecutionMapping) => mapping.execution)
+	executionId: string;
+
 	@OneToOne('ExecutionEntity', {
 		onDelete: 'SET NULL',
 		nullable: true,
 	})
 	evaluationExecution: ExecutionEntity | null;
+
+	@Column()
+	@RelationId((mapping: TestRunExecutionMapping) => mapping.evaluationExecution)
+	evaluationExecutionId: string;
 
 	@Column()
 	status: string;
