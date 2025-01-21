@@ -450,7 +450,7 @@ function activatePane() {
 						:transparent="true"
 						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
 						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-						:class="$style.executePreviousButton"
+						class="mt-m"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						@execute="onNodeExecute"
@@ -527,10 +527,6 @@ function activatePane() {
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
-}
-
-.executePreviousButton {
-	margin-top: var(--spacing-m);
 }
 
 .recoveredOutputData {
