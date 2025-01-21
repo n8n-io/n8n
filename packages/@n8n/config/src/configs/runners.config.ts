@@ -10,9 +10,8 @@ export type TaskRunnerMode = 'internal' | 'external';
 @Config
 export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
-	// Defaults to true for now
 	@Env('N8N_RUNNERS_MODE')
 	mode: TaskRunnerMode = 'internal';
 
