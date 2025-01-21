@@ -95,18 +95,11 @@ const rootNode = computed(() => {
 	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
 });
 
-/**
- * True if active node itself is the root node or its root node has run
- */
-const isRootNodeOrHasRootNodeRun = computed((): boolean => {
-	return rootNode.value
-		? !!workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
-		: true;
-});
-
 const inputMode = ref<MappingMode>(
 	// If input data from the root node doesn't exist, show mapping mode by default
-	isRootNodeOrHasRootNodeRun.value ? 'debugging' : 'mapping',
+	rootNode.value && !workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+		? 'mapping'
+		: 'debugging',
 );
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
@@ -419,7 +412,7 @@ function activatePane() {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<template v-if="isMappingMode || isRootNodeOrHasRootNodeRun">
+				<template v-if="isMappingEnabled">
 					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
 						i18n.baseText('ndv.input.noOutputData.title')
 					}}</N8nText>
