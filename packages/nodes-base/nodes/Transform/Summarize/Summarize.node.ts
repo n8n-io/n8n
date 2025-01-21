@@ -340,19 +340,6 @@ export class Summarize implements INodeType {
 					location: 'outputPane',
 				};
 				fieldsNotFound.push(fieldNotFoundHint);
-				// const executionOutput = Object.keys(aggregationResult).reduce(
-				// 	(acc, key) => {
-				// 		const { pairedItem, ...json } = aggregationResult;
-				// 		acc[key] = json;
-				// 		return acc;
-				// 	},
-				// 	{} as { [key: string]: any },
-				// );
-				// return new NodeExecutionOutput(
-				// 	[[{ json: executionOutput }, { json: executionOutput }], [{ json: executionOutput }]],
-				// 	[fieldNotFoundHint],
-				// aggregationResult.fieldnotfoundhint = fieldNotFoundHint;
-				// );
 			} else {
 				throw error;
 			}
@@ -391,4 +378,3 @@ export class Summarize implements INodeType {
 		}
 	}
 }
-// testing: if node version >1 return output needs to have fieldsnotFound
