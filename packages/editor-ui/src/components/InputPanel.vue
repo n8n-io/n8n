@@ -95,6 +95,12 @@ const rootNode = computed(() => {
 	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
 });
 
+const hasRootNodeRun = computed(() => {
+	return !!(
+		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+	);
+});
+
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
 	activeNode.value &&
@@ -413,7 +419,7 @@ function activatePane() {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<template v-if="isMappingEnabled">
+				<template v-if="isMappingEnabled || hasRootNodeRun">
 					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
 						i18n.baseText('ndv.input.noOutputData.title')
 					}}</N8nText>
