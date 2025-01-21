@@ -138,8 +138,14 @@ describe('objectUtils', () => {
 
 		// Test error cases
 		it('throws error for circular reference', () => {
-			const obj: any = { name: 'test' };
+			type CircularObj = {
+				name: string;
+				self?: CircularObj;
+			};
+
+			const obj: CircularObj = { name: 'test' };
 			obj.self = obj;
+
 			expect(() => getObjectSizeInKB(obj)).toThrow('Failed to calculate object size');
 		});
 
