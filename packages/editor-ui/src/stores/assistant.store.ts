@@ -284,7 +284,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(e instanceof Error);
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(
-			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
+			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
