@@ -29,7 +29,7 @@ export const getObjectSizeInKB = (obj: unknown): number => {
 		(Array.isArray(obj) && obj.length === 0)
 	) {
 		// "{}" and "[]" both take 2 bytes in UTF-8
-		return 2 / 1024;
+		return Number((2 / 1024).toFixed(2));
 	}
 
 	try {
