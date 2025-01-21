@@ -13,8 +13,10 @@ const slots = defineSlots<{
 }>();
 
 const Render = () => {
+	const renderType = node?.data.value.render.type ?? CanvasNodeRenderType.Default;
 	let Component;
-	switch (node?.data.value.render.type) {
+
+	switch (renderType) {
 		case CanvasNodeRenderType.StickyNote:
 			Component = CanvasNodeStickyNote;
 			break;
@@ -25,7 +27,13 @@ const Render = () => {
 			Component = CanvasNodeDefault;
 	}
 
-	return h(Component, slots.default);
+	return h(
+		Component,
+		{
+			'data-canvas-node-render-type': renderType,
+		},
+		slots.default,
+	);
 };
 </script>
 
