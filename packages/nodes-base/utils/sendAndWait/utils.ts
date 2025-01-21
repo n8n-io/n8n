@@ -3,6 +3,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	tryToParseJsonToFormFields,
 	updateDisplayOptions,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -104,6 +105,109 @@ export function getSendAndWaitProperties(
 				},
 			],
 		},
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			formFieldsProperties,
+		),
+		{
+			displayName: 'Limit Wait Time',
+			name: 'limitWaitTime',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether the workflow will automatically resume execution after the specified limit type',
+		},
+		{
+			displayName: 'Limit Type',
+			name: 'limitType',
+			type: 'options',
+			default: 'afterTimeInterval',
+			description:
+				'Sets the condition for the execution to resume. Can be a specified date or after some time.',
+			displayOptions: {
+				show: {
+					limitWaitTime: [true],
+				},
+			},
+			options: [
+				{
+					name: 'After Time Interval',
+					description: 'Waits for a certain amount of time',
+					value: 'afterTimeInterval',
+				},
+				{
+					name: 'At Specified Time',
+					description: 'Waits until the set date and time to continue',
+					value: 'atSpecifiedTime',
+				},
+			],
+		},
+		{
+			displayName: 'Amount',
+			name: 'resumeAmount',
+			type: 'number',
+			displayOptions: {
+				show: {
+					limitType: ['afterTimeInterval'],
+					limitWaitTime: [true],
+				},
+			},
+			typeOptions: {
+				minValue: 0,
+				numberPrecision: 2,
+			},
+			default: 1,
+			description: 'The time to wait',
+		},
+		{
+			displayName: 'Unit',
+			name: 'resumeUnit',
+			type: 'options',
+			displayOptions: {
+				show: {
+					limitType: ['afterTimeInterval'],
+					limitWaitTime: [true],
+				},
+			},
+			options: [
+				{
+					name: 'Seconds',
+					value: 'seconds',
+				},
+				{
+					name: 'Minutes',
+					value: 'minutes',
+				},
+				{
+					name: 'Hours',
+					value: 'hours',
+				},
+				{
+					name: 'Days',
+					value: 'days',
+				},
+			],
+			default: 'hours',
+			description: 'Unit of the interval value',
+		},
+		{
+			displayName: 'Max Date and Time',
+			name: 'maxDateAndTime',
+			type: 'dateTime',
+			displayOptions: {
+				show: {
+					limitType: ['atSpecifiedTime'],
+					limitWaitTime: [true],
+				},
+			},
+			default: '',
+			description: 'Continue execution after the specified date and time',
+		},
+
 		{
 			displayName: 'Approval Options',
 			name: 'approvalOptions',
@@ -184,14 +288,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...updateDisplayOptions(
-			{
-				show: {
-					responseType: ['customForm'],
-				},
-			},
-			formFieldsProperties,
-		),
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -481,4 +577,35 @@ export function createEmail(context: IExecuteFunctions) {
 	};
 
 	return email;
+}
+
+export function configureWaitTillDate(context: IExecuteFunctions) {
+	let waitTill = WAIT_INDEFINITELY;
+	const limitWaitTime = context.getNodeParameter('limitWaitTime', 0);
+
+	if (limitWaitTime === true) {
+		const limitType = context.getNodeParameter('limitType', 0);
+
+		if (limitType === 'afterTimeInterval') {
+			let waitAmount = context.getNodeParameter('resumeAmount', 0) as number;
+			const resumeUnit = context.getNodeParameter('resumeUnit', 0);
+
+			if (resumeUnit === 'minutes') {
+				waitAmount *= 60;
+			}
+			if (resumeUnit === 'hours') {
+				waitAmount *= 60 * 60;
+			}
+			if (resumeUnit === 'days') {
+				waitAmount *= 60 * 60 * 24;
+			}
+
+			waitAmount *= 1000;
+			waitTill = new Date(new Date().getTime() + waitAmount);
+		} else {
+			waitTill = new Date(context.getNodeParameter('maxDateAndTime', 0) as string);
+		}
+	}
+
+	return waitTill;
 }
