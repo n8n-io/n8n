@@ -1,4 +1,12 @@
 import * as crypto from 'crypto';
+import type {
+	IDataObject,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import * as querystring from 'querystring';
 
 export const HeaderConstants = {
@@ -51,4 +59,154 @@ export function getAuthorizationTokenUsingMasterKey(
 	const authorizationString = querystring.escape(`type=master&ver=1.0&sig=${hashPayload}`);
 
 	return authorizationString;
+}
+
+export async function azureCosmoDbRequest(
+	this: ILoadOptionsFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IDataObject> {
+	const credentials = await this.getCredentials('azureCosmosDb');
+	const databaseAccount = credentials?.database;
+
+	if (!databaseAccount) {
+		throw new ApplicationError('Database account not found in credentials!', { level: 'error' });
+	}
+
+	const requestOptions: IHttpRequestOptions = {
+		...opts,
+		baseURL: `https://${databaseAccount}.documents.azure.com`,
+		json: true,
+	};
+
+	const errorMapping: Record<number, Record<string, string>> = {
+		403: {
+			'The security token included in the request is invalid.':
+				'The Cosmos DB credentials are not valid!',
+			'The request signature we calculated does not match the signature you provided':
+				'The Cosmos DB credentials are not valid!',
+		},
+		404: {
+			'The specified resource does not exist.': 'The requested resource was not found!',
+		},
+	};
+
+	try {
+		return (await this.helpers.requestWithAuthentication.call(
+			this,
+			'azureCosmosDb',
+			requestOptions,
+		)) as IDataObject;
+	} catch (error) {
+		const statusCode = (error.statusCode || error.cause?.statusCode) as number;
+		let errorMessage = (error.response?.body?.message ||
+			error.response?.body?.Message ||
+			error.message) as string;
+
+		if (statusCode in errorMapping && errorMessage in errorMapping[statusCode]) {
+			throw new ApplicationError(errorMapping[statusCode][errorMessage], {
+				level: 'error',
+			});
+		}
+
+		if (error.cause?.error) {
+			try {
+				errorMessage = error.cause?.error?.message as string;
+			} catch (ex) {
+				throw new ApplicationError(
+					`Failed to extract error details: ${ex.message || 'Unknown error'}`,
+					{ level: 'error' },
+				);
+			}
+		}
+
+		throw new ApplicationError(`Cosmos DB error response [${statusCode}]: ${errorMessage}`, {
+			level: 'error',
+		});
+	}
+}
+
+export async function searchCollections(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const dbId = this.getNodeParameter('dbId') as string;
+	if (!dbId) {
+		throw new ApplicationError('Database ID is required');
+	}
+
+	const credentials = await this.getCredentials('azureCosmosDb');
+	const databaseAccount = credentials?.databaseaccount;
+
+	if (!databaseAccount) {
+		throw new ApplicationError('Database account not found in credentials!', { level: 'error' });
+	}
+
+	const opts: IHttpRequestOptions = {
+		method: 'GET',
+		url: `/dbs/${dbId}/colls`,
+		baseURL: `https://${databaseAccount}.documents.azure.com`,
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	};
+
+	const responseData: IDataObject = await azureCosmoDbRequest.call(this, opts);
+
+	const responseBody = responseData as {
+		Collections: IDataObject[];
+	};
+	const collections = responseBody.Collections;
+
+	if (!collections) {
+		return { results: [] };
+	}
+
+	const results: INodeListSearchItems[] = collections
+		.map((collection) => ({
+			name: String(collection.id),
+			value: String(collection.id),
+		}))
+		.filter((collection) => !filter || collection.name.includes(filter))
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return {
+		results,
+	};
+}
+
+export async function searchDatabases(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const opts: IHttpRequestOptions = {
+		method: 'GET',
+		url: '/dbs',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	};
+
+	const responseData: IDataObject = await azureCosmoDbRequest.call(this, opts);
+
+	const responseBody = responseData as {
+		Databases: IDataObject[];
+	};
+	const databases = responseBody.Databases;
+
+	if (!databases) {
+		return { results: [] };
+	}
+
+	const results: INodeListSearchItems[] = databases
+		.map((database) => ({
+			name: String(database.id),
+			value: String(database.id),
+		}))
+		.filter((database) => !filter || database.name.includes(filter))
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return {
+		results,
+	};
 }

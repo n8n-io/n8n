@@ -1,6 +1,9 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+import { searchCollections } from './GenericFunctions';
+import { itemFields, itemOperations } from '../../Aws/DynamoDB/ItemDescription';
+
 export class AzureCosmoDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Azure Cosmo DB',
@@ -52,22 +55,24 @@ export class AzureCosmoDb implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Collections',
-						value: 'collections',
+						name: 'Container',
+						value: 'colls',
 					},
 					{
-						name: 'Documents',
-						value: 'documents',
+						name: 'Item',
+						value: 'docs',
 					},
 				],
 				default: 'collections',
 			},
+			...itemFields,
+			...itemOperations,
 		],
 	};
 
 	methods = {
-		loadOptions: {},
-
-		listSearch: {},
+		listSearch: {
+			searchCollections,
+		},
 	};
 }

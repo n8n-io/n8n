@@ -32,12 +32,6 @@ export class AzureCosmoDbSharedKeyApi implements ICredentialType {
 			},
 			default: '',
 		},
-		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			type: 'string',
-			default: '=https://{{ $self["database"] }}.documents.azure.com',
-		},
 	];
 
 	async authenticate(
@@ -52,21 +46,58 @@ export class AzureCosmoDbSharedKeyApi implements ICredentialType {
 			}
 		}
 
-		requestOptions.method ??= 'GET';
+		if (!requestOptions.method) {
+			if (requestOptions.body) {
+				if (requestOptions.body.hasOwnProperty('colls')) {
+					requestOptions.method = 'POST';
+				} else if (requestOptions.body.hasOwnProperty('docs')) {
+					requestOptions.method = 'POST';
+				} else if (requestOptions.body.hasOwnProperty('update')) {
+					requestOptions.method = 'PATCH';
+				} else if (requestOptions.body.hasOwnProperty('delete')) {
+					requestOptions.method = 'DELETE';
+				}
+			} else {
+				requestOptions.method = 'GET';
+			}
+		}
 
 		requestOptions.headers ??= {};
 		const date = new Date().toUTCString();
-		requestOptions.headers['x-ms-date'] = date;
-		requestOptions.headers['x-ms-version'] = '2020-04-08';
+		requestOptions.headers = {
+			...requestOptions.headers,
+			'x-ms-date': date,
+			'x-ms-version': '2020-04-08',
+		};
 
 		if (credentials.sessionToken) {
 			requestOptions.headers['x-ms-session-token'] = credentials.sessionToken;
 		}
 
-		const resourceType = 'dbs';
-		const resourceLink = 'dbs/ToDoList';
+		let resourceType = '';
+		let resourceLink = '';
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		if (requestOptions.body) {
+			if (requestOptions.body.hasOwnProperty('colls')) {
+				resourceType = 'dbs';
+				resourceLink = `dbs/${credentials.database}/colls`;
+			} else if (requestOptions.body.hasOwnProperty('docs')) {
+				resourceType = 'colls';
+				const collId = requestOptions.body.collId || '';
+				resourceLink = `dbs/${credentials.database}/colls/${collId}/docs`;
+			}
+		} else if (requestOptions.qs) {
+			if (requestOptions.qs.queryType === 'colls') {
+				resourceType = 'dbs';
+				resourceLink = `dbs/${credentials.database}/colls`;
+			} else if (requestOptions.qs.queryType === 'docs') {
+				resourceType = 'colls';
+				const collId = requestOptions.qs.collId || '';
+				resourceLink = `dbs/${credentials.database}/colls/${collId}/docs`;
+			}
+		}
+
+		// Generate authorization token using the master key
 		const authToken = getAuthorizationTokenUsingMasterKey(
 			requestOptions.method,
 			resourceType,
