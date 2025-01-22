@@ -2,17 +2,17 @@ import { Service } from '@n8n/di';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
 
-import { TestRunExecutionMapping } from '@/databases/entities/test-run-executions.ee';
+import { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 
 @Service()
-export class TestRunExecutionsMappingRepository extends Repository<TestRunExecutionMapping> {
+export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	constructor(dataSource: DataSource) {
-		super(TestRunExecutionMapping, dataSource.manager);
+		super(TestCaseExecution, dataSource.manager);
 	}
 
 	async createBatch(testRunId: string, pastExecutionIds: string[]) {
 		const mappings = this.create(
-			pastExecutionIds.map<DeepPartial<TestRunExecutionMapping>>((id) => ({
+			pastExecutionIds.map<DeepPartial<TestCaseExecution>>((id) => ({
 				testRun: {
 					id: testRunId,
 				},

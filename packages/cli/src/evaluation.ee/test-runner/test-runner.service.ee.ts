@@ -20,7 +20,7 @@ import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import { TestRunExecutionsMappingRepository } from '@/databases/repositories/test-run-executions-mapping.repository.ee';
+import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NodeTypes } from '@/node-types';
@@ -58,7 +58,7 @@ export class TestRunnerService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
-		private readonly testRunExecutionsMappingRepository: TestRunExecutionsMappingRepository,
+		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testMetricRepository: TestMetricRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly errorReporter: ErrorReporter,
@@ -151,7 +151,7 @@ export class TestRunnerService {
 		});
 
 		// Update status of the test run execution mapping
-		await this.testRunExecutionsMappingRepository.markAsRunning(
+		await this.testCaseExecutionRepository.markAsRunning(
 			metadata.testRunId,
 			metadata.pastExecutionId,
 			executionId,
@@ -201,7 +201,7 @@ export class TestRunnerService {
 		});
 
 		// Update status of the test run execution mapping
-		await this.testRunExecutionsMappingRepository.markAsEvaluationRunning(
+		await this.testCaseExecutionRepository.markAsEvaluationRunning(
 			metadata.testRunId,
 			metadata.pastExecutionId,
 			executionId,
@@ -293,7 +293,7 @@ export class TestRunnerService {
 
 			// Add all past executions mappings to the test run.
 			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
-			await this.testRunExecutionsMappingRepository.createBatch(
+			await this.testCaseExecutionRepository.createBatch(
 				testRun.id,
 				pastExecutions.map((e) => e.id),
 			);
@@ -353,13 +353,13 @@ export class TestRunnerService {
 					// Skip them, increment the failed count and continue with the next test case
 					if (!testCaseExecution) {
 						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 						continue;
 					}
 
 					// Update status of the test case execution mapping entry in case of an error
 					if (testCaseExecution.data.resultData.error) {
-						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 					}
 
 					// Collect the results of the test case execution
@@ -385,10 +385,10 @@ export class TestRunnerService {
 
 					if (evalExecution.data.resultData.error) {
 						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 					} else {
 						await this.testRunRepository.incrementPassed(testRun.id);
-						await this.testRunExecutionsMappingRepository.markAsCompleted(
+						await this.testCaseExecutionRepository.markAsCompleted(
 							testRun.id,
 							pastExecutionId,
 							addedMetrics,
@@ -397,7 +397,7 @@ export class TestRunnerService {
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case
 					await this.testRunRepository.incrementFailed(testRun.id);
-					await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
+					await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 
 					this.errorReporter.error(e);
 				}
@@ -406,7 +406,7 @@ export class TestRunnerService {
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
 				await this.testRunRepository.markAsCancelled(testRun.id);
-				await this.testRunExecutionsMappingRepository.markPendingAsCancelled(testRun.id);
+				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
@@ -421,7 +421,7 @@ export class TestRunnerService {
 				});
 
 				await this.testRunRepository.markAsCancelled(testRun.id);
-				await this.testRunExecutionsMappingRepository.markPendingAsCancelled(testRun.id);
+				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
 			} else {
 				throw e;
 			}

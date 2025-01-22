@@ -264,7 +264,7 @@ const getRunExecutionsEndpoint = (testDefinitionId: string, runId: string) =>
 	`${endpoint}/${testDefinitionId}/runs/${runId}/cases`;
 
 // Get all test cases of a test run
-export const getTestRunExecutions = async (
+export const getTestCaseExecutions = async (
 	context: IRestApiContext,
 	testDefinitionId: string,
 	runId: string,

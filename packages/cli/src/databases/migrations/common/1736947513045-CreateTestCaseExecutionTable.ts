@@ -1,10 +1,10 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
-const testRunExecutionsTableName = 'test_run_executions';
+const testCaseExecutionTableName = 'test_case_execution';
 
-export class CreateTestRunExecutionsTable1736947513045 implements ReversibleMigration {
+export class CreateTestCaseExecutionTable1736947513045 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
-		await createTable(testRunExecutionsTableName)
+		await createTable(testCaseExecutionTableName)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('testRunId').varchar(36).notNull,
@@ -42,6 +42,6 @@ export class CreateTestRunExecutionsTable1736947513045 implements ReversibleMigr
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(testRunExecutionsTableName);
+		await dropTable(testCaseExecutionTableName);
 	}
 }

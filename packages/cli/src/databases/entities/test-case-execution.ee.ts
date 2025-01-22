@@ -11,10 +11,13 @@ import { TestRun } from '@/databases/entities/test-run.ee';
 export type TestCaseRunMetrics = Record<string, number | boolean>;
 
 /**
- * This entity represents the junction table between the test runs and executions
+ * This entity represents the linking between the test runs and individual executions.
+ * It stores status, links to past, new and evaluation executions, and metrics produced by individual evaluation wf executions
+ * Entries in this table are meant to outlive the execution entities, which might be pruned over time.
+ * This allows us to keep track of the details of test runs' status and metrics even after the executions are deleted.
  */
-@Entity({ name: 'test_run_executions' })
-export class TestRunExecutionMapping extends WithStringId {
+@Entity({ name: 'test_case_execution' })
+export class TestCaseExecution extends WithStringId {
 	@ManyToOne('TestRun')
 	testRun: TestRun;
 

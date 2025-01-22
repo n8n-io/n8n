@@ -173,7 +173,7 @@ export const useTestDefinitionStore = defineStore(
 		};
 
 		const fetchTestCaseExecutions = async (params: { testDefinitionId: string; runId: string }) => {
-			const testCaseExecutions = await testDefinitionsApi.getTestRunExecutions(
+			const testCaseExecutions = await testDefinitionsApi.getTestCaseExecutions(
 				rootStore.restApiContext,
 				params.testDefinitionId,
 				params.runId,
