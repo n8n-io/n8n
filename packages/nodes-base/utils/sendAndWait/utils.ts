@@ -1,4 +1,5 @@
 import {
+	ApplicationError,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseJsonToFormFields,
@@ -602,25 +603,36 @@ export function configureWaitTillDate(context: IExecuteFunctions) {
 		resumeUnit?: string;
 		maxDateAndTime?: string;
 	};
+	console.log(limitWaitTime);
 
 	if (Object.keys(limitWaitTime).length) {
-		if (limitWaitTime.limitType === 'afterTimeInterval') {
-			let waitAmount = limitWaitTime.resumeAmount as number;
+		try {
+			if (limitWaitTime.limitType === 'afterTimeInterval') {
+				let waitAmount = limitWaitTime.resumeAmount as number;
 
-			if (limitWaitTime.resumeUnit === 'minutes') {
-				waitAmount *= 60;
-			}
-			if (limitWaitTime.resumeUnit === 'hours') {
-				waitAmount *= 60 * 60;
-			}
-			if (limitWaitTime.resumeUnit === 'days') {
-				waitAmount *= 60 * 60 * 24;
+				if (limitWaitTime.resumeUnit === 'minutes') {
+					waitAmount *= 60;
+				}
+				if (limitWaitTime.resumeUnit === 'hours') {
+					waitAmount *= 60 * 60;
+				}
+				if (limitWaitTime.resumeUnit === 'days') {
+					waitAmount *= 60 * 60 * 24;
+				}
+
+				waitAmount *= 1000;
+				waitTill = new Date(new Date().getTime() + waitAmount);
+			} else {
+				waitTill = new Date(limitWaitTime.maxDateAndTime as string);
 			}
 
-			waitAmount *= 1000;
-			waitTill = new Date(new Date().getTime() + waitAmount);
-		} else {
-			waitTill = new Date(limitWaitTime.maxDateAndTime as string);
+			if (isNaN(waitTill.getTime())) {
+				throw new ApplicationError('Invalid date format');
+			}
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), 'Could not configure Limit Wait Time', {
+				description: error.message,
+			});
 		}
 	}
 
