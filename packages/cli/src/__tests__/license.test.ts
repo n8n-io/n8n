@@ -251,6 +251,20 @@ describe('License', () => {
 
 			expect(LicenseManager).toHaveBeenCalledWith(expect.objectContaining(expectedRenewalSettings));
 		});
+
+		it('when CLI command with N8N_LICENSE_AUTO_RENEW_ENABLED=true, should enable renewal', async () => {
+			const globalConfig = mock<GlobalConfig>({
+				license: { ...licenseConfig, autoRenewalEnabled: true },
+			});
+
+			await new License(mockLogger(), mock(), mock(), mock(), globalConfig).init({
+				isCli: true,
+			});
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+			);
+		});
 	});
 
 	describe('reinit', () => {
@@ -262,7 +276,7 @@ describe('License', () => {
 
 			await license.reinit();
 
-			expect(initSpy).toHaveBeenCalledWith(true);
+			expect(initSpy).toHaveBeenCalledWith({ forceRecreate: true });
 
 			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
 			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();

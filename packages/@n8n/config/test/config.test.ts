@@ -221,7 +221,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: false,
+			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',

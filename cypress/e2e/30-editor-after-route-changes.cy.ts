@@ -57,7 +57,7 @@ const editWorkflowMoreAndActivate = () => {
 			position.left = $element.position().left;
 		});
 
-	cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 200], { clickToFinish: true });
+	cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 200]);
 	workflowPage.getters
 		.canvasNodes()
 		.last()
