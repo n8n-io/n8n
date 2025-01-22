@@ -6,11 +6,23 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	SEND_AND_WAIT_OPERATION,
+	NodeConnectionType,
+	NodeOperationError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
+import {
+	addAdditionalFields,
+	apiRequest,
+	createSendAndWaitMessageBody,
+	getPropertyName,
+} from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,6 +43,26 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
+			},
+		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'GET',
+				responseMode: 'onReceived',
+				responseData: '',
+				path: '={{ $nodeId }}',
+				restartWebhook: true,
+				isFullPath: true,
+			},
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				responseData: '',
+				path: '={{ $nodeId }}',
+				restartWebhook: true,
+				isFullPath: true,
 			},
 		],
 		properties: [
@@ -262,6 +294,12 @@ export class Telegram implements INodeType {
 						value: 'sendMessage',
 						description: 'Send a text message',
 						action: 'Send a text message',
+					},
+					{
+						name: 'Send and Wait for Response',
+						value: SEND_AND_WAIT_OPERATION,
+						description: 'Send a message and wait for response',
+						action: 'Send message and wait for response',
 					},
 					{
 						name: 'Send Photo',
@@ -1735,8 +1773,26 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+			...getSendAndWaitProperties(
+				[
+					{
+						displayName: 'Chat ID',
+						name: 'chatId',
+						type: 'string',
+						default: '',
+						required: true,
+						description:
+							'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					},
+				],
+				'message',
+				undefined,
+				{ noButtonStyle: true },
+			).filter((p) => p.name !== 'subject'),
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -1756,6 +1812,15 @@ export class Telegram implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			body = createSendAndWaitMessageBody(this);
+
+			await apiRequest.call(this, 'POST', 'sendMessage', body);
+
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			return [this.getInputData()];
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			try {

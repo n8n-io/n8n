@@ -44,6 +44,7 @@ export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
 	resource: string = 'message',
 	additionalProperties: INodeProperties[] = [],
+	options?: { noButtonStyle?: boolean },
 ) {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
@@ -61,6 +62,77 @@ export function getSendAndWaitProperties(
 			},
 		],
 	};
+	const approvalOptionsValues = [
+		{
+			displayName: 'Type of Approval',
+			name: 'approvalType',
+			type: 'options',
+			placeholder: 'Add option',
+			default: 'single',
+			options: [
+				{
+					name: 'Approve Only',
+					value: 'single',
+				},
+				{
+					name: 'Approve and Disapprove',
+					value: 'double',
+				},
+			],
+		},
+		{
+			displayName: 'Approve Button Label',
+			name: 'approveLabel',
+			type: 'string',
+			default: 'Approve',
+			displayOptions: {
+				show: {
+					approvalType: ['single', 'double'],
+				},
+			},
+		},
+		...[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Approve Button Style',
+						name: 'buttonApprovalStyle',
+						displayOptions: {
+							show: {
+								approvalType: ['single', 'double'],
+							},
+						},
+					},
+		],
+		{
+			displayName: 'Disapprove Button Label',
+			name: 'disapproveLabel',
+			type: 'string',
+			default: 'Decline',
+			displayOptions: {
+				show: {
+					approvalType: ['double'],
+				},
+			},
+		},
+		[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Disapprove Button Style',
+						name: 'buttonDisapprovalStyle',
+						default: 'secondary',
+						displayOptions: {
+							show: {
+								approvalType: ['double'],
+							},
+						},
+					},
+		],
+	].filter((p) => Object.keys(p).length) as INodeProperties[];
+
 	const sendAndWait: INodeProperties[] = [
 		...targetProperties,
 		{
@@ -114,68 +186,7 @@ export function getSendAndWaitProperties(
 				{
 					displayName: 'Values',
 					name: 'values',
-					values: [
-						{
-							displayName: 'Type of Approval',
-							name: 'approvalType',
-							type: 'options',
-							placeholder: 'Add option',
-							default: 'single',
-							options: [
-								{
-									name: 'Approve Only',
-									value: 'single',
-								},
-								{
-									name: 'Approve and Disapprove',
-									value: 'double',
-								},
-							],
-						},
-						{
-							displayName: 'Approve Button Label',
-							name: 'approveLabel',
-							type: 'string',
-							default: 'Approve',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Approve Button Style',
-							name: 'buttonApprovalStyle',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							displayName: 'Disapprove Button Label',
-							name: 'disapproveLabel',
-							type: 'string',
-							default: 'Decline',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Disapprove Button Style',
-							name: 'buttonDisapprovalStyle',
-							default: 'secondary',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-					],
+					values: approvalOptionsValues,
 				},
 			],
 			displayOptions: {
