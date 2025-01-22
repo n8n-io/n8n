@@ -231,6 +231,7 @@
       "dist/credentials/MicrosoftToDoOAuth2Api.credentials.js",
       "dist/credentials/MindeeInvoiceApi.credentials.js",
       "dist/credentials/MindeeReceiptApi.credentials.js",
+      "dist/credentials/MiroOAuth2Api.credentials.js",
       "dist/credentials/MispApi.credentials.js",
       "dist/credentials/MistApi.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
