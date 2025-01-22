@@ -4,11 +4,12 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import type {
-	INodeParameterResourceLocator,
-	INodeProperties,
-	NodeParameterValue,
-	ResourceLocatorModes,
+import {
+	isObjectEmpty,
+	type INodeParameterResourceLocator,
+	type INodeProperties,
+	type NodeParameterValue,
+	type ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
@@ -22,6 +23,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
+import { toBase64 } from 'js-base64';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -34,6 +36,10 @@ interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
+	sampleWorkflowTemplateId?: string;
+	sampleWorkflowName?: string;
+	sampleWorkflowRegex?: RegExp;
+	sampleWorkflowPinnedData?: Record<string, unknown>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -44,6 +50,10 @@ const props = withDefaults(defineProps<Props>(), {
 	forceShowExpression: false,
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
+	sampleWorkflowTemplateId: SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId,
+	sampleWorkflowName: SAMPLE_SUBWORKFLOW_WORKFLOW.name,
+	sampleWorkflowRegex: () => /My\s+Sub-Workflow\s+\d+/,
+	sampleWorkflowPinnedData: () => ({}),
 });
 
 const emit = defineEmits<{
@@ -206,8 +216,6 @@ onClickOutside(dropdown, () => {
 });
 
 const onAddResourceClicked = () => {
-	const subWorkflowNameRegex = /My\s+Sub-Workflow\s+\d+/;
-
 	const urlSearchParams = new URLSearchParams();
 
 	if (projectStore.currentProjectId) {
@@ -215,15 +223,22 @@ const onAddResourceClicked = () => {
 	}
 
 	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
-		(w) => w.name && subWorkflowNameRegex.test(w.name),
+		(w) => w.name && props.sampleWorkflowRegex.test(w.name),
 	);
 
 	urlSearchParams.set('sampleSubWorkflows', sampleSubWorkflows.length.toString());
+	urlSearchParams.set('sampleWorkflowName', props.sampleWorkflowName);
+
+	if (!isObjectEmpty(props.sampleWorkflowPinnedData)) {
+		urlSearchParams.set(
+			'sampleWorkflowPinnedData',
+			toBase64(JSON.stringify(props.sampleWorkflowPinnedData), true),
+		);
+	}
 
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
 	const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
-
 	sampleSubworkflowChannel.onmessage = async (event: MessageEvent<{ workflowId: string }>) => {
 		const workflowId = event.data.workflowId;
 		await reloadWorkflows();
@@ -232,7 +247,7 @@ const onAddResourceClicked = () => {
 	};
 
 	window.open(
-		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId}?${urlSearchParams.toString()}`,
+		`/workflows/onboarding/${props.sampleWorkflowTemplateId}?${urlSearchParams.toString()}`,
 		'_blank',
 	);
 };

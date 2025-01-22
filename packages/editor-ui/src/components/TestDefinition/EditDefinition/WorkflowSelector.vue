@@ -1,20 +1,38 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { SAMPLE_EVALUATION_WORKFLOW } from '@/constants.workflows';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { computed } from 'vue';
+
 interface WorkflowSelectorProps {
 	modelValue: INodeParameterResourceLocator;
+	examplePinnedData?: Record<string, unknown>;
+	sampleWorkflowName?: string;
 }
 
-withDefaults(defineProps<WorkflowSelectorProps>(), {
+const props = withDefaults(defineProps<WorkflowSelectorProps>(), {
 	modelValue: () => ({
 		mode: 'id',
 		value: '',
 		__rl: true,
 	}),
+	examplePinnedData: () => ({}),
+	sampleWorkflowName: undefined,
 });
 
 defineEmits<{ 'update:modelValue': [value: WorkflowSelectorProps['modelValue']] }>();
 const locale = useI18n();
+
+const subworkflowName = computed(() => {
+	if (props.sampleWorkflowName) {
+		return `Evaluation workflow for ${props.sampleWorkflowName}`;
+	}
+	return 'My Evaluation Sub-Workflow';
+});
+
+const sampleWorkflowRegex = computed(() => {
+	return new RegExp(subworkflowName.value);
+});
 </script>
 <template>
 	<div>
@@ -36,6 +54,10 @@ const locale = useI18n();
 				:expression-edit-dialog-visible="false"
 				:path="'workflows'"
 				allow-new
+				:sample-workflow-regex="sampleWorkflowRegex"
+				:sample-workflow-template-id="SAMPLE_EVALUATION_WORKFLOW.meta.templateId"
+				:sample-workflow-pinned-data="examplePinnedData"
+				:sample-workflow-name="subworkflowName"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>

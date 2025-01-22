@@ -7,7 +7,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDataCreate } from '@/Interface';
-import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
+import { SAMPLE_EVALUATION_WORKFLOW, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
+import { fromBase64 } from 'js-base64';
+import { IPinData, jsonParse } from 'n8n-workflow';
 
 const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
@@ -17,8 +19,13 @@ const route = useRoute();
 const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
-	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId) {
-		await openSampleSubworkflow();
+	if (
+		[
+			SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId,
+			SAMPLE_EVALUATION_WORKFLOW.meta.templateId,
+		].includes(templateId)
+	) {
+		await openSampleSubworkflow(templateId);
 		return;
 	}
 	try {
@@ -58,19 +65,30 @@ const openWorkflowTemplate = async (templateId: string) => {
 	}
 };
 
-const openSampleSubworkflow = async () => {
+const openSampleSubworkflow = async (templateId: string) => {
+	const sampleWorkflows = [SAMPLE_SUBWORKFLOW_WORKFLOW, SAMPLE_EVALUATION_WORKFLOW];
+
+	const sampleWorkflow = sampleWorkflows.find((w) => w.meta.templateId === templateId);
+
+	if (!sampleWorkflow) {
+		throw new Error(`Could not load onboarding template ${templateId}`); // sentry reporing
+	}
+
 	try {
 		loadingService.startLoading();
 
 		const projectId = route.query?.projectId;
-
 		const sampleSubWorkflows = Number(route.query?.sampleSubWorkflows ?? 0);
+		const workflowPinnedData = route.query?.sampleWorkflowPinnedData
+			? jsonParse<IPinData>(fromBase64(route.query.sampleWorkflowPinnedData as string))
+			: {};
 
-		const workflowName = `${SAMPLE_SUBWORKFLOW_WORKFLOW.name} ${sampleSubWorkflows + 1}`;
+		const workflowName = route.query?.sampleWorkflowName ?? sampleWorkflow.name;
 
 		const workflow: IWorkflowDataCreate = {
-			...SAMPLE_SUBWORKFLOW_WORKFLOW,
-			name: workflowName,
+			...sampleWorkflow,
+			name: `${workflowName} ${sampleSubWorkflows + 1}`,
+			pinData: workflowPinnedData ?? sampleWorkflow.pinData,
 		};
 
 		if (projectId) {
@@ -80,9 +98,7 @@ const openSampleSubworkflow = async () => {
 		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 
 		const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
-
 		sampleSubworkflowChannel.postMessage({ workflowId: newWorkflow.id });
-
 		await router.replace({
 			name: VIEWS.WORKFLOW,
 			params: { name: newWorkflow.id },
