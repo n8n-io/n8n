@@ -10,11 +10,11 @@ export class VerticaApi implements ICredentialType {
 
 	displayName = 'Vertica API';
 
-	documentationUrl = 'https://docs.vertica.com/24.4.x/en/';
+	documentationUrl = 'vertica';
 
 	httpRequestNode = {
 		name: 'Vertica',
-		docsUrl: 'https://docs.vertica.com/24.4.x/en/',
+		docsUrl: 'vertica',
 		apiBaseUrlPlaceholder: 'http://<server>:<port>/v1/',
 	};
 
@@ -57,7 +57,7 @@ export class VerticaApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
-			url: '/v1/nodes',
+			url: '/v1/health',
 			method: 'GET',
 			skipSslCertificateValidation: true,
 		},
