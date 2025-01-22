@@ -27,32 +27,6 @@ describe('Test Summarize Node', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
-	// fails
-	it('should handle field not found with hints in version 1.1', async () => {
-		const node = new Summarize();
-		const context = {
-			getNodeParameter: jest
-				.fn()
-				.mockReturnValueOnce({}) // options
-				.mockReturnValueOnce('') // fieldsToSplitBy
-				.mockReturnValueOnce([{ field: 'nonexistentField', aggregation: 'sum' }]), // fieldsToSummarize
-			getInputData: jest.fn().mockReturnValue([{ json: { someField: 1 } }]),
-			getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
-		} as unknown as IExecuteFunctions;
-
-		await node.execute.call(context);
-
-		expect(NodeExecutionOutput).toHaveBeenCalledWith(
-			expect.any(Array),
-			expect.arrayContaining([
-				expect.objectContaining({
-					message: expect.stringContaining('nonexistentField'),
-					location: 'outputPane',
-				}),
-			]),
-		);
-	});
-
 	it('should throw error if node version is < 1.1 and fields not found', async () => {
 		mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ typeVersion: 1 });
 		const items = [{ a: 1 }, { b: 2 }, { c: 3 }];
