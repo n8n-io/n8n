@@ -45,6 +45,9 @@ switch (scenario) {
 			startCommand: 'start',
 			url: 'http://localhost:5678/favicon.ico',
 			testCommand: 'cypress open',
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
 		});
 		break;
 	case 'dev:v1':
@@ -77,6 +80,9 @@ switch (scenario) {
 			startCommand: 'start',
 			url: 'http://localhost:5678/favicon.ico',
 			testCommand: `cypress run --headless ${specParam}`,
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
 		});
 		break;
 	default:
