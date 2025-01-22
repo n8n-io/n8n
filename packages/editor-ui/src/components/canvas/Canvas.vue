@@ -690,7 +690,6 @@ provide(CanvasKey, {
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
-		tabindex="1"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
