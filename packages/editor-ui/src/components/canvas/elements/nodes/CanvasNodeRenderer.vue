@@ -10,6 +10,7 @@ const node = inject(CanvasNodeKey);
 
 const slots = defineSlots<{
 	default?: () => unknown;
+	button?: () => unknown;
 }>();
 
 const Render = () => {
@@ -32,7 +33,7 @@ const Render = () => {
 		{
 			'data-canvas-node-render-type': renderType,
 		},
-		slots.default,
+		slots,
 	);
 };
 </script>

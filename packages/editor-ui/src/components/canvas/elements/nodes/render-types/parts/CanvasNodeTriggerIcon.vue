@@ -10,17 +10,16 @@ const i18n = useI18n();
 			<span v-n8n-html="i18n.baseText('node.thisIsATriggerNode')" />
 		</template>
 		<div :class="$style.triggerIcon">
-			<FontAwesomeIcon icon="bolt" size="lg" />
+			<FontAwesomeIcon icon="bolt" size="md" />
 		</div>
 	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
 .triggerIcon {
-	position: absolute;
-	right: 100%;
-	margin: auto;
+	display: inline;
+	position: static;
 	color: var(--color-primary);
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-4xs);
 }
 </style>

@@ -16,11 +16,12 @@ import type {
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
 } from '@/types';
-import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
+import CanvasNodeTriggerButton from '@/components/canvas/elements/nodes/CanvasNodeTriggerButton.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
@@ -405,6 +406,16 @@ onBeforeUnmount(() => {
 				:disabled="isDisabled"
 			/>
 			<!-- @TODO :color-default="iconColorDefault"-->
+			<template #button>
+				<CanvasNodeTriggerButton
+					v-if="
+						!isDisabled &&
+						props.data.render.type === CanvasNodeRenderType.Default &&
+						props.data.render.options.trigger
+					"
+					:data="props.data"
+				/>
+			</template>
 		</CanvasNodeRenderer>
 	</div>
 </template>

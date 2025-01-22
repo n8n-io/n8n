@@ -128,17 +128,20 @@ function openContextMenu(event: MouseEvent) {
 	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
-		<CanvasNodeTriggerIcon v-if="renderOptions.trigger" />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
+				<CanvasNodeTriggerIcon v-if="renderOptions.trigger" />
 			</div>
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		</div>
+		<div :class="$style['button-container']">
+			<slot name="button" />
 		</div>
 	</div>
 </template>
@@ -312,5 +315,12 @@ function openContextMenu(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
+}
+
+.button-container {
+	position: absolute;
+	right: 100%;
+	top: auto;
+	margin: var(--spacing-m);
 }
 </style>
