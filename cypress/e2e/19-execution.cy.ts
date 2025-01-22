@@ -217,6 +217,7 @@ describe('Execution', () => {
 	/**
 	 *  @TODO: New Canvas - Webhook should show waiting state but it doesn't
 	 */
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it.skip('should test webhook workflow stop', () => {
 		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
