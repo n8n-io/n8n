@@ -40,6 +40,7 @@ import {
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';
@@ -400,7 +401,7 @@ export class ActiveWorkflowManager {
 			status: 'running',
 		};
 
-		WorkflowExecuteAdditionalData.executeErrorWorkflow(workflowData, fullRunData, mode);
+		executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
 	/**
