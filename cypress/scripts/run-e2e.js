@@ -47,17 +47,18 @@ switch (scenario) {
 			testCommand: 'cypress open',
 		});
 		break;
-	case 'dev':
+	case 'dev:v1':
 		runTests({
 			startCommand: 'develop',
 			url: 'http://localhost:8080/favicon.ico',
 			testCommand: 'cypress open',
 			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 1,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
 			},
 		});
 		break;
-	case 'dev:v2':
+	case 'dev':
 		runTests({
 			startCommand: 'develop',
 			url: 'http://localhost:8080/favicon.ico',
