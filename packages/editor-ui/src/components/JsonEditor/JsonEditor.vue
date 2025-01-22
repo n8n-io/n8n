@@ -36,7 +36,6 @@ const emit = defineEmits<{
 const jsonEditorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);
 const editorState = ref<EditorState | null>(null);
-const isDirty = ref(false);
 
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
@@ -66,7 +65,6 @@ const extensions = computed(() => {
 			bracketMatching(),
 			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-				isDirty.value = true;
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
 			}),
@@ -81,7 +79,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	if (!editor.value) return;
-	if (isDirty.value) emit('update:modelValue', editor.value.state.doc.toString());
 	editor.value.destroy();
 });
 
