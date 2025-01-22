@@ -1,7 +1,8 @@
+import type { GlobalConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { PostHog } from 'posthog-node';
 
-import config from '@/config';
 import { PostHogClient } from '@/posthog';
 import { mockInstance } from '@test/mocking';
 
@@ -15,27 +16,28 @@ describe('PostHog', () => {
 
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
 
+	const globalConfig = mock<GlobalConfig>({ logging: { level: 'debug' } });
+
 	beforeAll(() => {
-		config.set('diagnostics.config.posthog.apiKey', apiKey);
-		config.set('diagnostics.config.posthog.apiHost', apiHost);
+		globalConfig.diagnostics.posthogConfig = { apiKey, apiHost };
 	});
 
 	beforeEach(() => {
-		config.set('diagnostics.enabled', true);
+		globalConfig.diagnostics.enabled = true;
 		jest.resetAllMocks();
 	});
 
 	it('inits PostHog correctly', async () => {
-		const ph = new PostHogClient(instanceSettings);
+		const ph = new PostHogClient(instanceSettings, globalConfig);
 		await ph.init();
 
 		expect(PostHog.prototype.constructor).toHaveBeenCalledWith(apiKey, { host: apiHost });
 	});
 
 	it('does not initialize or track if diagnostics are not enabled', async () => {
-		config.set('diagnostics.enabled', false);
+		globalConfig.diagnostics.enabled = false;
 
-		const ph = new PostHogClient(instanceSettings);
+		const ph = new PostHogClient(instanceSettings, globalConfig);
 		await ph.init();
 
 		ph.track({
@@ -55,7 +57,7 @@ describe('PostHog', () => {
 			test: true,
 		};
 
-		const ph = new PostHogClient(instanceSettings);
+		const ph = new PostHogClient(instanceSettings, globalConfig);
 		await ph.init();
 
 		ph.track({
@@ -75,7 +77,7 @@ describe('PostHog', () => {
 
 	it('gets feature flags', async () => {
 		const createdAt = new Date();
-		const ph = new PostHogClient(instanceSettings);
+		const ph = new PostHogClient(instanceSettings, globalConfig);
 		await ph.init();
 
 		await ph.getFeatureFlags({

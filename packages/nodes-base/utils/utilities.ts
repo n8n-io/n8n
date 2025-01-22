@@ -1,3 +1,4 @@
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 import type {
 	IDataObject,
 	IDisplayOptions,
@@ -5,10 +6,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-
 import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
-
-import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -404,3 +402,62 @@ export const sanitizeDataPathKey = (item: IDataObject, key: string) => {
 	}
 	return key;
 };
+
+/**
+ * Escape HTML
+ *
+ * @param {string} text The text to escape
+ */
+export function escapeHtml(text: string): string {
+	if (!text) return '';
+	return text.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
+		switch (match) {
+			case '&amp;':
+				return '&';
+			case '&lt;':
+				return '<';
+			case '&gt;':
+				return '>';
+			case '&#39;':
+				return "'";
+			case '&quot;':
+				return '"';
+			default:
+				return match;
+		}
+	});
+}
+
+/**
+ * Sorts each item json's keys by a priority list
+ *
+ * @param {INodeExecutionData[]} data The array of items which keys will be sorted
+ * @param {string[]} priorityList The priority list, keys of item.json will be sorted in this order first then alphabetically
+ */
+export function sortItemKeysByPriorityList(data: INodeExecutionData[], priorityList: string[]) {
+	return data.map((item) => {
+		const itemKeys = Object.keys(item.json);
+
+		const updatedKeysOrder = itemKeys.sort((a, b) => {
+			const indexA = priorityList.indexOf(a);
+			const indexB = priorityList.indexOf(b);
+
+			if (indexA !== -1 && indexB !== -1) {
+				return indexA - indexB;
+			} else if (indexA !== -1) {
+				return -1;
+			} else if (indexB !== -1) {
+				return 1;
+			}
+			return a.localeCompare(b);
+		});
+
+		const updatedItem: IDataObject = {};
+		for (const key of updatedKeysOrder) {
+			updatedItem[key] = item.json[key];
+		}
+
+		item.json = updatedItem;
+		return item;
+	});
+}

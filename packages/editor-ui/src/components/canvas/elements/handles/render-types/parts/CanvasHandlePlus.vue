@@ -7,14 +7,14 @@ const props = withDefaults(
 		handleClasses?: string;
 		plusSize?: number;
 		lineSize?: number;
-		status?: 'success' | 'ai' | 'default';
+		type?: 'success' | 'secondary' | 'default';
 	}>(),
 	{
 		position: 'right',
 		handleClasses: undefined,
 		plusSize: 24,
 		lineSize: 46,
-		status: 'default',
+		type: 'default',
 	},
 );
 
@@ -27,7 +27,7 @@ const style = useCssModule();
 const classes = computed(() => [
 	style.wrapper,
 	style[props.position],
-	style[props.status],
+	style[props.type],
 	props.handleClasses,
 ]);
 
@@ -96,7 +96,12 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<svg :class="classes" :viewBox="`0 0 ${viewBox.width} ${viewBox.height}`" :style="styles">
+	<svg
+		data-test-id="canvas-handle-plus-wrapper"
+		:class="classes"
+		:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
+		:style="styles"
+	>
 		<line
 			:class="[handleClasses, $style.line]"
 			:x1="linePosition[0][0]"
@@ -107,6 +112,7 @@ function onClick(event: MouseEvent) {
 			stroke-width="2"
 		/>
 		<g
+			data-test-id="canvas-handle-plus"
 			:class="[$style.plus, handleClasses, 'clickable']"
 			:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
 			@click="onClick"
@@ -120,7 +126,7 @@ function onClick(event: MouseEvent) {
 				stroke="var(--color-foreground-xdark)"
 				stroke-width="2"
 				rx="4"
-				fill="#ffffff"
+				fill="var(--color-foreground-xlight)"
 			/>
 			<path
 				:class="[handleClasses, 'clickable']"
@@ -135,7 +141,7 @@ function onClick(event: MouseEvent) {
 .wrapper {
 	position: relative;
 
-	&.ai {
+	&.secondary {
 		.line {
 			stroke: var(--node-type-supplemental-color);
 		}
@@ -156,18 +162,18 @@ function onClick(event: MouseEvent) {
 			stroke: var(--color-success);
 		}
 	}
-}
 
-.plus {
-	&:hover {
-		cursor: pointer;
+	.plus {
+		&:hover {
+			cursor: pointer;
 
-		path {
-			fill: var(--color-primary);
-		}
+			path {
+				fill: var(--color-primary);
+			}
 
-		rect {
-			stroke: var(--color-primary);
+			rect {
+				stroke: var(--color-primary);
+			}
 		}
 	}
 }

@@ -1,14 +1,17 @@
-import { type INodeProperties } from 'n8n-workflow';
 import {
 	PGVectorStore,
 	type DistanceStrategy,
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
+import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
+import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
+
+import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
 
 type CollectionOptions = {
 	useCollection?: boolean;
@@ -177,13 +180,46 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export const VectorStorePGVector = createVectorStoreNode({
+/**
+ * Extended PGVectorStore class to handle custom filtering.
+ * This wrapper is necessary because when used as a retriever,
+ * similaritySearchVectorWithScore should use this.filter instead of
+ * expecting it from the parameter
+ */
+class ExtendedPGVectorStore extends PGVectorStore {
+	static async initialize(
+		embeddings: EmbeddingsInterface,
+		args: PGVectorStoreArgs & { dimensions?: number },
+	): Promise<ExtendedPGVectorStore> {
+		const { dimensions, ...rest } = args;
+		const postgresqlVectorStore = new this(embeddings, rest);
+
+		await postgresqlVectorStore._initializeClient();
+		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
+		if (postgresqlVectorStore.collectionTableName) {
+			await postgresqlVectorStore.ensureCollectionTableInDatabase();
+		}
+
+		return postgresqlVectorStore;
+	}
+
+	async similaritySearchVectorWithScore(
+		query: number[],
+		k: number,
+		filter?: PGVectorStore['FilterType'],
+	) {
+		const mergedFilter = { ...this.filter, ...filter };
+		return await super.similaritySearchVectorWithScore(query, k, mergedFilter);
+	}
+}
+
+export class VectorStorePGVector extends createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
 		displayName: 'Postgres PGVector Store',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
 		name: 'vectorStorePGVector',
 		credentials: [
 			{
@@ -192,7 +228,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 				testedBy: 'postgresConnectionTest',
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve'],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	sharedFields,
 	insertFields,
@@ -236,7 +272,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 			'cosine',
 		) as DistanceStrategy;
 
-		return await PGVectorStore.initialize(embeddings, config);
+		return await ExtendedPGVectorStore.initialize(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
@@ -273,4 +309,4 @@ export const VectorStorePGVector = createVectorStoreNode({
 
 		await PGVectorStore.fromDocuments(documents, embeddings, config);
 	},
-});
+}) {}

@@ -1,23 +1,24 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverMultiQuery implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MultiQuery Retriever',
 		name: 'retrieverMultiQuery',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description:
@@ -82,7 +83,7 @@ export class RetrieverMultiQuery implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supplying data for MultiQuery Retriever');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };

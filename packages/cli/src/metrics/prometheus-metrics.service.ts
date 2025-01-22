@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -211,7 +211,6 @@ export class PrometheusMetricsService {
 				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
-			counter.labels(labels).inc(0);
 			this.counters[eventName] = counter;
 		}
 
@@ -224,7 +223,9 @@ export class PrometheusMetricsService {
 		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
-			counter.inc(1);
+
+			const labels = this.toLabels(event);
+			counter.inc(labels, 1);
 		});
 	}
 

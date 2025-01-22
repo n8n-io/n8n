@@ -2,13 +2,18 @@
 import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
+import { useBugReporting } from '@/composables/useBugReporting';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
 
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		zoom: 1,
+		showBugReportingButton: false,
 	},
 );
 
@@ -18,6 +23,10 @@ const emit = defineEmits<{
 	'zoom-out': [];
 	'zoom-to-fit': [];
 }>();
+
+const { getReportingURL } = useBugReporting();
+const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
 
@@ -36,11 +45,15 @@ function onZoomOut() {
 function onZoomToFit() {
 	emit('zoom-to-fit');
 }
+
+function trackBugReport() {
+	telemetry.track('User clicked bug report button in canvas', {}, { withPostHog: true });
+}
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
 		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomToFit')"
+			:label="i18n.baseText('nodeView.zoomToFit')"
 			:shortcut="{ keys: ['1'] }"
 		>
 			<N8nIconButton
@@ -51,10 +64,7 @@ function onZoomToFit() {
 				@click="onZoomToFit"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomIn')"
-			:shortcut="{ keys: ['+'] }"
-		>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
 			<N8nIconButton
 				type="tertiary"
 				size="large"
@@ -63,10 +73,7 @@ function onZoomToFit() {
 				@click="onZoomIn"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomOut')"
-			:shortcut="{ keys: ['-'] }"
-		>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
 			<N8nIconButton
 				type="tertiary"
 				size="large"
@@ -77,7 +84,7 @@ function onZoomToFit() {
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
 			v-if="isResetZoomVisible"
-			:label="$locale.baseText('nodeView.resetZoom')"
+			:label="i18n.baseText('nodeView.resetZoom')"
 			:shortcut="{ keys: ['0'] }"
 		>
 			<N8nIconButton
@@ -87,6 +94,14 @@ function onZoomToFit() {
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			v-if="props.showBugReportingButton"
+			:label="i18n.baseText('nodeView.reportBug')"
+		>
+			<a :href="getReportingURL()" target="_blank" @click="trackBugReport">
+				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
+			</a>
 		</KeyboardShortcutTooltip>
 	</Controls>
 </template>

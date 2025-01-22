@@ -61,3 +61,25 @@ Object.defineProperty(window, 'matchMedia', {
 		dispatchEvent: vi.fn(),
 	})),
 });
+
+class Worker {
+	onmessage: (message: string) => void;
+
+	url: string;
+
+	constructor(url: string) {
+		this.url = url;
+		this.onmessage = () => {};
+	}
+
+	postMessage(message: string) {
+		this.onmessage(message);
+	}
+
+	addEventListener() {}
+}
+
+Object.defineProperty(window, 'Worker', {
+	writable: true,
+	value: Worker,
+});

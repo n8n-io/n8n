@@ -7,6 +7,7 @@ import {
 import type { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';
+import { useI18n } from '@/composables/useI18n';
 
 export interface Props {
 	showIcon?: boolean;
@@ -15,6 +16,7 @@ export interface Props {
 }
 
 defineProps<Props>();
+const i18n = useI18n();
 </script>
 
 <template>
@@ -27,34 +29,34 @@ defineProps<Props>();
 		</div>
 		<div :class="$style.title">
 			<slot name="title" />
-			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
+			<p v-text="i18n.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
 			<div
 				v-if="rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW"
 				:class="$style.action"
 			>
-				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				{{ i18n.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
-					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+					{{ i18n.baseText('nodeCreator.noResults.httpRequest') }}
 				</n8n-link>
 
 				<n8n-link v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
-					{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+					{{ i18n.baseText('nodeCreator.noResults.webhook') }}
 				</n8n-link>
-				{{ $locale.baseText('nodeCreator.noResults.node') }}
+				{{ i18n.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
 		<div v-if="showRequest" :class="$style.request">
-			<p v-text="$locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
+			<p v-text="i18n.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
 				<n8n-link :to="REQUEST_NODE_FORM_URL">
-					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span
+					<span>{{ i18n.baseText('nodeCreator.noResults.requestTheNode') }}</span
 					>&nbsp;
 					<span>
 						<font-awesome-icon
 							:class="$style.external"
 							icon="external-link-alt"
-							:title="$locale.baseText('nodeCreator.noResults.requestTheNode')"
+							:title="i18n.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
 				</n8n-link>

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { appendAttributionOption } from '../../utils/descriptions';
 
 export const webhookPath: INodeProperties = {
@@ -28,7 +29,7 @@ export const formDescription: INodeProperties = {
 	default: '',
 	placeholder: "e.g. We'll get back to you soon",
 	description:
-		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
+		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.',
 	typeOptions: {
 		rows: 2,
 	},
@@ -185,19 +186,10 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Format Date As',
+					displayName: "The displayed date is formatted based on the locale of the user's browser",
 					name: 'formatDate',
-					type: 'string',
+					type: 'notice',
 					default: '',
-					description:
-						'How to format the date in the output data. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
-					placeholder: 'e.g. dd/mm/yyyy',
-					hint: 'Leave empty to use the default format',
-					displayOptions: {
-						show: {
-							fieldType: ['date'],
-						},
-					},
 				},
 				{
 					displayName: 'Required Field',

@@ -1,10 +1,10 @@
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
 import { UserService } from '@/services/user.service';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -110,7 +110,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 		let metrics = {
-			userId: owner!.id,
+			userId: owner?.id ?? '', // team projects have no owner
 			project: project.id,
 			workflowId,
 			nodeType: node.type,

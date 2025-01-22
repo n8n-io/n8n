@@ -1,23 +1,23 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	type INodeOutputConfiguration,
-	type SupplyData,
-	NodeConnectionType,
+import type { Tool } from '@langchain/core/tools';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	SupplyData,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
 
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
@@ -72,7 +72,7 @@ export const vmResolver = makeResolverFromLegacyOptions({
 });
 
 function getSandbox(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	code: string,
 	options?: { addItems?: boolean; itemIndex?: number },
 ) {
@@ -81,33 +81,22 @@ function getSandbox(
 	const workflowMode = this.getMode();
 
 	const context = getSandboxContext.call(this, itemIndex);
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.addInputData = this.addInputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.addOutputData = this.addOutputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getInputConnectionData = this.getInputConnectionData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getInputData = this.getInputData;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getNode = this.getNode;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getExecutionCancelSignal = this.getExecutionCancelSignal;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getNodeOutputs = this.getNodeOutputs;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.executeWorkflow = this.executeWorkflow;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	context.getWorkflowDataProxy = this.getWorkflowDataProxy;
-	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.addInputData = this.addInputData.bind(this);
+	context.addOutputData = this.addOutputData.bind(this);
+	context.getInputConnectionData = this.getInputConnectionData.bind(this);
+	context.getInputData = this.getInputData.bind(this);
+	context.getNode = this.getNode.bind(this);
+	context.getExecutionCancelSignal = this.getExecutionCancelSignal.bind(this);
+	context.getNodeOutputs = this.getNodeOutputs.bind(this);
+	context.executeWorkflow = this.executeWorkflow.bind(this);
+	context.getWorkflowDataProxy = this.getWorkflowDataProxy.bind(this);
 	context.logger = this.logger;
 
 	if (options?.addItems) {
 		context.items = context.$input.all();
 	}
-	// eslint-disable-next-line @typescript-eslint/unbound-method
 
-	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, code, this.helpers, {
 		resolver: vmResolver,
 	});
 
@@ -354,7 +343,7 @@ export class Code implements INodeType {
 		}
 	}
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const code = this.getNodeParameter('code', itemIndex) as { supplyData?: { code: string } };
 
 		if (!code.supplyData?.code) {
@@ -368,7 +357,7 @@ export class Code implements INodeType {
 		}
 
 		const sandbox = getSandbox.call(this, code.supplyData.code, { itemIndex });
-		const response = (await sandbox.runCode()) as Tool;
+		const response = await sandbox.runCode<Tool>();
 
 		return {
 			response: logWrapper(response, this),

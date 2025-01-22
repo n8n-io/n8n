@@ -1,10 +1,6 @@
-import type {
-	FieldType,
-	IDataObject,
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import {
 	ApplicationError,
 	NodeOperationError,
@@ -13,14 +9,18 @@ import {
 	jsonParse,
 	validateFieldType,
 } from 'n8n-workflow';
+import type {
+	FieldType,
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
-import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
 import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
+import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
@@ -51,7 +51,7 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 };
 
 export function composeReturnItem(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
@@ -220,7 +220,11 @@ export const validateEntry = (
 	};
 };
 
-export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {
+export function resolveRawData(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	rawData: string,
+	i: number,
+) {
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 

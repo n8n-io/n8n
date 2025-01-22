@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed, ref, useAttrs } from 'vue';
 
-import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
+import { type ResizeData } from 'n8n-design-system/types';
+
+import N8nResizeWrapper from '../N8nResizeWrapper/ResizeWrapper.vue';
 import { defaultStickyProps } from '../N8nSticky/constants';
 import N8nSticky from '../N8nSticky/Sticky.vue';
 import type { StickyProps } from '../N8nSticky/types';

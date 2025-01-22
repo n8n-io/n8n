@@ -1,7 +1,18 @@
-import type { ExecutionStatus, IDataObject, INode, IPinData, IRunData } from 'n8n-workflow';
-import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
+import { SEND_AND_WAIT_OPERATION, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import type {
+	ITaskData,
+	ExecutionStatus,
+	IDataObject,
+	INode,
+	IPinData,
+	IRunData,
+} from 'n8n-workflow';
+import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '../constants';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/root.store';
+import { i18n } from '@/plugins/i18n';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -72,24 +83,22 @@ export const executionFilterToQueryFilter = (
 	return queryFilter;
 };
 
-export const openPopUpWindow = (
-	url: string,
-	options?: { width?: number; height?: number; alwaysInNewTab?: boolean },
-) => {
-	const windowWidth = window.innerWidth;
-	const smallScreen = windowWidth <= 800;
-	if (options?.alwaysInNewTab || smallScreen) {
-		window.open(url, '_blank');
-	} else {
-		const height = options?.width || 700;
-		const width = options?.height || window.innerHeight - 50;
+let formPopupWindow: boolean = false;
+
+export const openFormPopupWindow = (url: string) => {
+	if (!formPopupWindow) {
+		const height = 700;
+		const width = window.innerHeight - 50;
 		const left = (window.innerWidth - height) / 2;
 		const top = 50;
 		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-
-		window.open(url, '_blank', features);
+		const windowName = `form-waiting-since-${Date.now()}`;
+		window.open(url, windowName, features);
+		formPopupWindow = true;
 	}
 };
+
+export const clearPopupWindowState = () => (formPopupWindow = false);
 
 export function displayForm({
 	nodes,
@@ -97,57 +106,100 @@ export function displayForm({
 	pinData,
 	destinationNode,
 	directParentNodes,
-	formWaitingUrl,
-	executionId,
 	source,
 	getTestUrl,
-	shouldShowForm,
 }: {
 	nodes: INode[];
 	runData: IRunData | undefined;
 	pinData: IPinData;
 	destinationNode: string | undefined;
 	directParentNodes: string[];
-	formWaitingUrl: string;
-	executionId: string | undefined;
 	source: string | undefined;
 	getTestUrl: (node: INode) => string;
-	shouldShowForm: (node: INode) => boolean;
 }) {
 	for (const node of nodes) {
 		const hasNodeRun = runData && runData?.hasOwnProperty(node.name);
 
 		if (hasNodeRun || pinData[node.name]) continue;
 
-		if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
-			continue;
-		}
+		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
 
-		if (
-			destinationNode &&
-			destinationNode !== node.name &&
-			!directParentNodes.includes(node.name)
-		) {
+		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
 			continue;
-		}
 
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
-
-			if (node.type === FORM_TRIGGER_NODE_TYPE) {
-				testUrl = getTestUrl(node);
-			}
-
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form' && executionId) {
-				if (!shouldShowForm(node)) continue;
-
-				const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-				const suffix =
-					webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-				testUrl = `${formWaitingUrl}/${executionId}${suffix}`;
-			}
-
-			if (testUrl && source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
+			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
+			if (testUrl && source !== 'RunData.ManualChatMessage') openFormPopupWindow(testUrl);
 		}
 	}
+}
+
+export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
+	if (!node) return '';
+	try {
+		const resume = node?.parameters?.resume;
+
+		if (resume) {
+			if (!['webhook', 'form'].includes(resume as string)) {
+				return i18n.baseText('ndv.output.waitNodeWaiting');
+			}
+
+			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
+			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+			let message = '';
+			let resumeUrl = '';
+
+			if (resume === 'form') {
+				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			}
+
+			if (resume === 'webhook') {
+				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+			}
+
+			if (message && resumeUrl) {
+				return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+			}
+		}
+
+		if (node?.type === FORM_NODE_TYPE) {
+			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
+			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+		}
+
+		if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+			return i18n.baseText('ndv.output.sendAndWaitWaitingApproval');
+		}
+	} catch (error) {
+		// do not throw error if could not compose tooltip
+	}
+
+	return '';
+};
+
+/**
+ * Check whether task data contains a trimmed item.
+ *
+ * In manual executions in scaling mode, the payload in push messages may be
+ * arbitrarily large. To protect Redis as it relays run data from workers to
+ * main process, we set a limit on payload size. If the payload is oversize,
+ * we replace it with a placeholder, which is later overridden on execution
+ * finish, when the client receives the full data.
+ */
+export function hasTrimmedItem(taskData: ITaskData[]) {
+	return taskData[0]?.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+}
+
+/**
+ * Check whether run data contains any trimmed items.
+ *
+ * See {@link hasTrimmedItem} for more details.
+ */
+export function hasTrimmedData(runData: IRunData) {
+	return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
 }

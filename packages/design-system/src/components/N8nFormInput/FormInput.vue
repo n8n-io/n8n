@@ -49,7 +49,8 @@ export interface Props {
 	inactiveLabel?: string;
 	inactiveColor?: string;
 	teleported?: boolean;
-	tagSize?: 'small' | 'medium';
+	tagSize?: 'small' | 'medium' | 'large';
+	autosize?: boolean | { minRows: number; maxRows: number };
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -59,7 +60,8 @@ const props = withDefaults(defineProps<Props>(), {
 	showRequiredAsterisk: true,
 	validateOnBlur: true,
 	teleported: true,
-	tagSize: 'small',
+	tagSize: 'large',
+	autosize: false,
 });
 
 const emit = defineEmits<{
@@ -250,6 +252,7 @@ defineExpose({ inputRef });
 				:autocomplete="autocomplete"
 				:disabled="disabled"
 				:size="tagSize"
+				:autosize
 				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"

@@ -17,14 +17,14 @@ describe('Subscriber', () => {
 
 	describe('constructor', () => {
 		it('should init Redis client in scaling mode', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock(), mock());
 
 			expect(subscriber.getClient()).toEqual(client);
 		});
 
 		it('should not init Redis client in regular mode', () => {
 			config.set('executions.mode', 'regular');
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock(), mock());
 
 			expect(subscriber.getClient()).toBeUndefined();
 		});
@@ -32,7 +32,7 @@ describe('Subscriber', () => {
 
 	describe('shutdown', () => {
 		it('should disconnect Redis client', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock(), mock());
 			subscriber.shutdown();
 			expect(client.disconnect).toHaveBeenCalled();
 		});
@@ -40,24 +40,11 @@ describe('Subscriber', () => {
 
 	describe('subscribe', () => {
 		it('should subscribe to pubsub channel', async () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
+			const subscriber = new Subscriber(mock(), redisClientService, mock(), mock());
 
 			await subscriber.subscribe('n8n.commands');
 
 			expect(client.subscribe).toHaveBeenCalledWith('n8n.commands', expect.any(Function));
-		});
-	});
-
-	describe('setMessageHandler', () => {
-		it('should set message handler function for channel', () => {
-			const subscriber = new Subscriber(mock(), redisClientService);
-			const channel = 'n8n.commands';
-			const handlerFn = jest.fn();
-
-			subscriber.setMessageHandler(channel, handlerFn);
-
-			// @ts-expect-error Private field
-			expect(subscriber.handlers).toEqual(new Map([[channel, handlerFn]]));
 		});
 	});
 });

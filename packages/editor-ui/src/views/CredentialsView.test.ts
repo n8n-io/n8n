@@ -1,84 +1,125 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import type { Scope } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { ProjectSharingData } from '@/types/projects.types';
 import CredentialsView from '@/views/CredentialsView.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { mockedStore } from '@/__tests__/utils';
+import { waitFor, within, fireEvent } from '@testing-library/vue';
+import { CREDENTIAL_SELECT_MODAL_KEY, STORES, VIEWS } from '@/constants';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { Project } from '@/types/projects.types';
+import { createRouter, createWebHistory } from 'vue-router';
+import { flushPromises } from '@vue/test-utils';
+import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
 
-vi.mock('@/components/layouts/ResourcesListLayout.vue', async (importOriginal) => {
-	const original = await importOriginal<typeof ResourcesListLayout>();
-	return {
-		default: {
-			...original.default,
-			render: vi.fn(),
-			setup: vi.fn(),
+const router = createRouter({
+	history: createWebHistory(),
+	routes: [
+		{
+			path: '/:credentialId?',
+			name: VIEWS.CREDENTIALS,
+			component: { template: '<div></div>' },
 		},
-	};
+	],
 });
 
-const renderComponent = createComponentRenderer(CredentialsView);
+const initialState = {
+	[STORES.SETTINGS]: {
+		settings: { enterprise: { variables: true, projects: { team: { limit: -1 } } } },
+	},
+};
+
+const renderComponent = createComponentRenderer(CredentialsView, {
+	global: { stubs: { ProjectHeader: true }, plugins: [router] },
+});
 
 describe('CredentialsView', () => {
-	describe('with fake stores', () => {
-		let credentialsStore: ReturnType<typeof useCredentialsStore>;
+	beforeEach(async () => {
+		createTestingPinia({ initialState });
+		await router.push('/');
+		await router.isReady();
+	});
 
-		beforeEach(() => {
-			createTestingPinia();
-			credentialsStore = useCredentialsStore();
-		});
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
 
-		afterAll(() => {
-			vi.resetAllMocks();
-		});
-		it('should have ResourcesListLayout render with necessary keys from credential object', () => {
-			const homeProject: ProjectSharingData = {
+	it('should render credentials', () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.allCredentials = [
+			{
 				id: '1',
 				name: 'test',
-				type: 'personal',
+				type: 'test',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
-			};
-			const scopes: Scope[] = ['credential:move', 'credential:delete'];
-			const sharedWithProjects: ProjectSharingData[] = [
-				{
-					id: '2',
-					name: 'test 2',
-					type: 'personal',
-					createdAt: '2021-05-05T00:00:00Z',
-					updatedAt: '2021-05-05T00:00:00Z',
-				},
-			];
-			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue([
-				{
-					id: '1',
-					name: 'test',
-					type: 'test',
-					createdAt: '2021-05-05T00:00:00Z',
-					updatedAt: '2021-05-05T00:00:00Z',
-					homeProject,
-					scopes,
-					sharedWithProjects,
-				},
-			]);
-			renderComponent();
-			expect(ResourcesListLayout.setup).toHaveBeenCalledWith(
-				expect.objectContaining({
-					resources: [
-						expect.objectContaining({
-							type: 'test',
-							homeProject,
-							scopes,
-							sharedWithProjects,
-						}),
-					],
-				}),
-				null,
-			);
+				isManaged: false,
+			},
+		];
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isProjectHome = false;
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('resources-list-item')).toBeVisible();
+	});
+
+	it('should disable cards based on permissions', () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.allCredentials = [
+			{
+				id: '1',
+				name: 'test',
+				type: 'test',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				scopes: ['credential:update'],
+				isManaged: false,
+			},
+			{
+				id: '2',
+				name: 'test2',
+				type: 'test2',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				isManaged: false,
+			},
+		];
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isProjectHome = false;
+		const { getAllByTestId } = renderComponent();
+
+		const items = getAllByTestId('resources-list-item');
+		expect(items.length).toBe(2);
+
+		expect(within(items[1]).getByText('Read only')).toBeInTheDocument();
+	});
+
+	describe('create credential', () => {
+		it('should show modal based on route param', async () => {
+			const uiStore = mockedStore(useUIStore);
+			renderComponent({ props: { credentialId: 'create' } });
+			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
+		});
+	});
+
+	describe('open existing credential', () => {
+		it('should show modal based on route param', async () => {
+			const uiStore = mockedStore(useUIStore);
+			renderComponent({ props: { credentialId: 'credential-id' } });
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('credential-id');
 		});
 
-		it('should disable cards based on permissions', () => {
-			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue([
+		it('should update credentialId route param when opened', async () => {
+			const replaceSpy = vi.spyOn(router, 'replace');
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isProjectHome = false;
+			projectsStore.currentProject = { scopes: ['credential:read'] } as Project;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
 				{
 					id: '1',
 					name: 'test',
@@ -86,30 +127,157 @@ describe('CredentialsView', () => {
 					createdAt: '2021-05-05T00:00:00Z',
 					updatedAt: '2021-05-05T00:00:00Z',
 					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+			const { getByTestId } = renderComponent();
+
+			/**
+			 * userEvent DOES NOT work here
+			 */
+			await fireEvent.click(getByTestId('resources-list-item'));
+			await waitFor(() =>
+				expect(replaceSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ params: { credentialId: '1' } }),
+				),
+			);
+		});
+	});
+
+	describe('filters', () => {
+		it('should filter by type', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { type: ['test'] } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = [
+				{
+					name: 'test',
+					displayName: 'test',
+					properties: [],
+				},
+			];
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'test',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '1',
+					name: 'test',
+					type: 'another',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+			const { getAllByTestId } = renderComponent();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+		});
+
+		it('should filter by setupNeeded', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'test',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: {} as unknown as string,
+				},
+				{
+					id: '1',
+					name: 'test',
+					type: 'another',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any' } as unknown as string,
+				},
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+
+		it('should filter by setupNeeded when object keys are empty', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'credential needs setup',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: '' } as unknown as string,
 				},
 				{
 					id: '2',
-					name: 'test2',
-					type: 'test2',
+					name: 'random',
+					type: 'test',
 					createdAt: '2021-05-05T00:00:00Z',
 					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any value' } as unknown as string,
 				},
-			]);
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
-			renderComponent();
-			expect(ResourcesListLayout.setup).toHaveBeenCalledWith(
-				expect.objectContaining({
-					resources: [
-						expect.objectContaining({
-							readOnly: false,
-						}),
-						expect.objectContaining({
-							readOnly: true,
-						}),
-					],
-				}),
-				null,
-			);
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+
+		it('should filter by setupNeeded when object keys are "CREDENTIAL_EMPTY_VALUE"', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'credential needs setup',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: CREDENTIAL_EMPTY_VALUE } as unknown as string,
+				},
+				{
+					id: '2',
+					name: 'random',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any value' } as unknown as string,
+				},
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
+
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
 	});
 });

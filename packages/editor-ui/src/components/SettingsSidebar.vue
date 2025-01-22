@@ -2,9 +2,7 @@
 import { computed } from 'vue';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import type { IFakeDoor } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
@@ -25,23 +23,6 @@ const { canUserAccessRouteByName } = useUserHelpers(router, route);
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-
-const settingsFakeDoorFeatures = computed<IFakeDoor[]>(() =>
-	Object.keys(uiStore.fakeDoorsByLocation)
-		.filter((location: string) => location.includes('settings'))
-		.map((location) => uiStore.fakeDoorsByLocation[location]),
-);
-
-const handleSelect = (key: string) => {
-	switch (key) {
-		case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
-		case 'logging':
-			router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
-			break;
-		default:
-			break;
-	}
-};
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
@@ -122,19 +103,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 	];
 
-	for (const item of settingsFakeDoorFeatures.value) {
-		if (item.uiLocations.includes('settings')) {
-			menuItems.push({
-				id: item.id,
-				icon: item.icon ?? 'question',
-				label: i18n.baseText(item.featureName as BaseTextKey),
-				position: 'top',
-				available: true,
-				activateOnRoutePaths: [`/settings/coming-soon/${item.id}`],
-			});
-		}
-	}
-
 	menuItems.push({
 		id: 'settings-log-streaming',
 		icon: 'sign-in-alt',
@@ -159,7 +127,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
+		<n8n-menu :items="sidebarMenuItems">
 			<template #header>
 				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
 					<i class="mr-xs">

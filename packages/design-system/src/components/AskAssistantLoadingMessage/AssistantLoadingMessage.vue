@@ -29,11 +29,11 @@ withDefaults(
 .container {
 	display: flex;
 	gap: var(--spacing-3xs);
-	align-items: flex-start;
 	user-select: none;
 }
 
 .avatar {
+	height: var(--spacing-s);
 	animation: pulse 1.5s infinite;
 	position: relative;
 }

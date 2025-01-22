@@ -26,6 +26,7 @@ const formConfig = computed(() => {
 				validationRules: [{ name: 'VALID_EMAIL' }],
 				autocomplete: 'email',
 				capitalize: true,
+				focusInitially: true,
 			},
 		},
 	];

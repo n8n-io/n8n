@@ -1,39 +1,16 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-
+<script setup lang="ts">
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
-import { mapStores } from 'pinia';
 import { useVersionsStore } from '@/stores/versions.store';
-import type { IVersion } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-export default defineComponent({
-	name: 'UpdatesPanel',
-	components: {
-		ModalDrawer,
-		VersionCard,
-		TimeAgo,
-	},
-	computed: {
-		...mapStores(useVersionsStore),
-		nextVersions(): IVersion[] {
-			return this.versionsStore.nextVersions;
-		},
-		currentVersion(): IVersion | undefined {
-			return this.versionsStore.currentVersion;
-		},
-		infoUrl(): string {
-			return this.versionsStore.infoUrl;
-		},
-	},
-	data() {
-		return {
-			VERSIONS_MODAL_KEY,
-		};
-	},
-});
+const versionsStore = useVersionsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
+
+const i18n = useI18n();
 </script>
 
 <template>
@@ -45,43 +22,55 @@ export default defineComponent({
 	>
 		<template #header>
 			<span :class="$style.title">
-				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
+				{{ i18n.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
 		<template #content>
 			<section :class="$style['description']">
-				<p v-if="currentVersion">
+				<p v-if="versionsStore.currentVersion">
 					{{
-						$locale.baseText('updatesPanel.youReOnVersion', {
-							interpolate: { currentVersionName: currentVersion.name },
+						i18n.baseText('updatesPanel.youReOnVersion', {
+							interpolate: { currentVersionName: versionsStore.currentVersion.name },
 						})
 					}}
 					<strong>
-						<TimeAgo :date="currentVersion.createdAt" />
+						<TimeAgo :date="versionsStore.currentVersion.createdAt" />
 					</strong>
-					{{ $locale.baseText('updatesPanel.andIs') }}
+					{{ i18n.baseText('updatesPanel.andIs') }}
 					<strong>
 						{{
-							$locale.baseText('updatesPanel.version', {
+							i18n.baseText('updatesPanel.version', {
 								interpolate: {
-									numberOfVersions: nextVersions.length,
-									howManySuffix: nextVersions.length > 1 ? 's' : '',
+									numberOfVersions: versionsStore.nextVersions.length,
+									howManySuffix: versionsStore.nextVersions.length > 1 ? 's' : '',
 								},
 							})
 						}}
 					</strong>
-					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
+					{{ i18n.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
+				<n8n-button
+					v-if="versionsStore.infoUrl"
+					:text="true"
+					type="primary"
+					size="large"
+					:class="$style['link']"
+					:bold="true"
+					@click="pageRedirectionHelper.goToVersions()"
+				>
 					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
-						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
-				</n8n-link>
+				</n8n-button>
 			</section>
 			<section :class="$style.versions">
-				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
+				<div
+					v-for="version in versionsStore.nextVersions"
+					:key="version.name"
+					:class="$style['versions-card']"
+				>
 					<VersionCard :version="version" />
 				</div>
 			</section>
@@ -113,6 +102,15 @@ export default defineComponent({
 
 	div {
 		padding-top: 20px;
+	}
+
+	.link {
+		padding-left: 0px;
+	}
+
+	.link:hover {
+		color: var(--prim-color-primary);
+		text-decoration: none;
 	}
 }
 

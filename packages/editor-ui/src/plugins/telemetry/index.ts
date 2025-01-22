@@ -3,8 +3,8 @@ import type { ITelemetrySettings } from '@n8n/api-types';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
-import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
-import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
+import type { IUpdateInformation } from '@/Interface';
+import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
@@ -25,15 +25,6 @@ export class Telemetry {
 	private get rudderStack(): RudderStack | undefined {
 		return window.rudderanalytics;
 	}
-
-	private userNodesPanelSession: IUserNodesPanelSession = {
-		pushRef: '',
-		data: {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'Regular',
-		},
-	};
 
 	constructor() {
 		this.pageEventQueue = [];
@@ -94,6 +85,12 @@ export class Telemetry {
 			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
+				{
+					context: {
+						// provide a fake IP address to instruct RudderStack to not use the user's IP address
+						ip: '0.0.0.0',
+					},
+				},
 			);
 		} else {
 			this.rudderStack?.reset();
@@ -112,7 +109,12 @@ export class Telemetry {
 			version_cli: useRootStore().versionCli,
 		};
 
-		this.rudderStack.track(event, updatedProperties);
+		this.rudderStack.track(event, updatedProperties, {
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
+		});
 
 		if (options.withPostHog) {
 			usePostHog().capture(event, updatedProperties);
@@ -136,7 +138,12 @@ export class Telemetry {
 			properties.theme = useUIStore().appliedTheme;
 
 			const category = route.meta?.telemetry?.pageCategory || 'Editor';
-			this.rudderStack.page(category, pageName, properties);
+			this.rudderStack.page(category, pageName, properties, {
+				context: {
+					// provide a fake IP address to instruct RudderStack to not use the user's IP address
+					ip: '0.0.0.0',
+				},
+			});
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -184,78 +191,6 @@ export class Telemetry {
 		}
 	}
 
-	trackNodesPanel(event: string, properties: IDataObject = {}) {
-		if (this.rudderStack) {
-			properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-			switch (event) {
-				case 'nodeView.createNodeActiveChanged':
-					if (properties.createNodeActive !== false) {
-						this.resetNodesPanelSession();
-						properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-						this.track('User opened nodes panel', properties);
-					}
-					break;
-				case 'nodeCreateList.destroyed':
-					if (
-						this.userNodesPanelSession.data.nodeFilter.length > 0 &&
-						this.userNodesPanelSession.data.nodeFilter !== ''
-					) {
-						this.track('User entered nodes panel search term', this.generateNodesPanelEvent());
-					}
-					break;
-				case 'nodeCreateList.nodeFilterChanged':
-					if (
-						(properties.newValue as string).length === 0 &&
-						this.userNodesPanelSession.data.nodeFilter.length > 0
-					) {
-						this.track('User entered nodes panel search term', this.generateNodesPanelEvent());
-					}
-
-					if (
-						(properties.newValue as string).length > ((properties.oldValue as string) || '').length
-					) {
-						this.userNodesPanelSession.data.nodeFilter = properties.newValue as string;
-						this.userNodesPanelSession.data.resultsNodes = (
-							(properties.filteredNodes || []) as INodeCreateElement[]
-						).map((node: INodeCreateElement) => node.key);
-					}
-					break;
-				case 'nodeCreateList.onCategoryExpanded':
-					properties.is_subcategory = false;
-					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-					this.track('User viewed node category', properties);
-					break;
-				case 'nodeCreateList.onViewActions':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-					this.track('User viewed node actions', properties);
-					break;
-				case 'nodeCreateList.onActionsCustmAPIClicked':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-					this.track('User clicked custom API from node actions', properties);
-					break;
-				case 'nodeCreateList.addAction':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-					this.track('User added action', properties);
-					break;
-				case 'nodeCreateList.onSubcategorySelected':
-					properties.category_name = properties.subcategory;
-					properties.is_subcategory = true;
-					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
-					delete properties.selected;
-					this.track('User viewed node category', properties);
-					break;
-				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties, { withPostHog: true });
-					break;
-				case 'nodeView.addSticky':
-					this.track('User inserted workflow note', properties);
-					break;
-				default:
-					break;
-			}
-		}
-	}
-
 	// We currently do not support tracking directly from within node implementation
 	// so we are using this method as centralized way to track node parameters changes
 	trackNodeParametersValuesChange(nodeType: string, change: IUpdateInformation) {
@@ -277,24 +212,6 @@ export class Telemetry {
 				);
 			}
 		}
-	}
-
-	private resetNodesPanelSession() {
-		this.userNodesPanelSession.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
-		this.userNodesPanelSession.data = {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'All',
-		};
-	}
-
-	private generateNodesPanelEvent() {
-		return {
-			search_string: this.userNodesPanelSession.data.nodeFilter,
-			results_count: this.userNodesPanelSession.data.resultsNodes.length,
-			filter_mode: this.userNodesPanelSession.data.filterMode,
-			nodes_panel_session_id: this.userNodesPanelSession.pushRef,
-		};
 	}
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {

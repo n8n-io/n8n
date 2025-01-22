@@ -74,11 +74,12 @@ export declare namespace WorkflowRequest {
 			active: boolean;
 			name?: string;
 			projectId?: string;
+			excludePinnedData?: boolean;
 		}
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
@@ -140,11 +141,7 @@ export declare namespace CredentialRequest {
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
-	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		{ destinationProjectId: string }
-	>;
+	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';
@@ -174,16 +171,6 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
-}
-
-export class SourceControlPull {
-	force?: boolean;
-
-	variables?: { [key: string]: string };
-}
-
-export declare namespace PublicSourceControlRequest {
-	type Pull = AuthenticatedRequest<{}, {}, SourceControlPull, {}>;
 }
 
 // ----------------------------------

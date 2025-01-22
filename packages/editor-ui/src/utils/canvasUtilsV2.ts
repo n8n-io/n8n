@@ -3,7 +3,6 @@ import type { INodeUi } from '@/Interface';
 import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
-import { v4 as uuid } from 'uuid';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionType } from 'n8n-workflow';
 
@@ -21,9 +20,10 @@ export function mapLegacyConnectionsToCanvasConnections(
 
 		fromConnectionTypes.forEach((fromConnectionType) => {
 			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
-			fromPorts.forEach((toPorts, fromIndex) => {
-				toPorts.forEach((toPort) => {
-					const toId = nodes.find((node) => node.name === toPort.node)?.id ?? '';
+			fromPorts?.forEach((toPorts, fromIndex) => {
+				toPorts?.forEach((toPort) => {
+					const toNodeName = toPort.node;
+					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
 					const toConnectionType = toPort.type as NodeConnectionType;
 					const toIndex = toPort.index;
 
@@ -54,12 +54,13 @@ export function mapLegacyConnectionsToCanvasConnections(
 							sourceHandle,
 							targetHandle,
 							data: {
-								fromNodeName,
 								source: {
+									node: fromNodeName,
 									index: fromIndex,
 									type: fromConnectionType,
 								},
 								target: {
+									node: toNodeName,
 									index: toIndex,
 									type: toConnectionType,
 								},
@@ -195,21 +196,6 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	});
 }
 
-export function getUniqueNodeName(name: string, existingNames: Set<string>): string {
-	if (!existingNames.has(name)) {
-		return name;
-	}
-
-	for (let i = 1; i < 100; i++) {
-		const newName = `${name} ${i}`;
-		if (!existingNames.has(newName)) {
-			return newName;
-		}
-	}
-
-	return `${name} ${uuid()}`;
-}
-
 export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 	return !(
 		// node1 is completely to the left of node2
@@ -223,4 +209,24 @@ export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 			node2.y + node2.height <= node1.y
 		)
 	);
+}
+
+export function insertSpacersBetweenEndpoints<T>(
+	endpoints: T[],
+	requiredEndpointsCount = 0,
+	minEndpointsCount = 4,
+) {
+	const endpointsWithSpacers: Array<T | null> = [...endpoints];
+	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
+	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
+
+	// Insert `null` in between required non-main inputs and non-required non-main inputs
+	// to separate them visually if there are less than 4 inputs in total
+	if (endpointsWithSpacers.length < minEndpointsCount) {
+		for (let i = 0; i < spacerCount; i++) {
+			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
+		}
+	}
+
+	return endpointsWithSpacers;
 }

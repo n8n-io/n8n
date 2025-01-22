@@ -22,6 +22,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	credentials: [
 		{
 			name: 'smtp',

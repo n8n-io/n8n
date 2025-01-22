@@ -1,3 +1,5 @@
+import type { Tool } from '@langchain/core/tools';
+import _omit from 'lodash/omit';
 import type {
 	INodeProperties,
 	IExecuteFunctions,
@@ -5,14 +7,15 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
-import type { Tool } from '@langchain/core/tools';
-import _omit from 'lodash/omit';
-import { apiRequest } from '../../transport';
+
+import { getConnectedTools } from '@utils/helpers';
+
+import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
-import { getConnectedTools } from '../../../../../utils/helpers';
-import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
+
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
@@ -278,7 +281,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			for (const tool of externalTools ?? []) {
 				if (tool.name === functionName) {
 					const parsedArgs: { input: string } = jsonParse(functionArgs);
-					const functionInput = parsedArgs.input ?? functionArgs;
+					const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
 					functionResponse = await tool.invoke(functionInput);
 				}
 			}

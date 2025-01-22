@@ -38,6 +38,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Cache build artifacts
+        uses: actions/cache/save@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-release:build
+
       - name: Dry-run publishing
         run: pnpm publish -r --no-git-checks --dry-run
 
@@ -67,26 +73,28 @@ jobs:
           fetch-depth: 0
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.0.0
+        uses: docker/setup-qemu-action@v3.3.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.0.0
+        uses: docker/setup-buildx-action@v3.8.0
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.0.0
+        uses: docker/login-action@v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3.0.0
+        uses: docker/login-action@v3.3.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build
-        uses: docker/build-push-action@v5.1.0
+        uses: docker/build-push-action@v6.11.0
+        env:
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: ./docker/images/n8n
           build-args: |
@@ -118,6 +126,40 @@ jobs:
           prerelease: true
           makeLatest: false
           body: ${{github.event.pull_request.body}}
+
+  create-sentry-release:
+    name: Create a Sentry Release
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 5
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-release:build
+
+      - name: Create a frontend release
+        uses: getsentry/action-release@v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/editor-ui/dist
+
+      - name: Create a backend release
+        uses: getsentry/action-release@v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
   trigger-release-note:
     name: Trigger a release note

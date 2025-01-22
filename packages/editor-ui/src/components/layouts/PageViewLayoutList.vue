@@ -1,14 +1,9 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+interface Props {
+	overflow?: boolean;
+}
 
-export default defineComponent({
-	props: {
-		overflow: {
-			type: Boolean,
-			default: false,
-		},
-	},
-});
+defineProps<Props>();
 </script>
 
 <template>

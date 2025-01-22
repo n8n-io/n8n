@@ -242,6 +242,9 @@ export const hoverTooltipSource = (view: EditorView, pos: number) => {
 	const state = view.state.field(cursorInfoBoxTooltip, false);
 	const cursorTooltipOpen = !!state?.tooltip;
 
+	// Don't show hover tooltips when autocomplete is active
+	if (completionStatus(view.state) === 'active') return null;
+
 	const jsNodeResult = getJsNodeAtPosition(view.state, pos);
 
 	if (!jsNodeResult) {

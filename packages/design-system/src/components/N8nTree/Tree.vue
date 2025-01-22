@@ -1,19 +1,16 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="Value extends unknown = unknown">
 import { computed, useCssModule } from 'vue';
 
 interface TreeProps {
-	value?: Record<string, unknown>;
+	value?: Record<string, Value>;
 	path?: Array<string | number>;
 	depth?: number;
 	nodeClass?: string;
 }
 
 defineSlots<{
-	[key: string]: (props: {
-		label?: string;
-		path?: Array<string | number>;
-		value?: unknown;
-	}) => never;
+	label(props: { label: string; path: Array<string | number> }): never;
+	value(props: { value: Value }): never;
 }>();
 
 defineOptions({ name: 'N8nTree' });
@@ -29,11 +26,11 @@ const classes = computed((): Record<string, boolean> => {
 	return { [props.nodeClass]: !!props.nodeClass, [$style.indent]: props.depth > 0 };
 });
 
-const isObject = (data: unknown): data is Record<string, unknown> => {
+const isObject = (data: unknown): data is Record<string, Value> => {
 	return typeof data === 'object' && data !== null;
 };
 
-const isSimple = (data: unknown): boolean => {
+const isSimple = (data: Value): boolean => {
 	if (data === null || data === undefined) {
 		return true;
 	}
@@ -70,16 +67,21 @@ const getPath = (key: string): Array<string | number> => {
 			<div v-else>
 				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
 				<span v-else>{{ label }}</span>
-				<n8n-tree
+				<N8nTree
+					v-if="isObject(value[label])"
 					:path="getPath(label)"
 					:depth="depth + 1"
-					:value="value[label] as Record<string, unknown>"
+					:value="value[label]"
 					:node-class="nodeClass"
 				>
-					<template v-for="(_, name) in $slots" #[name]="data">
-						<slot :name="name" v-bind="data"></slot>
+					<template v-if="$slots.label" #label="data">
+						<slot name="label" v-bind="data" />
 					</template>
-				</n8n-tree>
+
+					<template v-if="$slots.value" #value="data">
+						<slot name="value" v-bind="data" />
+					</template>
+				</N8nTree>
 			</div>
 		</div>
 	</div>

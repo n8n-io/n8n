@@ -9,7 +9,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
 
-const waitForWebhook = 500;
+export const waitForWebhook = 500;
 
 interface SimpleWebhookCallOptions {
 	method: string;
@@ -21,7 +21,7 @@ interface SimpleWebhookCallOptions {
 	authentication?: string;
 }
 
-const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
+export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	const {
 		authentication,
 		method,
@@ -65,15 +65,23 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		getVisibleSelect().find('.option-headline').contains(responseData).click();
 	}
 
+	const callEndpoint = (cb: (response: Cypress.Response<unknown>) => void) => {
+		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(cb);
+	};
+
 	if (executeNow) {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
+		callEndpoint((response) => {
 			expect(response.status).to.eq(200);
 			ndv.getters.outputPanel().contains('headers');
 		});
 	}
+
+	return {
+		callEndpoint,
+	};
 };
 
 describe('Webhook Trigger node', () => {
@@ -242,7 +250,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 
@@ -285,7 +293,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 

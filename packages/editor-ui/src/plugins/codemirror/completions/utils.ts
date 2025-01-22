@@ -112,23 +112,19 @@ export function expressionWithFirstItem(syntaxTree: Tree, expression: string): s
 }
 
 export function longestCommonPrefix(...strings: string[]) {
-	if (strings.length < 2) {
-		throw new Error('Expected at least two strings');
-	}
+	if (strings.length < 2) return '';
 
-	return strings.reduce((acc, next) => {
-		let i = 0;
-
-		while (acc[i] && next[i] && acc[i] === next[i]) {
-			i++;
+	return strings.reduce((prefix, str) => {
+		while (!str.startsWith(prefix)) {
+			prefix = prefix.slice(0, -1);
+			if (prefix === '') return '';
 		}
-
-		return acc.slice(0, i);
-	}, '');
+		return prefix;
+	}, strings[0]);
 }
 
 export const prefixMatch = (first: string, second: string) =>
-	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase()) && first !== second;
+	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase());
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed
@@ -208,15 +204,29 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNode = useNDVStore().activeNode;
 
-	if (!activeNodeName) return [];
+	if (!activeNode) return [];
 
-	return useWorkflowHelpers({ router: useRouter() })
-		.getCurrentWorkflow()
-		.getParentNodesByDepth(activeNodeName)
+	const activeNodeName = activeNode.name;
+
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+
+	// This is a tool node, look for the nearest node with main connections
+	if (nonMainChildren.length > 0) {
+		return nonMainChildren.map(getPreviousNodes).flat();
+	}
+
+	return getPreviousNodes(activeNodeName);
+}
+
+export function getPreviousNodes(nodeName: string) {
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	return workflow
+		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
-		.filter((name) => name !== activeNodeName);
+		.filter((name) => name !== nodeName);
 }
 
 /**

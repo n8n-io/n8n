@@ -10,20 +10,16 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../../utils/descriptions';
+import { channelFields, channelOperations } from './ChannelDescription';
+import { channelMessageFields, channelMessageOperations } from './ChannelMessageDescription';
+import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	prepareMessage,
 } from './GenericFunctions';
-
-import { channelFields, channelOperations } from './ChannelDescription';
-
-import { channelMessageFields, channelMessageOperations } from './ChannelMessageDescription';
-
-import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
+import { oldVersionNotice } from '../../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Teams',

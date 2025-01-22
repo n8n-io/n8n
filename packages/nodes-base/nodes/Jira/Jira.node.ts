@@ -1,6 +1,4 @@
-import type { Readable } from 'stream';
 import mergeWith from 'lodash/mergeWith';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,6 +11,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import {
 	filterSortSearchListItems,
@@ -22,13 +21,9 @@ import {
 	simplifyIssueOutput,
 	validateJSON,
 } from './GenericFunctions';
-
 import { issueAttachmentFields, issueAttachmentOperations } from './IssueAttachmentDescription';
-
 import { issueCommentFields, issueCommentOperations } from './IssueCommentDescription';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import type {
 	IFields,
 	IIssue,
@@ -36,7 +31,6 @@ import type {
 	INotify,
 	NotificationRecipientsRestrictions,
 } from './IssueInterface';
-
 import { userFields, userOperations } from './UserDescription';
 
 export class Jira implements INodeType {
@@ -53,6 +47,7 @@ export class Jira implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'jiraSoftwareCloudApi',
@@ -294,8 +289,12 @@ export class Jira implements INodeType {
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
 				const operation = this.getCurrentNodeParameter('operation') as string;
+				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
 				let projectId: string;
 				let issueTypeId: string;
+				let issueId: string = ''; // /editmeta endpoint requires issueId
+
 				if (operation === 'create') {
 					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
 					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
@@ -310,6 +309,26 @@ export class Jira implements INodeType {
 					);
 					projectId = res.fields.project.id;
 					issueTypeId = res.fields.issuetype.id;
+					issueId = res.id;
+				}
+
+				if (jiraVersion === 'server' && operation === 'update' && issueId) {
+					// https://developer.atlassian.com/server/jira/platform/jira-rest-api-example-edit-issues-6291632/?utm_source=chatgpt.com
+					const { fields } = await jiraSoftwareCloudApiRequest.call(
+						this,
+						`/api/2/issue/${issueId}/editmeta`,
+						'GET',
+					);
+
+					for (const field of Object.keys(fields || {})) {
+						if (field.startsWith('customfield_')) {
+							returnData.push({
+								name: fields[field].name,
+								value: field,
+							});
+						}
+					}
+					return { results: returnData };
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(

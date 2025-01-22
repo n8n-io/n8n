@@ -5,6 +5,7 @@ const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
+const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
@@ -18,9 +19,20 @@ const commonChildRoutes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: 'credentials',
+		path: 'credentials/:credentialId?',
+		props: true,
 		components: {
 			default: CredentialsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: 'executions',
+		components: {
+			default: ExecutionsView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -37,6 +49,9 @@ const commonChildRouteExtensions = {
 		{
 			name: VIEWS.CREDENTIALS,
 		},
+		{
+			name: VIEWS.EXECUTIONS,
+		},
 	],
 	projects: [
 		{
@@ -44,6 +59,9 @@ const commonChildRouteExtensions = {
 		},
 		{
 			name: VIEWS.PROJECTS_CREDENTIALS,
+		},
+		{
+			name: VIEWS.PROJECTS_EXECUTIONS,
 		},
 	],
 };
@@ -103,5 +121,9 @@ export const projectsRoutes: RouteRecordRaw[] = [
 	{
 		path: '/credentials',
 		redirect: '/home/credentials',
+	},
+	{
+		path: '/executions',
+		redirect: '/home/executions',
 	},
 ];

@@ -5,10 +5,10 @@ import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
-import { PortTakenError } from '@/errors/port-taken.error';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
+import { mockLogger } from '@test/mocking';
 
 import { WorkerServer } from '../worker-server';
 
@@ -34,7 +34,7 @@ describe('WorkerServer', () => {
 	beforeEach(() => {
 		globalConfig = mock<GlobalConfig>({
 			queue: {
-				health: { active: true, port: 5678 },
+				health: { active: true, port: 5678, address: '0.0.0.0' },
 			},
 			credentials: {
 				overwrite: { endpoint: '' },
@@ -49,18 +49,21 @@ describe('WorkerServer', () => {
 				() =>
 					new WorkerServer(
 						globalConfig,
-						mock(),
-						mock(),
+						mockLogger(),
 						mock(),
 						externalHooks,
 						mock<InstanceSettings>({ instanceType: 'webhook' }),
 						prometheusMetricsService,
+						mock(),
 					),
 			).toThrowError(AssertionError);
 		});
 
-		it('should throw if port taken', async () => {
+		it('should exit if port taken', async () => {
 			const server = mock<http.Server>();
+			const procesExitSpy = jest
+				.spyOn(process, 'exit')
+				.mockImplementation(() => undefined as never);
 
 			jest.spyOn(http, 'createServer').mockReturnValue(server);
 
@@ -69,18 +72,19 @@ describe('WorkerServer', () => {
 				return server;
 			});
 
-			expect(
-				() =>
-					new WorkerServer(
-						globalConfig,
-						mock(),
-						mock(),
-						mock(),
-						externalHooks,
-						instanceSettings,
-						prometheusMetricsService,
-					),
-			).toThrowError(PortTakenError);
+			new WorkerServer(
+				globalConfig,
+				mockLogger(),
+				mock(),
+				externalHooks,
+				instanceSettings,
+				prometheusMetricsService,
+				mock(),
+			);
+
+			expect(procesExitSpy).toHaveBeenCalledWith(1);
+
+			procesExitSpy.mockRestore();
 		});
 	});
 
@@ -89,19 +93,20 @@ describe('WorkerServer', () => {
 			const server = mock<http.Server>();
 			jest.spyOn(http, 'createServer').mockReturnValue(server);
 
-			server.listen.mockImplementation((_port, callback: () => void) => {
-				callback();
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
 				return server;
 			});
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
@@ -123,19 +128,20 @@ describe('WorkerServer', () => {
 			const server = mock<http.Server>();
 			jest.spyOn(http, 'createServer').mockReturnValue(server);
 
-			server.listen.mockImplementation((_port, callback: () => void) => {
-				callback();
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
 				return server;
 			});
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
 			await workerServer.init({ health: true, overwrites: false, metrics: true });
@@ -151,12 +157,12 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 			await expect(
 				workerServer.init({ health: false, overwrites: false, metrics: false }),
@@ -169,16 +175,17 @@ describe('WorkerServer', () => {
 
 			const workerServer = new WorkerServer(
 				globalConfig,
-				mock(),
-				mock(),
+				mockLogger(),
 				mock(),
 				externalHooks,
 				instanceSettings,
 				prometheusMetricsService,
+				mock(),
 			);
 
-			server.listen.mockImplementation((_port, callback: () => void) => {
-				callback();
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
 				return server;
 			});
 

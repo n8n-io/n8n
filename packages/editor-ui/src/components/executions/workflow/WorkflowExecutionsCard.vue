@@ -2,14 +2,13 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
@@ -30,17 +29,12 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
-const isAnnotationEnabled = computed(
-	() =>
-		isAdvancedExecutionFilterEnabled.value &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
-);
+const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
 const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
 const retryExecutionActions = computed(() => [
@@ -173,11 +167,13 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<FontAwesomeIcon
-						v-if="execution.mode === 'manual'"
-						:class="[$style.icon, $style.manual]"
-						icon="flask"
-					/>
+					<FontAwesomeIcon :class="[$style.icon, $style.manual]" icon="flask" />
+				</N8nTooltip>
+				<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
+					<template #content>
+						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
+					</template>
+					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="tasks" />
 				</N8nTooltip>
 			</div>
 		</router-link>
@@ -188,7 +184,7 @@ function onRetryMenuItemSelect(action: string): void {
 @import '@/styles/variables';
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--color-foreground-xlight);
+	--execution-list-item-background: var(--execution-card-background);
 	--execution-list-item-highlight-background: var(--color-warning-tint-1);
 
 	display: flex;
@@ -206,7 +202,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--color-foreground-light);
+			--execution-list-item-background: var(--execution-card-background-hover);
 		}
 	}
 

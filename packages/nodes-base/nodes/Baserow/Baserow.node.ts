@@ -15,9 +15,7 @@ import {
 	TableFieldMapper,
 	toOptions,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	BaserowCredentials,
 	FieldsUiValues,
@@ -41,6 +39,7 @@ export class Baserow implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'baserowApi',

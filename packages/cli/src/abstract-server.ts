@@ -1,28 +1,27 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
-import type { InstanceType } from 'n8n-core';
-import { Container, Service } from 'typedi';
+import { Logger } from 'n8n-core';
+import path from 'path';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logger';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
-import { WaitingForms } from '@/waiting-forms';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
-import { generateHostInstanceId } from './databases/utils/generators';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 
 @Service()
@@ -61,13 +60,16 @@ export abstract class AbstractServer {
 
 	readonly uniqueInstanceId: string;
 
-	constructor(instanceType: Exclude<InstanceType, 'worker'>) {
+	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
+
+		const assetsPath: string = path.join(__dirname, '../../../assets');
+		this.app.use(express.static(assetsPath));
 
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
@@ -85,8 +87,6 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
 		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
 
-		this.uniqueInstanceId = generateHostInstanceId(instanceType);
-
 		this.logger = Container.get(Logger);
 	}
 
@@ -98,11 +98,8 @@ export abstract class AbstractServer {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
-		const {
-			Handlers: { requestHandler, errorHandler },
-		} = await import('@sentry/node');
-		app.use(requestHandler());
-		app.use(errorHandler());
+		const { setupExpressErrorHandler } = await import('@sentry/node');
+		setupExpressErrorHandler(app);
 	}
 
 	private setupCommonMiddlewares() {

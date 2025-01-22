@@ -1,21 +1,23 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
 import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
 import { CharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+} from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
 		icon: 'fa:grip-lines-vertical',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters',
@@ -63,7 +65,7 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply Data for Text Splitter');
 
 		const separator = this.getNodeParameter('separator', itemIndex) as string;

@@ -1,6 +1,6 @@
 # n8n benchmarking tool
 
-Tool for executing benchmarks against an n8n instance. The tool consists of these components:
+Tool for executing benchmarks against an n8n instance.
 
 ## Directory structure
 
@@ -10,6 +10,39 @@ packages/@n8n/benchmark
 ├── src              Source code for the n8n-benchmark cli
 ├── Dockerfile       Dockerfile for the n8n-benchmark cli
 ├── scripts          Orchestration scripts
+```
+
+## Benchmarking an existing n8n instance
+
+The easiest way to run the existing benchmark scenarios is to use the benchmark docker image:
+
+```sh
+docker pull ghcr.io/n8n-io/n8n-benchmark:latest
+# Print the help to list all available flags
+docker run ghcr.io/n8n-io/n8n-benchmark:latest run --help
+# Run all available benchmark scenarios for 1 minute with 5 concurrent requests
+docker run ghcr.io/n8n-io/n8n-benchmark:latest run \
+	--n8nBaseUrl=https://instance.url \
+	--n8nUserEmail=InstanceOwner@email.com \
+	--n8nUserPassword=InstanceOwnerPassword \
+	--vus=5 \
+	--duration=1m \
+	--scenarioFilter SingleWebhook
+```
+
+### Using custom scenarios with the Docker image
+
+It is also possible to create your own [benchmark scenarios](#benchmark-scenarios) and load them using the `--testScenariosPath` flag:
+
+```sh
+# Assuming your scenarios are located in `./scenarios`, mount them into `/scenarios` in the container
+docker run -v ./scenarios:/scenarios ghcr.io/n8n-io/n8n-benchmark:latest run \
+	--n8nBaseUrl=https://instance.url \
+	--n8nUserEmail=InstanceOwner@email.com \
+	--n8nUserPassword=InstanceOwnerPassword \
+	--vus=5 \
+	--duration=1m \
+	--testScenariosPath=/scenarios
 ```
 
 ## Running the entire benchmark suite

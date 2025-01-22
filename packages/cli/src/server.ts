@@ -1,10 +1,10 @@
+import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
-import { Container, Service } from 'typedi';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -23,7 +23,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap/helpers.ee';
+import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
@@ -32,14 +32,13 @@ import { setupPushServer, setupPushHandler, Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
-import '@/controllers/ai-assistant.controller';
+import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -56,13 +55,17 @@ import '@/controllers/translation.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
+import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
-import '@/external-secrets/external-secrets.controller.ee';
+import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/workflows/workflow-history/workflow-history.controller.ee';
+import '@/evaluation.ee/test-definitions.controller.ee';
+import '@/evaluation.ee/metrics.controller';
+import '@/evaluation.ee/test-runs.controller.ee';
+import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 
 @Service()
@@ -75,11 +78,11 @@ export class Server extends AbstractServer {
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		super('main');
+		super();
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
@@ -96,7 +99,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
-		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
@@ -106,13 +109,13 @@ export class Server extends AbstractServer {
 	}
 
 	private async registerAdditionalControllers() {
-		if (!inProduction && this.orchestrationService.isMultiMainSetupEnabled) {
+		if (!inProduction && this.instanceSettings.isMultiMain) {
 			await import('@/controllers/debug.controller');
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap/ldap.service.ee');
-			await import('@/ldap/ldap.controller.ee');
+			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+			await import('@/ldap.ee/ldap.controller.ee');
 			await Container.get(LdapService).init();
 		}
 
@@ -132,6 +135,9 @@ export class Server extends AbstractServer {
 			await import('@/controllers/cta.controller');
 		}
 
+		if (!this.globalConfig.tags.disabled) {
+			await import('@/controllers/tags.controller');
+		}
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
@@ -139,9 +145,9 @@ export class Server extends AbstractServer {
 		// initialize SamlService if it is licensed, even if not enabled, to
 		// set up the initial environment
 		try {
-			const { SamlService } = await import('@/sso/saml/saml.service.ee');
+			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
 			await Container.get(SamlService).init();
-			await import('@/sso/saml/routes/saml.controller.ee');
+			await import('@/sso.ee/saml/routes/saml.controller.ee');
 		} catch (error) {
 			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
 		}
@@ -151,11 +157,11 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		try {
 			const { SourceControlService } = await import(
-				'@/environments/source-control/source-control.service.ee'
+				'@/environments.ee/source-control/source-control.service.ee'
 			);
 			await Container.get(SourceControlService).init();
-			await import('@/environments/source-control/source-control.controller.ee');
-			await import('@/environments/variables/variables.controller.ee');
+			await import('@/environments.ee/source-control/source-control.controller.ee');
+			await import('@/environments.ee/variables/variables.controller.ee');
 		} catch (error) {
 			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
 		}
@@ -251,6 +257,7 @@ export class Server extends AbstractServer {
 					JSON.stringify({
 						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
+						serverName: process.env.DEPLOYMENT_NAME,
 						release: N8N_VERSION,
 					}),
 				);

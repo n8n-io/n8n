@@ -15,7 +15,6 @@ module.exports = {
 		eqeqeq: 'warn',
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',
-		'import/order': 'warn',
 		'prefer-spread': 'warn',
 		'import/no-extraneous-dependencies': 'warn',
 

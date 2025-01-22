@@ -4,14 +4,16 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { returnAllOrLimit } from '../../descriptions';
 import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
 import {
 	downloadAttachments,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../transport';
-import { returnAllOrLimit } from '../../descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	...returnAllOrLimit,

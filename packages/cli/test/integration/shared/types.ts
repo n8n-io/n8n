@@ -40,7 +40,10 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
-	| 'dynamic-node-parameters';
+	| 'dynamic-node-parameters'
+	| 'apiKeys'
+	| 'evaluation'
+	| 'ai';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -66,6 +69,7 @@ export type CredentialPayload = {
 	name: string;
 	type: string;
 	data: ICredentialDataDecryptedObject;
+	isManaged?: boolean;
 };
 
 export type SaveCredentialFunction = (

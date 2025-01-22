@@ -63,11 +63,10 @@ export function useNodeConnections({
 			connection.targetHandle,
 		);
 
-		const isSameNode = connection.source === connection.target;
 		const isSameMode = sourceMode === targetMode;
 		const isSameType = sourceType === targetType;
 
-		return !isSameNode && !isSameMode && isSameType;
+		return !isSameMode && isSameType;
 	}
 
 	return {

@@ -55,7 +55,6 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
-import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -64,13 +63,12 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { useRouter } from 'vue-router';
+import type { useRouter, NavigationGuardNext } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import type { NavigationGuardNext } from 'vue-router';
 
 type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -415,7 +413,7 @@ export function executeData(
 					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
 						currentNode
 					].main) {
-						for (const connection of mainConnections) {
+						for (const connection of mainConnections ?? []) {
 							if (
 								connection.type === NodeConnectionType.Main &&
 								connection.node === parentNodeName
@@ -520,7 +518,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		const nodes: INode[] = [];
 		for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-			// @ts-ignore
 			nodeData = getNodeDataToSave(workflowNodes[nodeIndex]);
 
 			nodes.push(nodeData);
@@ -694,7 +691,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
+		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
 		const isFullPath =
 			(getWebhookExpressionValue(
 				webhookData,
@@ -884,7 +881,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					}),
 					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
 					{
-						dangerouslyUseHTMLString: true,
 						confirmButtonText: i18n.baseText(
 							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
 						),
@@ -937,7 +933,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			if (resetNodeIds) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
-					node.id = uuid();
+					nodeHelpers.assignNodeId(node);
 
 					return node;
 				});
@@ -946,8 +942,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (resetWebhookUrls) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
 					if (node.webhookId) {
-						const newId = uuid();
-						node.webhookId = newId;
+						const newId = nodeHelpers.assignWebhookId(node);
 						node.parameters.path = newId;
 						changedNodes[node.name] = node.webhookId;
 					}
@@ -1005,9 +1000,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			}
 
 			if (redirect) {
-				void router.replace({
+				await router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id, action: 'workflowSave' },
+					params: { name: workflowData.id },
+					query: { action: 'workflowSave' },
 				});
 			}
 
@@ -1184,6 +1180,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		tagsStore.upsertTags(tags);
 	}
 
+	/**
+	 * Check if workflow contains any node from specified package
+	 * by performing a quick check based on the node type name.
+	 */
+	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
+		return workflow.nodes.some((node) => node.type.startsWith(packageName));
+	};
+
 	return {
 		setDocumentTitle,
 		resolveParameter,
@@ -1210,5 +1214,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		promptSaveUnsavedWorkflowChanges,
 		initState,
 		getNodeParametersWithResolvedExpressions,
+		containsNodeFromPackage,
 	};
 }

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.3.0",
+  "version": "0.13.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -21,11 +21,12 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/config": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
     "xss": "catalog:",
     "zod": "catalog:",
-    "zod-class": "0.0.15"
+    "zod-class": "0.0.16"
   }
 }

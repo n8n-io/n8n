@@ -31,6 +31,10 @@ const props = defineProps({
 	multiple: {
 		type: Boolean,
 	},
+	multipleLimit: {
+		type: Number,
+		default: 0,
+	},
 	filterMethod: {
 		type: Function,
 	},
@@ -120,9 +124,10 @@ defineExpose({
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
-			:model-value="modelValue ?? undefined"
+			:multiple-limit="props.multipleLimit"
+			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
-			:popper-class="popperClass"
+			:popper-class="props.popperClass"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>
@@ -130,6 +135,12 @@ defineExpose({
 			</template>
 			<template v-if="$slots.suffix" #suffix>
 				<slot name="suffix" />
+			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
+			</template>
+			<template v-if="$slots.empty" #empty>
+				<slot name="empty" />
 			</template>
 			<slot></slot>
 		</ElSelect>

@@ -1,13 +1,10 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource as Connection } from '@n8n/typeorm';
-import {
-	DbConnectionTimeoutError,
-	ensureError,
-	ErrorReporterProxy as ErrorReporter,
-} from 'n8n-workflow';
-import { Container } from 'typedi';
+import { ErrorReporter } from 'n8n-core';
+import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 import { getConnectionOptions, arePostgresOptions } from '@/databases/config';
@@ -38,7 +35,7 @@ if (!inTest) {
 				connectionState.connected = true;
 				return;
 			} catch (error) {
-				ErrorReporter.error(error);
+				Container.get(ErrorReporter).error(error);
 			} finally {
 				pingTimer = setTimeout(pingDBFn, 2000);
 			}
