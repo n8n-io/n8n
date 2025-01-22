@@ -154,7 +154,6 @@ export async function presendGroupFields(
 
 export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<any> {
 	const responseBody = response.body as {
@@ -171,7 +170,6 @@ export async function processGroupsResponse(
 
 export async function processUsersResponse(
 	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<any> {
 	const actionType = this.getNodeParameter('operation');
