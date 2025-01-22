@@ -230,28 +230,28 @@ describe('CanvasChat', () => {
 			// Verify workflow execution
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
-					runData: {
-						'When chat message received': [
-							{
-								data: {
-									main: [
-										[
-											{
-												json: {
-													action: 'sendMessage',
-													chatInput: 'Hello AI!',
-													sessionId: expect.any(String),
-												},
+					runData: undefined,
+					triggerToStartFrom: {
+						name: 'When chat message received',
+						data: {
+							data: {
+								main: [
+									[
+										{
+											json: {
+												action: 'sendMessage',
+												chatInput: 'Hello AI!',
+												sessionId: expect.any(String),
 											},
-										],
+										},
 									],
-								},
-								executionStatus: 'success',
-								executionTime: 0,
-								source: [null],
-								startTime: expect.any(Number),
+								],
 							},
-						],
+							executionStatus: 'success',
+							executionTime: 0,
+							source: [null],
+							startTime: expect.any(Number),
+						},
 					},
 				}),
 			);
