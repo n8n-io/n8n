@@ -12,7 +12,6 @@ import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { refDebounced } from '@vueuse/core';
 import {
 	N8nHeading,
@@ -37,6 +36,7 @@ import {
 	SOURCE_CONTROL_FILE_LOCATION,
 } from '@n8n/api-types';
 import { orderBy, groupBy } from 'lodash-es';
+import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -185,22 +185,13 @@ const filteredWorkflows = computed(() => {
 	});
 });
 
-const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
-	[SOURCE_CONTROL_FILE_STATUS.modified]: 1,
-	[SOURCE_CONTROL_FILE_STATUS.renamed]: 2,
-	[SOURCE_CONTROL_FILE_STATUS.created]: 3,
-	[SOURCE_CONTROL_FILE_STATUS.deleted]: 4,
-} as const;
-const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
-	statusPriority[status] ?? 0;
-
 const sortedWorkflows = computed(() => {
 	const sorted = orderBy(
 		filteredWorkflows.value,
 		[
 			// keep the current workflow at the top of the list
 			({ id }) => id === changes.value.currentWorkflow?.id,
-			({ status }) => getPriorityByStatus(status),
+			({ status }) => getPushPriorityByStatus(status),
 			'updatedAt',
 		],
 		['desc', 'asc', 'desc'],
@@ -329,19 +320,6 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
-
-const getStatusText = (status: SourceControlledFileStatus) =>
-	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
-const getStatusTheme = (status: SourceControlledFileStatus) => {
-	const statusToBadgeThemeMap: Partial<
-		Record<SourceControlledFileStatus, 'success' | 'danger' | 'warning'>
-	> = {
-		[SOURCE_CONTROL_FILE_STATUS.created]: 'success',
-		[SOURCE_CONTROL_FILE_STATUS.deleted]: 'danger',
-		[SOURCE_CONTROL_FILE_STATUS.modified]: 'warning',
-	} as const;
-	return statusToBadgeThemeMap[status];
-};
 </script>
 
 <template>

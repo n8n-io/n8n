@@ -55,21 +55,13 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const installPackage = async (packageName: string): Promise<void> => {
-		try {
-			await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName);
-			await fetchInstalledPackages();
-		} catch (error) {
-			throw error;
-		}
+		await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName);
+		await fetchInstalledPackages();
 	};
 
 	const uninstallPackage = async (packageName: string): Promise<void> => {
-		try {
-			await communityNodesApi.uninstallPackage(rootStore.restApiContext, packageName);
-			removePackageByName(packageName);
-		} catch (error) {
-			throw error;
-		}
+		await communityNodesApi.uninstallPackage(rootStore.restApiContext, packageName);
+		removePackageByName(packageName);
 	};
 
 	const removePackageByName = (name: string): void => {
@@ -82,16 +74,12 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const updatePackage = async (packageName: string): Promise<void> => {
-		try {
-			const packageToUpdate = installedPackages.value[packageName];
-			const updatedPackage = await communityNodesApi.updatePackage(
-				rootStore.restApiContext,
-				packageToUpdate.packageName,
-			);
-			updatePackageObject(updatedPackage);
-		} catch (error) {
-			throw error;
-		}
+		const packageToUpdate = installedPackages.value[packageName];
+		const updatedPackage = await communityNodesApi.updatePackage(
+			rootStore.restApiContext,
+			packageToUpdate.packageName,
+		);
+		updatePackageObject(updatedPackage);
 	};
 
 	return {
