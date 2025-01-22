@@ -68,8 +68,8 @@ export abstract class AbstractServer {
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
-		const assetsPath: string = path.join(__dirname, '../../../assets');
-		this.app.use(express.static(assetsPath));
+		const assetsPath: string = path.join(__dirname, '../assets');
+		this.app.use('/assets', express.static(assetsPath));
 
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
