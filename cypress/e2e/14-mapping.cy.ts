@@ -319,43 +319,6 @@ describe('Data mapping', () => {
 		ndv.actions.validateExpressionPreview('value', 'test_value');
 	});
 
-	/**
-	 * @TODO: New Canvas - Fix this test
-	 */
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	it.skip('shows you can drop to inputs, including booleans', () => {
-		cy.fixture('Test_workflow_3.json').then((data) => {
-			cy.get('body').paste(JSON.stringify(data));
-		});
-		workflowPage.actions.zoomToFit();
-
-		workflowPage.actions.openNode('Set');
-		ndv.getters.parameterInput('includeOtherFields').find('input[type="checkbox"]').should('exist');
-		ndv.getters.parameterInput('includeOtherFields').find('input[type="text"]').should('not.exist');
-		const pill = ndv.getters.inputDataContainer().find('span').contains('count');
-		pill.should('be.visible');
-		pill.realMouseDown();
-		pill.realMouseMove(100, 100);
-
-		ndv.getters
-			.parameterInput('includeOtherFields')
-			.find('input[type="checkbox"]')
-			.should('not.exist');
-		ndv.getters
-			.parameterInput('includeOtherFields')
-			.find('input[type="text"]')
-			.should('exist')
-			.invoke('css', 'border')
-			.should('include', 'dashed rgb(90, 76, 194)');
-
-		ndv.getters
-			.parameterInput('value')
-			.find('input[type="text"]')
-			.should('exist')
-			.invoke('css', 'border')
-			.should('include', 'dashed rgb(90, 76, 194)');
-	});
-
 	it('maps expressions to a specific location in the editor', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));

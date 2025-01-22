@@ -1,10 +1,4 @@
 import {
-	getExecutionPreviewOutputPanelRelatedExecutionLink,
-	getExecutionsSidebar,
-	getWorkflowExecutionPreviewIframe,
-	openExecutionPreviewNode,
-} from '../composables/executions';
-import {
 	changeOutputRunSelector,
 	getOutputPanelItemsCount,
 	getOutputPanelRelatedExecutionLink,
@@ -101,44 +95,6 @@ describe('Subworkflow debugging', () => {
 
 			getOutputTbodyCell(1, 0).find('a').should('have.attr', 'href');
 			getOutputTbodyCell(1, 2).should('include.text', 'Terry.Dach@hotmail.com');
-		});
-	});
-
-	/**
-	 * @TODO: New Canvas - Fix this test
-	 */
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	it.skip('can inspect parent executions', () => {
-		cy.url().then((workflowUrl) => {
-			openNode('Execute Workflow with param');
-
-			getOutputPanelItemsCount().should('contain.text', '2 items, 1 sub-execution');
-			getOutputPanelRelatedExecutionLink().should('contain.text', 'View sub-execution');
-			getOutputPanelRelatedExecutionLink().should('have.attr', 'href');
-
-			// ensure workflow executed and waited on output
-			getOutputTableHeaders().should('have.length', 2);
-			getOutputTbodyCell(1, 0).should('have.text', 'world Natalie Moore');
-
-			// cypress cannot handle new tabs so removing it
-			getOutputPanelRelatedExecutionLink().invoke('removeAttr', 'target').click();
-
-			getExecutionsSidebar().should('be.visible');
-			getWorkflowExecutionPreviewIframe().should('be.visible');
-			openExecutionPreviewNode('Execute Workflow Trigger');
-
-			getExecutionPreviewOutputPanelRelatedExecutionLink().should(
-				'include.text',
-				'View parent execution',
-			);
-
-			getExecutionPreviewOutputPanelRelatedExecutionLink()
-				.invoke('removeAttr', 'target')
-				.click({ force: true });
-
-			cy.url().then((currentUrl) => {
-				expect(currentUrl === workflowUrl);
-			});
 		});
 	});
 });
