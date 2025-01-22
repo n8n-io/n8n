@@ -2,6 +2,9 @@ import { VIEWS } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import { NodeConnectionType } from 'n8n-workflow';
 
+export const PAYLOAD_SIZE_FOR_1_PASS = 4;
+export const PAYLOAD_SIZE_FOR_2_PASSES = 2;
+
 export const ERROR_HELPER_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 	payload: {
 		role: 'user',

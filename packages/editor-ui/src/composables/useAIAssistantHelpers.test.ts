@@ -7,6 +7,8 @@ import type { IWorkflowDb } from '@/Interface';
 import type { ChatRequest } from '@/types/assistant.types';
 import {
 	ERROR_HELPER_TEST_PAYLOAD,
+	PAYLOAD_SIZE_FOR_1_PASS,
+	PAYLOAD_SIZE_FOR_2_PASSES,
 	SUPPORT_CHAT_TEST_PAYLOAD,
 } from './useAIAssistantHelpers.test.constants';
 
@@ -577,7 +579,9 @@ describe('Trim Payload Size', () => {
 			payload.payload as ChatRequest.InitSupportChat;
 
 		// Trimming to 4kb should be successful
-		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 4)).not.toThrow();
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_1_PASS),
+		).not.toThrow();
 		// All active node parameters should be removed
 		expect(supportPayload?.context?.activeNodeInfo?.node?.parameters).toEqual({});
 		// Also, all node parameters in the workflow should be removed
@@ -604,7 +608,9 @@ describe('Trim Payload Size', () => {
 			payload.payload as ChatRequest.InitSupportChat;
 
 		// Trimming should be successful
-		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 2)).not.toThrow();
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_2_PASSES),
+		).not.toThrow();
 		// The whole context object should be removed
 		expect(supportPayload.context).not.toBeDefined();
 	});
