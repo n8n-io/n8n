@@ -5,6 +5,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { IWorkflowDb } from '@/Interface';
 import type { ChatRequest } from '@/types/assistant.types';
+import {
+	ERROR_HELPER_TEST_PAYLOAD,
+	SUPPORT_CHAT_TEST_PAYLOAD,
+} from './useAIAssistantHelpers.test.constants';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -559,112 +563,54 @@ describe('Trim Payload Size', () => {
 		aiAssistantHelpers = useAIAssistantHelpers();
 	});
 
-	it("[Payload size ok] Should send the whole payload if it's not too large", () => {
-		const payload: ChatRequest.RequestPayload = {
-			payload: {
-				role: 'user',
-				type: 'init-error-helper',
-				user: {
-					firstName: 'Milorad',
-				},
-				error: {
-					name: 'NodeOperationError',
-					message: "Referenced node doesn't exist",
-					description:
-						"The node <strong>'Hey'</strong> doesn't exist, but it's used in an expression here.",
-				},
-				node: {
-					position: [0, 0],
-					parameters: {
-						mode: 'manual',
-						duplicateItem: false,
-						assignments: {
-							assignments: {
-								'0': {
-									id: '0957fbdb-a021-413b-9d42-fc847666f999',
-									name: 'text',
-									value: 'Lorem ipsum dolor sit amet',
-									type: 'string',
-								},
-								'1': {
-									id: '8efecfa7-8df7-492e-83e7-3d517ad03e60',
-									name: 'foo',
-									value: {
-										value: "={{ $('Hey').json.name }}",
-										resolvedExpressionValue:
-											'Error in expression: "Referenced node doesn\'t exist"',
-									},
-									type: 'string',
-								},
-							},
-						},
-						includeOtherFields: false,
-						options: {},
-					},
-					type: 'n8n-nodes-base.set',
-					typeVersion: 3.4,
-					id: '6dc70bf3-ba54-4481-b9f5-ce255bdd5fb8',
-					name: 'This is fine',
-				},
-				executionSchema: [],
-			},
-		};
-		aiAssistantHelpers.trimPayloadSize(payload);
-		expect(payload).toEqual(payload);
-	});
-
-	it('[Payload size too large] Should trim active node parameters in error helper payload', () => {
-		const payload: ChatRequest.RequestPayload = {
-			payload: {
-				role: 'user',
-				type: 'init-error-helper',
-				user: {
-					firstName: 'Milorad',
-				},
-				error: {
-					name: 'NodeOperationError',
-					message: "Referenced node doesn't exist",
-					description:
-						"The node <strong>'Hey'</strong> doesn't exist, but it's used in an expression here.",
-				},
-				node: {
-					position: [0, 0],
-					parameters: {
-						mode: 'manual',
-						duplicateItem: false,
-						assignments: {
-							assignments: {
-								'0': {
-									id: '0957fbdb-a021-413b-9d42-fc847666f999',
-									name: 'text',
-									value:
-										'Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet, Lorem ipsum dolor sit amet',
-									type: 'string',
-								},
-								'1': {
-									id: '8efecfa7-8df7-492e-83e7-3d517ad03e60',
-									name: 'foo',
-									value: {
-										value: "={{ $('Hey').json.name }}",
-										resolvedExpressionValue:
-											'Error in expression: "Referenced node doesn\'t exist"',
-									},
-									type: 'string',
-								},
-							},
-						},
-						includeOtherFields: false,
-						options: {},
-					},
-					type: 'n8n-nodes-base.set',
-					typeVersion: 3.4,
-					id: '6dc70bf3-ba54-4481-b9f5-ce255bdd5fb8',
-					name: 'This is fine',
-				},
-				executionSchema: [],
-			},
-		};
+	it('Should trim active node parameters in error helper payload', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
 		aiAssistantHelpers.trimPayloadSize(payload);
 		expect((payload.payload as ChatRequest.InitErrorHelper).node.parameters).toEqual({});
+	});
+
+	it('Should trim all node parameters in support chat', () => {
+		// Testing the scenario where only one trimming pass is needed
+		// (payload is under the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming to 4kb should be successful
+		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 4)).not.toThrow();
+		// All active node parameters should be removed
+		expect(supportPayload?.context?.activeNodeInfo?.node?.parameters).toEqual({});
+		// Also, all node parameters in the workflow should be removed
+		supportPayload.context?.currentWorkflow?.nodes?.forEach((node) => {
+			expect(node.parameters).toEqual({});
+		});
+		// Node parameters in the execution data should be removed
+		expect(supportPayload.context?.executionData?.runData).toEqual({});
+		if (
+			supportPayload.context?.executionData?.error &&
+			'node' in supportPayload.context.executionData.error
+		) {
+			expect(supportPayload.context?.executionData?.error?.node?.parameters).toEqual({});
+		}
+		// Context object should still be there
+		expect(supportPayload.context).to.be.an('object');
+	});
+
+	it('Should trim the whole context in support chat', () => {
+		// Testing the scenario where both trimming passes are needed
+		// (payload is over the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming should be successful
+		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 2)).not.toThrow();
+		// The whole context object should be removed
+		expect(supportPayload.context).not.toBeDefined();
+	});
+
+	it('Should throw an error if payload is too big after trimming', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
+		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 0.2)).toThrow();
 	});
 });
