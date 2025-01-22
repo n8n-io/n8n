@@ -87,6 +87,41 @@ describe('ProjectMoveResourceModal', () => {
 		expect(getByText(/Currently there are not any projects or users available/)).toBeVisible();
 	});
 
+	it('should not hide project select if filter has no result', async () => {
+		const projects = Array.from({ length: 5 }, createProjectListItem);
+		projectsStore.availableProjects = projects;
+
+		const props = {
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType: 'workflow',
+				resourceTypeLabel: 'Workflow',
+				resource: {
+					id: '1',
+					homeProject: {
+						id: projects[0].id,
+						name: projects[0].name,
+					},
+				},
+			},
+		};
+
+		const { getByTestId, getByRole } = renderComponent({ props });
+
+		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelectInput: HTMLInputElement = getByRole('combobox');
+		expect(projectSelectInput).toBeVisible();
+		expect(projectSelect).toBeVisible();
+
+		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		expect(projectSelectDropdownItems).toHaveLength(projects.length - 1);
+
+		await userEvent.click(projectSelectInput);
+		await userEvent.type(projectSelectInput, 'non-existing project');
+
+		expect(projectSelect).toBeVisible();
+	});
+
 	it('should not load workflow if the resource is a credential', async () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 		projectsStore.availableProjects = [createProjectListItem()];

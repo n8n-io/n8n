@@ -1,3 +1,7 @@
+// Disable task runners until we have fixed the "run test workflows" test
+// to mock the Code Node execution
+process.env.N8N_RUNNERS_ENABLED = 'false';
+
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
 // If you update the tests, please update the diagrams as well.
 // If you add a test, please create a new diagram.
