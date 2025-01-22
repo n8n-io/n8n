@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { useCanvas } from '@/composables/useCanvas';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type CanvasNodeData } from '@/types';
 import { computed } from 'vue';
@@ -14,11 +14,12 @@ const { data } = defineProps<{ data: CanvasNodeData }>();
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const { isExecuting } = useCanvas();
+const uiStore = useUIStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { toggleChatOpen } = useCanvasOperations({ router });
 
 const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isExecuting = computed(() => uiStore.isActionActive['workflowRunning']);
 </script>
 
 <template>
