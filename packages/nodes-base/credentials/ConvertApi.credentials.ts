@@ -18,7 +18,7 @@ export class ConvertApi implements ICredentialType {
 	httpRequestNode = {
 		name: 'ConvertAPI',
 		docsUrl: 'https://docs.convertapi.com/docs/getting-started',
-		apiBaseUrlPlaceholder: 'https://v2.convertapi.com/user',
+		apiBaseUrl: 'https://v2.convertapi.com/',
 	};
 
 	properties: INodeProperties[] = [
