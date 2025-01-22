@@ -6,16 +6,16 @@ import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { Time, WsStatusCodes } from '@/constants';
-
-import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
-import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
+import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
 	DisconnectReason,
-	TaskRunnerServerInitRequest,
-	TaskRunnerServerInitResponse,
-} from './task-runner-types';
+	TaskBrokerServerInitRequest,
+	TaskBrokerServerInitResponse,
+} from '@/task-runners/task-broker/task-broker-types';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+
+import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -23,8 +23,12 @@ function heartbeat(this: WebSocket) {
 
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
+/**
+ * Responsible for handling WebSocket connections with task runners
+ * and monitoring the connection liveness
+ */
 @Service()
-export class TaskRunnerWsServer {
+export class TaskBrokerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
 	private heartbeatTimer: NodeJS.Timer | undefined;
@@ -164,7 +168,7 @@ export class TaskRunnerWsServer {
 		}
 	}
 
-	handleRequest(req: TaskRunnerServerInitRequest, _res: TaskRunnerServerInitResponse) {
+	handleRequest(req: TaskBrokerServerInitRequest, _res: TaskBrokerServerInitResponse) {
 		this.add(req.query.id, req.ws);
 	}
 

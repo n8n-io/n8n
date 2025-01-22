@@ -1,6 +1,6 @@
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
-describe('TaskRunnerServer', () => {
+describe('TaskBrokerServer', () => {
 	const { agent, server } = setupBrokerTestServer({
 		authToken: 'token',
 		mode: 'external',

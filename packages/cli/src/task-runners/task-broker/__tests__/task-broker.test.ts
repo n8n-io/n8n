@@ -4,12 +4,12 @@ import { mock } from 'jest-mock-extended';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { Time } from '@/constants';
+import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
-import { TaskRejectError } from '../errors';
+import { TaskRejectError } from '../errors/task-reject.error';
 import { TaskRunnerTimeoutError } from '../errors/task-runner-timeout.error';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
-import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
 const createValidUntil = (ms: number) => process.hrtime.bigint() + BigInt(ms * 1_000_000);
 

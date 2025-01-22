@@ -5,10 +5,10 @@ import { mock } from 'jest-mock-extended';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';
 
-import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
-import type { AuthlessRequest } from '../../../requests';
-import type { TaskRunnerServerInitRequest } from '../../task-runner-types';
+import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
+import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
+import type { AuthlessRequest } from '../../../../requests';
+import type { TaskBrokerServerInitRequest } from '../../task-broker-types';
 import { TaskRunnerAuthController } from '../task-runner-auth.controller';
 import { TaskRunnerAuthService } from '../task-runner-auth.service';
 
@@ -71,7 +71,7 @@ describe('TaskRunnerAuthController', () => {
 		const next = jest.fn() as NextFunction;
 
 		const createMockReqWithToken = (token?: string) =>
-			mock<TaskRunnerServerInitRequest>({
+			mock<TaskBrokerServerInitRequest>({
 				headers: {
 					authorization: `Bearer ${token}`,
 				},
@@ -82,7 +82,7 @@ describe('TaskRunnerAuthController', () => {
 		});
 
 		it('should respond with 401 when grant token is missing', async () => {
-			const req = mock<TaskRunnerServerInitRequest>({});
+			const req = mock<TaskBrokerServerInitRequest>({});
 
 			await authController.authMiddleware(req, res, next);
 

@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
-import type { TaskRunnerAuthService } from '@/task-runners/auth/task-runner-auth.service';
+import type { TaskRunnerAuthService } from '@/task-runners/task-broker/auth/task-runner-auth.service';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { mockInstance } from '@test/mocking';
 

@@ -3,10 +3,10 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/task-runners/default-task-runner-disconnect-analyzer';
-import { TaskRunnerWsServer } from '../../../src/task-runners/task-runner-ws-server';
 
 describe('TaskRunnerModule in external mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
@@ -46,7 +46,7 @@ describe('TaskRunnerModule in external mode', () => {
 		});
 
 		it('should use DefaultTaskRunnerDisconnectAnalyzer', () => {
-			const wsServer = Container.get(TaskRunnerWsServer);
+			const wsServer = Container.get(TaskBrokerWsServer);
 
 			expect(wsServer.getDisconnectAnalyzer()).toBeInstanceOf(DefaultTaskRunnerDisconnectAnalyzer);
 		});

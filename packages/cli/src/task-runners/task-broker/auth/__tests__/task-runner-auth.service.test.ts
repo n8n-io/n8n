@@ -5,7 +5,7 @@ import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 import { retryUntil } from '@test-integration/retry-until';
 
-import { mockInstance } from '../../../../test/shared/mocking';
+import { mockInstance } from '../../../../../test/shared/mocking';
 import { TaskRunnerAuthService } from '../task-runner-auth.service';
 
 describe('TaskRunnerAuthService', () => {

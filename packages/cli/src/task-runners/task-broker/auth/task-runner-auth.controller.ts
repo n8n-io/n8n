@@ -2,12 +2,12 @@ import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 
 import type { AuthlessRequest } from '@/requests';
+import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
 
 import { taskRunnerAuthRequestBodySchema } from './task-runner-auth.schema';
 import { TaskRunnerAuthService } from './task-runner-auth.service';
-import { BadRequestError } from '../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
-import type { TaskRunnerServerInitRequest } from '../task-runner-types';
+import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
+import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
 
 /**
  * Controller responsible for authenticating Task Runner connections
@@ -43,7 +43,7 @@ export class TaskRunnerAuthController {
 	/**
 	 * Middleware to authenticate task runner init requests
 	 */
-	async authMiddleware(req: TaskRunnerServerInitRequest, res: Response, next: NextFunction) {
+	async authMiddleware(req: TaskBrokerServerInitRequest, res: Response, next: NextFunction) {
 		const authHeader = req.headers.authorization;
 		if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
 			res.status(401).json({ code: 401, message: 'Unauthorized' });

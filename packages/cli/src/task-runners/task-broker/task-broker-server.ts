@@ -14,18 +14,18 @@ import { Server as WSServer } from 'ws';
 import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
-import { TaskRunnerAuthController } from '@/task-runners/auth/task-runner-auth.controller';
+import { TaskRunnerAuthController } from '@/task-runners/task-broker/auth/task-runner-auth.controller';
 import type {
-	TaskRunnerServerInitRequest,
-	TaskRunnerServerInitResponse,
-} from '@/task-runners/task-runner-types';
-import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
+	TaskBrokerServerInitRequest,
+	TaskBrokerServerInitResponse,
+} from '@/task-runners/task-broker/task-broker-types';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 /**
- * Task Runner HTTP & WS server
+ * Task Broker HTTP & WS server
  */
 @Service()
-export class TaskRunnerServer {
+export class TaskBrokerServer {
 	private server: Server | undefined;
 
 	private wsServer: WSServer | undefined;
@@ -44,7 +44,7 @@ export class TaskRunnerServer {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRunnerAuthController: TaskRunnerAuthController,
-		private readonly taskRunnerWsServer: TaskRunnerWsServer,
+		private readonly taskRunnerWsServer: TaskBrokerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -160,7 +160,7 @@ export class TaskRunnerServer {
 			createRateLimiter(),
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.taskRunnerAuthController.authMiddleware,
-			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
+			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
 				this.taskRunnerWsServer.handleRequest(req, res),
 		);
 
@@ -175,7 +175,7 @@ export class TaskRunnerServer {
 	}
 
 	private handleUpgradeRequest = (
-		request: TaskRunnerServerInitRequest,
+		request: TaskBrokerServerInitRequest,
 		socket: Socket,
 		head: Buffer,
 	) => {

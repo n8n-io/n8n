@@ -1,10 +1,10 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { InternalTaskRunnerDisconnectAnalyzer } from '../../../src/task-runners/internal-task-runner-disconnect-analyzer';
-import { TaskRunnerWsServer } from '../../../src/task-runners/task-runner-ws-server';
 
 describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
@@ -33,7 +33,7 @@ describe('TaskRunnerModule in internal mode', () => {
 		});
 
 		it('should use InternalTaskRunnerDisconnectAnalyzer', () => {
-			const wsServer = Container.get(TaskRunnerWsServer);
+			const wsServer = Container.get(TaskBrokerWsServer);
 
 			expect(wsServer.getDisconnectAnalyzer()).toBeInstanceOf(InternalTaskRunnerDisconnectAnalyzer);
 		});
