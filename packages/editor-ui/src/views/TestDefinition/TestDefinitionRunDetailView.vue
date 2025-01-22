@@ -7,24 +7,17 @@ import { useI18n } from '@/composables/useI18n';
 import { N8nCard, N8nText } from 'n8n-design-system';
 import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue';
 import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { get } from 'lodash-es';
-import type { ExecutionSummaryWithScopes } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
-
-interface TestCase extends ExecutionSummaryWithScopes {
-	metrics: Record<string, number>;
-}
+import type { TestCaseExecutionRecord } from '@/api/testDefinition.ee';
 
 const router = useRouter();
 const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
-const executionsStore = useExecutionsStore();
 const locale = useI18n();
 
 const isLoading = ref(true);
-const testCases = ref<TestCase[]>([]);
+const testCases = ref<TestCaseExecutionRecord[]>([]);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const testId = computed(() => router.currentRoute.value.params.testId as string);
@@ -36,17 +29,26 @@ const filteredTestCases = computed(() => {
 });
 
 const columns = computed(
-	(): Array<TestTableColumn<TestCase>> => [
+	(): Array<TestTableColumn<TestCaseExecutionRecord>> => [
 		{
 			prop: 'id',
 			width: 200,
 			label: locale.baseText('testDefinition.runDetail.testCase'),
 			sortable: true,
-			route: (row: TestCase) => ({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: row.workflowId, executionId: row.id },
-			}),
-			formatter: (row: TestCase) => `[${row.id}] ${row.workflowName}`,
+			route: (row: TestCaseExecutionRecord) => {
+				if (test.value?.evaluationWorkflowId && row.evaluationExecutionId) {
+					return {
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: {
+							name: test.value?.evaluationWorkflowId,
+							executionId: row.evaluationExecutionId,
+						},
+					};
+				}
+
+				return undefined;
+			},
+			formatter: (row: TestCaseExecutionRecord) => `${row.id}`,
 			openInNewTab: true,
 		},
 		{
@@ -58,14 +60,14 @@ const columns = computed(
 				{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
 			],
-			filterMethod: (value: string, row: TestCase) => row.status === value,
+			filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
 			prop: `metrics.${metric}`,
 			label: metric,
 			sortable: true,
 			filter: true,
-			formatter: (row: TestCase) => row.metrics[metric]?.toFixed(2) ?? '-',
+			formatter: (row: TestCaseExecutionRecord) => row.metrics?.[metric]?.toFixed(2) ?? '-',
 		})),
 	],
 );
@@ -73,57 +75,24 @@ const columns = computed(
 const metrics = computed(() => run.value?.metrics ?? {});
 
 // Temporary workaround to fetch test cases by manually getting workflow executions
-// TODO: Replace with dedicated API endpoint once available
 const fetchExecutionTestCases = async () => {
 	if (!runId.value || !testId.value) return;
 
 	isLoading.value = true;
 	try {
+		await testDefinitionStore.fetchTestDefinition(testId.value);
+
 		const testRun = await testDefinitionStore.getTestRun({
 			testDefinitionId: testId.value,
 			runId: runId.value,
 		});
-		const testDefinition = await testDefinitionStore.fetchTestDefinition(testId.value);
 
-		// Fetch workflow executions that match this test run
-		const evaluationWorkflowExecutions = await executionsStore.fetchExecutions({
-			workflowId: testDefinition.evaluationWorkflowId ?? '',
-			metadata: [{ key: 'testRunId', value: testRun.id }],
+		const testCaseEvaluationExecutions = await testDefinitionStore.fetchTestCaseExecutions({
+			testDefinitionId: testId.value,
+			runId: testRun.id,
 		});
 
-		// For each execution, fetch full details and extract metrics
-		const executionsData = await Promise.all(
-			evaluationWorkflowExecutions?.results.map(async (execution) => {
-				const executionData = await executionsStore.fetchExecution(execution.id);
-				const lastExecutedNode = executionData?.data?.resultData?.lastNodeExecuted;
-				if (!lastExecutedNode) {
-					throw new Error('Last executed node is required');
-				}
-				const metricsData = get(
-					executionData,
-					[
-						'data',
-						'resultData',
-						'runData',
-						lastExecutedNode,
-						'0',
-						'data',
-						'main',
-						'0',
-						'0',
-						'json',
-					],
-					{},
-				);
-
-				return {
-					...execution,
-					metrics: metricsData,
-				};
-			}),
-		);
-
-		testCases.value = executionsData ?? [];
+		testCases.value = testCaseEvaluationExecutions ?? [];
 	} catch (error) {
 		toast.showError(error, 'Failed to load run details');
 	} finally {

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
 
 import { TestRunExecutionMapping } from '@/databases/entities/test-run-executions.ee';
@@ -51,11 +51,36 @@ export class TestRunExecutionsMappingRepository extends Repository<TestRunExecut
 		);
 	}
 
-	async markAsCompleted(testRunId: string, pastExecutionId: string) {
+	async markAsCompleted(
+		testRunId: string,
+		pastExecutionId: string,
+		metrics: Record<string, number>,
+	) {
 		return await this.update(
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
-				status: 'completed',
+				status: 'success',
+				completedAt: new Date(),
+				metrics,
+			},
+		);
+	}
+
+	async markPendingAsCancelled(testRunId: string) {
+		return await this.update(
+			{ testRun: { id: testRunId }, status: Not(In(['success', 'error', 'cancelled'])) },
+			{
+				status: 'cancelled',
+				completedAt: new Date(),
+			},
+		);
+	}
+
+	async markAsFailed(testRunId: string, pastExecutionId: string) {
+		return await this.update(
+			{ testRun: { id: testRunId }, pastExecutionId },
+			{
+				status: 'error',
 				completedAt: new Date(),
 			},
 		);

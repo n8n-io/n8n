@@ -189,13 +189,6 @@ export class TestRunnerService {
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-		// FIXME: This is a hack to add the testRunId to the evaluation workflow execution data
-		// So that we can fetch all execution runs for a test run
-		if (metadata.testRunId && data.executionData) {
-			data.executionData.resultData.metadata = {
-				testRunId: metadata.testRunId,
-			};
-		}
 		data.executionMode = 'evaluation';
 
 		// Trigger the evaluation workflow
@@ -271,15 +264,18 @@ export class TestRunnerService {
 		const abortController = new AbortController();
 		this.abortControllers.set(testRun.id, abortController);
 
+		// 0.2 Initialize metadata
+		// This will be passed to the test case executions
+		const testRunMetadata = {
+			testRunId: testRun.id,
+			userId: user.id,
+		};
+
 		const abortSignal = abortController.signal;
 		try {
-			// Metadata to use during the test run
-			const testRunMetadata = {
-				testRunId: testRun.id,
-				userId: user.id,
-			};
-
+			///
 			// 1. Make test cases from previous executions
+			///
 
 			// Select executions with the annotation tag and workflow ID of the test.
 			// Fetch only ids to reduce the data transfer.
@@ -293,22 +289,27 @@ export class TestRunnerService {
 					.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 					.getMany();
 
-			// Add all past executions to the test run
+			this.logger.debug('Found past executions', { count: pastExecutions.length });
+
+			// Add all past executions mappings to the test run.
+			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
 			await this.testRunExecutionsMappingRepository.createBatch(
 				testRun.id,
 				pastExecutions.map((e) => e.id),
 			);
 
-			this.logger.debug('Found past executions', { count: pastExecutions.length });
-
 			// Get the metrics to collect from the evaluation workflow
 			const testMetricNames = await this.getTestMetricNames(test.id);
 
-			// 2. Run over all the test cases
+			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
-			// Object to collect the results of the evaluation workflow executions
+			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics(testMetricNames);
+
+			///
+			// 2. Run over all the test cases
+			///
 
 			for (const { id: pastExecutionId } of pastExecutions) {
 				if (abortSignal.aborted) {
@@ -352,7 +353,13 @@ export class TestRunnerService {
 					// Skip them, increment the failed count and continue with the next test case
 					if (!testCaseExecution) {
 						await this.testRunRepository.incrementFailed(testRun.id);
+						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
 						continue;
+					}
+
+					// Update status of the test case execution mapping entry in case of an error
+					if (testCaseExecution.data.resultData.error) {
+						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
 					}
 
 					// Collect the results of the test case execution
@@ -374,20 +381,23 @@ export class TestRunnerService {
 					this.logger.debug('Evaluation execution finished', { pastExecutionId });
 
 					// Extract the output of the last node executed in the evaluation workflow
-					metrics.addResults(this.extractEvaluationResult(evalExecution));
+					const addedMetrics = metrics.addResults(this.extractEvaluationResult(evalExecution));
 
 					if (evalExecution.data.resultData.error) {
 						await this.testRunRepository.incrementFailed(testRun.id);
+						await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
 					} else {
 						await this.testRunRepository.incrementPassed(testRun.id);
 						await this.testRunExecutionsMappingRepository.markAsCompleted(
 							testRun.id,
 							pastExecutionId,
+							addedMetrics,
 						);
 					}
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case
 					await this.testRunRepository.incrementFailed(testRun.id);
+					await this.testRunExecutionsMappingRepository.markAsFailed(testRun.id, pastExecutionId);
 
 					this.errorReporter.error(e);
 				}
@@ -396,6 +406,7 @@ export class TestRunnerService {
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
 				await this.testRunRepository.markAsCancelled(testRun.id);
+				await this.testRunExecutionsMappingRepository.markPendingAsCancelled(testRun.id);
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
@@ -410,6 +421,7 @@ export class TestRunnerService {
 				});
 
 				await this.testRunRepository.markAsCancelled(testRun.id);
+				await this.testRunExecutionsMappingRepository.markPendingAsCancelled(testRun.id);
 			} else {
 				throw e;
 			}

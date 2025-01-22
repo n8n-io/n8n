@@ -1,6 +1,7 @@
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 
+import { TestRunExecutionsMappingRepository } from '@/databases/repositories/test-run-executions-mapping.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -18,6 +19,7 @@ export class TestRunsController {
 	constructor(
 		private readonly testDefinitionService: TestDefinitionService,
 		private readonly testRunRepository: TestRunRepository,
+		private readonly testRunExecutionsMappingRepository: TestRunExecutionsMappingRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
@@ -74,6 +76,16 @@ export class TestRunsController {
 		await this.getTestDefinition(req);
 
 		return await this.getTestRun(req);
+	}
+
+	@Get('/:testDefinitionId/runs/:id/cases')
+	async getTestCases(req: TestRunsRequest.GetCases) {
+		await this.getTestDefinition(req);
+		await this.getTestRun(req);
+
+		return await this.testRunExecutionsMappingRepository.find({
+			where: { testRun: { id: req.params.id } },
+		});
 	}
 
 	@Delete('/:testDefinitionId/runs/:id')

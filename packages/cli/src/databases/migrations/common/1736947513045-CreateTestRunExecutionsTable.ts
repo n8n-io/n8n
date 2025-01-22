@@ -16,6 +16,7 @@ export class CreateTestRunExecutionsTable1736947513045 implements ReversibleMigr
 				column('completedAt').timestamp(),
 				column('errorCode').varchar(),
 				column('errorDetails').json,
+				column('metrics').json,
 			)
 			.withIndexOn('testRunId')
 			.withForeignKey('testRunId', {

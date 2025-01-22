@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToOne, RelationId } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
 
 import {
 	datetimeColumnType,
@@ -7,6 +7,8 @@ import {
 } from '@/databases/entities/abstract-entity';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { TestRun } from '@/databases/entities/test-run.ee';
+
+export type TestCaseRunMetrics = Record<string, number | boolean>;
 
 /**
  * This entity represents the junction table between the test runs and executions
@@ -22,9 +24,8 @@ export class TestRunExecutionMapping extends WithStringId {
 	})
 	pastExecution: ExecutionEntity | null;
 
-	@Column()
-	@RelationId((mapping: TestRunExecutionMapping) => mapping.pastExecution)
-	pastExecutionId: string;
+	@Column({ type: 'varchar', nullable: true })
+	pastExecutionId: string | null;
 
 	@OneToOne('ExecutionEntity', {
 		onDelete: 'SET NULL',
@@ -32,9 +33,8 @@ export class TestRunExecutionMapping extends WithStringId {
 	})
 	execution: ExecutionEntity | null;
 
-	@Column()
-	@RelationId((mapping: TestRunExecutionMapping) => mapping.execution)
-	executionId: string;
+	@Column({ type: 'varchar', nullable: true })
+	executionId: string | null;
 
 	@OneToOne('ExecutionEntity', {
 		onDelete: 'SET NULL',
@@ -42,12 +42,11 @@ export class TestRunExecutionMapping extends WithStringId {
 	})
 	evaluationExecution: ExecutionEntity | null;
 
-	@Column()
-	@RelationId((mapping: TestRunExecutionMapping) => mapping.evaluationExecution)
-	evaluationExecutionId: string;
+	@Column({ type: 'varchar', nullable: true })
+	evaluationExecutionId: string | null;
 
 	@Column()
-	status: string;
+	status: 'new' | 'running' | 'evaluation_running' | 'success' | 'error' | 'cancelled';
 
 	@Column({ type: datetimeColumnType, nullable: true })
 	runAt: Date | null;
@@ -60,4 +59,7 @@ export class TestRunExecutionMapping extends WithStringId {
 
 	@Column(jsonColumnType, { nullable: true })
 	errorDetails: Record<string, unknown>;
+
+	@Column(jsonColumnType, { nullable: true })
+	metrics: TestCaseRunMetrics;
 }

@@ -23,8 +23,9 @@ function hasStatus(row: unknown): row is WithStatus {
 }
 
 const statusThemeMap: Record<string, string> = {
-	new: 'info',
+	new: 'default',
 	running: 'warning',
+	evaluation_running: 'warning',
 	completed: 'success',
 	error: 'danger',
 	success: 'success',
@@ -34,6 +35,7 @@ const statusThemeMap: Record<string, string> = {
 const statusLabelMap: Record<string, string> = {
 	new: locale.baseText('testDefinition.listRuns.status.new'),
 	running: locale.baseText('testDefinition.listRuns.status.running'),
+	evaluation_running: locale.baseText('testDefinition.listRuns.status.evaluating'),
 	completed: locale.baseText('testDefinition.listRuns.status.completed'),
 	error: locale.baseText('testDefinition.listRuns.status.error'),
 	success: locale.baseText('testDefinition.listRuns.status.success'),
@@ -53,11 +55,11 @@ const getCellContent = (column: TestTableColumn<T>, row: T) => {
 </script>
 
 <template>
-	<div v-if="column.route">
-		<a v-if="column.openInNewTab" :href="router.resolve(column.route(row)).href" target="_blank">
+	<div v-if="column.route?.(row)">
+		<a v-if="column.openInNewTab" :href="router.resolve(column.route(row)!).href" target="_blank">
 			{{ getCellContent(column, row) }}
 		</a>
-		<router-link v-else :to="column.route(row)">
+		<router-link v-else :to="column.route(row)!">
 			{{ getCellContent(column, row) }}
 		</router-link>
 	</div>

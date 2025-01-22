@@ -9,12 +9,17 @@ export class EvaluationMetrics {
 		}
 	}
 
-	addResults(result: IDataObject) {
+	addResults(result: IDataObject): Record<string, number> {
+		const addedMetrics: Record<string, number> = {};
+
 		for (const [metricName, metricValue] of Object.entries(result)) {
 			if (typeof metricValue === 'number' && this.metricNames.has(metricName)) {
+				addedMetrics[metricName] = metricValue;
 				this.rawMetricsByName.get(metricName)!.push(metricValue);
 			}
 		}
+
+		return addedMetrics;
 	}
 
 	getAggregatedMetrics() {
