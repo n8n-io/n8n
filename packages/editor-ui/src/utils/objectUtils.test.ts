@@ -1,4 +1,4 @@
-import { isObjectOrArray, isObject, searchInObject } from '@/utils/objectUtils';
+import { isObjectOrArray, isObject, searchInObject, getObjectSizeInKB } from '@/utils/objectUtils';
 
 const testData = [1, '', true, null, undefined, new Date(), () => {}].map((value) => [
 	value,
@@ -93,6 +93,65 @@ describe('objectUtils', () => {
 
 		it('should return true if the search string is found in an object in a nested array', () => {
 			assert(searchInObject({ a: ['b', { c: 'd' }] }, 'd'));
+		});
+	});
+
+	describe('getObjectSizeInKB', () => {
+		// Test null/undefined cases
+		it('returns 0 for null', () => {
+			expect(getObjectSizeInKB(null)).toBe(0);
+		});
+
+		it('returns 0 for undefined', () => {
+			expect(getObjectSizeInKB(undefined)).toBe(0);
+		});
+
+		// Test empty objects/arrays
+		it('returns correct size for empty object', () => {
+			expect(getObjectSizeInKB({})).toBe(0);
+		});
+
+		it('returns correct size for empty array', () => {
+			expect(getObjectSizeInKB([])).toBe(0);
+		});
+
+		// Test regular cases
+		it('calculates size for simple object correctly', () => {
+			const obj = { name: 'test' };
+			expect(getObjectSizeInKB(obj)).toBe(0.01);
+		});
+
+		it('calculates size for array correctly', () => {
+			const arr = [1, 2, 3];
+			expect(getObjectSizeInKB(arr)).toBe(0.01);
+		});
+
+		it('calculates size for nested object correctly', () => {
+			const obj = {
+				name: 'test',
+				nested: {
+					value: 123,
+				},
+			};
+			expect(getObjectSizeInKB(obj)).toBe(0.04);
+		});
+
+		// Test error cases
+		it('throws error for circular reference', () => {
+			type CircularObj = {
+				name: string;
+				self?: CircularObj;
+			};
+
+			const obj: CircularObj = { name: 'test' };
+			obj.self = obj;
+
+			expect(() => getObjectSizeInKB(obj)).toThrow('Failed to calculate object size');
+		});
+
+		it('handles special characters correctly', () => {
+			const obj = { name: '测试' };
+			expect(getObjectSizeInKB(obj)).toBe(0.02);
 		});
 	});
 });
