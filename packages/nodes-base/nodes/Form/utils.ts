@@ -58,6 +58,13 @@ export function sanitizeHtml(text: string) {
 			iframe: ['*'],
 			source: ['*'],
 		},
+		transformTags: {
+			iframe: sanitize.simpleTransform('iframe', {
+				sandbox: '',
+				referrerpolicy: 'strict-origin-when-cross-origin',
+				allow: 'fullscreen; autoplay; encrypted-media',
+			}),
+		},
 	});
 }
 
