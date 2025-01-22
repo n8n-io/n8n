@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, getCurrentInstance } from 'vue';
+import { computed, watch, ref } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,6 +8,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -23,11 +24,10 @@ const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
-const instance = getCurrentInstance();
-
 const { popViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
@@ -38,10 +38,11 @@ function toggleExpanded() {
 }
 
 function setExpanded(isExpanded: boolean) {
+	const prev = expanded.value;
 	expanded.value = isExpanded;
 
-	if (expanded.value) {
-		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
+	if (expanded.value && !prev) {
+		nodeCreatorStore.onCategoryExpanded({
 			category_name: props.category,
 			workflow_id: workflowId,
 		});
@@ -97,29 +98,29 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			:active="activeItemId === category"
 			:count="actionCount"
 			:expanded="expanded"
-			:isTrigger="isTriggerCategory"
+			:is-trigger="isTriggerCategory"
 			data-keyboard-nav-type="category"
 			:data-keyboard-nav-id="category"
 			@click="toggleExpanded"
 		>
-			<span :class="$style.mouseOverTooltip" v-if="mouseOverTooltip">
+			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
-						<div v-html="mouseOverTooltip" />
+						<div v-n8n-html="mouseOverTooltip" />
 					</template>
 				</n8n-tooltip>
 			</span>
 		</CategoryItem>
-		<div :class="$style.contentSlot" v-if="expanded && actionCount > 0 && $slots.default">
+		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer
 			v-if="expanded"
+			v-bind="$attrs"
 			:elements="elements"
-			v-on="$listeners"
-			:isTrigger="isTriggerCategory"
+			:is-trigger="isTriggerCategory"
 		>
 			<template #default> </template>
 			<template #empty>
@@ -133,6 +134,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
+	color: var(--color-foreground-xdark);
 	&:hover {
 		color: var(--color-primary);
 	}

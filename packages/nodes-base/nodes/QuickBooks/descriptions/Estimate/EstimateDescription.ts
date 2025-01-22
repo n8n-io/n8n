@@ -59,7 +59,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description:
-			'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -119,7 +119,7 @@ export const estimateFields: INodeProperties[] = [
 				name: 'itemId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -137,7 +137,7 @@ export const estimateFields: INodeProperties[] = [
 				name: 'TaxCodeRef',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTaxCodeRefs',
@@ -210,12 +210,12 @@ export const estimateFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		hint: 'The name of the output binary field to put the file in',
 		displayOptions: {
 			show: {
 				resource: ['estimate'],

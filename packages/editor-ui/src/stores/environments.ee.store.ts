@@ -2,7 +2,8 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { EnvironmentVariable } from '@/Interface';
 import * as environmentsApi from '@/api/environments.ee';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
+import { ExpressionError } from 'n8n-workflow';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
 	const rootStore = useRootStore();
@@ -10,7 +11,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	const variables = ref<EnvironmentVariable[]>([]);
 
 	async function fetchAllVariables() {
-		const data = await environmentsApi.getVariables(rootStore.getRestApiContext);
+		const data = await environmentsApi.getVariables(rootStore.restApiContext);
 
 		variables.value = data;
 
@@ -18,7 +19,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	async function createVariable(variable: Omit<EnvironmentVariable, 'id'>) {
-		const data = await environmentsApi.createVariable(rootStore.getRestApiContext, variable);
+		const data = await environmentsApi.createVariable(rootStore.restApiContext, variable);
 
 		variables.value.unshift(data);
 
@@ -26,7 +27,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	async function updateVariable(variable: EnvironmentVariable) {
-		const data = await environmentsApi.updateVariable(rootStore.getRestApiContext, variable);
+		const data = await environmentsApi.updateVariable(rootStore.restApiContext, variable);
 
 		variables.value = variables.value.map((v) => (v.id === data.id ? data : v));
 
@@ -34,7 +35,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	async function deleteVariable(variable: EnvironmentVariable) {
-		const data = await environmentsApi.deleteVariable(rootStore.getRestApiContext, {
+		const data = await environmentsApi.deleteVariable(rootStore.restApiContext, {
 			id: variable.id,
 		});
 
@@ -43,12 +44,21 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
-	const variablesAsObject = computed(() =>
-		variables.value.reduce<Record<string, string | boolean | number>>((acc, variable) => {
-			acc[variable.key] = variable.value;
-			return acc;
-		}, {}),
-	);
+	const variablesAsObject = computed(() => {
+		const asObject = variables.value.reduce<Record<string, string | boolean | number>>(
+			(acc, variable) => {
+				acc[variable.key] = variable.value;
+				return acc;
+			},
+			{},
+		);
+
+		return new Proxy(asObject, {
+			set() {
+				throw new ExpressionError('Cannot assign values to variables at runtime');
+			},
+		});
+	});
 
 	return {
 		variables,

@@ -1,11 +1,15 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM, makeResolverFromLegacyOptions } from 'vm2';
-import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from '@n8n/vm2';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
+import {
+	mapItemNotDefinedErrorIfNeededForRunForEach,
+	mapItemsNotDefinedErrorIfNeededForRunForAll,
+	validateNoDisallowedMethodsInRunForEach,
+} from './JsCodeValidator';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
+import { ValidationError } from './ValidationError';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
@@ -15,29 +19,19 @@ export const vmResolver = makeResolverFromLegacyOptions({
 		? {
 				modules: external.split(','),
 				transitive: false,
-		  }
+			}
 		: false,
 	builtin: builtIn?.split(',') ?? [],
 });
 
-const getSandboxOptions = (
-	context: SandboxContext,
-	workflowMode: WorkflowExecuteMode,
-): NodeVMOptions => ({
-	console: workflowMode === 'manual' ? 'redirect' : 'inherit',
-	sandbox: context,
-	require: vmResolver,
-});
-
 export class JavaScriptSandbox extends Sandbox {
-	readonly vm: NodeVM;
+	private readonly vm: NodeVM;
 
 	constructor(
 		context: SandboxContext,
 		private jsCode: string,
-		itemIndex: number | undefined,
-		workflowMode: WorkflowExecuteMode,
 		helpers: IExecuteFunctions['helpers'],
+		options?: { resolver?: Resolver },
 	) {
 		super(
 			{
@@ -46,59 +40,70 @@ export class JavaScriptSandbox extends Sandbox {
 					plural: 'objects',
 				},
 			},
-			itemIndex,
 			helpers,
 		);
-		this.vm = new NodeVM(getSandboxOptions(context, workflowMode));
+		this.vm = new NodeVM({
+			console: 'redirect',
+			sandbox: context,
+			require: options?.resolver ?? vmResolver,
+			wasm: false,
+		});
+
+		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
-	async runCodeAllItems(): Promise<INodeExecutionData[]> {
+	async runCode<T = unknown>(): Promise<T> {
+		const script = `module.exports = async function() {${this.jsCode}\n}()`;
+		try {
+			const executionResult = (await this.vm.run(script, __dirname)) as T;
+			return executionResult;
+		} catch (error) {
+			throw new ExecutionError(error);
+		}
+	}
+
+	async runCodeAllItems(options?: {
+		multiOutput?: boolean;
+	}): Promise<INodeExecutionData[] | INodeExecutionData[][]> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		let executionResult: INodeExecutionData | INodeExecutionData[];
+		let executionResult: INodeExecutionData | INodeExecutionData[] | INodeExecutionData[][];
 
 		try {
 			executionResult = await this.vm.run(script, __dirname);
 		} catch (error) {
 			// anticipate user expecting `items` to pre-exist as in Function Item node
-			if (error.message === 'items is not defined' && !/(let|const|var) items =/.test(script)) {
-				const quoted = error.message.replace('items', '`items`');
-				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
-			}
+			mapItemsNotDefinedErrorIfNeededForRunForAll(this.jsCode, error);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			throw new ExecutionError(error);
 		}
 
 		if (executionResult === null) return [];
 
-		return this.validateRunCodeAllItems(executionResult);
-	}
-
-	async runCodeEachItem(): Promise<INodeExecutionData | undefined> {
-		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-
-		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
-
-		if (match?.groups?.disallowedMethod) {
-			const { disallowedMethod } = match.groups;
-
-			const lineNumber =
-				this.jsCode.split('\n').findIndex((line) => {
-					return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
-				}) + 1;
-
-			const disallowedMethodFound = lineNumber !== 0;
-
-			if (disallowedMethodFound) {
+		if (options?.multiOutput === true) {
+			// Check if executionResult is an array of arrays
+			if (!Array.isArray(executionResult) || executionResult.some((item) => !Array.isArray(item))) {
 				throw new ValidationError({
-					message: `Can't use .${disallowedMethod}() here`,
-					description: "This is only available in 'Run Once for All Items' mode",
-					itemIndex: this.itemIndex,
-					lineNumber,
+					message: "The code doesn't return an array of arrays",
+					description:
+						'Please return an array of arrays. One array for the different outputs and one for the different items that get returned.',
 				});
 			}
+
+			return executionResult.map((data) => {
+				return this.validateRunCodeAllItems(data);
+			});
 		}
+
+		return this.validateRunCodeAllItems(
+			executionResult as INodeExecutionData | INodeExecutionData[],
+		);
+	}
+
+	async runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined> {
+		const script = `module.exports = async function() {${this.jsCode}\n}()`;
+
+		validateNoDisallowedMethodsInRunForEach(this.jsCode, itemIndex);
 
 		let executionResult: INodeExecutionData;
 
@@ -106,17 +111,13 @@ export class JavaScriptSandbox extends Sandbox {
 			executionResult = await this.vm.run(script, __dirname);
 		} catch (error) {
 			// anticipate user expecting `item` to pre-exist as in Function Item node
-			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
-				const quoted = error.message.replace('item', '`item`');
-				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
-			}
+			mapItemNotDefinedErrorIfNeededForRunForEach(this.jsCode, error);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			throw new ExecutionError(error, this.itemIndex);
+			throw new ExecutionError(error, itemIndex);
 		}
 
-		if (executionResult === null) return;
+		if (executionResult === null) return undefined;
 
-		return this.validateRunCodeEachItem(executionResult);
+		return this.validateRunCodeEachItem(executionResult, itemIndex);
 	}
 }

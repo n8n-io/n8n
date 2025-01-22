@@ -1,36 +1,24 @@
-import type { OptionsWithUri } from 'request';
-
+import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
-import { DateTime } from 'luxon';
-
-import isEmpty from 'lodash.isempty';
-
-export interface IEmail {
-	from?: string;
-	to?: string;
-	cc?: string;
-	bcc?: string;
-	inReplyTo?: string;
-	reference?: string;
-	subject: string;
-	body: string;
-	htmlBody?: string;
-	attachments?: IDataObject[];
-}
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
+import { escapeHtml } from '../../../utils/utilities';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export interface IAttachments {
 	type: string;
@@ -38,19 +26,16 @@ export interface IAttachments {
 	content: string;
 }
 
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { getGoogleAccessToken } from '../GenericFunctions';
-
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -202,6 +187,11 @@ export async function parseRawEmail(
 		headers,
 		headerLines: undefined,
 		attachments: undefined,
+		// Having data in IDataObjects that is not representable in JSON leads to
+		// inconsistencies between test executions and production executions.
+		// During a manual execution this would be stringified and during a
+		// production execution the next node would receive a date instance.
+		date: responseData.date ? responseData.date.toISOString() : responseData.date,
 	}) as IDataObject;
 
 	return {
@@ -222,6 +212,7 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
+		replyTo: email.replyTo,
 		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
@@ -264,7 +255,7 @@ export async function encodeEmail(email: IEmail) {
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -347,7 +338,7 @@ export const prepareTimestamp = (
 };
 
 export function prepareQuery(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
 	itemIndex: number,
 ) {
@@ -404,7 +395,7 @@ export function prepareQuery(
 }
 
 export function prepareEmailsInput(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	input: string,
 	fieldName: string,
 	itemIndex: number,
@@ -432,27 +423,50 @@ export function prepareEmailsInput(
 }
 
 export function prepareEmailBody(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
+	appendAttribution = false,
+	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
+	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
 
-	let body = '';
-	let htmlBody = '';
-
-	if (emailType === 'html') {
-		htmlBody = (this.getNodeParameter('message', itemIndex, '') as string).trim();
-	} else {
-		body = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	if (appendAttribution) {
+		const attributionText = 'This email was sent automatically with ';
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.gmail',
+		)}${instanceId ? '_' + instanceId : ''}`;
+		if (emailType === 'html') {
+			message = `
+			${message}
+			<br>
+			<br>
+			---
+			<br>
+			<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
+			`;
+		} else {
+			message = `${message}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
+		}
 	}
 
-	return { body, htmlBody };
+	const body = {
+		body: '',
+		htmlBody: '',
+	};
+
+	if (emailType === 'html') {
+		body.htmlBody = message;
+	} else {
+		body.body = message;
+	}
+
+	return body;
 }
 
 export async function prepareEmailAttachments(
 	this: IExecuteFunctions,
 	options: IDataObject,
-	items: INodeExecutionData[],
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
@@ -487,31 +501,15 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
 		const snippet = item.json.snippet as string;
 		if (snippet) {
-			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
-				switch (match) {
-					case '&amp;':
-						return '&';
-					case '&lt;':
-						return '<';
-					case '&gt;':
-						return '>';
-					case '&#39;':
-						return "'";
-					case '&quot;':
-						return '"';
-					default:
-						return match;
-				}
-			});
+			item.json.snippet = escapeHtml(snippet);
 		}
 		return item;
 	});
 	return result;
 }
 
-export async function replayToEmail(
+export async function replyToEmail(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
@@ -533,7 +531,6 @@ export async function replayToEmail(
 		attachments = await prepareEmailAttachments.call(
 			this,
 			options.attachmentsUi as IDataObject,
-			items,
 			itemIndex,
 		);
 		if (attachments.length) {
@@ -613,7 +610,7 @@ export async function replayToEmail(
 		threadId,
 	};
 
-	return googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(

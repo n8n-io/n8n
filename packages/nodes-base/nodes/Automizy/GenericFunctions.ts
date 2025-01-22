@@ -1,26 +1,25 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function automizyApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
 
 	body: any = {},
 	qs: IDataObject = {},
 	option = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('automizyApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ apiToken: string }>('automizyApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.apiToken}`,
 		},
@@ -41,7 +40,6 @@ export async function automizyApiRequest(
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -51,7 +49,7 @@ export async function automizyApiRequest(
 export async function automizyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

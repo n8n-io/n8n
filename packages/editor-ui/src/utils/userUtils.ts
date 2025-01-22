@@ -59,19 +59,17 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
+	ROLE,
 } from '@/constants';
 import type {
-	IPermissions,
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
-	IPersonalizationSurveyAnswersV4,
 	IPersonalizationSurveyVersions,
 	IUser,
 	ILogInStatus,
-	IRole,
-	IUserPermissions,
 } from '@/Interface';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 /*
 	Utility functions used to handle users in n8n
@@ -86,99 +84,12 @@ function isPersonalizationSurveyV2OrLater(
 	return 'version' in data;
 }
 
-export const ROLE: { Owner: IRole; Member: IRole; Default: IRole } = {
-	Owner: 'owner',
-	Member: 'member',
-	Default: 'default', // default user with no email when setting up instance
-};
-
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
 
-export const PERMISSIONS: IUserPermissions = {
-	TAGS: {
-		CAN_DELETE_TAGS: {
-			allow: {
-				role: [ROLE.Owner, ROLE.Default],
-			},
-		},
-	},
-	PRIMARY_MENU: {
-		CAN_ACCESS_USER_INFO: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-			deny: {
-				role: [ROLE.Default],
-			},
-		},
-	},
-	USER_SETTINGS: {
-		VIEW_UM_SETUP_WARNING: {
-			allow: {
-				role: [ROLE.Default],
-			},
-		},
-	},
-	USAGE: {
-		CAN_ACTIVATE_LICENSE: {
-			allow: {
-				role: [ROLE.Owner, ROLE.Default],
-			},
-		},
-	},
-};
-
-/**
- * To be authorized, user must pass all deny rules and pass any of the allow rules.
- *
- */
-export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
-	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
-	// big AND block
-	// if any of these are false, block user
-	if (permissions.deny) {
-		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
-			return false;
-		}
-
-		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
-			return false;
-		}
-
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
-			if (permissions.deny.role && permissions.deny.role.includes(role)) {
-				return false;
-			}
-		} else if (permissions.deny.role) {
-			return false;
-		}
-	}
-
-	// big OR block
-	// if any of these are true, allow user
-	if (permissions.allow) {
-		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
-			return true;
-		}
-
-		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
-			return true;
-		}
-
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
-			if (permissions.allow.role && permissions.allow.role.includes(role)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-};
+export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
 
 export function getPersonalizedNodeTypes(
 	answers:
@@ -199,16 +110,6 @@ export function getPersonalizedNodeTypes(
 	return getPersonalizationSurveyV1(answers);
 }
 
-export function getAccountAge(currentUser: IUser): number {
-	if (currentUser.createdAt) {
-		const accountCreatedAt = new Date(currentUser.createdAt);
-		const today = new Date();
-
-		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000 * 3600 * 24));
-	}
-	return -1;
-}
-
 function getPersonalizationSurveyV2OrLater(
 	answers:
 		| IPersonalizationSurveyAnswersV2
@@ -224,11 +125,11 @@ function getPersonalizationSurveyV2OrLater(
 
 	const companySize = answers[COMPANY_SIZE_KEY];
 	const companyType = answers[COMPANY_TYPE_KEY];
-	const automationGoal = answers[AUTOMATION_GOAL_KEY];
+	const automationGoal = AUTOMATION_GOAL_KEY in answers ? answers[AUTOMATION_GOAL_KEY] : undefined;
 
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 
@@ -369,7 +270,7 @@ function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 
 	let codingSkill = null;
 	if (answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 

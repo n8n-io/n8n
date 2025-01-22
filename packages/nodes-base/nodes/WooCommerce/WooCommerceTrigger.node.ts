@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,10 +7,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
-
-import { createHmac } from 'crypto';
 
 export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +23,7 @@ export class WooCommerceTrigger implements INodeType {
 			name: 'WooCommerce Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wooCommerceApi',

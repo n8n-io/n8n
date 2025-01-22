@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
 
@@ -13,8 +14,7 @@ export class FlowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow Trigger',
 		name: 'flowTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:flow.png',
+		icon: 'file:flow.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Flow events via webhooks',
@@ -22,7 +22,7 @@ export class FlowTrigger implements INodeType {
 			name: 'Flow Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'flowApi',
@@ -107,12 +107,8 @@ export class FlowTrigger implements INodeType {
 				}
 				qs.organization_id = credentials.organizationId as number;
 				const endpoint = '/integration_webhooks';
-				try {
-					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
-					webhooks = webhooks.integration_webhooks;
-				} catch (error) {
-					throw error;
-				}
+				webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
+				webhooks = webhooks.integration_webhooks;
 				for (const webhook of webhooks) {
 					// @ts-ignore
 					if (webhookData.webhookIds.includes(webhook.id)) {

@@ -7,11 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { demioApiRequest } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
-
+import { demioApiRequest } from './GenericFunctions';
 import { reportFields, reportOperations } from './ReportDescription';
 
 export class Demio implements INodeType {
@@ -26,8 +25,8 @@ export class Demio implements INodeType {
 		defaults: {
 			name: 'Demio',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'demioApi',

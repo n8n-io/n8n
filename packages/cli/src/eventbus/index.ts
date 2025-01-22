@@ -1,1 +1,2 @@
-export { eventBus } from './MessageEventBus/MessageEventBus';
+export { EventMessageTypes } from './event-message-classes';
+export { EventPayloadWorkflow } from './event-message-classes/event-message-workflow';

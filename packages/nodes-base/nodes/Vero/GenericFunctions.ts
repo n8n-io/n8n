@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function veroApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +20,7 @@ export async function veroApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('veroApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		qs,
 		body,

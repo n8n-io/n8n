@@ -1,5 +1,5 @@
-import { valid as isValidSemver } from 'semver';
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { valid as isValidSemver } from 'semver';
 
 interface PackageJson {
 	name: string;
@@ -92,7 +92,7 @@ export const packageOperations: INodeProperties[] = [
 								return items.flatMap(({ json }) =>
 									(json.objects as Array<{ package: PackageJson }>).map(
 										({ package: { name, version, description } }) =>
-											({ json: { name, version, description } } as INodeExecutionData),
+											({ json: { name, version, description } }) as INodeExecutionData,
 									),
 								);
 							},

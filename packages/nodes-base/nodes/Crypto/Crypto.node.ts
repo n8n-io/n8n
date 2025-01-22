@@ -1,5 +1,6 @@
-import set from 'lodash.set';
-
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,16 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
-
-import type { BinaryToTextEncoding } from 'crypto';
-import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import stream from 'stream';
-import { promisify } from 'util';
-
+import { deepCopy, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { pipeline } from 'stream/promises';
 import { v4 as uuid } from 'uuid';
-
-const pipeline = promisify(stream.pipeline);
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',
@@ -36,6 +30,7 @@ export class Crypto implements INodeType {
 		displayName: 'Crypto',
 		name: 'crypto',
 		icon: 'fa:key',
+		iconColor: 'green',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
@@ -44,8 +39,8 @@ export class Crypto implements INodeType {
 			name: 'Crypto',
 			color: '#408000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Action',
@@ -123,7 +118,7 @@ export class Crypto implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -277,6 +272,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				required: true,
 			},
@@ -308,7 +304,6 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: ['sign'],
-						binaryData: [false],
 					},
 				},
 				type: 'string',
@@ -339,7 +334,7 @@ export class Crypto implements INodeType {
 				},
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				options: supportedAlgorithms,
 				default: '',
 				required: true,
@@ -485,7 +480,7 @@ export class Crypto implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						if (binaryData.id) {
-							const binaryStream = this.helpers.getBinaryStream(binaryData.id);
+							const binaryStream = await this.helpers.getBinaryStream(binaryData.id);
 							hashOrHmac.setEncoding(encoding);
 							await pipeline(binaryStream, hashOrHmac);
 							newValue = hashOrHmac.read();
@@ -533,7 +528,7 @@ export class Crypto implements INodeType {
 					newItem.binary = item.binary;
 				}
 
-				set(newItem, `json.${dataPropertyName}`, newValue);
+				set(newItem, ['json', dataPropertyName], newValue);
 
 				returnData.push(newItem);
 			} catch (error) {
@@ -551,6 +546,6 @@ export class Crypto implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

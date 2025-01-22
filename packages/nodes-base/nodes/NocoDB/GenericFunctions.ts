@@ -1,13 +1,14 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
@@ -16,6 +17,7 @@ interface IAttachment {
 	title: string;
 	mimetype: string;
 	size: number;
+	signedUrl?: string;
 }
 
 /**
@@ -24,7 +26,7 @@ interface IAttachment {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
@@ -42,12 +44,15 @@ export async function apiRequest(
 
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	if (!uri) {
+		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
+	}
+
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,
-		uri:
-			uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
+		uri,
 		json: true,
 	};
 
@@ -59,7 +64,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -70,7 +75,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -102,18 +107,25 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IDataObject[],
 	fieldNames: string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
+			let attachments = record[fieldName] as IAttachment[];
+			if (typeof attachments === 'string') {
+				attachments = jsonParse<IAttachment[]>(record[fieldName] as string);
+			}
 			if (record[fieldName]) {
-				for (const [index, attachment] of jsonParse<IAttachment[]>(
-					record[fieldName] as string,
-				).entries()) {
-					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
+				for (const [index, attachment] of attachments.entries()) {
+					const attachmentUrl = attachment.signedUrl || attachment.url;
+					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
 						json: false,
 						encoding: null,
 					});

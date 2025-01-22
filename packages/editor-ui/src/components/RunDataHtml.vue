@@ -1,50 +1,43 @@
-<template>
-	<div class="__html-display ph-no-capture" v-html="html"></div>
-</template>
-
 <script lang="ts">
-import type { PropType } from 'vue';
-import type { INodeExecutionData } from 'n8n-workflow';
+import sanitizeHtml, { defaults, type IOptions as SanitizeOptions } from 'sanitize-html';
+
+const sanitizeOptions: SanitizeOptions = {
+	allowVulnerableTags: false,
+	enforceHtmlBoundary: false,
+	disallowedTagsMode: 'discard',
+	allowedTags: [...defaults.allowedTags, 'style', 'img', 'title'],
+	allowedAttributes: {
+		...defaults.allowedAttributes,
+		'*': ['class', 'style'],
+	},
+	transformTags: {
+		head: '',
+	},
+};
 
 export default {
 	name: 'RunDataHtml',
 	props: {
-		inputData: {
-			type: Array as PropType<INodeExecutionData[]>,
+		inputHtml: {
+			type: String,
+			required: true,
 		},
 	},
 	computed: {
-		html() {
-			if (!this.inputData) return '';
-
-			return this.scopeCss(this.inputData[0].json.html as string);
-		},
-	},
-	methods: {
-		/**
-		 * Scope all CSS selectors to prevent user stylesheets from leaking.
-		 */
-		scopeCss(str: string) {
-			const stylesheets = str.match(/<style>([\s\S]*?)<\/style>/g);
-
-			if (!stylesheets) return str;
-
-			const map = stylesheets.reduce<Record<string, string>>((acc, match) => {
-				match.split('\n').forEach((line) => {
-					if (line.endsWith('{')) acc[line] = ['.__html-display', line].join(' ');
-				});
-
-				return acc;
-			}, {});
-
-			return Object.entries(map).reduce((acc, [key, value]) => acc.replace(key, value), str);
+		sanitizedHtml() {
+			return sanitizeHtml(this.inputHtml, sanitizeOptions);
 		},
 	},
 };
 </script>
 
+<template>
+	<iframe class="__html-display" :srcdoc="sanitizedHtml" />
+</template>
+
 <style lang="scss">
 .__html-display {
-	padding: 0 var(--spacing-s);
+	width: 100%;
+	height: 100%;
 }
 </style>

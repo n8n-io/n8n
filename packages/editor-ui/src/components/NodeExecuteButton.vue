@@ -1,230 +1,394 @@
-<template>
-	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<template #content>
-			<div>{{ disabledHint }}</div>
-		</template>
-		<div>
-			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
-				:disabled="disabled || !!disabledHint"
-				:label="buttonLabel"
-				:type="type"
-				:size="size"
-				:transparentBackground="transparent"
-				@click="onClick"
-			/>
-		</div>
-	</n8n-tooltip>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
-import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { workflowRun } from '@/mixins/workflowRun';
-import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus';
+<script lang="ts" setup>
+import { ref, computed } from 'vue';
+import {
+	WEBHOOK_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+} from '@/constants';
+import {
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast, useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { nodeViewEventBus } from '@/event-bus';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { type IUpdateInformation } from '../Interface';
+import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 
-export default defineComponent({
-	mixins: [workflowRun, pinData],
-	props: {
-		nodeName: {
-			type: String,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		label: {
-			type: String,
-		},
-		type: {
-			type: String,
-		},
-		size: {
-			type: String,
-		},
-		transparent: {
-			type: Boolean,
-			default: false,
-		},
-		telemetrySource: {
-			type: String,
-		},
+const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+const MAX_POPUP_COUNT = 10;
+const POPUP_UPDATE_DELAY = 3000;
+
+const props = withDefaults(
+	defineProps<{
+		nodeName: string;
+		telemetrySource: string;
+		disabled?: boolean;
+		label?: string;
+		type?: string;
+		size?: string;
+		transparent?: boolean;
+		hideIcon?: boolean;
+		tooltip?: string;
+	}>(),
+	{
+		disabled: false,
+		transparent: false,
 	},
-	setup(props) {
-		return {
-			...useToast(),
-			...useMessage(),
-			...workflowRun.setup?.(props),
-		};
-	},
-	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
-		node(): INodeUi | null {
-			return this.workflowsStore.getNodeByName(this.nodeName);
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (this.node) {
-				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-			}
-			return null;
-		},
-		nodeRunning(): boolean {
-			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
-			return (
-				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
-			);
-		},
-		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
-		},
-		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
-		},
-		isManualTriggerNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
-		},
-		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
-		},
-		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
-		},
-		isWebhookNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
-		},
-		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
-			const executedNode = this.workflowsStore.executedNode;
+);
 
-			return (
-				this.node &&
-				!this.node.disabled &&
-				this.isTriggerNode &&
-				waitingOnWebhook &&
-				(!executedNode || executedNode === this.nodeName)
-			);
-		},
-		isListeningForWorkflowEvents(): boolean {
-			return (
-				this.nodeRunning &&
-				this.isTriggerNode &&
-				!this.isScheduleTrigger &&
-				!this.isManualTriggerNode
-			);
-		},
-		hasIssues(): boolean {
-			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
-			);
-		},
-		disabledHint(): string {
-			if (this.isListeningForEvents) {
-				return '';
-			}
+const emit = defineEmits<{
+	stopExecution: [];
+	execute: [];
+	valueChanged: [value: IUpdateInformation];
+}>();
 
-			if (this.isTriggerNode && this.node.disabled) {
-				return this.$locale.baseText('ndv.execute.nodeIsDisabled');
-			}
-
-			if (this.isTriggerNode && this.hasIssues) {
-				const activeNode = this.ndvStore.activeNode;
-				if (activeNode && activeNode.name !== this.nodeName) {
-					return this.$locale.baseText('ndv.execute.fixPrevious');
-				}
-
-				return this.$locale.baseText('ndv.execute.requiredFieldsMissing');
-			}
-
-			if (this.workflowRunning && !this.nodeRunning) {
-				return this.$locale.baseText('ndv.execute.workflowAlreadyRunning');
-			}
-
-			return '';
-		},
-		buttonLabel(): string {
-			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
-				return this.$locale.baseText('ndv.execute.stopListening');
-			}
-
-			if (this.label) {
-				return this.label;
-			}
-
-			if (this.isWebhookNode) {
-				return this.$locale.baseText('ndv.execute.listenForTestEvent');
-			}
-
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
-				return this.$locale.baseText('ndv.execute.fetchEvent');
-			}
-
-			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
-				return this.$locale.baseText('ndv.execute.listenForEvent');
-			}
-
-			return this.$locale.baseText('ndv.execute.executeNode');
-		},
-	},
-	methods: {
-		async stopWaitingForWebhook() {
-			try {
-				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
-				return;
-			}
-		},
-
-		async onClick() {
-			if (this.isListeningForEvents) {
-				await this.stopWaitingForWebhook();
-			} else if (this.isListeningForWorkflowEvents) {
-				this.$emit('stopExecution');
-			} else {
-				let shouldUnpinAndExecute = false;
-				if (this.hasPinData) {
-					const confirmResult = await this.confirm(
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
-						{
-							confirmButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
-							cancelButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
-						},
-					);
-					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
-
-					if (shouldUnpinAndExecute) {
-						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.workflowsStore.unpinData({ node: this.node });
-					}
-				}
-
-				if (!this.hasPinData || shouldUnpinAndExecute) {
-					const telemetryPayload = {
-						node_type: this.nodeType ? this.nodeType.name : null,
-						workflow_id: this.workflowsStore.workflowId,
-						source: this.telemetrySource,
-					};
-					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
-
-					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
-					this.$emit('execute');
-				}
-			}
-		},
-	},
+defineOptions({
+	inheritAttrs: false,
 });
+
+const lastPopupCountUpdate = ref(0);
+const codeGenerationInProgress = ref(false);
+
+const router = useRouter();
+const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+
+const workflowsStore = useWorkflowsStore();
+const externalHooks = useExternalHooks();
+const toast = useToast();
+const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
+const i18n = useI18n();
+const message = useMessage();
+const telemetry = useTelemetry();
+
+const node = computed(() => workflowsStore.getNodeByName(props.nodeName));
+const pinnedData = usePinnedData(node);
+
+const nodeType = computed((): INodeTypeDescription | null => {
+	return node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null;
+});
+
+const isNodeRunning = computed(() => {
+	if (!uiStore.isActionActive['workflowRunning'] || codeGenerationInProgress.value) return false;
+	const triggeredNode = workflowsStore.executedNode;
+	return (
+		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
+	);
+});
+
+const isTriggerNode = computed(() => {
+	return node.value ? nodeTypesStore.isTriggerNode(node.value.type) : false;
+});
+
+const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+
+const isManualTriggerNode = computed(() =>
+	nodeType.value ? nodeType.value.name === MANUAL_TRIGGER_NODE_TYPE : false,
+);
+
+const isChatNode = computed(() =>
+	nodeType.value ? nodeType.value.name === CHAT_TRIGGER_NODE_TYPE : false,
+);
+
+const isChatChild = computed(() => workflowsStore.checkIfNodeHasChatParent(props.nodeName));
+
+const isFormTriggerNode = computed(() =>
+	nodeType.value ? nodeType.value.name === FORM_TRIGGER_NODE_TYPE : false,
+);
+
+const isPollingTypeNode = computed(() => !!nodeType.value?.polling);
+
+const isScheduleTrigger = computed(() => !!nodeType.value?.group.includes('schedule'));
+
+const isWebhookNode = computed(() =>
+	nodeType.value ? nodeType.value.name === WEBHOOK_NODE_TYPE : false,
+);
+
+const isListeningForEvents = computed(() => {
+	const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
+	const executedNode = workflowsStore.executedNode;
+
+	return (
+		!!node.value &&
+		!node.value.disabled &&
+		isTriggerNode.value &&
+		waitingOnWebhook &&
+		(!executedNode || executedNode === props.nodeName)
+	);
+});
+
+const isListeningForWorkflowEvents = computed(() => {
+	return (
+		isNodeRunning.value &&
+		isTriggerNode.value &&
+		!isScheduleTrigger.value &&
+		!isManualTriggerNode.value
+	);
+});
+
+const hasIssues = computed(() =>
+	Boolean(node.value?.issues && (node.value.issues.parameters || node.value.issues.credentials)),
+);
+
+const disabledHint = computed(() => {
+	if (isListeningForEvents.value) {
+		return '';
+	}
+
+	if (codeGenerationInProgress.value) {
+		return i18n.baseText('ndv.execute.generatingCode');
+	}
+
+	if (isTriggerNode.value && node?.value?.disabled) {
+		return i18n.baseText('ndv.execute.nodeIsDisabled');
+	}
+
+	if (isTriggerNode.value && hasIssues.value) {
+		const activeNode = ndvStore.activeNode;
+		if (activeNode && activeNode.name !== props.nodeName) {
+			return i18n.baseText('ndv.execute.fixPrevious');
+		}
+
+		return i18n.baseText('ndv.execute.requiredFieldsMissing');
+	}
+
+	if (isWorkflowRunning.value && !isNodeRunning.value) {
+		return i18n.baseText('ndv.execute.workflowAlreadyRunning');
+	}
+
+	return '';
+});
+
+const tooltipText = computed(() => {
+	if (shouldGenerateCode.value) {
+		return i18n.baseText('ndv.execute.generateCodeAndTestNode.description');
+	}
+	if (disabledHint.value) return disabledHint.value;
+	if (props.tooltip && !isLoading.value && testStepButtonPopupCount() < MAX_POPUP_COUNT) {
+		return props.tooltip;
+	}
+	return '';
+});
+
+const buttonLabel = computed(() => {
+	if (isListeningForEvents.value || isListeningForWorkflowEvents.value) {
+		return i18n.baseText('ndv.execute.stopListening');
+	}
+
+	if (props.label) {
+		return props.label;
+	}
+
+	if (isChatNode.value) {
+		return i18n.baseText('ndv.execute.testChat');
+	}
+
+	if (isWebhookNode.value) {
+		return i18n.baseText('ndv.execute.listenForTestEvent');
+	}
+
+	if (isFormTriggerNode.value) {
+		return i18n.baseText('ndv.execute.testStep');
+	}
+
+	if (isPollingTypeNode.value || nodeType.value?.mockManualExecution) {
+		return i18n.baseText('ndv.execute.fetchEvent');
+	}
+
+	return i18n.baseText('ndv.execute.testNode');
+});
+
+const isLoading = computed(
+	() =>
+		codeGenerationInProgress.value ||
+		(isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value),
+);
+
+const buttonIcon = computed(() => {
+	if (shouldGenerateCode.value) return 'terminal';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'flask';
+	return undefined;
+});
+
+const shouldGenerateCode = computed(() => {
+	if (node.value?.type !== AI_TRANSFORM_NODE_TYPE) {
+		return false;
+	}
+	if (!node.value?.parameters?.instructions) {
+		return false;
+	}
+	if (!node.value?.parameters?.jsCode) {
+		return true;
+	}
+	if (
+		node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
+		(node.value?.parameters?.instructions as string).trim() !==
+			(node.value?.parameters?.[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string).trim()
+	) {
+		return true;
+	}
+	return false;
+});
+
+async function stopWaitingForWebhook() {
+	try {
+		await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+	} catch (error) {
+		toast.showError(error, 'Error stopping webhook');
+	}
+}
+
+function testStepButtonPopupCount() {
+	return Number(localStorage.getItem(NODE_TEST_STEP_POPUP_COUNT_KEY));
+}
+
+function onMouseOver() {
+	const count = testStepButtonPopupCount();
+
+	if (count < MAX_POPUP_COUNT && !disabledHint.value && tooltipText.value) {
+		const now = Date.now();
+		if (!lastPopupCountUpdate.value || now - lastPopupCountUpdate.value >= POPUP_UPDATE_DELAY) {
+			localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+			lastPopupCountUpdate.value = now;
+		}
+	}
+}
+
+async function onClick() {
+	if (shouldGenerateCode.value) {
+		// Generate code if user hasn't clicked 'Generate Code' button
+		// and update parameters
+		codeGenerationInProgress.value = true;
+		try {
+			toast.showMessage({
+				title: i18n.baseText('ndv.execute.generateCode.title'),
+				message: i18n.baseText('ndv.execute.generateCode.message', {
+					interpolate: { nodeName: node.value?.name as string },
+				}),
+				type: 'success',
+			});
+			const prompt = node.value?.parameters?.instructions as string;
+			const updateInformation = await generateCodeForAiTransform(
+				prompt,
+				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				5,
+			);
+			if (!updateInformation) return;
+
+			emit('valueChanged', updateInformation);
+
+			emit('valueChanged', {
+				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
+				value: prompt,
+			});
+
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: updateInformation.value,
+			});
+		} catch (error) {
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: '',
+				hasError: true,
+			});
+			toast.showMessage({
+				type: 'error',
+				title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
+				message: error.message,
+			});
+		}
+		codeGenerationInProgress.value = false;
+	}
+
+	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
+		ndvStore.setActiveNodeName(null);
+		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
+		nodeViewEventBus.emit('openChat');
+	} else if (isListeningForEvents.value) {
+		await stopWaitingForWebhook();
+	} else if (isListeningForWorkflowEvents.value) {
+		await stopCurrentExecution();
+		emit('stopExecution');
+	} else {
+		let shouldUnpinAndExecute = false;
+		if (pinnedData.hasData.value) {
+			const confirmResult = await message.confirm(
+				i18n.baseText('ndv.pinData.unpinAndExecute.description'),
+				i18n.baseText('ndv.pinData.unpinAndExecute.title'),
+				{
+					confirmButtonText: i18n.baseText('ndv.pinData.unpinAndExecute.confirm'),
+					cancelButtonText: i18n.baseText('ndv.pinData.unpinAndExecute.cancel'),
+				},
+			);
+			shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
+
+			if (shouldUnpinAndExecute && node.value) {
+				pinnedData.unsetData('unpin-and-execute-modal');
+			}
+		}
+
+		if (!pinnedData.hasData.value || shouldUnpinAndExecute) {
+			const telemetryPayload = {
+				node_type: nodeType.value ? nodeType.value.name : null,
+				workflow_id: workflowsStore.workflowId,
+				source: props.telemetrySource,
+				push_ref: ndvStore.pushRef,
+			};
+
+			telemetry.track('User clicked execute node button', telemetryPayload);
+			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
+
+			await runWorkflow({
+				destinationNode: props.nodeName,
+				source: 'RunData.ExecuteNodeButton',
+			});
+
+			emit('execute');
+		}
+	}
+}
 </script>
+
+<template>
+	<div>
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
+			<template #content>
+				<div>{{ tooltipText }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading="isLoading"
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:icon="buttonIcon"
+					:transparent-background="transparent"
+					:title="
+						!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''
+					"
+					@mouseover="onMouseOver"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</div>
+</template>

@@ -1,280 +1,343 @@
+<script setup lang="ts">
+import type { ViewUpdate } from '@codemirror/view';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+
+import { CODE_NODE_TYPE } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
+import { useRootStore } from '@/stores/root.store';
+
+import { useCodeEditor } from '@/composables/useCodeEditor';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
+import AskAI from './AskAI/AskAI.vue';
+import { CODE_PLACEHOLDERS } from './constants';
+import { useLinter } from './linter';
+import { useSettingsStore } from '@/stores/settings.store';
+import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
+
+type Props = {
+	mode: CodeExecutionMode;
+	modelValue: string;
+	aiButtonEnabled?: boolean;
+	fillParent?: boolean;
+	language?: CodeNodeEditorLanguage;
+	isReadOnly?: boolean;
+	rows?: number;
+	id?: string;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	aiButtonEnabled: false,
+	fillParent: false,
+	language: 'javaScript',
+	isReadOnly: false,
+	rows: 4,
+	id: () => crypto.randomUUID(),
+});
+const emit = defineEmits<{
+	'update:modelValue': [value: string];
+}>();
+
+const message = useMessage();
+const tabs = ref(['code', 'ask-ai']);
+const activeTab = ref('code');
+const isLoadingAIResponse = ref(false);
+const codeNodeEditorRef = ref<HTMLDivElement>();
+const codeNodeEditorContainerRef = ref<HTMLDivElement>();
+const hasManualChanges = ref(false);
+
+const rootStore = useRootStore();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
+
+const linter = useLinter(
+	() => props.mode,
+	() => props.language,
+);
+const extensions = computed(() => [linter.value]);
+const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
+const dragAndDropEnabled = computed(() => {
+	return !props.isReadOnly;
+});
+
+const { highlightLine, readEditorValue, editor } = useCodeEditor({
+	id: props.id,
+	editorRef: codeNodeEditorRef,
+	language: () => props.language,
+	languageParams: () => ({ mode: props.mode }),
+	editorValue: () => props.modelValue,
+	placeholder,
+	extensions,
+	isReadOnly: () => props.isReadOnly,
+	theme: {
+		maxHeight: props.fillParent ? '100%' : '40vh',
+		minHeight: '20vh',
+		rows: props.rows,
+	},
+	onChange: onEditorUpdate,
+});
+
+onMounted(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
+	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
+
+	if (!props.modelValue) {
+		emit('update:modelValue', placeholder.value);
+	}
+});
+
+onBeforeUnmount(() => {
+	codeNodeEditorEventBus.off('codeDiffApplied', diffApplied);
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
+});
+
+const askAiEnabled = computed(() => {
+	return settingsStore.isAskAiEnabled && props.language === 'javaScript';
+});
+
+watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
+	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {
+		emit('update:modelValue', placeholder.value);
+	}
+});
+
+async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+	// Confirm dialog if leaving ask-ai tab during loading
+	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
+		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
+			title: i18n.baseText('codeNodeEditor.askAi.areYouSure'),
+			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.switchTab'),
+			showClose: true,
+			showCancelButton: true,
+		});
+
+		return confirmModal === 'confirm';
+	}
+
+	return true;
+}
+
+async function onAiReplaceCode(code: string) {
+	const formattedCode = await format(code, {
+		parser: 'babel',
+		plugins: [jsParser, estree],
+	});
+
+	emit('update:modelValue', formattedCode);
+
+	activeTab.value = 'code';
+	hasManualChanges.value = false;
+}
+
+function onEditorUpdate(viewUpdate: ViewUpdate) {
+	trackCompletion(viewUpdate);
+	hasManualChanges.value = true;
+	emit('update:modelValue', readEditorValue());
+}
+
+function diffApplied() {
+	codeNodeEditorContainerRef.value?.classList.add('flash-editor');
+	codeNodeEditorContainerRef.value?.addEventListener('animationend', () => {
+		codeNodeEditorContainerRef.value?.classList.remove('flash-editor');
+	});
+}
+
+function trackCompletion(viewUpdate: ViewUpdate) {
+	const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+	if (!completionTx) return;
+
+	try {
+		// @ts-expect-error - undocumented fields
+		const { fromA, toB } = viewUpdate?.changedRanges[0];
+		const full = viewUpdate.state.doc.slice(fromA, toB).toString();
+		const lastDotIndex = full.lastIndexOf('.');
+
+		let context = null;
+		let insertedText = null;
+
+		if (lastDotIndex === -1) {
+			context = '';
+			insertedText = full;
+		} else {
+			context = full.slice(0, lastDotIndex);
+			insertedText = full.slice(lastDotIndex + 1);
+		}
+
+		// TODO: Still has to get updated for Python and JSON
+		telemetry.track('User autocompleted code', {
+			instance_id: rootStore.instanceId,
+			node_type: CODE_NODE_TYPE,
+			field_name: props.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
+			field_type: 'code',
+			context,
+			inserted_text: insertedText,
+		});
+	} catch {}
+}
+
+function onAiLoadStart() {
+	isLoadingAIResponse.value = true;
+}
+
+function onAiLoadEnd() {
+	isLoadingAIResponse.value = false;
+}
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	const valueToInsert =
+		props.mode === 'runOnceForAllItems'
+			? value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()')
+			: value;
+
+	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
+}
+</script>
+
 <template>
 	<div
-		:class="['code-node-editor', $style['code-node-editor-container'], language]"
-		@mouseover="onMouseOver"
-		@mouseout="onMouseOut"
-		ref="codeNodeEditorContainer"
+		ref="codeNodeEditorContainerRef"
+		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
-		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
-		<n8n-button
-			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
-			size="small"
-			type="tertiary"
-			:class="$style['ask-ai-button']"
-			@mousedown="onAskAiButtonClick"
+		<el-tabs
+			v-if="askAiEnabled"
+			ref="tabs"
+			v-model="activeTab"
+			type="card"
+			:before-leave="onBeforeTabLeave"
+			:class="$style.tabs"
 		>
-			{{ $locale.baseText('codeNodeEditor.askAi') }}
-		</n8n-button>
+			<el-tab-pane
+				:label="i18n.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+				:class="$style.fillHeight"
+			>
+				<DraggableTarget
+					type="mapping"
+					:disabled="!dragAndDropEnabled"
+					:class="$style.fillHeight"
+					@drop="onDrop"
+				>
+					<template #default="{ activeDrop, droppable }">
+						<div
+							ref="codeNodeEditorRef"
+							:class="[
+								'ph-no-capture',
+								'code-editor-tabs',
+								$style.editorInput,
+								$style.fillHeight,
+								{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+							]"
+						/>
+					</template>
+				</DraggableTarget>
+				<slot name="suffix" />
+			</el-tab-pane>
+			<el-tab-pane
+				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI
+					:key="activeTab"
+					:has-changes="hasManualChanges"
+					@replace-code="onAiReplaceCode"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else :class="$style.fillHeight">
+			<DraggableTarget
+				type="mapping"
+				:disabled="!dragAndDropEnabled"
+				:class="$style.fillHeight"
+				@drop="onDrop"
+			>
+				<template #default="{ activeDrop, droppable }">
+					<div
+						ref="codeNodeEditorRef"
+						:class="[
+							'ph-no-capture',
+							$style.fillHeight,
+							$style.editorInput,
+							{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+						]"
+					/>
+				</template>
+			</DraggableTarget>
+			<slot name="suffix" />
+		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-
-import type { LanguageSupport } from '@codemirror/language';
-import type { Extension } from '@codemirror/state';
-import { Compartment, EditorState } from '@codemirror/state';
-import type { ViewUpdate } from '@codemirror/view';
-import { EditorView } from '@codemirror/view';
-import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { python } from '@codemirror/lang-python';
-import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
-import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
-
-import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
-import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
-
-import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
-import { CODE_PLACEHOLDERS } from './constants';
-import { linterExtension } from './linter';
-import { completerExtension } from './completer';
-import { codeNodeEditorTheme } from './theme';
-
-export default defineComponent({
-	name: 'code-node-editor',
-	mixins: [linterExtension, completerExtension, workflowHelpers],
-	props: {
-		aiButtonEnabled: {
-			type: Boolean,
-			default: false,
-		},
-		mode: {
-			type: String as PropType<CodeExecutionMode>,
-			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
-		},
-		language: {
-			type: String as PropType<CodeNodeEditorLanguage>,
-			default: 'javaScript' as CodeNodeEditorLanguage,
-			validator: (value: CodeNodeEditorLanguage): boolean => CODE_LANGUAGES.includes(value),
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		value: {
-			type: String,
-		},
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			languageCompartment: new Compartment(),
-			linterCompartment: new Compartment(),
-			isEditorHovered: false,
-			isEditorFocused: false,
-		};
-	},
-	watch: {
-		mode(newMode, previousMode: CodeExecutionMode) {
-			this.reloadLinter();
-
-			if (this.content.trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]) {
-				this.refreshPlaceholder();
-			}
-		},
-		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
-			if (this.content.trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]) {
-				this.refreshPlaceholder();
-			}
-
-			const [languageSupport] = this.languageExtensions;
-			this.editor?.dispatch({
-				effects: this.languageCompartment.reconfigure(languageSupport),
-			});
-		},
-	},
-	computed: {
-		...mapStores(useRootStore),
-		content(): string {
-			if (!this.editor) return '';
-
-			return this.editor.state.doc.toString();
-		},
-		placeholder(): string {
-			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
-		},
-		languageExtensions(): [LanguageSupport, ...Extension[]] {
-			switch (this.language) {
-				case 'json':
-					return [json()];
-				case 'javaScript':
-					return [javascript(), this.autocompletionExtension('javaScript')];
-				case 'python':
-					return [python(), this.autocompletionExtension('python')];
-			}
-		},
-	},
-	methods: {
-		onMouseOver(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
-
-			if (!ref?.contains(fromElement)) this.isEditorHovered = true;
-		},
-		onMouseOut(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
-
-			if (!ref?.contains(fromElement)) this.isEditorHovered = false;
-		},
-		onAskAiButtonClick() {
-			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
-
-			this.uiStore.openModal(ASK_AI_MODAL_KEY);
-		},
-		reloadLinter() {
-			if (!this.editor) return;
-
-			const linter = this.createLinter(this.language);
-			if (linter) {
-				this.editor.dispatch({
-					effects: this.linterCompartment.reconfigure(linter),
-				});
-			}
-		},
-		refreshPlaceholder() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.content.length, insert: this.placeholder },
-			});
-		},
-		highlightLine(line: number | 'final') {
-			if (!this.editor) return;
-
-			if (line === 'final') {
-				this.editor.dispatch({
-					selection: { anchor: this.content.length },
-				});
-				return;
-			}
-
-			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
-			});
-		},
-		trackCompletion(viewUpdate: ViewUpdate) {
-			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-			if (!completionTx) return;
-
-			try {
-				// @ts-ignore - undocumented fields
-				const { fromA, toB } = viewUpdate?.changedRanges[0];
-				const full = this.content.slice(fromA, toB);
-				const lastDotIndex = full.lastIndexOf('.');
-
-				let context = null;
-				let insertedText = null;
-
-				if (lastDotIndex === -1) {
-					context = '';
-					insertedText = full;
-				} else {
-					context = full.slice(0, lastDotIndex);
-					insertedText = full.slice(lastDotIndex + 1);
-				}
-
-				// TODO: Still has to get updated for Python and JSON
-				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.rootStore.instanceId,
-					node_type: CODE_NODE_TYPE,
-					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
-					field_type: 'code',
-					context,
-					inserted_text: insertedText,
-				});
-			} catch {}
-		},
-	},
-	destroyed() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
-	},
-	mounted() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		// empty on first load, default param value
-		if (!this.value) {
-			this.$emit('valueChanged', this.placeholder);
-		}
-
-		const { isReadOnly, language } = this;
-		const extensions: Extension[] = [
-			...readOnlyEditorExtensions,
-			EditorState.readOnly.of(isReadOnly),
-			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({ isReadOnly }),
-		];
-
-		if (!isReadOnly) {
-			const linter = this.createLinter(language);
-			if (linter) {
-				extensions.push(this.linterCompartment.of(linter));
-			}
-
-			extensions.push(
-				...writableEditorExtensions,
-				EditorView.domEventHandlers({
-					focus: () => {
-						this.isEditorFocused = true;
-					},
-					blur: () => {
-						this.isEditorFocused = false;
-					},
-				}),
-				EditorView.updateListener.of((viewUpdate) => {
-					if (!viewUpdate.docChanged) return;
-
-					this.trackCompletion(viewUpdate);
-
-					this.$emit('valueChanged', this.editor?.state.doc.toString());
-				}),
-			);
-		}
-
-		const [languageSupport, ...otherExtensions] = this.languageExtensions;
-		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
-
-		const state = EditorState.create({
-			doc: this.value || this.placeholder,
-			extensions,
-		});
-
-		this.editor = new EditorView({
-			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state,
-		});
-	},
-});
-</script>
-
-<style lang="scss" module>
-.code-node-editor-container {
-	position: relative;
-
-	& > div {
-		height: 100%;
+<style scoped lang="scss">
+:deep(.el-tabs) {
+	.cm-editor {
+		border: 0;
 	}
 }
 
-.ask-ai-button {
-	position: absolute;
-	top: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+@keyframes backgroundAnimation {
+	0% {
+		background-color: none;
+	}
+	30% {
+		background-color: rgba(41, 163, 102, 0.1);
+	}
+	100% {
+		background-color: none;
+	}
+}
+
+.flash-editor {
+	:deep(.cm-editor),
+	:deep(.cm-gutter) {
+		animation: backgroundAnimation 1.5s ease-in-out;
+	}
+}
+</style>
+
+<style lang="scss" module>
+.tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.code-node-editor-container {
+	position: relative;
+}
+
+.fillHeight {
+	height: 100%;
+}
+
+.editorInput.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.editorInput.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

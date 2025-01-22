@@ -1,0 +1,97 @@
+{
+	"meta": {
+		"instanceId": "a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3058c300-b377-41b7-9c90-a01372f9b581",
+							"name": "firstName",
+							"value": "Joe",
+							"type": "string"
+						},
+						{
+							"id": "bb871662-c23c-4234-ac0c-b78c279bbf34",
+							"name": "lastName",
+							"value": "Smith",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "baee2bf4-5083-4cbe-8e51-4eddcf859ef5",
+			"name": "PinnedSet",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1120, 380]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a482f1fd-4815-4da4-a733-7beafb43c500",
+							"name": "test",
+							"value": "={{ $('PinnedSet').all().json }}\n{{ $('PinnedSet').item.json.firstName }}\n{{ $('PinnedSet').first().json.firstName }}\n{{ $('PinnedSet').itemMatching(0).json.firstName }}\n{{ $('PinnedSet').itemMatching(1).json.firstName }}\n{{ $('PinnedSet').last().json.firstName }}\n{{ $('PinnedSet').all()[0].json.firstName }}\n{{ $('PinnedSet').all()[1].json.firstName }}\n\n{{ $input.first().json.firstName }}\n{{ $input.last().json.firstName }}\n{{ $input.item.json.firstName }}\n\n{{ $json.firstName }}\n{{ $data.firstName }}\n\n{{ $items()[0].json.firstName }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "2a543169-e2c1-4764-ac63-09534310b2b9",
+			"name": "NotPinnedSet1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1360, 380]
+		},
+		{
+			"parameters": {},
+			"id": "f36672e5-8c87-480e-a5b8-de9da6b63192",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [920, 380],
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"PinnedSet": {
+			"main": [
+				[
+					{
+						"node": "NotPinnedSet1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "PinnedSet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"PinnedSet": [
+			{
+				"firstName": "Joe",
+				"lastName": "Smith"
+			},
+			{
+				"firstName": "Joan",
+				"lastName": "Summers"
+			}
+		]
+	}
+}

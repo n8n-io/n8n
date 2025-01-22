@@ -7,9 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getUser, philipsHueApiRequest } from './GenericFunctions';
-
 import { lightFields, lightOperations } from './LightDescription';
 
 export class PhilipsHue implements INodeType {
@@ -25,8 +25,8 @@ export class PhilipsHue implements INodeType {
 		defaults: {
 			name: 'Philips Hue',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'philipsHueOAuth2Api',
@@ -181,6 +181,6 @@ export class PhilipsHue implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

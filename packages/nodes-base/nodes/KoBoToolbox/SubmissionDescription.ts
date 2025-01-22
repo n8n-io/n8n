@@ -67,7 +67,7 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Submission ID',
@@ -205,7 +205,7 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Download Attachments',

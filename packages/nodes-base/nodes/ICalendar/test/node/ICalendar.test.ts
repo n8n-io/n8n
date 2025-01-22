@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { WorkflowTestData } from '../../../../test/nodes/types';
-
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import {
 	getResultNodeData,
 	setup,
 	readJsonFileSync,
-	initBinaryDataManager,
-} from '../../../../test/nodes/Helpers';
-import { executeWorkflow } from '../../../../test/nodes/ExecuteWorkflow';
+	initBinaryDataService,
+} from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('Execute iCalendar Node', () => {
 	beforeEach(async () => {
-		await initBinaryDataManager();
+		await initBinaryDataService();
 	});
 	const workflowData = readJsonFileSync('nodes/ICalendar/test/node/workflow.iCalendar.json');
 

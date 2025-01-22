@@ -9,9 +9,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { loadOptions } from './methods';
-import { router } from './actions/router';
 import { validateCredentials } from './transport';
 
 export class SyncroMspV1 implements INodeType {
@@ -51,6 +51,6 @@ export class SyncroMspV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

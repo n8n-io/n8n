@@ -1,6 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
+
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -71,7 +77,7 @@ const properties: INodeProperties[] = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['worksheet.value'],
 							loadOptionsMethod: 'getWorksheetColumnRow',
@@ -92,7 +98,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -220,7 +226,11 @@ export async function execute(
 	const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
 	returnData.push(
-		...prepareOutput(this.getNode(), responseData, { columnsRow, dataProperty, rawData }),
+		...prepareOutput.call(this, this.getNode(), responseData, {
+			columnsRow,
+			dataProperty,
+			rawData,
+		}),
 	);
 
 	return returnData;

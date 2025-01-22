@@ -86,7 +86,7 @@ export const userGroupFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{

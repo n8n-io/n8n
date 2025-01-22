@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,11 +9,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
-
-import { createHash } from 'crypto';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +25,7 @@ export class HubspotTrigger implements INodeType {
 			name: 'HubSpot Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'hubspotDeveloperApi',
@@ -151,6 +150,22 @@ export class HubspotTrigger implements INodeType {
 										description:
 											"To get notified if a specified property is changed for any deal in a customer's account",
 									},
+									{
+										name: 'Ticket Created',
+										value: 'ticket.creation',
+										description: "To get notified if a ticket is created in a customer's account",
+									},
+									{
+										name: 'Ticket Deleted',
+										value: 'ticket.deletion',
+										description: "To get notified if any ticket is deleted in a customer's account",
+									},
+									{
+										name: 'Ticket Property Changed',
+										value: 'ticket.propertyChange',
+										description:
+											"To get notified if a specified property is changed for any ticket in a customer's account",
+									},
 								],
 								default: 'contact.creation',
 								required: true,
@@ -160,7 +175,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['contact.propertyChange'],
 									loadOptionsMethod: 'getContactProperties',
@@ -178,7 +193,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
@@ -196,7 +211,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['deal.propertyChange'],
 									loadOptionsMethod: 'getDealProperties',
@@ -409,14 +424,12 @@ export class HubspotTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
-		//@ts-ignore
 		if (headerData['x-hubspot-signature'] === undefined) {
 			return {};
 		}
 
 		const hash = `${credentials.clientSecret}${JSON.stringify(bodyData)}`;
 		const signature = createHash('sha256').update(hash).digest('hex');
-		//@ts-ignore
 		if (signature !== headerData['x-hubspot-signature']) {
 			return {};
 		}
@@ -431,6 +444,9 @@ export class HubspotTrigger implements INodeType {
 			}
 			if (subscriptionType.includes('deal')) {
 				bodyData[i].dealId = bodyData[i].objectId;
+			}
+			if (subscriptionType.includes('ticket')) {
+				bodyData[i].ticketId = bodyData[i].objectId;
 			}
 			delete bodyData[i].objectId;
 		}

@@ -1,11 +1,9 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
 	transaction = false as const;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
 		await queryRunner.query(
 			`CREATE TABLE "temporary_user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(255), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, "settings" text, "apiKey" varchar, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
@@ -21,8 +19,6 @@ export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "UQ_${tablePrefix}ie0zomxves9w3p774drfrkxtj5" ON "${tablePrefix}user" ("apiKey")`,
 		);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {

@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function upleadApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +20,7 @@ export async function upleadApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('upleadApi');
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: { Authorization: credentials.apiKey },
 		method,
 		qs,

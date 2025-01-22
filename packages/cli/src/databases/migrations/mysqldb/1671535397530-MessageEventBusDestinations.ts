@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class MessageEventBusDestinations1671535397530 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

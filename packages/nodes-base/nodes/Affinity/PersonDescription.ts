@@ -52,7 +52,7 @@ export const personFields: INodeProperties[] = [
 	/*                                person:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Fist Name',
+		displayName: 'First Name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -101,7 +101,7 @@ export const personFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -154,7 +154,7 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fist Name',
+				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
@@ -176,7 +176,7 @@ export const personFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -219,7 +219,7 @@ export const personFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -275,7 +275,7 @@ export const personFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

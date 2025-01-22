@@ -1,9 +1,9 @@
-import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
-import { loadSurveyFromDisk } from '@db/utils/migrationHelpers';
+
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateUserManagement1646992772331 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, tablePrefix, loadSurveyFromDisk }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}role" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar(32) NOT NULL, "scope" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_${tablePrefix}5b49d0f504f7ef31045a1fb2eb8" UNIQUE ("scope", "name"))`,
 		);
@@ -94,6 +94,14 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup) values
 			('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)
 		`);
+
+		await queryRunner.query(
+			`
+			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup)
+				VALUES (?, ?, ?)
+		`,
+			['ui.banners.dismissed', '["V1"]', true],
+		);
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {

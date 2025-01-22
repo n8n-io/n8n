@@ -1,66 +1,45 @@
-import type express from 'express';
+import { Container } from '@n8n/di';
+import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
-import { Not } from 'typeorm';
-import { Container } from 'typedi';
-import { jsonParse } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
+
 import config from '@/config';
-import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LdapService } from '@/Ldap/LdapService.ee';
-import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
-import type { LdapConfig } from '@/Ldap/types';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { License } from '@/License';
+import type { User } from '@/databases/entities/user';
+import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap.ee/constants';
+import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+
 import { randomEmail, randomName, uniqueId } from './../shared/random';
-import * as testDb from './../shared/testDb';
-import type { AuthAgent } from '../shared/types';
-import * as utils from '../shared/utils';
+import { getPersonalProject } from '../shared/db/projects';
+import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
+import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
+import * as testDb from '../shared/test-db';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
-let app: express.Application;
-let globalMemberRole: Role;
 let owner: User;
-let authAgent: AuthAgent;
+let authOwnerAgent: SuperAgentTest;
 
-const defaultLdapConfig = {
-	...LDAP_DEFAULT_CONFIGURATION,
-	loginEnabled: true,
-	loginLabel: '',
-	ldapIdAttribute: 'uid',
-	firstNameAttribute: 'givenName',
-	lastNameAttribute: 'sn',
-	emailAttribute: 'mail',
-	loginIdAttribute: 'mail',
-	baseDn: 'baseDn',
-	bindingAdminDn: 'adminDn',
-	bindingAdminPassword: 'adminPassword',
-};
+const testServer = utils.setupTestServer({
+	endpointGroups: ['auth', 'ldap'],
+	enabledFeatures: ['feat:ldap'],
+});
 
 beforeAll(async () => {
-	Container.get(License).isLdapEnabled = () => true;
-	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'] });
+	owner = await createUser({ role: 'global:owner' });
+	authOwnerAgent = testServer.authAgentFor(owner);
 
-	const [globalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
-
-	globalMemberRole = fetchedGlobalMemberRole;
-
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	authAgent = utils.createAuthAgent(app);
-
-	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await utils.initConfigFile();
-
-	await setCurrentAuthenticationMethod('email');
 });
 
 beforeEach(async () => {
@@ -73,48 +52,23 @@ beforeEach(async () => {
 		'Workflow',
 	]);
 
-	await Db.collections.User.delete({ id: Not(owner.id) });
+	await Container.get(UserRepository).delete({ id: Not(owner.id) });
 
 	jest.mock('@/telemetry');
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
-});
 
-afterAll(async () => {
-	await testDb.terminate();
+	await setCurrentAuthenticationMethod('email');
 });
-
-const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
-	const { value: ldapConfig } = await Db.collections.Settings.save({
-		key: LDAP_FEATURE_NAME,
-		value: JSON.stringify({
-			...defaultLdapConfig,
-			...attributes,
-		}),
-		loadOnStartup: true,
-	});
-	return jsonParse(ldapConfig);
-};
 
 test('Member role should not be able to access ldap routes', async () => {
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	let response = await authAgent(member).get('/ldap/config');
-	expect(response.statusCode).toBe(403);
-
-	response = await authAgent(member).put('/ldap/config');
-	expect(response.statusCode).toBe(403);
-
-	response = await authAgent(member).post('/ldap/test-connection');
-	expect(response.statusCode).toBe(403);
-
-	response = await authAgent(member).post('/ldap/sync');
-	expect(response.statusCode).toBe(403);
-
-	response = await authAgent(member).get('/ldap/sync');
-	expect(response.statusCode).toBe(403);
+	const member = await createUser({ role: 'global:member' });
+	const authAgent = testServer.authAgentFor(member);
+	await authAgent.get('/ldap/config').expect(403);
+	await authAgent.put('/ldap/config').expect(403);
+	await authAgent.post('/ldap/test-connection').expect(403);
+	await authAgent.post('/ldap/sync').expect(403);
+	await authAgent.get('/ldap/sync').expect(403);
 });
 
 describe('PUT /ldap/config', () => {
@@ -143,7 +97,7 @@ describe('PUT /ldap/config', () => {
 		];
 
 		for (const invalidPayload of invalidPayloads) {
-			const response = await authAgent(owner).put('/ldap/config').send(invalidPayload);
+			const response = await authOwnerAgent.put('/ldap/config').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 			expect(response.body).toHaveProperty('message');
 		}
@@ -156,28 +110,39 @@ describe('PUT /ldap/config', () => {
 			loginLabel: '',
 		};
 
-		const response = await authAgent(owner).put('/ldap/config').send(validPayload);
+		const response = await authOwnerAgent.put('/ldap/config').send(validPayload);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.loginEnabled).toBe(true);
 		expect(response.body.data.loginLabel).toBe('');
 	});
 
+	test('route should fail due to trying to enable LDAP login with SSO as current authentication method', async () => {
+		const validPayload = {
+			...LDAP_DEFAULT_CONFIGURATION,
+			loginEnabled: true,
+		};
+
+		config.set('userManagement.authenticationMethod', 'saml');
+
+		const response = await authOwnerAgent.put('/ldap/config').send(validPayload);
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should apply "Convert all LDAP users to email users" strategy when LDAP login disabled', async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 		const configuration = ldapConfig;
 
 		// disable the login, so the strategy is applied
-		await authAgent(owner)
-			.put('/ldap/config')
-			.send({ ...configuration, loginEnabled: false });
+		await authOwnerAgent.put('/ldap/config').send({ ...configuration, loginEnabled: false });
 
-		const emailUser = await Db.collections.User.findOneByOrFail({ id: member.id });
-		const localLdapIdentities = await testDb.getLdapIdentities();
+		const emailUser = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+		const localLdapIdentities = await getLdapIdentities();
 
 		expect(getCurrentAuthenticationMethod()).toBe('email');
 		expect(emailUser.email).toBe(member.email);
@@ -194,11 +159,11 @@ test('GET /ldap/config route should retrieve current configuration', async () =>
 		loginLabel: '',
 	};
 
-	let response = await authAgent(owner).put('/ldap/config').send(validPayload);
+	let response = await authOwnerAgent.put('/ldap/config').send(validPayload);
 	expect(response.statusCode).toBe(200);
 	expect(getCurrentAuthenticationMethod()).toBe('ldap');
 
-	response = await authAgent(owner).get('/ldap/config');
+	response = await authOwnerAgent.get('/ldap/config');
 
 	expect(response.body.data).toMatchObject(validPayload);
 });
@@ -207,8 +172,7 @@ describe('POST /ldap/test-connection', () => {
 	test('route should success', async () => {
 		jest.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
 
-		const response = await authAgent(owner).post('/ldap/test-connection');
-		expect(response.statusCode).toBe(200);
+		await authOwnerAgent.post('/ldap/test-connection').expect(200);
 	});
 
 	test('route should fail', async () => {
@@ -216,7 +180,7 @@ describe('POST /ldap/test-connection', () => {
 
 		jest.spyOn(LdapService.prototype, 'testConnection').mockRejectedValue(new Error(errorMessage));
 
-		const response = await authAgent(owner).post('/ldap/test-connection');
+		const response = await authOwnerAgent.post('/ldap/test-connection');
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toHaveProperty('message');
 		expect(response.body.message).toStrictEqual(errorMessage);
@@ -231,18 +195,18 @@ describe('POST /ldap/sync', () => {
 			lastNameAttribute: 'sn',
 			emailAttribute: 'mail',
 		});
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 	});
 
 	describe('dry mode', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
-			const response = await authAgent(owner).post('/ldap/sync').send({ type: 'dry' });
+			await authOwnerAgent.post('/ldap/sync').send({ type: 'dry' }).expect(200);
 
-			expect(response.statusCode).toBe(200);
-
-			const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
+			const synchronization = await Container.get(
+				AuthProviderSyncHistoryRepository,
+			).findOneByOrFail({});
 
 			expect(synchronization.id).toBeDefined();
 			expect(synchronization.startedAt).toBeDefined();
@@ -273,7 +237,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.created).toBe(1);
 
 			// Make sure only the instance owner is on the DB
-			const localDbUsers = await Db.collections.User.find();
+			const localDbUsers = await Container.get(UserRepository).find();
 			expect(localDbUsers.length).toBe(1);
 			expect(localDbUsers[0].id).toBe(owner.id);
 		});
@@ -282,8 +246,8 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await testDb.createLdapUser(
-				{ globalRole: globalMemberRole, email: ldapUserEmail },
+			const member = await createLdapUser(
+				{ role: 'global:member', email: ldapUserEmail },
 				ldapUserId,
 			);
 
@@ -300,7 +264,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.updated).toBe(1);
 
 			// Make sure the changes in the "LDAP server" were not persisted in the database
-			const localLdapIdentities = await testDb.getLdapIdentities();
+			const localLdapIdentities = await getLdapIdentities();
 			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].id).toBe(member.id);
@@ -311,8 +275,8 @@ describe('POST /ldap/sync', () => {
 			const ldapUserEmail = randomEmail();
 			const ldapUserId = uniqueId();
 
-			const member = await testDb.createLdapUser(
-				{ globalRole: globalMemberRole, email: ldapUserEmail },
+			const member = await createLdapUser(
+				{ role: 'global:member', email: ldapUserEmail },
 				ldapUserId,
 			);
 
@@ -321,7 +285,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.disabled).toBe(1);
 
 			// Make sure the changes in the "LDAP server" were not persisted in the database
-			const localLdapIdentities = await testDb.getLdapIdentities();
+			const localLdapIdentities = await getLdapIdentities();
 			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].id).toBe(member.id);
@@ -333,11 +297,11 @@ describe('POST /ldap/sync', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
-			const response = await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
+			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' }).expect(200);
 
-			expect(response.statusCode).toBe(200);
-
-			const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
+			const synchronization = await Container.get(
+				AuthProviderSyncHistoryRepository,
+			).findOneByOrFail({});
 
 			expect(synchronization.id).toBeDefined();
 			expect(synchronization.startedAt).toBeDefined();
@@ -367,7 +331,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.created).toBe(1);
 
 			// Make sure the changes in the "LDAP server" were persisted in the database
-			const allUsers = await testDb.getAllUsers();
+			const allUsers = await getAllUsers();
 			expect(allUsers.length).toBe(2);
 
 			const ownerUser = allUsers.find((u) => u.email === owner.email)!;
@@ -377,8 +341,10 @@ describe('POST /ldap/sync', () => {
 			expect(memberUser.email).toBe(ldapUser.mail);
 			expect(memberUser.lastName).toBe(ldapUser.sn);
 			expect(memberUser.firstName).toBe(ldapUser.givenName);
+			const memberProject = getPersonalProject(memberUser);
+			expect(memberProject).toBeDefined();
 
-			const authIdentities = await testDb.getLdapIdentities();
+			const authIdentities = await getLdapIdentities();
 			expect(authIdentities.length).toBe(1);
 			expect(authIdentities[0].providerId).toBe(ldapUser.uid);
 			expect(authIdentities[0].providerType).toBe('ldap');
@@ -393,9 +359,9 @@ describe('POST /ldap/sync', () => {
 				uid: uniqueId(),
 			};
 
-			await testDb.createLdapUser(
+			await createLdapUser(
 				{
-					globalRole: globalMemberRole,
+					role: 'global:member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: randomName(),
@@ -407,7 +373,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.updated).toBe(1);
 
 			// Make sure the changes in the "LDAP server" were persisted in the database
-			const localLdapIdentities = await testDb.getLdapIdentities();
+			const localLdapIdentities = await getLdapIdentities();
 			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 			expect(localLdapUsers.length).toBe(1);
@@ -426,9 +392,9 @@ describe('POST /ldap/sync', () => {
 				uid: uniqueId(),
 			};
 
-			await testDb.createLdapUser(
+			await createLdapUser(
 				{
-					globalRole: globalMemberRole,
+					role: 'global:member',
 					email: ldapUser.mail,
 					firstName: ldapUser.givenName,
 					lastName: ldapUser.sn,
@@ -440,7 +406,7 @@ describe('POST /ldap/sync', () => {
 			expect(synchronization.disabled).toBe(1);
 
 			// Make sure the changes in the "LDAP server" were persisted in the database
-			const allUsers = await testDb.getAllUsers();
+			const allUsers = await getAllUsers();
 			expect(allUsers.length).toBe(2);
 
 			const ownerUser = allUsers.find((u) => u.email === owner.email)!;
@@ -452,19 +418,19 @@ describe('POST /ldap/sync', () => {
 			expect(memberUser.firstName).toBe(ldapUser.givenName);
 			expect(memberUser.disabled).toBe(true);
 
-			const authIdentities = await testDb.getLdapIdentities();
+			const authIdentities = await getLdapIdentities();
 			expect(authIdentities.length).toBe(0);
 		});
 
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
-			const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+			const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
-			await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
+			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' });
 
-			const response = await authAgent(member).get('/login');
-			expect(response.body.code).toBe(401);
+			const response = await testServer.authAgentFor(member).get('/login');
+			expect(response.status).toBe(401);
 		});
 	});
 });
@@ -484,34 +450,34 @@ test('GET /ldap/sync should return paginated synchronizations', async () => {
 		});
 	}
 
-	let response = await authAgent(owner).get('/ldap/sync?perPage=1&page=0');
+	let response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=0');
 	expect(response.body.data.length).toBe(1);
 
-	response = await authAgent(owner).get('/ldap/sync?perPage=1&page=1');
+	response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=1');
 	expect(response.body.data.length).toBe(1);
 });
 
 describe('POST /login', () => {
 	const runTest = async (ldapUser: LdapUser) => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
-		const authlessAgent = utils.createAgent(app);
+		await setCurrentAuthenticationMethod('ldap');
 
 		jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 
 		jest.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
 
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.post('/login')
 			.send({ email: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
-		expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
+		expect(response.headers['set-cookie'][0]).toContain('n8n-auth=');
 
 		// Make sure the changes in the "LDAP server" were persisted in the database
-		const localLdapIdentities = await testDb.getLdapIdentities();
+		const localLdapIdentities = await getLdapIdentities();
 		const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 		expect(localLdapUsers.length).toBe(1);
@@ -520,6 +486,8 @@ describe('POST /login', () => {
 		expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
 		expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 		expect(localLdapUsers[0].disabled).toBe(false);
+
+		await expect(getPersonalProject(localLdapUsers[0])).resolves.toBeDefined();
 	};
 
 	test('should allow new LDAP user to login and synchronize data', async () => {
@@ -542,9 +510,9 @@ describe('POST /login', () => {
 			uid: uniqueId(),
 		};
 
-		await testDb.createLdapUser(
+		await createLdapUser(
 			{
-				globalRole: globalMemberRole,
+				role: 'global:member',
 				email: ldapUser.mail,
 				firstName: 'firstname',
 				lastName: 'lastname',
@@ -553,6 +521,19 @@ describe('POST /login', () => {
 		);
 
 		await runTest(ldapUser);
+	});
+
+	test('should allow instance owner to sign in with email/password when LDAP is enabled', async () => {
+		const ldapConfig = await createLdapConfig();
+		Container.get(LdapService).setConfig(ldapConfig);
+
+		const response = await testServer.authlessAgent
+			.post('/login')
+			.send({ email: owner.email, password: 'password' });
+
+		expect(response.status).toBe(200);
+		expect(response.body.data?.signInType).toBeDefined();
+		expect(response.body.data?.signInType).toBe('email');
 	});
 
 	test('should transform email user into LDAP user when match found', async () => {
@@ -564,8 +545,8 @@ describe('POST /login', () => {
 			uid: uniqueId(),
 		};
 
-		await testDb.createUser({
-			globalRole: globalMemberRole,
+		await createUser({
+			role: 'global:member',
 			email: ldapUser.mail,
 			firstName: ldapUser.givenName,
 			lastName: 'lastname',
@@ -578,41 +559,20 @@ describe('POST /login', () => {
 describe('Instance owner should able to delete LDAP users', () => {
 	test("don't transfer workflows", async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
-		await authAgent(owner).post(`/users/${member.id}`);
+		await authOwnerAgent.post(`/users/${member.id}`);
 	});
 
 	test('transfer workflows and credentials', async () => {
 		const ldapConfig = await createLdapConfig();
-		LdapManager.updateConfig(ldapConfig);
+		Container.get(LdapService).setConfig(ldapConfig);
 
-		const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
+		const member = await createLdapUser({ role: 'global:member' }, uniqueId());
 
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
-		await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`);
+		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);
 	});
-});
-
-test('Sign-type should be returned when listing users', async () => {
-	const ldapConfig = await createLdapConfig();
-	LdapManager.updateConfig(ldapConfig);
-
-	await testDb.createLdapUser(
-		{
-			globalRole: globalMemberRole,
-		},
-		uniqueId(),
-	);
-
-	const allUsers = await testDb.getAllUsers();
-	expect(allUsers.length).toBe(2);
-
-	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
-	expect(sanitizeUser(ownerUser).signInType).toStrictEqual('email');
-
-	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
-	expect(sanitizeUser(memberUser).signInType).toStrictEqual('ldap');
 });

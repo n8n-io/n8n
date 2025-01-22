@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -9,9 +7,11 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { entryFields, entryOperations } from './EntryDescription';
 import {
 	getToken,
 	removeTrailingSlash,
@@ -19,8 +19,6 @@ import {
 	strapiApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
-
-import { entryFields, entryOperations } from './EntryDescription';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,16 +32,46 @@ export class Strapi implements INodeType {
 		defaults: {
 			name: 'Strapi',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'strapiApi',
 				required: true,
 				testedBy: 'strapiApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'strapiTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['token'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Username & Password',
+						value: 'password',
+					},
+					{
+						name: 'API Token',
+						value: 'token',
+					},
+				],
+				default: 'password',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -69,7 +97,7 @@ export class Strapi implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
-				let options = {} as OptionsWithUri;
+				let options: IRequestOptions = {};
 
 				const url = removeTrailingSlash(credentials.url as string);
 
@@ -112,10 +140,18 @@ export class Strapi implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		const { apiVersion } = await this.getCredentials('strapiApi');
-		const { jwt } = await getToken.call(this);
+		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		headers.Authorization = `Bearer ${jwt}`;
+		let apiVersion: string;
+
+		if (authenticationMethod === 'password') {
+			const { jwt } = await getToken.call(this);
+			apiVersion = (await this.getCredentials('strapiApi')).apiVersion as string;
+			headers.Authorization = `Bearer ${jwt}`;
+		} else {
+			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion as string;
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'entry') {
@@ -213,6 +249,7 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
 								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i);
@@ -256,6 +293,7 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
 								qs._limit = this.getNodeParameter('limit', i);
@@ -361,6 +399,6 @@ export class Strapi implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,4 +1,5 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
+
 import N8nIcon from './Icon.vue';
 
 export default {
@@ -11,8 +12,8 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['xsmall', 'small', 'medium', 'large'],
 			},
+			options: ['xsmall', 'small', 'medium', 'large'],
 		},
 		spin: {
 			control: {
@@ -23,11 +24,12 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nIcon,
 	},
-	template: '<n8n-icon v-bind="$props" />',
+	template: '<n8n-icon v-bind="args" />',
 });
 
 export const Clock = Template.bind({});

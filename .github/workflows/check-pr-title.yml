@@ -7,8 +7,7 @@ on:
       - edited
       - synchronize
     branches:
-      - '**'
-      - '!release/*'
+      - 'master'
 
 jobs:
   check-pr-title:
@@ -16,13 +15,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check out branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
 
-      - uses: pnpm/action-setup@v2.2.4
-
-      - uses: actions/setup-node@v3
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -30,6 +28,6 @@ jobs:
 
       - name: Validate PR title
         id: validate_pr_title
-        uses: n8n-io/validate-n8n-pull-request-title@v1.1
+        uses: n8n-io/validate-n8n-pull-request-title@v2.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

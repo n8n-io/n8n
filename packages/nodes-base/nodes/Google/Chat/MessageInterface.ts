@@ -32,9 +32,9 @@ export interface IUser {
 	isAnonymous?: boolean;
 }
 const enum Type {
-	'TYPE_UNSPECIFIED',
-	'HUMAN',
-	'BOT',
+	TYPE_UNSPECIFIED,
+	HUMAN,
+	BOT,
 }
 
 // // TODO: define other interfaces

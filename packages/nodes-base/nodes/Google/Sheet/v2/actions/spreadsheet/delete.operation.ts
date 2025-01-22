@@ -1,20 +1,11 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
+import { wrapData } from '../../../../../../utils/utilities';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 import type { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 
 export const description: SpreadSheetProperties = [
-	// {
-	// 	displayName: 'Spreadsheet ID',
-	// 	name: 'spreadsheetId',
-	// 	type: 'string',
-	// 	default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['spreadsheet'],
-	// 			operation: ['deleteSpreadsheet'],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Document',
 		name: 'documentId',
@@ -37,15 +28,13 @@ export const description: SpreadSheetProperties = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex:
-						'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 							errorMessage: 'Not a valid Google Drive File URL',
 						},
 					},
@@ -78,10 +67,9 @@ export const description: SpreadSheetProperties = [
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const returnData: IDataObject[] = [];
+	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		// const spreadsheetId = this.getNodeParameter('spreadsheetId', i) as string;
 		const documentId = this.getNodeParameter('documentId', i, undefined, {
 			extractValue: true,
 		}) as string;
@@ -95,8 +83,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			`https://www.googleapis.com/drive/v3/files/${documentId}`,
 		);
 
-		returnData.push({ success: true });
+		const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
+			itemData: { item: i },
+		});
+
+		returnData.push(...executionData);
 	}
 
-	return this.helpers.returnJsonArray(returnData);
+	return returnData;
 }

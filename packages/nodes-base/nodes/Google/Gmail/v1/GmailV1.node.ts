@@ -1,17 +1,25 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import isEmpty from 'lodash/isEmpty';
+import {
+	NodeConnectionType,
+	type IBinaryKeyData,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { IEmail } from '../GenericFunctions';
+import { oldVersionNotice } from '@utils/descriptions';
+
+import { draftFields, draftOperations } from './DraftDescription';
+import { labelFields, labelOperations } from './LabelDescription';
+import { messageFields, messageOperations } from './MessageDescription';
+import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
+import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
 	extractEmail,
@@ -19,18 +27,6 @@ import {
 	googleApiRequestAllItems,
 	parseRawEmail,
 } from '../GenericFunctions';
-
-import { messageFields, messageOperations } from './MessageDescription';
-
-import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
-
-import { labelFields, labelOperations } from './LabelDescription';
-
-import { draftFields, draftOperations } from './DraftDescription';
-
-import isEmpty from 'lodash.isempty';
-
-import { oldVersionNotice } from '../../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -43,8 +39,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -180,7 +176,7 @@ export class GmailV1 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
+		let method: IHttpRequestMethods = 'GET';
 		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let endpoint = '';
@@ -834,6 +830,6 @@ export class GmailV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

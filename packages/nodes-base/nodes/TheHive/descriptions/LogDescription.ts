@@ -160,7 +160,7 @@ export const logFields: INodeProperties[] = [
 		name: 'responder',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -189,7 +189,7 @@ export const logFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Attachment',
@@ -206,11 +206,11 @@ export const logFields: INodeProperties[] = [
 						name: 'attachmentValues',
 						values: [
 							{
-								displayName: 'Binary Property',
+								displayName: 'Input Binary Field',
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',
-								description: 'Object property name which holds binary data',
+								description: 'The name of the input binary field which holds binary data',
 							},
 						],
 					},

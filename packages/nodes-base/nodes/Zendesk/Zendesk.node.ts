@@ -8,19 +8,14 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
-
-import { ticketFields, ticketOperations } from './TicketDescription';
-
-import { ticketFieldFields, ticketFieldOperations } from './TicketFieldDescription';
-
-import { userFields, userOperations } from './UserDescription';
-
 import { organizationFields, organizationOperations } from './OrganizationDescription';
-
+import { ticketFields, ticketOperations } from './TicketDescription';
+import { ticketFieldFields, ticketFieldOperations } from './TicketFieldDescription';
 import type { IComment, ITicket } from './TicketInterface';
+import { userFields, userOperations } from './UserDescription';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +29,8 @@ export class Zendesk implements INodeType {
 		defaults: {
 			name: 'Zendesk',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zendeskApi',
@@ -319,7 +314,7 @@ export class Zendesk implements INodeType {
 								body.recipient = additionalFields.recipient as string;
 							}
 							if (additionalFields.group) {
-								body.group = additionalFields.group as string;
+								body.group_id = additionalFields.group as number;
 							}
 							if (additionalFields.tags) {
 								body.tags = additionalFields.tags as string[];
@@ -371,7 +366,7 @@ export class Zendesk implements INodeType {
 								body.recipient = updateFields.recipient as string;
 							}
 							if (updateFields.group) {
-								body.group = updateFields.group as string;
+								body.group_id = updateFields.group as number;
 							}
 							if (updateFields.tags) {
 								body.tags = updateFields.tags as string[];
@@ -799,6 +794,6 @@ export class Zendesk implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

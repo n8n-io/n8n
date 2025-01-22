@@ -2,6 +2,8 @@
 @use './common/var';
 
 @include mixins.b(tooltip) {
+	max-width: 200px;
+
 	&:focus:not(.focusing),
 	&:focus:hover {
 		outline-width: 0;
@@ -23,8 +25,8 @@
 			font-weight: var(--font-weight-bold);
 		}
 
-		.popper__arrow,
-		.popper__arrow::after {
+		.el-popper__arrow,
+		.el-popper__arrow::after {
 			position: absolute;
 			display: block;
 			width: 0;
@@ -33,20 +35,16 @@
 			border-style: solid;
 		}
 
-		.popper__arrow {
+		.el-popper__arrow {
 			border-width: var.$tooltip-arrow-size;
 		}
 
-		.popper__arrow::after {
+		.el-popper__arrow::after {
 			content: ' ';
 			border-width: 5px;
 		}
 
-		&[x-placement^='top'] {
-			margin-bottom: #{var.$tooltip-arrow-size + 6px};
-		}
-
-		&[x-placement^='top'] .popper__arrow {
+		&[data-popper-placement^='top'] .el-popper__arrow {
 			bottom: -(var.$tooltip-arrow-size);
 			border-top-color: var.$tooltip-border-color;
 			border-bottom-width: 0;
@@ -59,11 +57,7 @@
 			}
 		}
 
-		&[x-placement^='bottom'] {
-			margin-top: #{var.$tooltip-arrow-size + 6px};
-		}
-
-		&[x-placement^='bottom'] .popper__arrow {
+		&[data-popper-placement^='bottom'] .el-popper__arrow {
 			top: -(var.$tooltip-arrow-size);
 			border-top-width: 0;
 			border-bottom-color: var.$tooltip-border-color;
@@ -76,11 +70,7 @@
 			}
 		}
 
-		&[x-placement^='right'] {
-			margin-left: #{var.$tooltip-arrow-size + 6px};
-		}
-
-		&[x-placement^='right'] .popper__arrow {
+		&[data-popper-placement^='right'] .el-popper__arrow {
 			left: -(var.$tooltip-arrow-size);
 			border-right-color: var.$tooltip-border-color;
 			border-left-width: 0;
@@ -93,11 +83,7 @@
 			}
 		}
 
-		&[x-placement^='left'] {
-			margin-right: #{var.$tooltip-arrow-size + 6px};
-		}
-
-		&[x-placement^='left'] .popper__arrow {
+		&[data-popper-placement^='left'] .el-popper__arrow {
 			right: -(var.$tooltip-arrow-size);
 			border-right-width: 0;
 			border-left-color: var.$tooltip-border-color;
@@ -111,34 +97,34 @@
 			}
 		}
 
-		@include mixins.when(dark) {
+		@include mixins.when(is-dark) {
 			background: var.$tooltip-fill;
 			color: var.$tooltip-color;
 		}
 
-		@include mixins.when(light) {
+		@include mixins.when(is-light) {
 			background: var.$tooltip-color;
 			border: 1px solid var.$tooltip-fill;
 
-			&[x-placement^='top'] .popper__arrow {
+			&[data-popper-placement^='top'] .el-popper__arrow {
 				border-top-color: var.$tooltip-fill;
 				&::after {
 					border-top-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^='bottom'] .popper__arrow {
+			&[data-popper-placement^='bottom'] .el-popper__arrow {
 				border-bottom-color: var.$tooltip-fill;
 				&::after {
 					border-bottom-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^='left'] .popper__arrow {
+			&[data-popper-placement^='left'] .el-popper__arrow {
 				border-left-color: var.$tooltip-fill;
 				&::after {
 					border-left-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^='right'] .popper__arrow {
+			&[data-popper-placement^='right'] .el-popper__arrow {
 				border-right-color: var.$tooltip-fill;
 				&::after {
 					border-right-color: var.$tooltip-color;

@@ -1,79 +1,126 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
-import { getCurrentInstance, computed } from 'vue';
-import type { INodeCreateElement, NodeFilterType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { computed } from 'vue';
+import type { INodeCreateElement, NodeCreateElement, NodeFilterType } from '@/Interface';
+import {
+	TRIGGER_NODE_CREATOR_VIEW,
+	HTTP_REQUEST_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView } from '../viewsData';
-import { transformNodeType } from '../utils';
+import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
+import { flattenCreateElements, transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
+import { useI18n } from '@/composables/useI18n';
+import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
+import { useActions } from '../composables/useActions';
+import type { INodeParameters } from 'n8n-workflow';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
-const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
-});
+const emit = defineEmits<{
+	nodeTypeSelected: [nodeTypes: string[]];
+}>();
 
-const instance = getCurrentInstance();
-const { mergedNodes, actions } = useNodeCreatorStore();
-const { baseUrl } = useRootStore();
-const { getNodeTypesWithManualTrigger } = useActions();
+const i18n = useI18n();
+const uiStore = useUIStore();
+const rootStore = useRootStore();
+
+const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
+const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
+function getFilteredActions(node: NodeCreateElement) {
+	const nodeActions = actions?.[node.key] || [];
+	if (activeViewStack.value.actionsFilter) {
+		return activeViewStack.value.actionsFilter(nodeActions);
+	}
+	return nodeActions;
+}
+
 function selectNodeType(nodeTypes: string[]) {
-	emit(
-		'nodeTypeSelected',
-		nodeTypes.length === 1 ? getNodeTypesWithManualTrigger(nodeTypes[0]) : nodeTypes,
-	);
+	emit('nodeTypeSelected', nodeTypes);
 }
 
 function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
-		const title = instance?.proxy.$locale.baseText(
-			`nodeCreator.subcategoryNames.${camelCase(item.properties.title)}` as BaseTextKey,
-		);
+		const subcategoryKey = camelCase(item.properties.title);
+		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
+
+		// If the info message exists in locale, add it to the info field of the view
+		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
+		const info = i18n.baseText(infoKey);
+		const extendedInfo = info !== infoKey ? { info } : {};
 
 		pushViewStack({
 			subcategory: item.key,
-			title,
 			mode: 'nodes',
+			title,
+			...extendedInfo,
+			...(item.properties.icon
+				? {
+						nodeIcon: {
+							icon: item.properties.icon,
+							iconType: 'icon',
+						},
+					}
+				: {}),
+			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
+			sections: item.properties.sections,
 		});
 
-		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}
 
 	if (item.type === 'node') {
-		const nodeActions = actions?.[item.key] || [];
-		if (nodeActions.length <= 1) {
+		const nodeActions = getFilteredActions(item);
+
+		// If there is only one action, use it
+		if (nodeActions.length === 1) {
+			selectNodeType([item.key]);
+			setAddedNodeActionParameters({
+				name: nodeActions[0].defaults.name ?? item.properties.displayName,
+				key: item.key,
+				value: nodeActions[0].values as INodeParameters,
+			});
+			return;
+		}
+
+		// Only show actions if there are more than one or if the view is not an AI subcategory
+		if (nodeActions.length === 0 || activeViewStack.value.hideActions) {
 			selectNodeType([item.key]);
 			return;
 		}
 
-		const icon = item.properties.iconUrl
-			? `${baseUrl}${item.properties.iconUrl}`
-			: item.properties.icon?.split(':')[1];
+		const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
+		const icon = iconUrl
+			? rootStore.baseUrl + iconUrl
+			: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
 
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
@@ -83,9 +130,9 @@ function onSelected(item: INodeCreateElement) {
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
 			nodeIcon: {
-				color: item.properties.defaults?.color || '',
+				color: getNodeIconColor(item.properties),
 				icon,
-				iconType: item.properties.iconUrl ? 'file' : 'icon',
+				iconType: iconUrl ? 'file' : 'icon',
 			},
 
 			rootView: activeViewStack.value.rootView,
@@ -96,14 +143,26 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'view') {
-		const view =
-			item.key === TRIGGER_NODE_CREATOR_VIEW
-				? TriggerView(instance?.proxy?.$locale)
-				: RegularView(instance?.proxy?.$locale);
+		const views = {
+			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+			[AI_NODE_CREATOR_VIEW]: AIView,
+			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+		};
+
+		const itemKey = item.key as keyof typeof views;
+		const matchedView = views[itemKey];
+
+		if (!matchedView) {
+			console.warn(`No view found for ${itemKey}`);
+			return;
+		}
+		const view = matchedView(mergedNodes);
 
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
+			info: view?.info ?? '',
 			items: view.items as INodeCreateElement[],
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
@@ -112,13 +171,17 @@ function onSelected(item: INodeCreateElement) {
 			searchItems: mergedNodes,
 		});
 	}
+
+	if (item.type === 'link') {
+		window.open(item.properties.url, '_blank');
+	}
 }
 
 function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = actions?.[item.key] || [];
+	const nodeActions = getFilteredActions(item);
 	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
@@ -134,11 +197,12 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	return item;
 }
 
-function baseSubcategoriesFilter(item: INodeCreateElement) {
+function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
+	if (item.type === 'section') return true;
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = actions?.[item.key] || [];
+	const nodeActions = getFilteredActions(item);
 	const hasActions = nodeActions.length > 0;
 
 	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_VIEW;
@@ -154,26 +218,26 @@ function arrowLeft() {
 }
 
 function onKeySelect(activeItemId: string) {
-	const mergedItems = [
-		...(activeViewStack.value.items || []),
-		...(globalSearchItemsDiff.value || []),
-	];
+	const mergedItems = flattenCreateElements([
+		...(activeViewStack.value.items ?? []),
+		...(globalSearchItemsDiff.value ?? []),
+	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;
 
-	onSelected(item as INodeCreateElement);
+	onSelected(item);
 }
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: arrowLeft,
 });
 </script>
@@ -181,17 +245,22 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected" :class="$style.items">
+		<ItemsRenderer
+			v-memo="[activeViewStack.search]"
+			:elements="activeViewStack.items"
+			:class="$style.items"
+			@selected="onSelected"
+		>
 			<template
-				#empty
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
+				#empty
 			>
 				<NoResults
-					:rootView="activeViewStack.rootView"
-					showIcon
-					showRequest
-					@addWebhookNode="selectNodeType([WEBHOOK_NODE_TYPE])"
-					@addHttpNode="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
+					:root-view="activeViewStack.rootView"
+					show-icon
+					show-request
+					@add-webhook-node="selectNodeType([WEBHOOK_NODE_TYPE])"
+					@add-http-node="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
 				/>
 			</template>
 		</ItemsRenderer>
@@ -199,7 +268,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
-			:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>

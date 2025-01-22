@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	endOfDayDataFields,
@@ -15,14 +15,12 @@ import {
 	tickerFields,
 	tickerOperations,
 } from './descriptions';
-
 import {
 	format,
 	marketstackApiRequest,
 	marketstackApiRequestAllItems,
 	validateTimeOptions,
 } from './GenericFunctions';
-
 import type { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
@@ -30,15 +28,15 @@ export class Marketstack implements INodeType {
 		displayName: 'Marketstack',
 		name: 'marketstack',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		icon: 'file:marketstack.svg',
+		icon: { light: 'file:marketstack.svg', dark: 'file:marketstack.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Marketstack API',
 		defaults: {
 			name: 'Marketstack',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'marketstackApi',
@@ -180,6 +178,6 @@ export class Marketstack implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

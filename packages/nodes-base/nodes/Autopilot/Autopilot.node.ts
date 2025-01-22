@@ -1,21 +1,19 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
 import { contactJourneyFields, contactJourneyOperations } from './ContactJourneyDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
+import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Autopilot implements INodeType {
@@ -30,8 +28,8 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'autopilotApi',
@@ -228,7 +226,7 @@ export class Autopilot implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const method: { [key: string]: string } = {
+						const method: { [key: string]: IHttpRequestMethods } = {
 							add: 'POST',
 							remove: 'DELETE',
 							exist: 'GET',

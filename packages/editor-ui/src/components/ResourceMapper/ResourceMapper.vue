@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import type { IUpdateInformation } from '@/Interface';
+import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeParameterValueType,
 	ResourceMapperField,
+	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -15,26 +18,43 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
+import {
+	fieldCannotBeDeleted,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { N8nButton, N8nCallout } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
-	inputSize: string;
-	labelSize: string;
+	inputSize: 'small' | 'medium';
+	labelSize: 'small' | 'medium';
+	teleported?: boolean;
 	dependentParametersValues?: string | null;
+	isReadOnly?: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+	dependentParametersValues: null,
+	isReadOnly: false,
+});
+
+const { onDocumentVisible } = useDocumentVisibility();
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 const state = reactive({
@@ -43,11 +63,17 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
+		attemptToConvertTypes: false,
+		// This should always be true if `showTypeConversionOptions` is provided
+		// It's used to avoid accepting any value as string without casting it
+		// Which is the legacy behavior without these type options.
+		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
+	hasStaleFields: false,
 });
 
 // Reload fields to map when dependent parameters change
@@ -67,12 +93,46 @@ watch(
 	},
 );
 
+onDocumentVisible(async () => {
+	await checkStaleFields();
+});
+
+async function checkStaleFields(): Promise<void> {
+	const fetchedFields = await fetchFields();
+	if (fetchedFields) {
+		const isSchemaStale = isResourceMapperFieldListStale(
+			state.paramValue.schema,
+			fetchedFields.fields,
+		);
+		state.hasStaleFields = isSchemaStale;
+	}
+}
+
+// Reload fields to map when node is executed
+watch(
+	() => workflowsStore.getWorkflowExecution,
+	async (data) => {
+		if (
+			data &&
+			isFullExecutionResponse(data) &&
+			data.status === 'success' &&
+			state.paramValue.mappingMode === 'autoMapInputData'
+		) {
+			await initFetching(true);
+		}
+	},
+);
+
 onMounted(async () => {
 	if (props.node) {
 		state.parameterValues = {
 			...state.parameterValues,
 			parameters: props.node.parameters,
 		};
+
+		if (showTypeConversionOptions.value) {
+			state.paramValue.convertFieldsToString = true;
+		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -111,7 +171,12 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	await initFetching(hasSchema);
+	if (!hasSchema) {
+		// Only fetch a schema if it's not already set
+		await initFetching();
+	} else {
+		await checkStaleFields();
+	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
@@ -134,11 +199,19 @@ const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
 });
 
+const showTypeConversionOptions = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
+});
+
+const hasFields = computed<boolean>(() => {
+	return state.paramValue.schema.length > 0;
+});
+
 const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
-		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
-		state.paramValue.schema.length > 0
+		['upsert', 'update'].includes(props.parameter.typeOptions?.resourceMapper?.mode ?? '') &&
+		hasFields.value
 	);
 });
 
@@ -147,7 +220,7 @@ const showMappingFields = computed<boolean>(() => {
 		state.paramValue.mappingMode === 'defineBelow' &&
 		!state.loading &&
 		!state.loadingError &&
-		state.paramValue.schema.length > 0 &&
+		hasFields.value &&
 		hasAvailableMatchingColumns.value
 	);
 });
@@ -163,11 +236,15 @@ const matchingColumns = computed<string[]>(() => {
 });
 
 const hasAvailableMatchingColumns = computed<boolean>(() => {
-	if (resourceMapperMode.value !== 'add') {
+	// 'map' mode doesn't require matching columns
+	if (resourceMapperMode.value === 'map') {
+		return true;
+	}
+	if (resourceMapperMode.value !== 'add' && resourceMapperMode.value !== 'upsert') {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) && field.display && field.removed !== true,
 			).length > 0
 		);
 	}
@@ -178,11 +255,11 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.paramValue.schema.length === 1
 		? [state.paramValue.schema[0].id]
 		: state.paramValue.schema.reduce((acc, field) => {
-				if (field.defaultMatch && field.canBeUsedToMatch === true) {
+				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
 				return acc;
-		  }, [] as string[]);
+			}, [] as string[]);
 });
 
 const pluralFieldWord = computed<string>(() => {
@@ -192,18 +269,19 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLading = false): Promise<void> {
+async function initFetching(inlineLoading = false): Promise<void> {
 	state.loadingError = false;
-	if (inlineLading) {
+	if (inlineLoading) {
 		state.refreshInProgress = true;
 	} else {
 		state.loading = true;
 	}
 	try {
-		await loadFieldsToMap();
+		await loadAndSetFieldsToMap();
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
 	} finally {
@@ -212,21 +290,55 @@ async function initFetching(inlineLading = false): Promise<void> {
 	}
 }
 
-async function loadFieldsToMap(): Promise<void> {
+const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: ResourceMapperReqParams = {
+	const requestParams: ResourceMapperFieldsRequestDto = {
 		nodeTypeAndVersion: {
-			name: props.node?.type,
+			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveParameter(props.node.parameters) as INodeParameters,
+		currentNodeParameters: resolveRequiredParameters(
+			props.parameter,
+			props.node.parameters,
+		) as INodeParameters,
 		path: props.path,
-		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
+		methodName,
 		credentials: props.node.credentials,
 	};
-	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+
+	return requestParams;
+};
+
+async function fetchFields(): Promise<ResourceMapperFields | null> {
+	const { resourceMapperMethod, localResourceMapperMethod } =
+		props.parameter.typeOptions?.resourceMapper ?? {};
+
+	let fetchedFields = null;
+
+	if (typeof resourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			resourceMapperMethod,
+		) as ResourceMapperFieldsRequestDto;
+		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	} else if (typeof localResourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			localResourceMapperMethod,
+		) as ResourceMapperFieldsRequestDto;
+
+		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+	return fetchedFields;
+}
+
+async function loadAndSetFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const fetchedFields = await fetchFields();
+
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
@@ -288,7 +400,7 @@ function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 function updateNodeIssues(): void {
 	if (props.node) {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
-			nodeType.value?.properties || [],
+			nodeType.value?.properties ?? [],
 			props.node,
 		);
 		if (parameterIssues) {
@@ -297,10 +409,10 @@ function updateNodeIssues(): void {
 	}
 }
 
-function onMatchingColumnsChanged(matchingColumns: string[]): void {
+function onMatchingColumnsChanged(columns: string[]): void {
 	state.paramValue = {
 		...state.paramValue,
-		matchingColumns,
+		matchingColumns: columns,
 	};
 	// Set all matching fields to be visible
 	state.paramValue.schema.forEach((field) => {
@@ -340,15 +452,37 @@ function removeField(name: string): void {
 	}
 	const fieldName = parseResourceMapperFieldName(name);
 	if (fieldName) {
-		if (state.paramValue.value) {
-			delete state.paramValue.value[fieldName];
-			const field = state.paramValue.schema.find((f) => f.id === fieldName);
-			if (field) {
-				field.removed = true;
-				state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-			}
+		const field = state.paramValue.schema.find((f) => f.id === fieldName);
+		if (field) {
+			deleteField(field);
 			emitValueChanged();
 		}
+	}
+}
+
+function removeAllFields(): void {
+	state.paramValue.schema.forEach((field) => {
+		if (
+			!fieldCannotBeDeleted(
+				field,
+				showMatchingColumnsSelector.value,
+				resourceMapperMode.value,
+				matchingColumns.value,
+			)
+		) {
+			deleteField(field);
+		}
+	});
+	emitValueChanged();
+}
+
+// Delete a single field from the mapping (set removed flag to true and delete from value)
+// Used when removing one or all fields
+function deleteField(field: ResourceMapperField): void {
+	if (state.paramValue.value) {
+		delete state.paramValue.value[field.id];
+		field.removed = true;
+		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 	}
 }
 
@@ -359,14 +493,20 @@ function addField(name: string): void {
 	if (name === 'removeAllFields') {
 		return removeAllFields();
 	}
+	const schema = state.paramValue.schema;
+	const field = schema.find((f) => f.id === name);
+
 	state.paramValue.value = {
 		...state.paramValue.value,
-		[name]: null,
+		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+		// mode you get when the field exists, but is empty in `Fixed` mode.
+		[name]: field?.type === 'boolean' ? false : null,
 	};
-	const field = state.paramValue.schema.find((f) => f.id === name);
+
 	if (field) {
 		field.removed = false;
-		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		schema.splice(schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }
@@ -387,23 +527,6 @@ function addAllFields(): void {
 	emitValueChanged();
 }
 
-function removeAllFields(): void {
-	state.paramValue.schema.forEach((field) => {
-		if (
-			!fieldCannotBeDeleted(
-				field,
-				showMatchingColumnsSelector.value,
-				resourceMapperMode.value,
-				matchingColumns.value,
-			)
-		) {
-			field.removed = true;
-			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-		}
-	});
-	emitValueChanged();
-}
-
 function emitValueChanged(): void {
 	pruneParamValues();
 	emit('valueChanged', {
@@ -415,15 +538,17 @@ function emitValueChanged(): void {
 }
 
 function pruneParamValues(): void {
-	if (!state.paramValue.value) {
+	const { value, schema } = state.paramValue;
+	if (!value) {
 		return;
 	}
-	const valueKeys = Object.keys(state.paramValue.value);
-	valueKeys.forEach((key) => {
-		if (state.paramValue.value && state.paramValue.value[key] === null) {
-			delete state.paramValue.value[key];
+
+	const schemaKeys = new Set(schema.map((s) => s.id));
+	for (const key of Object.keys(value)) {
+		if (value[key] === null || !schemaKeys.has(key)) {
+			delete value[key];
 		}
-	});
+	}
 }
 
 defineExpose({
@@ -433,32 +558,39 @@ defineExpose({
 
 <template>
 	<div class="mt-4xs" data-test-id="resource-mapper-container">
-		<mapping-mode-select
+		<MappingModeSelect
 			v-if="showMappingModeSelect"
-			:inputSize="inputSize"
-			:labelSize="labelSize"
-			:initialValue="state.paramValue.mappingMode || 'defineBelow'"
-			:typeOptions="props.parameter.typeOptions"
-			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
-			:loading="state.loading"
-			:loadingError="state.loadingError"
-			:fieldsToMap="state.paramValue.schema"
-			@modeChanged="onModeChanged"
-			@retryFetch="initFetching"
-		/>
-		<matching-columns-select
-			v-if="showMatchingColumnsSelector"
+			:input-size="inputSize"
 			:label-size="labelSize"
-			:fieldsToMap="state.paramValue.schema"
-			:typeOptions="props.parameter.typeOptions"
-			:inputSize="inputSize"
+			:initial-value="state.paramValue.mappingMode || 'defineBelow'"
+			:type-options="props.parameter.typeOptions"
+			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:loading="state.loading"
-			:initialValue="matchingColumns"
-			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
-			@matchingColumnsChanged="onMatchingColumnsChanged"
+			:loading-error="state.loadingError"
+			:fields-to-map="state.paramValue.schema"
+			:teleported="teleported"
+			:is-read-only="isReadOnly"
+			@mode-changed="onModeChanged"
+			@retry-fetch="initFetching"
 		/>
-		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
-			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+		<MatchingColumnsSelect
+			v-if="showMatchingColumnsSelector"
+			:parameter="props.parameter"
+			:label-size="labelSize"
+			:fields-to-map="state.paramValue.schema"
+			:type-options="props.parameter.typeOptions"
+			:input-size="inputSize"
+			:loading="state.loading"
+			:initial-value="matchingColumns"
+			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
+			:teleported="teleported"
+			:refresh-in-progress="state.refreshInProgress"
+			:is-read-only="isReadOnly"
+			@matching-columns-changed="onMatchingColumnsChanged"
+			@refresh-field-list="initFetching(true)"
+		/>
+		<N8nText v-if="!showMappingModeSelect && state.loading" size="small">
+			<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
@@ -466,25 +598,42 @@ defineExpose({
 					},
 				})
 			}}
-		</n8n-text>
-		<mapping-fields
+		</N8nText>
+		<MappingFields
 			v-if="showMappingFields"
 			:parameter="props.parameter"
 			:path="props.path"
-			:nodeValues="state.parameterValues"
-			:fieldsToMap="state.paramValue.schema"
-			:paramValue="state.paramValue"
-			:labelSize="labelSize"
-			:showMatchingColumnsSelector="showMatchingColumnsSelector"
-			:showMappingModeSelect="showMappingModeSelect"
+			:node-values="state.parameterValues"
+			:fields-to-map="state.paramValue.schema"
+			:param-value="state.paramValue"
+			:label-size="labelSize"
+			:show-matching-columns-selector="showMatchingColumnsSelector"
+			:show-mapping-mode-select="showMappingModeSelect"
 			:loading="state.loading"
-			:refreshInProgress="state.refreshInProgress"
-			@fieldValueChanged="fieldValueChanged"
-			@removeField="removeField"
-			@addField="addField"
-			@refreshFieldList="initFetching(true)"
+			:teleported="teleported"
+			:refresh-in-progress="state.refreshInProgress"
+			:is-read-only="isReadOnly"
+			:is-data-stale="state.hasStaleFields"
+			@field-value-changed="fieldValueChanged"
+			@remove-field="removeField"
+			@add-field="addField"
+			@refresh-field-list="initFetching(true)"
 		/>
-		<n8n-notice
+		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
+			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
+			<template #trailingContent>
+				<N8nButton
+					size="mini"
+					icon="refresh"
+					type="secondary"
+					:loading="state.refreshInProgress"
+					@click="initFetching(true)"
+				>
+					{{ locale.baseText('generic.refresh') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
+		<N8nNotice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>
 			{{
@@ -495,6 +644,33 @@ defineExpose({
 					},
 				})
 			}}
-		</n8n-notice>
+		</N8nNotice>
+		<div v-if="showTypeConversionOptions && hasFields" :class="$style.typeConversionOptions">
+			<ParameterInputFull
+				:parameter="{
+					name: 'attemptToConvertTypes',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.attemptToConvertTypes"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.attemptToConvertTypes = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.typeConversionOptions {
+	display: grid;
+	padding: var(--spacing-m);
+	gap: var(--spacing-2xs);
+}
+</style>

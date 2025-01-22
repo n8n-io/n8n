@@ -72,7 +72,7 @@ The base text file for each locale is located at `/packages/editor-ui/src/plugin
 cp ./packages/editor-ui/src/plugins/i18n/locales/en.json ./packages/editor-ui/src/plugins/i18n/locales/de.json
 ```
 
-2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `$locale.baseText(key)`, e.g. `$locale.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
+2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `i18n.baseText(key)`, e.g. `i18n.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
 
 > **Note**: If you cannot find a string in the new base text file, either it does not belong to base text (i.e., the string might be part of header text, credential text, or node text), or the string might belong to the backend, where i18n is currently unsupported.
 
@@ -219,8 +219,10 @@ export class Github implements INodeType {
 
 ```json
 {
-	"header.displayName": "🇩🇪 GitHub",
-	"header.description": "🇩🇪 Consume GitHub API"
+	"header": {
+		"displayName": "🇩🇪 GitHub",
+		"description": "🇩🇪 Consume GitHub API"
+	}
 }
 ```
 
@@ -495,7 +497,7 @@ pnpm start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/nodes-base
-pnpm build:translations
+pnpm n8n-generate-translations
 pnpm watch
 ```
 
@@ -504,7 +506,6 @@ After changing the dynamic text file:
 1. Stop and restart the first terminal.
 2. Refresh the browser at `http://localhost:5678`
 
-If a `headerText` section was changed, re-run `pnpm build:translations` in `/nodes-base`.
+If a `headerText` section was changed, re-run `pnpm n8n-generate-translations` in `/nodes-base`.
 
 > **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.
-

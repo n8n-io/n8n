@@ -1,5 +1,8 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
+
+import type { ColumnInfo } from '../../v2/helpers/interfaces';
 import {
 	addSortRules,
 	addReturning,
@@ -10,6 +13,10 @@ import {
 	prepareItem,
 	replaceEmptyStringsByNulls,
 	wrapData,
+	convertArraysToPostgresFormat,
+	isJSON,
+	convertValuesToJsonWithPgp,
+	hasJsonDataTypeInSchema,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -22,6 +29,15 @@ const node: INode = {
 		operation: 'executeQuery',
 	},
 };
+
+describe('Test PostgresV2, isJSON', () => {
+	it('should return true for valid JSON', () => {
+		expect(isJSON('{"key": "value"}')).toEqual(true);
+	});
+	it('should return false for invalid JSON', () => {
+		expect(isJSON('{"key": "value"')).toEqual(false);
+	});
+});
 
 describe('Test PostgresV2, wrapData', () => {
 	it('should wrap object in json', () => {
@@ -371,5 +387,131 @@ describe('Test PostgresV2, checkItemAgainstSchema', () => {
 		} catch (error) {
 			expect(error.message).toEqual("Column 'foo' is not nullable");
 		}
+	});
+});
+
+describe('Test PostgresV2, hasJsonDataType', () => {
+	it('returns true if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [
+			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(true);
+	});
+
+	it('returns false if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' }];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(false);
+	});
+});
+
+describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
+	it('should use pgp to properly convert values to JSON', () => {
+		const pgp = pgPromise();
+		const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+
+		const schema: ColumnInfo[] = [
+			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		];
+		const values = [
+			{
+				value: { data: [], id: 1 },
+				expected: { data: '[]', id: 1 },
+			},
+			{
+				value: { data: [0], id: 1 },
+				expected: { data: '[0]', id: 1 },
+			},
+			{
+				value: { data: { key: 2 }, id: 1 },
+				expected: { data: '{"key":2}', id: 1 },
+			},
+		];
+
+		values.forEach((value) => {
+			const data = value.value.data;
+
+			expect(convertValuesToJsonWithPgp(pgp, schema, value.value)).toEqual(value.expected);
+			expect(value.value).toEqual(value.expected);
+			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
+		});
+	});
+});
+
+describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
+	it('should convert js arrays to postgres format', () => {
+		const item = {
+			jsonb_array: [
+				{
+					key: 'value44',
+				},
+			],
+			json_array: [
+				{
+					key: 'value54',
+				},
+			],
+			int_array: [1, 2, 5],
+			text_array: ['one', 't"w"o'],
+			bool_array: [true, false],
+		};
+
+		const schema: ColumnInfo[] = [
+			{
+				column_name: 'id',
+				data_type: 'integer',
+				is_nullable: 'NO',
+				udt_name: 'int4',
+				column_default: "nextval('test_data_array_id_seq'::regclass)",
+			},
+			{
+				column_name: 'jsonb_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_jsonb',
+				column_default: null,
+			},
+			{
+				column_name: 'json_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_json',
+				column_default: null,
+			},
+			{
+				column_name: 'int_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_int4',
+				column_default: null,
+			},
+			{
+				column_name: 'bool_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_bool',
+				column_default: null,
+			},
+			{
+				column_name: 'text_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_text',
+				column_default: null,
+			},
+		];
+
+		convertArraysToPostgresFormat(item, schema, node, 0);
+
+		expect(item).toEqual({
+			jsonb_array: '{"{\\"key\\":\\"value44\\"}"}',
+			json_array: '{"{\\"key\\":\\"value54\\"}"}',
+			int_array: '{1,2,5}',
+			text_array: '{"one","t\\"w\\"o"}',
+			bool_array: '{"true","false"}',
+		});
 	});
 });

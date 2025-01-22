@@ -1,5 +1,96 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRoute, useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@/composables/useI18n';
+import TemplatesView from './TemplatesView.vue';
+
+const externalHooks = useExternalHooks();
+const templatesStore = useTemplatesStore();
+const posthogStore = usePostHog();
+const nodeTypesStore = useNodeTypesStore();
+
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const documentTitle = useDocumentTitle();
+
+const loading = ref(true);
+const showPreview = ref(true);
+const notFoundError = ref(false);
+
+const templateId = computed(() =>
+	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+);
+
+const template = computed(() => templatesStore.getFullTemplateById(templateId.value));
+
+const openTemplateSetup = async (id: string, e: PointerEvent) => {
+	await useTemplateWorkflow({
+		posthogStore,
+		router,
+		templateId: id,
+		inNewBrowserTab: e.metaKey || e.ctrlKey,
+		externalHooks,
+		nodeTypesStore,
+		telemetry,
+		templatesStore,
+		source: 'template_preview',
+	});
+};
+
+const onHidePreview = () => {
+	showPreview.value = false;
+};
+
+const scrollToTop = () => {
+	const contentArea = document.getElementById('content');
+
+	if (contentArea) {
+		contentArea.scrollTo({
+			top: 0,
+		});
+	}
+};
+
+watch(
+	() => template.value,
+	(newTemplate) => {
+		if (newTemplate) {
+			documentTitle.set(`Template template: ${newTemplate.name}`);
+		} else {
+			documentTitle.set('Templates');
+		}
+	},
+);
+
+onMounted(async () => {
+	scrollToTop();
+
+	if (template.value?.full) {
+		loading.value = false;
+		return;
+	}
+
+	try {
+		await templatesStore.fetchTemplateById(templateId.value);
+	} catch (e) {
+		notFoundError.value = true;
+	}
+
+	loading.value = false;
+});
+</script>
+
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -7,22 +98,23 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('generic.workflow') }}
+						{{ i18n.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
 				<div :class="$style.button">
 					<n8n-button
 						v-if="template"
-						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
+						data-test-id="use-template-button"
+						:label="i18n.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openWorkflow(template.id, $event)"
+						@click="openTemplateSetup(templateId, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
-				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
+			<div v-else :class="$style.notFound">
+				<n8n-text color="text-base">{{ i18n.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
@@ -30,21 +122,21 @@
 				<WorkflowPreview
 					v-if="showPreview"
 					:loading="loading"
-					:workflow="template && template.workflow"
+					:workflow="template?.workflow"
 					@close="onHidePreview"
 				/>
 			</div>
 			<div :class="$style.content">
-				<div :class="$style.markdown">
+				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
-						:content="template && template.description"
-						:images="template && template.image"
+						:content="template?.description"
+						:images="template?.image"
 						:loading="loading"
 					/>
 				</div>
 				<div :class="$style.details">
 					<TemplateDetails
-						:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+						:block-title="i18n.baseText('template.details.appsInTheWorkflow')"
 						:loading="loading"
 						:template="template"
 					/>
@@ -53,104 +145,6 @@
 		</template>
 	</TemplatesView>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import TemplateDetails from '@/components/TemplateDetails.vue';
-import TemplatesView from './TemplatesView.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
-
-import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
-import { useTemplatesStore } from '@/stores/templates.store';
-
-export default defineComponent({
-	name: 'TemplatesWorkflowView',
-	mixins: [workflowHelpers],
-	components: {
-		TemplateDetails,
-		TemplatesView,
-		WorkflowPreview,
-	},
-	computed: {
-		...mapStores(useTemplatesStore),
-		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
-			return this.templatesStore.getTemplateById(this.templateId);
-		},
-		templateId() {
-			return this.$route.params.id;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-			showPreview: true,
-			notFoundError: false,
-		};
-	},
-	methods: {
-		openWorkflow(id: string, e: PointerEvent) {
-			const telemetryPayload = {
-				source: 'workflow',
-				template_id: id,
-				wf_template_repo_session_id: this.templatesStore.currentSessionId,
-			};
-
-			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-			}
-		},
-		onHidePreview() {
-			this.showPreview = false;
-		},
-		scrollToTop() {
-			const contentArea = document.getElementById('content');
-
-			if (contentArea) {
-				contentArea.scrollTo({
-					top: 0,
-				});
-			}
-		},
-	},
-	watch: {
-		template(template: ITemplatesWorkflowFull) {
-			if (template) {
-				setPageTitle(`n8n - Template template: ${template.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
-
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
-			this.loading = false;
-			return;
-		}
-
-		try {
-			await this.templatesStore.fetchTemplateById(this.templateId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-
-		this.loading = false;
-	},
-});
-</script>
 
 <style lang="scss" module>
 .wrapper {

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { onfleetApiRequest, onfleetApiRequestAllItems } from './GenericFunctions';
 import type {
 	OnfleetAdmins,
 	OnfleetCloneOverrideTaskOptions,
@@ -29,10 +31,6 @@ import type {
 	OnfleetWorkerSchedule,
 	OnfleetWorkerScheduleEntry,
 } from './interfaces';
-
-import { onfleetApiRequest, onfleetApiRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 const formatAddress = (
 	unparsed: boolean,
@@ -790,7 +788,6 @@ export class Onfleet {
 			const tasksData = {
 				tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)),
 			};
-			//@ts-ignore
 			const { tasks: tasksCreated } = await onfleetApiRequest.call(this, 'POST', path, tasksData);
 			return tasksCreated;
 		}

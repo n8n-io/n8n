@@ -1,0 +1,565 @@
+{
+	"name": "paired items fix",
+	"nodes": [
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "setting",
+							"value": "hello"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [500, 680],
+			"id": "18333790-db22-4235-92e6-b7dec8c20b77"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": true
+						}
+					]
+				}
+			},
+			"id": "4d4af5e5-860d-416f-b2d7-f0f87f380355",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1080, 500],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "={{ $('Set').item.json }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "26569caf-084d-4d5b-a575-c8e439358d10",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1340, 480]
+		},
+		{
+			"parameters": {},
+			"id": "f4f91c8c-e695-422b-97ad-802b10c7d868",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 980]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    'thing': 1,\n    'letter': 'a'\n  },\n  {\n    'thing': 2,\n    'letter': 'b'\n  },\n  {\n    'thing': 3,\n    'letter': 'c'\n  }\n]"
+			},
+			"id": "5eb81a1f-b845-408a-9fcc-e75e607212fa",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [840, 500]
+		},
+		{
+			"parameters": {
+				"functionCode": "return [\n  {\n    'number': 1,\n    'letter': 'a'\n  },\n  {\n    'number': 2,\n    'letter': 'b'\n  },\n  {\n    'number': 3,\n    'letter': 'c'\n  }\n]"
+			},
+			"name": "Generate new items",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [840, 860],
+			"id": "dd5d92f2-5893-4591-9f22-051f50e1b348"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "numberOriginal",
+							"value": "={{ $('Generate new items').item.json.number }}"
+						}
+					],
+					"string": [
+						{
+							"name": "letterOriginal",
+							"value": "={{ $('Generate new items').item.json.letter }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "ebb23410-831b-4f8f-834a-0ca22eb7c050",
+			"name": "Set3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1320, 860]
+		},
+		{
+			"parameters": {
+				"functionCode": "return [\n  {\n    'json': {\n      'originalItem': 'third'\n    },\n    'pairedItem': 2\n  },\n  {\n    'json': {\n      'originalItem': 'first'\n    },\n    'pairedItem': 0\n  },\n  {\n    'json': {\n      'originalItem': 'second'\n    },\n    'pairedItem': 1\n  }\n]"
+			},
+			"name": "Mix up pairing",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [1080, 860],
+			"id": "33ee2a0e-edc9-4197-94a2-4f77735240ff"
+		},
+		{
+			"parameters": {
+				"content": "### Always output data & multiple possible output resolve which are identical",
+				"height": 258,
+				"width": 855
+			},
+			"id": "3dc9ccfa-ef78-4022-8bbc-45ef8eb3a207",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [780, 400]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "5ba8d43b-9fa3-4ba0-9c08-3199a9d2d602",
+			"name": "cuctomers",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [640, 1340]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "00114764-691d-40b4-ae11-c5206a9448e3",
+			"name": "result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1380, 1180],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst data = [];\nfor (const [index, entry] of $input.all().entries()) {\n  entry.json.myNewField = index;\n  entry.pairedItem = 0;\n  data.push(entry);\n}\n\nreturn data;"
+			},
+			"id": "d3aa3bc3-3e5a-42d2-a26d-ea0c273ea3e8",
+			"name": "changePairedindex",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [920, 1180]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "=nameOriginalItem",
+							"value": "={{ $('cuctomers').item.json.name }}"
+						},
+						{
+							"name": "name",
+							"value": "={{ $json.name }}"
+						}
+					],
+					"boolean": [
+						{
+							"name": "test",
+							"value": "={{ $('cuctomers').item.json.id === $json.id  }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "af18482d-4a88-4ffb-b6e3-67be45cdfad1",
+			"name": "checkWithOriginal",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1140, 1180]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "3bad8f81-2fac-4e6e-bb7c-3a4921674005",
+			"name": "loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2,
+			"position": [920, 1420]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "=nameOriginalItem",
+							"value": "={{ $('cuctomers').item.json.name }}"
+						},
+						{
+							"name": "name",
+							"value": "={{ $json.name }}"
+						}
+					],
+					"boolean": [
+						{
+							"name": "test",
+							"value": "={{ $('cuctomers').item.json.id === $json.id  }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "865691b7-e4b8-487e-a5ec-80387118ea61",
+			"name": "testAfterLoop",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1180, 1620]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "8c5d3a1c-e34b-4937-bc22-88b418391002",
+			"name": "result1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1380, 1620],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst data = [];\nfor (const [index, entry] of $input.all().entries()) {\n  entry.json.myNewField = index;\n  entry.pairedItem = 0;\n  data.push(entry);\n}\n\nreturn data;"
+			},
+			"id": "ad476a3a-d491-406f-903d-022cb0f0ef3c",
+			"name": "changePairedindex1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1380, 1400]
+		}
+	],
+	"pinData": {
+		"Set3": [
+			{
+				"json": {
+					"originalItem": "third",
+					"numberOriginal": 3,
+					"letterOriginal": "c"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"originalItem": "first",
+					"numberOriginal": 1,
+					"letterOriginal": "a"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"originalItem": "second",
+					"numberOriginal": 2,
+					"letterOriginal": "b"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			}
+		],
+		"Set1": [
+			{
+				"json": {
+					"propertyName": {
+						"setting": "hello"
+					}
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			}
+		],
+		"result": [
+			{
+				"json": {
+					"test": true,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Jay Gatsby"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "José Arcadio Buendía"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Max Sendak"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Zaphod Beeblebrox"
+				},
+				"pairedItem": {
+					"item": 3
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Edmund Pevensie"
+				},
+				"pairedItem": {
+					"item": 4
+				}
+			}
+		],
+		"result1": [
+			{
+				"json": {
+					"test": true,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Jay Gatsby"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "José Arcadio Buendía"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Max Sendak"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Zaphod Beeblebrox"
+				},
+				"pairedItem": {
+					"item": 3
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Edmund Pevensie"
+				},
+				"pairedItem": {
+					"item": 4
+				}
+			}
+		]
+	},
+	"connections": {
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate new items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "cuctomers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate new items": {
+			"main": [
+				[
+					{
+						"node": "Mix up pairing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mix up pairing": {
+			"main": [
+				[
+					{
+						"node": "Set3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"cuctomers": {
+			"main": [
+				[
+					{
+						"node": "changePairedindex",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"changePairedindex": {
+			"main": [
+				[
+					{
+						"node": "checkWithOriginal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"checkWithOriginal": {
+			"main": [
+				[
+					{
+						"node": "result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"loop": {
+			"main": [
+				[
+					{
+						"node": "changePairedindex1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "testAfterLoop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"testAfterLoop": {
+			"main": [
+				[
+					{
+						"node": "result1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"changePairedindex1": {
+			"main": [
+				[
+					{
+						"node": "loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "6f6ee01c-8c99-493f-a30c-6a5ed2b71750",
+	"id": "169",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

@@ -21,18 +21,18 @@ const categoryName = computed(() => {
 <template>
 	<div
 		:class="$style.categoryWrapper"
-		v-on="$listeners"
+		v-bind="$attrs"
 		data-keyboard-nav="true"
 		data-test-id="node-creator-category-item"
 	>
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
 			<span :class="$style.name">
 				<span v-text="categoryName" />
-				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
+				<font-awesome-icon v-if="isTrigger" icon="bolt" size="xs" :class="$style.triggerIcon" />
 				<slot />
 			</span>
 			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
-			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
+			<font-awesome-icon v-else :class="$style.arrow" icon="chevron-up" />
 		</div>
 	</div>
 </template>

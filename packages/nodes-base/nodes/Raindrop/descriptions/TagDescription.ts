@@ -68,7 +68,7 @@ export const tagFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'It\'s possible to restrict remove action to just one collection. It\'s optional. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'It\'s possible to restrict remove action to just one collection. It\'s optional. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -124,7 +124,7 @@ export const tagFields: INodeProperties[] = [
 				name: 'collectionId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

@@ -1,5 +1,3 @@
-import { parseString as parseXml } from 'xml2js';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -7,13 +5,15 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { parseString as parseXml } from 'xml2js';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -41,7 +41,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -57,7 +57,7 @@ export async function awsApiRequestREST(
 export async function awsApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,

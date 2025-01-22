@@ -4,7 +4,7 @@ export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: {},
 	options: [
 		{
@@ -29,6 +29,16 @@ export const optionsCollection: INodeProperties = {
 			type: 'number',
 			default: 30,
 			description: 'Number of seconds reserved for connecting to the database',
+		},
+		{
+			displayName: 'Delay Closing Idle Connection',
+			name: 'delayClosingIdleConnection',
+			type: 'number',
+			default: 0,
+			description: 'Number of seconds to wait before idle connection would be eligible for closing',
+			typeOptions: {
+				minValue: 0,
+			},
 		},
 		{
 			displayName: 'Query Batching',
@@ -62,7 +72,7 @@ export const optionsCollection: INodeProperties = {
 			type: 'string',
 			default: '',
 			description:
-				'Comma-separated list of the values you want to use as query parameters. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.',
+				'Comma-separated list of the values you want to use as query parameters. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters" target="_blank">More info</a>.',
 			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
@@ -70,12 +80,24 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			displayName: 'Treat query parameters in single quotes as text',
+			name: 'treatQueryParametersInSingleQuotesAsText',
+			type: 'boolean',
+			default: false,
+			description: "Whether to treat query parameters enclosed in single quotes as text e.g. '$1'",
+			displayOptions: {
+				show: { queryReplacement: [{ _cnd: { exists: true } }] },
+			},
+		},
+		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 			displayName: 'Output Columns',
 			name: 'outputColumns',
 			type: 'multiOptions',
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 			description:
-				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
 				loadOptionsDependsOn: ['table.value'],
@@ -202,8 +224,9 @@ export const whereFixedCollection: INodeProperties = {
 					displayName: 'Column',
 					name: 'column',
 					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					placeholder: 'e.g. ID',
 					typeOptions: {
@@ -251,6 +274,10 @@ export const whereFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
+						{
+							name: 'Is Not Null',
+							value: 'IS NOT NULL',
+						},
 					],
 					default: 'equal',
 				},
@@ -258,6 +285,11 @@ export const whereFixedCollection: INodeProperties = {
 					displayName: 'Value',
 					name: 'value',
 					type: 'string',
+					displayOptions: {
+						hide: {
+							condition: ['IS NULL', 'IS NOT NULL'],
+						},
+					},
 					default: '',
 				},
 			],
@@ -284,8 +316,9 @@ export const sortFixedCollection: INodeProperties = {
 					displayName: 'Column',
 					name: 'column',
 					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',

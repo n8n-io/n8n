@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,10 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class Pushbullet implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +24,8 @@ export class Pushbullet implements INodeType {
 		defaults: {
 			name: 'Pushbullet',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pushbulletOAuth2Api',
@@ -157,7 +157,7 @@ export class Pushbullet implements INodeType {
 				description: 'URL of the push',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -170,8 +170,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be created',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Target',
@@ -244,7 +243,7 @@ export class Pushbullet implements INodeType {
 				},
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Push ID',
@@ -506,6 +505,6 @@ export class Pushbullet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

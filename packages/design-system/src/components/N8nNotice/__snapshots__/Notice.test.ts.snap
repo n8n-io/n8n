@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nNotice > props > content > should render HTML 1`] = `
+"<div id="notice" class="notice notice warning" role="alert">
+  <div class="notice-content"><span class="n8n-text compact size-small regular"><span id="notice-content" class="truncated" role="region"><strong>Hello world!</strong> This is a notice.</span></span></div>
+</div>"
+`;
+
+exports[`components > N8nNotice > props > content > should render correctly with content prop 1`] = `
+"<div id="notice" class="notice notice warning" role="alert">
+  <div class="notice-content">
+    <n8n-text-stub bold="false" size="small" compact="true" tag="span"></n8n-text-stub>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nNotice > props > content > should sanitize rendered HTML 1`] = `
+"<div id="notice" class="notice notice warning" role="alert">
+  <div class="notice-content">
+    <n8n-text-stub bold="false" size="small" compact="true" tag="span"></n8n-text-stub>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nNotice > should render correctly 1`] = `
+"<div id="notice" class="notice notice warning" role="alert">
+  <div class="notice-content">
+    <n8n-text-stub bold="false" size="small" compact="true" tag="span"></n8n-text-stub>
+  </div>
+</div>"
+`;

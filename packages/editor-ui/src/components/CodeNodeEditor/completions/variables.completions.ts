@@ -1,33 +1,37 @@
-import Vue from 'vue';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
-import { useEnvironmentsStore } from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
-export const variablesCompletions = (Vue as CodeNodeEditorMixin).extend({
-	methods: {
-		/**
-		 * Complete `$workflow.` to `.id .name .active`.
-		 */
-		variablesCompletions(context: CompletionContext, matcher = '$vars'): CompletionResult | null {
-			const pattern = new RegExp(`${escape(matcher)}\..*`);
+export function useVariablesCompletions() {
+	const environmentsStore = useEnvironmentsStore();
 
-			const preCursor = context.matchBefore(pattern);
+	/**
+	 * Complete `$vars.` to `$vars.VAR_NAME`.
+	 */
+	const variablesCompletions = (
+		context: CompletionContext,
+		matcher = '$vars',
+	): CompletionResult | null => {
+		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = context.matchBefore(pattern);
 
-			const environmentsStore = useEnvironmentsStore();
-			const options: Completion[] = environmentsStore.variables.map((variable) => ({
-				label: `${matcher}.${variable.key}`,
-				info: variable.value,
-			}));
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			return {
-				from: preCursor.from,
-				options: options.map(addVarType),
-			};
-		},
-	},
-});
+		const options: Completion[] = environmentsStore.variables.map((variable) => ({
+			label: `${matcher}.${variable.key}`,
+			info: variable.value,
+		}));
+
+		return {
+			from: preCursor.from,
+			options: options.map(addVarType),
+		};
+	};
+
+	return {
+		variablesCompletions,
+	};
+}

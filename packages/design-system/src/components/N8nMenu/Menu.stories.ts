@@ -1,8 +1,9 @@
+import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue3';
+
 import N8nMenu from './Menu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
-import type { StoryFn } from '@storybook/vue';
-import { action } from '@storybook/addon-actions';
 
 export default {
 	title: 'Atoms/Menu',
@@ -15,19 +16,21 @@ const methods = {
 };
 
 const template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nMenu,
 	},
 	template: `
 		<div style="height: 90vh; width: 200px">
-			<n8n-menu v-bind="$props" @select="onSelect"></n8n-menu>
+			<n8n-menu v-bind="args" @select="onSelect"></n8n-menu>
 		</div>
 	`,
 	methods,
 });
 
 const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nMenu,
@@ -36,7 +39,7 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div style="height: 90vh; width: 200px">
-			<n8n-menu v-bind="$props" @select="onSelect">
+			<n8n-menu v-bind="args" @select="onSelect">
 				<template #header>
 					<a href="#" class="p-m hideme" style="display: block;">
 						<n8n-icon icon="long-arrow-alt-left"/>&nbsp;&nbsp;Back to home
@@ -55,6 +58,7 @@ const templateWithHeaderAndFooter: StoryFn = (args, { argTypes }) => ({
 });
 
 const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nMenu,
@@ -63,7 +67,7 @@ const templateWithAllSlots: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div style="height: 90vh; width: 200px">
-			<n8n-menu v-bind="$props" @select="onSelect">
+			<n8n-menu v-bind="args" @select="onSelect">
 				<template #header>
 					<a href="#" class="p-m hideme" style="display: block;">
 						<n8n-icon icon="long-arrow-alt-left"/>&nbsp;&nbsp;Back to home
@@ -111,10 +115,9 @@ const menuItems = [
 		id: 'website',
 		icon: 'globe',
 		label: 'Website',
-		type: 'link',
-		properties: {
+		link: {
 			href: 'https://www.n8n.io',
-			newWindow: true,
+			target: '_blank',
 		},
 		position: 'bottom',
 	},
@@ -137,10 +140,9 @@ const menuItems = [
 				id: 'quickstart',
 				icon: 'video',
 				label: 'Quickstart',
-				type: 'link',
-				properties: {
+				link: {
 					href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
-					newWindow: true,
+					target: '_blank',
 				},
 			},
 		],

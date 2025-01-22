@@ -1,0 +1,64 @@
+{
+  "name": "Search DB",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "64465f9b-63de-43f9-8d90-b5b2eb7a2dc7",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        640,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6ad8dc55-20f3-45af-a724-c7ecac90d338",
+              "name": "response",
+              "value": "10 results found",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b580fd2b-00c8-4a52-8acb-024f204c0947",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        860,
+        380
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6026f7a4-f5dc-4c27-9f83-3a02fc6e33ae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "id": "BFFhCdBZmNSkx4qf",
+  "tags": []
+}

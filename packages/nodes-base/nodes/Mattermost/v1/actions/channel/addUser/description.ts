@@ -18,7 +18,7 @@ export const channelAddUserDescription: ChannelProperties = [
 			},
 		},
 		description:
-			'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'User Name or ID',
@@ -37,6 +37,6 @@ export const channelAddUserDescription: ChannelProperties = [
 			},
 		},
 		description:
-			'The ID of the user to invite into channel. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the user to invite into channel. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 ];

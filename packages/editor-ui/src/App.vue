@@ -1,289 +1,207 @@
-<template>
-	<div :class="[$style.app, 'root-container']">
-		<LoadingView v-if="loading" />
-		<div
-			v-else
-			id="app"
-			:class="{
-				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-			}"
-		>
-			<div id="header" :class="$style.header">
-				<router-view name="header"></router-view>
-			</div>
-			<div id="sidebar" :class="$style.sidebar">
-				<router-view name="sidebar"></router-view>
-			</div>
-			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" :max="1">
-					<router-view />
-				</keep-alive>
-			</div>
-			<Modals />
-			<Telemetry />
-		</div>
-	</div>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import Modals from '@/components/Modals.vue';
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import { v4 as uuid } from 'uuid';
 import LoadingView from '@/views/LoadingView.vue';
+import BannerStack from '@/components/banners/BannerStack.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
-
-import { userHelpers } from '@/mixins/userHelpers';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast } from '@/composables';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useRootStore,
-	useTemplatesStore,
-	useNodeTypesStore,
-	useCloudPlanStore,
-	useVersionControlStore,
-	useUsageStore,
-} from '@/stores';
+import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
+import { useRootStore } from '@/stores/root.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { newVersions } from '@/mixins/newVersions';
-import { useRoute } from 'vue-router/composables';
-import { useExternalHooks } from '@/composables';
+import { useStyles } from './composables/useStyles';
 
-export default defineComponent({
-	name: 'App',
-	components: {
-		LoadingView,
-		Telemetry,
-		Modals,
-	},
-	mixins: [newVersions, userHelpers],
-	setup(props) {
-		return {
-			...useGlobalLinkActions(),
-			...useHistoryHelper(useRoute()),
-			...useToast(),
-			externalHooks: useExternalHooks(),
-			...newVersions.setup?.(props),
-		};
-	},
-	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useRootStore,
-			useSettingsStore,
-			useTemplatesStore,
-			useUIStore,
-			useUsersStore,
-			useVersionControlStore,
-			useCloudPlanStore,
-			useUsageStore,
-		),
-		defaultLocale(): string {
-			return this.rootStore.defaultLocale;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-		};
-	},
-	methods: {
-		async initSettings(): Promise<void> {
-			try {
-				await this.settingsStore.getSettings();
-			} catch (e) {
-				this.showToast({
-					title: this.$locale.baseText('startupError'),
-					message: this.$locale.baseText('startupError.message'),
-					type: 'error',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
+// Polyfill crypto.randomUUID
+if (!('randomUUID' in crypto)) {
+	Object.defineProperty(crypto, 'randomUUID', { value: uuid });
+}
 
-				throw e;
-			}
-		},
-		async loginWithCookie(): Promise<void> {
-			try {
-				await this.usersStore.loginWithCookie();
-			} catch (e) {}
-		},
-		async initTemplates(): Promise<void> {
-			if (!this.settingsStore.isTemplatesEnabled) {
-				return;
-			}
-			try {
-				await this.settingsStore.testTemplatesEndpoint();
-			} catch (e) {}
-		},
-		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
-			}
-		},
-		async initialize(): Promise<void> {
-			await this.initSettings();
-			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
-		},
-		trackPage(): void {
-			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
-				this.templatesStore.setSessionId();
-			} else {
-				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
-			}
+const route = useRoute();
+const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
-			this.$telemetry.page(this.$route);
-		},
-		authenticate() {
-			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
-				if (this.$route.name === VIEWS.SETUP) {
-					return;
-				}
+const { setAppZIndexes } = useStyles();
 
-				void this.$router.replace({ name: VIEWS.SETUP });
-				return;
-			}
+// Initialize undo/redo
+useHistoryHelper(route);
 
-			if (this.canUserAccessCurrentRoute()) {
-				return;
-			}
+const loading = ref(true);
+const defaultLocale = computed(() => rootStore.defaultLocale);
+const isDemoMode = computed(() => route.name === VIEWS.DEMO);
+const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
+const hasContentFooter = ref(false);
+const appGrid = ref<Element | null>(null);
 
-			// if cannot access page and not logged in, ask to sign in
-			const user = this.usersStore.currentUser;
-			if (!user) {
-				const redirect =
-					this.$route.query.redirect ||
-					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
-			}
+const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 
-			// if cannot access page and is logged in, respect signin redirect
-			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) {
-					// protect against phishing
-					void this.$router.replace(redirect);
-					return;
-				}
-			}
+onMounted(async () => {
+	setAppZIndexes();
+	logHiringBanner();
+	loading.value = false;
+	window.addEventListener('resize', updateGridWidth);
+	await updateGridWidth();
+});
 
-			// if cannot access page and is logged in
-			void this.$router.replace({ name: VIEWS.HOMEPAGE });
-		},
-		redirectIfNecessary() {
-			const redirect =
-				this.$route.meta &&
-				typeof this.$route.meta.getRedirect === 'function' &&
-				this.$route.meta.getRedirect();
-			if (redirect) {
-				void this.$router.replace(redirect);
-			}
-		},
-		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
-			if (theme) {
-				window.document.body.classList.add(`theme-${theme}`);
-			}
-		},
-		async checkForCloudPlanData(): Promise<void> {
-			try {
-				await this.cloudPlanStore.getOwnerCurrentPlan();
-				if (!this.cloudPlanStore.userIsTrialing) return;
-				await this.cloudPlanStore.getInstanceCurrentUsage();
-				this.startPollingInstanceUsageData();
-			} catch {}
-		},
-		startPollingInstanceUsageData() {
-			const interval = setInterval(async () => {
-				try {
-					await this.cloudPlanStore.getInstanceCurrentUsage();
-					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
-						clearTimeout(interval);
-						return;
-					}
-				} catch {}
-			}, CLOUD_TRIAL_CHECK_INTERVAL);
-		},
-	},
-	async mounted() {
-		this.setTheme();
-		await this.initialize();
-		this.logHiringBanner();
-		this.authenticate();
-		this.redirectIfNecessary();
-		void this.checkForNewVersions();
-		void this.checkForCloudPlanData();
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', updateGridWidth);
+});
 
-		if (
-			this.versionControlStore.isEnterpriseVersionControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
-			await this.versionControlStore.getPreferences();
-		}
+const logHiringBanner = () => {
+	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
+		console.log(HIRING_BANNER);
+	}
+};
 
-		this.loading = false;
+const updateGridWidth = async () => {
+	await nextTick();
+	if (appGrid.value) {
+		uiStore.appGridWidth = appGrid.value.clientWidth;
+	}
+};
 
-		this.trackPage();
-		void this.externalHooks.run('app.mount');
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
 
-		if (this.defaultLocale !== 'en') {
-			await this.nodeTypesStore.getNodeTranslationHeaders();
-		}
-	},
-	watch: {
-		$route(route) {
-			this.authenticate();
-			this.redirectIfNecessary();
+watch(route, (r) => {
+	hasContentFooter.value = r.matched.some(
+		(matchedRoute) => matchedRoute.components?.footer !== undefined,
+	);
+});
 
-			this.trackPage();
-		},
-		defaultLocale(newLocale) {
-			void loadLanguage(newLocale);
-		},
-	},
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
 });
 </script>
 
+<template>
+	<LoadingView v-if="loading" />
+	<div
+		v-else
+		id="n8n-app"
+		:class="{
+			[$style.container]: true,
+			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+		}"
+	>
+		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
+			<div id="banners" :class="$style.banners">
+				<BannerStack v-if="!isDemoMode" />
+			</div>
+			<div id="header" :class="$style.header">
+				<router-view name="header"></router-view>
+			</div>
+			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+				<router-view name="sidebar"></router-view>
+			</div>
+			<div id="content" :class="$style.content">
+				<div :class="$style.contentWrapper">
+					<router-view v-slot="{ Component }">
+						<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+							<component :is="Component" />
+						</keep-alive>
+						<component :is="Component" v-else />
+					</router-view>
+				</div>
+				<div v-if="hasContentFooter" :class="$style.contentFooter">
+					<router-view name="footer" />
+				</div>
+			</div>
+			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
+				<Modals />
+			</div>
+			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
+		</div>
+		<AskAssistantChat />
+	</div>
+</template>
+
 <style lang="scss" module>
-.app {
+// On the root level, whole app is a flex container
+// with app grid and assistant sidebar as children
+.container {
 	height: 100vh;
 	overflow: hidden;
+	display: grid;
+	grid-template-columns: 1fr auto;
 }
 
-.container {
+// App grid is the main app layout including modals and other absolute positioned elements
+.app-grid {
+	position: relative;
 	display: grid;
+	height: 100vh;
 	grid-template-areas:
+		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: auto auto 1fr;
 }
 
+.banners {
+	grid-area: banners;
+	z-index: var(--z-index-top-banners);
+}
 .content {
 	display: flex;
-	grid-area: content;
+	flex-direction: column;
+	align-items: center;
 	overflow: auto;
-	height: 100vh;
+	grid-area: content;
+}
+
+.contentFooter {
+	height: auto;
+	z-index: 10;
+	width: 100%;
+	display: none;
+
+	// Only show footer if there's content
+	&:has(*) {
+		display: block;
+	}
+}
+.contentWrapper {
+	display: flex;
+	grid-area: content;
+	position: relative;
+	overflow: auto;
+	height: 100%;
 	width: 100%;
 	justify-content: center;
+
+	main {
+		width: 100%;
+		height: 100%;
+	}
 }
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: var(--z-index-app-header);
+	min-width: 0;
+	min-height: 0;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100vh;
-	z-index: 999;
+	z-index: var(--z-index-app-sidebar);
+}
+
+.modals {
+	width: 100%;
 }
 </style>

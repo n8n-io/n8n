@@ -2,6 +2,259 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.65.0
+
+### What changed?
+
+Queue polling via the env var `QUEUE_RECOVERY_INTERVAL` has been removed.
+
+### When is action necessary?
+
+If you have set the env var `QUEUE_RECOVERY_INTERVAL`, so you can remove it as it no longer has any effect.
+
+# 1.63.0
+
+### What changed?
+
+1. The worker server used to bind to IPv6 by default. It now binds to IPv4 by default.
+2. The worker server's `/healthz` used to report healthy status based on database and Redis checks. It now reports healthy status regardless of database and Redis status, and the database and Redis checks are part of `/healthz/readiness`.
+
+### When is action necessary?
+
+1. If you experience a port conflict error when starting a worker server using its default port, set a different port for the worker server with `QUEUE_HEALTH_CHECK_PORT`.
+2. If you are relying on database and Redis checks for worker health status, switch to checking `/healthz/readiness` instead of `/healthz`.
+
+## 1.57.0
+
+### What changed?
+
+The `verbose` log level was merged into the `debug` log level.
+
+### When is action necessary?
+
+If you are setting the env var `N8N_LOG_LEVEL=verbose`, please update your log level to `N8N_LOG_LEVEL=debug`.
+
+## 1.55.0
+
+### What changed?
+
+The `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` environment variable now also blocks access to n8n's static cache directory at `~/.cache/n8n/public`.
+
+### When is action necessary?
+
+If you are writing to or reading from a file at n8n's static cache directory via a node, e.g. `Read/Write Files from Disk`, please update your node to use a different path.
+
+## 1.52.0
+
+### What changed?
+
+Prometheus metrics enabled via `N8N_METRICS_INCLUDE_DEFAULT_METRICS` and `N8N_METRICS_INCLUDE_API_ENDPOINTS` were fixed to include the default `n8n_` prefix.
+
+### When is action necessary?
+
+If you are using Prometheus metrics from these categories and are using a non-empty prefix, please update those metrics to match their new prefixed names.
+
+## 1.47.0
+
+### What changed?
+
+Calling `$(...).last()` (or `$(...).first()` or `$(...).all()` respectively) without arguments is returning the the last item (or first or all items) of the output that connects the two nodes. Before it was returning the item/items of the first output of that node.
+
+### When is action necessary?
+
+If you are using `$(...).last()` (or `$(...).first()` or `$(...)all()` respectively) without arguments for nodes that have multiple outputs (e.g. `If`, `Switch`, `Compare Datasets`, etc.) and you want it to default to the first output. In that case change it to `$(...).last(0)` (or `first` or `all` respectively).
+
+This does not affect the Array functions `[].last()`, `[].first()`.
+
+## 1.40.0
+
+### What changed?
+
+The default value for the `DB_POSTGRESDB_USER` environment variable was switched from `root` to `postgres`.
+
+### When is action necessary?
+
+If your Postgres connection is relying on the old default value `root` for the `DB_POSTGRESDB_USER` environment variable, you must now explicitly set `DB_POSTGRESDB_USER` to `root` in your environment.
+
+## 1.37.0
+
+### What changed?
+
+The `--file` flag for the `execute` CLI command has been removed.
+
+### When is action necessary?
+
+If you have scripts relying on the `--file` flag for the `execute` CLI command, update them to first import the workflow and then execute it using the `--id` flag.
+
+## 1.32.0
+
+### What changed?
+
+n8n auth cookie has `Secure` flag set by default now.
+
+### When is action necessary?
+
+If you are running n8n without HTTP**S** on a domain other than `localhost`, you need to either setup HTTPS, or you can disable the secure flag by setting the env variable `N8N_SECURE_COOKIE` to `false`.
+
+## 1.27.0
+
+### What changed?
+
+The execution mode `own` was removed.
+If `EXECUTIONS_PROCESS` is set to `main` or if `executions.process` in a config file is set to `main` n8n will print a warning, but start up normally.
+If `EXECUTIONS_PROCESS` is set to `own` or if `executions.process` in a config file is set to `own` n8n will print an error message and refuse to start up.
+
+### When is action necessary?
+
+If you use `own` mode and need the isolation and performance gains, please consider using queue mode instead, otherwise switch to main mode by removing the environment variable or config field.
+If you have the environment variable `EXECUTIONS_PROCESS` or the config field `executions.process` set, please remove them. The environment variable has no effect anymore and the configuration field will be removed in future releases, prevent n8n from starting if it is still set.
+
+## 1.25.0
+
+### What changed?
+
+If the `N8N_ENCRYPTION_KEY` environment variable on a main instance does not match the `encryptionKey` in the config file, the main instance will not initialize. If the `N8N_ENCRYPTION_KEY` environment variable is missing on a worker, the worker will not initialize.
+
+### When is action necessary?
+
+If passing an `N8N_ENCRYPTION_KEY` environment variable to the main instance, make sure it matches the `encryptionKey` in the config file. If you are using workers, pass the `N8N_ENCRYPTION_KEY` environment variable to them.
+
+## 1.24.0
+
+### What changed?
+
+The flag `N8N_CACHE_ENABLED` was removed. The cache is now always enabled.
+
+Additionally, expressions in credentials now follow the paired item, so if you have multiple input items, n8n will try to pair the matching row to fill in the credential details.
+
+In the Monday.com Node, due to API changes, the data structure of entries in `column_values` array has changed
+
+### When is action necessary?
+
+If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
+
+In regards to credentials, if you use expression in credentials, you might want to revisit them. Previously, n8n would stick to the first item only, but now it will try to match the proper paired item.
+
+If you are using the Monday.com node and refering to `column_values` property, check in table below if you are using any of the affected properties of its entries.
+
+| Resource   | Operation           | Previous        | New                 |
+| ---------- | ------------------- | --------------- | ------------------- |
+| Board      | Get                 | owner           | owners              |
+| Board      | Get All             | owner           | owners              |
+| Board Item | Get                 | title           | column.title        |
+| Board Item | Get All             | title           | column.title        |
+| Board Item | Get By Column Value | title           | column.title        |
+| Board Item | Get                 | additional_info | column.settings_str |
+| Board Item | Get All             | additional_info | column.settings_str |
+| Board Item | Get By Column Value | additional_info | column.settings_str |
+
+\*column.settings_str is not a complete equivalent additional_info
+
+## 1.22.0
+
+### What changed?
+
+Hash algorithm `ripemd160` is dropped from `.hash()` expressions.
+`sha3` hash algorithm now returns a valid sha3-512 has, unlike the previous implementation that returned a `Keccak` hash instead.
+
+### When is action necessary?
+
+If you are using `.hash` helpers in expressions with hash algorithm `ripemd160`, you need to switch to one of the other supported algorithms.
+
+## 1.15.0
+
+### What changed?
+
+Until now, in main mode, n8n used to deregister webhooks at shutdown and reregister them at startup. Queue mode and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` skipped webhook deregistration.
+
+As from now, in both main and queue modes, n8n no longer deregisters webhooks at startup and shutdown, and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` is removed. n8n assumes that third-party services will retry unhandled webhook requests.
+
+### When is action necessary?
+
+If using the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN`, note that it no longer has effect and can be removed from your settings.
+
+## 1.9.0
+
+### What changed?
+
+In nodes, `this.helpers.getBinaryStream()` is now async.
+
+### When is action necessary?
+
+If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
+
+Example:
+
+```typescript
+const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
+const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
+```
+
+### What changed?
+
+The env vars `N8N_BINARY_DATA_TTL` and `EXECUTIONS_DATA_PRUNE_TIMEOUT` no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.
+
+### When is action necessary?
+
+If using these flags, remove them from your settings and be mindful of the new behavior.
+
+## 1.6.0
+
+### What changed?
+
+The env var `N8N_PERSISTED_BINARY_DATA_TTL` no longer has any effect and can be removed. This legacy flag was originally introduced to support ephemeral executions (see [details](https://github.com/n8n-io/n8n/pull/7046)), which are no longer supported.
+
+### When is action necessary?
+
+If using this flag, remove it from your settings.
+
+## 1.5.0
+
+### What changed?
+
+In the Code node, `console.log` does not output to stdout by default.
+
+### When is action necessary?
+
+If you were relying on `console.log` for non-manual executions of a Code node, you need to set the env variable `CODE_ENABLE_STDOUT` to `true` to send Code node logs to process's stdout.
+
+## 1.2.0
+
+### What changed?
+
+For the Linear node, priority in issue creation is `4` (previously incorrectly `3`) for `Low`.
+
+### When is action necessary?
+
+If you were using `Low`, you were setting a priority of `Normal`, so please double check you are setting the priority you intend.
+
+## 1.0.0
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v18.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v18 or above.
+
+## 0.234.0
+
+### What changed?
+
+This release introduces two irreversible changes:
+
+- The n8n database will use strings instead of numeric values to identify workflows and credentials
+- Execution data is split into a separate database table
+
+### When is action necessary?
+
+It will not be possible to read a n8n@0.234.0 database with older versions of n8n, so we recommend that you take a full backup before migrating.
+
 ## 0.232.0
 
 ### What changed?

@@ -1,20 +1,18 @@
+import * as losslessJSON from 'lossless-json';
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
-
-import moment from 'moment';
-
-import * as losslessJSON from 'lossless-json';
-
-function convertLosslessNumber(key: any, value: any) {
+function convertLosslessNumber(_: any, value: any) {
 	if (value?.isLosslessNumber) {
 		return value.toString();
 	} else {
@@ -27,7 +25,7 @@ function convertLosslessNumber(key: any, value: any) {
  */
 export async function goToWebinarApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject | IDataObject[],
@@ -36,7 +34,7 @@ export async function goToWebinarApiRequest(
 	const operation = this.getNodeParameter('operation', 0);
 	const resource = this.getNodeParameter('resource', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -86,7 +84,7 @@ export async function goToWebinarApiRequest(
  */
 export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	query: IDataObject,
 	body: IDataObject,
@@ -139,13 +137,13 @@ export async function handleGetAll(
 		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
-	return goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
+	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { account_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const endpoint = `accounts/${oauthTokenData.account_key}/webinars`;
 
@@ -176,9 +174,9 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 }
 
 export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
@@ -208,9 +206,9 @@ export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 
@@ -233,9 +231,9 @@ export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) 
 }
 
 export async function loadAnswers(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
@@ -262,9 +260,9 @@ export async function loadAnswers(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 

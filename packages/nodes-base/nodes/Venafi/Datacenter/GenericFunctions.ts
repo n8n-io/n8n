@@ -1,27 +1,26 @@
-import type { OptionsWithUri } from 'request';
-
+import get from 'lodash/get';
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash.get';
-
 export async function venafiApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
+	const credentials = await this.getCredentials('venafiTlsProtectDatacenterApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -51,7 +50,10 @@ export async function venafiApiRequest(
 
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
-			throw new Error(`Venafi error response [${error.statusCode}]: ${errors.join('|')}`);
+			throw new ApplicationError(
+				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`,
+				{ level: 'warning' },
+			);
 		}
 		throw error;
 	}
@@ -60,7 +62,7 @@ export async function venafiApiRequest(
 export async function venafiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

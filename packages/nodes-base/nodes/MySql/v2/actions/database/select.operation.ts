@@ -1,5 +1,11 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
 	QueryRunner,
@@ -8,11 +14,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from '../../helpers/interfaces';
-
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-
-import { addSortRules, addWhereClauses } from '../../helpers/utils';
-
+import { addSortRules, addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
 import {
 	optionsCollection,
 	sortFixedCollection,
@@ -88,10 +90,10 @@ export async function execute(
 		const SELECT = selectDistinct ? 'SELECT DISTINCT' : 'SELECT';
 
 		if (outputColumns.includes('*')) {
-			query = `${SELECT} * FROM \`${table}\``;
+			query = `${SELECT} * FROM ${escapeSqlIdentifier(table)}`;
 		} else {
-			const escapedColumns = outputColumns.map((column) => `\`${column}\``).join(', ');
-			query = `${SELECT} ${escapedColumns} FROM \`${table}\``;
+			const escapedColumns = outputColumns.map(escapeSqlIdentifier).join(', ');
+			query = `${SELECT} ${escapedColumns} FROM ${escapeSqlIdentifier(table)}`;
 		}
 
 		let values: QueryValues = [];

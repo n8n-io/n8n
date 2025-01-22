@@ -1,3 +1,33 @@
+<script lang="ts" setup>
+import { onMounted, ref } from 'vue';
+import type { HistoryState } from 'vue-router';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
+import { isRouteLocationRaw } from '@/utils/typeGuards';
+
+const router = useRouter();
+
+const previousRoute = ref<HistoryState[string] | undefined>();
+
+function onReturn() {
+	const resolvedSettingsRoute = router.resolve({ name: VIEWS.SETTINGS });
+	const resolvedPreviousRoute = isRouteLocationRaw(previousRoute.value)
+		? router.resolve(previousRoute.value)
+		: null;
+	const backRoute =
+		!resolvedPreviousRoute || resolvedPreviousRoute.path.startsWith(resolvedSettingsRoute.path)
+			? { name: VIEWS.HOMEPAGE }
+			: resolvedPreviousRoute;
+
+	void router.push(backRoute);
+}
+
+onMounted(() => {
+	previousRoute.value = router.options.history.state.back;
+});
+</script>
+
 <template>
 	<div :class="$style.container">
 		<SettingsSidebar @return="onReturn" />
@@ -12,40 +42,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
-
-import { VIEWS } from '@/constants';
-import SettingsSidebar from '@/components/SettingsSidebar.vue';
-
-const SettingsView = defineComponent({
-	name: 'SettingsView',
-	components: {
-		SettingsSidebar,
-	},
-	beforeRouteEnter(to, from, next) {
-		next((vm) => {
-			(vm as unknown as InstanceType<typeof SettingsView>).previousRoute = from;
-		});
-	},
-	data() {
-		return {
-			previousRoute: null as Route | null,
-		};
-	},
-	methods: {
-		onReturn() {
-			void this.$router.push(
-				this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE },
-			);
-		},
-	},
-});
-
-export default SettingsView;
-</script>
 
 <style lang="scss" module>
 .container {

@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+
 import { sendErrorPostReceive } from './GenericFunctions';
 
 export const imageOperations: INodeProperties[] = [
@@ -66,6 +67,126 @@ const createOperations: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Model',
+		name: 'model',
+		type: 'options',
+		default: 'dall-e-2',
+		description: 'The model to use for image generation',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ $responseItem.id.startsWith('dall-') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['image'],
+				operation: ['create'],
+				'@version': [1],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'model',
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'imageModel',
+		type: 'options',
+		default: 'dall-e-2',
+		description: 'The model to use for image generation',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ $responseItem.id.startsWith('dall-') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['image'],
+				operation: ['create'],
+			},
+			hide: {
+				'@version': [1],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'model',
+			},
+		},
+	},
+	{
 		displayName: 'Response Format',
 		name: 'responseFormat',
 		type: 'options',
@@ -79,7 +200,7 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Binary Data',
+				name: 'Binary File',
 				value: 'binaryData',
 			},
 			{
@@ -122,7 +243,7 @@ const createOperations: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
@@ -151,6 +272,33 @@ const createOperations: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Quality',
+				name: 'quality',
+				type: 'options',
+				options: [
+					{
+						name: 'HD',
+						value: 'hd',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['dall-e-3'],
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'quality',
+					},
+				},
+				default: 'standard',
+			},
+			{
 				displayName: 'Resolution',
 				name: 'size',
 				type: 'options',
@@ -168,6 +316,11 @@ const createOperations: INodeProperties[] = [
 						value: '1024x1024',
 					},
 				],
+				displayOptions: {
+					show: {
+						'/model': ['dall-e-2'],
+					},
+				},
 				routing: {
 					send: {
 						type: 'body',
@@ -175,6 +328,64 @@ const createOperations: INodeProperties[] = [
 					},
 				},
 				default: '1024x1024',
+			},
+			{
+				displayName: 'Resolution',
+				name: 'size',
+				type: 'options',
+				options: [
+					{
+						name: '1024x1024',
+						value: '1024x1024',
+					},
+					{
+						name: '1792x1024',
+						value: '1792x1024',
+					},
+					{
+						name: '1024x1792',
+						value: '1024x1792',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['dall-e-3'],
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'size',
+					},
+				},
+				default: '1024x1024',
+			},
+			{
+				displayName: 'Style',
+				name: 'style',
+				type: 'options',
+				options: [
+					{
+						name: 'Natural',
+						value: 'natural',
+					},
+					{
+						name: 'Vivid',
+						value: 'vivid',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['dall-e-3'],
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'style',
+					},
+				},
+				default: 'vivid',
 			},
 		],
 	},

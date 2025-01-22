@@ -1,19 +1,7 @@
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/vue';
-import Vue from 'vue';
-import '../plugins';
-import { I18nPlugin } from '@/plugins/i18n';
 
 configure({ testIdAttribute: 'data-test-id' });
-
-Vue.config.productionTip = false;
-Vue.config.devtools = false;
-
-// TODO: Investigate why this is needed
-// Without having this 3rd party library imported like this, any component test using 'vue-json-pretty' fail with:
-// [Vue warn]: Failed to mount component: template or render function not defined.
-Vue.component('vue-json-pretty', require('vue-json-pretty').default);
-Vue.use((vue) => I18nPlugin(vue));
 
 window.ResizeObserver =
 	window.ResizeObserver ||
@@ -22,3 +10,76 @@ window.ResizeObserver =
 		observe: vi.fn(),
 		unobserve: vi.fn(),
 	}));
+
+Element.prototype.scrollIntoView = vi.fn();
+
+Range.prototype.getBoundingClientRect = vi.fn();
+Range.prototype.getClientRects = vi.fn(() => ({
+	item: vi.fn(),
+	length: 0,
+	[Symbol.iterator]: vi.fn(),
+}));
+
+export class IntersectionObserver {
+	root = null;
+
+	rootMargin = '';
+
+	thresholds = [];
+
+	disconnect() {
+		return null;
+	}
+
+	observe() {
+		return null;
+	}
+
+	takeRecords() {
+		return [];
+	}
+
+	unobserve() {
+		return null;
+	}
+}
+
+window.IntersectionObserver = IntersectionObserver;
+global.IntersectionObserver = IntersectionObserver;
+
+// Mocks for useDeviceSupport
+Object.defineProperty(window, 'matchMedia', {
+	writable: true,
+	value: vi.fn().mockImplementation((query) => ({
+		matches: true,
+		media: query,
+		onchange: null,
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
+	})),
+});
+
+class Worker {
+	onmessage: (message: string) => void;
+
+	url: string;
+
+	constructor(url: string) {
+		this.url = url;
+		this.onmessage = () => {};
+	}
+
+	postMessage(message: string) {
+		this.onmessage(message);
+	}
+
+	addEventListener() {}
+}
+
+Object.defineProperty(window, 'Worker', {
+	writable: true,
+	value: Worker,
+});

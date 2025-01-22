@@ -6,11 +6,12 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.movebinarydata/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
 			}
 		]
 	},
 	"subcategories": {
 		"Core Nodes": ["Files"]
-	}
+	},
+	"alias": ["Move Binary Data"]
 }

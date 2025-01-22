@@ -1,14 +1,12 @@
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface ScriptsOptions {
 	script?: any;
@@ -30,9 +28,7 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
+export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -43,7 +39,7 @@ export async function getToken(
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -70,13 +66,21 @@ export async function getToken(
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
+				'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 			);
 		}
 
 		return response.response.token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		let message;
+		if (error.statusCode === 502) {
+			message = 'The server is not responding. Is the DataAPI enabled?';
+		} else if (error.error) {
+			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message;
+		} else {
+			message = error.message;
+		}
+		throw new ApplicationError(message, { level: 'warning' });
 	}
 }
 
@@ -100,7 +104,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  */
 export async function layoutsApiRequest(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
@@ -109,7 +113,7 @@ export async function layoutsApiRequest(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -141,7 +145,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -150,13 +154,8 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		return responseData.response.fieldMetaData;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	return responseData.response.fieldMetaData;
 }
 
 /**
@@ -172,7 +171,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -181,13 +180,8 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		return responseData.response.portalMetaData;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	return responseData.response.portalMetaData;
 }
 
 function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
@@ -217,7 +211,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -226,19 +220,14 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 		json: true,
 	};
 
-	try {
-		const responseData = await this.helpers.request(options);
-		const items = parseScriptsList(responseData.response.scripts as ScriptObject[]);
-		items.sort((a, b) => (a.name > b.name ? 0 : 1));
-		return items;
-	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
-	}
+	const responseData = await this.helpers.request(options);
+	const items = parseScriptsList(responseData.response.scripts as ScriptObject[]);
+	items.sort((a, b) => (a.name > b.name ? 0 : 1));
+	return items;
 }
 
 export async function logout(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 	token: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
@@ -249,7 +238,7 @@ export async function logout(
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',
@@ -257,25 +246,8 @@ export async function logout(
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
-	try {
-		const response = await this.helpers.request(requestOptions);
-
-		if (typeof response === 'string') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
-			);
-		}
-
-		return response;
-	} catch (error) {
-		const errorMessage = `${error.response.body.messages[0].message}'(' + ${error.response.body.messages[0].message}')'`;
-
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-		throw error.response.body;
-	}
+	const response = await this.helpers.request(requestOptions);
+	return response;
 }
 
 export function parseSort(this: IExecuteFunctions, i: number): object | null {

@@ -44,7 +44,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		name: 'applicationId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getApplications',
 		},
@@ -61,7 +61,7 @@ export const certificateRequestFields: INodeProperties[] = [
 		name: 'certificateIssuingTemplateId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCertificateIssuingTemplates',
 			loadOptionsDependsOn: ['applicationId'],
@@ -85,24 +85,6 @@ export const certificateRequestFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-	},
-	{
-		displayName: 'Application Server Type Name or ID',
-		name: 'applicationServerTypeId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getApplicationServerTypes',
-		},
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['certificateRequest'],
-				generateCsr: [true],
-			},
-		},
-		default: '',
 	},
 	{
 		displayName: 'Common Name',

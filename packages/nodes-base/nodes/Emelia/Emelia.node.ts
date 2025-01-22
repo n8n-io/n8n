@@ -1,19 +1,17 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import isEmpty from 'lodash/isEmpty';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
-
 import { campaignFields, campaignOperations } from './CampaignDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import isEmpty from 'lodash.isempty';
+import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,8 +25,8 @@ export class Emelia implements INodeType {
 		defaults: {
 			name: 'Emelia',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'emeliaApi',
@@ -69,11 +67,11 @@ export class Emelia implements INodeType {
 
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'campaign');
+				return await loadResource.call(this, 'campaign');
 			},
 
 			async getContactLists(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'contactList');
+				return await loadResource.call(this, 'contactList');
 			},
 		},
 	};
@@ -441,6 +439,6 @@ export class Emelia implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

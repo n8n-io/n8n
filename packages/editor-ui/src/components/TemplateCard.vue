@@ -1,3 +1,47 @@
+<script lang="ts" setup>
+import { abbreviateNumber } from '@/utils/typesUtils';
+import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@/plugins/i18n';
+
+const i18n = useI18n();
+
+const nodesToBeShown = 5;
+
+withDefaults(
+	defineProps<{
+		workflow?: ITemplatesWorkflow;
+		lastItem?: boolean;
+		firstItem?: boolean;
+		useWorkflowButton?: boolean;
+		loading?: boolean;
+		simpleView?: boolean;
+	}>(),
+	{
+		lastItem: false,
+		firstItem: false,
+		useWorkflowButton: false,
+		loading: false,
+		simpleView: false,
+	},
+);
+
+const emit = defineEmits<{
+	useWorkflow: [e: MouseEvent];
+	click: [e: MouseEvent];
+}>();
+
+function onUseWorkflowClick(e: MouseEvent) {
+	emit('useWorkflow', e);
+}
+
+function onCardClick(e: MouseEvent) {
+	emit('click', e);
+}
+</script>
+
 <template>
 	<div
 		:class="[
@@ -6,14 +50,15 @@
 			firstItem && $style.first,
 			!loading && $style.loaded,
 		]"
+		data-test-id="template-card"
 		@click="onCardClick"
 	>
-		<div :class="$style.loading" v-if="loading">
-			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
+		<div v-if="loading" :class="$style.loading">
+			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
-		<div v-else>
+		<div v-else-if="workflow">
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
-			<div :class="$style.content">
+			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
 						<font-awesome-icon icon="eye" />
@@ -25,80 +70,32 @@
 					<TimeAgo :date="workflow.createdAt" />
 				</n8n-text>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light"
-					>By {{ workflow.user.username }}</n8n-text
+				<n8n-text v-if="workflow.user" size="small" color="text-light">
+					{{
+						i18n.baseText('template.byAuthor' as BaseTextKey, {
+							interpolate: { name: workflow.user.username },
+						})
+					}}</n8n-text
 				>
 			</div>
 		</div>
-		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
+		<div
+			v-if="!loading && workflow"
+			:class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]"
+		>
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
-		<div :class="$style.buttonContainer" v-if="useWorkflowButton">
+		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
 			<n8n-button
 				v-if="useWorkflowButton"
 				outline
 				label="Use workflow"
+				data-test-id="use-workflow-button"
 				@click.stop="onUseWorkflowClick"
 			/>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { filterTemplateNodes, abbreviateNumber } from '@/utils';
-import NodeList from './NodeList.vue';
-
-export default defineComponent({
-	name: 'TemplateCard',
-	mixins: [genericHelpers],
-	props: {
-		lastItem: {
-			type: Boolean,
-			default: false,
-		},
-		firstItem: {
-			type: Boolean,
-			default: false,
-		},
-		workflow: {
-			type: Object,
-		},
-		useWorkflowButton: {
-			type: Boolean,
-		},
-		loading: {
-			type: Boolean,
-		},
-	},
-	components: {
-		NodeList,
-	},
-	data() {
-		return {
-			nodesToBeShown: 5,
-		};
-	},
-	methods: {
-		filterTemplateNodes,
-		abbreviateNumber,
-		countNodesToBeSliced(nodes: []): number {
-			if (nodes.length > this.nodesToBeShown) {
-				return this.nodesToBeShown - 1;
-			} else {
-				return this.nodesToBeShown;
-			}
-		},
-		onUseWorkflowClick(e: MouseEvent) {
-			this.$emit('useWorkflow', e);
-		},
-		onCardClick(e: MouseEvent) {
-			this.$emit('click', e);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .nodes {
@@ -120,6 +117,7 @@ export default defineComponent({
 	background-color: var(--color-background-xlight);
 
 	display: flex;
+	align-items: center;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
 	background-color: var(--color-background-xlight);
 	cursor: pointer;

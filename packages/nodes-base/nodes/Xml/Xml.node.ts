@@ -1,17 +1,18 @@
-import { Builder, Parser } from 'xml2js';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { Builder, Parser } from 'xml2js';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
 		name: 'xml',
 		icon: 'fa:file-code',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="jsonToxml" ? "JSON to XML" : "XML to JSON"}}',
@@ -20,8 +21,8 @@ export class Xml implements INodeType {
 			name: 'XML',
 			color: '#333377',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -41,6 +42,18 @@ export class Xml implements INodeType {
 				],
 				default: 'xmlToJson',
 				description: 'From and to what format the data should be converted',
+			},
+			{
+				displayName:
+					"If your XML is inside a binary file, use the 'Extract from File' node to convert it to text first",
+				name: 'xmlNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['xmlToJson'],
+					},
+				},
 			},
 
 			// ----------------------------------
@@ -63,7 +76,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['jsonToxml'],
@@ -137,7 +150,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['xmlToJson'],
@@ -249,7 +262,7 @@ export class Xml implements INodeType {
 					}
 
 					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
-					returnData.push({ json });
+					returnData.push({ json: deepCopy(json) });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
@@ -282,6 +295,6 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

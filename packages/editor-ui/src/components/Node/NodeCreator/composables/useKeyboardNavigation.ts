@@ -1,4 +1,4 @@
-import { ref, set } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
 export type KeyboardKey = (typeof WATCHED_KEYS)[number];
@@ -32,7 +32,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 		return element?.getAttribute(KEYBOARD_ID_ATTR) || undefined;
 	}
 	async function refreshSelectableItems(): Promise<void> {
-		return new Promise((resolve) => {
+		return await new Promise((resolve) => {
 			// Wait for DOM to update
 			cleanupSelectableItems();
 			setTimeout(() => {
@@ -62,6 +62,16 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	}
 
 	async function onKeyDown(e: KeyboardEvent) {
+		// We generally want a global listener across the app
+		// But specific components may overrule this by adopting
+		// the 'ignore-key-press-node-creator' class
+		if (
+			e.target instanceof Element &&
+			e.target.classList.contains('ignore-key-press-node-creator')
+		) {
+			return;
+		}
+
 		const pressedKey = e.key;
 		if (!WATCHED_KEYS.includes(pressedKey)) return;
 		e.preventDefault();
@@ -125,7 +135,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	function registerKeyHook(name: string, hook: KeyHook) {
 		hook.keyboardKeys.forEach((keyboardKey) => {
 			if (WATCHED_KEYS.includes(keyboardKey)) {
-				set(keysHooks.value, name, hook);
+				keysHooks.value = { ...keysHooks.value, [name]: hook };
 			} else {
 				throw new Error(`Key ${keyboardKey} is not supported`);
 			}

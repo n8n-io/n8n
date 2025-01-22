@@ -1,23 +1,26 @@
+<script lang="ts" setup>
+import { useUIStore } from '@/stores/ui.store';
+import { useRootStore } from '@/stores/root.store';
+import { useI18n } from '@/composables/useI18n';
+
+const { baseUrl } = useRootStore();
+const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';
+const i18n = useI18n();
+const googleAuthButtons = {
+	'--google-auth-btn-normal': `url(${baseUrl}static/google-auth/normal${type}`,
+	'--google-auth-btn-focus': `url(${baseUrl}static/google-auth/focus${type}`,
+	'--google-auth-btn-pressed': `url(${baseUrl}static/google-auth/pressed${type}`,
+	'--google-auth-btn-disabled': `url(${baseUrl}static/google-auth/disabled${type}`,
+};
+</script>
+
 <template>
 	<button
 		:class="$style.googleAuthBtn"
-		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
-		@click.stop.prevent="$emit('click')"
+		:title="i18n.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
 		:style="googleAuthButtons"
 	/>
 </template>
-
-<script lang="ts" setup>
-import { useRootStore } from '@/stores/n8nRoot.store';
-
-const { baseUrl } = useRootStore();
-const googleAuthButtons = {
-	'--google-auth-btn-normal': `url(${baseUrl}google-auth/normal.png`,
-	'--google-auth-btn-focus': `url(${baseUrl}google-auth/focus.png`,
-	'--google-auth-btn-pressed': `url(${baseUrl}google-auth/pressed.png`,
-	'--google-auth-btn-disabled': `url(${baseUrl}google-auth/disabled.png`,
-};
-</script>
 
 <style module lang="scss">
 .googleAuthBtn {

@@ -1,95 +1,257 @@
-<template>
-	<div ref="sqlEditor" class="ph-no-capture"></div>
-</template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo } from '@codemirror/commands';
-import { foldGutter, indentOnInput } from '@codemirror/language';
-import { lintGutter } from '@codemirror/lint';
-import type { Extension } from '@codemirror/state';
-import { EditorState } from '@codemirror/state';
-import type { ViewUpdate } from '@codemirror/view';
+<script setup lang="ts">
+import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
+import { codeNodeEditorEventBus } from '@/event-bus';
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
+import { ifNotIn } from '@codemirror/autocomplete';
+import { history } from '@codemirror/commands';
+import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import { Prec, type Line } from '@codemirror/state';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { MSSQL, MySQL, PostgreSQL, sql, StandardSQL } from '@codemirror/lang-sql';
-import type { SQLDialect } from 'n8n-workflow';
-
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import {
+	Cassandra,
+	MSSQL,
+	MariaSQL,
+	MySQL,
+	PLSQL,
+	PostgreSQL,
+	SQLite,
+	StandardSQL,
+	keywordCompletionSource,
+} from '@n8n/codemirror-lang-sql';
+import { onClickOutside } from '@vueuse/core';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 
 const SQL_DIALECTS = {
-	standard: StandardSQL,
-	mssql: MSSQL,
-	mysql: MySQL,
-	postgres: PostgreSQL,
+	StandardSQL,
+	PostgreSQL,
+	MySQL,
+	MariaSQL,
+	MSSQL,
+	SQLite,
+	Cassandra,
+	PLSQL,
 } as const;
 
-export default defineComponent({
-	name: 'sql-editor',
-	props: {
-		query: {
-			type: String,
-			required: true,
-		},
-		dialect: {
-			type: String as PropType<SQLDialect>,
-			default: 'standard',
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			editor: {} as EditorView,
-		};
-	},
-	computed: {
-		doc(): string {
-			return this.editor.state.doc.toString();
-		},
-	},
+type Props = {
+	modelValue: string;
+	dialect?: keyof typeof SQL_DIALECTS;
+	rows?: number;
+	isReadOnly?: boolean;
+	fullscreen?: boolean;
+};
 
-	mounted() {
-		const dialect = SQL_DIALECTS[this.dialect as SQLDialect] ?? SQL_DIALECTS.standard;
-		const extensions: Extension[] = [
-			sql({ dialect, upperCaseKeywords: true }),
-			codeNodeEditorTheme({ maxHeight: false }),
-			lineNumbers(),
-			EditorView.lineWrapping,
-			lintGutter(),
-			EditorState.readOnly.of(this.isReadOnly),
-		];
-
-		if (this.isReadOnly) {
-			extensions.push(EditorView.editable.of(this.isReadOnly));
-		} else {
-			extensions.push(
-				history(),
-				keymap.of([indentWithTab, { key: 'Mod-Shift-z', run: redo }]),
-				autocompletion(),
-				indentOnInput(),
-				highlightActiveLine(),
-				highlightActiveLineGutter(),
-				foldGutter(),
-				dropCursor(),
-				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!viewUpdate.docChanged) return;
-					this.$emit('valueChanged', this.doc);
-				}),
-			);
-		}
-		const state = EditorState.create({ doc: this.query, extensions });
-		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
-	},
+const props = withDefaults(defineProps<Props>(), {
+	dialect: 'StandardSQL',
+	rows: 4,
+	isReadOnly: false,
+	fullscreen: false,
 });
+
+const emit = defineEmits<{
+	'update:model-value': [value: string];
+}>();
+
+const container = ref<HTMLDivElement>();
+const sqlEditor = ref<HTMLDivElement>();
+const isFocused = ref(false);
+
+const extensions = computed(() => {
+	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
+	function sqlWithN8nLanguageSupport() {
+		return new LanguageSupport(dialect.language, [
+			dialect.language.data.of({
+				autocomplete: ifNotIn(['Resolvable'], keywordCompletionSource(dialect, true)),
+			}),
+			n8nCompletionSources().map((source) => dialect.language.data.of(source)),
+		]);
+	}
+
+	const baseExtensions = [
+		sqlWithN8nLanguageSupport(),
+		expressionInputHandler(),
+		codeEditorTheme({
+			isReadOnly: props.isReadOnly,
+			maxHeight: props.fullscreen ? '100%' : '40vh',
+			minHeight: '10vh',
+			rows: props.rows,
+		}),
+		lineNumbers(),
+		EditorView.lineWrapping,
+	];
+
+	if (!props.isReadOnly) {
+		return baseExtensions.concat([
+			history(),
+			Prec.highest(keymap.of(editorKeymap)),
+			n8nAutocompletion(),
+			indentOnInput(),
+			highlightActiveLine(),
+			highlightActiveLineGutter(),
+			foldGutter(),
+			dropCursor(),
+			bracketMatching(),
+			mappingDropCursor(),
+		]);
+	}
+	return baseExtensions;
+});
+const editorValue = ref(props.modelValue);
+const {
+	editor,
+	segments: { all: segments },
+	readEditorValue,
+	hasFocus: editorHasFocus,
+	isDirty,
+} = useExpressionEditor({
+	editorRef: sqlEditor,
+	editorValue,
+	extensions,
+	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
+	isReadOnly: props.isReadOnly,
+});
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		editorValue.value = newValue;
+	},
+);
+
+watch(editorHasFocus, (focus) => {
+	if (focus) {
+		isFocused.value = true;
+	}
+});
+
+watch(segments, () => {
+	emit('update:model-value', readEditorValue());
+});
+
+onMounted(() => {
+	codeNodeEditorEventBus.on('highlightLine', highlightLine);
+
+	if (props.fullscreen) {
+		focus();
+	}
+});
+
+onBeforeUnmount(() => {
+	if (isDirty.value) emit('update:model-value', readEditorValue());
+	codeNodeEditorEventBus.off('highlightLine', highlightLine);
+});
+
+onClickOutside(container, (event) => onBlur(event));
+
+function onBlur(event: FocusEvent | KeyboardEvent) {
+	if (
+		event?.target instanceof Element &&
+		Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
+	) {
+		return; // prevent blur on resizing
+	}
+
+	isFocused.value = false;
+}
+
+function line(lineNumber: number): Line | null {
+	try {
+		return editor.value?.state.doc.line(lineNumber) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function highlightLine(lineNumber: number | 'last') {
+	if (!editor.value) return;
+
+	if (lineNumber === 'last') {
+		editor.value.dispatch({
+			selection: { anchor: editor.value.state.doc.length },
+		});
+		return;
+	}
+
+	const lineToHighlight = line(lineNumber);
+
+	if (!lineToHighlight) return;
+
+	editor.value.dispatch({
+		selection: { anchor: lineToHighlight.from },
+	});
+}
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInExpressionEditor(toRaw(editor.value), event, value);
+}
 </script>
+
+<template>
+	<div ref="container" :class="$style.sqlEditor" @keydown.tab="onBlur">
+		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+			<template #default="{ activeDrop, droppable }">
+				<div
+					ref="sqlEditor"
+					:class="[
+						$style.codemirror,
+						{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+					]"
+					data-test-id="sql-editor-container"
+				></div>
+			</template>
+		</DraggableTarget>
+		<slot name="suffix" />
+		<InlineExpressionEditorOutput
+			v-if="!fullscreen"
+			:segments="segments"
+			:is-read-only="isReadOnly"
+			:visible="isFocused"
+		/>
+	</div>
+</template>
+
+<style module lang="scss">
+.sqlEditor {
+	position: relative;
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
+}
+
+.codemirror {
+	height: 100%;
+}
+
+.codemirror.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.codemirror.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
+}
+</style>

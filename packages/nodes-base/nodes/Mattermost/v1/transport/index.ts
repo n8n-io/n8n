@@ -32,7 +32,7 @@ export async function apiRequest(
 		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
-	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
 }
 
 export async function apiRequestAllItems(

@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,23 +9,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { companyContactFields, companyContactOperations } from './CompanyContactDescription';
-
-import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
-
-import { snakeCase } from 'change-case';
+import { companyContactFields, companyContactOperations } from './CompanyContactDescription';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
+import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,8 +31,8 @@ export class Mautic implements INodeType {
 		defaults: {
 			name: 'Mautic',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mauticApi',
@@ -623,7 +616,7 @@ export class Mautic implements INodeType {
 							body.lastActive = additionalFields.lastActive as string;
 						}
 						if (additionalFields.ownerId) {
-							body.ownerId = additionalFields.ownerId as string;
+							body.owner = additionalFields.ownerId as string;
 						}
 						if (additionalFields.addressUi) {
 							const addressValues = (additionalFields.addressUi as IDataObject)
@@ -738,7 +731,7 @@ export class Mautic implements INodeType {
 							body.lastActive = updateFields.lastActive as string;
 						}
 						if (updateFields.ownerId) {
-							body.ownerId = updateFields.ownerId as string;
+							body.owner = updateFields.ownerId as string;
 						}
 						if (updateFields.addressUi) {
 							const addressValues = (updateFields.addressUi as IDataObject)
@@ -1029,6 +1022,6 @@ export class Mautic implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

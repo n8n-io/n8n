@@ -1,22 +1,23 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { oldVersionNotice } from '@utils/descriptions';
+
+import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
+import type { IData } from './Interfaces';
 import { reportFields, reportOperations } from './ReportDescription';
 import { userActivityFields, userActivityOperations } from './UserActivityDescription';
-import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
-import moment from 'moment-timezone';
-import type { IData } from './Interfaces';
-
-import { oldVersionNotice } from '../../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -29,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Analytics',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleAnalyticsOAuth2',
@@ -95,15 +96,15 @@ export class GoogleAnalyticsV1 implements INodeType {
 					'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
 				);
 
-				for (const dimesion of dimensions) {
+				for (const dimension of dimensions) {
 					if (
-						dimesion.attributes.type === 'DIMENSION' &&
-						dimesion.attributes.status !== 'DEPRECATED'
+						dimension.attributes.type === 'DIMENSION' &&
+						dimension.attributes.status !== 'DEPRECATED'
 					) {
 						returnData.push({
-							name: dimesion.attributes.uiName,
-							value: dimesion.id,
-							description: dimesion.attributes.description,
+							name: dimension.attributes.uiName,
+							value: dimension.id,
+							description: dimension.attributes.description,
 						});
 					}
 				}
@@ -153,7 +154,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
+		let method: IHttpRequestMethods = 'GET';
 		const qs: IDataObject = {};
 		let endpoint = '';
 		let responseData;
@@ -247,7 +248,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 						if (simple) {
 							responseData = simplify(responseData);
 						} else if (returnAll && responseData.length > 1) {
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = merge(responseData);
 						}
 					}
@@ -303,6 +303,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

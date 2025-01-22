@@ -1,28 +1,72 @@
-import type { OptionsWithUri } from 'request';
-
-import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { ElasticsearchApiCredentials } from './types';
 
+export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body: IDataObject) {
+	const { baseUrl, ignoreSSLIssues } =
+		await this.getCredentials<ElasticsearchApiCredentials>('elasticsearchApi');
+
+	const bulkBody = Object.values(body).flat().join('\n') + '\n';
+
+	const options: IHttpRequestOptions = {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-ndjson' },
+		body: bulkBody,
+		url: `${baseUrl.replace(/\/$/, '')}/_bulk`,
+		skipSslCertificateValidation: ignoreSSLIssues,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+	};
+
+	const response = await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'elasticsearchApi',
+		options,
+	);
+
+	if (response.statusCode > 299) {
+		if (this.continueOnFail()) {
+			return Object.values(body).map((_) => ({ error: response.body.error }));
+		} else {
+			throw new NodeApiError(this.getNode(), { error: response.body.error } as JsonObject);
+		}
+	}
+
+	return response.body.items.map((item: IDataObject) => {
+		return {
+			...(item.index as IDataObject),
+			...(item.update as IDataObject),
+			...(item.create as IDataObject),
+			...(item.delete as IDataObject),
+			...(item.error as IDataObject),
+		};
+	});
+}
+
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
-	method: 'GET' | 'PUT' | 'POST' | 'DELETE',
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
-		'elasticsearchApi',
-	)) as ElasticsearchApiCredentials;
+	const { baseUrl, ignoreSSLIssues } =
+		await this.getCredentials<ElasticsearchApiCredentials>('elasticsearchApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		url: `${baseUrl.replace(/\/$/, '')}${endpoint}`,
 		json: true,
-		rejectUnauthorized: !ignoreSSLIssues,
+		skipSslCertificateValidation: ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {
@@ -34,7 +78,7 @@ export async function elasticsearchApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'elasticsearchApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

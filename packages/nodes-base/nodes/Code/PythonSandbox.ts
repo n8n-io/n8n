@@ -1,5 +1,6 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import type { PyProxyDict } from 'pyodide';
+import { ApplicationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import type { PyDict } from 'pyodide/ffi';
+
 import { LoadPyodide } from './Pyodide';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
@@ -18,8 +19,6 @@ export class PythonSandbox extends Sandbox {
 	constructor(
 		context: SandboxContext,
 		private pythonCode: string,
-		private moduleImports: string[],
-		itemIndex: number | undefined,
 		helpers: IExecuteFunctions['helpers'],
 	) {
 		super(
@@ -29,7 +28,6 @@ export class PythonSandbox extends Sandbox {
 					plural: 'dictionaries',
 				},
 			},
-			itemIndex,
 			helpers,
 		);
 		// Since python doesn't allow variable names starting with `$`,
@@ -40,58 +38,47 @@ export class PythonSandbox extends Sandbox {
 		}, {} as PythonSandboxContext);
 	}
 
+	async runCode<T = unknown>(): Promise<T> {
+		return await this.runCodeInPython<T>();
+	}
+
 	async runCodeAllItems() {
 		const executionResult = await this.runCodeInPython<INodeExecutionData[]>();
 		return this.validateRunCodeAllItems(executionResult);
 	}
 
-	async runCodeEachItem() {
+	async runCodeEachItem(itemIndex: number) {
 		const executionResult = await this.runCodeInPython<INodeExecutionData>();
-		return this.validateRunCodeEachItem(executionResult);
+		return this.validateRunCodeEachItem(executionResult, itemIndex);
 	}
 
 	private async runCodeInPython<T>() {
-		// Below workaround from here:
-		// https://github.com/pyodide/pyodide/discussions/3537#discussioncomment-4864345
-		const runCode = `
-from _pyodide_core import jsproxy_typedict
-from js import Object
-jsproxy_typedict[0] = type(Object.new().as_object_map())
-
-if printOverwrite:
-  print = printOverwrite
-
-async def __main():
-${this.pythonCode
-	.split('\n')
-	.map((line) => '  ' + line)
-	.join('\n')}
-await __main()
-`;
-		const pyodide = await LoadPyodide();
-
-		const moduleImportsFiltered = this.moduleImports.filter(
-			(importModule) => !['asyncio', 'pyodide', 'math'].includes(importModule),
-		);
-
-		if (moduleImportsFiltered.length) {
-			await pyodide.loadPackage('micropip');
-			const micropip = pyodide.pyimport('micropip');
-			await Promise.all(
-				moduleImportsFiltered.map((importModule) => micropip.install(importModule)),
-			);
-		}
+		const packageCacheDir = this.helpers.getStoragePath();
+		const pyodide = await LoadPyodide(packageCacheDir);
 
 		let executionResult;
 		try {
+			await pyodide.runPythonAsync('jsproxy_typedict[0] = type(Object.new().as_object_map())');
+
+			await pyodide.loadPackagesFromImports(this.pythonCode);
+
 			const dict = pyodide.globals.get('dict');
-			const globalsDict: PyProxyDict = dict();
+			const globalsDict: PyDict = dict();
 			for (const key of Object.keys(this.context)) {
 				if ((key === '_env' && envAccessBlocked) || key === '_node') continue;
 				const value = this.context[key];
 				globalsDict.set(key, value);
 			}
 
+			pyodide.setStdout({ batched: (str) => this.emit('output', str) });
+
+			const runCode = `
+async def __main():
+${this.pythonCode
+	.split('\n')
+	.map((line) => '  ' + line)
+	.join('\n')}
+await __main()`;
 			executionResult = await pyodide.runPythonAsync(runCode, { globals: globalsDict });
 			globalsDict.destroy();
 		} catch (error) {
@@ -111,7 +98,9 @@ await __main()
 	private getPrettyError(error: PyodideError): Error {
 		const errorTypeIndex = error.message.indexOf(error.type);
 		if (errorTypeIndex !== -1) {
-			return new Error(error.message.slice(errorTypeIndex));
+			return new ApplicationError(error.message.slice(errorTypeIndex), {
+				level: ['TypeError', 'AttributeError'].includes(error.type) ? 'warning' : 'error',
+			});
 		}
 
 		return error;

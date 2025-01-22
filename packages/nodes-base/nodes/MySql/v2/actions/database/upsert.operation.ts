@@ -1,13 +1,15 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
-
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
-
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -33,7 +35,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -45,13 +47,14 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -97,8 +100,9 @@ const properties: INodeProperties[] = [
 						displayName: 'Column',
 						name: 'column',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -172,10 +176,12 @@ export async function execute(
 		const onConflict = 'ON DUPLICATE KEY UPDATE';
 
 		const columns = Object.keys(item);
-		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 		const placeholder = `${columns.map(() => '?').join(',')}`;
 
-		const insertQuery = `INSERT INTO \`${table}\`(${escapedColumns}) VALUES(${placeholder})`;
+		const insertQuery = `INSERT INTO ${escapeSqlIdentifier(
+			table,
+		)}(${escapedColumns}) VALUES(${placeholder})`;
 
 		const values = Object.values(item) as QueryValues;
 
@@ -184,7 +190,7 @@ export async function execute(
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
-			updates.push(`\`${column}\` = ?`);
+			updates.push(`${escapeSqlIdentifier(column)} = ?`);
 			values.push(item[column] as string);
 		}
 

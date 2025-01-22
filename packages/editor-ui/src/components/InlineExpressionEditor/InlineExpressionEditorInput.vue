@@ -1,159 +1,130 @@
-<template>
-	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-input"></div>
-</template>
+<script setup lang="ts">
+import { history } from '@codemirror/commands';
+import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
+import { dropCursor, EditorView, keymap } from '@codemirror/view';
+import { computed, ref, watch } from 'vue';
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { EditorView, keymap } from '@codemirror/view';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { history, redo } from '@codemirror/commands';
-import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
-
-import { useNDVStore } from '@/stores/ndv.store';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { expressionManager } from '@/mixins/expressionManager';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import type { Segment } from '@/types/expressions';
+import { removeExpressionPrefix } from '@/utils/expressions';
+import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { completionManager } from '@/mixins/completionManager';
 
-const editableConf = new Compartment();
+type Props = {
+	modelValue: string;
+	path: string;
+	rows?: number;
+	isReadOnly?: boolean;
+	additionalData?: IDataObject;
+};
 
-export default defineComponent({
-	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager, workflowHelpers],
-	props: {
-		value: {
-			type: String,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		isSingleLine: {
-			type: Boolean,
-			default: false,
-		},
-		path: {
-			type: String,
-		},
+const props = withDefaults(defineProps<Props>(), {
+	rows: 5,
+	isReadOnly: false,
+	additionalData: () => ({}),
+});
+
+const emit = defineEmits<{
+	'update:model-value': [value: { value: string; segments: Segment[] }];
+	'update:selection': [value: { state: EditorState; selection: SelectionRange }];
+	focus: [];
+}>();
+
+const root = ref<HTMLElement>();
+const extensions = computed(() => [
+	Prec.highest(keymap.of(editorKeymap)),
+	n8nLang(),
+	n8nAutocompletion(),
+	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
+	history(),
+	mappingDropCursor(),
+	dropCursor(),
+	expressionInputHandler(),
+	EditorView.lineWrapping,
+	infoBoxTooltips(),
+]);
+const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+
+const {
+	editor: editorRef,
+	segments,
+	selection,
+	readEditorValue,
+	setCursorPosition,
+	hasFocus,
+	focus,
+} = useExpressionEditor({
+	editorRef: root,
+	editorValue,
+	extensions,
+	isReadOnly: computed(() => props.isReadOnly),
+	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
+	additionalData: props.additionalData,
+});
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		editorValue.value = removeExpressionPrefix(newValue);
 	},
-	watch: {
-		isReadOnly(newValue: boolean) {
-			this.editor?.dispatch({
-				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
-			});
-		},
-		value(newValue) {
-			const isInternalChange = newValue === this.editor?.state.doc.toString();
+);
 
-			if (isInternalChange) return;
+watch(segments.display, (newSegments) => {
+	emit('update:model-value', {
+		value: '=' + readEditorValue(),
+		segments: newSegments,
+	});
+});
 
-			// manual update on external change, e.g. from expression modal or mapping drop
-
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor?.state.doc.length,
-					insert: newValue,
-				},
-			});
-		},
-		ndvInputData() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.value,
-				},
-			});
-
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
-		},
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		ndvInputData(): object {
-			return this.ndvStore.ndvInputData;
-		},
-	},
-	mounted() {
-		const extensions = [
-			inputTheme({ isSingleLine: this.isSingleLine }),
-			Prec.highest(
-				keymap.of([
-					{ key: 'Tab', run: acceptCompletion },
-					{
-						any(view: EditorView, event: KeyboardEvent) {
-							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
-								event.stopPropagation();
-							}
-
-							return false;
-						},
-					},
-					{ key: 'Mod-Shift-z', run: redo },
-				]),
-			),
-			autocompletion(),
-			n8nLang(),
-			history(),
-			expressionInputHandler(),
-			EditorView.lineWrapping,
-			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
-			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.$emit('focus');
-				},
-			}),
-			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
-
-				highlighter.removeColor(this.editor, this.plaintextSegments);
-				highlighter.addColor(this.editor, this.resolvableSegments);
-
-				setTimeout(() => {
-					try {
-						this.trackCompletion(viewUpdate, this.path);
-					} catch {}
-				});
-
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
-			}),
-		];
-
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
-				extensions,
-			}),
+watch(selection, (newSelection: SelectionRange) => {
+	if (editorRef.value) {
+		emit('update:selection', {
+			state: editorRef.value.state,
+			selection: newSelection,
 		});
+	}
+});
 
-		highlighter.addColor(this.editor, this.resolvableSegments);
+watch(hasFocus, (focused) => {
+	if (focused) emit('focus');
+});
 
-		this.$emit('change', {
-			value: this.unresolvedExpression,
-			segments: this.displayableSegments,
-		});
-	},
-	destroyed() {
-		this.editor?.destroy();
-	},
-	methods: {
-		focus() {
-			this.editor?.focus();
-		},
+defineExpose({
+	editor: editorRef,
+	setCursorPosition,
+	focus: () => {
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
 	},
 });
 </script>
 
-<style lang="scss"></style>
+<template>
+	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
+</template>
+
+<style lang="scss" scoped>
+:deep(.cm-editor) {
+	padding-left: 0;
+}
+:deep(.cm-content) {
+	padding-left: var(--spacing-2xs);
+
+	&[aria-readonly='true'] {
+		background-color: var(--disabled-fill, var(--color-background-light));
+		border-color: var(--disabled-border, var(--border-color-base));
+		color: var(--disabled-color, var(--color-text-base));
+		cursor: not-allowed;
+
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+}
+</style>

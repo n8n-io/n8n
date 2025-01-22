@@ -5,16 +5,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
-
-import { contactFields, contactOperations } from './ContactDescription';
+import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
+import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact, IContactUpdate } from './ContactInterface';
-
+import { dealFields, dealOperations } from './DealDescription';
+import type { IDeal } from './DealInterface';
+import type { IFilter, ISearchConditions } from './FilterInterface';
 import {
 	agileCrmApiRequest,
 	agileCrmApiRequestAllItems,
@@ -23,10 +21,6 @@ import {
 	simplifyResponse,
 	validateJSON,
 } from './GenericFunctions';
-
-import type { IDeal } from './DealInterface';
-
-import type { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,8 +35,8 @@ export class AgileCrm implements INodeType {
 		defaults: {
 			name: 'Agile CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'agileCrmApi',
@@ -190,7 +184,6 @@ export class AgileCrm implements INodeType {
 					}
 
 					if (simple) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						responseData = simplifyResponse(responseData);
 					}
 				} else if (operation === 'create') {
@@ -299,12 +292,16 @@ export class AgileCrm implements INodeType {
 								} as IDataObject);
 							}
 
-							if (additionalFields.address) {
-								properties.push({
-									type: 'SYSTEM',
-									name: 'address',
-									value: additionalFields.address as string,
-								} as IDataObject);
+							if (additionalFields.addressOptions) {
+								//@ts-ignore
+								additionalFields.addressOptions.addressProperties.map((property) => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'address',
+										value: property.address as string,
+									} as IDataObject);
+								});
 							}
 
 							if (additionalFields.phone) {
@@ -312,6 +309,14 @@ export class AgileCrm implements INodeType {
 									type: 'SYSTEM',
 									name: 'phone',
 									value: additionalFields.phone as string,
+								} as IDataObject);
+							}
+
+							if (additionalFields.name) {
+								properties.push({
+									type: 'SYSTEM',
+									name: 'name',
+									value: additionalFields.name as string,
 								} as IDataObject);
 							}
 						}
@@ -322,7 +327,7 @@ export class AgileCrm implements INodeType {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
-									name: 'webiste',
+									name: 'website',
 									value: property.url as string,
 								} as IDataObject);
 							});
@@ -451,12 +456,16 @@ export class AgileCrm implements INodeType {
 								} as IDataObject);
 							}
 
-							if (additionalFields.address) {
-								properties.push({
-									type: 'SYSTEM',
-									name: 'address',
-									value: additionalFields.address as string,
-								} as IDataObject);
+							if (additionalFields.addressOptions) {
+								//@ts-ignore
+								additionalFields.addressOptions.addressProperties.map((property) => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'address',
+										value: property.address as string,
+									} as IDataObject);
+								});
 							}
 
 							if (additionalFields.phone) {
@@ -474,10 +483,17 @@ export class AgileCrm implements INodeType {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
-									name: 'webiste',
+									name: 'website',
 									value: property.url as string,
 								} as IDataObject);
 							});
+						}
+						if (additionalFields.name) {
+							properties.push({
+								type: 'SYSTEM',
+								name: 'name',
+								value: additionalFields.name as string,
+							} as IDataObject);
 						}
 						if (additionalFields.customProperties) {
 							//@ts-ignore

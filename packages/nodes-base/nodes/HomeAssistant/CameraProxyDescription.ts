@@ -32,7 +32,7 @@ export const cameraProxyFields: INodeProperties[] = [
 		name: 'cameraEntityId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCameraEntities',
 		},
@@ -46,7 +46,7 @@ export const cameraProxyFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -57,6 +57,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				resource: ['cameraProxy'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 ];

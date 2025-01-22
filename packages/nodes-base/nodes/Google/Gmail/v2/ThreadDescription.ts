@@ -87,7 +87,7 @@ export const threadFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['thread'],
@@ -137,7 +137,7 @@ export const threadFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['thread'],
@@ -324,7 +324,7 @@ export const threadFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Search',
@@ -410,6 +410,6 @@ export const threadFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 ];

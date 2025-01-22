@@ -7,16 +7,11 @@
 		"Core Nodes": ["Helpers"]
 	},
 	"resources": {
-		"credentialDocumentation": [
-			{
-				"url": "https://docs.n8n.io/credentials/executionData"
-			}
-		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executionData/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/"
 			}
 		]
 	},
-	"alias": ["Filter", "Set", "Data"]
+	"alias": ["Filter", "_Set", "Data"]
 }

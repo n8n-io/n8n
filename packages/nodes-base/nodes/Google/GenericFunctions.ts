@@ -1,9 +1,17 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
-import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
+import { DateTime } from 'luxon';
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type IPollFunctions,
+	type IRequestOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
+
+import { formatPrivateKey } from '@utils/utilities';
 
 const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
@@ -45,17 +53,17 @@ const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/cloud-translation',
 		'https://www.googleapis.com/auth/cloud-platform',
 	],
+	firestore: [
+		'https://www.googleapis.com/auth/datastore',
+		'https://www.googleapis.com/auth/firebase',
+	],
+	vertex: ['https://www.googleapis.com/auth/cloud-platform'],
 };
 
 type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
 
 export async function getGoogleAccessToken(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| ICredentialTestFunctions
-		| IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | ICredentialTestFunctions | IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
 ): Promise<IDataObject> {
@@ -63,7 +71,7 @@ export async function getGoogleAccessToken(
 
 	const scopes = googleServiceAccountScopes[service];
 
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = formatPrivateKey(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
 
 	const now = moment().unix();
@@ -88,7 +96,7 @@ export async function getGoogleAccessToken(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -101,5 +109,22 @@ export async function getGoogleAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
+}
+
+export function validateAndSetDate(
+	filter: IDataObject,
+	key: string,
+	timezone: string,
+	context: IExecuteFunctions,
+) {
+	const date = DateTime.fromISO(filter[key] as string);
+	if (date.isValid) {
+		filter[key] = date.setZone(timezone).toISO();
+	} else {
+		throw new NodeOperationError(
+			context.getNode(),
+			`The value "${filter[key] as string}" is not a valid DateTime.`,
+		);
+	}
 }

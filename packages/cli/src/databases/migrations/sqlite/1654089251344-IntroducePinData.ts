@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class IntroducePinData1654089251344 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

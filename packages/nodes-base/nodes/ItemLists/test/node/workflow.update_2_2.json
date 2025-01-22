@@ -1,0 +1,361 @@
+{
+	"name": "item_list 2.2",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f2d01806-a457-4a3a-8bd9-aeb005aecb99",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, 820]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data, data2",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "tag"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b0dbb504-d111-49ee-a904-1ece920a2e7a",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 360]
+		},
+		{
+			"parameters": {
+				"jsCode": "const data = {\n  entry1: {\n    id: 1,\n    info: 'some info 1',\n  },\n  entry2: {\n    id: 2,\n    info: 'some info 2',\n  },\n  entry3: {\n    id: 3,\n    info: 'some info 3',\n  },\n};\n\n\nconst data2 = [\n  'a', 'b', 'c'\n];\n\nconst data3 = {\n  a: 1,\n  b: 2,\n  c: 3,\n};\n\nreturn {data, data2, data3, data4: null, tag: 'bar'};"
+			},
+			"id": "64fa7b5c-c85c-4dd8-8863-11d6e0ee8426",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [160, 820]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data2, tag",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "data4"
+						}
+					]
+				},
+				"options": {
+					"destinationFieldName": "fromArray, singleField"
+				}
+			},
+			"id": "80b46f60-19c2-4aec-a232-901b54bdb7c0",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 780]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data3, data2, data",
+				"options": {}
+			},
+			"id": "c2bbf08c-4571-4d28-a95d-82b0dd22edd9",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 560]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data2, data3",
+				"include": "allOtherFields",
+				"options": {}
+			},
+			"id": "ef10bb23-43e1-4e48-b8b7-c634e4c41b56",
+			"name": "Item Lists3",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 1180]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": " tag, data4",
+				"options": {
+					"destinationFieldName": "entry1, entry2"
+				}
+			},
+			"id": "cd083969-5c27-47f6-9eb2-aa52fc2f5cb2",
+			"name": "Item Lists4",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 1400],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data2",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "data4"
+						}
+					]
+				},
+				"options": {
+					"destinationFieldName": "fromArray"
+				}
+			},
+			"id": "866154c7-2967-44d7-a278-1600752749d3",
+			"name": "Item Lists5",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 960]
+		}
+	],
+	"pinData": {
+		"Item Lists1": [
+			{
+				"json": {
+					"data": {
+						"id": 1,
+						"info": "some info 1"
+					},
+					"data2": "a",
+					"tag": "bar"
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"id": 2,
+						"info": "some info 2"
+					},
+					"data2": "b",
+					"tag": "bar"
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"id": 3,
+						"info": "some info 3"
+					},
+					"data2": "c",
+					"tag": "bar"
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"data3": 1,
+					"data2": "a",
+					"data": {
+						"id": 1,
+						"info": "some info 1"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": 2,
+					"data2": "b",
+					"data": {
+						"id": 2,
+						"info": "some info 2"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": 3,
+					"data2": "c",
+					"data": {
+						"id": 3,
+						"info": "some info 3"
+					}
+				}
+			}
+		],
+		"Item Lists": [
+			{
+				"json": {
+					"fromArray": "a",
+					"singleField": "bar",
+					"data4": null
+				}
+			},
+			{
+				"json": {
+					"fromArray": "b",
+					"data4": null
+				}
+			},
+			{
+				"json": {
+					"fromArray": "c",
+					"data4": null
+				}
+			}
+		],
+		"Item Lists5": [
+			{
+				"json": {
+					"fromArray": "a",
+					"data4": null
+				}
+			},
+			{
+				"json": {
+					"fromArray": "b",
+					"data4": null
+				}
+			},
+			{
+				"json": {
+					"fromArray": "c",
+					"data4": null
+				}
+			}
+		],
+		"Item Lists3": [
+			{
+				"json": {
+					"data": {
+						"entry1": {
+							"id": 1,
+							"info": "some info 1"
+						},
+						"entry2": {
+							"id": 2,
+							"info": "some info 2"
+						},
+						"entry3": {
+							"id": 3,
+							"info": "some info 3"
+						}
+					},
+					"data4": null,
+					"tag": "bar",
+					"data2": "a",
+					"data3": 1
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"entry1": {
+							"id": 1,
+							"info": "some info 1"
+						},
+						"entry2": {
+							"id": 2,
+							"info": "some info 2"
+						},
+						"entry3": {
+							"id": 3,
+							"info": "some info 3"
+						}
+					},
+					"data4": null,
+					"tag": "bar",
+					"data2": "b",
+					"data3": 2
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"entry1": {
+							"id": 1,
+							"info": "some info 1"
+						},
+						"entry2": {
+							"id": 2,
+							"info": "some info 2"
+						},
+						"entry3": {
+							"id": 3,
+							"info": "some info 3"
+						}
+					},
+					"data4": null,
+					"tag": "bar",
+					"data2": "c",
+					"data3": 3
+				}
+			}
+		],
+		"Item Lists4": [
+			{
+				"json": {
+					"entry1": "bar",
+					"entry2": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "1f311937-f825-4bda-a39e-e27c6ffe5906",
+	"id": "170",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

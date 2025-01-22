@@ -1,9 +1,10 @@
-import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
+import { parserWithMetaData as n8nParser } from '@n8n/codemirror-lang';
 import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 
 import { n8nCompletionSources } from './completions/addCompletions';
+import { autocompletion } from '@codemirror/autocomplete';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -23,3 +24,6 @@ export function n8nLang() {
 		...n8nCompletionSources().map((source) => n8nLanguage.data.of(source)),
 	]);
 }
+
+export const n8nAutocompletion = () =>
+	autocompletion({ icons: false, aboveCursor: true, closeOnBlur: false });

@@ -1,4 +1,4 @@
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { escapeAttrValue } from 'xss';
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
 
 /*
@@ -18,7 +18,11 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
-				return `${name}="${friendlyAttrValue(value)}"`;
+				// href is allowed but we allow only https and relative URLs
+				if (name === 'href' && !value.match(/^https?:\/\//gm) && !value.startsWith('/')) {
+					return '';
+				}
+				return `${name}="${escapeAttrValue(value)}"`;
 			}
 
 			return;
@@ -33,14 +37,16 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function getStyleTokenValue(name: string): string {
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
-}
-
-export function setPageTitle(title: string) {
-	window.document.title = title;
-}
+/**
+ * Checks if the input is a string and sanitizes it by removing or escaping harmful characters,
+ * returning the original input if it's not a string.
+ */
+export const sanitizeIfString = <T>(message: T): string | T => {
+	if (typeof message === 'string') {
+		return sanitizeHtml(message);
+	}
+	return message;
+};
 
 export function convertRemToPixels(rem: string) {
 	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -59,4 +65,12 @@ export function isChildOf(parent: Element, child: Element): boolean {
 
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+export const getBannerRowHeight = async (): Promise<number> => {
+	return await new Promise((resolve) => {
+		setTimeout(() => {
+			resolve(document.getElementById('banners')?.clientHeight ?? 0);
+		}, 0);
+	});
 };

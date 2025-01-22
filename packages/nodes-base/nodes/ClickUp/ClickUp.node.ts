@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,48 +8,25 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { clickupApiRequest, clickupApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { checklistFields, checklistOperations } from './ChecklistDescription';
-
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
-
 import { commentFields, commentOperations } from './CommentDescription';
-
 import { folderFields, folderOperations } from './FolderDescription';
-
+import { clickupApiRequest, clickupApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { goalFields, goalOperations } from './GoalDescription';
-
 import { goalKeyResultFields, goalKeyResultOperations } from './GoalKeyResultDescription';
-
-// import {
-// 	guestFields,
-// 	guestOperations,
-// } from './guestDescription';
-
-import { taskFields, taskOperations } from './TaskDescription';
-
-import { taskListFields, taskListOperations } from './TaskListDescription';
-
-import { taskTagFields, taskTagOperations } from './TaskTagDescription';
-
-import { spaceTagFields, spaceTagOperations } from './SpaceTagDescription';
-
-import { taskDependencyFields, taskDependencyOperations } from './TaskDependencyDescription';
-
-import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
-
-import { timeEntryTagFields, timeEntryTagOperations } from './TimeEntryTagDescription';
-
 import { listFields, listOperations } from './ListDescription';
-
-import type { ITask } from './TaskInterface';
-
 import type { IList } from './ListInterface';
-
-import moment from 'moment-timezone';
+import { spaceTagFields, spaceTagOperations } from './SpaceTagDescription';
+import { taskDependencyFields, taskDependencyOperations } from './TaskDependencyDescription';
+import { taskFields, taskOperations } from './TaskDescription';
+import type { ITask } from './TaskInterface';
+import { taskListFields, taskListOperations } from './TaskListDescription';
+import { taskTagFields, taskTagOperations } from './TaskTagDescription';
+import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
+import { timeEntryTagFields, timeEntryTagOperations } from './TimeEntryTagDescription';
 
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,8 +40,8 @@ export class ClickUp implements INodeType {
 		defaults: {
 			name: 'ClickUp',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clickUpApi',
@@ -744,7 +722,7 @@ export class ClickUp implements INodeType {
 						) {
 							if (
 								additionalFields.stepsStart === undefined ||
-								!additionalFields.stepsEnd === undefined
+								additionalFields.stepsEnd === undefined
 							) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -1636,6 +1614,6 @@ export class ClickUp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

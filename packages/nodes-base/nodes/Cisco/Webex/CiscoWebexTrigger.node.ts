@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	getAutomaticSecret,
@@ -14,8 +16,6 @@ import {
 	webexApiRequest,
 	webexApiRequestAllItems,
 } from './GenericFunctions';
-
-import { createHmac } from 'crypto';
 
 export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +31,7 @@ export class CiscoWebexTrigger implements INodeType {
 			name: 'Webex by Cisco Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'ciscoWebexOAuth2Api',

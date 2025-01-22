@@ -8,8 +8,11 @@ import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
+import LinkItem from '../ItemTypes/LinkItem.vue';
+import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+
 export interface Props {
-	elements: INodeCreateElement[];
+	elements?: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
 	lazyRender?: boolean;
@@ -23,9 +26,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
-	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;
-	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
+	selected: [element: INodeCreateElement, $e?: Event];
+	dragstart: [element: INodeCreateElement, $e: Event];
+	dragend: [element: INodeCreateElement, $e: Event];
 }>();
 
 const renderedItems = ref<INodeCreateElement[]>([]);
@@ -36,7 +39,7 @@ const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
-	if (props.elements.length <= LAZY_LOAD_THRESHOLD || props.lazyRender === false) {
+	if (props.elements.length <= LAZY_LOAD_THRESHOLD || !props.lazyRender) {
 		renderedItems.value = props.elements;
 		return;
 	}
@@ -59,7 +62,23 @@ function wrappedEmit(
 ) {
 	if (props.disabled) return;
 
-	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
+	switch (event) {
+		case 'dragstart':
+			if ($e) {
+				emit('dragstart', element, $e);
+				break;
+			}
+		case 'dragend':
+			if ($e) {
+				emit('dragend', element, $e);
+				break;
+			}
+		case 'selected':
+			emit('selected', element, $e);
+			break;
+		default:
+			emit(event, element, $e);
+	}
 }
 
 function beforeEnter(el: HTMLElement) {
@@ -110,50 +129,67 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<div
-			v-for="item in elements"
-			:key="item.uuid"
-			data-test-id="item-iterator-item"
-			:class="{
-				clickable: !disabled,
-				[$style.active]: activeItemId === item.uuid,
-				[$style.iteratorItem]: true,
-				[$style[item.type]]: true,
-			}"
-			ref="iteratorItems"
-			:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
-			:data-keyboard-nav-id="item.uuid"
-			@click="wrappedEmit('selected', item)"
-		>
-			<template v-if="renderedItems.includes(item)">
-				<label-item v-if="item.type === 'label'" :item="item" />
-				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+		<div v-for="item in elements" :key="item.uuid">
+			<div v-if="renderedItems.includes(item)">
+				<CategorizedItemsRenderer
+					v-if="item.type === 'section'"
+					:elements="item.children"
+					expanded
+					:category="item.title"
+					@selected="(child) => wrappedEmit('selected', child)"
+				>
+				</CategorizedItemsRenderer>
 
-				<node-item
-					v-if="item.type === 'node'"
-					:nodeType="item.properties"
-					:active="true"
-					:subcategory="item.subcategory"
-				/>
+				<div
+					v-else
+					ref="iteratorItems"
+					:class="{
+						clickable: !disabled,
+						[$style.active]: activeItemId === item.uuid,
+						[$style.iteratorItem]: true,
+						[$style[item.type]]: true,
+						// Borderless is only applied to views
+						[$style.borderless]: item.type === 'view' && item.properties.borderless === true,
+					}"
+					data-test-id="item-iterator-item"
+					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
+					:data-keyboard-nav-id="item.uuid"
+					@click="wrappedEmit('selected', item)"
+				>
+					<LabelItem v-if="item.type === 'label'" :item="item" />
+					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
-				<action-item
-					v-if="item.type === 'action'"
-					:nodeType="item.properties"
-					:action="item.properties"
-					:active="true"
-				/>
+					<NodeItem
+						v-if="item.type === 'node'"
+						:node-type="item.properties"
+						:active="true"
+						:subcategory="item.subcategory"
+					/>
 
-				<view-item
-					v-else-if="item.type === 'view'"
-					:view="item.properties"
-					:class="$style.viewItem"
-				/>
-			</template>
+					<ActionItem
+						v-if="item.type === 'action'"
+						:node-type="item.properties"
+						:action="item.properties"
+						:active="true"
+					/>
 
-			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
+					<ViewItem
+						v-else-if="item.type === 'view'"
+						:view="item.properties"
+						:class="$style.viewItem"
+					/>
+
+					<LinkItem
+						v-else-if="item.type === 'link'"
+						:link="item.properties"
+						:class="$style.linkItem"
+					/>
+				</div>
+			</div>
+			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
-	<div :class="$style.empty" v-else>
+	<div v-else :class="$style.empty">
 		<slot name="empty" />
 	</div>
 </template>
@@ -196,20 +232,54 @@ watch(
 		display: none;
 	}
 }
+
 .view {
-	margin-top: var(--spacing-s);
-	padding-top: var(--spacing-xs);
 	position: relative;
 
-	&::after {
-		content: '';
-		position: absolute;
-		left: var(--spacing-s);
-		right: var(--spacing-s);
-		top: 0;
-		margin: auto;
-		bottom: 0;
-		border-top: 1px solid var(--color-foreground-base);
+	&:last-child {
+		margin-top: var(--spacing-s);
+		padding-top: var(--spacing-xs);
+
+		&:after {
+			content: '';
+			position: absolute;
+			left: var(--spacing-s);
+			right: var(--spacing-s);
+			top: 0;
+			margin: auto;
+			bottom: 0;
+			border-top: 1px solid var(--color-foreground-base);
+		}
+	}
+}
+.link {
+	position: relative;
+
+	&:last-child {
+		margin-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing-xs);
+
+		&:after {
+			content: '';
+			position: absolute;
+			left: var(--spacing-s);
+			right: var(--spacing-s);
+			top: 0;
+			margin: auto;
+			bottom: 0;
+			border-bottom: 1px solid var(--color-foreground-base);
+		}
+	}
+}
+
+.borderless {
+	&:last-child {
+		margin-top: 0;
+		padding-top: 0;
+
+		&:after {
+			content: none;
+		}
 	}
 }
 </style>

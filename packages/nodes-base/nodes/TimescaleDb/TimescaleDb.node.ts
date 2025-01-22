@@ -4,25 +4,25 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { pgInsert, pgQuery, pgUpdate } from '../Postgres/v1/genericFunctions';
-
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
+
+import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TimescaleDB',
 		name: 'timescaleDb',
-		icon: 'file:timescale.svg',
+		icon: { light: 'file:timescaleDb.svg', dark: 'file:timescaleDb.dark.svg' },
 		group: ['input'],
 		version: 1,
 		description: 'Add and update data in TimescaleDB',
 		defaults: {
 			name: 'TimescaleDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'timescaleDb',
@@ -65,9 +65,10 @@ export class TimescaleDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					sqlDialect: 'postgres',
+					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
 					show: {
@@ -279,13 +280,9 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -322,16 +319,16 @@ export class TimescaleDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
-			pgp.end();
+			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
 
-		// Close the connection
-		pgp.end();
+		// shuts down the connection pool associated with the db object to allow the process to finish
+		await db.$pool.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

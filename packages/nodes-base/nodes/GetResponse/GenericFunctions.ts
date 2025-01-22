@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -12,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 export async function getresponseApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -22,7 +22,7 @@ export async function getresponseApiRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -41,7 +41,6 @@ export async function getresponseApiRequest(
 		if (authentication === 'apiKey') {
 			return await this.helpers.requestWithAuthentication.call(this, 'getResponseApi', options);
 		} else {
-			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'getResponseOAuth2Api', options);
 		}
 	} catch (error) {
@@ -51,7 +50,7 @@ export async function getresponseApiRequest(
 
 export async function getResponseApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

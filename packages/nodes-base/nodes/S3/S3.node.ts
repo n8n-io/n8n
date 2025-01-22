@@ -1,9 +1,5 @@
 import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
-
-import { Builder } from 'xml2js';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,15 +8,13 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { bucketFields, bucketOperations } from '../Aws/S3/BucketDescription';
-
-import { folderFields, folderOperations } from '../Aws/S3/FolderDescription';
-
-import { fileFields, fileOperations } from '../Aws/S3/FileDescription';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
+import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
+import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
 
 export class S3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +29,8 @@ export class S3 implements INodeType {
 		defaults: {
 			name: 'S3',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 's3',
@@ -44,6 +38,13 @@ export class S3 implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					"This node is for services that use the S3 standard, e.g. Minio or Digital Ocean Spaces. For AWS S3 use the 'AWS S3' node.",
+				name: 's3StandardNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -902,9 +903,9 @@ export class S3 implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,12 +1,5 @@
-import { URL } from 'url';
-
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
-import type { OptionsWithUri } from 'request';
-
-import { parseString } from 'xml2js';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -16,8 +9,12 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { URL } from 'url';
+import { parseString } from 'xml2js';
 
 function getEndpointForService(
 	service: string,
@@ -37,7 +34,7 @@ function getEndpointForService(
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -77,7 +74,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -93,7 +90,7 @@ export async function awsApiRequestREST(
 export async function awsApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -165,7 +162,7 @@ export async function validateCredentials(
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: signOpts.headers,
 		method: 'POST',
 		uri: endpoint.href,
@@ -174,7 +171,7 @@ export async function validateCredentials(
 
 	const response = await this.helpers.request(options);
 
-	return new Promise((resolve, reject) => {
+	return await new Promise((resolve, reject) => {
 		parseString(response as string, { explicitArray: false }, (err, data) => {
 			if (err) {
 				return reject(err);

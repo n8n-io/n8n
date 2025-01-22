@@ -167,6 +167,7 @@ export const meetingFields: INodeProperties[] = [
 			{
 				displayName: 'Exclude Password',
 				name: 'excludePassword',
+
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not to exclude password from the meeting email invitation',
@@ -355,7 +356,7 @@ export const meetingFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -381,7 +382,7 @@ export const meetingFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -429,7 +430,7 @@ export const meetingFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -590,7 +591,7 @@ export const meetingFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -746,6 +747,7 @@ export const meetingFields: INodeProperties[] = [
 			{
 				displayName: 'Exclude Password',
 				name: 'excludePassword',
+
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not to exclude password from the meeting email invitation',
@@ -937,7 +939,7 @@ export const meetingFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start',

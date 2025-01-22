@@ -1,3 +1,5 @@
+import moment from 'moment-timezone';
+import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,35 +10,23 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
-
-import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
-
-import type { IUserDto } from './UserDtos';
-
-import type { IProjectDto } from './ProjectInterfaces';
-
 import { clientFields, clientOperations } from './ClientDescription';
-
+import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 import { projectFields, projectOperations } from './ProjectDescription';
-
+import type { IProjectDto } from './ProjectInterfaces';
 import { tagFields, tagOperations } from './TagDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
-
 import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
-
 import { userFields, userOperations } from './UserDescription';
-
+import type { IUserDto } from './UserDtos';
+import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
 import { workspaceFields, workspaceOperations } from './WorkspaceDescription';
-
-import moment from 'moment-timezone';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify',
 		name: 'clockify',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -44,8 +34,8 @@ export class Clockify implements INodeType {
 		defaults: {
 			name: 'Clockify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -103,7 +93,7 @@ export class Clockify implements INodeType {
 				name: 'workspaceId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -848,6 +838,6 @@ export class Clockify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,11 +1,11 @@
 @use './var.scss';
 @use '../mixins/mixins';
 
-.v-modal-enter {
+.v-modal-enter-from {
 	animation: v-modal-in 0.2s ease;
 }
 
-.v-modal-leave {
+.v-modal-leave-to {
 	animation: v-modal-out 0.2s ease forwards;
 }
 

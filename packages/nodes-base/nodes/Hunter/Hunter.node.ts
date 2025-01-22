@@ -5,6 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+
 import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
 
 export class Hunter implements INodeType {
@@ -20,8 +22,8 @@ export class Hunter implements INodeType {
 		defaults: {
 			name: 'Hunter',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'hunterApi',
@@ -85,7 +87,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return only the the found emails',
+				description: 'Whether to return only the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -384,6 +386,6 @@ export class Hunter implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,22 +1,19 @@
-import { URL } from 'url';
-
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
-import type { OptionsWithUri } from 'request';
-
+import get from 'lodash/get';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import get from 'lodash.get';
+import { URL } from 'url';
 
 function getEndpointForService(
 	service: string,
@@ -36,7 +33,7 @@ function getEndpointForService(
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -58,7 +55,7 @@ export async function awsApiRequest(
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: signOpts.headers,
 		method,
 		uri: endpoint.href,
@@ -75,7 +72,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	headers?: object,
@@ -92,7 +89,7 @@ export async function awsApiRequestRESTAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
@@ -109,11 +106,12 @@ export async function awsApiRequestRESTAllItems(
 	do {
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, query);
 
-		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
-			query.NextToken = get(
-				responseData,
-				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`,
-			);
+		if (get(responseData, [propertyNameArray[0], propertyNameArray[1], 'NextToken'])) {
+			query.NextToken = get(responseData, [
+				propertyNameArray[0],
+				propertyNameArray[1],
+				'NextToken',
+			]);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
@@ -123,7 +121,7 @@ export async function awsApiRequestRESTAllItems(
 			}
 		}
 	} while (
-		get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`) !== undefined
+		get(responseData, [propertyNameArray[0], propertyNameArray[1], 'NextToken']) !== undefined
 	);
 
 	return returnData;

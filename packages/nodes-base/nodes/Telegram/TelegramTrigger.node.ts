@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,9 +7,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import { apiRequest, getImageBySize } from './GenericFunctions';
-
+import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
@@ -17,14 +18,15 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -40,6 +42,13 @@ export class TelegramTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'Due to Telegram API limitations, you can use just one Telegram trigger for each bot at a time',
+				name: 'telegramTriggerNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'updates',
@@ -182,15 +191,18 @@ export class TelegramTrigger implements INodeType {
 
 				let allowedUpdates = this.getNodeParameter('updates') as string[];
 
-				if (allowedUpdates.includes('*')) {
+				if ((allowedUpdates || []).includes('*')) {
 					allowedUpdates = [];
 				}
 
 				const endpoint = 'setWebhook';
 
+				const secret_token = getSecretToken.call(this);
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
+					secret_token,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
@@ -216,6 +228,26 @@ export class TelegramTrigger implements INodeType {
 		const credentials = await this.getCredentials('telegramApi');
 
 		const bodyData = this.getBodyData() as IEvent;
+		const headerData = this.getHeaderData();
+
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion > 1) {
+			const secret = getSecretToken.call(this);
+			const secretBuffer = Buffer.from(secret);
+			const headerSecretBuffer = Buffer.from(
+				String(headerData['x-telegram-bot-api-secret-token'] ?? ''),
+			);
+			if (
+				secretBuffer.byteLength !== headerSecretBuffer.byteLength ||
+				!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)
+			) {
+				const res = this.getResponseObject();
+				res.status(403).json({ message: 'Provided secret is not valid' });
+				return {
+					noWebhookResponse: true,
+				};
+			}
+		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
@@ -230,7 +262,8 @@ export class TelegramTrigger implements INodeType {
 
 			if (
 				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
-				bodyData[key]?.document
+				bodyData[key]?.document ||
+				bodyData[key]?.video
 			) {
 				if (additionalFields.imageSize) {
 					imageSize = additionalFields.imageSize as string;
@@ -245,13 +278,15 @@ export class TelegramTrigger implements INodeType {
 					) as IDataObject;
 
 					// When the image is sent from the desktop app telegram does not resize the image
-					// So return the only image avaiable
+					// So return the only image available
 					// Basically the Image Size parameter would work just when the images comes from the mobile app
 					if (image === undefined) {
 						image = bodyData[key]!.photo![0];
 					}
 
 					fileId = image.file_id;
+				} else if (bodyData[key]?.video) {
+					fileId = bodyData[key]?.video?.file_id;
 				} else {
 					fileId = bodyData[key]?.document?.file_id;
 				}
@@ -269,7 +304,7 @@ export class TelegramTrigger implements INodeType {
 					{
 						json: false,
 						encoding: null,
-						uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${file_path}`,
+						uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${file_path}`,
 						resolveWithFullResponse: true,
 					},
 				);

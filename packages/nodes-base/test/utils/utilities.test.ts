@@ -1,4 +1,15 @@
-import { fuzzyCompare, keysToLowercase, wrapData } from '../../utils/utilities';
+import type { INodeExecutionData } from 'n8n-workflow';
+
+import {
+	compareItems,
+	flattenKeys,
+	fuzzyCompare,
+	getResolvables,
+	keysToLowercase,
+	shuffleArray,
+	sortItemKeysByPriorityList,
+	wrapData,
+} from '@utils/utilities';
 
 //most test cases for fuzzyCompare are done in Compare Datasets node tests
 describe('Test fuzzyCompare', () => {
@@ -99,5 +110,205 @@ describe('Test keysToLowercase', () => {
 		expect(test4).toEqual(true);
 		expect(test5).toEqual(null);
 		expect(test6).toEqual(undefined);
+	});
+});
+
+describe('Test getResolvables', () => {
+	it('should return empty array when there are no resolvables', () => {
+		expect(getResolvables('Plain String, no resolvables here.')).toEqual([]);
+	});
+	it('should properly handle resovables in SQL query', () => {
+		expect(getResolvables('SELECT * FROM {{ $json.db }}.{{ $json.table }};')).toEqual([
+			'{{ $json.db }}',
+			'{{ $json.table }}',
+		]);
+	});
+	it('should properly handle resovables in HTML string', () => {
+		expect(
+			getResolvables(
+				`
+				<!DOCTYPE html>
+				<html>
+					<head><title>{{ $json.pageTitle }}</title></head>
+					<body><h1>{{ $json.heading }}</h1></body>
+				<html>
+				<style>
+					body { height: {{ $json.pageHeight }}; }
+				</style>
+				<script>
+					console.log('{{ $json.welcomeMessage }}');
+				</script>
+				`,
+			),
+		).toEqual([
+			'{{ $json.pageTitle }}',
+			'{{ $json.heading }}',
+			'{{ $json.pageHeight }}',
+			'{{ $json.welcomeMessage }}',
+		]);
+	});
+});
+
+describe('shuffleArray', () => {
+	it('should shuffle array', () => {
+		const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+		const toShuffle = [...array];
+		shuffleArray(toShuffle);
+		expect(toShuffle).not.toEqual(array);
+		expect(toShuffle).toHaveLength(array.length);
+		expect(toShuffle).toEqual(expect.arrayContaining(array));
+	});
+});
+
+describe('flattenKeys', () => {
+	const name = 'Lisa';
+	const city1 = 'Berlin';
+	const city2 = 'Schoenwald';
+	const withNestedObject = {
+		name,
+		address: { city: city1 },
+	};
+
+	const withNestedArrays = {
+		name,
+		addresses: [{ city: city1 }, { city: city2 }],
+	};
+
+	it('should handle empty object', () => {
+		const flattenedObj = flattenKeys({});
+		expect(flattenedObj).toEqual({});
+	});
+
+	it('should flatten object with nested object', () => {
+		const flattenedObj = flattenKeys(withNestedObject);
+		expect(flattenedObj).toEqual({
+			name,
+			'address.city': city1,
+		});
+	});
+
+	it('should handle object with nested arrays', () => {
+		const flattenedObj = flattenKeys(withNestedArrays);
+		expect(flattenedObj).toEqual({
+			name,
+			'addresses.0.city': city1,
+			'addresses.1.city': city2,
+		});
+	});
+
+	it('should flatten object with nested object and specified prefix', () => {
+		const flattenedObj = flattenKeys(withNestedObject, ['test']);
+		expect(flattenedObj).toEqual({
+			'test.name': name,
+			'test.address.city': city1,
+		});
+	});
+
+	it('should handle object with nested arrays and specified prefix', () => {
+		const flattenedObj = flattenKeys(withNestedArrays, ['test']);
+		expect(flattenedObj).toEqual({
+			'test.name': name,
+			'test.addresses.0.city': city1,
+			'test.addresses.1.city': city2,
+		});
+	});
+});
+
+describe('compareItems', () => {
+	it('should return true if all values of specified keys are equal', () => {
+		const obj1 = { json: { a: 1, b: 2, c: 3 } };
+		const obj2 = { json: { a: 1, b: 2, c: 3 } };
+		const keys = ['a', 'b', 'c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(true);
+	});
+
+	it('should return false if any values of specified keys are not equal', () => {
+		const obj1 = { json: { a: 1, b: 2, c: 3 } };
+		const obj2 = { json: { a: 1, b: 2, c: 4 } };
+		const keys = ['a', 'b', 'c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(false);
+	});
+
+	it('should return true if all values of specified keys are equal using dot notation', () => {
+		const obj1 = { json: { a: { b: { c: 1 } } } };
+		const obj2 = { json: { a: { b: { c: 1 } } } };
+		const keys = ['a.b.c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(true);
+	});
+
+	it('should return false if any values of specified keys are not equal using dot notation', () => {
+		const obj1 = { json: { a: { b: { c: 1 } } } };
+		const obj2 = { json: { a: { b: { c: 2 } } } };
+		const keys = ['a.b.c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(false);
+	});
+
+	it('should return true if all values of specified keys are equal using bracket notation', () => {
+		const obj1 = { json: { 'a.b': { 'c.d': 1 } } };
+		const obj2 = { json: { 'a.b': { 'c.d': 1 } } };
+		const keys = ['a.b.c.d'];
+		const result = compareItems(obj1, obj2, keys, true);
+		expect(result).toBe(true);
+	});
+});
+
+describe('sortItemKeysByPriorityList', () => {
+	it('should reorder keys based on priority list', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2 } }];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['b', 'a', 'c']);
+	});
+
+	it('should sort keys not in the priority list alphabetically', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2, d: 4 } }];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['b', 'a', 'c', 'd']);
+	});
+
+	it('should sort all keys alphabetically when priority list is empty', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2 } }];
+		const priorityList: string[] = [];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('should handle an empty data array', () => {
+		const data: INodeExecutionData[] = [];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		// Expect an empty array since there is no data
+		expect(result).toEqual([]);
+	});
+
+	it('should handle a single object in the data array', () => {
+		const data: INodeExecutionData[] = [{ json: { d: 4, b: 2, a: 1 } }];
+		const priorityList = ['a', 'b', 'c'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'd']);
+	});
+
+	it('should handle duplicate keys in the priority list gracefully', () => {
+		const data: INodeExecutionData[] = [{ json: { d: 4, b: 2, a: 1 } }];
+		const priorityList = ['a', 'b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'd']);
 	});
 });

@@ -1,11 +1,9 @@
+import get from 'lodash/get';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { googleApiRequest } from './GenericFunctions';
-
 import { utils as xlsxUtils } from 'xlsx';
 
-import get from 'lodash.get';
+import { googleApiRequest } from './GenericFunctions';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -282,7 +280,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 		);
-		return this.appendData(range, data, valueInputMode);
+		return await this.appendData(range, data, valueInputMode);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -399,7 +397,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -415,7 +413,7 @@ export class GoogleSheet {
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -457,13 +455,13 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.batchUpdate(updateData, valueInputMode);
+		return await this.batchUpdate(updateData, valueInputMode);
 	}
 
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
@@ -587,7 +585,7 @@ export class GoogleSheet {
 					item[key] !== undefined
 				) {
 					//match by exact key name
-					rowData.push(item[key]!.toString());
+					rowData.push(item[key].toString());
 				} else {
 					rowData.push('');
 				}

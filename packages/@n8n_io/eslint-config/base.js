@@ -22,12 +22,6 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint',
 
-		/**
-		 * Plugin to report formatting violations as lint violations
-		 * https://github.com/prettier/eslint-plugin-prettier
-		 */
-		'eslint-plugin-prettier',
-
 		/*
 		 * Plugin to allow specifying local ESLint rules.
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
@@ -39,6 +33,9 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
 		'eslint-plugin-unicorn',
+
+		/** https://github.com/wix-incubator/eslint-plugin-lodash */
+		'eslint-plugin-lodash',
 	],
 
 	extends: [
@@ -73,28 +70,6 @@ const config = (module.exports = {
 	],
 
 	rules: {
-		// ******************************************************************
-		//                   required by prettier plugin
-		// ******************************************************************
-
-		// The following rule enables eslint-plugin-prettier
-		// See: https://github.com/prettier/eslint-plugin-prettier#recommended-configuration
-
-		'prettier/prettier': ['error', { endOfLine: 'auto' }],
-
-		// The following two rules must be disabled when using eslint-plugin-prettier:
-		// See: https://github.com/prettier/eslint-plugin-prettier#arrow-body-style-and-prefer-arrow-callback-issue
-
-		/**
-		 * https://eslint.org/docs/rules/arrow-body-style
-		 */
-		'arrow-body-style': 'off',
-
-		/**
-		 * https://eslint.org/docs/rules/prefer-arrow-callback
-		 */
-		'prefer-arrow-callback': 'off',
-
 		// ******************************************************************
 		//                     additions to base ruleset
 		// ******************************************************************
@@ -135,6 +110,11 @@ const config = (module.exports = {
 		indent: 'off',
 
 		/**
+		 * https://eslint.org/docs/latest/rules/no-constant-binary-expression
+		 */
+		'no-constant-binary-expression': 'error',
+
+		/**
 		 * https://eslint.org/docs/latest/rules/sort-imports
 		 */
 		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
@@ -147,6 +127,9 @@ const config = (module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/array-type.md
 		 */
 		'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
+
+		/** https://typescript-eslint.io/rules/await-thenable/ */
+		'@typescript-eslint/await-thenable': 'error',
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
@@ -231,7 +214,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'variable',
-				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},
@@ -246,16 +229,16 @@ const config = (module.exports = {
 				format: ['PascalCase'],
 			},
 			{
-				selector: ['method', 'function'],
+				selector: ['method', 'function', 'parameter'],
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 			},
 		],
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-duplicate-imports.md
+		 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
 		 */
-		'@typescript-eslint/no-duplicate-imports': 'error',
+		'import/no-duplicates': 'error',
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
@@ -317,6 +300,27 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/naming-convention.md
+		 */
+		'@typescript-eslint/naming-convention': [
+			'error',
+			{
+				selector: 'import',
+				format: ['camelCase', 'PascalCase'],
+			},
+		],
+
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+		 */
+		'@typescript-eslint/return-await': ['error', 'always'],
+
+		/**
+		 * https://typescript-eslint.io/rules/explicit-member-accessibility/
+		 */
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
@@ -324,7 +328,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 		 */
-		'import/no-cycle': 'error',
+		'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
@@ -334,16 +338,27 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
 		 */
-		'import/no-unresolved': 'error',
+		'import/no-unresolved': ['error', { ignore: ['^virtual:'] }],
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
-		'import/order': 'error',
+		'import/order': [
+			'error',
+			{
+				alphabetize: {
+					order: 'asc',
+					caseInsensitive: true,
+				},
+				groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
+				'newlines-between': 'always',
+			},
+		],
 
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+
 		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
@@ -353,6 +368,10 @@ const config = (module.exports = {
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
+		'n8n-local-rules/no-useless-catch-throw': 'error',
+
+		'n8n-local-rules/no-plain-errors': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
@@ -392,19 +411,9 @@ const config = (module.exports = {
 		 */
 		'prefer-spread': 'error',
 
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
+		// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 		'no-unused-vars': 'off',
-		'@typescript-eslint/no-unused-vars': [
-			process.env.CI_LINT_MASTER ? 'warn' : 'error',
-			{
-				argsIgnorePattern: '^_',
-				destructuredArrayIgnorePattern: '^_',
-				varsIgnorePattern: '^_',
-				ignoreRestSiblings: true,
-			},
-		],
+		'@typescript-eslint/no-unused-vars': 'off',
 
 		/**
 		 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
@@ -441,26 +450,22 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
 		'unicorn/no-useless-promise-resolve-reject': 'error',
+
+		'lodash/path-style': ['error', 'as-needed'],
 	},
 
 	overrides: [
 		{
-			files: ['**/*.d.ts'],
+			files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.cy.ts'],
 			rules: {
-				'@typescript-eslint/no-unused-vars': 'off',
-			},
-		},
-		{
-			files: ['test/**/*.ts'],
-			rules: {
+				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':
 					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 
 				// TODO: Remove these
-				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
-				'@typescript-eslint/no-duplicate-imports': 'off',
+				'import/no-duplicates': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
 				'@typescript-eslint/no-non-null-assertion': 'off',
@@ -472,7 +477,6 @@ const config = (module.exports = {
 				'@typescript-eslint/no-unsafe-member-access': 'off',
 				'@typescript-eslint/no-unsafe-return': 'off',
 				'@typescript-eslint/no-unused-expressions': 'off',
-				'@typescript-eslint/no-unused-vars': 'off',
 				'@typescript-eslint/no-use-before-define': 'off',
 				'@typescript-eslint/no-var-requires': 'off',
 				'@typescript-eslint/prefer-nullish-coalescing': 'off',
@@ -491,19 +495,3 @@ const config = (module.exports = {
 		},
 	],
 });
-
-if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
-	/**
-	 * Plugin to lint only changes
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.plugins.push('eslint-plugin-diff');
-
-	/**
-	 * Config for eslint-plugin-diff
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.extends.push('plugin:diff/diff');
-}

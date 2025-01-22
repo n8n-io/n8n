@@ -1,7 +1,8 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 

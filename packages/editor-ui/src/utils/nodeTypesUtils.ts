@@ -1,32 +1,35 @@
-import type { INodeCredentialDescription } from 'n8n-workflow';
-import { MAIN_AUTH_FIELD_NAME } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type {
+	AppliedThemeOption,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	ITemplatesNode,
+	IVersionNode,
+	NodeAuthenticationOption,
+	SimplifiedNodeType,
+} from '@/Interface';
 import {
 	CORE_NODES_CATEGORY,
+	MAIN_AUTH_FIELD_NAME,
+	MAPPING_PARAMS,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
-	MAPPING_PARAMS,
 } from '@/constants';
-import type {
-	INodeUi,
-	ITemplatesNode,
-	NodeAuthenticationOption,
-	INodeUpdatePropertiesInformation,
-} from '@/Interface';
+import { i18n as locale } from '@/plugins/i18n';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isJsonKeyObject } from '@/utils/typesUtils';
 import type {
 	IDataObject,
+	INodeCredentialDescription,
 	INodeExecutionData,
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValueType,
-	INodePropertyOptions,
-	INodePropertyCollection,
 	ResourceMapperField,
+	Themed,
 } from 'n8n-workflow';
-import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { i18n as locale } from '@/plugins/i18n';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -35,7 +38,7 @@ import { i18n as locale } from '@/plugins/i18n';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 export function getAppNameFromCredType(name: string) {
@@ -117,57 +120,67 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	);
 };
 
-// A credential type is considered required if it has no dependencies
-// or if it's only dependency is the main authentication fields
+/**
+ * A credential type is considered required if it has no dependencies
+ * or if it's only dependency is the main authentication fields
+ */
 export const isRequiredCredential = (
 	nodeType: INodeTypeDescription | null,
 	credential: INodeCredentialDescription,
 ): boolean => {
-	if (!credential.displayOptions || !credential.displayOptions.show) {
+	if (!credential.displayOptions?.show) {
 		return true;
 	}
+
 	const mainAuthField = getMainAuthField(nodeType);
 	if (mainAuthField) {
 		return mainAuthField.name in credential.displayOptions.show;
 	}
+
 	return false;
 };
 
-// Finds the main authentication filed for the node type
-// It's the field that node's required credential depend on
+/**
+ * Find the main authentication field for the node type.
+ * It's the field that node's required credential depend on
+ */
 export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
 	if (!nodeType) {
 		return null;
 	}
+
 	const credentialDependencies = getNodeAuthFields(nodeType);
 	const authenticationField =
 		credentialDependencies.find(
 			(prop) =>
 				prop.name === MAIN_AUTH_FIELD_NAME &&
-				!prop.options?.find((option) => option.value === 'none'),
-		) || null;
+				!prop.options?.find((option) => 'value' in option && option.value === 'none'),
+		) ?? null;
+
 	// If there is a field name `authentication`, use it
 	// Otherwise, try to find alternative main auth field
 	const mainAuthFiled =
-		authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+		authenticationField ?? findAlternativeAuthField(nodeType, credentialDependencies);
 	// Main authentication field has to be required
 	const isFieldRequired = mainAuthFiled ? isNodeParameterRequired(nodeType, mainAuthFiled) : false;
 	return mainAuthFiled && isFieldRequired ? mainAuthFiled : null;
 };
 
-// A field is considered main auth filed if:
-// 1. It is a credential dependency
-// 2. If all of it's possible values are used in credential's display options
+/**
+ * A field is considered main auth filed if:
+ * 1. It is a credential dependency
+ * 2. If all of it's possible values are used in credential's display options
+ */
 const findAlternativeAuthField = (
 	nodeType: INodeTypeDescription,
 	fields: INodeProperties[],
 ): INodeProperties | null => {
 	const dependentAuthFieldValues: { [fieldName: string]: string[] } = {};
 	nodeType.credentials?.forEach((cred) => {
-		if (cred.displayOptions && cred.displayOptions.show) {
+		if (cred.displayOptions?.show) {
 			for (const fieldName in cred.displayOptions.show) {
 				dependentAuthFieldValues[fieldName] = (dependentAuthFieldValues[fieldName] || []).concat(
-					(cred.displayOptions.show[fieldName] || []).map((val) => (val ? val.toString() : '')),
+					(cred.displayOptions.show[fieldName] ?? []).map((val) => (val ? val.toString() : '')),
 				);
 			}
 		}
@@ -175,7 +188,11 @@ const findAlternativeAuthField = (
 	const alternativeAuthField = fields.find((field) => {
 		let required = true;
 		field.options?.forEach((option) => {
-			if (!dependentAuthFieldValues[field.name].includes(option.value)) {
+			if (
+				'value' in option &&
+				typeof option.value === 'string' &&
+				!dependentAuthFieldValues[field.name].includes(option.value)
+			) {
 				required = false;
 			}
 		});
@@ -184,7 +201,9 @@ const findAlternativeAuthField = (
 	return alternativeAuthField || null;
 };
 
-// Gets all authentication types that a given node type supports
+/**
+ * Gets all authentication types that a given node type supports
+ */
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
 	nodeVersion?: number,
@@ -207,21 +226,24 @@ export const getNodeAuthOptions = (
 		if (field.options) {
 			options = options.concat(
 				field.options.map((option) => {
+					const optionValue = 'value' in option ? `${option.value}` : '';
+
 					// Check if credential type associated with this auth option has overwritten properties
 					let hasOverrides = false;
-					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+					const cred = getNodeCredentialForSelectedAuthType(nodeType, optionValue);
 					if (cred) {
 						hasOverrides =
-							useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+							useCredentialsStore().getCredentialTypeByName(cred.name)?.__overwrittenProperties !==
 							undefined;
 					}
+
 					return {
 						name:
 							// Add recommended suffix if credentials have overrides and option is not already recommended
 							hasOverrides && !option.name.endsWith(recommendedSuffix)
 								? `${option.name} ${recommendedSuffix}`
 								: option.name,
-						value: option.value,
+						value: optionValue,
 						// Also add in the display options so we can hide/show the option if necessary
 						displayOptions: field.displayOptions,
 					};
@@ -247,9 +269,10 @@ export const getAllNodeCredentialForAuthType = (
 		return (
 			nodeType.credentials?.filter(
 				(cred) => cred.displayOptions?.show && authType in (cred.displayOptions.show || {}),
-			) || []
+			) ?? []
 		);
 	}
+
 	return [];
 };
 
@@ -270,7 +293,7 @@ export const getNodeCredentialForSelectedAuthType = (
 export const getAuthTypeForNodeCredential = (
 	nodeType: INodeTypeDescription | null | undefined,
 	credentialType: INodeCredentialDescription | null | undefined,
-): INodePropertyOptions | INodeProperties | INodePropertyCollection | null => {
+): NodeAuthenticationOption | null => {
 	if (nodeType && credentialType) {
 		const authField = getMainAuthField(nodeType);
 		const authFieldName = authField ? authField.name : '';
@@ -292,11 +315,7 @@ export const isAuthRelatedParameter = (
 ): boolean => {
 	let isRelated = false;
 	authFields.forEach((prop) => {
-		if (
-			prop.displayOptions &&
-			prop.displayOptions.show &&
-			parameter.name in prop.displayOptions.show
-		) {
+		if (prop.displayOptions?.show && parameter.name in prop.displayOptions.show) {
 			isRelated = true;
 			return;
 		}
@@ -304,14 +323,17 @@ export const isAuthRelatedParameter = (
 	return isRelated;
 };
 
+/**
+ * Get all node type properties needed for determining whether to show authentication fields
+ */
 export const getNodeAuthFields = (
 	nodeType: INodeTypeDescription | null,
 	nodeVersion?: number,
 ): INodeProperties[] => {
 	const authFields: INodeProperties[] = [];
-	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+	if (nodeType?.credentials && nodeType.credentials.length > 0) {
 		nodeType.credentials.forEach((cred) => {
-			if (cred.displayOptions && cred.displayOptions.show) {
+			if (cred.displayOptions?.show) {
 				Object.keys(cred.displayOptions.show).forEach((option) => {
 					const nodeFieldsForName = nodeType.properties.filter((prop) => prop.name === option);
 					if (nodeFieldsForName) {
@@ -346,12 +368,7 @@ export const getCredentialsRelatedFields = (
 	credentialType: INodeCredentialDescription | null,
 ): INodeProperties[] => {
 	let fields: INodeProperties[] = [];
-	if (
-		nodeType &&
-		credentialType &&
-		credentialType.displayOptions &&
-		credentialType.displayOptions.show
-	) {
+	if (nodeType && credentialType?.displayOptions?.show) {
 		Object.keys(credentialType.displayOptions.show).forEach((option) => {
 			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
 		});
@@ -385,7 +402,7 @@ export const isNodeParameterRequired = (
 	nodeType: INodeTypeDescription,
 	parameter: INodeProperties,
 ): boolean => {
-	if (!parameter.displayOptions || !parameter.displayOptions.show) {
+	if (!parameter.displayOptions?.show) {
 		return true;
 	}
 	// If parameter itself contains 'none'?
@@ -423,6 +440,42 @@ export const fieldCannotBeDeleted = (
 	);
 };
 
+export const isResourceMapperFieldListStale = (
+	oldFields: ResourceMapperField[],
+	newFields: ResourceMapperField[],
+): boolean => {
+	if (oldFields.length !== newFields.length) {
+		return true;
+	}
+
+	// Create map for O(1) lookup
+	const newFieldsMap = new Map(newFields.map((field) => [field.id, field]));
+
+	// Check if any fields were removed or modified
+	for (const oldField of oldFields) {
+		const newField = newFieldsMap.get(oldField.id);
+
+		// Field was removed
+		if (!newField) {
+			return true;
+		}
+
+		// Check if any properties changed
+		if (
+			oldField.displayName !== newField.displayName ||
+			oldField.required !== newField.required ||
+			oldField.defaultMatch !== newField.defaultMatch ||
+			oldField.display !== newField.display ||
+			oldField.canBeUsedToMatch !== newField.canBeUsedToMatch ||
+			oldField.type !== newField.type
+		) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 export const isMatchingField = (
 	field: string,
 	matchingFields: string[],
@@ -433,4 +486,49 @@ export const isMatchingField = (
 		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
 	}
 	return false;
+};
+
+export const getThemedValue = <T extends string>(
+	value: Themed<T> | undefined,
+	theme: AppliedThemeOption = 'light',
+): T | null => {
+	if (!value) {
+		return null;
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	return value[theme];
+};
+
+export const getNodeIcon = (
+	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
+	theme: AppliedThemeOption = 'light',
+): string | null => {
+	return getThemedValue(nodeType.icon, theme);
+};
+
+export const getNodeIconUrl = (
+	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
+	theme: AppliedThemeOption = 'light',
+): string | null => {
+	return getThemedValue(nodeType.iconUrl, theme);
+};
+
+export const getBadgeIconUrl = (
+	nodeType: INodeTypeDescription | SimplifiedNodeType,
+	theme: AppliedThemeOption = 'light',
+): string | null => {
+	return getThemedValue(nodeType.badgeIconUrl, theme);
+};
+
+export const getNodeIconColor = (
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null,
+) => {
+	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
+		return `var(--color-node-icon-${nodeType.iconColor})`;
+	}
+	return nodeType?.defaults?.color?.toString();
 };

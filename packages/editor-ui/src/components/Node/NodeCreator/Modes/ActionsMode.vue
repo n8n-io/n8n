@@ -1,25 +1,21 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, defineComponent } from 'vue';
-import type { VNode, PropType } from 'vue';
+import { computed, onMounted } from 'vue';
 import type {
 	INodeCreateElement,
-	ActionTypeDescription,
-	NodeFilterType,
 	IUpdateInformation,
 	ActionCreateElement,
+	NodeCreateElement,
 } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
-	AUTO_INSERT_ACTION_EXPERIMENT,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+	OPEN_AI_NODE_TYPE,
 } from '@/constants';
 
-import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useWebhooksStore } from '@/stores/webhooks.store';
-import { runExternalHook } from '@/utils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -27,24 +23,30 @@ import { useViewStacks } from '../composables/useViewStacks';
 
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
+import type { IDataObject } from 'n8n-workflow';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import OrderSwitcher from './../OrderSwitcher.vue';
 
-const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
-});
-const instance = getCurrentInstance();
-const telemetry = instance?.proxy.$telemetry;
+const emit = defineEmits<{
+	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
+}>();
+const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const { userActivated } = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
-	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
 	getActionData,
 	getPlaceholderTriggerActions,
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
+
+const nodeCreatorStore = useNodeCreatorStore();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -106,7 +108,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result === true;
+	return result;
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
@@ -133,27 +135,30 @@ function arrowLeft() {
 
 function onKeySelect(activeItemId: string) {
 	const mergedActions = [...actions.value, ...placeholderTriggerActions];
-	const activeAction = mergedActions.find((a) => a.uuid === activeItemId);
+	const activeAction = mergedActions.find((a): a is NodeCreateElement => a.uuid === activeItemId);
 
 	if (activeAction) onSelected(activeAction);
 }
 
 function onSelected(actionCreateElement: INodeCreateElement) {
-	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
+	if (actionCreateElement.type !== 'action') return;
+
+	const actionData = getActionData(actionCreateElement.properties);
 	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
 		(p) => p.key === actionCreateElement.key,
 	);
-	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
-		AUTO_INSERT_ACTION_EXPERIMENT.name,
-		AUTO_INSERT_ACTION_EXPERIMENT.variant,
-	);
 
-	if (includeNodeWithPlaceholderTrigger && isPlaceholderTriggerAction && isTriggerRootView) {
-		const actionNode = actions.value[0].key;
-
-		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
+		const actionNode = actions.value[0]?.key;
+		if (actionNode) emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+	} else if (
+		actionData?.key === OPEN_AI_NODE_TYPE &&
+		(actionData?.value as IDataObject)?.resource === 'assistant' &&
+		(actionData?.value as IDataObject)?.operation === 'message'
+	) {
+		emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
 	} else {
-		emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+		emit('nodeTypeSelected', [actionData.key as string]);
 	}
 
 	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
@@ -177,8 +182,8 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	void runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
-	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	nodeCreatorStore.onViewActions(trackingPayload);
 }
 
 function resetSearch() {
@@ -197,31 +202,13 @@ function addHttpNode() {
 	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
-	const app_identifier = actions.value[0].key;
-	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
+	const app_identifier = actions.value[0]?.key;
+	if (!app_identifier) return;
+	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
-	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	nodeCreatorStore.onActionsCustomAPIClicked({ app_identifier });
 }
-
-// Anonymous component to handle triggers and actions rendering order
-const OrderSwitcher = defineComponent({
-	props: {
-		rootView: {
-			type: String as PropType<NodeFilterType>,
-		},
-	},
-	render(h): VNode {
-		const triggers = this.$slots?.triggers?.[0];
-		const actions = this.$slots?.actions?.[0];
-
-		return h(
-			'div',
-			{},
-			this.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
-		);
-	},
-});
 
 onMounted(() => {
 	trackActionsView();
@@ -230,96 +217,93 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<OrderSwitcher :rootView="rootView">
-			<template #triggers v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0">
+		<OrderSwitcher v-if="rootView" :root-view="rootView">
+			<template v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0" #triggers>
 				<!-- Triggers Category -->
 				<CategorizedItemsRenderer
+					v-memo="[search]"
 					:elements="parsedTriggerActions"
 					:category="triggerCategoryName"
-					:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
-					isTriggerCategory
+					:mouse-over-tooltip="i18n.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
+					is-trigger-category
 					:expanded="isTriggerRootView || parsedActionActions.length === 0"
 					@selected="onSelected"
 				>
 					<!-- Empty state -->
-					<template #empty>
-						<template v-if="hasNoTriggerActions">
-							<n8n-callout
-								theme="info"
-								iconless
-								slim
-								data-test-id="actions-panel-no-triggers-callout"
-							>
-								<span
-									v-html="
-										$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
-											interpolate: { nodeName: subcategory },
-										})
-									"
-								/>
-							</n8n-callout>
-							<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
-						</template>
-
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
-								@click="resetSearch"
+					<template v-if="hasNoTriggerActions" #empty>
+						<n8n-callout
+							v-if="hasNoTriggerActions"
+							theme="info"
+							iconless
+							slim
+							data-test-id="actions-panel-no-triggers-callout"
+						>
+							<span
+								v-n8n-html="
+									i18n.baseText('nodeCreator.actionsCallout.noTriggerItems', {
+										interpolate: { nodeName: subcategory ?? '' },
+									})
+								"
 							/>
-						</template>
+						</n8n-callout>
+						<ItemsRenderer :elements="placeholderTriggerActions" @selected="onSelected" />
+					</template>
+					<template v-else #empty>
+						<p
+							:class="$style.resetSearch"
+							@click="resetSearch"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
-			<template #actions v-if="!isTriggerRootView || parsedActionActionsBaseline.length !== 0">
+			<template v-if="!isTriggerRootView || parsedActionActionsBaseline.length !== 0" #actions>
 				<!-- Actions Category -->
 				<CategorizedItemsRenderer
+					v-memo="[search]"
 					:elements="parsedActionActions"
 					:category="actionsCategoryLocales.actions"
-					:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
+					:mouse-over-tooltip="i18n.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
-					<template>
-						<n8n-callout
-							theme="info"
-							iconless
-							v-if="!userActivated && isTriggerRootView"
-							slim
-							data-test-id="actions-panel-activation-callout"
-						>
-							<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
-						</n8n-callout>
-					</template>
+					<n8n-callout
+						v-if="!userActivated && isTriggerRootView"
+						theme="info"
+						iconless
+						slim
+						data-test-id="actions-panel-activation-callout"
+					>
+						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
-						<n8n-info-tip theme="info" type="note" v-if="!search" :class="$style.actionsEmpty">
+						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
-								v-html="
-									$locale.baseText('nodeCreator.actionsCallout.noActionItems', {
-										interpolate: { nodeName: subcategory },
+								v-n8n-html="
+									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
+										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
 							/>
 						</n8n-info-tip>
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
-								@click="resetSearch"
-								data-test-id="actions-panel-no-matching-actions"
-							/>
-						</template>
+						<p
+							v-else
+							:class="$style.resetSearch"
+							data-test-id="actions-panel-no-matching-actions"
+							@click="resetSearch"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
-		<div :class="$style.apiHint" v-if="containsAPIAction">
+		<div v-if="containsAPIAction" :class="$style.apiHint">
 			<span
 				@click.prevent="addHttpNode"
-				v-html="
-					$locale.baseText('nodeCreator.actionsList.apiCall', {
-						interpolate: { node: subcategory },
+				v-n8n-html="
+					i18n.baseText('nodeCreator.actionsList.apiCall', {
+						interpolate: { node: subcategory ?? '' },
 					})
 				"
 			/>

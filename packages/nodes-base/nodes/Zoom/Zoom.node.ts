@@ -1,15 +1,16 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
-
 import { meetingFields, meetingOperations } from './MeetingDescription';
 
 // import {
@@ -21,8 +22,6 @@ import { meetingFields, meetingOperations } from './MeetingDescription';
 // 	webinarOperations,
 // 	webinarFields,
 // } from './WebinarDescription';
-
-import moment from 'moment-timezone';
 
 interface Settings {
 	host_video?: boolean;
@@ -54,8 +53,8 @@ export class Zoom implements INodeType {
 			name: 'Zoom',
 		},
 		icon: 'file:zoom.svg',
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// create a JWT app on Zoom Marketplace
@@ -792,6 +791,6 @@ export class Zoom implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

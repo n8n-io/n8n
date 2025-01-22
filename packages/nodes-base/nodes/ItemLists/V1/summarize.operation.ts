@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	GenericValue,
 	IDataObject,
@@ -6,8 +7,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import get from 'lodash.get';
 
 type AggregationType =
 	| 'append'
@@ -272,7 +271,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -555,7 +554,7 @@ export async function execute(
 				item: index,
 			})),
 		};
-		return this.prepareOutputData([executionData]);
+		return [[executionData]];
 	} else {
 		if (!fieldsToSplitBy.length) {
 			const { pairedItems, ...json } = aggregationResult;
@@ -565,7 +564,7 @@ export async function execute(
 					item: index,
 				})),
 			};
-			return this.prepareOutputData([executionData]);
+			return [[executionData]];
 		}
 		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 		const executionData = returnData.map((item) => {
@@ -577,6 +576,6 @@ export async function execute(
 				})),
 			};
 		});
-		return this.prepareOutputData(executionData);
+		return [executionData];
 	}
 }

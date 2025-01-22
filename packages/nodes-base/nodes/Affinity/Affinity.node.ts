@@ -7,27 +7,21 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { affinityApiRequest, affinityApiRequestAllItems } from './GenericFunctions';
-
-import { organizationFields, organizationOperations } from './OrganizationDescription';
-
-import { personFields, personOperations } from './PersonDescription';
-
 import { listFields, listOperations } from './ListDescription';
-
 import { listEntryFields, listEntryOperations } from './ListEntryDescription';
-
+import { organizationFields, organizationOperations } from './OrganizationDescription';
 import type { IOrganization } from './OrganizationInterface';
-
+import { personFields, personOperations } from './PersonDescription';
 import type { IPerson } from './PersonInterface';
 
 export class Affinity implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Affinity',
 		name: 'affinity',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:affinity.png',
+		icon: { light: 'file:affinity.svg', dark: 'file:affinity.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -35,8 +29,8 @@ export class Affinity implements INodeType {
 		defaults: {
 			name: 'Affinity',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'affinityApi',
@@ -432,6 +426,6 @@ export class Affinity implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

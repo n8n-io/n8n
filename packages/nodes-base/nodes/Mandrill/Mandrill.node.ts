@@ -1,3 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import map from 'lodash/map';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import {
 	getGoogleAnalyticsDomainsArray,
@@ -17,11 +20,6 @@ import {
 	mandrillApiRequest,
 	validateJSON,
 } from './GenericFunctions';
-
-import moment from 'moment';
-
-import map from 'lodash.map';
-import isEmpty from 'lodash.isempty';
 
 interface Attachments {
 	type: string;
@@ -107,8 +105,8 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mandrillApi',
@@ -172,7 +170,7 @@ export class Mandrill implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -217,7 +215,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -839,7 +837,6 @@ export class Mandrill implements INodeType {
 								// @ts-ignore
 								attachmentsValues = map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
 									const aux: IDataObject = {};
-									// @ts-ignore
 									aux.name = o.name;
 									aux.content = o.content;
 									aux.type = o.type;
@@ -903,6 +900,6 @@ export class Mandrill implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,3 +1,5 @@
+import { snakeCase } from 'change-case';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,26 +9,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import {
 	keysToSnakeCase,
 	pagerDutyApiRequest,
 	pagerDutyApiRequestAllItems,
 } from './GenericFunctions';
-
 import { incidentFields, incidentOperations } from './IncidentDescription';
-
-import { incidentNoteFields, incidentNoteOperations } from './IncidentNoteDescription';
-
-import { logEntryFields, logEntryOperations } from './LogEntryDescription';
-
-import { userFields, userOperations } from './UserDescription';
-
 import type { IIncident } from './IncidentInterface';
-
-import { snakeCase } from 'change-case';
-
-import moment from 'moment-timezone';
+import { incidentNoteFields, incidentNoteOperations } from './IncidentNoteDescription';
+import { logEntryFields, logEntryOperations } from './LogEntryDescription';
+import { userFields, userOperations } from './UserDescription';
 
 export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,8 +34,8 @@ export class PagerDuty implements INodeType {
 		defaults: {
 			name: 'PagerDuty',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pagerDutyApi',
@@ -472,6 +466,6 @@ export class PagerDuty implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

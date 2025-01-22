@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
 
@@ -20,8 +21,8 @@ export class AwsRekognition implements INodeType {
 		defaults: {
 			name: 'AWS Rekognition',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -90,7 +91,7 @@ export class AwsRekognition implements INodeType {
 				default: 'detectFaces',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -104,7 +105,7 @@ export class AwsRekognition implements INodeType {
 				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				displayOptions: {
 					show: {
 						operation: ['analyze'],
@@ -115,7 +116,7 @@ export class AwsRekognition implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the input binary field containing the file to be written',
 				required: true,
 			},
 			{

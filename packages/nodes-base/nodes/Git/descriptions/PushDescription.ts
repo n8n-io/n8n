@@ -10,7 +10,7 @@ export const pushFields: INodeProperties[] = [
 				operation: ['push'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

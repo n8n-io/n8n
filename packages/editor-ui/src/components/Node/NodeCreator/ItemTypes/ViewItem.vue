@@ -1,17 +1,3 @@
-<template>
-	<n8n-node-creator-node
-		:class="$style.view"
-		:title="view.title"
-		:isTrigger="false"
-		:description="view.description"
-		:showActionArrow="true"
-	>
-		<template #icon>
-			<n8n-node-icon type="icon" :name="view.icon" :circle="false" :showTooltip="false" />
-		</template>
-	</n8n-node-creator-node>
-</template>
-
 <script setup lang="ts">
 import type { ViewItemProps } from '@/Interface';
 
@@ -21,6 +7,21 @@ export interface Props {
 
 defineProps<Props>();
 </script>
+
+<template>
+	<n8n-node-creator-node
+		:class="$style.view"
+		:title="view.title"
+		:tag="view.tag"
+		:is-trigger="false"
+		:description="view.description"
+		:show-action-arrow="true"
+	>
+		<template #icon>
+			<n8n-node-icon type="icon" :name="view.icon" :circle="false" :show-tooltip="false" />
+		</template>
+	</n8n-node-creator-node>
+</template>
 
 <style lang="scss" module>
 .view {

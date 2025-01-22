@@ -1,32 +1,31 @@
-import { InternalHooks } from '@/InternalHooks';
+import { Container } from '@n8n/di';
+
+import type { User } from '@/databases/entities/user';
+import { EventService } from '@/events/event.service';
 import {
 	createLdapUserOnLocalDb,
-	findAndAuthenticateLdapUser,
-	getLdapConfig,
-	getLdapUserRole,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
-	isLdapDisabled,
+	isLdapEnabled,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/Ldap/helpers';
-import type { User } from '@db/entities/User';
-import { Container } from 'typedi';
+} from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
 
 export const handleLdapLogin = async (
 	loginId: string,
 	password: string,
 ): Promise<User | undefined> => {
-	if (isLdapDisabled()) return undefined;
+	if (!isLdapEnabled()) return undefined;
 
-	const ldapConfig = await getLdapConfig();
+	const ldapService = Container.get(LdapService);
 
-	if (!ldapConfig.loginEnabled) return undefined;
+	if (!ldapService.config.loginEnabled) return undefined;
 
-	const { loginIdAttribute, userFilter } = ldapConfig;
+	const { loginIdAttribute, userFilter } = ldapService.config;
 
-	const ldapUser = await findAndAuthenticateLdapUser(
+	const ldapUser = await ldapService.findAndAuthenticateLdapUser(
 		loginId,
 		password,
 		loginIdAttribute,
@@ -35,7 +34,7 @@ export const handleLdapLogin = async (
 
 	if (!ldapUser) return undefined;
 
-	const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, ldapConfig);
+	const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, ldapService.config);
 
 	const { email: emailAttributeValue } = ldapAttributesValues;
 
@@ -50,11 +49,11 @@ export const handleLdapLogin = async (
 			const identity = await createLdapAuthIdentity(emailUser, ldapId);
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
-			const role = await getLdapUserRole();
-			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
-			void Container.get(InternalHooks).onUserSignup(user, {
-				user_type: 'ldap',
-				was_disabled_ldap_user: false,
+			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
+			Container.get(EventService).emit('user-signed-up', {
+				user,
+				userType: 'ldap',
+				wasDisabledLdapUser: false,
 			});
 			return user;
 		}

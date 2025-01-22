@@ -6,25 +6,18 @@ import type {
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { apiRequest, apiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
-
 import { boardFields, boardOperations } from './BoardDescription';
-
 import { boardMemberFields, boardMemberOperations } from './BoardMemberDescription';
-
-import { cardFields, cardOperations } from './CardDescription';
-
 import { cardCommentFields, cardCommentOperations } from './CardCommentDescription';
-
+import { cardFields, cardOperations } from './CardDescription';
 import { checklistFields, checklistOperations } from './ChecklistDescription';
-
+import { apiRequest, apiRequestAllItems } from './GenericFunctions';
 import { labelFields, labelOperations } from './LabelDescription';
-
 import { listFields, listOperations } from './ListDescription';
 
 interface TrelloBoardType {
@@ -46,8 +39,8 @@ export class Trello implements INodeType {
 		defaults: {
 			name: 'Trello',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'trelloApi',
@@ -202,7 +195,7 @@ export class Trello implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 		let responseData;
@@ -223,11 +216,11 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'boards';
 
-						qs.name = this.getNodeParameter('name', i) as string;
-						qs.desc = this.getNodeParameter('description', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
+						body.desc = this.getNodeParameter('description', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, additionalFields);
+						Object.assign(body, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -349,13 +342,13 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'cards';
 
-						qs.idList = this.getNodeParameter('listId', i) as string;
+						body.idList = this.getNodeParameter('listId', i) as string;
 
-						qs.name = this.getNodeParameter('name', i) as string;
-						qs.desc = this.getNodeParameter('description', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
+						body.desc = this.getNodeParameter('description', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, additionalFields);
+						Object.assign(body, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -409,7 +402,7 @@ export class Trello implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						qs.text = this.getNodeParameter('text', i) as string;
+						body.text = this.getNodeParameter('text', i) as string;
 
 						requestMethod = 'POST';
 
@@ -471,12 +464,12 @@ export class Trello implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'lists';
 
-						qs.idBoard = this.getNodeParameter('idBoard', i) as string;
+						body.idBoard = this.getNodeParameter('idBoard', i) as string;
 
-						qs.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, additionalFields);
+						Object.assign(body, additionalFields);
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -562,12 +555,12 @@ export class Trello implements INodeType {
 
 						const url = this.getNodeParameter('url', i) as string;
 
-						Object.assign(qs, {
+						Object.assign(body, {
 							url,
 						});
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, additionalFields);
+						Object.assign(body, additionalFields);
 
 						endpoint = `cards/${cardId}/attachments`;
 					} else if (operation === 'delete') {
@@ -637,10 +630,10 @@ export class Trello implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						Object.assign(qs, { name });
+						Object.assign(body, { name });
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, additionalFields);
+						Object.assign(body, additionalFields);
 
 						endpoint = `cards/${cardId}/checklists`;
 					} else if (operation === 'delete') {
@@ -715,7 +708,7 @@ export class Trello implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						Object.assign(qs, { name, ...additionalFields });
+						Object.assign(body, { name, ...additionalFields });
 					} else if (operation === 'deleteCheckItem') {
 						// ----------------------------------
 						//         deleteCheckItem
@@ -784,7 +777,7 @@ export class Trello implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const color = this.getNodeParameter('color', i) as string;
 
-						Object.assign(qs, {
+						Object.assign(body, {
 							idBoard,
 							name,
 							color,
@@ -856,7 +849,7 @@ export class Trello implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 
-						qs.value = id;
+						body.value = id;
 
 						endpoint = `/cards/${cardId}/idLabels`;
 					} else if (operation === 'removeLabel') {
@@ -917,6 +910,6 @@ export class Trello implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

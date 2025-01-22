@@ -1,31 +1,24 @@
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
-	IDataObject,
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { configurePostgres } from '../transport';
-
-import { Client } from 'ssh2';
-import type { PgpClient } from '../helpers/interfaces';
+import { configurePostgres } from '../../transport';
+import type { PgpConnection, PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data as IDataObject;
+	const credentials = credential.data as PostgresNodeCredentials;
 
-	let sshClientCreated: Client | undefined = new Client();
-	let pgpClientCreated: PgpClient | undefined;
+	let connection: PgpConnection | undefined;
 
 	try {
-		const { db, pgp, sshClient } = await configurePostgres(credentials, {}, sshClientCreated);
+		const { db } = await configurePostgres.call(this, credentials, {});
 
-		sshClientCreated = sshClient;
-		pgpClientCreated = pgp;
-
-		await db.connect();
+		connection = await db.connect();
 	} catch (error) {
 		let message = error.message as string;
 
@@ -46,11 +39,8 @@ export async function postgresConnectionTest(
 			message,
 		};
 	} finally {
-		if (sshClientCreated) {
-			sshClientCreated.end();
-		}
-		if (pgpClientCreated) {
-			pgpClientCreated.end();
+		if (connection) {
+			await connection.done();
 		}
 	}
 	return {

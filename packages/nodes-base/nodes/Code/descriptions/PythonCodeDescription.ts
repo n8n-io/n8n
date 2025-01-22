@@ -10,7 +10,7 @@ const commonDescription: INodeProperties = {
 	},
 	default: '',
 	description:
-		'Python code to execute.<br><br>Tip: You can use luxon vars like <code>_today</code> for dates and <code>$_mespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+		'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
 	noDataExpression: true,
 };
 
@@ -44,20 +44,5 @@ export const pythonCodeDescription: INodeProperties[] = [
 			},
 		},
 		default: '',
-	},
-	{
-		displayName: 'Python Modules',
-		name: 'modules',
-		displayOptions: {
-			show: {
-				language: ['python'],
-			},
-		},
-		type: 'string',
-		default: '',
-		placeholder: 'opencv-python',
-		description:
-			'Comma-separated list of Python modules to load. They have to be installed to be able to be loaded and imported.',
-		noDataExpression: true,
 	},
 ];

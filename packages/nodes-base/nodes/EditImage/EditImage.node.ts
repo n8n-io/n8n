@@ -1,3 +1,6 @@
+import { writeFile as fsWriteFile } from 'fs/promises';
+import getSystemFonts from 'get-system-fonts';
+import gm from 'gm';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,14 +11,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import gm from 'gm';
-import { file } from 'tmp-promise';
+import { NodeOperationError, NodeConnectionType, deepCopy } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
-import { writeFile as fsWriteFile } from 'fs';
-import { promisify } from 'util';
-const fsWriteFileAsync = promisify(fsWriteFile);
-import getSystemFonts from 'get-system-fonts';
+import { file } from 'tmp-promise';
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -759,6 +757,7 @@ export class EditImage implements INodeType {
 		displayName: 'Edit Image',
 		name: 'editImage',
 		icon: 'fa:image',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
@@ -766,8 +765,8 @@ export class EditImage implements INodeType {
 			name: 'Edit Image',
 			color: '#553399',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -850,9 +849,9 @@ export class EditImage implements INodeType {
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
-								default: 'default',
+								default: '',
 								description:
-									'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -864,7 +863,7 @@ export class EditImage implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					hide: {
@@ -891,9 +890,9 @@ export class EditImage implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
-						default: 'default',
+						default: '',
 						description:
-							'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -952,7 +951,6 @@ export class EditImage implements INodeType {
 	methods = {
 		loadOptions: {
 			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// @ts-ignore
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
@@ -976,11 +974,6 @@ export class EditImage implements INodeType {
 						return 1;
 					}
 					return 0;
-				});
-
-				returnData.unshift({
-					name: 'default',
-					value: 'default',
 				});
 
 				return returnData;
@@ -1030,6 +1023,7 @@ export class EditImage implements INodeType {
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
 					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					transparent: ['color'],
 				};
 
 				let operations: IDataObject[] = [];
@@ -1107,7 +1101,6 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
@@ -1117,9 +1110,9 @@ export class EditImage implements INodeType {
 							binaryPropertyName,
 						);
 
-						const { fd, path, cleanup } = await file();
+						const { path, cleanup } = await file();
 						cleanupFunctions.push(cleanup);
-						await fsWriteFileAsync(fd, binaryDataBuffer);
+						await fsWriteFile(path, binaryDataBuffer);
 
 						if (operations[0].operation === 'create') {
 							// It seems like if the image gets created newly we have to create a new gm instance
@@ -1235,15 +1228,23 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font || operationData.font;
+						let font = (options.font || operationData.font) as string | undefined;
+						if (!font) {
+							const fonts = await getSystemFonts();
+							font = fonts.find((_font) => _font.includes('Arial.'));
+						}
 
-						if (font && font !== 'default') {
-							gmInstance = gmInstance!.font(font as string);
+						if (!font) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Default font not found. Select a font from the options.',
+							);
 						}
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
+							.font(font)
 							.drawText(
 								operationData.positionX as number,
 								operationData.positionY as number,
@@ -1283,7 +1284,6 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
@@ -1326,6 +1326,6 @@ export class EditImage implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

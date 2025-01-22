@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { BATCH_MODE, SINGLE } from '../helpers/interfaces';
 
 export const tableRLC: INodeProperties = {
@@ -33,7 +34,7 @@ export const optionsCollection: INodeProperties = {
 	name: 'options',
 	type: 'collection',
 	default: {},
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	options: [
 		{
 			displayName: 'Connection Timeout',
@@ -89,7 +90,7 @@ export const optionsCollection: INodeProperties = {
 			default: '',
 			placeholder: 'e.g. value1,value2,value3',
 			description:
-				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/">More info</a>',
+				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/" target="_blank">More info</a>',
 			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			displayOptions: {
 				show: { '/operation': ['executeQuery'] },
@@ -100,8 +101,9 @@ export const optionsCollection: INodeProperties = {
 			displayName: 'Output Columns',
 			name: 'outputColumns',
 			type: 'multiOptions',
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 			description:
-				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
 				loadOptionsDependsOn: ['table.value'],
@@ -129,6 +131,16 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+			displayOptions: {
+				show: { '/operation': ['select', 'executeQuery'] },
+			},
+		},
+		{
+			displayName: 'Output Decimals as Numbers',
+			name: 'decimalNumbers',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to output DECIMAL types as numbers instead of strings',
 			displayOptions: {
 				show: { '/operation': ['select', 'executeQuery'] },
 			},
@@ -228,8 +240,9 @@ export const selectRowsFixedCollection: INodeProperties = {
 					displayName: 'Column',
 					name: 'column',
 					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					placeholder: 'e.g. ID',
 					typeOptions: {
@@ -277,6 +290,10 @@ export const selectRowsFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
+						{
+							name: 'Is Not Null',
+							value: 'IS NOT NULL',
+						},
 					],
 					default: 'equal',
 				},
@@ -284,6 +301,11 @@ export const selectRowsFixedCollection: INodeProperties = {
 					displayName: 'Value',
 					name: 'value',
 					type: 'string',
+					displayOptions: {
+						hide: {
+							condition: ['IS NULL', 'IS NOT NULL'],
+						},
+					},
 					default: '',
 				},
 			],
@@ -310,8 +332,9 @@ export const sortFixedCollection: INodeProperties = {
 					displayName: 'Column',
 					name: 'column',
 					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',

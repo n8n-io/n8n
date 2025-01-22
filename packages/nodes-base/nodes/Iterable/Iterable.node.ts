@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,17 +9,12 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { iterableApiRequest } from './GenericFunctions';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
-
+import { iterableApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
-
 import { userListFields, userListOperations } from './UserListDescription';
-
-import moment from 'moment-timezone';
 
 export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,8 +29,8 @@ export class Iterable implements INodeType {
 		defaults: {
 			name: 'Iterable',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'iterableApi',

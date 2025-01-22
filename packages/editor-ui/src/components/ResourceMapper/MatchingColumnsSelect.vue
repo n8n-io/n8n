@@ -1,24 +1,34 @@
 <script setup lang="ts">
 import type {
+	INodeProperties,
 	INodePropertyTypeOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import { N8nInputLabel, N8nNotice, N8nSelect } from 'n8n-design-system';
 
 interface Props {
+	parameter: INodeProperties;
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
 	typeOptions: INodePropertyTypeOptions | undefined;
-	labelSize: string;
-	inputSize: string;
+	labelSize: 'small' | 'medium';
+	inputSize: 'small' | 'medium';
 	loading: boolean;
 	serviceName: string;
+	refreshInProgress: boolean;
+	teleported?: boolean;
+	isReadOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+	isReadOnly: false,
+});
 const {
 	resourceMapperTypeOptions,
 	singularFieldWord,
@@ -27,28 +37,32 @@ const {
 	pluralFieldWordCapitalized,
 } = useNodeSpecificationValues(props.typeOptions);
 
+const initialValue = computed<string | string[]>(() => {
+	return resourceMapperTypeOptions.value?.multiKeyMatch === true
+		? props.initialValue
+		: props.initialValue[0];
+});
+
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const state = reactive({
-	selected: props.initialValue as string[] | string,
+	selected: initialValue.value,
 });
 
 watch(
 	() => props.initialValue,
 	() => {
-		state.selected =
-			resourceMapperTypeOptions.value?.multiKeyMatch === true
-				? props.initialValue
-				: props.initialValue[0];
+		state.selected = initialValue.value;
 	},
 );
 
 const emit = defineEmits<{
-	(event: 'matchingColumnsChanged', value: string[]): void;
+	matchingColumnsChanged: [value: string[]];
+	refreshFieldList: [];
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return field.canBeUsedToMatch !== false && field.display !== false;
+		return (field.canBeUsedToMatch || field.defaultMatch) && field.display;
 	});
 });
 
@@ -82,6 +96,7 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
+			nodeDisplayName: props.serviceName,
 		},
 	});
 });
@@ -100,6 +115,27 @@ const fieldTooltip = computed<string>(() => {
 	});
 });
 
+const parameterActions = computed<Array<{ label: string; value: string; disabled?: boolean }>>(
+	() => {
+		return [
+			{
+				label: locale.baseText('resourceMapper.refreshFieldList', {
+					interpolate: { fieldWord: singularFieldWordCapitalized.value },
+				}),
+				value: 'refreshFieldList',
+			},
+		];
+	},
+);
+
+const fetchingFieldsLabel = computed<string>(() => {
+	return locale.baseText('resourceMapper.fetchingFields.message', {
+		interpolate: {
+			fieldWord: pluralFieldWord.value,
+		},
+	});
+});
+
 function onSelectionChange(value: string | string[]) {
 	if (resourceMapperTypeOptions.value?.multiKeyMatch === true) {
 		state.selected = value as string[];
@@ -110,7 +146,22 @@ function onSelectionChange(value: string | string[]) {
 }
 
 function emitValueChanged() {
-	emit('matchingColumnsChanged', Array.isArray(state.selected) ? state.selected : [state.selected]);
+	if (state.selected) {
+		emit(
+			'matchingColumnsChanged',
+			Array.isArray(state.selected) ? state.selected : [state.selected],
+		);
+	}
+}
+
+function onParameterActionSelected(action: string): void {
+	switch (action) {
+		case 'refreshFieldList':
+			emit('refreshFieldList');
+			break;
+		default:
+			break;
+	}
 }
 
 defineExpose({
@@ -120,36 +171,53 @@ defineExpose({
 
 <template>
 	<div class="mt-2xs" data-test-id="matching-column-select">
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
-			:tooltipText="fieldTooltip"
+			:tooltip-text="fieldTooltip"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>
-			<n8n-select
+			<template #options>
+				<ParameterOptions
+					:parameter="parameter"
+					:custom-actions="parameterActions"
+					:loading="props.refreshInProgress"
+					:loading-message="fetchingFieldsLabel"
+					:is-read-only="isReadOnly"
+					:value="state.selected"
+					@update:model-value="onParameterActionSelected"
+				/>
+			</template>
+			<N8nSelect
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
-				:value="state.selected"
+				:model-value="state.selected"
 				:size="props.inputSize"
-				:disabled="loading"
-				@change="onSelectionChange"
+				:disabled="loading || isReadOnly"
+				:teleported="teleported"
+				@update:model-value="onSelectionChange"
 			>
-				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">
+				<n8n-option
+					v-for="field in availableMatchingFields"
+					:key="field.id"
+					:value="field.id"
+					:data-test-id="`matching-column-option-${field.id}`"
+				>
 					{{ field.displayName }}
 				</n8n-option>
-			</n8n-select>
-			<n8n-text size="small">
+			</N8nSelect>
+			<N8nText size="small">
 				{{ fieldDescription }}
-			</n8n-text>
-		</n8n-input-label>
-		<n8n-notice v-else>
+			</N8nText>
+		</N8nInputLabel>
+		<N8nNotice v-else>
 			{{
 				locale.baseText('resourceMapper.columnsToMatchOn.noFieldsFound', {
 					interpolate: { fieldWord: singularFieldWord, serviceName: props.serviceName },
 				})
 			}}
-		</n8n-notice>
+		</N8nNotice>
 	</div>
 </template>

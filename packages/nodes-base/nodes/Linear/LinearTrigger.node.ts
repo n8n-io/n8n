@@ -1,11 +1,12 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from './GenericFunctions';
@@ -23,12 +24,26 @@ export class LinearTrigger implements INodeType {
 			name: 'Linear Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'linearApi',
 				required: true,
 				testedBy: 'linearApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
+				name: 'linearOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -41,11 +56,33 @@ export class LinearTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+			},
+			{
+				displayName: 'Make sure your credential has the "Admin" scope to create webhooks.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},

@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { isoCountryCodes } from '../utils/isoCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { addressFixedCollection, phoneNumbersFixedCollection } from '../utils/sharedFields';
 

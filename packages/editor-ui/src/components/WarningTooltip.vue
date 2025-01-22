@@ -1,10 +1,12 @@
 <template>
-	<n8n-tooltip content=" " placement="top">
-		<template #content>
-			<slot />
-		</template>
-		<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
-	</n8n-tooltip>
+	<span>
+		<n8n-tooltip content=" " placement="top">
+			<template #content>
+				<slot />
+			</template>
+			<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
+		</n8n-tooltip>
+	</span>
 </template>
 
 <style lang="scss" module>

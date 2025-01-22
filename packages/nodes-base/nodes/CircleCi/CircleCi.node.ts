@@ -5,17 +5,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { pipelineFields, pipelineOperations } from './PipelineDescription';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
+import { pipelineFields, pipelineOperations } from './PipelineDescription';
 
 export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CircleCI',
 		name: 'circleCi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:circleCi.png',
+
+		icon: { light: 'file:circleCi.svg', dark: 'file:circleCi.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -23,8 +23,8 @@ export class CircleCi implements INodeType {
 		defaults: {
 			name: 'CircleCI',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'circleCiApi',
@@ -149,6 +149,6 @@ export class CircleCi implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

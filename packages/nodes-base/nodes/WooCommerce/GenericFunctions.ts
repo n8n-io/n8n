@@ -1,31 +1,22 @@
-import type { OptionsWithUri } from 'request';
-
+import { snakeCase } from 'change-case';
+import { createHash } from 'crypto';
+import omit from 'lodash/omit';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
-import { createHash } from 'crypto';
-
-import { snakeCase } from 'change-case';
-
-import omit from 'lodash.omit';
-
 export async function woocommerceApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -35,7 +26,7 @@ export async function woocommerceApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('wooCommerceApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		qs,
 		body,
@@ -47,12 +38,12 @@ export async function woocommerceApiRequest(
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
 export async function woocommerceApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -87,9 +78,7 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 	return createHash('md5').update(data).digest('hex');
 }
 
-export function setMetadata(
-	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[],
-) {
+export function setMetadata(data: IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[]) {
 	for (let i = 0; i < data.length; i++) {
 		//@ts-ignore\
 		if (data[i].metadataUi?.metadataValues) {
@@ -105,7 +94,7 @@ export function setMetadata(
 }
 
 export function toSnakeCase(
-	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[] | IDataObject,
+	data: IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[] | IDataObject,
 ) {
 	if (!Array.isArray(data)) {
 		data = [data];

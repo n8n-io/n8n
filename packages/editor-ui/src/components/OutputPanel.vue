@@ -1,288 +1,438 @@
-<template>
-	<RunData
-		:nodeUi="node"
-		:runIndex="runIndex"
-		:linkedRuns="linkedRuns"
-		:canLinkRuns="canLinkRuns"
-		:tooMuchDataTitle="$locale.baseText('ndv.output.tooMuchData.title')"
-		:noDataInBranchMessage="$locale.baseText('ndv.output.noOutputDataInBranch')"
-		:isExecuting="isNodeRunning"
-		:executingMessage="$locale.baseText('ndv.output.executing')"
-		:sessionId="sessionId"
-		:blockUI="blockUI"
-		:isProductionExecutionPreview="isProductionExecutionPreview"
-		paneType="output"
-		@runChange="onRunIndexChange"
-		@linkRun="onLinkRun"
-		@unlinkRun="onUnlinkRun"
-		@tableMounted="$emit('tableMounted', $event)"
-		@itemHover="$emit('itemHover', $event)"
-		ref="runData"
-	>
-		<template #header>
-			<div :class="$style.titleSection">
-				<span :class="$style.title">
-					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
-				</span>
-				<RunInfo
-					v-if="!hasPinData && runsCount === 1"
-					v-show="!outputPanelEditMode.enabled"
-					:taskData="runTaskData"
-				/>
-
-				<n8n-info-tip
-					theme="warning"
-					type="tooltip"
-					tooltipPlacement="right"
-					v-if="hasNodeRun && staleData"
-				>
-					<template>
-						<span
-							v-html="
-								$locale.baseText(
-									hasPinData
-										? 'ndv.output.staleDataWarning.pinData'
-										: 'ndv.output.staleDataWarning.regular',
-								)
-							"
-						></span>
-					</template>
-				</n8n-info-tip>
-			</div>
-		</template>
-
-		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-				$locale.baseText('ndv.output.waitingToRun')
-			}}</n8n-text>
-			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="canPinData">
-					<br />
-					{{ $locale.baseText('generic.or') }}
-					<n8n-text tag="a" size="medium" color="primary">
-						{{ $locale.baseText('ndv.output.insertTestData') }}
-					</n8n-text>
-				</span>
-			</n8n-text>
-		</template>
-
-		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.output.noOutputData.title')
-			}}</n8n-text>
-			<n8n-text>
-				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{
-					$locale.baseText('ndv.output.noOutputData.message.settings')
-				}}</a>
-				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
-			</n8n-text>
-		</template>
-
-		<template #recovered-artificial-output-data>
-			<div :class="$style.recoveredOutputData">
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</n8n-text>
-			</div>
-		</template>
-
-		<template #run-info v-if="!hasPinData && runsCount > 1">
-			<RunInfo :taskData="runTaskData" />
-		</template>
-	</RunData>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import {
+	NodeConnectionType,
+	type IRunData,
+	type IRunExecutionData,
+	type Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from '@/mixins/pinData';
-import { mapStores } from 'pinia';
+import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import RunDataAi from './RunDataAi/RunDataAi.vue';
+import { ndvEventBus } from '@/event-bus';
+import { useNodeType } from '@/composables/useNodeType';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { N8nRadioButtons, N8nText } from 'n8n-design-system';
+
+// Types
 
 type RunDataRef = InstanceType<typeof RunData>;
 
-export default defineComponent({
-	name: 'OutputPanel',
-	mixins: [pinData],
-	components: { RunData, RunInfo },
-	props: {
-		runIndex: {
-			type: Number,
-		},
-		isReadOnly: {
-			type: Boolean,
-		},
-		linkedRuns: {
-			type: Boolean,
-		},
-		canLinkRuns: {
-			type: Boolean,
-		},
-		sessionId: {
-			type: String,
-		},
-		blockUI: {
-			type: Boolean,
-			default: false,
-		},
-		isProductionExecutionPreview: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (this.node) {
-				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-			}
-			return null;
-		},
-		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
-		},
-		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
-		},
-		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
-		},
-		isNodeRunning(): boolean {
-			const executingNode = this.workflowsStore.executingNode;
-			return this.node && executingNode === this.node.name;
-		},
-		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
-		},
-		workflowExecution(): IExecutionResponse | null {
-			return this.workflowsStore.getWorkflowExecution;
-		},
-		workflowRunData(): IRunData | null {
-			if (this.workflowExecution === null) {
-				return null;
-			}
-			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (!executionData || !executionData.resultData || !executionData.resultData.runData) {
-				return null;
-			}
-			return executionData.resultData.runData;
-		},
-		hasNodeRun(): boolean {
-			if (this.workflowsStore.subWorkflowExecutionError) return true;
+const OUTPUT_TYPE = {
+	REGULAR: 'regular',
+	LOGS: 'logs',
+} as const;
 
-			return Boolean(
-				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
-			);
-		},
-		runTaskData(): ITaskData | null {
-			if (!this.node || this.workflowExecution === null) {
-				return null;
-			}
+type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 
-			const runData = this.workflowRunData;
+type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return null;
-			}
+type Props = {
+	workflow: Workflow;
+	runIndex: number;
+	isReadOnly?: boolean;
+	linkedRuns?: boolean;
+	canLinkRuns?: boolean;
+	pushRef: string;
+	blockUI?: boolean;
+	isProductionExecutionPreview?: boolean;
+	isPaneActive?: boolean;
+};
 
-			if (runData[this.node.name].length <= this.runIndex) {
-				return null;
-			}
+// Props and emits
 
-			return runData[this.node.name][this.runIndex];
-		},
-		runsCount(): number {
-			if (this.node === null) {
-				return 0;
-			}
-
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length) {
-				return runData[this.node.name].length;
-			}
-
-			return 0;
-		},
-		staleData(): boolean {
-			if (!this.node) {
-				return false;
-			}
-			const updatedAt = this.workflowsStore.getParametersLastUpdate(this.node.name);
-			if (!updatedAt || !this.runTaskData) {
-				return false;
-			}
-			const runAt = this.runTaskData.startTime;
-			return updatedAt > runAt;
-		},
-		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.ndvStore.outputPanelEditMode;
-		},
-		canPinData(): boolean {
-			return this.isPinDataNodeType && !this.isReadOnly;
-		},
-	},
-	methods: {
-		insertTestData() {
-			const runDataRef = this.$refs.runData as RunDataRef | undefined;
-			if (runDataRef) {
-				runDataRef.enterEditMode({
-					origin: 'insertTestDataLink',
-				});
-
-				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
-					node_type: this.node.type,
-					pane: 'output',
-					type: 'insert-test-data',
-				});
-			}
-		},
-		onLinkRun() {
-			this.$emit('linkRun');
-		},
-		onUnlinkRun() {
-			this.$emit('unlinkRun');
-		},
-		openSettings() {
-			this.$emit('openSettings');
-			this.$telemetry.track('User clicked ndv link', {
-				node_type: this.node.type,
-				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
-				pane: 'output',
-				type: 'settings',
-			});
-		},
-		onRunIndexChange(run: number) {
-			this.$emit('runChange', run);
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	blockUI: false,
+	isProductionExecutionPreview: false,
+	isPaneActive: false,
 });
+
+const emit = defineEmits<{
+	linkRun: [];
+	unlinkRun: [];
+	runChange: [number];
+	activatePane: [];
+	tableMounted: [{ avgRowHeight: number }];
+	itemHover: [item: { itemIndex: number; outputIndex: number } | null];
+	search: [string];
+	openSettings: [];
+}>();
+
+// Stores
+
+const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const { activeNode } = storeToRefs(ndvStore);
+
+// Composables
+
+const { isSubNodeType } = useNodeType({
+	node: activeNode,
+});
+const pinnedData = usePinnedData(activeNode, {
+	runIndex: props.runIndex,
+	displayMode: ndvStore.outputPanelDisplayMode,
+});
+
+// Data
+
+const outputMode = ref<OutputType>(OUTPUT_TYPE.REGULAR);
+const outputTypes = ref([
+	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
+]);
+const runDataRef = ref<RunDataRef>();
+
+// Computed
+
+const node = computed(() => {
+	return ndvStore.activeNode ?? undefined;
+});
+
+const isTriggerNode = computed(() => {
+	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
+});
+
+const hasAiMetadata = computed(() => {
+	if (isNodeRunning.value || !workflowRunData.value) {
+		return false;
+	}
+
+	if (node.value) {
+		const connectedSubNodes = props.workflow.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
+
+		return resultData && Array.isArray(resultData) && resultData.length > 0;
+	}
+	return false;
+});
+
+const hasError = computed(() =>
+	Boolean(
+		workflowRunData.value &&
+			node.value &&
+			workflowRunData.value[node.value.name]?.[props.runIndex]?.error,
+	),
+);
+
+// Determine the initial output mode to logs if the node has an error and the logs are available
+const defaultOutputMode = computed<OutputType>(() => {
+	return hasError.value && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
+});
+
+const isNodeRunning = computed(() => {
+	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+});
+
+const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+
+const workflowExecution = computed(() => {
+	return workflowsStore.getWorkflowExecution;
+});
+
+const workflowRunData = computed(() => {
+	if (workflowExecution.value === null) {
+		return null;
+	}
+	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
+	if (!executionData?.resultData?.runData) {
+		return null;
+	}
+	return executionData.resultData.runData;
+});
+
+const hasNodeRun = computed(() => {
+	if (workflowsStore.subWorkflowExecutionError) return true;
+
+	return Boolean(
+		node.value && workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name),
+	);
+});
+
+const runTaskData = computed(() => {
+	if (!node.value || workflowExecution.value === null) {
+		return null;
+	}
+
+	const runData = workflowRunData.value;
+
+	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+		return null;
+	}
+
+	if (runData[node.value.name].length <= props.runIndex) {
+		return null;
+	}
+
+	return runData[node.value.name][props.runIndex];
+});
+
+const runsCount = computed(() => {
+	if (node.value === null) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (runData === null || (node.value && !runData.hasOwnProperty(node.value.name))) {
+		return 0;
+	}
+
+	if (node.value && runData[node.value.name].length) {
+		return runData[node.value.name].length;
+	}
+
+	return 0;
+});
+
+const staleData = computed(() => {
+	if (!node.value) {
+		return false;
+	}
+	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
+	if (!updatedAt || !runTaskData.value) {
+		return false;
+	}
+	const runAt = runTaskData.value.startTime;
+	return updatedAt > runAt;
+});
+
+const outputPanelEditMode = computed(() => {
+	return ndvStore.outputPanelEditMode;
+});
+
+const canPinData = computed(() => {
+	return pinnedData.isValidNodeType.value && !props.isReadOnly;
+});
+
+const allToolsWereUnusedNotice = computed(() => {
+	if (!node.value || runsCount.value === 0 || hasError.value) return undefined;
+
+	// With pinned data there's no clear correct answer for whether
+	// we should use historic or current parents, so we don't show the notice,
+	// as it likely ends up unactionable noise to the user
+	if (pinnedData.hasData.value) return undefined;
+
+	const toolsAvailable = props.workflow.getParentNodes(
+		node.value.name,
+		NodeConnectionType.AiTool,
+		1,
+	);
+	const toolsUsedInLatestRun = toolsAvailable.filter(
+		(tool) => !!workflowRunData.value?.[tool]?.[props.runIndex],
+	);
+	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
+		return i18n.baseText('ndv.output.noToolUsedInfo');
+	} else {
+		return undefined;
+	}
+});
+
+// Methods
+
+const insertTestData = () => {
+	if (!runDataRef.value) return;
+
+	// We should be able to fix this when we migrate RunData.vue to composition API
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	runDataRef.value.enterEditMode({
+		origin: 'insertTestDataLink',
+	});
+
+	telemetry.track('User clicked ndv link', {
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		node_type: node.value?.type,
+		pane: 'output',
+		type: 'insert-test-data',
+	});
+};
+
+const onLinkRun = () => {
+	emit('linkRun');
+};
+
+const onUnlinkRun = () => {
+	emit('unlinkRun');
+};
+
+const openSettings = () => {
+	emit('openSettings');
+	telemetry.track('User clicked ndv link', {
+		node_type: node.value?.type,
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		pane: 'output',
+		type: 'settings',
+	});
+};
+
+const onRunIndexChange = (run: number) => {
+	emit('runChange', run);
+};
+
+const onUpdateOutputMode = (newOutputMode: OutputType) => {
+	if (newOutputMode === OUTPUT_TYPE.LOGS) {
+		ndvEventBus.emit('setPositionByName', 'minLeft');
+	} else {
+		ndvEventBus.emit('setPositionByName', 'initial');
+	}
+};
+
+// Set the initial output mode when the component is mounted
+onMounted(() => {
+	outputMode.value = defaultOutputMode.value;
+});
+
+// In case the output panel was opened when the node has not run yet,
+// defaultOutputMode will be "regular" at the time of mounting.
+// This is why we need to watch the defaultOutputMode and change the outputMode to "logs" if the node has run and criteria are met.
+watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
+	if (newValue === OUTPUT_TYPE.LOGS && oldValue === OUTPUT_TYPE.REGULAR && hasNodeRun.value) {
+		outputMode.value = defaultOutputMode.value;
+	}
+});
+
+const activatePane = () => {
+	emit('activatePane');
+};
 </script>
 
+<template>
+	<RunData
+		ref="runDataRef"
+		:node="node"
+		:workflow="workflow"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="canLinkRuns"
+		:too-much-data-title="i18n.baseText('ndv.output.tooMuchData.title')"
+		:no-data-in-branch-message="i18n.baseText('ndv.output.noOutputDataInBranch')"
+		:is-executing="isNodeRunning"
+		:executing-message="i18n.baseText('ndv.output.executing')"
+		:push-ref="pushRef"
+		:block-u-i="blockUI"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		:hide-pagination="outputMode === 'logs'"
+		pane-type="output"
+		:data-output-type="outputMode"
+		:callout-message="allToolsWereUnusedNotice"
+		@activate-pane="activatePane"
+		@run-change="onRunIndexChange"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@table-mounted="emit('tableMounted', $event)"
+		@item-hover="emit('itemHover', $event)"
+		@search="emit('search', $event)"
+	>
+		<template #header>
+			<div :class="$style.titleSection">
+				<template v-if="hasAiMetadata">
+					<N8nRadioButtons
+						v-model="outputMode"
+						data-test-id="ai-output-mode-select"
+						:options="outputTypes"
+						@update:model-value="onUpdateOutputMode"
+					/>
+				</template>
+				<span v-else :class="$style.title">
+					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+				</span>
+				<RunInfo
+					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
+					v-show="!outputPanelEditMode.enabled"
+					:task-data="runTaskData"
+					:has-stale-data="staleData"
+					:has-pin-data="pinnedData.hasData.value"
+				/>
+			</div>
+		</template>
+
+		<template #node-not-run>
+			<N8nText v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				i18n.baseText('ndv.output.waitingToRun')
+			}}</N8nText>
+			<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
+				<template v-if="isSubNodeType">
+					{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
+				</template>
+				<template v-else>
+					{{ i18n.baseText('ndv.output.runNodeHint') }}
+					<span v-if="canPinData" @click="insertTestData">
+						<br />
+						{{ i18n.baseText('generic.or') }}
+						<N8nText tag="a" size="medium" color="primary">
+							{{ i18n.baseText('ndv.output.insertTestData') }}
+						</N8nText>
+					</span>
+				</template>
+			</N8nText>
+		</template>
+
+		<template #node-waiting>
+			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
+		</template>
+
+		<template #no-output-data>
+			<N8nText :bold="true" color="text-dark" size="large">{{
+				i18n.baseText('ndv.output.noOutputData.title')
+			}}</N8nText>
+			<N8nText>
+				{{ i18n.baseText('ndv.output.noOutputData.message') }}
+				<a @click="openSettings">{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				{{ i18n.baseText('ndv.output.noOutputData.message.settingsOption') }}
+			</N8nText>
+		</template>
+
+		<template v-if="outputMode === 'logs' && node" #content>
+			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
+		</template>
+
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</N8nText>
+				<N8nText>
+					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</N8nText>
+			</div>
+		</template>
+
+		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
+			<RunInfo :task-data="runTaskData" />
+		</template>
+	</RunData>
+</template>
+
 <style lang="scss" module>
+// The items count and displayModes are rendered in the RunData component
+// this is a workaround to hide it in the output panel(for ai type) to not add unnecessary one-time props
+:global([data-output-type='logs'] [class*='itemsCount']),
+:global([data-output-type='logs'] [class*='displayModes']) {
+	display: none;
+}
+.outputTypeSelect {
+	margin-bottom: var(--spacing-4xs);
+	width: fit-content;
+}
 .titleSection {
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-2xs);

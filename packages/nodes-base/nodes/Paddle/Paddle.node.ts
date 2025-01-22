@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,26 +9,19 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { couponFields, couponOperations } from './CouponDescription';
-
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
-
 import { paymentFields, paymentOperations } from './PaymentDescription';
-
 import { planFields, planOperations } from './PlanDescription';
-
 import { productFields, productOperations } from './ProductDescription';
-
 import { userFields, userOperations } from './UserDescription';
 
 // import {
 // 	orderOperations,
 // 	orderFields,
 // } from './OrderDescription';
-
-import moment from 'moment';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,8 +36,8 @@ export class Paddle implements INodeType {
 		defaults: {
 			name: 'Paddle',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'paddleApi',
@@ -538,6 +532,6 @@ export class Paddle implements INodeType {
 
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

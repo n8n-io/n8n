@@ -1,16 +1,16 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeConnectionType,
 } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import {
 	gristApiRequest,
@@ -20,9 +20,7 @@ import {
 	parseSortProperties,
 	throwOnZeroDefinedFields,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	FieldsToSend,
 	GristColumns,
@@ -45,8 +43,8 @@ export class Grist implements INodeType {
 		defaults: {
 			name: 'Grist',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'gristApi',
@@ -83,10 +81,10 @@ export class Grist implements INodeType {
 					planType === 'free'
 						? `https://docs.getgrist.com/api${endpoint}`
 						: planType === 'paid'
-						? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-						: `${selfHostedUrl}/api${endpoint}`;
+							? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+							: `${selfHostedUrl}/api${endpoint}`;
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Bearer ${apiKey}`,
 					},
@@ -263,6 +261,6 @@ export class Grist implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

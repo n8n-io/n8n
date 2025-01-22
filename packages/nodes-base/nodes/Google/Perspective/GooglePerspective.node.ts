@@ -1,3 +1,4 @@
+import ISO6391 from 'iso-639-1';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,8 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { googleApiRequest } from './GenericFunctions';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
@@ -16,15 +18,11 @@ import type {
 	RequestedAttributes,
 } from './types';
 
-import { googleApiRequest } from './GenericFunctions';
-
-import ISO6391 from 'iso-639-1';
-
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
-		icon: 'file:perspective.svg',
+		icon: { light: 'file:googlePerspective.svg', dark: 'file:googlePerspective.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Google Perspective API',
@@ -32,8 +30,8 @@ export class GooglePerspective implements INodeType {
 		defaults: {
 			name: 'Google Perspective',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',
@@ -155,7 +153,7 @@ export class GooglePerspective implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Language Name or ID',
@@ -166,7 +164,7 @@ export class GooglePerspective implements INodeType {
 						},
 						default: '',
 						description:
-							'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -282,6 +280,6 @@ export class GooglePerspective implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

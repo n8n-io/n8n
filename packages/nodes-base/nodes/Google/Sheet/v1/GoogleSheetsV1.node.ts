@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { googleApiRequest, hexToRgb } from './GenericFunctions';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -21,10 +22,8 @@ import type {
 	ValueRenderOption,
 } from './GoogleSheet';
 import { GoogleSheet } from './GoogleSheet';
-
-import { googleApiRequest, hexToRgb } from './GenericFunctions';
-
 import { versionDescription } from './versionDescription';
+import { generatePairedItemData } from '../../../../utils/utilities';
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export class GoogleSheetsV1 implements INodeType {
@@ -130,7 +129,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					const _data = await sheet.appendSheetData(
+					await sheet.appendSheetData(
 						setData,
 						sheet.encodeRange(range),
 						keyRow,
@@ -141,10 +140,10 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -156,10 +155,10 @@ export class GoogleSheetsV1 implements INodeType {
 					await sheet.clearData(sheet.encodeRange(range));
 
 					const items = this.getInputData();
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -225,7 +224,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
 						if (toDelete[propertyName] !== undefined) {
-							toDelete[propertyName]!.forEach((entry) => {
+							toDelete[propertyName].forEach((entry) => {
 								requests.push({
 									deleteDimension: {
 										range: {
@@ -242,13 +241,13 @@ export class GoogleSheetsV1 implements INodeType {
 						}
 					}
 
-					const _data = await sheet.spreadsheetBatchUpdate(requests);
+					await sheet.spreadsheetBatchUpdate(requests);
 
 					const items = this.getInputData();
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -295,7 +294,16 @@ export class GoogleSheetsV1 implements INodeType {
 						returnData = [];
 					}
 
-					return [this.helpers.returnJsonArray(returnData)];
+					const pairedItem = generatePairedItemData(items.length);
+
+					const lookupOutput = returnData.map((item) => {
+						return {
+							json: item,
+							pairedItem,
+						};
+					});
+
+					return [lookupOutput];
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
@@ -395,7 +403,7 @@ export class GoogleSheetsV1 implements INodeType {
 							});
 						}
 
-						const _data = await sheet.batchUpdate(updateData, valueInputMode);
+						await sheet.batchUpdate(updateData, valueInputMode);
 					} else {
 						const keyName = this.getNodeParameter('key', 0) as string;
 						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
@@ -406,7 +414,7 @@ export class GoogleSheetsV1 implements INodeType {
 							setData.push(item.json);
 						});
 
-						const _data = await sheet.updateSheetData(
+						await sheet.updateSheetData(
 							setData,
 							keyName,
 							range,
@@ -420,10 +428,10 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}

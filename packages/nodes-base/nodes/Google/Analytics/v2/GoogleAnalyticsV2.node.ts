@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,9 +5,10 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { listSearch, loadOptions } from './methods';
+
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
+import { listSearch, loadOptions } from './methods';
 
 export class GoogleAnalyticsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -23,6 +23,6 @@ export class GoogleAnalyticsV2 implements INodeType {
 	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

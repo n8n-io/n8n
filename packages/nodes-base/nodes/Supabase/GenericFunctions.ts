@@ -1,40 +1,34 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function supabaseApiRequest(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IHookFunctions
-		| IWebhookFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('supabaseApi')) as {
+	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
-	};
+	}>('supabaseApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
 		},
@@ -71,8 +65,7 @@ export function getFilters(
 		includeNoneOption = true,
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		filterStringDisplayName = 'Filters (String)',
+
 		mustMatchOptions = [
 			{
 				name: 'Any Filter',
@@ -149,7 +142,7 @@ export function getFilters(
 							name: 'keyName',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: ['tableId'],
 								loadOptionsMethod: 'getTableColumns',
@@ -249,7 +242,7 @@ export function getFilters(
 		},
 		{
 			displayName:
-				'See <a href="https://postgrest.org/en/v9.0/api.html#horizontal-filtering-rows" target="_blank">PostgREST guide</a> to creating filters',
+				'See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {
@@ -308,7 +301,7 @@ export async function validateCredentials(
 		serviceRole: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			apikey: serviceRole,
 			Authorization: 'Bearer ' + serviceRole,
@@ -318,7 +311,7 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

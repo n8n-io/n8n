@@ -5,17 +5,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
-
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class Bubble implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bubble',
 		name: 'bubble',
-		icon: 'file:bubble.svg',
+		icon: { light: 'file:bubble.svg', dark: 'file:bubble.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -23,8 +22,8 @@ export class Bubble implements INodeType {
 		defaults: {
 			name: 'Bubble',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'bubbleApi',
@@ -179,6 +178,6 @@ export class Bubble implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

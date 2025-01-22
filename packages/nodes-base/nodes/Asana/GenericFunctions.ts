@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,8 +9,6 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash.get';
-
 /**
  * Make an API request to Asana
  *
@@ -17,7 +16,7 @@ import get from 'lodash.get';
 export async function asanaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: `/${string}`,
 	body: object,
 	query?: IDataObject,
 	uri?: string | undefined,
@@ -27,21 +26,24 @@ export async function asanaApiRequest(
 	const options: IHttpRequestOptions = {
 		headers: {},
 		method,
-		body: { data: body },
+		body: method === 'GET' || method === 'HEAD' || method === 'DELETE' ? null : { data: body },
 		qs: query,
 		url: uri || `https://app.asana.com/api/1.0${endpoint}`,
 		json: true,
 	};
 
+	if (options.body === null) {
+		delete options.body;
+	}
+
 	const credentialType = authenticationMethod === 'accessToken' ? 'asanaApi' : 'asanaOAuth2Api';
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function asanaApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
-
+	endpoint: `/${string}`,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -61,6 +63,7 @@ export async function asanaApiRequestAllItems(
 			uri,
 		);
 		uri = get(responseData, 'next_page.uri');
+		query = {}; // query is not needed once we have next_page.uri
 		returnData.push.apply(returnData, responseData.data as IDataObject[]);
 	} while (responseData.next_page !== null);
 

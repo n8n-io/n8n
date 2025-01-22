@@ -1,32 +1,22 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+
+const router = useRouter();
+const i18n = useI18n();
+
+const navigateTo = () => {
+	void router.push({ name: VIEWS.TEMPLATES });
+};
+</script>
+
 <template>
 	<div :class="$style.wrapper" @click="navigateTo">
 		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
-		<div :class="$style.text" v-text="$locale.baseText('template.buttons.goBackButton')" />
+		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { VIEWS } from '@/constants';
-
-export default defineComponent({
-	name: 'GoBackButton',
-	data() {
-		return {
-			routeHasHistory: false,
-		};
-	},
-	methods: {
-		navigateTo() {
-			if (this.routeHasHistory) this.$router.go(-1);
-			else void this.$router.push({ name: VIEWS.TEMPLATES });
-		},
-	},
-	mounted() {
-		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
-	},
-});
-</script>
 
 <style lang="scss" module>
 .wrapper {

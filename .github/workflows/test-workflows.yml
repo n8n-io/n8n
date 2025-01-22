@@ -4,100 +4,110 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/core/package.json
+      - packages/nodes-base/package.json
+      - packages/@n8n/nodes-langchain/package.json
+      - .github/workflows/test-workflows.yml
+  pull_request_review:
+    types: [submitted]
 
 jobs:
-  run-test-workflows:
+  build:
+    name: Install & Build
     runs-on: ubuntu-latest
-
-    timeout-minutes: 30
-
+    if: |
+      (github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')) &&
+      !contains(github.event.pull_request.labels.*.name, 'community')
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.1
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
         with:
-          path: n8n
-
-      - name: Checkout workflows repo
-        uses: actions/checkout@v3
-        with:
-          repository: n8n-io/test-workflows
-          path: test-workflows
-
-      - uses: pnpm/action-setup@v2.2.4
-        with:
-          version: 8.6.1
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
-          cache-dependency-path: 'n8n/pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
+      - name: Build Backend
+        run: pnpm build:backend
+
+      - name: Cache build artifacts
+        uses: actions/cache/save@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}:workflow-tests
+
+  run-test-workflows:
+    name: Workflow Tests
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}:workflow-tests
+
+      - name: Install OS dependencies
         run: |
           sudo apt update -y
           echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
           echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
           DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
-        shell: bash
 
-      - name: pnpm install and build
-        working-directory: n8n
-        run: |
-          pnpm install
-          pnpm  --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base --filter n8n build
-        shell: bash
+      - name: Checkout workflows repo
+        uses: actions/checkout@v4.1.1
+        with:
+          repository: n8n-io/test-workflows
+          path: test-workflows
 
       - name: Import credentials
-        run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
-        shell: bash
+        run: packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
 
       - name: Import workflows
-        run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
-        shell: bash
+        run: packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
 
       - name: Copy static assets
         run: |
-          cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png
-          cp n8n/assets/n8n-screenshot.png /tmp/n8n-screenshot.png
-          cp n8n/node_modules/pdf-parse/test/data/05-versions-space.pdf /tmp/05-versions-space.pdf
-          cp n8n/node_modules/pdf-parse/test/data/04-valid.pdf /tmp/04-valid.pdf
-        shell: bash
+          cp assets/n8n-logo.png /tmp/n8n-logo.png
+          cp assets/n8n-screenshot.png /tmp/n8n-screenshot.png
+          cp test-workflows/testData/pdfs/*.pdf /tmp/
 
       - name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
-        shell: bash
+        run: packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         id: tests
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
           SKIP_STATISTICS_EVENTS: true
-      # -
-      #   name: Export credentials
-      #   if: always()
-      #   run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
-      #   shell: bash
-      #   env:
-      #     N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      # -
-      #   name: Commit and push credential changes
-      #   if: always()
-      #   run: |
-      #     cd test-workflows
-      #     git config --global user.name 'n8n test bot'
-      #     git config --global user.email 'n8n-test-bot@users.noreply.github.com'
-      #     git commit -am "Automated credential update"
-      #     git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
+          DB_SQLITE_POOL_SIZE: 4
+          N8N_SENTRY_DSN: ${{secrets.CI_SENTRY_DSN}}
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
-        if: failure()
+        if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
-          channel: '#updates-build-alerts'
+          channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             🛑 Workflow test failed 🛑:

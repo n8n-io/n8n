@@ -1,3 +1,4 @@
+import { pascalCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,13 +10,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 import { URL } from 'url';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
-
-import { pascalCase } from 'change-case';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,8 +27,8 @@ export class AwsSqs implements INodeType {
 		defaults: {
 			name: 'AWS SQS',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -69,7 +67,7 @@ export class AwsSqs implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -134,7 +132,7 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Delay Seconds',
@@ -298,10 +296,16 @@ export class AwsSqs implements INodeType {
 				const options = this.getNodeParameter('options', i, {});
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
-				const message = sendInputData
+				let message = sendInputData
 					? JSON.stringify(items[i].json)
-					: (this.getNodeParameter('message', i) as string);
-				params.push(`MessageBody=${message}`);
+					: this.getNodeParameter('message', i);
+
+				// This prevents [object Object] from being sent as message when sending json in an expression
+				if (typeof message === 'object') {
+					message = JSON.stringify(message);
+				}
+
+				params.push(`MessageBody=${encodeURIComponent(message as string)}`);
 
 				if (options.delaySeconds) {
 					params.push(`DelaySeconds=${options.delaySeconds}`);

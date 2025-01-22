@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.formTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"alias": ["table", "submit", "post"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+			}
+		],
+		"generic": []
+	},
+	"subcategories": {
+		"Core Nodes": ["Other Trigger Nodes"]
+	}
+}

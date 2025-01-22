@@ -1,6 +1,7 @@
-import N8nLink from './Link.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
+
+import N8nLink from './Link.vue';
 
 export default {
 	title: 'Atoms/Link',
@@ -9,8 +10,8 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large'],
 			},
+			options: ['small', 'medium', 'large'],
 		},
 	},
 };
@@ -20,11 +21,12 @@ const methods = {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
 	},
-	template: '<n8n-link v-bind="$props" @click="onClick">hello world</n8n-link>',
+	template: '<n8n-link v-bind="args" @click="onClick">hello world</n8n-link>',
 	methods,
 });
 

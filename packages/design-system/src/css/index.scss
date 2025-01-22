@@ -1,9 +1,11 @@
+@use './primitives.scss';
 @use './tokens.scss';
 @use './tokens.dark.scss' as dark;
 @use './reset.scss';
 @use './base.scss';
 @use './pagination.scss';
 @use './dialog.scss';
+@use './display.scss';
 // @use "./autocomplete.scss";
 @use './dropdown.scss';
 @use './dropdown-menu.scss';
@@ -30,7 +32,7 @@
 // @use "./time-select.scss";
 // @use "./time-picker.scss";
 @use './popover.scss';
-@use './tooltip.scss';
+//@use './tooltip.scss';
 @use './message-box.scss';
 // @use "./breadcrumb.scss";
 // @use "./breadcrumb-item.scss";
@@ -80,5 +82,6 @@
 // @use "./cascader-panel.scss";
 // @use "./avatar.scss";
 @use './drawer.scss';
+@use './popper.scss';
 // @use "./popconfirm.scss";
 @use './utilities/index.scss';

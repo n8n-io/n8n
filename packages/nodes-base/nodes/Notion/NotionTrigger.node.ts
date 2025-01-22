@@ -1,22 +1,27 @@
-import type {
-	IPollFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import moment from 'moment-timezone';
+import {
+	type IPollFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { notionApiRequest, simplifyObjects } from './GenericFunctions';
-
-import moment from 'moment';
-import { getDatabases } from './SearchFunctions';
+import {
+	databaseUrlExtractionRegexp,
+	databaseUrlValidationRegexp,
+	idExtractionRegexp,
+	idValidationRegexp,
+} from './shared/constants';
+import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
+import { listSearch } from './shared/methods';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
-		icon: 'file:notion.svg',
+		icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Notion events occur',
@@ -32,7 +37,7 @@ export class NotionTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Event',
@@ -85,16 +90,14 @@ export class NotionTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+									regex: databaseUrlValidationRegexp,
 									errorMessage: 'Not a valid Notion Database URL',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+							regex: databaseUrlExtractionRegexp,
 						},
 					},
 					{
@@ -106,15 +109,14 @@ export class NotionTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+									regex: idValidationRegexp,
 									errorMessage: 'Not a valid Notion Database ID',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+							regex: idExtractionRegexp,
 						},
 						url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 					},
@@ -143,9 +145,7 @@ export class NotionTrigger implements INodeType {
 	};
 
 	methods = {
-		listSearch: {
-			getDatabases,
-		},
+		listSearch,
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {

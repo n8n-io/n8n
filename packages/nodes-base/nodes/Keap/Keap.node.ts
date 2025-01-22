@@ -1,3 +1,6 @@
+import { capitalCase, pascalCase } from 'change-case';
+import moment from 'moment-timezone';
+import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,24 +11,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactNoteFields, contactNoteOperations } from './ContactNoteDescription';
-
-import { contactTagFields, contactTagOperations } from './ContactTagDescription';
-
-import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescripion';
-
-import { ecommerceProductFields, ecommerceProductOperations } from './EcommerceProductDescription';
-
-import { emailFields, emailOperations } from './EmailDescription';
-
-import { fileFields, fileOperations } from './FileDescription';
-
 import { companyFields, companyOperations } from './CompanyDescription';
-
+import type { ICompany } from './CompanyInterface';
 import type {
 	IAddress,
 	IContact,
@@ -34,22 +21,19 @@ import type {
 	IPhone,
 	ISocialAccount,
 } from './ConctactInterface';
-
-import type { IAttachment, IEmail } from './EmaiIInterface';
-
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactNoteFields, contactNoteOperations } from './ContactNoteDescription';
 import type { INote } from './ContactNoteInterface';
-
+import { contactTagFields, contactTagOperations } from './ContactTagDescription';
+import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescripion';
 import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
-
+import { ecommerceProductFields, ecommerceProductOperations } from './EcommerceProductDescription';
 import type { IEcommerceProduct } from './EcommerceProductInterface';
-
+import type { IAttachment, IEmail } from './EmaiIInterface';
+import { emailFields, emailOperations } from './EmailDescription';
+import { fileFields, fileOperations } from './FileDescription';
 import type { IFile } from './FileInterface';
-
-import type { ICompany } from './CompanyInterface';
-
-import { capitalCase, pascalCase } from 'change-case';
-
-import moment from 'moment-timezone';
+import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,8 +48,8 @@ export class Keap implements INodeType {
 		defaults: {
 			name: 'Keap',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'keapOAuth2Api',
@@ -606,7 +590,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/getOrderUsingGET
 				if (operation === 'get') {
 					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
-					responseData = await keapApiRequest.call(this, 'get', `/orders/${orderId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/orders/${orderId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
@@ -651,7 +635,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/retrieveProductUsingGET
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await keapApiRequest.call(this, 'get', `/products/${productId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/products/${productId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {
@@ -830,6 +814,6 @@ export class Keap implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

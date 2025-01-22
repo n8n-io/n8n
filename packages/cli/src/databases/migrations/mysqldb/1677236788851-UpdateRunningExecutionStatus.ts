@@ -1,4 +1,4 @@
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 export class UpdateRunningExecutionStatus1677236788851 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

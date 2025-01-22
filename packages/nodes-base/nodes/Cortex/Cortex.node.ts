@@ -1,7 +1,6 @@
-import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
-
-import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
-
+import * as changeCase from 'change-case';
+import { createHash } from 'crypto';
+import upperFirst from 'lodash/upperFirst';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,18 +10,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import { responderFields, respondersOperations } from './ResponderDescription';
-
-import { jobFields, jobOperations } from './JobDescription';
-
-import upperFirst from 'lodash.upperfirst';
-
+import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 import type { IJob } from './AnalyzerInterface';
-
-import { createHash } from 'crypto';
-
-import * as changeCase from 'change-case';
+import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
+import { jobFields, jobOperations } from './JobDescription';
+import { responderFields, respondersOperations } from './ResponderDescription';
 
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,8 +30,8 @@ export class Cortex implements INodeType {
 		defaults: {
 			name: 'Cortex',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'cortexApi',
@@ -220,8 +214,6 @@ export class Cortex implements INodeType {
 								'',
 								options,
 							)) as IJob;
-
-							continue;
 						} else {
 							const observableValue = this.getNodeParameter('observableValue', i) as string;
 

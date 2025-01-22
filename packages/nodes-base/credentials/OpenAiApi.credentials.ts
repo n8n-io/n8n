@@ -22,12 +22,20 @@ export class OpenAiApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Organization ID',
+			displayName: 'Organization ID (optional)',
 			name: 'organizationId',
 			type: 'string',
 			default: '',
+			hint: 'Only required if you belong to multiple organisations',
 			description:
 				"For users who belong to multiple organizations, you can set which organization is used for an API request. Usage from these API requests will count against the specified organization's subscription quota.",
+		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'string',
+			default: 'https://api.openai.com/v1',
+			description: 'Override the default base URL for the API',
 		},
 	];
 
@@ -43,8 +51,8 @@ export class OpenAiApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.openai.com',
-			url: '/v1/models',
+			baseURL: '={{$credentials?.url}}',
+			url: '/models',
 		},
 	};
 }

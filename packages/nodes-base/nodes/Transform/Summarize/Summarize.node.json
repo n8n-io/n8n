@@ -1,0 +1,36 @@
+{
+	"node": "n8n-nodes-base.summarize",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/"
+			}
+		],
+		"generic": []
+	},
+	"alias": [
+		"Append",
+		"Array",
+		"Average",
+		"Concatenate",
+		"Count",
+		"Group",
+		"Item",
+		"List",
+		"Max",
+		"Min",
+		"Pivot",
+		"Sum",
+		"Summarise",
+		"Summarize",
+		"Transform",
+		"Unique"
+	],
+	"subcategories": {
+		"Core Nodes": ["Data Transformation"]
+	}
+}

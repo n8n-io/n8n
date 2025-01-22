@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+
 import * as database from './database/Database.resource';
 
 export const versionDescription: INodeTypeDescription = {
@@ -7,14 +8,14 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleBigQuery',
 	icon: 'file:googleBigQuery.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"]}}',
 	description: 'Consume Google BigQuery API',
 	defaults: {
 		name: 'Google BigQuery',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleApi',

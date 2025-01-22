@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
-import * as file from './file';
+import * as companyReport from './companyReport';
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';
-import * as companyReport from './companyReport';
+import * as file from './file';
 
 export const versionDescription: INodeTypeDescription = {
 	credentials: [
@@ -22,9 +22,9 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 	icon: 'file:bambooHr.png',
-	inputs: ['main'],
+	inputs: [NodeConnectionType.Main],
 	name: 'bambooHr',
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		{
 			displayName: 'Resource',

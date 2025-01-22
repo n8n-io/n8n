@@ -1,3 +1,160 @@
+<script lang="ts" setup>
+import { useToast } from '@/composables/useToast';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
+import type { VNode } from 'vue';
+import { computed, h, watch } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+import type { PermissionsRecord } from '@/permissions';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { INodeUi, IUsedCredential } from '@/Interface';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+
+const props = defineProps<{
+	workflowActive: boolean;
+	workflowId: string;
+	workflowPermissions: PermissionsRecord['workflow'];
+}>();
+const { showMessage } = useToast();
+const workflowActivate = useWorkflowActivate();
+
+const i18n = useI18n();
+const workflowsStore = useWorkflowsStore();
+const credentialsStore = useCredentialsStore();
+
+const isWorkflowActive = computed((): boolean => {
+	const activeWorkflows = workflowsStore.activeWorkflows;
+	return activeWorkflows.includes(props.workflowId);
+});
+const couldNotBeStarted = computed((): boolean => {
+	return props.workflowActive && isWorkflowActive.value !== props.workflowActive;
+});
+const getActiveColor = computed((): string => {
+	if (couldNotBeStarted.value) {
+		return '#ff4949';
+	}
+	return '#13ce66';
+});
+const isCurrentWorkflow = computed((): boolean => {
+	return workflowsStore.workflowId === props.workflowId;
+});
+
+const containsTrigger = computed((): boolean => {
+	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
+	return foundTriggers.length > 0;
+});
+
+const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
+	const foundActiveTriggers = workflowsStore.workflowTriggerNodes.filter(
+		(trigger) => !trigger.disabled,
+	);
+	const foundTriggers = foundActiveTriggers.filter(
+		(trigger) => trigger.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	);
+
+	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
+});
+
+const isNewWorkflow = computed(
+	() =>
+		!props.workflowId ||
+		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+		props.workflowId === 'new',
+);
+
+const disabled = computed((): boolean => {
+	if (isNewWorkflow.value || isCurrentWorkflow.value) {
+		return !props.workflowActive && !containsTrigger.value;
+	}
+
+	return false;
+});
+
+function findManagedOpenAiCredentialId(
+	usedCredentials: Record<string, IUsedCredential>,
+): string | undefined {
+	return Object.keys(usedCredentials).find((credentialId) => {
+		const credential = credentialsStore.state.credentials[credentialId];
+		return credential.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
+	});
+}
+
+function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): boolean {
+	return nodes.some(
+		(node) =>
+			node?.credentials?.[OPEN_AI_API_CREDENTIAL_TYPE]?.id === credentialId && !node.disabled,
+	);
+}
+
+/**
+ * Determines if the warning for free AI credits should be shown in the workflow.
+ *
+ * This computed property evaluates whether to display a warning about free AI credits
+ * in the workflow. The warning is shown when both conditions are met:
+ * 1. The workflow uses managed OpenAI API credentials
+ * 2. Those credentials are associated with at least one enabled node
+ *
+ */
+const shouldShowFreeAiCreditsWarning = computed((): boolean => {
+	const usedCredentials = workflowsStore?.usedCredentials;
+	if (!usedCredentials) return false;
+
+	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
+	if (!managedOpenAiCredentialId) return false;
+
+	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
+});
+
+async function activeChanged(newActiveState: boolean) {
+	return await workflowActivate.updateWorkflowActivation(props.workflowId, newActiveState);
+}
+
+async function displayActivationError() {
+	let errorMessage: string | VNode;
+	try {
+		const errorData = await workflowsStore.getActivationError(props.workflowId);
+
+		if (errorData === undefined) {
+			errorMessage = i18n.baseText(
+				'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
+			);
+		} else {
+			errorMessage = h(WorkflowActivationErrorMessage, {
+				message: errorData,
+			});
+		}
+	} catch (error) {
+		errorMessage = i18n.baseText(
+			'workflowActivator.showMessage.displayActivationError.message.catchBlock',
+		);
+	}
+
+	showMessage({
+		title: i18n.baseText('workflowActivator.showMessage.displayActivationError.title'),
+		message: errorMessage,
+		type: 'warning',
+		duration: 0,
+	});
+}
+
+watch(
+	() => props.workflowActive,
+	(workflowActive) => {
+		if (workflowActive && shouldShowFreeAiCreditsWarning.value) {
+			showMessage({
+				title: i18n.baseText('freeAi.credits.showWarning.workflow.activation.title'),
+				message: i18n.baseText('freeAi.credits.showWarning.workflow.activation.description'),
+				type: 'warning',
+				duration: 0,
+			});
+		}
+	},
+);
+</script>
+
 <template>
 	<div class="workflow-activator">
 		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
@@ -7,137 +164,58 @@
 				size="small"
 				bold
 			>
-				{{ $locale.baseText('workflowActivator.active') }}
+				{{ i18n.baseText('workflowActivator.active') }}
 			</n8n-text>
 			<n8n-text v-else color="text-base" size="small" bold>
-				{{ $locale.baseText('workflowActivator.inactive') }}
+				{{ i18n.baseText('workflowActivator.inactive') }}
 			</n8n-text>
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
-				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+				<div>
+					{{
+						i18n.baseText(
+							containsOnlyExecuteWorkflowTrigger
+								? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+						)
+					}}
+				</div>
 			</template>
 			<el-switch
-				v-loading="updatingWorkflowActivation"
-				:value="workflowActive"
-				@change="activeChanged"
+				v-loading="workflowActivate.updatingWorkflowActivation.value"
+				:model-value="workflowActive"
 				:title="
 					workflowActive
-						? $locale.baseText('workflowActivator.deactivateWorkflow')
-						: $locale.baseText('workflowActivator.activateWorkflow')
+						? i18n.baseText('workflowActivator.deactivateWorkflow')
+						: i18n.baseText('workflowActivator.activateWorkflow')
 				"
-				:disabled="disabled || updatingWorkflowActivation"
+				:disabled="
+					disabled ||
+					workflowActivate.updatingWorkflowActivation.value ||
+					(!isNewWorkflow && !workflowPermissions.update)
+				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading"
 				data-test-id="workflow-activate-switch"
+				@update:model-value="activeChanged"
 			>
 			</el-switch>
 		</n8n-tooltip>
 
-		<div class="could-not-be-started" v-if="couldNotBeStarted">
+		<div v-if="couldNotBeStarted" class="could-not-be-started">
 			<n8n-tooltip placement="top">
 				<template #content>
 					<div
 						@click="displayActivationError"
-						v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
+						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
-				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
+				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { useToast } from '@/composables';
-import { workflowActivate } from '@/mixins/workflowActivate';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import { getActivatableTriggerNodes } from '@/utils';
-
-export default defineComponent({
-	name: 'WorkflowActivator',
-	props: ['workflowActive', 'workflowId'],
-	mixins: [workflowActivate],
-	setup(props) {
-		return {
-			...useToast(),
-			...workflowActivate.setup?.(props),
-		};
-	},
-	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
-		nodesIssuesExist(): boolean {
-			return this.workflowsStore.nodesIssuesExist;
-		},
-		isWorkflowActive(): boolean {
-			const activeWorkflows = this.workflowsStore.activeWorkflows;
-			return activeWorkflows.includes(this.workflowId);
-		},
-		couldNotBeStarted(): boolean {
-			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
-		},
-		getActiveColor(): string {
-			if (this.couldNotBeStarted === true) {
-				return '#ff4949';
-			}
-			return '#13ce66';
-		},
-		isCurrentWorkflow(): boolean {
-			return this.workflowsStore.workflowId === this.workflowId;
-		},
-		disabled(): boolean {
-			const isNewWorkflow = !this.workflowId;
-			if (isNewWorkflow || this.isCurrentWorkflow) {
-				return !this.workflowActive && !this.containsTrigger;
-			}
-
-			return false;
-		},
-		containsTrigger(): boolean {
-			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
-			return foundTriggers.length > 0;
-		},
-	},
-	methods: {
-		async activeChanged(newActiveState: boolean) {
-			return this.updateWorkflowActivation(this.workflowId, newActiveState);
-		},
-		async displayActivationError() {
-			let errorMessage: string;
-			try {
-				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
-
-				if (errorData === undefined) {
-					errorMessage = this.$locale.baseText(
-						'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
-					);
-				} else {
-					errorMessage = this.$locale.baseText(
-						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-						{ interpolate: { message: errorData.error.message } },
-					);
-				}
-			} catch (error) {
-				errorMessage = this.$locale.baseText(
-					'workflowActivator.showMessage.displayActivationError.message.catchBlock',
-				);
-			}
-
-			this.showMessage({
-				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
-				message: errorMessage,
-				type: 'warning',
-				duration: 0,
-				dangerouslyUseHTMLString: true,
-			});
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .activeStatusText {
@@ -158,11 +236,7 @@ export default defineComponent({
 
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
-}
-
-::v-deep .el-loading-spinner {
-	margin-top: -10px;
 }
 </style>

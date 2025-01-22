@@ -1,83 +1,60 @@
-import validator from 'validator';
-import { Authorized, Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
-import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
-import { Request, Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { User } from '@db/entities/User';
-import { LoginRequest, UserRequest } from '@/requests';
-import { In } from 'typeorm';
-import type { Config } from '@/config';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IInternalHooksClass,
-	CurrentUser,
-} from '@/Interfaces';
+import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { Response } from 'express';
+import { Logger } from 'n8n-core';
+
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import type { PostHogClient } from '@/posthog';
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { Body, Get, Post, Query, RestController } from '@/decorators';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import type { PublicUser } from '@/interfaces';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
+import { PostHogClient } from '@/posthog';
+import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
-import type { UserRepository } from '@db/repositories';
-import { InternalHooks } from '../InternalHooks';
-import Container from 'typedi';
+} from '@/sso.ee/sso-helpers';
 
 @RestController()
 export class AuthController {
-	private readonly config: Config;
+	constructor(
+		private readonly logger: Logger,
+		private readonly authService: AuthService,
+		private readonly mfaService: MfaService,
+		private readonly userService: UserService,
+		private readonly license: License,
+		private readonly userRepository: UserRepository,
+		private readonly eventService: EventService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userRepository: UserRepository;
-
-	private readonly postHog?: PostHogClient;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		repositories,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-		this.postHog = postHog;
-	}
-
-	/**
-	 * Log in a user.
-	 */
-	@Post('/login')
-	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password } = req.body;
-		if (!email) throw new Error('Email is required to log in');
-		if (!password) throw new Error('Password is required to log in');
+	/** Log in a user */
+	@Post('/login', { skipAuth: true, rateLimit: true })
+	async login(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: LoginRequestDto,
+	): Promise<PublicUser | undefined> {
+		const { email, password, mfaCode, mfaRecoveryCode } = payload;
 
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
-
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.role === 'global:owner' ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;
@@ -86,95 +63,79 @@ export class AuthController {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
-			user = await handleLdapLogin(email, password);
+			const preliminaryUser = await handleEmailLogin(email, password);
+			if (preliminaryUser?.role === 'global:owner') {
+				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
+			} else {
+				user = await handleLdapLogin(email, password);
+			}
 		} else {
 			user = await handleEmailLogin(email, password);
 		}
+
 		if (user) {
-			await issueCookie(res, user);
-			void Container.get(InternalHooks).onUserLoginSuccess({
+			if (user.mfaEnabled) {
+				if (!mfaCode && !mfaRecoveryCode) {
+					throw new AuthError('MFA Error', 998);
+				}
+
+				const isMfaCodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(
+					user.id,
+					mfaCode,
+					mfaRecoveryCode,
+				);
+				if (!isMfaCodeOrMfaRecoveryCodeValid) {
+					throw new AuthError('Invalid mfa token or recovery code');
+				}
+			}
+
+			this.authService.issueCookie(res, user, req.browserId);
+
+			this.eventService.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
-			return withFeatureFlags(this.postHog, sanitizeUser(user));
+
+			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
-		void Container.get(InternalHooks).onUserLoginFailed({
-			user: email,
+		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
+			userEmail: email,
 			reason: 'wrong credentials',
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
-	/**
-	 * Manually check the `n8n-auth` cookie.
-	 */
+	/** Check if the user is already logged in */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
-		// Manually check the existing cookie.
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
-
-		let user: User;
-		if (cookieContents) {
-			// If logged in, return user
-			try {
-				user = await resolveJwt(cookieContents);
-				return await withFeatureFlags(this.postHog, sanitizeUser(user));
-			} catch (error) {
-				res.clearCookie(AUTH_COOKIE_NAME);
-			}
-		}
-
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			throw new AuthError('Not logged in');
-		}
-
-		try {
-			user = await this.userRepository.findOneOrFail({
-				relations: ['globalRole'],
-				where: {},
-			});
-		} catch (error) {
-			throw new InternalServerError(
-				'No users found in database - did you wipe the users table? Create at least one user.',
-			);
-		}
-
-		if (user.email || user.password) {
-			throw new InternalServerError('Invalid database state - user has password set.');
-		}
-
-		await issueCookie(res, user);
-		return withFeatureFlags(this.postHog, sanitizeUser(user));
+	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
+		return await this.userService.toPublic(req.user, {
+			posthog: this.postHog,
+			withScopes: true,
+		});
 	}
 
-	/**
-	 * Validate invite token to enable invitee to set up their account.
-	 */
-	@Get('/resolve-signup-token')
-	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
-		const { inviterId, inviteeId } = req.query;
+	/** Validate invite token to enable invitee to set up their account */
+	@Get('/resolve-signup-token', { skipAuth: true })
+	async resolveSignupToken(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Query payload: ResolveSignupTokenQueryDto,
+	) {
+		const { inviterId, inviteeId } = payload;
+		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
-		if (!inviterId || !inviteeId) {
-			this.logger.debug(
-				'Request to resolve signup token failed because of missing user IDs in query string',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('Invalid payload');
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
+				inviterId,
+				inviteeId,
+			});
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		// Postgres validates UUID format
-		for (const userId of [inviterId, inviteeId]) {
-			if (!validator.isUUID(userId)) {
-				this.logger.debug('Request to resolve signup token failed because of invalid user ID', {
-					userId,
-				});
-				throw new BadRequestError('Invalid userId');
-			}
-		}
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
-		const users = await this.userRepository.find({ where: { id: In([inviterId, inviteeId]) } });
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
@@ -203,19 +164,17 @@ export class AuthController {
 			throw new BadRequestError('Invalid request');
 		}
 
-		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };
 	}
 
-	/**
-	 * Log out a user.
-	 */
-	@Authorized()
+	/** Log out a user */
 	@Post('/logout')
-	logout(req: Request, res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+	async logout(req: AuthenticatedRequest, res: Response) {
+		await this.authService.invalidateToken(req);
+		this.authService.clearCookie(res);
 		return { loggedOut: true };
 	}
 }

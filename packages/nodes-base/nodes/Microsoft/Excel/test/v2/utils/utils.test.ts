@@ -1,6 +1,10 @@
+import { mock } from 'jest-mock-extended';
 import { get } from 'lodash';
+import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+
 import {
+	checkRange,
 	prepareOutput,
 	updateByAutoMaping,
 	updateByDefinedValues,
@@ -17,6 +21,9 @@ const node: INode = {
 
 const fakeExecute = (nodeParameters: IDataObject[]) => {
 	const fakeExecuteFunction = {
+		getInputData() {
+			return [{ json: {} }];
+		},
 		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
@@ -86,27 +93,37 @@ const responseData = {
 };
 
 describe('Test MicrosoftExcelV2, prepareOutput', () => {
+	const thisArg = mock<IExecuteFunctions>({
+		helpers: mock({ constructExecutionMetaData }),
+		getInputData() {
+			return [{ json: {} }];
+		},
+	});
+
 	it('should return empty array', () => {
-		const output = prepareOutput(node, { values: [] }, { rawData: false });
+		const output = prepareOutput.call(thisArg, node, { values: [] }, { rawData: false });
 		expect(output).toBeDefined();
 		expect(output).toEqual([]);
 	});
 
 	it('should return raw response', () => {
-		const output = prepareOutput(node, responseData, { rawData: true });
+		const output = prepareOutput.call(thisArg, node, responseData, { rawData: true });
 		expect(output).toBeDefined();
 		expect(output[0].json.data).toEqual(responseData);
 	});
 
 	it('should return raw response in custom property', () => {
 		const customKey = 'customKey';
-		const output = prepareOutput(node, responseData, { rawData: true, dataProperty: customKey });
+		const output = prepareOutput.call(thisArg, node, responseData, {
+			rawData: true,
+			dataProperty: customKey,
+		});
 		expect(output).toBeDefined();
 		expect(output[0].json.customKey).toEqual(responseData);
 	});
 
 	it('should return formated response', () => {
-		const output = prepareOutput(node, responseData, { rawData: false });
+		const output = prepareOutput.call(thisArg, node, responseData, { rawData: false });
 		expect(output).toBeDefined();
 		expect(output.length).toEqual(3);
 		expect(output[0].json).toEqual({
@@ -118,7 +135,10 @@ describe('Test MicrosoftExcelV2, prepareOutput', () => {
 	});
 
 	it('should return response with selected first data row', () => {
-		const output = prepareOutput(node, responseData, { rawData: false, firstDataRow: 3 });
+		const output = prepareOutput.call(thisArg, node, responseData, {
+			rawData: false,
+			firstDataRow: 3,
+		});
 		expect(output).toBeDefined();
 		expect(output.length).toEqual(1);
 		expect(output[0].json).toEqual({
@@ -132,7 +152,11 @@ describe('Test MicrosoftExcelV2, prepareOutput', () => {
 	it('should return response with selected first data row', () => {
 		const [firstRow, ...rest] = responseData.values;
 		const response = { values: [...rest, firstRow] };
-		const output = prepareOutput(node, response, { rawData: false, keyRow: 3, firstDataRow: 0 });
+		const output = prepareOutput.call(thisArg, node, response, {
+			rawData: false,
+			keyRow: 3,
+			firstDataRow: 0,
+		});
 		expect(output).toBeDefined();
 		expect(output.length).toEqual(3);
 		expect(output[0].json).toEqual({
@@ -469,7 +493,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 		expect(updateSummary.updatedData[4][1]).toEqual('Ismael'); // updated value
 	});
 
-	it('should update all occurances', () => {
+	it('should update all occurrences', () => {
 		const items = [
 			{
 				json: {
@@ -532,5 +556,21 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 		expect(updateSummary.updatedRows.length).toEqual(1);
 		expect(updateSummary.appendData[0]).toEqual({ id: 4, name: 'Donald', age: 45, data: 'data 4' });
 		expect(updateSummary.appendData[1]).toEqual({ id: 5, name: 'Victor', age: 67, data: 'data 5' });
+	});
+});
+
+describe('Test MicrosoftExcelV2, checkRange', () => {
+	it('should not throw error', () => {
+		const range = 'A1:D4';
+		expect(() => {
+			checkRange(node, range);
+		}).not.toThrow();
+	});
+
+	it('should throw error', () => {
+		const range = 'A:D';
+		expect(() => {
+			checkRange(node, range);
+		}).toThrow();
 	});
 });

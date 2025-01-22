@@ -1,14 +1,13 @@
+import flow from 'lodash/flow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
-
-import flow from 'lodash.flow';
 
 import type { Zammad } from './types';
 
@@ -18,12 +17,12 @@ export function tolerateTrailingSlash(url: string) {
 
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -34,9 +33,8 @@ export async function zammadApiRequest(
 	const authentication = this.getNodeParameter('authentication', 0) as 'basicAuth' | 'tokenAuth';
 
 	if (authentication === 'basicAuth') {
-		const credentials = (await this.getCredentials(
-			'zammadBasicAuthApi',
-		)) as Zammad.BasicAuthCredentials;
+		const credentials =
+			await this.getCredentials<Zammad.BasicAuthCredentials>('zammadBasicAuthApi');
 
 		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
@@ -49,9 +47,8 @@ export async function zammadApiRequest(
 
 		options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
 	} else {
-		const credentials = (await this.getCredentials(
-			'zammadTokenAuthApi',
-		)) as Zammad.TokenAuthCredentials;
+		const credentials =
+			await this.getCredentials<Zammad.TokenAuthCredentials>('zammadTokenAuthApi');
 
 		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
@@ -85,7 +82,7 @@ export async function zammadApiRequest(
 
 export async function zammadApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

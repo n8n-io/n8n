@@ -172,6 +172,49 @@ module.exports = {
 		},
 	},
 
+	'no-useless-catch-throw': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Disallow `try-catch` blocks where the `catch` only contains a `throw error`.',
+				recommended: 'error',
+			},
+			messages: {
+				noUselessCatchThrow: 'Remove useless `catch` block.',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CatchClause(node) {
+					if (
+						node.body.body.length === 1 &&
+						node.body.body[0].type === 'ThrowStatement' &&
+						node.body.body[0].argument.type === 'Identifier' &&
+						node.body.body[0].argument.name === node.param.name
+					) {
+						context.report({
+							node,
+							messageId: 'noUselessCatchThrow',
+							fix(fixer) {
+								const tryStatement = node.parent;
+								const tryBlock = tryStatement.block;
+								const sourceCode = context.getSourceCode();
+								const tryBlockText = sourceCode.getText(tryBlock);
+								const tryBlockTextWithoutBraces = tryBlockText.slice(1, -1).trim();
+								const indentedTryBlockText = tryBlockTextWithoutBraces
+									.split('\n')
+									.map((line) => line.replace(/\t/, ''))
+									.join('\n');
+								return fixer.replaceText(tryStatement, indentedTryBlockText);
+							},
+						});
+					}
+				},
+			};
+		},
+	},
+
 	'no-skipped-tests': {
 		meta: {
 			type: 'problem',
@@ -182,12 +225,14 @@ module.exports = {
 			messages: {
 				removeSkip: 'Remove `.skip()` call',
 				removeOnly: 'Remove `.only()` call',
+				removeXPrefix: 'Remove `x` prefix',
 			},
 			fixable: 'code',
 		},
 		create(context) {
 			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
 			const SKIPPING_METHODS = new Set(['skip', 'only']);
+			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'xdescribe']);
 			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
 
 			return {
@@ -205,6 +250,18 @@ module.exports = {
 								const [start, end] = node.property.range;
 								return fixer.removeRange([start - '.'.length, end]);
 							},
+						});
+					}
+				},
+				CallExpression(node) {
+					if (
+						node.callee.type === 'Identifier' &&
+						PREFIXED_TESTING_FUNCTIONS.has(node.callee.name)
+					) {
+						context.report({
+							messageId: 'removeXPrefix',
+							node,
+							fix: (fixer) => fixer.replaceText(node.callee, 'test'),
 						});
 					}
 				},
@@ -349,6 +406,154 @@ module.exports = {
 						node,
 						message: `Set \`${USE_HTML_PROPERTY}: true\` in the argument to \`${methodName}\`. At least one of the values in \`title\` or \`message\` contains HTML.`,
 					});
+				},
+			};
+		},
+	},
+
+	'no-plain-errors': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Only `ApplicationError` (from the `workflow` package) or its child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
+				recommended: 'error',
+			},
+			messages: {
+				useApplicationError:
+					'Throw an `ApplicationError` (from the `workflow` package) or its child classes.',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				ThrowStatement(node) {
+					if (!node.argument) return;
+
+					const isNewError =
+						node.argument.type === 'NewExpression' && node.argument.callee.name === 'Error';
+
+					const isNewlessError =
+						node.argument.type === 'CallExpression' && node.argument.callee.name === 'Error';
+
+					if (isNewError || isNewlessError) {
+						return context.report({
+							messageId: 'useApplicationError',
+							node,
+							fix: (fixer) =>
+								fixer.replaceText(
+									node,
+									`throw new ApplicationError(${node.argument.arguments
+										.map((arg) => arg.raw)
+										.join(', ')})`,
+								),
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-dynamic-import-template': {
+		meta: {
+			type: 'error',
+			docs: {
+				description:
+					'Disallow non-relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+				recommended: true,
+			},
+		},
+		create: function (context) {
+			return {
+				'AwaitExpression > ImportExpression TemplateLiteral'(node) {
+					const templateValue = node.quasis[0].value.cooked;
+
+					if (!templateValue?.startsWith('@/')) return;
+
+					context.report({
+						node,
+						message:
+							'Use relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+					});
+				},
+			};
+		},
+	},
+
+	'misplaced-n8n-typeorm-import': {
+		meta: {
+			type: 'error',
+			docs: {
+				description:
+					'Ensure `@n8n/typeorm` is imported only from within the `packages/cli/src/databases` directory.',
+				recommended: 'error',
+			},
+			messages: {
+				moveImport: 'Move this import to `packages/cli/src/databases/**/*.ts`.',
+			},
+		},
+		create(context) {
+			return {
+				ImportDeclaration(node) {
+					if (
+						node.source.value === '@n8n/typeorm' &&
+						!context.getFilename().includes('packages/cli/src/databases/')
+					) {
+						context.report({ node, messageId: 'moveImport' });
+					}
+				},
+			};
+		},
+	},
+
+	'no-type-unsafe-event-emitter': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Disallow extending from `EventEmitter`, which is not type-safe.',
+				recommended: 'error',
+			},
+			messages: {
+				noExtendsEventEmitter: 'Extend from the type-safe `TypedEmitter` class instead.',
+			},
+		},
+		create(context) {
+			return {
+				ClassDeclaration(node) {
+					if (
+						node.superClass &&
+						node.superClass.type === 'Identifier' &&
+						node.superClass.name === 'EventEmitter' &&
+						node.id.name !== 'TypedEmitter'
+					) {
+						context.report({
+							node: node.superClass,
+							messageId: 'noExtendsEventEmitter',
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-untyped-config-class-field': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Enforce explicit typing of config class fields',
+				recommended: 'error',
+			},
+			messages: {
+				noUntypedConfigClassField:
+					'Class field must have an explicit type annotation, e.g. `field: type = value`. See: https://github.com/n8n-io/n8n/pull/10433',
+			},
+		},
+		create(context) {
+			return {
+				PropertyDefinition(node) {
+					if (!node.typeAnnotation) {
+						context.report({ node: node.key, messageId: 'noUntypedConfigClassField' });
+					}
 				},
 			};
 		},

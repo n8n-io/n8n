@@ -10,6 +10,8 @@ export class LoneScaleApi implements ICredentialType {
 
 	displayName = 'LoneScale API';
 
+	documentationUrl = 'lonescale';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

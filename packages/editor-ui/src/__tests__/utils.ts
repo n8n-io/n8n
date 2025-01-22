@@ -1,18 +1,35 @@
+import { within, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { render } from '@testing-library/vue';
-import { PiniaVuePlugin } from 'pinia';
+import { defaultSettings } from './defaults';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import type { Mock } from 'vitest';
+import type { Store, StoreDefinition } from 'pinia';
+import type { ComputedRef } from 'vue';
 
-export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
-	return new Promise((resolve, reject) => {
+/**
+ * Retries the given assertion until it passes or the timeout is reached
+ *
+ * @example
+ * await retry(
+ *   () => expect(screen.getByText('Hello')).toBeInTheDocument()
+ * );
+ */
+export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
+	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
 		const tryAgain = () => {
 			setTimeout(() => {
 				try {
 					resolve(assertion());
-				} catch (err) {
-					Date.now() - startTime > timeout ? reject(err) : tryAgain();
+				} catch (error) {
+					if (Date.now() - startTime > timeout) {
+						reject(error);
+					} else {
+						tryAgain();
+					}
 				}
 			}, interval);
 		};
@@ -21,95 +38,16 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 	});
 };
 
-type RenderParams = Parameters<typeof render>;
-export const renderComponent = (Component: RenderParams[0], renderOptions: RenderParams[1] = {}) =>
-	render(Component, renderOptions, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
-
-export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
+export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
-	settings: {
-		allowedModules: {},
-		communityNodesEnabled: false,
-		defaultLocale: '',
-		endpointWebhook: '',
-		endpointWebhookTest: '',
-		enterprise: {
-			advancedExecutionFilters: false,
-			sharing: false,
-			ldap: false,
-			saml: false,
-			logStreaming: false,
-			variables: false,
-			versionControl: false,
-		},
-		executionMode: 'regular',
-		executionTimeout: 0,
-		hideUsagePage: false,
-		hiringBannerEnabled: false,
-		instanceId: '',
-		isNpmAvailable: false,
-		license: { environment: 'production' },
-		logLevel: 'info',
-		maxExecutionTimeout: 0,
-		oauthCallbackUrls: { oauth1: '', oauth2: '' },
-		onboardingCallPromptEnabled: false,
-		personalizationSurveyEnabled: false,
-		posthog: {
-			apiHost: '',
-			apiKey: '',
-			autocapture: false,
-			debug: false,
-			disableSessionRecording: false,
-			enabled: false,
-		},
-		publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
-		pushBackend: 'sse',
-		saveDataErrorExecution: 'all',
-		saveDataSuccessExecution: 'all',
-		saveManualExecutions: false,
-		sso: {
-			ldap: { loginEnabled: false, loginLabel: '' },
-			saml: { loginEnabled: false, loginLabel: '' },
-		},
-		telemetry: { enabled: false },
-		templates: { enabled: false, host: '' },
-		timezone: '',
-		urlBaseEditor: '',
-		urlBaseWebhook: '',
-		userManagement: {
-			enabled: false,
-			smtpSetup: false,
-			authenticationMethod: UserManagementAuthenticationMethod.Email,
-		},
-		versionCli: '',
-		versionNotifications: {
-			enabled: false,
-			endpoint: '',
-			infoUrl: '',
-		},
-		workflowCallerPolicyDefaultOption: 'any',
-		workflowTagsDisabled: false,
-		deployment: {
-			type: 'default',
-		},
-		variables: {
-			limit: 100,
-		},
-	},
-	promptsData: {
-		message: '',
-		title: '',
-		showContactPrompt: false,
-		showValueSurvey: false,
-	},
+	initialized: true,
+	settings: defaultSettings,
 	userManagement: {
-		enabled: false,
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		quota: defaultSettings.userManagement.quota,
 	},
 	templatesEndpointHealthy: false,
 	api: {
@@ -128,8 +66,75 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		loginLabel: '',
 		loginEnabled: false,
 	},
-	onboardingCallPromptEnabled: false,
+	mfa: {
+		enabled: false,
+	},
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
+	saveDataProgressExecution: false,
 	saveManualExecutions: false,
 };
+
+export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
+	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
+	const selectTrigger = dropdownTriggerParent.querySelector(
+		'.select-trigger[aria-describedby]',
+	) as HTMLElement;
+	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
+
+	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
+	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
+	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
+
+	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
+};
+
+export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
+	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
+	expect(selectedItem).toBeInTheDocument();
+	return selectedItem?.querySelector('p')?.textContent?.trim();
+};
+
+/**
+ * Create a container for teleported modals
+ *
+ * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
+ * @returns {HTMLElement} appModals
+ */
+export const createAppModals = () => {
+	const appModals = document.createElement('div');
+	appModals.id = APP_MODALS_ELEMENT_ID;
+	document.body.appendChild(appModals);
+	return appModals;
+};
+
+export const cleanupAppModals = () => {
+	document.body.innerHTML = '';
+};
+
+/**
+ * Typescript helper for mocking pinia store actions return value
+ *
+ * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
+ */
+export const mockedStore = <TStoreDef extends () => unknown>(
+	useStore: TStoreDef,
+): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
+	? Store<
+			Id,
+			State,
+			Record<string, never>,
+			{
+				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+					? Mock<(...args: Args) => ReturnT>
+					: Actions[K];
+			}
+		> & {
+			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
+		}
+	: ReturnType<TStoreDef> => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return useStore() as any;
+};
+
+export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;

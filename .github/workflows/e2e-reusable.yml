@@ -22,11 +22,6 @@ on:
         required: false
         default: 'browsers:node18.12.0-chrome107'
         type: string
-      cache-key:
-        description: 'Cache key for modules and build artifacts.'
-        required: false
-        default: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
-        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -40,12 +35,17 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
         required: false
         type: number
+      node_view_version:
+        description: 'Node View version to run tests with.'
+        required: false
+        default: '1'
+        type: string
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
@@ -76,9 +76,8 @@ jobs:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Checkout PR
@@ -87,23 +86,13 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2.2.4
-        with:
-          run_install: true
+      - uses: pnpm/action-setup@v4.0.0
 
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ inputs.cache-key }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v6.6.1
         with:
           # Disable running of tests within install job
           runTests: false
@@ -111,7 +100,17 @@ jobs:
           build: pnpm build
 
       - name: Cypress install
+        working-directory: cypress
         run: pnpm cypress:install
+
+      - name: Cache build artifacts
+        uses: actions/cache/save@v4.0.0
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./packages/**/dist
+          key: ${{ github.sha }}-e2e
 
   testing:
     runs-on: ubuntu-latest
@@ -126,9 +125,8 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Checkout PR
@@ -137,22 +135,24 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v4.0.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v4.0.0
         with:
           path: |
             /github/home/.cache
             /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ inputs.cache-key }}
+            ./packages/**/dist
+          key: ${{ github.sha }}-e2e
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v6.6.1
         with:
+          working-directory: cypress
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678'
@@ -162,14 +162,15 @@ jobs:
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
-          config-file: /__w/n8n/n8n/cypress.config.js
+          spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
+          CYPRESS_NODE_VIEW_VERSION: ${{ inputs.node_view_version }}
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable
   check_testing_matrix:

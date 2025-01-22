@@ -1,12 +1,12 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
-import type { SamlPreferences } from '@/Interface';
-import { updateCurrentUser } from '@/api/users';
 import type { SamlPreferencesExtractedData } from '@/Interface';
+import { updateCurrentUser } from '@/api/users';
 import { useUsersStore } from '@/stores/users.store';
 
 export const useSSOStore = defineStore('sso', () => {
@@ -43,8 +43,8 @@ export const useSSOStore = defineStore('sso', () => {
 			void toggleLoginEnabled(value);
 		},
 	});
-	const isEnterpriseSamlEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Saml),
+	const isEnterpriseSamlEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
 	);
 	const isDefaultAuthenticationSaml = computed(() => settingsStore.isDefaultAuthenticationSaml);
 	const showSsoLoginButton = computed(
@@ -54,24 +54,23 @@ export const useSSOStore = defineStore('sso', () => {
 			isDefaultAuthenticationSaml.value,
 	);
 
-	const getSSORedirectUrl = async () => ssoApi.initSSO(rootStore.getRestApiContext);
+	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.restApiContext);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
-		ssoApi.toggleSamlConfig(rootStore.getRestApiContext, { loginEnabled: enabled });
+		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
 
-	const getSamlMetadata = async () => ssoApi.getSamlMetadata(rootStore.getRestApiContext);
+	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 	const getSamlConfig = async () => {
-		const samlConfig = await ssoApi.getSamlConfig(rootStore.getRestApiContext);
+		const samlConfig = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		state.samlConfig = samlConfig;
 		return samlConfig;
 	};
-	const saveSamlConfig = async (config: SamlPreferences) =>
-		ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
-	const testSamlConfig = async () => ssoApi.testSamlConfig(rootStore.getRestApiContext);
+	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
+	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
-		updateCurrentUser(rootStore.getRestApiContext, {
-			id: usersStore.currentUser!.id,
+		await updateCurrentUser(rootStore.restApiContext, {
 			email: usersStore.currentUser!.email!,
 			...params,
 		});

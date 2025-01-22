@@ -1,0 +1,360 @@
+{
+	"name": "splitOut test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 400]
+		},
+		{
+			"parameters": {
+				"jsCode": "return { \ndata:[\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n],\ndata2: [\n  {text: 'foo'},\n],\ndata3: [\n  {text: 'bar'},\n],\n};"
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-180, 400]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"options": {}
+			},
+			"id": "e7eac465-8fe6-498c-9942-ebd47df537c1",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [80, 160]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"include": "allOtherFields",
+				"options": {}
+			},
+			"id": "09b7fe15-dbad-4ca6-bf1e-3093139d14e5",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [80, 320]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": ["data3"],
+
+
+
+
+
+
+				"options": {}
+			},
+			"id": "7ea63dc7-8141-4233-af47-9894919c7fe4",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [80, 480]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"options": {
+					"destinationFieldName": "output"
+				}
+			},
+			"id": "89c3c1b4-9577-480a-931f-3b34450b23cb",
+			"name": "Item Lists3",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [80, 660]
+		}
+	],
+	"pinData": {
+		"Item Lists": [
+			{
+				"json": {
+					"id": 3,
+					"char": "c"
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"char": "d"
+				}
+			},
+			{
+				"json": {
+					"id": 5,
+					"char": "e"
+				}
+			},
+			{
+				"json": {
+					"id": 1,
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"char": "b"
+				}
+			}
+		],
+		"Item Lists1": [
+			{
+				"json": {
+					"data2": [
+						{
+							"text": "foo"
+						}
+					],
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 3,
+						"char": "c"
+					}
+				}
+			},
+			{
+				"json": {
+					"data2": [
+						{
+							"text": "foo"
+						}
+					],
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 4,
+						"char": "d"
+					}
+				}
+			},
+			{
+				"json": {
+					"data2": [
+						{
+							"text": "foo"
+						}
+					],
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 5,
+						"char": "e"
+					}
+				}
+			},
+			{
+				"json": {
+					"data2": [
+						{
+							"text": "foo"
+						}
+					],
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 1,
+						"char": "a"
+					}
+				}
+			},
+			{
+				"json": {
+					"data2": [
+						{
+							"text": "foo"
+						}
+					],
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 2,
+						"char": "b"
+					}
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 3,
+						"char": "c"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 4,
+						"char": "d"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 5,
+						"char": "e"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 1,
+						"char": "a"
+					}
+				}
+			},
+			{
+				"json": {
+					"data3": [
+						{
+							"text": "bar"
+						}
+					],
+					"data": {
+						"id": 2,
+						"char": "b"
+					}
+				}
+			}
+		],
+		"Item Lists3": [
+			{
+				"json": {
+					"output": {
+						"id": 3,
+						"char": "c"
+					}
+				}
+			},
+			{
+				"json": {
+					"output": {
+						"id": 4,
+						"char": "d"
+					}
+				}
+			},
+			{
+				"json": {
+					"output": {
+						"id": 5,
+						"char": "e"
+					}
+				}
+			},
+			{
+				"json": {
+					"output": {
+						"id": 1,
+						"char": "a"
+					}
+				}
+			},
+			{
+				"json": {
+					"output": {
+						"id": 2,
+						"char": "b"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9230f580-6f41-47c9-9949-bf258fc3fa47",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

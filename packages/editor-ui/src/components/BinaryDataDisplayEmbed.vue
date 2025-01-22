@@ -1,3 +1,58 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import VueJsonPretty from 'vue-json-pretty';
+import RunDataHtml from '@/components/RunDataHtml.vue';
+import { useI18n } from '@/composables/useI18n';
+
+const props = defineProps<{
+	binaryData: IBinaryData;
+}>();
+
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const data = ref('');
+
+const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
+
+const embedClass = computed(() => {
+	return [props.binaryData.fileType ?? 'other'];
+});
+
+onMounted(async () => {
+	const { id, data: binaryData, fileName, fileType, mimeType } = props.binaryData;
+	const isJSONData = fileType === 'json';
+	const isHTMLData = fileType === 'html';
+
+	if (!id) {
+		if (isJSONData || isHTMLData) {
+			data.value = jsonParse(atob(binaryData));
+		} else {
+			embedSource.value = 'data:' + mimeType + ';base64,' + binaryData;
+		}
+	} else {
+		try {
+			const binaryUrl = workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
+			if (isJSONData || isHTMLData) {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				data.value = await (isJSONData ? fetchedData.json() : fetchedData.text());
+			} else {
+				embedSource.value = binaryUrl;
+			}
+		} catch (e) {
+			error.value = true;
+		}
+	}
+
+	isLoading.value = false;
+});
+</script>
+
 <template>
 	<span>
 		<div v-if="isLoading">Loading binary data...</div>
@@ -5,96 +60,36 @@
 		<span v-else>
 			<video v-if="binaryData.fileType === 'video'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType" />
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<vue-json-pretty
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</audio>
+			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
-				:data="jsonData"
+				:data="data"
 				:deep="3"
-				:showLength="true"
+				:show-length="true"
 			/>
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
 		</span>
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import type { IBinaryData } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-import type { PropType } from 'vue';
-import VueJsonPretty from 'vue-json-pretty';
-import { useWorkflowsStore } from '@/stores';
-
-export default defineComponent({
-	name: 'BinaryDataDisplayEmbed',
-	components: {
-		VueJsonPretty,
-	},
-	props: {
-		binaryData: {
-			type: Object as PropType<IBinaryData>,
-			required: true,
-		},
-	},
-	data() {
-		return {
-			isLoading: true,
-			embedSource: '',
-			error: false,
-			jsonData: '',
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-	},
-	async mounted() {
-		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
-		const isJSONData = fileType === 'json';
-
-		if (!id) {
-			if (isJSONData) {
-				this.jsonData = jsonParse(atob(data));
-			} else {
-				this.embedSource = 'data:' + mimeType + ';base64,' + data;
-			}
-		} else {
-			try {
-				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
-				if (isJSONData) {
-					this.jsonData = await (await fetch(binaryUrl)).json();
-				} else {
-					this.embedSource = binaryUrl;
-				}
-			} catch (e) {
-				this.error = true;
-			}
-		}
-
-		this.isLoading = false;
-	},
-	methods: {
-		embedClass(): string[] {
-			const { fileType } = (this.binaryData || {}) as IBinaryData;
-			return [fileType ?? 'other'];
-		},
-	},
-});
-</script>
-
 <style lang="scss">
+img,
+video {
+	max-height: 100%;
+	max-width: 100%;
+}
 .binary-data {
-	background-color: var(--color-foreground-xlight);
-
-	&.image {
-		max-height: calc(100% - 1em);
-		max-width: calc(100% - 1em);
-	}
-
-	&.other {
-		height: calc(100% - 1em);
-		width: calc(100% - 1em);
+	&.other,
+	&.pdf {
+		height: 100%;
+		width: 100%;
 	}
 }
 </style>

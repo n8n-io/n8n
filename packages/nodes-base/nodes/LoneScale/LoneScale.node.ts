@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from './GenericFunctions';
 
@@ -15,15 +16,15 @@ export class LoneScale implements INodeType {
 		displayName: 'LoneScale',
 		name: 'loneScale',
 		group: ['transform'],
-		icon: 'file:lonescale-logo.svg',
+		icon: { light: 'file:loneScale.svg', dark: 'file:loneScale.dark.svg' },
 		version: 1,
 		description: 'Create List, add / delete items',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
 			name: 'LoneScale',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'loneScaleApi',
@@ -133,7 +134,7 @@ export class LoneScale implements INodeType {
 				},
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				required: true,
 			},
 			{
@@ -378,7 +379,6 @@ export class LoneScale implements INodeType {
 
 						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -459,7 +459,6 @@ export class LoneScale implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -478,6 +477,6 @@ export class LoneScale implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

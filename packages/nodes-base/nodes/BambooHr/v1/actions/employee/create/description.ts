@@ -1,6 +1,5 @@
-import type { EmployeeProperties } from '../../Interfaces';
-
 import { createEmployeeSharedDescription } from './shareDescription';
+import type { EmployeeProperties } from '../../Interfaces';
 
 export const employeeCreateDescription: EmployeeProperties = [
 	{
@@ -44,7 +43,7 @@ export const employeeCreateDescription: EmployeeProperties = [
 		},
 		default: '',
 	},
-	...createEmployeeSharedDescription(true),
+	...(createEmployeeSharedDescription(true) as EmployeeProperties),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

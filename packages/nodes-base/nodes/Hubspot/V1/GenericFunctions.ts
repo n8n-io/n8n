@@ -1,25 +1,20 @@
-import type { OptionsWithUri } from 'request';
-
-import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
+import moment from 'moment-timezone';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment';
-
 export async function hubspotApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -33,15 +28,15 @@ export async function hubspotApiRequest(
 		authenticationMethod = 'developerApi';
 	}
 
-	const options: OptionsWithUri = {
+	const options = {
 		method,
 		qs: query,
-		headers: {},
+		headers: {} as IDataObject,
 		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
 		useQuerystring: true,
-	};
+	} satisfies IRequestOptions;
 
 	try {
 		if (authenticationMethod === 'apiKey') {
@@ -52,7 +47,7 @@ export async function hubspotApiRequest(
 		} else if (authenticationMethod === 'appToken') {
 			const credentials = await this.getCredentials('hubspotAppToken');
 
-			options.headers!.Authorization = `Bearer ${credentials.appToken}`;
+			options.headers.Authorization = `Bearer ${credentials.appToken}`;
 			return await this.helpers.request(options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
@@ -82,8 +77,8 @@ export async function hubspotApiRequest(
  */
 export async function hubspotApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: string,
+	_propertyName: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -2006,7 +2001,7 @@ export async function validateCredentials(
 		apiKey: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method: 'GET',
 		headers: {},
 		uri: 'https://api.hubapi.com/deals/v1/deal/paged',
@@ -2019,5 +2014,5 @@ export async function validateCredentials(
 		options.headers = { Authorization: `Bearer ${appToken}` };
 	}
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

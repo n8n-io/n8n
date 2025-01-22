@@ -1,5 +1,4 @@
-import type { OptionsWithUri } from 'request';
-
+import { snakeCase } from 'change-case';
 import type {
 	JsonObject,
 	IDataObject,
@@ -7,14 +6,14 @@ import type {
 	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
-
 export async function pagerDutyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -24,7 +23,7 @@ export async function pagerDutyApiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/vnd.pagerduty+json;version=2',
 		},
@@ -65,7 +64,7 @@ export async function pagerDutyApiRequest(
 export async function pagerDutyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

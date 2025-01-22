@@ -1,9 +1,11 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -11,12 +13,8 @@ import {
 	unleashedApiRequest,
 	unleashedApiRequestAllItems,
 } from './GenericFunctions';
-
 import { salesOrderFields, salesOrderOperations } from './SalesOrderDescription';
-
 import { stockOnHandFields, stockOnHandOperations } from './StockOnHandDescription';
-
-import moment from 'moment';
 
 export class UnleashedSoftware implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +29,8 @@ export class UnleashedSoftware implements INodeType {
 		defaults: {
 			name: 'Unleashed Software',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'unleashedSoftwareApi',
@@ -194,6 +192,6 @@ export class UnleashedSoftware implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

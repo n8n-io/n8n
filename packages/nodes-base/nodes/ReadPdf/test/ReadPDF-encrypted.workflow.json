@@ -1,0 +1,88 @@
+{
+	"nodes": [
+		{
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"parameters": {},
+			"position": [660, 580]
+		},
+		{
+			"name": "Read sample-encrypted.pdf",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"parameters": {
+				"filePath": "C:\\Test\\sample-encrypted.pdf"
+			},
+			"position": [880, 780]
+		},
+		{
+			"name": "Read PDF (encrypted)",
+			"type": "n8n-nodes-base.readPDF",
+			"typeVersion": 1,
+			"parameters": {
+				"encrypted": true,
+				"password": "ReaderPassword"
+			},
+			"position": [1100, 780]
+		}
+	],
+	"pinData": {
+		"Read PDF (encrypted)": [
+			{
+				"binary": {
+					"data": {
+						"fileExtension": "pdf",
+						"fileName": "sample-encrypted.pdf",
+						"fileSize": "18.9 kB",
+						"fileType": "pdf",
+						"mimeType": "application/pdf"
+					}
+				},
+				"json": {
+					"numpages": 1,
+					"numrender": 1,
+					"info": {
+						"PDFFormatVersion": "1.7",
+						"Language": null,
+						"EncryptFilterName": "Standard",
+						"IsLinearized": false,
+						"IsAcroFormPresent": false,
+						"IsXFAPresent": false,
+						"IsCollectionPresent": false,
+						"IsSignaturesPresent": false,
+						"ModDate": "D:20230210122750Z",
+						"Producer": "iLovePDF",
+						"Title": "sample"
+					},
+					"text": "N8N\nSample PDF\nLorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor\ninvidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et\njusto duo dolores et ea rebum.",
+					"version": "2.16.105"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read sample-encrypted.pdf",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read sample-encrypted.pdf": {
+			"main": [
+				[
+					{
+						"node": "Read PDF (encrypted)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

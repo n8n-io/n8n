@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
 
@@ -91,7 +91,7 @@ export class GitlabTrigger implements INodeType {
 			name: 'GitLab Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'gitlabApi',
@@ -144,7 +144,7 @@ export class GitlabTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory',
+				description: 'Owner of the repository',
 			},
 			{
 				displayName: 'Repository Name',
@@ -153,7 +153,7 @@ export class GitlabTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n',
-				description: 'The name of the repsitory',
+				description: 'The name of the repository',
 			},
 			{
 				displayName: 'Events',
@@ -195,7 +195,7 @@ export class GitlabTrigger implements INodeType {
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.cause.httpCode === '404') {
+					if (error.cause.httpCode === '404' || error.description.includes('404')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;

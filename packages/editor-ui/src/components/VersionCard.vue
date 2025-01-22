@@ -1,82 +1,74 @@
+<script setup lang="ts">
+import NodeIcon from './NodeIcon.vue';
+import TimeAgo from './TimeAgo.vue';
+import Badge from './Badge.vue';
+import WarningTooltip from './WarningTooltip.vue';
+import type { IVersion, IVersionNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+
+defineProps<{
+	version: IVersion;
+}>();
+
+const i18n = useI18n();
+
+const nodeName = (node: IVersionNode): string => {
+	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
+};
+</script>
+
 <template>
-	<!-- eslint-disable vue/no-mutating-props -->
 	<a
 		v-if="version"
-		:set="(version = version)"
 		:href="version.documentationUrl"
 		target="_blank"
 		:class="$style.card"
+		data-test-id="version-card"
 	>
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
-					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
+					{{ `${i18n.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<template>
-						<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
-					</template>
+					<span v-n8n-html="i18n.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
-					:text="$locale.baseText('versionCard.securityUpdate')"
+					:text="i18n.baseText('versionCard.securityUpdate')"
 					type="danger"
 				/>
 				<Badge
 					v-if="version.hasBreakingChange"
-					:text="$locale.baseText('versionCard.breakingChanges')"
+					:text="i18n.baseText('versionCard.breakingChanges')"
 					type="warning"
 				/>
 			</div>
 			<div :class="$style['release-date']">
-				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
+				{{ i18n.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div
-			:class="$style.divider"
 			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
 		></div>
 		<div>
 			<div
 				v-if="version.description"
-				v-html="version.description"
 				:class="$style.description"
+				v-n8n-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
-					:nodeType="node"
-					:title="$options.nodeName(node)"
+					:node-type="node"
+					:title="nodeName(node)"
 				/>
 			</div>
 		</div>
 	</a>
 </template>
-
-<script lang="ts">
-import Vue, { defineComponent } from 'vue';
-import NodeIcon from './NodeIcon.vue';
-import TimeAgo from './TimeAgo.vue';
-import Badge from './Badge.vue';
-import WarningTooltip from './WarningTooltip.vue';
-import type { IVersionNode } from '@/Interface';
-
-Vue.component('NodeIcon', NodeIcon);
-Vue.component('TimeAgo', TimeAgo);
-Vue.component('Badge', Badge);
-Vue.component('WarningTooltip', WarningTooltip);
-
-export default defineComponent({
-	name: 'VersionCard',
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	props: ['version'],
-	// @ts-ignore
-	nodeName(node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
-	},
-});
-</script>
 
 <style module lang="scss">
 .card {

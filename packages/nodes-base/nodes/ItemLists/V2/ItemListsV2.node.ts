@@ -1,66 +1,25 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
-
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import lt from 'lodash/lt';
+import pick from 'lodash/pick';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash.get';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import lt from 'lodash.lt';
-import merge from 'lodash.merge';
-import pick from 'lodash.pick';
-import reduce from 'lodash.reduce';
-import set from 'lodash.set';
-import unset from 'lodash.unset';
-
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};
+import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 
 import * as summarize from './summarize.operation';
+import { sortByCode } from '../V3/helpers/utils';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -68,12 +27,12 @@ export class ItemListsV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'Item Lists',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [],
 			properties: [
 				{
@@ -136,7 +95,7 @@ export class ItemListsV2 implements INodeType {
 				},
 				// Split out items - Fields
 				{
-					displayName: 'Field To Split Out',
+					displayName: 'Fields To Split Out',
 					name: 'fieldToSplitOut',
 					type: 'string',
 					default: '',
@@ -147,8 +106,8 @@ export class ItemListsV2 implements INodeType {
 							operation: ['splitOutItems'],
 						},
 					},
-					description: 'The name of the input field to break out into separate items',
-					requiresDataPath: 'single',
+					description: 'The name of the input fields to break out into separate items',
+					requiresDataPath: 'multiple',
 				},
 				{
 					displayName: 'Include',
@@ -599,7 +558,7 @@ export class ItemListsV2 implements INodeType {
 					type: 'string',
 					typeOptions: {
 						alwaysOpenEditWindow: true,
-						editor: 'code',
+						editor: 'jsEditor',
 						rows: 10,
 					},
 					default: `// The two items to compare are in the variables a and b
@@ -755,6 +714,7 @@ return 0;`,
 							displayName: 'Destination Field Name',
 							name: 'destinationFieldName',
 							type: 'string',
+							requiresDataPath: 'multiple',
 							displayOptions: {
 								show: {
 									'/operation': ['splitOutItems'],
@@ -808,63 +768,124 @@ return 0;`,
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
 				for (let i = 0; i < length; i++) {
-					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
+					const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
+						.split(',')
+						.map((field) => field.trim());
 					const disableDotNotation = this.getNodeParameter(
 						'options.disableDotNotation',
 						0,
 						false,
 					) as boolean;
-					const destinationFieldName = this.getNodeParameter(
-						'options.destinationFieldName',
-						i,
-						'',
-					) as string;
-					const include = this.getNodeParameter('include', i) as string;
 
-					let arrayToSplit;
-					if (!disableDotNotation) {
-						arrayToSplit = get(items[i].json, fieldToSplitOut);
-					} else {
-						arrayToSplit = items[i].json[fieldToSplitOut];
-					}
+					const destinationFields = (
+						this.getNodeParameter('options.destinationFieldName', i, '') as string
+					)
+						.split(',')
+						.filter((field) => field.trim() !== '')
+						.map((field) => field.trim());
 
-					if (arrayToSplit === undefined) {
-						if (nodeVersion < 2.1) {
-							if (fieldToSplitOut.includes('.') && disableDotNotation) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-									{
-										description:
-											"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-									},
-								);
-							} else {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-									{ itemIndex: i },
-								);
-							}
-						} else {
-							arrayToSplit = [];
-						}
-					}
-
-					if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
+					if (destinationFields.length && destinationFields.length !== fieldsToSplitOut.length) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The provided field '${fieldToSplitOut}' is not an array or object`,
-							{ itemIndex: i },
+							'If multiple fields to split out are given, the same number of destination fields must be given',
 						);
 					}
 
-					if (!Array.isArray(arrayToSplit)) {
-						arrayToSplit = Object.values(arrayToSplit);
+					const include = this.getNodeParameter('include', i) as
+						| 'selectedOtherFields'
+						| 'allOtherFields'
+						| 'noOtherFields';
+
+					const multiSplit = fieldsToSplitOut.length > 1;
+
+					const item = { ...items[i].json };
+					const splited: IDataObject[] = [];
+					for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
+						const destinationFieldName = destinationFields[entryIndex] || '';
+
+						let arrayToSplit;
+						if (!disableDotNotation) {
+							arrayToSplit = get(item, fieldToSplitOut);
+						} else {
+							arrayToSplit = item[fieldToSplitOut];
+						}
+
+						if (arrayToSplit === undefined) {
+							if (nodeVersion < 2.1) {
+								if (fieldToSplitOut.includes('.') && disableDotNotation) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+										{
+											description:
+												"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
+										},
+									);
+								} else {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+										{ itemIndex: i },
+									);
+								}
+							} else {
+								arrayToSplit = [];
+							}
+						}
+
+						if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
+							if (nodeVersion < 2.2) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The provided field '${fieldToSplitOut}' is not an array or object`,
+									{ itemIndex: i },
+								);
+							} else {
+								arrayToSplit = [arrayToSplit];
+							}
+						}
+
+						if (!Array.isArray(arrayToSplit)) {
+							arrayToSplit = Object.values(arrayToSplit);
+						}
+
+						for (const [elementIndex, element] of arrayToSplit.entries()) {
+							if (splited[elementIndex] === undefined) {
+								splited[elementIndex] = {};
+							}
+
+							const fieldName = destinationFieldName || fieldToSplitOut;
+
+							if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
+								if (destinationFieldName === '' && !multiSplit) {
+									splited[elementIndex] = { ...splited[elementIndex], ...element };
+								} else {
+									splited[elementIndex][fieldName] = element;
+								}
+							} else {
+								splited[elementIndex][fieldName] = element;
+							}
+						}
 					}
 
-					for (const element of arrayToSplit) {
-						let newItem = {};
+					for (const splitEntry of splited) {
+						let newItem: IDataObject = {};
+
+						if (include === 'noOtherFields') {
+							newItem = splitEntry;
+						}
+
+						if (include === 'allOtherFields') {
+							const itemCopy = deepCopy(item);
+							for (const fieldToSplitOut of fieldsToSplitOut) {
+								if (!disableDotNotation) {
+									unset(itemCopy, fieldToSplitOut);
+								} else {
+									delete itemCopy[fieldToSplitOut];
+								}
+							}
+							newItem = { ...itemCopy, ...splitEntry };
+						}
 
 						if (include === 'selectedOtherFields') {
 							const fieldsToInclude = (
@@ -877,51 +898,15 @@ return 0;`,
 								});
 							}
 
-							newItem = {
-								...fieldsToInclude.reduce((prev, field) => {
-									if (field === fieldToSplitOut) {
-										return prev;
-									}
-									let value;
-									if (!disableDotNotation) {
-										value = get(items[i].json, field);
-									} else {
-										value = items[i].json[field];
-									}
-									prev = { ...prev, [field]: value };
-									return prev;
-								}, {}),
-							};
-						} else if (include === 'allOtherFields') {
-							const keys = Object.keys(items[i].json);
+							for (const field of fieldsToInclude) {
+								if (!disableDotNotation) {
+									splitEntry[field] = get(item, field);
+								} else {
+									splitEntry[field] = item[field];
+								}
+							}
 
-							newItem = {
-								...keys.reduce((prev, field) => {
-									let value;
-									if (!disableDotNotation) {
-										value = get(items[i].json, field);
-									} else {
-										value = items[i].json[field];
-									}
-									prev = { ...prev, [field]: value };
-									return prev;
-								}, {}),
-							};
-
-							unset(newItem, fieldToSplitOut);
-						}
-
-						if (
-							typeof element === 'object' &&
-							include === 'noOtherFields' &&
-							destinationFieldName === ''
-						) {
-							newItem = { ...newItem, ...element };
-						} else {
-							newItem = {
-								...newItem,
-								[destinationFieldName || fieldToSplitOut]: element,
-							};
+							newItem = splitEntry;
 						}
 
 						returnData.push({
@@ -933,7 +918,7 @@ return 0;`,
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			} else if (operation === 'aggregateItems') {
 				const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -1076,9 +1061,10 @@ return 0;`,
 
 					returnData.push(newItem);
 
-					return this.prepareOutputData(returnData);
+					return [returnData];
 				} else {
 					let newItems: IDataObject[] = items.map((item) => item.json);
+					let pairedItem: IPairedItemData[] = [];
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 					const fieldsToExclude = (
 						this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]
@@ -1088,7 +1074,7 @@ return 0;`,
 					).map((entry) => entry.fieldName);
 
 					if (fieldsToExclude.length || fieldsToInclude.length) {
-						newItems = newItems.reduce((acc, item) => {
+						newItems = newItems.reduce((acc, item, index) => {
 							const newItem: IDataObject = {};
 							let outputFields = Object.keys(item);
 
@@ -1108,13 +1094,16 @@ return 0;`,
 							if (isEmpty(newItem)) {
 								return acc;
 							}
+							pairedItem.push({ item: index });
 							return acc.concat([newItem]);
 						}, [] as IDataObject[]);
+					} else {
+						pairedItem = Array.from({ length: newItems.length }, (_, item) => ({
+							item,
+						}));
 					}
 
-					const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
-
-					return this.prepareOutputData([output]);
+					return [[{ json: { [destinationFieldName]: newItems }, pairedItem }]];
 				}
 			} else if (operation === 'removeDuplicates') {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -1181,7 +1170,7 @@ return 0;`,
 						({
 							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
-						} as INodeExecutionData),
+						}) as INodeExecutionData,
 				);
 				//sort items using the compare keys
 				newItems.sort((a, b) => {
@@ -1244,7 +1233,7 @@ return 0;`,
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
-					if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+					if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 						removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 					} else {
 						temp = newItems[index];
@@ -1261,7 +1250,7 @@ return 0;`,
 				}
 
 				// return the filtered items
-				return this.prepareOutputData(data);
+				return [data];
 			} else if (operation === 'sort') {
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
@@ -1273,7 +1262,7 @@ return 0;`,
 
 				if (type === 'random') {
 					shuffleArray(newItems);
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (type === 'simple') {
@@ -1383,45 +1372,16 @@ return 0;`,
 						return result;
 					});
 				} else {
-					const code = this.getNodeParameter('code', 0) as string;
-					const regexCheck = /\breturn\b/g.exec(code);
-
-					if (regexCheck?.length) {
-						const sandbox = {
-							newItems,
-						};
-						const mode = this.getMode();
-						const options = {
-							console: mode === 'manual' ? 'redirect' : 'inherit',
-							sandbox,
-						};
-						const vm = new NodeVM(options as unknown as NodeVMOptions);
-
-						newItems = await vm.run(
-							`
-						module.exports = async function() {
-							newItems.sort( (a,b) => {
-								${code}
-							})
-							return newItems;
-						}()`,
-							__dirname,
-						);
-					} else {
-						throw new NodeOperationError(
-							this.getNode(),
-							"Sort code doesn't return. Please add a 'return' statement to your code",
-						);
-					}
+					newItems = sortByCode.call(this, newItems);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'limit') {
 				let newItems = items;
 				const maxItems = this.getNodeParameter('maxItems', 0) as number;
 				const keep = this.getNodeParameter('keep', 0) as string;
 
 				if (maxItems > items.length) {
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (keep === 'firstItems') {
@@ -1429,9 +1389,9 @@ return 0;`,
 				} else {
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'summarize') {
-				return summarize.execute.call(this, items);
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}

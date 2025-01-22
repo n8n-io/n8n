@@ -36,7 +36,7 @@ export class TimescaleDb implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
@@ -63,14 +63,6 @@ export class TimescaleDb implements ICredentialType {
 				{
 					name: 'Require',
 					value: 'require',
-				},
-				{
-					name: 'Verify (Not Implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'Verify-Full (Not Implemented)',
-					value: 'verify-full',
 				},
 			],
 			default: 'disable',

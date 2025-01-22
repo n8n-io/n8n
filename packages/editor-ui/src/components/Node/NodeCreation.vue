@@ -1,43 +1,6 @@
-<template>
-	<div>
-		<div
-			v-if="!createNodeActive"
-			:class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']"
-			@mouseenter="onCreateMenuHoverIn"
-		>
-			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-				<n8n-icon-button
-					size="xlarge"
-					icon="plus"
-					type="tertiary"
-					:class="$style.nodeCreatorPlus"
-					@click="openNodeCreator"
-					:title="$locale.baseText('nodeView.addNode')"
-				/>
-				<div
-					:class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']"
-					@click="addStickyNote"
-					data-test-id="add-sticky-button"
-				>
-					<n8n-icon-button
-						size="medium"
-						type="tertiary"
-						:icon="['far', 'note-sticky']"
-						:title="$locale.baseText('nodeView.addSticky')"
-					/>
-				</div>
-			</div>
-		</div>
-		<node-creator
-			:active="createNodeActive"
-			@nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator"
-		/>
-	</div>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+/* eslint-disable vue/no-multiple-template-root */
+import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -45,103 +8,140 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
+import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Interface';
+import { useActions } from './NodeCreator/composables/useActions';
+import { useThrottleFn } from '@vueuse/core';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'node-creation',
-	components: {
-		NodeCreator: async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
-	},
-	props: {
-		nodeViewScale: {
-			type: Number,
-			required: true,
-		},
-		createNodeActive: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			showStickyButton: false,
-		};
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-	methods: {
-		onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
-			const buttonsWrapper = mouseinEvent.target as Element;
+type Props = {
+	nodeViewScale: number;
+	createNodeActive?: boolean;
+};
 
-			// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
-			this.showStickyButton = true;
-			const moveCallback = (mousemoveEvent: MouseEvent) => {
-				if (buttonsWrapper) {
-					const wrapperBounds = buttonsWrapper.getBoundingClientRect();
-					const wrapperH = wrapperBounds.height;
-					const wrapperW = wrapperBounds.width;
-					const wrapperLeftNear = wrapperBounds.left;
-					const wrapperLeftFar = wrapperLeftNear + wrapperW;
-					const wrapperTopNear = wrapperBounds.top;
-					const wrapperTopFar = wrapperTopNear + wrapperH;
-					const inside =
-						mousemoveEvent.pageX > wrapperLeftNear &&
-						mousemoveEvent.pageX < wrapperLeftFar &&
-						mousemoveEvent.pageY > wrapperTopNear &&
-						mousemoveEvent.pageY < wrapperTopFar;
-					if (!inside) {
-						this.showStickyButton = false;
-						document.removeEventListener('mousemove', moveCallback, false);
-					}
-				}
-			};
-			document.addEventListener('mousemove', moveCallback, false);
-		},
-		openNodeCreator() {
-			this.$emit('toggleNodeCreator', {
-				source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
-				createNodeActive: true,
-			});
-		},
-		addStickyNote() {
-			if (document.activeElement) {
-				(document.activeElement as HTMLElement).blur();
-			}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const LazyNodeCreator = defineAsyncComponent(
+	async () => await import('@/components/Node/NodeCreator/NodeCreator.vue'),
+);
 
-			const offset: [number, number] = [...this.uiStore.nodeViewOffsetPosition];
+const props = withDefaults(defineProps<Props>(), {
+	createNodeActive: false, // Determines if the node creator is open
+});
 
-			const position = getMidCanvasPosition(this.nodeViewScale, offset);
-			position[0] -= DEFAULT_STICKY_WIDTH / 2;
-			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+const emit = defineEmits<{
+	addNodes: [value: AddedNodesAndConnections];
+	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
+}>();
 
-			this.$emit('addNode', [
-				{
-					nodeTypeName: STICKY_NODE_TYPE,
-					position,
-				},
-			]);
-		},
-		closeNodeCreator() {
-			this.$emit('toggleNodeCreator', { createNodeActive: false });
-		},
-		nodeTypeSelected(nodeTypeNames: string[]) {
-			this.$emit(
-				'addNode',
-				nodeTypeNames.map((nodeTypeName) => ({ nodeTypeName })),
-			);
-			this.closeNodeCreator();
-		},
-	},
+const uiStore = useUIStore();
+const i18n = useI18n();
+
+const { getAddedNodesAndConnections } = useActions();
+
+const wrapperRef = ref<HTMLElement | undefined>();
+const wrapperBoundingRect = ref<DOMRect | undefined>();
+const isStickyNotesButtonVisible = ref(true);
+
+const onMouseMove = useThrottleFn((event: MouseEvent) => {
+	if (wrapperBoundingRect.value) {
+		const offset = 100;
+		isStickyNotesButtonVisible.value =
+			event.clientX >= wrapperBoundingRect.value.left - offset &&
+			event.clientX <= wrapperBoundingRect.value.right + offset &&
+			event.clientY >= wrapperBoundingRect.value.top - offset &&
+			event.clientY <= wrapperBoundingRect.value.bottom + offset;
+	} else {
+		isStickyNotesButtonVisible.value = true;
+	}
+}, 250);
+
+function openNodeCreator() {
+	emit('toggleNodeCreator', {
+		source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+		createNodeActive: true,
+	});
+}
+
+function addStickyNote() {
+	if (document.activeElement) {
+		(document.activeElement as HTMLElement).blur();
+	}
+
+	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
+
+	const position = getMidCanvasPosition(props.nodeViewScale, offset);
+	position[0] -= DEFAULT_STICKY_WIDTH / 2;
+	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+
+	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
+}
+
+function closeNodeCreator(hasAddedNodes = false) {
+	if (props.createNodeActive) {
+		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
+	}
+}
+
+function nodeTypeSelected(nodeTypes: string[]) {
+	emit('addNodes', getAddedNodesAndConnections(nodeTypes.map((type) => ({ type }))));
+	closeNodeCreator(true);
+}
+
+onMounted(() => {
+	wrapperBoundingRect.value = wrapperRef.value?.getBoundingClientRect();
+
+	document.addEventListener('mousemove', onMouseMove);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('mousemove', onMouseMove);
 });
 </script>
 
+<template>
+	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
+		<div :class="$style.nodeCreatorButton" ref="wrapperRef" data-test-id="node-creator-plus-button">
+			<KeyboardShortcutTooltip
+				:label="i18n.baseText('nodeView.openNodesPanel')"
+				:shortcut="{ keys: ['Tab'] }"
+				placement="left"
+			>
+				<n8n-icon-button
+					size="large"
+					icon="plus"
+					type="tertiary"
+					:class="$style.nodeCreatorPlus"
+					@click="openNodeCreator"
+				/>
+			</KeyboardShortcutTooltip>
+			<div
+				:class="[$style.addStickyButton, isStickyNotesButtonVisible ? $style.visibleButton : '']"
+				data-test-id="add-sticky-button"
+				@click="addStickyNote"
+			>
+				<KeyboardShortcutTooltip
+					:label="i18n.baseText('nodeView.addStickyHint')"
+					:shortcut="{ keys: ['s'], shiftKey: true }"
+					placement="left"
+				>
+					<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
+				</KeyboardShortcutTooltip>
+			</div>
+		</div>
+	</div>
+	<Suspense>
+		<LazyNodeCreator
+			:active="createNodeActive"
+			@node-type-selected="nodeTypeSelected"
+			@close-node-creator="closeNodeCreator"
+		/>
+	</Suspense>
+</template>
+
 <style lang="scss" module>
 .nodeButtonsWrapper {
-	position: fixed;
-	width: 150px;
-	height: 200px;
+	position: absolute;
 	top: 0;
 	right: 0;
 	display: flex;
@@ -164,26 +164,13 @@ export default defineComponent({
 }
 
 .nodeCreatorButton {
-	position: fixed;
+	position: absolute;
 	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
+	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
-
-	button {
-		border-color: var(--color-foreground-xdark);
-		color: var(--color-foreground-xdark);
-
-		&:hover {
-			border-color: var(--color-primary);
-			color: var(--color-primary);
-			background: var(--color-background-xlight);
-		}
-	}
 }
 .nodeCreatorPlus {
-	border-width: 2px;
-	border-radius: var(--border-radius-base);
 	width: 36px;
 	height: 36px;
 }

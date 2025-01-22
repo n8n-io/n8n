@@ -13,7 +13,10 @@
 	top: 20px;
 	transform: translateX(-50%);
 	background-color: var.$message-background-color;
-	transition: opacity 0.3s, transform 0.4s, top 0.4s;
+	transition:
+		opacity 0.3s,
+		transform 0.4s,
+		top 0.4s;
 	overflow: hidden;
 	padding: var.$message-padding;
 	display: flex;
@@ -117,7 +120,7 @@
 	}
 }
 
-.el-message-fade-enter,
+.el-message-fade-enter-from,
 .el-message-fade-leave-active {
 	opacity: 0;
 	transform: translate(-50%, -100%);

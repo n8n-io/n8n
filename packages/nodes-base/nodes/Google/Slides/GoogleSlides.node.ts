@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -22,8 +23,8 @@ export class GoogleSlides implements INodeType {
 		defaults: {
 			name: 'Google Slides',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleApi',
@@ -282,7 +283,7 @@ export class GoogleSlides implements INodeType {
 									loadOptionsDependsOn: ['presentationId'],
 								},
 								description:
-									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Replace Text',
@@ -306,7 +307,7 @@ export class GoogleSlides implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						operation: ['replaceText'],
@@ -341,12 +342,12 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['page'],
@@ -591,6 +592,6 @@ export class GoogleSlides implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,23 +1,20 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type JsonObject,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
-
-import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
-import type { IInvoice, ILineItem } from './InvoiceInterface';
-
+import { xeroApiRequest, xeroApiRequestAllItems } from './GenericFunctions';
 import type { IAddress, IContact, IPhone } from './IContactInterface';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +28,8 @@ export class Xero implements INodeType {
 		defaults: {
 			name: 'Xero',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'xeroOAuth2Api',
@@ -730,6 +727,6 @@ export class Xero implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

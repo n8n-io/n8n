@@ -1,10 +1,12 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
+
 import {
 	checkInput,
 	checkInputAndThrowError,
@@ -18,14 +20,20 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2, 2.1, 2.2],
+		version: [1, 2, 2.1, 2.2, 2.3],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'main'],
+
+		inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 		inputNames: ['Input A', 'Input B'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['main', 'main', 'main', 'main'],
+		requiredInputs: 1,
+
+		outputs: [
+			NodeConnectionType.Main,
+			NodeConnectionType.Main,
+			NodeConnectionType.Main,
+			NodeConnectionType.Main,
+		],
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [
 			{
@@ -188,7 +196,7 @@ export class CompareDatasets implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

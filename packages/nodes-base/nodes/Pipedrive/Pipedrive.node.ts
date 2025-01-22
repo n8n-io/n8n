@@ -1,13 +1,14 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { ICustomProperties } from './GenericFunctions';
 import {
@@ -18,7 +19,6 @@ import {
 	pipedriveResolveCustomProperties,
 	sortOptionParameters,
 } from './GenericFunctions';
-
 import { currencies } from './utils';
 
 interface CustomProperty {
@@ -38,7 +38,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			key === 'customProperties' &&
 			(additionalFields.customProperties as IDataObject).property !== undefined
 		) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+			for (const customProperty of (additionalFields.customProperties as IDataObject)
 				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
@@ -60,8 +60,8 @@ export class Pipedrive implements INodeType {
 		defaults: {
 			name: 'Pipedrive',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pipedriveApi',
@@ -358,6 +358,12 @@ export class Pipedrive implements INodeType {
 						value: 'get',
 						description: 'Get data of a file',
 						action: 'Get a file',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update file details',
+						action: 'update details of a file',
 					},
 					// {
 					// 	name: 'Get All',
@@ -690,7 +696,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -708,7 +714,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -812,6 +818,13 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Busy Flag',
+						name: 'busy_flag',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the user is set to busy during the activity',
+					},
+					{
 						displayName: 'Deal ID',
 						name: 'deal_id',
 						type: 'number',
@@ -842,7 +855,6 @@ export class Pipedrive implements INodeType {
 						default: '0',
 						description: 'Whether the activity is done or not',
 					},
-
 					{
 						displayName: 'Note',
 						name: 'note',
@@ -862,7 +874,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -870,6 +882,14 @@ export class Pipedrive implements INodeType {
 						type: 'number',
 						default: 0,
 						description: 'ID of the person this activity will be associated with',
+					},
+					{
+						displayName: 'Public Description',
+						name: 'public_description',
+						type: 'string',
+						default: '',
+						description:
+							'Additional details about the activity that is synced to your external calendar',
 					},
 					{
 						displayName: 'Subject',
@@ -895,7 +915,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -1052,7 +1072,7 @@ export class Pipedrive implements INodeType {
 										},
 										default: '',
 										description:
-											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1070,7 +1090,7 @@ export class Pipedrive implements INodeType {
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1127,7 +1147,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -1164,7 +1184,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -1310,7 +1330,7 @@ export class Pipedrive implements INodeType {
 										},
 										default: '',
 										description:
-											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1332,14 +1352,14 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1361,7 +1381,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1390,7 +1410,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -1471,7 +1491,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Name or ID',
@@ -1489,7 +1509,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Item Price',
@@ -1587,7 +1607,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Attachment Name or ID',
@@ -1606,7 +1626,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Update Fields',
@@ -1690,7 +1710,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Attachment Name or ID',
@@ -1709,7 +1729,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			// ----------------------------------
 			//        dealProduct:getAll
@@ -1730,7 +1750,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the deal whose products to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the deal whose products to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -1884,7 +1904,7 @@ export class Pipedrive implements INodeType {
 			//         file:create
 			// ----------------------------------
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1896,8 +1916,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be created',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1935,7 +1954,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1990,7 +2009,7 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to download',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -2001,8 +2020,7 @@ export class Pipedrive implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description:
-					'Name of the binary property to which to write the data of the downloaded file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -2022,6 +2040,57 @@ export class Pipedrive implements INodeType {
 				required: true,
 				description: 'ID of the file to get',
 			},
+
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+						resource: ['file'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the file to update',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+						resource: ['file'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The updated visible name of the file',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The updated description of the file',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         lead
+			// ----------------------------------
 
 			// ----------------------------------------
 			//               lead: create
@@ -2123,7 +2192,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description:
-							'ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Organization ID',
@@ -2146,7 +2215,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the user who will own the lead to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the user who will own the lead to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2273,7 +2342,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Label Names or IDs',
@@ -2284,7 +2353,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description:
-							'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person Name or ID',
@@ -2295,7 +2364,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the person to link to this lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the person to link to this lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -2503,7 +2572,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2587,7 +2656,7 @@ export class Pipedrive implements INodeType {
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -2792,7 +2861,7 @@ export class Pipedrive implements INodeType {
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -2892,7 +2961,7 @@ export class Pipedrive implements INodeType {
 										},
 										default: '',
 										description:
-											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -2921,7 +2990,7 @@ export class Pipedrive implements INodeType {
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -2962,7 +3031,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Phone',
@@ -3001,7 +3070,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the User this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the User this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3097,7 +3166,7 @@ export class Pipedrive implements INodeType {
 										},
 										default: '',
 										description:
-											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -3126,7 +3195,7 @@ export class Pipedrive implements INodeType {
 						name: 'label',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -3174,7 +3243,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Phone',
@@ -3195,7 +3264,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Visible To',
@@ -3300,7 +3369,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				description:
-					'The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -3405,7 +3474,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3435,7 +3504,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'First Char',
@@ -3444,6 +3513,14 @@ export class Pipedrive implements INodeType {
 						default: '',
 						description:
 							'If supplied, only persons whose name starts with the specified letter will be returned',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'string',
+						default: '',
+						description:
+							'The field names and sorting mode separated by a comma (field_name_1 ASC, field_name_2 DESC). Only first-level field keys are supported (no nested keys).',
 					},
 				],
 			},
@@ -3560,7 +3637,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -3612,7 +3689,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Star Date',
@@ -3631,7 +3708,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description:
-							'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'User Name or ID',
@@ -3642,7 +3719,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3671,7 +3748,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Stage Name or ID',
@@ -3682,7 +3759,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the stage to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the stage to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -3722,7 +3799,7 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description:
-							'ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -4029,7 +4106,7 @@ export class Pipedrive implements INodeType {
 
 		let downloadFile: boolean;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 
@@ -4380,6 +4457,16 @@ export class Pipedrive implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
 						endpoint = `/files/${fileId}`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         file:update
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						const updateFields = this.getNodeParameter('updateFields', i);
+						endpoint = `/files/${fileId}`;
+						addAdditionalFields(body, updateFields);
 					}
 				} else if (resource === 'note') {
 					if (operation === 'create') {
@@ -4721,6 +4808,10 @@ export class Pipedrive implements INodeType {
 							qs.first_char = additionalFields.firstChar as string;
 						}
 
+						if (additionalFields.sort) {
+							qs.sort = additionalFields.sort as string;
+						}
+
 						endpoint = '/persons';
 					} else if (operation === 'search') {
 						// ----------------------------------
@@ -4820,6 +4911,7 @@ export class Pipedrive implements INodeType {
 				if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
+						pairedItem: { item: i },
 						binary: {},
 					};
 
@@ -4842,7 +4934,7 @@ export class Pipedrive implements INodeType {
 						responseData.data = [];
 					}
 
-					if (operation === 'search' && responseData.data && responseData.data.items) {
+					if (operation === 'search' && responseData.data?.items) {
 						responseData.data = responseData.data.items;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.rawData !== true) {
@@ -4873,7 +4965,7 @@ export class Pipedrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					}
 					continue;
 				}
@@ -4889,10 +4981,10 @@ export class Pipedrive implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

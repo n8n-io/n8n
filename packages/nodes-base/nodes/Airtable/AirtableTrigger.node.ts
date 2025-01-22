@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -5,12 +6,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import type { IRecord } from './GenericFunctions';
-import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-import moment from 'moment';
+import type { IRecord } from './v1/GenericFunctions';
+import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 
 export class AirtableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,10 +42,19 @@ export class AirtableTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'airtableOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableOAuth2Api'],
+					},
+				},
+			},
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -60,6 +68,10 @@ export class AirtableTrigger implements INodeType {
 					{
 						name: 'Access Token',
 						value: 'airtableTokenApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'airtableOAuth2Api',
 					},
 				],
 				default: 'airtableApi',

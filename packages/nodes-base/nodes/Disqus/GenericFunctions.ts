@@ -1,23 +1,23 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function disqusApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	qs: IDataObject = {},
 	uri?: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('disqusApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ accessToken: string }>('disqusApi');
 	qs.api_key = credentials.accessToken;
 
 	// Convert to query string into a format the API can read
@@ -32,7 +32,7 @@ export async function disqusApiRequest(
 		}
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		uri: `https://disqus.com/api/3.0/${uri}?${queryStringElements.join('&')}`,
@@ -55,8 +55,8 @@ export async function disqusApiRequest(
  * and return all results
  */
 export async function disqusApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	qs: IDataObject = {},
 	uri?: string,
 	body: IDataObject = {},
@@ -66,14 +66,10 @@ export async function disqusApiRequestAllItems(
 
 	let responseData;
 
-	try {
-		do {
-			responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
-			qs.cursor = responseData.cursor.id;
-			returnData.push.apply(returnData, responseData.response as IDataObject[]);
-		} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
-		return returnData;
-	} catch (error) {
-		throw error;
-	}
+	do {
+		responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
+		qs.cursor = responseData.cursor.id;
+		returnData.push.apply(returnData, responseData.response as IDataObject[]);
+	} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
+	return returnData;
 }

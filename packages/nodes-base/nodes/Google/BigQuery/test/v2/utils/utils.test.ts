@@ -1,8 +1,15 @@
-import type { IDataObject } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+
 import { prepareOutput } from '../../../v2/helpers/utils';
 
 describe('Google BigQuery v2 Utils', () => {
 	it('should prepareOutput', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.1 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
 		const response: IDataObject = {
 			kind: 'bigquery#getQueryResultsResponse',
 			etag: 'e_tag',
@@ -211,7 +218,7 @@ describe('Google BigQuery v2 Utils', () => {
 			jobComplete: true,
 			cacheHit: true,
 		};
-		const returnData = prepareOutput(response, 0, false, false);
+		const returnData = prepareOutput.call(thisArg, response, 0, false, false);
 
 		expect(returnData).toBeDefined();
 		// expect(returnData).toHaveProperty('nodes');

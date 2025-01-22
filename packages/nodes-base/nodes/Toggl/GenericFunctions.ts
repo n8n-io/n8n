@@ -1,12 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 	ITriggerFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -18,29 +17,17 @@ export async function togglApiRequest(
 		| IPollFunctions
 		| IHookFunctions
 		| IExecuteFunctions
-		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
 ) {
-	const credentials = await this.getCredentials('togglApi');
-	const headerWithAuthentication = Object.assign(
-		{},
-		{
-			Authorization: ` Basic ${Buffer.from(
-				`${credentials.username}:${credentials.password}`,
-			).toString('base64')}`,
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+	const options: IRequestOptions = {
 		method,
 		qs: query,
-		uri: uri || `https://api.track.toggl.com/api/v8${resource}`,
+		uri: uri || `https://api.track.toggl.com/api/v9/me${resource}`,
 		body,
 		json: true,
 	};
@@ -48,7 +35,7 @@ export async function togglApiRequest(
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'togglApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

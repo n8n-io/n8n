@@ -1,197 +1,349 @@
-import {
-	getNodeParameterOptions,
-	getNodesInformation,
-	getNodeTranslationHeaders,
-	getNodeTypes,
-	getResourceLocatorResults,
-	getResourceMapperFields,
-} from '@/api/nodeTypes';
-import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
 import type {
-	INodeTypesState,
-	IResourceLocatorReqParams,
-	ResourceMapperReqParams,
-} from '@/Interface';
+	ActionResultRequestDto,
+	OptionsRequestDto,
+	ResourceLocatorRequestDto,
+	ResourceMapperFieldsRequestDto,
+} from '@n8n/api-types';
+import * as nodeTypesApi from '@/api/nodeTypes';
+import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit } from '@/utils';
+import { omit } from '@/utils/typesUtils';
 import type {
-	ILoadOptions,
-	INodeCredentials,
-	INodeListSearchResult,
-	INodeParameters,
-	INodePropertyOptions,
+	INode,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	ResourceMapperFields,
+	Workflow,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
+import * as utils from '@/utils/credentialOnlyNodes';
+import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
+import { computed, ref } from 'vue';
 
-function getNodeVersions(nodeType: INodeTypeDescription) {
-	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
-}
+export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
-export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
-	state: (): INodeTypesState => ({
-		nodeTypes: {},
-	}),
-	getters: {
-		allNodeTypes(): INodeTypeDescription[] {
-			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>(
-				(allNodeTypes, nodeType) => {
-					const versionNumbers = Object.keys(nodeType).map(Number);
-					const allNodeVersions = versionNumbers.map((version) => nodeType[version]);
+export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
+	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
-					return [...allNodeTypes, ...allNodeVersions];
-				},
-				[],
-			);
-		},
-		allLatestNodeTypes(): INodeTypeDescription[] {
-			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>(
-				(allLatestNodeTypes, nodeVersions) => {
-					const versionNumbers = Object.keys(nodeVersions).map(Number);
-					const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
+	const rootStore = useRootStore();
 
-					if (!latestNodeVersion) return allLatestNodeTypes;
+	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
 
-					return [...allLatestNodeTypes, latestNodeVersion];
-				},
-				[],
-			);
-		},
-		getNodeType() {
-			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-				const nodeVersions = this.nodeTypes[nodeTypeName];
+	const allNodeTypes = computed(() => {
+		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
+			(allNodeTypes, nodeType) => {
+				const versionNumbers = Object.keys(nodeType).map(Number);
+				const allNodeVersions = versionNumbers.map((version) => nodeType[version]);
 
-				if (!nodeVersions) return null;
+				return [...allNodeTypes, ...allNodeVersions];
+			},
+			[],
+		);
+	});
 
+	const allLatestNodeTypes = computed(() => {
+		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
+			(allLatestNodeTypes, nodeVersions) => {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
-				const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
+				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
 
-				return nodeType || null;
-			};
-		},
-		isTriggerNode() {
-			return (nodeTypeName: string) => {
-				const nodeType = this.getNodeType(nodeTypeName);
-				return !!(nodeType && nodeType.group.includes('trigger'));
-			};
-		},
-		isCoreNodeType() {
-			return (nodeType: INodeTypeDescription) => {
-				return nodeType.codex?.categories?.includes('Core Nodes');
-			};
-		},
-		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
-		},
-	},
-	actions: {
-		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
-			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>(
-				(acc, newNodeType) => {
-					const newNodeVersions = getNodeVersions(newNodeType);
+				if (!latestNodeVersion) return allLatestNodeTypes;
 
-					if (newNodeVersions.length === 0) {
-						const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
+				return [...allLatestNodeTypes, latestNodeVersion];
+			},
+			[],
+		);
+	});
 
-						acc[newNodeType.name] = singleVersion;
-						return acc;
-					}
+	const getNodeType = computed(() => {
+		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+			if (utils.isCredentialOnlyNodeType(nodeTypeName)) {
+				return getCredentialOnlyNodeType.value(nodeTypeName, version);
+			}
 
-					for (const version of newNodeVersions) {
-						// Node exists with the same name
-						if (acc[newNodeType.name]) {
-							acc[newNodeType.name][version] = Object.assign(
-								acc[newNodeType.name][version] ?? {},
-								newNodeType,
-							);
-						} else {
-							acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, {
-								[version]: newNodeType,
-							});
+			const nodeVersions = nodeTypes.value[nodeTypeName];
+
+			if (!nodeVersions) return null;
+
+			const versionNumbers = Object.keys(nodeVersions).map(Number);
+			const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
+			return nodeType ?? null;
+		};
+	});
+
+	const getNodeVersions = computed(() => {
+		return (nodeTypeName: string): number[] => {
+			return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
+		};
+	});
+
+	const getCredentialOnlyNodeType = computed(() => {
+		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+			const credentialName = utils.getCredentialTypeName(nodeTypeName);
+			const httpNode = getNodeType.value(
+				HTTP_REQUEST_NODE_TYPE,
+				version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+			);
+			const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
+			return utils.getCredentialOnlyNodeType(httpNode, credential) ?? null;
+		};
+	});
+
+	const isConfigNode = computed(() => {
+		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+			if (!workflow.nodes[node.name]) {
+				return false;
+			}
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (!nodeType) {
+				return false;
+			}
+			const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+			return outputTypes
+				? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+				: false;
+		};
+	});
+
+	const isTriggerNode = computed(() => {
+		return (nodeTypeName: string) => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			return !!(nodeType && nodeType.group.includes('trigger'));
+		};
+	});
+
+	const isCoreNodeType = computed(() => {
+		return (nodeType: INodeTypeDescription) => {
+			return nodeType.codex?.categories?.includes('Core Nodes');
+		};
+	});
+
+	const visibleNodeTypes = computed(() => {
+		return allLatestNodeTypes.value.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
+	});
+
+	const nativelyNumberSuffixedDefaults = computed(() => {
+		return allNodeTypes.value.reduce<string[]>((acc, cur) => {
+			if (/\d$/.test(cur.defaults.name as string)) acc.push(cur.defaults.name as string);
+			return acc;
+		}, []);
+	});
+
+	const visibleNodeTypesByOutputConnectionTypeNames = computed(() => {
+		const nodesByOutputType = visibleNodeTypes.value.reduce(
+			(acc, node) => {
+				const outputTypes = node.outputs;
+				if (Array.isArray(outputTypes)) {
+					outputTypes.forEach((value: NodeConnectionType | INodeOutputConfiguration) => {
+						const outputType = typeof value === 'string' ? value : value.type;
+						if (!acc[outputType]) {
+							acc[outputType] = [];
 						}
-					}
-
-					return acc;
-				},
-				{ ...this.nodeTypes },
-			);
-			Vue.set(this, 'nodeTypes', nodeTypes);
-		},
-		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
-			this.nodeTypes = nodeTypesToRemove.reduce(
-				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
-				this.nodeTypes,
-			);
-		},
-		async getNodesInformation(
-			nodeInfos: INodeTypeNameVersion[],
-			replace = true,
-		): Promise<INodeTypeDescription[]> {
-			const rootStore = useRootStore();
-			const nodesInformation = await getNodesInformation(rootStore.getRestApiContext, nodeInfos);
-
-			nodesInformation.forEach((nodeInformation) => {
-				if (nodeInformation.translation) {
-					const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
-
-					addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
+						acc[outputType].push(node.name);
+					});
+				} else {
+					// If outputs is not an array, it must be a string expression
+					// in which case we'll try to match all possible non-main output types that are supported
+					const connectorTypes: NodeConnectionType[] = [
+						NodeConnectionType.AiVectorStore,
+						NodeConnectionType.AiChain,
+						NodeConnectionType.AiDocument,
+						NodeConnectionType.AiEmbedding,
+						NodeConnectionType.AiLanguageModel,
+						NodeConnectionType.AiMemory,
+						NodeConnectionType.AiOutputParser,
+						NodeConnectionType.AiTextSplitter,
+						NodeConnectionType.AiTool,
+					];
+					connectorTypes.forEach((outputType: NodeConnectionType) => {
+						if (outputTypes.includes(outputType)) {
+							acc[outputType] = acc[outputType] || [];
+							acc[outputType].push(node.name);
+						}
+					});
 				}
-			});
-			if (replace) this.setNodeTypes(nodesInformation);
 
-			return nodesInformation;
-		},
-		async getFullNodesProperties(nodesToBeFetched: INodeTypeNameVersion[]): Promise<void> {
-			const credentialsStore = useCredentialsStore();
-			await credentialsStore.fetchCredentialTypes(true);
-			await this.getNodesInformation(nodesToBeFetched);
-		},
-		async getNodeTypes(): Promise<void> {
-			const rootStore = useRootStore();
-			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
-			if (nodeTypes.length) {
-				this.setNodeTypes(nodeTypes);
-			}
-		},
-		async getNodeTranslationHeaders(): Promise<void> {
-			const rootStore = useRootStore();
-			const headers = await getNodeTranslationHeaders(rootStore.getRestApiContext);
+				return acc;
+			},
+			{} as { [key: string]: string[] },
+		);
 
-			if (headers) {
-				addHeaders(headers, rootStore.defaultLocale);
+		return nodesByOutputType;
+	});
+
+	const visibleNodeTypesByInputConnectionTypeNames = computed(() => {
+		const nodesByOutputType = visibleNodeTypes.value.reduce(
+			(acc, node) => {
+				const inputTypes = node.inputs;
+				if (Array.isArray(inputTypes)) {
+					inputTypes.forEach(
+						(value: NodeConnectionType | INodeOutputConfiguration | INodeInputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						},
+					);
+				}
+
+				return acc;
+			},
+			{} as { [key: string]: string[] },
+		);
+
+		return nodesByOutputType;
+	});
+
+	const isConfigurableNode = computed(() => {
+		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (nodeType === null) {
+				return false;
 			}
-		},
-		async getNodeParameterOptions(sendData: {
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			path: string;
-			methodName?: string;
-			loadOptions?: ILoadOptions;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		}): Promise<INodePropertyOptions[]> {
-			const rootStore = useRootStore();
-			return getNodeParameterOptions(rootStore.getRestApiContext, sendData);
-		},
-		async getResourceLocatorResults(
-			sendData: IResourceLocatorReqParams,
-		): Promise<INodeListSearchResult> {
-			const rootStore = useRootStore();
-			return getResourceLocatorResults(rootStore.getRestApiContext, sendData);
-		},
-		async getResourceMapperFields(
-			sendData: ResourceMapperReqParams,
-		): Promise<ResourceMapperFields | null> {
-			const rootStore = useRootStore();
-			try {
-				return await getResourceMapperFields(rootStore.getRestApiContext, sendData);
-			} catch (error) {
-				return null;
+			const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+			return inputTypes
+				? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+				: false;
+		};
+	});
+
+	// #endregion
+
+	// ---------------------------------------------------------------------------
+	// #region Methods
+	// ---------------------------------------------------------------------------
+
+	const setNodeTypes = (newNodeTypes: INodeTypeDescription[] = []) => {
+		const groupedNodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
+		nodeTypes.value = {
+			...nodeTypes.value,
+			...groupedNodeTypes,
+		};
+	};
+
+	const removeNodeTypes = (nodeTypesToRemove: INodeTypeDescription[]) => {
+		nodeTypes.value = nodeTypesToRemove.reduce(
+			(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
+			nodeTypes.value,
+		);
+	};
+
+	const getNodesInformation = async (
+		nodeInfos: INodeTypeNameVersion[],
+		replace = true,
+	): Promise<INodeTypeDescription[]> => {
+		const nodesInformation = await nodeTypesApi.getNodesInformation(
+			rootStore.restApiContext,
+			nodeInfos,
+		);
+
+		nodesInformation.forEach((nodeInformation) => {
+			if (nodeInformation.translation) {
+				const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
+
+				addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
 			}
-		},
-	},
+		});
+		if (replace) setNodeTypes(nodesInformation);
+
+		return nodesInformation;
+	};
+
+	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+		const credentialsStore = useCredentialsStore();
+		await credentialsStore.fetchCredentialTypes(true);
+		await getNodesInformation(nodesToBeFetched);
+	};
+
+	const getNodeTypes = async () => {
+		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		if (nodeTypes.length) {
+			setNodeTypes(nodeTypes);
+		}
+	};
+
+	const loadNodeTypesIfNotLoaded = async () => {
+		if (Object.keys(nodeTypes.value).length === 0) {
+			await getNodeTypes();
+		}
+	};
+
+	const getNodeTranslationHeaders = async () => {
+		const headers = await nodeTypesApi.getNodeTranslationHeaders(rootStore.restApiContext);
+
+		if (headers) {
+			addHeaders(headers, rootStore.defaultLocale);
+		}
+	};
+
+	const getNodeParameterOptions = async (sendData: OptionsRequestDto) => {
+		return await nodeTypesApi.getNodeParameterOptions(rootStore.restApiContext, sendData);
+	};
+
+	const getResourceLocatorResults = async (sendData: ResourceLocatorRequestDto) => {
+		return await nodeTypesApi.getResourceLocatorResults(rootStore.restApiContext, sendData);
+	};
+
+	const getResourceMapperFields = async (sendData: ResourceMapperFieldsRequestDto) => {
+		try {
+			return await nodeTypesApi.getResourceMapperFields(rootStore.restApiContext, sendData);
+		} catch (error) {
+			return null;
+		}
+	};
+
+	const getLocalResourceMapperFields = async (sendData: ResourceMapperFieldsRequestDto) => {
+		try {
+			return await nodeTypesApi.getLocalResourceMapperFields(rootStore.restApiContext, sendData);
+		} catch (error) {
+			return null;
+		}
+	};
+
+	const getNodeParameterActionResult = async (sendData: ActionResultRequestDto) => {
+		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
+	};
+
+	// #endregion
+
+	return {
+		nodeTypes,
+		allNodeTypes,
+		allLatestNodeTypes,
+		getNodeType,
+		getNodeVersions,
+		getCredentialOnlyNodeType,
+		isConfigNode,
+		isTriggerNode,
+		isCoreNodeType,
+		visibleNodeTypes,
+		nativelyNumberSuffixedDefaults,
+		visibleNodeTypesByOutputConnectionTypeNames,
+		visibleNodeTypesByInputConnectionTypeNames,
+		isConfigurableNode,
+		getResourceMapperFields,
+		getLocalResourceMapperFields,
+		getNodeParameterActionResult,
+		getResourceLocatorResults,
+		getNodeParameterOptions,
+		getNodesInformation,
+		getFullNodesProperties,
+		getNodeTypes,
+		loadNodeTypesIfNotLoaded,
+		getNodeTranslationHeaders,
+		setNodeTypes,
+		removeNodeTypes,
+	};
 });

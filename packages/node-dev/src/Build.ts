@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import glob from 'fast-glob';
+import { Container } from '@n8n/di';
 import { spawn } from 'child_process';
+import glob from 'fast-glob';
 import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { join, dirname, resolve as resolvePath } from 'path';
 import { file as tmpFile } from 'tmp-promise';
 
-import { jsonParse } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
 import type { IBuildOptions } from './Interfaces';
 
 /**
@@ -15,19 +16,19 @@ import type { IBuildOptions } from './Interfaces';
  * directory:
  * https://github.com/Microsoft/TypeScript/issues/25430
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function createCustomTsconfig() {
 	// Get path to simple tsconfig file which should be used for build
 	const tsconfigPath = join(dirname(require.resolve('n8n-node-dev/src')), 'tsconfig-build.json');
 
 	// Read the tsconfig file
 	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 	const tsConfig = jsonParse<{ include: string[] }>(tsConfigString);
 
 	// Set absolute include paths
 	const newIncludeFiles = [];
-	// eslint-disable-next-line no-restricted-syntax
+
 	for (const includeFile of tsConfig.include) {
 		newIncludeFiles.push(join(process.cwd(), includeFile));
 	}
@@ -49,7 +50,7 @@ export async function createCustomTsconfig() {
  * @param {IBuildOptions} [options] Options to overwrite default behavior
  */
 export async function buildFiles({
-	destinationFolder = UserSettings.getUserN8nFolderCustomExtensionPath(),
+	destinationFolder = Container.get(InstanceSettings).customExtensionDir,
 	watch,
 }: IBuildOptions): Promise<string> {
 	const tscPath = join(dirname(require.resolve('typescript')), 'tsc');
@@ -84,9 +85,7 @@ export async function buildFiles({
 
 		// Forward the output of the child process to the main one
 		// that the user can see what is happening
-		// @ts-ignore
 		buildProcess.stdout.pipe(process.stdout);
-		// @ts-ignore
 		buildProcess.stderr.pipe(process.stderr);
 
 		// Make sure that the child process gets also always terminated
@@ -101,7 +100,6 @@ export async function buildFiles({
 		let errorMessage = error.message;
 
 		if (error.stdout !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			errorMessage = `${errorMessage}\nGot following output:\n${error.stdout}`;
 		}
 

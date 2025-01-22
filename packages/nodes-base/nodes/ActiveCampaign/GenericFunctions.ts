@@ -5,10 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	INodeProperties,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 export interface IProduct {
 	fields: {
@@ -22,7 +22,7 @@ export interface IProduct {
  */
 export async function activeCampaignApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -34,7 +34,7 @@ export async function activeCampaignApiRequest(
 		query = {};
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		qs: query,
@@ -75,7 +75,7 @@ export async function activeCampaignApiRequest(
  */
 export async function activeCampaignApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

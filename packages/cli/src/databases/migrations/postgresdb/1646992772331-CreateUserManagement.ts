@@ -1,9 +1,9 @@
-import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
-import { loadSurveyFromDisk } from '@db/utils/migrationHelpers';
+
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateUserManagement1646992772331 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, tablePrefix, loadSurveyFromDisk }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				"id" serial NOT NULL,
@@ -132,6 +132,11 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)`,
+		);
+
+		await queryRunner.query(
+			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ($1, $2, $3)`,
+			['ui.banners.dismissed', '["V1"]', true],
 		);
 	}
 

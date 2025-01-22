@@ -1,6 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
@@ -10,7 +16,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

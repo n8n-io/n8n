@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,10 +9,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';
-
-import { createHmac } from 'crypto';
 
 export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +25,7 @@ export class ClickUpTrigger implements INodeType {
 			name: 'ClickUp Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clickUpApi',
@@ -76,7 +76,7 @@ export class ClickUpTrigger implements INodeType {
 				name: 'team',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},

@@ -1,17 +1,13 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
-
-import { schema } from './Schema';
 
 import type {
 	ICredential,
@@ -22,6 +18,8 @@ import type {
 	IRow,
 	IRowObject,
 } from './Interfaces';
+import { schema } from './Schema';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {
@@ -49,7 +47,7 @@ export async function getBaseAccessToken(
 		return;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
@@ -67,7 +65,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 
 	return endpoint.replace(
 		/({{ *(access_token|dtable_uuid|server) *}})/g,
-		(match: string, expr: string, name: TEndpointVariableName) => {
+		(match: string, _: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
 	);
@@ -76,7 +74,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 export async function seaTableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	ctx: ICtx,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -90,7 +88,7 @@ export async function seaTableApiRequest(
 
 	await getBaseAccessToken.call(this, ctx);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.base?.access_token}`,
 		},
@@ -120,7 +118,7 @@ export async function setableApiRequestAllItems(
 	this: IExecuteFunctions | IPollFunctions,
 	ctx: ICtx,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -228,7 +226,7 @@ export const split = (subject: string): string[] =>
 	normalize(subject)
 		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
 		.filter((s) => s.length)
-		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
+		.map((s) => s.replace(/\\([\s\S])/gm, (_, $1) => $1));
 
 export function columnNamesToArray(columnNames: string): string[] {
 	return columnNames ? split(columnNames).filter(nonInternalPredicate).filter(uniquePredicate) : [];

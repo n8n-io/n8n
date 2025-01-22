@@ -1,14 +1,19 @@
-import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
  */
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {
@@ -18,7 +23,7 @@ export async function redditApiRequest(
 
 	qs.api_type = 'json';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -54,7 +59,7 @@ export async function redditApiRequest(
  */
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {

@@ -1,21 +1,13 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
+import { tz } from 'moment-timezone';
 import {
-	adjustAccounts,
-	adjustAttendees,
-	freshworksCrmApiRequest,
-	getAllItemsViewId,
-	handleListing,
-	loadResource,
-	throwOnEmptyUpdate,
-} from './GenericFunctions';
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import {
 	accountFields,
@@ -35,10 +27,16 @@ import {
 	taskFields,
 	taskOperations,
 } from './descriptions';
-
+import {
+	adjustAccounts,
+	adjustAttendees,
+	freshworksCrmApiRequest,
+	getAllItemsViewId,
+	handleListing,
+	loadResource,
+	throwOnEmptyUpdate,
+} from './GenericFunctions';
 import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
-
-import { tz } from 'moment-timezone';
 
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,8 +50,8 @@ export class FreshworksCrm implements INodeType {
 		defaults: {
 			name: 'Freshworks CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'freshworksCrmApi',
@@ -140,15 +138,15 @@ export class FreshworksCrm implements INodeType {
 			},
 
 			async getBusinessTypes(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'business_types');
+				return await loadResource.call(this, 'business_types');
 			},
 
 			async getCampaigns(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'campaigns');
+				return await loadResource.call(this, 'campaigns');
 			},
 
 			async getContactStatuses(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'contact_statuses');
+				return await loadResource.call(this, 'contact_statuses');
 			},
 
 			async getContactViews(this: ILoadOptionsFunctions) {
@@ -170,27 +168,27 @@ export class FreshworksCrm implements INodeType {
 			},
 
 			async getDealPaymentStatuses(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_payment_statuses');
+				return await loadResource.call(this, 'deal_payment_statuses');
 			},
 
 			async getDealPipelines(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_pipelines');
+				return await loadResource.call(this, 'deal_pipelines');
 			},
 
 			async getDealProducts(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_products');
+				return await loadResource.call(this, 'deal_products');
 			},
 
 			async getDealReasons(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_reasons');
+				return await loadResource.call(this, 'deal_reasons');
 			},
 
 			async getDealStages(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_stages');
+				return await loadResource.call(this, 'deal_stages');
 			},
 
 			async getDealTypes(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'deal_types');
+				return await loadResource.call(this, 'deal_types');
 			},
 
 			async getDealViews(this: ILoadOptionsFunctions) {
@@ -200,23 +198,23 @@ export class FreshworksCrm implements INodeType {
 			},
 
 			async getIndustryTypes(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'industry_types');
+				return await loadResource.call(this, 'industry_types');
 			},
 
 			async getLifecycleStages(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'lifecycle_stages');
+				return await loadResource.call(this, 'lifecycle_stages');
 			},
 
 			async getOutcomes(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'sales_activity_outcomes');
+				return await loadResource.call(this, 'sales_activity_outcomes');
 			},
 
 			async getSalesActivityTypes(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'sales_activity_types');
+				return await loadResource.call(this, 'sales_activity_types');
 			},
 
 			async getTerritories(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'territories');
+				return await loadResource.call(this, 'territories');
 			},
 
 			async getUsers(this: ILoadOptionsFunctions) {
@@ -994,6 +992,6 @@ export class FreshworksCrm implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

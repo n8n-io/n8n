@@ -1,21 +1,19 @@
+<script lang="ts" setup>
+interface TagProps {
+	text: string;
+	clickable?: boolean;
+}
+defineOptions({ name: 'N8nTag' });
+withDefaults(defineProps<TagProps>(), {
+	clickable: true,
+});
+</script>
+
 <template>
-	<span :class="['n8n-tag', $style.tag]" v-on="$listeners">
+	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
 		{{ text }}
 	</span>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'n8n-tag',
-	props: {
-		text: {
-			type: String,
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .tag {
@@ -25,15 +23,15 @@ export default defineComponent({
 	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);
 	font-size: var(--font-size-2xs);
-	cursor: pointer;
+
 	transition: background-color 0.3s ease;
 
-	&:hover {
-		background-color: hsl(
-			var(--color-background-base-h),
-			var(--color-background-base-s),
-			calc(var(--color-background-base-l) - 4%)
-		);
+	&.clickable {
+		cursor: pointer;
+
+		&:hover {
+			background-color: var(--color-background-medium);
+		}
 	}
 }
 </style>

@@ -1,40 +1,87 @@
-<template>
-	<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
-		<div>
-			<n8n-text :bold="true" size="small">{{
-				$locale.baseText('runData.startTime') + ':'
-			}}</n8n-text>
-			{{ runMetadata.startTime }}<br />
-			<n8n-text :bold="true" size="small">{{
-				$locale.baseText('runData.executionTime') + ':'
-			}}</n8n-text>
-			{{ runMetadata.executionTime }} {{ $locale.baseText('runData.ms') }}
-		</div>
-	</n8n-info-tip>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import type { ITaskData } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
+import { computed } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	props: {
-		taskData: {}, // ITaskData
-	},
+const i18n = useI18n();
 
-	computed: {
-		runTaskData(): ITaskData {
-			return this.taskData as ITaskData;
-		},
-		runMetadata(): { executionTime: number; startTime: string } | null {
-			if (!this.runTaskData) {
-				return null;
-			}
-			return {
-				executionTime: this.runTaskData.executionTime,
-				startTime: new Date(this.runTaskData.startTime).toLocaleString(),
-			};
-		},
-	},
+const props = defineProps<{
+	taskData: ITaskData | null;
+	hasStaleData?: boolean;
+	hasPinData?: boolean;
+}>();
+
+const runTaskData = computed(() => {
+	return props.taskData;
+});
+
+const theme = computed(() => {
+	return props.taskData?.error ? 'danger' : 'success';
+});
+
+const runMetadata = computed(() => {
+	if (!runTaskData.value) {
+		return null;
+	}
+	const { date, time } = convertToDisplayDateComponents(runTaskData.value.startTime);
+	return {
+		executionTime: runTaskData.value.executionTime,
+		startTime: `${date} at ${time}`,
+	};
 });
 </script>
+
+<template>
+	<n8n-info-tip
+		v-if="hasStaleData"
+		theme="warning"
+		type="tooltip"
+		tooltip-placement="right"
+		data-test-id="node-run-info-stale"
+	>
+		<span
+			v-n8n-html="
+				i18n.baseText(
+					hasPinData
+						? 'ndv.output.staleDataWarning.pinData'
+						: 'ndv.output.staleDataWarning.regular',
+				)
+			"
+		></span>
+	</n8n-info-tip>
+	<div v-else-if="runMetadata" :class="$style.tooltipRow">
+		<n8n-info-tip type="note" :theme="theme" :data-test-id="`node-run-status-${theme}`" />
+		<n8n-info-tip
+			type="tooltip"
+			theme="info"
+			:data-test-id="`node-run-info`"
+			tooltip-placement="right"
+		>
+			<div>
+				<n8n-text :bold="true" size="small"
+					>{{
+						runTaskData?.error
+							? i18n.baseText('runData.executionStatus.failed')
+							: i18n.baseText('runData.executionStatus.success')
+					}} </n8n-text
+				><br />
+				<n8n-text :bold="true" size="small">{{
+					i18n.baseText('runData.startTime') + ':'
+				}}</n8n-text>
+				{{ runMetadata.startTime }}<br />
+				<n8n-text :bold="true" size="small">{{
+					i18n.baseText('runData.executionTime') + ':'
+				}}</n8n-text>
+				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
+			</div>
+		</n8n-info-tip>
+	</div>
+</template>
+
+<style lang="scss" module>
+.tooltipRow {
+	display: flex;
+	column-gap: var(--spacing-4xs);
+}
+</style>

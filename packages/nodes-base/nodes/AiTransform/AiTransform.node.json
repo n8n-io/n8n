@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.aiTransform",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Modify data by writing a prompt",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aitransform/"
+			}
+		]
+	},
+	"alias": ["code", "Javascript", "JS", "Script", "Custom Code", "Function", "AI", "LLM"],
+	"subcategories": {
+		"Core Nodes": ["Data Transformation"]
+	}
+}

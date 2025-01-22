@@ -1,33 +1,31 @@
-import Vue from 'vue';
-import Fragment from 'vue-fragment';
-import VueAgile from 'vue-agile';
+import type { Plugin } from 'vue';
 
 import 'regenerator-runtime/runtime';
 
-import ElementUI from 'element-ui';
-import { Loading, MessageBox, Notification } from 'element-ui';
+import ElementPlus, { ElLoading, ElMessageBox } from 'element-plus';
 import { N8nPlugin } from 'n8n-design-system';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useMessage } from '@/composables/useMessage';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 
-Vue.use(Fragment.Plugin);
-Vue.use(VueAgile);
+export const GlobalComponentsPlugin: Plugin = {
+	install(app) {
+		const messageService = useMessage();
 
-Vue.use(ElementUI);
-Vue.use(N8nPlugin);
+		app.component('EnterpriseEdition', EnterpriseEdition);
+		app.component('ParameterInputList', ParameterInputList);
 
-Vue.component('enterprise-edition', EnterpriseEdition);
+		app.use(ElementPlus);
+		app.use(N8nPlugin, {});
 
-Vue.use(Loading.directive);
+		// app.use(ElLoading);
+		// app.use(ElNotification);
 
-Vue.prototype.$loading = Loading.service;
-Vue.prototype.$msgbox = MessageBox;
-
-const messageService = useMessage();
-
-Vue.prototype.$alert = messageService.alert;
-Vue.prototype.$confirm = messageService.confirm;
-Vue.prototype.$prompt = messageService.prompt;
-Vue.prototype.$message = messageService.message;
-
-Vue.prototype.$notify = Notification;
+		app.config.globalProperties.$loading = ElLoading.service;
+		app.config.globalProperties.$msgbox = ElMessageBox;
+		app.config.globalProperties.$alert = messageService.alert;
+		app.config.globalProperties.$confirm = messageService.confirm;
+		app.config.globalProperties.$prompt = messageService.prompt;
+		app.config.globalProperties.$message = messageService.message;
+	},
+};

@@ -24,6 +24,7 @@ export class MailjetEmailApi implements ICredentialType {
 			displayName: 'Secret Key',
 			name: 'secretKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

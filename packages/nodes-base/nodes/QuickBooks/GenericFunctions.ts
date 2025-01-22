@@ -1,23 +1,20 @@
+import { capitalCase } from 'change-case';
+import omit from 'lodash/omit';
+import pickBy from 'lodash/pickBy';
+import { NodeApiError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
-
-import { capitalCase } from 'change-case';
-
-import omit from 'lodash.omit';
-import pickBy from 'lodash.pickby';
-
-import type { OptionsWithUri } from 'request';
-
 import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
 /**
@@ -25,7 +22,7 @@ import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionRepo
  */
 export async function quickBooksApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -43,11 +40,9 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
-	const credentials = (await this.getCredentials(
-		'quickBooksOAuth2Api',
-	)) as QuickBooksOAuth2Credentials;
+	const credentials = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -94,7 +89,7 @@ export async function quickBooksApiRequest(
 
 async function getCount(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {
@@ -108,7 +103,7 @@ async function getCount(
  */
 export async function quickBooksApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -170,7 +165,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
@@ -236,9 +231,9 @@ export async function handleBinaryData(
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary ?? {};
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
-	items[i].binary![binaryProperty].fileName = fileName;
-	items[i].binary![binaryProperty].fileExtension = 'pdf';
+	items[i].binary[binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
+	items[i].binary[binaryProperty].fileName = fileName;
+	items[i].binary[binaryProperty].fileExtension = 'pdf';
 
 	return items;
 }
@@ -254,9 +249,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 		oauthTokenData: {
 			callbackQueryString: { realmId },
 		},
-	} = (await this.getCredentials('quickBooksOAuth2Api')) as {
-		oauthTokenData: { callbackQueryString: { realmId: string } };
-	};
+	} = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(
@@ -270,7 +263,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 
 	if (resource === 'preferences') {
 		const {
-			// eslint-disable-next-line @typescript-eslint/no-shadow
 			SalesFormsPrefs: { CustomField },
 		} = resourceItems[0];
 		const customFields = CustomField[1].CustomField;
@@ -297,12 +289,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 /**
  * Populate the `Line` property in a request body.
  */
-export function processLines(
-	this: IExecuteFunctions,
-	body: IDataObject,
-	lines: IDataObject[],
-	resource: string,
-) {
+export function processLines(this: IExecuteFunctions, lines: IDataObject[], resource: string) {
 	lines.forEach((line) => {
 		if (resource === 'bill') {
 			if (line.DetailType === 'AccountBasedExpenseLineDetail') {

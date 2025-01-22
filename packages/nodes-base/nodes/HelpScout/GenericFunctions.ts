@@ -1,20 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
-
 export async function helpscoutApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -22,7 +20,7 @@ export async function helpscoutApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -39,7 +37,6 @@ export async function helpscoutApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -49,7 +46,7 @@ export async function helpscoutApiRequest(
 export async function helpscoutApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

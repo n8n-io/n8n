@@ -1,24 +1,22 @@
-import type { OptionsWithUri } from 'request';
-
+import { createHash } from 'crypto';
+import upperFirst from 'lodash/upperFirst';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeProperties,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import upperFirst from 'lodash.upperfirst';
-
-import { createHash } from 'crypto';
-
 export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -26,7 +24,7 @@ export async function webexApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -43,7 +41,6 @@ export async function webexApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
@@ -55,7 +52,7 @@ export async function webexApiRequest(
 export async function webexApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

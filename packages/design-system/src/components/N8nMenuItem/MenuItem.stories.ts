@@ -1,6 +1,7 @@
+import type { StoryFn } from '@storybook/vue3';
+import { ElMenu } from 'element-plus';
+
 import N8nMenuItem from '.';
-import { Menu as ElMenu } from 'element-ui';
-import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/MenuItem',
@@ -8,6 +9,7 @@ export default {
 };
 
 const template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		ElMenu,
@@ -16,7 +18,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="width: 200px">
 			<el-menu>
-				<n8n-menu-item v-bind="$props" />
+				<n8n-menu-item v-bind="args" />
 			</el-menu>
 		</div>
 	`,
@@ -28,6 +30,33 @@ defaultMenuItem.args = {
 		id: 'workflows',
 		icon: 'heart',
 		label: 'Workflows',
+	},
+};
+
+export const withSecondaryIcon = template.bind({});
+withSecondaryIcon.args = {
+	item: {
+		id: 'workflows',
+		icon: 'heart',
+		label: 'Workflows',
+		secondaryIcon: { name: 'lock', size: 'small' },
+	},
+};
+
+export const withSecondaryIconTooltip = template.bind({});
+withSecondaryIconTooltip.args = {
+	item: {
+		id: 'workflows',
+		icon: 'heart',
+		label: 'Workflows',
+		secondaryIcon: {
+			name: 'lock',
+			size: 'small',
+			tooltip: {
+				content: 'Locked secret',
+				bindTo: 'secondaryIcon',
+			},
+		},
 	},
 };
 
@@ -47,10 +76,9 @@ link.args = {
 		id: 'website',
 		icon: 'globe',
 		label: 'Website',
-		type: 'link',
-		properties: {
+		link: {
 			href: 'https://www.n8n.io',
-			newWindow: true,
+			target: '_blank',
 		},
 	},
 };
@@ -68,10 +96,9 @@ withChildren.args = {
 				id: 'quickstart',
 				icon: 'video',
 				label: 'Quickstart',
-				type: 'link',
-				properties: {
+				link: {
 					href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
-					newWindow: true,
+					target: '_blank',
 				},
 			},
 		],

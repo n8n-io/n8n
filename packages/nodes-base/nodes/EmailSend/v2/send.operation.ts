@@ -1,16 +1,20 @@
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-import { updateDisplayOptions } from '../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -51,13 +55,50 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Text',
 				value: 'text',
+				description: 'Send email as plain text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+				description: 'Send email as HTML',
+			},
+			{
+				name: 'Both',
+				value: 'both',
+				description: "Send both formats, recipient's client selects version to display",
+			},
+		],
+		default: 'html',
+		displayOptions: {
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Format',
+		name: 'emailFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
 			},
 			{
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Both',
+				value: 'both',
+			},
 		],
 		default: 'text',
+		displayOptions: {
+			show: {
+				'@version': [2],
+			},
+		},
 	},
 	{
 		displayName: 'Text',
@@ -70,7 +111,7 @@ const properties: INodeProperties[] = [
 		description: 'Plain text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['text'],
+				emailFormat: ['text', 'both'],
 			},
 		},
 	},
@@ -85,7 +126,7 @@ const properties: INodeProperties[] = [
 		description: 'HTML text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['html'],
+				emailFormat: ['html', 'both'],
 			},
 		},
 	},
@@ -93,9 +134,14 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
+			{
+				...appendAttributionOption,
+				description:
+					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
+			},
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
@@ -121,7 +167,7 @@ const properties: INodeProperties[] = [
 				description: 'Email address of BCC recipient',
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
@@ -149,6 +195,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 type EmailSendOptions = {
+	appendAttribution?: boolean;
 	allowUnauthorizedCerts?: boolean;
 	attachments?: string;
 	ccEmail?: string;
@@ -162,6 +209,14 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		port: credentials.port as number,
 		secure: credentials.secure as boolean,
 	};
+
+	if (credentials.secure === false) {
+		connectionOptions.ignoreTLS = credentials.disableStartTls as boolean;
+	}
+
+	if (typeof credentials.hostName === 'string' && credentials.hostName) {
+		connectionOptions.name = credentials.hostName;
+	}
 
 	if (credentials.user || credentials.password) {
 		connectionOptions.auth = {
@@ -179,8 +234,32 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 	return createTransport(connectionOptions);
 }
 
+export async function smtpConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data!;
+	const transporter = configureTransport(credentials, {});
+	try {
+		await transporter.verify();
+		return {
+			status: 'OK',
+			message: 'Connection successful!',
+		};
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message,
+		};
+	} finally {
+		transporter.close();
+	}
+}
+
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
+	const nodeVersion = this.getNode().typeVersion;
+	const instanceId = this.getInstanceId();
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;
@@ -208,12 +287,36 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				replyTo: options.replyTo,
 			};
 
-			if (emailFormat === 'text') {
+			if (emailFormat === 'text' || emailFormat === 'both') {
 				mailOptions.text = this.getNodeParameter('text', itemIndex, '');
 			}
 
-			if (emailFormat === 'html') {
+			if (emailFormat === 'html' || emailFormat === 'both') {
 				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
+			}
+
+			let appendAttribution = options.appendAttribution;
+			if (appendAttribution === undefined) {
+				appendAttribution = nodeVersion >= 2.1;
+			}
+
+			if (appendAttribution) {
+				const attributionText = 'This email was sent automatically with ';
+				const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+					'n8n-nodes-base.emailSend',
+				)}${instanceId ? '_' + instanceId : ''}`;
+				if (emailFormat === 'html' || (emailFormat === 'both' && mailOptions.html)) {
+					mailOptions.html = `
+					${mailOptions.html}
+					<br>
+					<br>
+					---
+					<br>
+					<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
+					`;
+				} else {
+					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
+				}
 			}
 
 			if (options.attachments && item.binary) {
@@ -263,5 +366,5 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

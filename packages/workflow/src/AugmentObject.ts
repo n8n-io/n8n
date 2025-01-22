@@ -2,6 +2,9 @@ import type { IDataObject } from './Interfaces';
 
 const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const { hasOwnProperty } = Object.prototype;
+
 const augmentedObjects = new WeakSet<object>();
 
 function augment<T>(value: T): T {
@@ -29,11 +32,12 @@ export function augmentArray<T>(data: T[]): T[] {
 	}
 
 	const proxy = new Proxy(data, {
-		deleteProperty(target, key: string) {
+		deleteProperty(_target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
-			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
+			if (key === 'constructor') return Array;
+			const value = Reflect.get(newData ?? target, key, receiver) as unknown;
 			const newValue = augment(value);
 			if (newValue !== value) {
 				newData = getData();
@@ -54,12 +58,12 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 		has(target, key) {
-			return Reflect.has(newData !== undefined ? newData : target, key);
+			return Reflect.has(newData ?? target, key);
 		},
 		ownKeys(target) {
-			return Reflect.ownKeys(newData !== undefined ? newData : target);
+			return Reflect.ownKeys(newData ?? target);
 		},
-		set(target, key: string, newValue: unknown) {
+		set(_target, key: string, newValue: unknown) {
 			// Always proxy all objects. Like that we can check in get simply if it
 			// is a proxy and it does then not matter if it was already there from the
 			// beginning and it got proxied at some point or set later and so theoretically
@@ -76,19 +80,20 @@ export function augmentObject<T extends object>(data: T): T {
 	if (augmentedObjects.has(data)) return data;
 
 	const newData = {} as IDataObject;
-	const deletedProperties: Array<string | symbol> = [];
+	const deletedProperties = new Set<string | symbol>();
 
 	const proxy = new Proxy(data, {
 		get(target, key: string, receiver): unknown {
-			if (deletedProperties.indexOf(key) !== -1) {
+			if (key === 'constructor') return Object;
+
+			if (deletedProperties.has(key)) {
 				return undefined;
 			}
 
-			if (newData[key] !== undefined) {
+			if (hasOwnProperty.call(newData, key)) {
 				return newData[key];
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
 
 			if (typeof value !== 'object' || value === null) return value;
@@ -103,12 +108,12 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return value;
 		},
-		deleteProperty(target, key: string) {
-			if (key in newData) {
+		deleteProperty(_target, key: string) {
+			if (hasOwnProperty.call(newData, key)) {
 				delete newData[key];
 			}
-			if (key in target) {
-				deletedProperties.push(key);
+			if (hasOwnProperty.call(data, key)) {
+				deletedProperties.add(key);
 			}
 
 			return true;
@@ -119,32 +124,36 @@ export function augmentObject<T extends object>(data: T): T {
 					delete newData[key];
 				}
 				if (key in target) {
-					deletedProperties.push(key);
+					deletedProperties.add(key);
 				}
 				return true;
 			}
 
 			newData[key] = newValue as IDataObject;
 
-			const deleteIndex = deletedProperties.indexOf(key);
-			if (deleteIndex !== -1) {
-				deletedProperties.splice(deleteIndex, 1);
+			if (deletedProperties.has(key)) {
+				deletedProperties.delete(key);
 			}
 
 			return true;
 		},
-
+		has(_target, key) {
+			if (deletedProperties.has(key)) return false;
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Reflect.has(target, key);
+		},
 		ownKeys(target) {
 			const originalKeys = Reflect.ownKeys(target);
 			const newKeys = Object.keys(newData);
 			return [...new Set([...originalKeys, ...newKeys])].filter(
-				(key) => deletedProperties.indexOf(key) === -1,
+				(key) => !deletedProperties.has(key),
 			);
 		},
 
-		getOwnPropertyDescriptor(target, key) {
-			if (deletedProperties.indexOf(key) !== -1) return undefined;
-			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
+		getOwnPropertyDescriptor(_target, key) {
+			if (deletedProperties.has(key)) return undefined;
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Object.getOwnPropertyDescriptor(target, key);
 		},
 	});
 

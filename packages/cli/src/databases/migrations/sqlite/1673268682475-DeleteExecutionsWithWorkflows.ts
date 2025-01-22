@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
 	transaction = false as const;
@@ -17,8 +17,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMig
 						: ''
 				}`,
 		);
-
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
 
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
@@ -53,8 +51,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMig
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {

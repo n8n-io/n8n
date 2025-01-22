@@ -1,22 +1,10 @@
 import { VariablesPage } from '../pages/variables';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 
 const variablesPage = new VariablesPage();
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 describe('Variables', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	it('should show the unlicensed action box when the feature is disabled', () => {
-		cy.disableFeature('feat:variables');
-		cy.signin({ email, password });
+		cy.disableFeature('variables');
 		cy.visit(variablesPage.url);
 
 		variablesPage.getters.unavailableResourcesList().should('be.visible');
@@ -25,20 +13,20 @@ describe('Variables', () => {
 
 	describe('licensed', () => {
 		before(() => {
-			cy.enableFeature('feat:variables');
+			cy.enableFeature('variables');
 		});
 
 		beforeEach(() => {
-			cy.signin({ email, password });
 			cy.intercept('GET', '/rest/variables').as('loadVariables');
+			cy.intercept('GET', '/rest/login').as('login');
 
 			cy.visit(variablesPage.url);
-			cy.wait(['@loadVariables', '@loadSettings']);
+			cy.wait(['@loadVariables', '@loadSettings', '@login']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {
 			variablesPage.getters.emptyResourcesList().should('be.visible');
-			variablesPage.getters.createVariableButton().should('be.visible');
+			variablesPage.getters.emptyResourcesListNewVariableButton().should('be.visible');
 		});
 
 		it('should create a new variable using empty state row', () => {
@@ -77,8 +65,11 @@ describe('Variables', () => {
 			const editingRow = variablesPage.getters.variablesEditableRows().eq(0);
 			variablesPage.actions.setRowValue(editingRow, 'key', key);
 			variablesPage.actions.setRowValue(editingRow, 'value', value);
-			editingRow.should('contain', 'This field may contain only letters');
-			variablesPage.getters.editableRowSaveButton(editingRow).should('be.disabled');
+			variablesPage.actions.saveRowEditing(editingRow);
+			variablesPage.getters
+				.variablesEditableRows()
+				.eq(0)
+				.should('contain', 'This field may contain only letters');
 			variablesPage.actions.cancelRowEditing(editingRow);
 
 			variablesPage.getters.variablesRows().should('have.length', 3);

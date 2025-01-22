@@ -1,4 +1,3 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -8,8 +7,11 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
+import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
 import {
 	payoutFields,
 	payoutItemFields,
@@ -24,7 +26,6 @@ import type {
 	RecipientType,
 	RecipientWallet,
 } from './PaymentInteface';
-import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 export class PayPal implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,8 +39,8 @@ export class PayPal implements INodeType {
 		defaults: {
 			name: 'PayPal',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'payPalApi',
@@ -101,7 +102,7 @@ export class PayPal implements INodeType {
 
 				const base64Key = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Basic ${base64Key}`,
 					},
@@ -253,6 +254,6 @@ export class PayPal implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

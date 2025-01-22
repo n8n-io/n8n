@@ -1,12 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import * as customer from './customer';
-import * as ticket from './ticket';
 import * as contact from './contact';
-import * as rmm from './rmm';
-
+import * as customer from './customer';
 import type { SyncroMsp } from './Interfaces';
+import * as rmm from './rmm';
+import * as ticket from './ticket';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -54,5 +53,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		}
 	}
 
-	return this.prepareOutputData(operationResult);
+	return [operationResult];
 }

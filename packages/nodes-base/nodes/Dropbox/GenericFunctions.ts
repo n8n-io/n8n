@@ -1,6 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
-import type { IDataObject, IExecuteFunctions, IHookFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
@@ -9,14 +14,14 @@ import { NodeApiError } from 'n8n-workflow';
  */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query: IDataObject = {},
-	headers: object = {},
+	headers: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		qs: query,
@@ -47,7 +52,7 @@ export async function dropboxApiRequest(
 export async function dropboxpiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -85,7 +90,7 @@ export async function dropboxpiRequestAllItems(
 }
 
 export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
-	return dropboxApiRequest.call(
+	return await dropboxApiRequest.call(
 		this,
 		'POST',
 		'https://api.dropboxapi.com/2/users/get_current_account',
@@ -111,8 +116,8 @@ export function simplify(data: IDataObject[]) {
 export async function getCredentials(this: IExecuteFunctions) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	if (authenticationMethod === 'accessToken') {
-		return (await this.getCredentials('dropboxApi')) as IDataObject;
+		return await this.getCredentials('dropboxApi');
 	} else {
-		return (await this.getCredentials('dropboxOAuth2Api')) as IDataObject;
+		return await this.getCredentials('dropboxOAuth2Api');
 	}
 }

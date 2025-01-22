@@ -1,41 +1,26 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { taskFields, taskOperations } from './descriptions/TaskDescription';
-
-import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
-
-import { resourceLoaders } from './GenericFunctions';
-
-import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
-
-import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
-
 import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
-
-import { hubFields, hubOperations } from './descriptions/HubDescription';
-
-import { workerFields, workerOperations } from './descriptions/WorkerDescription';
-
-// import {
-// 	webhookFields,
-// 	webhookOperations,
-// } from './descriptions/WebhookDescription';
-
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
-
+import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
+import { hubFields, hubOperations } from './descriptions/HubDescription';
+import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
+import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
+import { taskFields, taskOperations } from './descriptions/TaskDescription';
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
-
-import type { OptionsWithUri } from 'request';
-
+import { workerFields, workerOperations } from './descriptions/WorkerDescription';
+import { resourceLoaders } from './GenericFunctions';
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,8 +34,8 @@ export class Onfleet implements INodeType {
 		defaults: {
 			name: 'Onfleet',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',
@@ -142,7 +127,7 @@ export class Onfleet implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						'Content-Type': 'application/json',
 						'User-Agent': 'n8n-onfleet',

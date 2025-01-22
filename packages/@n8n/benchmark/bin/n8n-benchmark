@@ -1,0 +1,13 @@
+#!/usr/bin/env node
+
+// Check if version should be displayed
+const versionFlags = ['-v', '-V', '--version'];
+if (versionFlags.includes(process.argv.slice(-1)[0])) {
+	console.log(require('../package').version);
+	process.exit(0);
+}
+
+(async () => {
+	const oclif = require('@oclif/core');
+	await oclif.execute({ dir: __dirname });
+})();

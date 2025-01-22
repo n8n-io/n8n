@@ -9,10 +9,7 @@
 			"name": "On clicking 'execute'",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				820,
-				380
-			]
+			"position": [820, 380]
 		},
 		{
 			"parameters": {
@@ -35,10 +32,7 @@
 			"name": "Airtable",
 			"type": "n8n-nodes-base.airtable",
 			"typeVersion": 1,
-			"position": [
-				1020,
-				380
-			],
+			"position": [1020, 380],
 			"credentials": {
 				"airtableApi": {
 					"id": "20",

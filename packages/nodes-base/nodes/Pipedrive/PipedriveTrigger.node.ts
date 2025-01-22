@@ -1,18 +1,17 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from './GenericFunctions';
-
-import basicAuth from 'basic-auth';
-
-import type { Response } from 'express';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -43,7 +42,7 @@ export class PipedriveTrigger implements INodeType {
 			name: 'Pipedrive Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pipedriveApi',
@@ -326,7 +325,7 @@ export class PipedriveTrigger implements INodeType {
 			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
 
 			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				httpBasicAuth = await this.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 			} catch (error) {
 				// Do nothing
 			}

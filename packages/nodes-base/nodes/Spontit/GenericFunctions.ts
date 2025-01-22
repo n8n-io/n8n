@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -12,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 export async function spontitApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -21,7 +21,7 @@ export async function spontitApiRequest(
 	const credentials = await this.getCredentials('spontitApi');
 
 	try {
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			headers: {
 				'X-Authorization': credentials.apiKey as string,
 				'X-UserId': credentials.username as string,
