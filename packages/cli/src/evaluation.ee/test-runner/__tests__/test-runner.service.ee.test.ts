@@ -13,6 +13,7 @@ import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -188,6 +189,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
