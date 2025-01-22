@@ -64,6 +64,11 @@ export const formFields: INodeProperties = {
 					placeholder: 'e.g. What is your name?',
 					description: 'Label that appears above the input field',
 					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField'],
+						},
+					},
 				},
 				{
 					displayName: 'Element Type',

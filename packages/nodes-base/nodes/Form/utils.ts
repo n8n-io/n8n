@@ -169,6 +169,9 @@ export function prepareFormData({
 			input.html = field.html as string;
 		} else if (fieldType === 'hiddenField') {
 			input.isHidden = true;
+			input.hiddenName = field.fieldName as string;
+			input.hiddenValue =
+				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
@@ -433,6 +436,9 @@ export async function formWebhook(
 		(field) => {
 			if (field.fieldType === 'html') {
 				field.html = sanitizeHtml(field.html as string);
+			}
+			if (field.fieldType === 'hiddenField') {
+				field.fieldLabel = field.fieldName as string;
 			}
 			return field;
 		},
