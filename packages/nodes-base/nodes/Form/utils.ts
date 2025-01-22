@@ -167,6 +167,8 @@ export function prepareFormData({
 		} else if (fieldType === 'html') {
 			input.isHtml = true;
 			input.html = field.html as string;
+		} else if (fieldType === 'hiddenField') {
+			input.isHidden = true;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';

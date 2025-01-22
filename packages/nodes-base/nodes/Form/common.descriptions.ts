@@ -93,6 +93,10 @@ export const formFields: INodeProperties = {
 							value: 'file',
 						},
 						{
+							name: 'Hidden Field',
+							value: 'hiddenField',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},
@@ -119,7 +123,31 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html'],
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description: 'Name of field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Value',
+					name: 'fieldValue',
+					description: 'Value of field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
 						},
 					},
 				},
@@ -242,7 +270,7 @@ export const formFields: INodeProperties = {
 						'Whether to require the user to enter a value for this field before submitting the form',
 					displayOptions: {
 						hide: {
-							fieldType: ['html'],
+							fieldType: ['html', 'hiddenField'],
 						},
 					},
 				},
