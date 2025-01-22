@@ -1,11 +1,6 @@
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
-import {
-	clickContextMenuAction,
-	getCanvas,
-	getCanvasPane,
-	openContextMenu,
-} from '../composables/workflow';
+import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../composables/workflow';
 import { META_KEY } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
