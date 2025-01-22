@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.75.0",
+  "version": "1.76.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -181,6 +181,7 @@
       "dist/credentials/JenkinsApi.credentials.js",
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
+      "dist/credentials/JiraSoftwareServerPatApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/JwtAuth.credentials.js",
       "dist/credentials/Kafka.credentials.js",
