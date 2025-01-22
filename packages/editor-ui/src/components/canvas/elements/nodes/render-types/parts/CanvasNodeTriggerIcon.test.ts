@@ -24,7 +24,7 @@ describe('CanvasNodeTriggerIcon', () => {
 		const icon = container.querySelector('font-awesome-icon-stub');
 		expect(icon).toBeInTheDocument();
 		expect(icon?.getAttribute('icon')).toBe('bolt');
-		expect(icon?.getAttribute('size')).toBe('lg');
+		expect(icon?.getAttribute('size')).toBe('md');
 	});
 
 	it('should render tooltip with correct content', () => {

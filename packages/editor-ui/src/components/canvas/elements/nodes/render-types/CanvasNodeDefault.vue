@@ -140,7 +140,7 @@ function openContextMenu(event: MouseEvent) {
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
-		<div :class="$style['button-container']">
+		<div v-if="$slots.button" :class="$style['button-container']">
 			<slot name="button" />
 		</div>
 	</div>
