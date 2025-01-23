@@ -12,7 +12,7 @@ import * as sendAndWait from './sendAndWait.operation';
 import { smtpConnectionTest } from './utils';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
-const versionDescription: INodeTypeDescription = {
+export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
 	icon: 'fa:envelope',
