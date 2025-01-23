@@ -44,7 +44,7 @@ on:
       node_view_version:
         description: 'Node View version to run tests with.'
         required: false
-        default: '1'
+        default: '2'
         type: string
     secrets:
       CYPRESS_RECORD_KEY:
