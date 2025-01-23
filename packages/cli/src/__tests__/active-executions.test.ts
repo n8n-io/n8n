@@ -93,6 +93,37 @@ describe('ActiveExecutions', () => {
 		await expect(deferredPromise.promise).resolves.toEqual(fakeResponse);
 	});
 
+	test('Should copy over startedAt and responsePromise when resuming a waiting execution', async () => {
+		const newExecution = mockExecutionData();
+		const executionId = await activeExecutions.add(newExecution);
+		activeExecutions.setStatus(executionId, 'waiting');
+		activeExecutions.attachResponsePromise(executionId, mockDeferredPromise());
+
+		const waitingExecution = activeExecutions.getExecution(executionId);
+		expect(waitingExecution.responsePromise).toBeDefined();
+
+		// Resume the execution
+		await activeExecutions.add(newExecution, executionId);
+
+		const resumedExecution = activeExecutions.getExecution(executionId);
+		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
+		expect(resumedExecution.responsePromise).toBe(waitingExecution.responsePromise);
+	});
+
+	test('Should not remove a waiting execution', async () => {
+		const newExecution = mockExecutionData();
+		const executionId = await activeExecutions.add(newExecution);
+		activeExecutions.setStatus(executionId, 'waiting');
+		activeExecutions.finalizeExecution(executionId);
+
+		// Wait until the next tick to ensure that the post-execution promise has settled
+		await new Promise(setImmediate);
+
+		// Execution should still be in activeExecutions
+		expect(activeExecutions.getActiveExecutions().length).toBe(1);
+		expect(activeExecutions.getStatus(executionId)).toBe('waiting');
+	});
+
 	test('Should remove an existing execution', async () => {
 		// ARRANGE
 		const newExecution = mockExecutionData();
@@ -109,7 +140,6 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
-		// @ts-expect-error Private method
 		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecution');
 
 		activeExecutions.finalizeExecution('inactive-execution-id', mockFullRunData());
