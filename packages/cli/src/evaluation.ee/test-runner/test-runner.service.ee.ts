@@ -23,6 +23,7 @@ import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import { NodeTypes } from '@/node-types';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -82,6 +83,12 @@ export class TestRunnerService {
 		// Determine the trigger node of the past execution
 		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
 		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
+
+		// Check the trigger is still present in the workflow
+		const triggerNode = workflowInstance.getNode(pastExecutionTriggerNode);
+		if (!triggerNode) {
+			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
+		}
 
 		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
 		assert(triggerNodeData, 'Trigger node data not found');
@@ -353,13 +360,21 @@ export class TestRunnerService {
 					// Skip them, increment the failed count and continue with the next test case
 					if (!testCaseExecution) {
 						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(
+							testRun.id,
+							pastExecutionId,
+							'FAILED_TO_EXECUTE_WORKFLOW',
+						);
 						continue;
 					}
 
 					// Update status of the test case execution mapping entry in case of an error
 					if (testCaseExecution.data.resultData.error) {
-						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(
+							testRun.id,
+							pastExecutionId,
+							'FAILED_TO_EXECUTE_WORKFLOW',
+						);
 					}
 
 					// Collect the results of the test case execution
@@ -385,7 +400,11 @@ export class TestRunnerService {
 
 					if (evalExecution.data.resultData.error) {
 						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
+						await this.testCaseExecutionRepository.markAsFailed(
+							testRun.id,
+							pastExecutionId,
+							'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
+						);
 					} else {
 						await this.testRunRepository.incrementPassed(testRun.id);
 						await this.testCaseExecutionRepository.markAsCompleted(
@@ -395,11 +414,25 @@ export class TestRunnerService {
 						);
 					}
 				} catch (e) {
-					// In case of an unexpected error, increment the failed count and continue with the next test case
 					await this.testRunRepository.incrementFailed(testRun.id);
-					await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 
-					this.errorReporter.error(e);
+					if (e instanceof TestCaseExecutionError) {
+						await this.testCaseExecutionRepository.markAsFailed(
+							testRun.id,
+							pastExecutionId,
+							e.code,
+							e.extra,
+						);
+					} else {
+						await this.testCaseExecutionRepository.markAsFailed(
+							testRun.id,
+							pastExecutionId,
+							'UNKNOWN_ERROR',
+						);
+
+						// Report unexpected errors
+						this.errorReporter.error(e);
+					}
 				}
 			}
 

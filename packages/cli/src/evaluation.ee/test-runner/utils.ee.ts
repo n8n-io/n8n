@@ -3,6 +3,7 @@ import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
 /**
  * Extracts the execution data from the past execution
@@ -41,6 +42,8 @@ export function createPinData(
 
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
+			} else {
+				// throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
 			}
 		}
 	}

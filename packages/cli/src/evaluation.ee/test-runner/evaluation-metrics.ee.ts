@@ -1,4 +1,7 @@
+import difference from 'lodash/difference';
 import type { IDataObject } from 'n8n-workflow';
+
+import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
 export class EvaluationMetrics {
 	private readonly rawMetricsByName = new Map<string, number[]>();
@@ -17,6 +20,14 @@ export class EvaluationMetrics {
 				addedMetrics[metricName] = metricValue;
 				this.rawMetricsByName.get(metricName)!.push(metricValue);
 			}
+		}
+
+		// Check that result contains all expected metrics
+		if (difference(Object.keys(addedMetrics), Array.from(this.metricNames)).length > 0) {
+			throw new TestCaseExecutionError('METRICS_MISSING', {
+				expectedMetrics: Array.from(this.metricNames),
+				receivedMetrics: Object.keys(addedMetrics),
+			});
 		}
 
 		return addedMetrics;

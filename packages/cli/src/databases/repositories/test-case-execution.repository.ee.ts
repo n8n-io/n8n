@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
+import type { IDataObject } from 'n8n-workflow';
 
 import { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
+import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
 @Service()
 export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
@@ -76,12 +78,19 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAsFailed(testRunId: string, pastExecutionId: string) {
+	async markAsFailed(
+		testRunId: string,
+		pastExecutionId: string,
+		errorCode?: TestCaseExecutionErrorCode,
+		errorDetails?: IDataObject,
+	) {
 		return await this.update(
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'error',
 				completedAt: new Date(),
+				errorCode,
+				errorDetails,
 			},
 		);
 	}

@@ -28,6 +28,50 @@ const filteredTestCases = computed(() => {
 	return testCases.value;
 });
 
+const getErrorTooltipLinkRoute = computed(() => (row: TestCaseExecutionRecord) => {
+	if (row.errorCode === 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW') {
+		return {
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: test.value?.evaluationWorkflowId,
+				executionId: row.evaluationExecutionId,
+			},
+		};
+	} else if (row.errorCode === 'MOCKED_NODE_DOES_NOT_EXIST') {
+		return {
+			name: VIEWS.TEST_DEFINITION_EDIT,
+			params: {
+				testId: testId.value,
+			},
+		};
+	} else if (row.errorCode === 'FAILED_TO_EXECUTE_WORKFLOW') {
+		return {
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: test.value?.workflowId,
+				executionId: row.executionId,
+			},
+		};
+	} else if (row.errorCode === 'TRIGGER_NO_LONGER_EXISTS') {
+		return {
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: test.value?.workflowId,
+				executionId: row.pastExecutionId,
+			},
+		};
+	} else if (row.errorCode === 'METRICS_MISSING') {
+		return {
+			name: VIEWS.TEST_DEFINITION_EDIT,
+			params: {
+				testId: testId.value,
+			},
+		};
+	}
+
+	return undefined;
+});
+
 const columns = computed(
 	(): Array<TestTableColumn<TestCaseExecutionRecord>> => [
 		{
@@ -60,6 +104,7 @@ const columns = computed(
 				{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
 			],
+			errorRoute: getErrorTooltipLinkRoute.value,
 			filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({

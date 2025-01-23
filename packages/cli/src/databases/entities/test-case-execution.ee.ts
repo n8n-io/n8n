@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
+import { IDataObject } from 'n8n-workflow';
 
 import {
 	datetimeColumnType,
@@ -7,6 +8,7 @@ import {
 } from '@/databases/entities/abstract-entity';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { TestRun } from '@/databases/entities/test-run.ee';
+import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
 export type TestCaseRunMetrics = Record<string, number | boolean>;
 
@@ -58,11 +60,11 @@ export class TestCaseExecution extends WithStringId {
 	completedAt: Date | null;
 
 	@Column('varchar', { nullable: true })
-	errorCode: string | null;
+	errorCode: TestCaseExecutionErrorCode | null;
 
 	@Column(jsonColumnType, { nullable: true })
-	errorDetails: Record<string, unknown>;
+	errorDetails: IDataObject;
 
 	@Column(jsonColumnType, { nullable: true })
-	metrics: TestCaseRunMetrics;
+	metrics: TestCaseRunMetrics | null;
 }

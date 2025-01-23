@@ -2,6 +2,8 @@
 import { useI18n } from '@/composables/useI18n';
 import type { TestTableColumn } from './TestTableBase.vue';
 import { useRouter } from 'vue-router';
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 defineProps<{
 	column: TestTableColumn<T>;
@@ -18,8 +20,16 @@ interface WithStatus {
 	status: string;
 }
 
+interface WithError {
+	errorCode: string;
+}
+
 function hasStatus(row: unknown): row is WithStatus {
 	return typeof row === 'object' && row !== null && 'status' in row;
+}
+
+function hasError(row: unknown): row is WithError {
+	return typeof row === 'object' && row !== null && 'errorCode' in row;
 }
 
 const statusThemeMap: Record<string, string> = {
@@ -42,6 +52,14 @@ const statusLabelMap: Record<string, string> = {
 	cancelled: locale.baseText('testDefinition.listRuns.status.cancelled'),
 };
 
+const errorTooltipMap: Record<string, BaseTextKey> = {
+	MOCKED_NODE_DOES_NOT_EXIST: 'testDefinition.runDetail.error.mockedNodeMissing',
+	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
+	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
+	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
+	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
+};
+
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {
 	return typeof row === 'object' && row !== null && prop in row;
 }
@@ -52,6 +70,32 @@ const getCellContent = (column: TestTableColumn<T>, row: T) => {
 	}
 	return hasProperty(row, column.prop) ? row[column.prop] : undefined;
 };
+
+function getErrorTooltip(column: TestTableColumn<T>, row: T): string | undefined {
+	if (hasError(row) && errorTooltipMap[row.errorCode]) {
+		const tooltipLinkUrl = getErrorTooltipUrl(column, row);
+
+		if (tooltipLinkUrl) {
+			return locale.baseText(errorTooltipMap[row.errorCode], {
+				interpolate: {
+					url: tooltipLinkUrl,
+				},
+			});
+		} else {
+			return locale.baseText(errorTooltipMap[row.errorCode]);
+		}
+	}
+
+	return undefined;
+}
+
+function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefined {
+	if (hasError(row) && column.errorRoute?.(row)) {
+		return router.resolve(column.errorRoute(row)).href;
+	}
+
+	return undefined;
+}
 </script>
 
 <template>
@@ -64,13 +108,19 @@ const getCellContent = (column: TestTableColumn<T>, row: T) => {
 		</router-link>
 	</div>
 
-	<N8nBadge
+	<N8nTooltip
 		v-else-if="column.prop === 'status' && hasStatus(row)"
-		:theme="statusThemeMap[row.status]"
-		class="mr-4xs"
+		placement="right"
+		:show-after="300"
+		:disabled="getErrorTooltip(column, row) === undefined"
 	>
-		{{ statusLabelMap[row.status] }}
-	</N8nBadge>
+		<template #content>
+			<div v-n8n-html="getErrorTooltip(column, row)" />
+		</template>
+		<N8nBadge :theme="statusThemeMap[row.status]" class="mr-4xs">
+			{{ statusLabelMap[row.status] }}
+		</N8nBadge>
+	</N8nTooltip>
 
 	<div v-else>
 		{{ getCellContent(column, row) }}
