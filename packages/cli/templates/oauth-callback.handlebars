@@ -9,15 +9,19 @@
 			}
 			body {
 				font-family: "Open Sans", sans-serif;
-				margin: 1rem 0;
+				padding: 1rem;
+				margin: 0;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				box-sizing: border-box;
 			}
 
 			.center-container {
 				display: flex;
 				align-items: center;
-				height: 100vh;
-				padding: 0 1rem;
 				justify-content: center;
+				flex: 1;
 			}
 
 			.row {
@@ -58,7 +62,7 @@
 	</head>
 	<body>
 		<div class="logo">
-			<img src="/assets/n8n-logo.png" class="logo" />
+			<img src="/static/n8n-logo.png" class="logo" />
 		</div>
 		<div class="center-container">
 			<div>
