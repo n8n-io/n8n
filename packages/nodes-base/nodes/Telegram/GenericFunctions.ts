@@ -258,7 +258,6 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
 	let text = context.getNodeParameter('message', 0) as string;
-	const responseType = context.getNodeParameter('responseType', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
 
@@ -278,10 +277,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			inline_keyboard: [
 				config.options.map((option) => {
 					return {
-						text:
-							responseType === 'approval'
-								? `${option.value === 'true' ? '✅' : '❌'} ${option.label}`
-								: option.label,
+						text: option.label,
 						url: `${config.url}?approved=${option.value}`,
 					};
 				}),

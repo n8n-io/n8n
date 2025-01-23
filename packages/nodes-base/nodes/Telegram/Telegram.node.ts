@@ -1787,7 +1787,11 @@ export class Telegram implements INodeType {
 				],
 				'message',
 				undefined,
-				{ noButtonStyle: true },
+				{
+					noButtonStyle: true,
+					defaultApproveLabel: '✅ Approve',
+					defaultDisapproveLabel: '❌ Decline',
+				},
 			).filter((p) => p.name !== 'subject'),
 		],
 	};

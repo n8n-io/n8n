@@ -44,7 +44,11 @@ export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
 	resource: string = 'message',
 	additionalProperties: INodeProperties[] = [],
-	options?: { noButtonStyle?: boolean },
+	options?: {
+		noButtonStyle?: boolean;
+		defaultApproveLabel?: string;
+		defaultDisapproveLabel?: string;
+	},
 ) {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
@@ -84,7 +88,7 @@ export function getSendAndWaitProperties(
 			displayName: 'Approve Button Label',
 			name: 'approveLabel',
 			type: 'string',
-			default: 'Approve',
+			default: options?.defaultApproveLabel || 'Approve',
 			displayOptions: {
 				show: {
 					approvalType: ['single', 'double'],
@@ -109,7 +113,7 @@ export function getSendAndWaitProperties(
 			displayName: 'Disapprove Button Label',
 			name: 'disapproveLabel',
 			type: 'string',
-			default: 'Decline',
+			default: options?.defaultDisapproveLabel || 'Decline',
 			displayOptions: {
 				show: {
 					approvalType: ['double'],
