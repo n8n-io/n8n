@@ -1,3 +1,12 @@
+## [1.76.1](https://github.com/n8n-io/n8n/compare/n8n@1.76.0...n8n@1.76.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* **core:** Fix usage of external libs in task runner ([#12788](https://github.com/n8n-io/n8n/issues/12788)) ([78646eb](https://github.com/n8n-io/n8n/commit/78646ebb00c16a2b4d38e4392befd23c57d3662d))
+
+
+
 # [1.76.0](https://github.com/n8n-io/n8n/compare/n8n@1.75.0...n8n@1.76.0) (2025-01-22)
 
 
