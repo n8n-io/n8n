@@ -7,12 +7,15 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/utils/nodes/nodeTransforms';
+import { useSetupWorkflowCredentialsModalState } from '@/components/SetupWorkflowCredentialsModal/useSetupWorkflowCredentialsModalState';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const posthogStore = usePostHog();
 const i18n = useI18n();
+
+const { credentialUsages } = useSetupWorkflowCredentialsModalState();
 
 const isTemplateSetupCompleted = computed(() => {
 	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
@@ -37,8 +40,9 @@ const showButton = computed(() => {
 	if (!isFeatureEnabled || !isCreatedFromTemplate || isTemplateSetupCompleted.value) {
 		return false;
 	}
+	const hasNodesWithCredentials = credentialUsages.value.length > 0;
 
-	return !allCredentialsFilled.value;
+	return hasNodesWithCredentials && !allCredentialsFilled.value;
 });
 
 const unsubscribe = watch(allCredentialsFilled, (newValue) => {
