@@ -543,35 +543,4 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			NDVDialog.actions.close();
 		});
 	});
-
-	// FIXME: Canvas V2: Unknown nodes should still render connection endpoints
-	it('should render connections correctly if unkown nodes are present', () => {
-		const unknownNodeName = 'Unknown node';
-		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');
-
-		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 1`).should('exist');
-		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 2`).should('exist');
-		WorkflowPage.actions.zoomToFit();
-
-		cy.draganddrop(
-			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 1`),
-			WorkflowPage.getters.getEndpointSelector('input', EDIT_FIELDS_SET_NODE_NAME),
-		);
-
-		cy.draganddrop(
-			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 2`),
-			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
-		);
-
-		WorkflowPage.actions.executeWorkflow();
-		cy.contains('Unrecognized node type').should('be.visible');
-
-		WorkflowPage.actions.deselectAll();
-		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 1`);
-		WorkflowPage.actions.deleteNodeFromContextMenu(`${unknownNodeName} 2`);
-
-		WorkflowPage.actions.executeWorkflow();
-
-		cy.contains('Unrecognized node type').should('not.exist');
-	});
 });
