@@ -53,6 +53,42 @@ function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflo
 	return result;
 }
 
+function hookFunctionsWorkflowTelemetry(userId?: string): IWorkflowExecuteHooks {
+	const eventService = Container.get(EventService);
+	return {
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks): Promise<void> {
+				const { executionId, workflowData } = this;
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+			},
+		],
+		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
+			},
+		],
+	};
+}
+
+function hookFunctionsNodeTelemetry(): IWorkflowExecuteHooks {
+	const eventService = Container.get(EventService);
+	return {
+		nodeExecuteBefore: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+			},
+		],
+		nodeExecuteAfter: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to push data to Editor-UI
  */
@@ -191,39 +227,8 @@ function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventService = Container.get(EventService);
 	return {
-		nodeExecuteBefore: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
-			},
-		],
-		nodeExecuteAfter: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
-			},
-		],
-		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
-				const { executionId, workflowData } = this;
-
-				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
-			},
-		],
 		workflowExecuteAfter: [
-			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('workflow-post-execute', {
-					workflow,
-					executionId,
-					runData,
-				});
-			},
 			async function (
 				this: WorkflowHooks,
 				fullRunData: IRun,
@@ -367,39 +372,8 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventService = Container.get(EventService);
 	return {
-		nodeExecuteBefore: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
-			},
-		],
-		nodeExecuteAfter: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
-			},
-		],
-		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
-				const { executionId, workflowData } = this;
-
-				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
-			},
-		],
 		workflowExecuteAfter: [
-			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('workflow-post-execute', {
-					workflow,
-					executionId,
-					runData,
-				});
-			},
 			async function (
 				this: WorkflowHooks,
 				fullRunData: IRun,
@@ -521,27 +495,12 @@ export function getWorkflowHooksIntegrated(
 	workflowData: IWorkflowBase,
 	userId: string | undefined,
 ): WorkflowHooks {
-	const eventService = Container.get(EventService);
-	const hookFunctions = mergeHookFunctions(hookFunctionsSave(), hookFunctionsPreExecute(), {
-		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
-				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
-			},
-		],
-
-		workflowExecuteAfter: [
-			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
-				const { workflowData: workflow } = this;
-
-				eventService.emit('workflow-post-execute', {
-					workflow,
-					executionId,
-					runData,
-					userId,
-				});
-			},
-		],
-	});
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowTelemetry(userId),
+		hookFunctionsNodeTelemetry(),
+		hookFunctionsSave(),
+		hookFunctionsPreExecute(),
+	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
@@ -554,7 +513,11 @@ export function getWorkflowHooksWorkerExecuter(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	const toMerge = [hookFunctionsSaveWorker(), hookFunctionsPreExecute()];
+	const toMerge = [
+		hookFunctionsNodeTelemetry(),
+		hookFunctionsSaveWorker(),
+		hookFunctionsPreExecute(),
+	];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		toMerge.push(hookFunctionsPush());
@@ -573,7 +536,51 @@ export function getWorkflowHooksWorkerMain(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	const toMerge = [hookFunctionsPreExecute()];
+	const toMerge = [
+		hookFunctionsWorkflowTelemetry(),
+		hookFunctionsPreExecute(),
+		{
+			workflowExecuteAfter: [
+				async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
+					// Don't delete executions before they are finished
+					if (!fullRunData.finished) return;
+
+					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = executionStatus;
+
+					const saveSettings = toSaveSettings(this.workflowData.settings);
+
+					const isManualMode = this.mode === 'manual';
+
+					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
+						/**
+						 * When manual executions are not being saved, we only soft-delete
+						 * the execution so that the user can access its binary data
+						 * while building their workflow.
+						 *
+						 * The manual execution and its binary data will be hard-deleted
+						 * on the next pruning cycle after the grace period set by
+						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+						 */
+						await Container.get(ExecutionRepository).softDelete(this.executionId);
+
+						return;
+					}
+
+					const shouldNotSave =
+						(executionStatus === 'success' && !saveSettings.success) ||
+						(executionStatus !== 'success' && !saveSettings.error);
+
+					if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+						});
+					}
+				},
+			],
+		},
+	];
 
 	// TODO: why are workers pushing to frontend?
 	// TODO: simplifying this for now to just leave the bare minimum hooks
@@ -585,45 +592,6 @@ export function getWorkflowHooksWorkerMain(
 	// So to avoid confusion, we are removing other hooks.
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
-	hookFunctions.workflowExecuteAfter = [
-		async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-			// Don't delete executions before they are finished
-			if (!fullRunData.finished) return;
-
-			const executionStatus = determineFinalExecutionStatus(fullRunData);
-			fullRunData.status = executionStatus;
-
-			const saveSettings = toSaveSettings(this.workflowData.settings);
-
-			const isManualMode = this.mode === 'manual';
-
-			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
-				/**
-				 * When manual executions are not being saved, we only soft-delete
-				 * the execution so that the user can access its binary data
-				 * while building their workflow.
-				 *
-				 * The manual execution and its binary data will be hard-deleted
-				 * on the next pruning cycle after the grace period set by
-				 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
-				 */
-				await Container.get(ExecutionRepository).softDelete(this.executionId);
-
-				return;
-			}
-
-			const shouldNotSave =
-				(executionStatus === 'success' && !saveSettings.success) ||
-				(executionStatus !== 'success' && !saveSettings.error);
-
-			if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-				await Container.get(ExecutionRepository).hardDelete({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-				});
-			}
-		},
-	];
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
@@ -636,6 +604,8 @@ export function getWorkflowHooksMain(
 	executionId: string,
 ): WorkflowHooks {
 	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowTelemetry(),
+		hookFunctionsNodeTelemetry(),
 		hookFunctionsSave(),
 		hookFunctionsPush(),
 		hookFunctionsPreExecute(),
