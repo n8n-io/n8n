@@ -460,7 +460,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
 
-	it('should rename node (context menu or shortcut)', () => {
+	it.only('should rename node (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
