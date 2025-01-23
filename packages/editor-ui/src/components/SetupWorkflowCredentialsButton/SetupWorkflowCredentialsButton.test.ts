@@ -26,6 +26,9 @@ const renderComponent = createComponentRenderer(SetupWorkflowCredentialsButton);
 
 const EMPTY_WORKFLOW = {
 	id: '__EMPTY__',
+	createdAt: -1,
+	updatedAt: -1,
+	versionId: '1',
 	name: 'Email Summary Agent ',
 	active: false,
 	connections: {},
