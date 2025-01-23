@@ -379,11 +379,13 @@ export class TestRunnerService {
 
 					// Update status of the test case execution mapping entry in case of an error
 					if (testCaseExecution.data.resultData.error) {
+						await this.testRunRepository.incrementFailed(testRun.id);
 						await this.testCaseExecutionRepository.markAsFailed(
 							testRun.id,
 							pastExecutionId,
 							'FAILED_TO_EXECUTE_WORKFLOW',
 						);
+						continue;
 					}
 
 					// Collect the results of the test case execution
@@ -405,7 +407,9 @@ export class TestRunnerService {
 					this.logger.debug('Evaluation execution finished', { pastExecutionId });
 
 					// Extract the output of the last node executed in the evaluation workflow
-					const addedMetrics = metrics.addResults(this.extractEvaluationResult(evalExecution));
+					const { addedMetrics, unknownMetrics } = metrics.addResults(
+						this.extractEvaluationResult(evalExecution),
+					);
 
 					if (evalExecution.data.resultData.error) {
 						await this.testRunRepository.incrementFailed(testRun.id);
@@ -416,11 +420,22 @@ export class TestRunnerService {
 						);
 					} else {
 						await this.testRunRepository.incrementPassed(testRun.id);
-						await this.testCaseExecutionRepository.markAsCompleted(
-							testRun.id,
-							pastExecutionId,
-							addedMetrics,
-						);
+
+						// Add warning if the evaluation workflow produced an unknown metric
+						if (unknownMetrics.size > 0) {
+							await this.testCaseExecutionRepository.markAsWarning(
+								testRun.id,
+								pastExecutionId,
+								'UNKNOWN_METRICS',
+								{ unknownMetrics: Array.from(unknownMetrics) },
+							);
+						} else {
+							await this.testCaseExecutionRepository.markAsCompleted(
+								testRun.id,
+								pastExecutionId,
+								addedMetrics,
+							);
+						}
 					}
 				} catch (e) {
 					await this.testRunRepository.incrementFailed(testRun.id);

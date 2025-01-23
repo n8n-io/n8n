@@ -32,6 +32,7 @@ function hasError(row: unknown): row is WithError {
 	return typeof row === 'object' && row !== null && 'errorCode' in row;
 }
 
+// FIXME: move status logic to a parent component
 const statusThemeMap: Record<string, string> = {
 	new: 'default',
 	running: 'warning',
@@ -39,6 +40,7 @@ const statusThemeMap: Record<string, string> = {
 	completed: 'success',
 	error: 'danger',
 	success: 'success',
+	warning: 'warning',
 	cancelled: 'default',
 };
 
@@ -49,6 +51,7 @@ const statusLabelMap: Record<string, string> = {
 	completed: locale.baseText('testDefinition.listRuns.status.completed'),
 	error: locale.baseText('testDefinition.listRuns.status.error'),
 	success: locale.baseText('testDefinition.listRuns.status.success'),
+	warning: locale.baseText('testDefinition.listRuns.status.warning'),
 	cancelled: locale.baseText('testDefinition.listRuns.status.cancelled'),
 };
 
@@ -58,6 +61,8 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
 	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
 	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
+	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
+	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
 };
 
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {
@@ -91,7 +96,7 @@ function getErrorTooltip(column: TestTableColumn<T>, row: T): string | undefined
 
 function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefined {
 	if (hasError(row) && column.errorRoute?.(row)) {
-		return router.resolve(column.errorRoute(row)).href;
+		return router.resolve(column.errorRoute(row)!).href;
 	}
 
 	return undefined;

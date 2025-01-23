@@ -51,7 +51,7 @@ export class TestCaseExecution extends WithStringId {
 	evaluationExecutionId: string | null;
 
 	@Column()
-	status: 'new' | 'running' | 'evaluation_running' | 'success' | 'error' | 'cancelled';
+	status: 'new' | 'running' | 'evaluation_running' | 'success' | 'error' | 'warning' | 'cancelled';
 
 	@Column({ type: datetimeColumnType, nullable: true })
 	runAt: Date | null;

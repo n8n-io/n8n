@@ -94,4 +94,21 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 			},
 		);
 	}
+
+	async markAsWarning(
+		testRunId: string,
+		pastExecutionId: string,
+		errorCode?: TestCaseExecutionErrorCode,
+		errorDetails?: IDataObject,
+	) {
+		return await this.update(
+			{ testRun: { id: testRunId }, pastExecutionId },
+			{
+				status: 'warning',
+				completedAt: new Date(),
+				errorCode,
+				errorDetails,
+			},
+		);
+	}
 }

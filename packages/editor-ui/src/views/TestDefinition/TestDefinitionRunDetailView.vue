@@ -67,6 +67,21 @@ const getErrorTooltipLinkRoute = computed(() => (row: TestCaseExecutionRecord) =
 				testId: testId.value,
 			},
 		};
+	} else if (row.errorCode === 'UNKNOWN_METRICS') {
+		return {
+			name: VIEWS.TEST_DEFINITION_EDIT,
+			params: {
+				testId: testId.value,
+			},
+		};
+	} else if (row.errorCode === 'INVALID_METRICS') {
+		return {
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: test.value?.evaluationWorkflowId,
+				executionId: row.evaluationExecutionId,
+			},
+		};
 	}
 
 	return undefined;
