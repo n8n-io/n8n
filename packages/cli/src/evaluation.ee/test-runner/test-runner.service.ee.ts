@@ -66,6 +66,15 @@ export class TestRunnerService {
 	) {}
 
 	/**
+	 * Initializes the service.
+	 * As Test Runner does not have a failover mechanism, it can not resume Test Runs interrupted by the server restart.
+	 * All Test Runs in incomplete state will be marked as cancelled.
+	 */
+	async init() {
+		await this.testRunRepository.markAllIncompleteAsFailed();
+	}
+
+	/**
 	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
 	 */
 	private getStartNodesData(

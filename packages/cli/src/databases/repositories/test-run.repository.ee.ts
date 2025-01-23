@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { FindManyOptions } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import type { AggregatedTestRunMetrics } from '@/databases/entities/test-run.ee';
 import { TestRun } from '@/databases/entities/test-run.ee';
@@ -37,6 +37,10 @@ export class TestRunRepository extends Repository<TestRun> {
 
 	async markAsCancelled(id: string) {
 		return await this.update(id, { status: 'cancelled' });
+	}
+
+	async markAllIncompleteAsFailed() {
+		return await this.update({ status: In(['new', 'running']) }, { status: 'error' });
 	}
 
 	async incrementPassed(id: string) {

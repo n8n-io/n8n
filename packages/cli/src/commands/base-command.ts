@@ -30,6 +30,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -289,6 +290,10 @@ export abstract class BaseCommand extends Command {
 
 	initWorkflowHistory() {
 		Container.get(WorkflowHistoryManager).init();
+	}
+
+	async initTestRunner() {
+		await Container.get(TestRunnerService).init();
 	}
 
 	async finally(error: Error | undefined) {
