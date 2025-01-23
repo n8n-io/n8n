@@ -167,7 +167,6 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,

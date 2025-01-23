@@ -207,7 +207,13 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
-		workflowExecuteBefore: [],
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks): Promise<void> {
+				const { executionId, workflowData } = this;
+
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+			},
+		],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -505,7 +511,14 @@ export function getWorkflowHooksIntegrated(
 	executionId: string,
 	workflowData: IWorkflowBase,
 ): WorkflowHooks {
-	const hookFunctions = mergeHookFunctions(hookFunctionsSave(), hookFunctionsPreExecute());
+	const eventService = Container.get(EventService);
+	const hookFunctions = mergeHookFunctions(hookFunctionsSave(), hookFunctionsPreExecute(), {
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks): Promise<void> {
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+			},
+		],
+	});
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 

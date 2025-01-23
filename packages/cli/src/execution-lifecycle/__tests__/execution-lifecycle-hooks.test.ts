@@ -126,7 +126,7 @@ describe('Execution Lifecycle Hooks', () => {
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
-			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
@@ -233,7 +233,10 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should not call eventService', async () => {
 				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(eventService.emit).not.toHaveBeenCalled();
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
+					executionId,
+					data: workflowData,
+				});
 			});
 
 			it('should run workflow.preExecute external hook', async () => {

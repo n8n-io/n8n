@@ -209,8 +209,6 @@ async function startExecution(
 	 */
 	await executionRepository.setRunning(executionId);
 
-	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
-
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
