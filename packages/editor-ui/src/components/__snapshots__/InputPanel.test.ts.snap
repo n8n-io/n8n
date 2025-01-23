@@ -29,19 +29,6 @@ exports[`InputPanel > should render 1`] = `
         >
           
           <label
-            aria-checked="false"
-            class="n8n-radio-button container hoverable"
-            role="radio"
-            tabindex="-1"
-          >
-            <div
-              class="button medium"
-              data-test-id="radio-button-mapping"
-            >
-              Mapping
-            </div>
-          </label>
-          <label
             aria-checked="true"
             class="n8n-radio-button container hoverable"
             role="radio"
@@ -49,6 +36,19 @@ exports[`InputPanel > should render 1`] = `
           >
             <div
               class="button active medium"
+              data-test-id="radio-button-mapping"
+            >
+              Mapping
+            </div>
+          </label>
+          <label
+            aria-checked="false"
+            class="n8n-radio-button container hoverable"
+            role="radio"
+            tabindex="-1"
+          >
+            <div
+              class="button medium"
               data-test-id="radio-button-debugging"
             >
               Debugging
