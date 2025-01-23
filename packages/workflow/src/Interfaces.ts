@@ -2684,6 +2684,7 @@ export type FormFieldsParameter = Array<{
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
 	formatDate?: string;
+	html?: string;
 	placeholder?: string;
 }>;
 

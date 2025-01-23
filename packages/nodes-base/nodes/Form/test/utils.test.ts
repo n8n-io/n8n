@@ -15,6 +15,7 @@ import {
 	prepareFormReturnItem,
 	resolveRawData,
 	isFormConnected,
+	sanitizeHtml,
 } from '../utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -38,6 +39,29 @@ describe('FormTrigger, parseFormDescription', () => {
 
 		descriptions.forEach(({ description, expected }) => {
 			expect(createDescriptionMetadata(description)).toBe(expected);
+		});
+	});
+});
+
+describe('FormTrigger, sanitizeHtml', () => {
+	it('should remove forbidden HTML tags', () => {
+		const givenHtml = [
+			{
+				html: '<script>alert("hello world")</script>',
+				expected: '',
+			},
+			{
+				html: '<style>body { color: red; }</style>',
+				expected: '',
+			},
+			{
+				html: '<input type="text" value="test">',
+				expected: '',
+			},
+		];
+
+		givenHtml.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
 		});
 	});
 });
@@ -79,6 +103,12 @@ describe('FormTrigger, formWebhook', () => {
 				requiredField: true,
 				acceptFileTypes: '.pdf,.doc',
 				multipleFiles: false,
+			},
+			{
+				fieldLabel: 'Custom HTML',
+				fieldType: 'html',
+				html: '<div>Test HTML</div>',
+				requiredField: false,
 			},
 		];
 
@@ -133,6 +163,16 @@ describe('FormTrigger, formWebhook', () => {
 					label: 'Resume',
 					multipleFiles: '',
 					placeholder: undefined,
+				},
+				{
+					id: 'field-4',
+					errorId: 'error-field-4',
+					label: 'Custom HTML',
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+					html: '<div>Test HTML</div>',
+					isHtml: true,
 				},
 			],
 			formSubmittedText: 'Your response has been recorded',
