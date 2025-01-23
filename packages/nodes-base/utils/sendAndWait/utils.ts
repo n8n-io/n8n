@@ -599,7 +599,6 @@ export function configureWaitTillDate(context: IExecuteFunctions) {
 		resumeUnit?: string;
 		maxDateAndTime?: string;
 	};
-	console.log(limitWaitTime);
 
 	if (Object.keys(limitWaitTime).length) {
 		try {
