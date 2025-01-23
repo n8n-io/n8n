@@ -5,9 +5,16 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
+	IF_NODE_NAME,
 } from './../constants';
 import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import {
+	getCanvasPane,
+	getInputPlusHandle,
+	getOutputHandle,
+	getOutputPlusHandle,
+} from '../composables/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 describe('Canvas Actions', () => {
@@ -57,6 +64,15 @@ describe('Canvas Actions', () => {
 		});
 		WorkflowPage.getters.nodeCreatorCategoryItems().its('length').should('be.gt', 0);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should add disconnected node if nothing is selected', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		// Deselect nodes
+		getCanvasPane().click({ force: true });
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 

@@ -1,3 +1,4 @@
+import { getCanvasNodes } from '../composables/workflow';
 import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	CODE_NODE_NAME,
@@ -8,11 +9,12 @@ import {
 import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { getCanvasNodes } from '../composables/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const messageBox = new MessageBoxClass();
 const ndv = new NDV();
+
+const CODE_NODE_NEW_NAME = 'Something else';
 
 describe('Undo/Redo', () => {
 	beforeEach(() => {
