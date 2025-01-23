@@ -34,6 +34,25 @@ import {
 } from './shared/shared-hook-functions';
 import { toSaveSettings } from './to-save-settings';
 
+function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflowExecuteHooks {
+	const result: IWorkflowExecuteHooks = {
+		nodeExecuteBefore: [],
+		nodeExecuteAfter: [],
+		workflowExecuteBefore: [],
+		workflowExecuteAfter: [],
+		sendResponse: [],
+		nodeFetchedData: [],
+	};
+	for (const hooks of hookFunctions) {
+		for (const key in hooks) {
+			if (hooks.hasOwnProperty(key)) {
+				result[key]!.push(...hooks[key]!);
+			}
+		}
+	}
+	return result;
+}
+
 /**
  * Returns hook functions to push data to Editor-UI
  */
@@ -486,12 +505,7 @@ export function getWorkflowHooksIntegrated(
 	executionId: string,
 	workflowData: IWorkflowBase,
 ): WorkflowHooks {
-	const hookFunctions = hookFunctionsSave();
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
+	const hookFunctions = mergeHookFunctions(hookFunctionsSave(), hookFunctionsPreExecute());
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
@@ -502,27 +516,15 @@ export function getWorkflowHooksWorkerExecuter(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters?: IWorkflowHooksOptionalParameters,
+	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsSaveWorker();
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
+	const toMerge = [hookFunctionsSaveWorker(), hookFunctionsPreExecute()];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		const pushHooks = hookFunctionsPush();
-		for (const key of Object.keys(pushHooks)) {
-			if (hookFunctions[key] === undefined) {
-				hookFunctions[key] = [];
-			}
-			// eslint-disable-next-line prefer-spread
-			hookFunctions[key].push.apply(hookFunctions[key], pushHooks[key]);
-		}
+		toMerge.push(hookFunctionsPush());
 	}
 
+	const hookFunctions = mergeHookFunctions(...toMerge);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -533,23 +535,15 @@ export function getWorkflowHooksWorkerMain(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters?: IWorkflowHooksOptionalParameters,
+	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsPreExecute();
+	const toMerge = [hookFunctionsPreExecute()];
 
 	// TODO: why are workers pushing to frontend?
 	// TODO: simplifying this for now to just leave the bare minimum hooks
+	// hookFunctions.push(hookFunctionsPush());
 
-	// const hookFunctions = hookFunctionsPush();
-	// const preExecuteFunctions = hookFunctionsPreExecute();
-	// for (const key of Object.keys(preExecuteFunctions)) {
-	// 	if (hookFunctions[key] === undefined) {
-	// 		hookFunctions[key] = [];
-	// 	}
-	// 	hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	// }
-
+	const hookFunctions = mergeHookFunctions(...toMerge);
 	// When running with worker mode, main process executes
 	// Only workflowExecuteBefore + workflowExecuteAfter
 	// So to avoid confusion, we are removing other hooks.
@@ -605,22 +599,11 @@ export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): WorkflowHooks {
-	const hookFunctions = hookFunctionsSave();
-	const pushFunctions = hookFunctionsPush();
-	for (const key of Object.keys(pushFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], pushFunctions[key]);
-	}
-
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
-
-	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];
-	if (!hookFunctions.nodeExecuteAfter) hookFunctions.nodeExecuteAfter = [];
-
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsSave(),
+		hookFunctionsPush(),
+		hookFunctionsPreExecute(),
+	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
 		pushRef: data.pushRef,
 		retryOf: data.retryOf as string,

@@ -129,7 +129,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
-			expect(hookFunctions.sendResponse).toBeUndefined();
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('nodeExecuteBefore', () => {
