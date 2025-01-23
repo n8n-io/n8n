@@ -449,6 +449,7 @@ describe('RunData', () => {
 						},
 					],
 					executionStatus: 'error',
+					// @ts-expect-error allow missing properties in test
 					error: {
 						level: 'error',
 						tags: {
@@ -479,8 +480,11 @@ describe('RunData', () => {
 					hints: [],
 					startTime: 1737641598215,
 					executionTime: 3,
+					// @ts-expect-error allow missing properties in test
 					source: [{ previousNode: 'Execute Workflow Trigger' }],
+					// @ts-expect-error allow missing properties in test
 					executionStatus: 'error',
+					// @ts-expect-error allow missing properties in test
 					error: {
 						level: 'error',
 						tags: { packageName: 'nodes-base' },
@@ -604,6 +608,7 @@ describe('RunData', () => {
 					name: 'Test Node',
 				},
 				workflow: createTestWorkflowObject({
+					// @ts-expect-error allow missing properties in test
 					workflowNodes,
 				}),
 			},
