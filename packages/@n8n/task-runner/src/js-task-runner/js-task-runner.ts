@@ -118,7 +118,7 @@ export class JsTaskRunner extends TaskRunner {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
 			// on the Moment.prototype, which doesn't work if Object.prototype has been
-			// frozen. This works as long as the overrides as done when the library is
+			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
 				require(module);
