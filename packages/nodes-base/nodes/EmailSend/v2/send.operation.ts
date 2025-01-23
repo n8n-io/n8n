@@ -181,6 +181,22 @@ const properties: INodeProperties[] = [
 				placeholder: 'info@example.com',
 				description: 'The email address to send the reply to',
 			},
+			{
+				displayName: 'In Reply To',
+				name: 'inReplyTo',
+				type: 'string',
+				default: '',
+				placeholder: '<msg-id-123@email.example.com>',
+				description: 'Message ID to reply to',
+			},
+			{
+				displayName: 'References',
+				name: 'references',
+				type: 'string',
+				default: '',
+				placeholder: '<msg-id-123@email.example.com>,<msg-id-456@email.example.com>',
+				description: 'List of message IDs to reference, separated by commas',
+			},
 		],
 	},
 ];
@@ -201,6 +217,8 @@ type EmailSendOptions = {
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
+	inReplyTo?: string;
+	references?: string;
 };
 
 function configureTransport(credentials: IDataObject, options: EmailSendOptions) {
@@ -285,6 +303,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				bcc: options.bccEmail,
 				subject,
 				replyTo: options.replyTo,
+				inReplyTo: options.inReplyTo,
 			};
 
 			if (emailFormat === 'text' || emailFormat === 'both') {
@@ -340,7 +359,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					mailOptions.attachments = attachments;
 				}
 			}
-
+			if (options.inReplyTo && (!options.references || options.references.trim() === '')) {
+                mailOptions.references = mailOptions.inReplyTo;
+            } else if (options.references && options.references.trim() !== '') {
+                mailOptions.references = options.references.split(',').map(ref => ref.trim()).join(' ');
+            }
 			const info = await transporter.sendMail(mailOptions);
 
 			returnData.push({
