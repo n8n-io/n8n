@@ -98,7 +98,14 @@ export class JsTaskRunner extends TaskRunner {
 		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
-			moduleList === '*' ? '*' : new Set(moduleList.split(',').map((x) => x.trim()));
+			moduleList === '*'
+				? '*'
+				: new Set(
+						moduleList
+							.split(',')
+							.map((x) => x.trim())
+							.filter((x) => x !== ''),
+					);
 
 		const allowedBuiltInModules = parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? '');
 		const allowedExternalModules = parseModuleAllowList(
