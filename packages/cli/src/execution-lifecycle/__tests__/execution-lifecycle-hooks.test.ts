@@ -25,6 +25,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { mockInstance } from '@test/mocking';
 
 import {
+	getWorkflowHooksIntegrated,
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
@@ -485,6 +486,25 @@ describe('Execution Lifecycle Hooks', () => {
 				});
 			});
 		});
+
+		describe("when pushRef isn't set", () => {
+			beforeEach(() => {
+				hooks = getWorkflowHooksMain({ executionMode, workflowData }, executionId);
+			});
+
+			it('should not send any push events', async () => {
+				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+				await hooks.executeHookFunctions('nodeExecuteAfter', [
+					nodeName,
+					taskData,
+					runExecutionData,
+				]);
+				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getWorkflowHooksWorkerMain', () => {
@@ -572,6 +592,21 @@ describe('Execution Lifecycle Hooks', () => {
 
 		nodeTelemetryTests();
 
+		it('should setup the correct set of hooks', () => {
+			expect(hooks).toBeInstanceOf(WorkflowHooks);
+			expect(hooks.mode).toBe('manual');
+			expect(hooks.executionId).toBe(executionId);
+			expect(hooks.workflowData).toEqual(workflowData);
+			expect(hooks.pushRef).toEqual('test-push-ref');
+			expect(hooks.retryOf).toEqual('test-retry-of');
+
+			const { hookFunctions } = hooks;
+			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+		});
+
 		describe('saving static data', () => {
 			it('should skip saving static data for manual executions', async () => {
 				hooks.mode = 'manual';
@@ -640,6 +675,30 @@ describe('Execution Lifecycle Hooks', () => {
 					project,
 				);
 			});
+		});
+	});
+
+	describe('getWorkflowHooksIntegrated', () => {
+		beforeEach(() => {
+			hooks = getWorkflowHooksIntegrated(executionMode, executionId, workflowData, undefined);
+		});
+
+		workflowTelemetryTests();
+		nodeTelemetryTests();
+
+		it('should setup the correct set of hooks', () => {
+			expect(hooks).toBeInstanceOf(WorkflowHooks);
+			expect(hooks.mode).toBe('manual');
+			expect(hooks.executionId).toBe(executionId);
+			expect(hooks.workflowData).toEqual(workflowData);
+			expect(hooks.pushRef).toBeUndefined();
+			expect(hooks.retryOf).toBeUndefined();
+
+			const { hookFunctions } = hooks;
+			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
 		});
 	});
 });
