@@ -23,7 +23,7 @@ export class EvaluationMetrics {
 		}
 
 		// Check that result contains all expected metrics
-		if (difference(Object.keys(addedMetrics), Array.from(this.metricNames)).length > 0) {
+		if (difference(Array.from(this.metricNames), Object.keys(addedMetrics)).length > 0) {
 			throw new TestCaseExecutionError('METRICS_MISSING', {
 				expectedMetrics: Array.from(this.metricNames),
 				receivedMetrics: Object.keys(addedMetrics),
