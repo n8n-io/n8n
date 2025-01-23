@@ -554,7 +554,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	return config;
 }
 
-function createButton(url: string, label: string, approved: string, style: string) {
+export function createButton(url: string, label: string, approved: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
