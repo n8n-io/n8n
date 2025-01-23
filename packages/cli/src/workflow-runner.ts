@@ -21,7 +21,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { EventService } from '@/events/event.service';
 import {
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
@@ -52,7 +51,6 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 	) {}
@@ -179,12 +177,6 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
-					this.eventService.emit('workflow-post-execute', {
-						workflow: data.workflowData,
-						executionId,
-						userId: data.userId,
-						runData: executionData,
-					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {
 							await this.externalHooks.run('workflow.postExecute', [

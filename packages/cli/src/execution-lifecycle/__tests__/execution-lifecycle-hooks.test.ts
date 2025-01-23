@@ -127,7 +127,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
@@ -230,7 +230,7 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('should not call eventService', async () => {
+			it('should emit workflow-pre-execute event', async () => {
 				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
@@ -250,9 +250,17 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('workflowExecuteAfter', () => {
+			it('should emit workflow-post-execute event', async () => {
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					workflow: workflowData,
+					runData: successfulRun,
+				});
+			});
+
 			it('should send executionFinished push event', async () => {
 				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
-				expect(eventService.emit).not.toHaveBeenCalled();
 				expect(push.send).toHaveBeenCalledWith(
 					{
 						type: 'executionFinished',

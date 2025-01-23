@@ -215,6 +215,15 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+
+				eventService.emit('workflow-post-execute', {
+					workflow,
+					executionId,
+					runData,
+				});
+			},
 			async function (
 				this: WorkflowHooks,
 				fullRunData: IRun,
@@ -382,6 +391,15 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+
+				eventService.emit('workflow-post-execute', {
+					workflow,
+					executionId,
+					runData,
+				});
+			},
 			async function (
 				this: WorkflowHooks,
 				fullRunData: IRun,
@@ -465,15 +483,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					});
 				}
 			},
-			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('workflow-post-execute', {
-					workflow,
-					executionId,
-					runData,
-				});
-			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
 				const externalHooks = Container.get(ExternalHooks);
 				if (externalHooks.exists('workflow.postExecute')) {
@@ -510,12 +519,26 @@ export function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
+	userId: string | undefined,
 ): WorkflowHooks {
 	const eventService = Container.get(EventService);
 	const hookFunctions = mergeHookFunctions(hookFunctionsSave(), hookFunctionsPreExecute(), {
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
 				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+			},
+		],
+
+		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { workflowData: workflow } = this;
+
+				eventService.emit('workflow-post-execute', {
+					workflow,
+					executionId,
+					runData,
+					userId,
+				});
 			},
 		],
 	});
