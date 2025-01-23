@@ -5,16 +5,10 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
-	IF_NODE_NAME,
 } from './../constants';
+import { getCanvasPane } from '../composables/workflow';
 import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import {
-	getCanvasPane,
-	getInputPlusHandle,
-	getOutputHandle,
-	getOutputPlusHandle,
-} from '../composables/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 describe('Canvas Actions', () => {

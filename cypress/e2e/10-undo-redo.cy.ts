@@ -14,8 +14,6 @@ const WorkflowPage = new WorkflowPageClass();
 const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
-const CODE_NODE_NEW_NAME = 'Something else';
-
 describe('Undo/Redo', () => {
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
