@@ -1,7 +1,14 @@
-import { SCHEDULE_TRIGGER_NODE_NAME, CODE_NODE_NAME, SET_NODE_NAME } from '../constants';
+import {
+	SCHEDULE_TRIGGER_NODE_NAME,
+	CODE_NODE_NAME,
+	SET_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+} from '../constants';
 import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { getCanvasNodes } from '../composables/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const messageBox = new MessageBoxClass();
@@ -71,6 +78,62 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should undo/redo moving nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+
+		WorkflowPage.actions.zoomToFit();
+
+		getCanvasNodes()
+			.last()
+			.then(($node) => {
+				const { x: x1, y: y1 } = $node[0].getBoundingClientRect();
+
+				cy.ifCanvasVersion(
+					() => {
+						cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
+							clickToFinish: true,
+						});
+					},
+					() => {
+						cy.drag(getCanvasNodes().last(), [50, 150], {
+							realMouse: true,
+							abs: true,
+						});
+					},
+				);
+
+				getCanvasNodes()
+					.last()
+					.then(($node) => {
+						const { x: x2, y: y2 } = $node[0].getBoundingClientRect();
+						expect(x2).to.be.greaterThan(x1);
+						expect(y2).to.be.greaterThan(y1);
+					});
+
+				WorkflowPage.actions.hitUndo();
+
+				getCanvasNodes()
+					.last()
+					.then(($node) => {
+						const { x: x3, y: y3 } = $node[0].getBoundingClientRect();
+						expect(x3).to.equal(x1);
+						expect(y3).to.equal(y1);
+					});
+
+				WorkflowPage.actions.hitRedo();
+
+				getCanvasNodes()
+					.last()
+					.then(($node) => {
+						const { x: x4, y: y4 } = $node[0].getBoundingClientRect();
+						expect(x4).to.be.greaterThan(x1);
+						expect(y4).to.be.greaterThan(y1);
+					});
+			});
 	});
 
 	it('should undo/redo deleting a connection using context menu', () => {
