@@ -194,6 +194,8 @@ export class JobProcessor {
 				);
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
+					// execution did not even start, but we call `workflowExecuteAfter` to notify main
+
 					const now = new Date();
 					const runData: IRun = {
 						mode: 'manual',
@@ -201,10 +203,9 @@ export class JobProcessor {
 						finished: false,
 						startedAt: now,
 						stoppedAt: now,
-						data: { resultData },
+						data: { resultData: { error, runData: {} } },
 					};
 
-					// strictly speaking execution did not even start, but we need to notify main
 					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 					return { success: false };
 				}
