@@ -339,7 +339,7 @@ export class Aws implements ICredentialType {
 				region = parsed.region;
 			}
 		} else {
-			if (!requestOptions.baseURL && !requestOptions.url) {
+			if (!requestOptions.baseURL && !requestOptions.url && service) {
 				let endpointString: string;
 				if (service === 'lambda' && credentials.lambdaEndpoint) {
 					endpointString = credentials.lambdaEndpoint;
@@ -353,9 +353,6 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.sesEndpoint;
 				} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
 					endpointString = credentials.rekognitionEndpoint;
-				} else if (service === 'sqs' && credentials.sqsEndpoint) {
-					//ToDo: should we remove the duplicate?
-					endpointString = credentials.sqsEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
 				}

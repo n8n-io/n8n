@@ -30,7 +30,7 @@ export class AwsCognito implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message: 'Please select a parameter in the options to update the user',
+				message: 'Select a parameter to update this resource',
 				displayCondition:
 					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
 				whenToDisplay: 'always',
@@ -38,7 +38,7 @@ export class AwsCognito implements INodeType {
 				type: 'warning',
 			},
 			{
-				message: 'Please select a parameter in the options to update the group',
+				message: 'Select a parameter to update this resource',
 				displayCondition:
 					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["options"]).length === 0}}',
 				whenToDisplay: 'always',

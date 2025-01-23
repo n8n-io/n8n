@@ -562,7 +562,7 @@ export function mapUserAttributes(userAttributes: Array<{ Name: string; Value: s
 export async function simplifyData(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
+	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
 
