@@ -62,6 +62,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Send and Wait for Response',
 				value: SEND_AND_WAIT_OPERATION,
+				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',
 			},
 			{
