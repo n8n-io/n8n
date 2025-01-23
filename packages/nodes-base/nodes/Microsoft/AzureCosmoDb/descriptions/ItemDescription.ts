@@ -8,7 +8,7 @@ export const itemOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 			},
 		},
 		options: [
@@ -20,7 +20,7 @@ export const itemOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'POST',
-						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/docs',
+						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/item',
 					},
 				},
 				action: 'Create item',
@@ -33,7 +33,7 @@ export const itemOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'DELETE',
-						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/docs/{{ $parameter["id"] }}',
+						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/item/{{ $parameter["id"] }}',
 					},
 				},
 				action: 'Delete item',
@@ -46,7 +46,7 @@ export const itemOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'GET',
-						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/docs/{{ $parameter["id"] }}',
+						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/item/{{ $parameter["id"] }}',
 					},
 				},
 				action: 'Get item',
@@ -72,7 +72,7 @@ export const itemOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'POST',
-						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/docs',
+						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/item',
 					},
 				},
 				action: 'Query items',
@@ -85,7 +85,7 @@ export const itemOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'PATCH',
-						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/docs/{{ $parameter["id"] }}',
+						url: '=/dbs/{{ $parameter["dbId"] }}/colls/{{ $parameter["collId"] }}/item/{{ $parameter["id"] }}',
 					},
 				},
 				action: 'Create item',
@@ -108,7 +108,7 @@ export const createFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['create'],
 			},
 		},
@@ -152,7 +152,7 @@ export const createFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['create'],
 			},
 		},
@@ -194,7 +194,7 @@ export const createFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['create'],
 			},
 		},
@@ -216,7 +216,7 @@ export const createFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['create'],
 			},
 		},
@@ -244,7 +244,7 @@ export const deleteFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['delete'],
 			},
 		},
@@ -288,7 +288,7 @@ export const deleteFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['delete'],
 			},
 		},
@@ -326,11 +326,11 @@ export const deleteFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. AndersenFamily',
-		description: 'Unique ID for the document',
+		description: 'Unique ID for the item',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['delete'],
 			},
 		},
@@ -350,7 +350,7 @@ export const getFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['get'],
 			},
 		},
@@ -394,7 +394,7 @@ export const getFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['get'],
 			},
 		},
@@ -436,7 +436,7 @@ export const getFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['get'],
 			},
 		},
@@ -463,7 +463,7 @@ export const getAllFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['getAll'],
 			},
 		},
@@ -507,7 +507,7 @@ export const getAllFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['getAll'],
 			},
 		},
@@ -555,7 +555,7 @@ export const queryFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['query'],
 			},
 		},
@@ -599,7 +599,7 @@ export const queryFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['query'],
 			},
 		},
@@ -641,7 +641,7 @@ export const queryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['query'],
 			},
 		},
@@ -668,7 +668,7 @@ export const updateFields: INodeProperties[] = [
 		description: 'Select the database you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['update'],
 			},
 		},
@@ -712,7 +712,7 @@ export const updateFields: INodeProperties[] = [
 		description: 'Select the collection you want to use',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['update'],
 			},
 		},
@@ -754,7 +754,7 @@ export const updateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['update'],
 			},
 		},
@@ -789,7 +789,7 @@ export const updateFields: INodeProperties[] = [
 		description: 'Define the operations to perform, such as setting or updating document fields',
 		displayOptions: {
 			show: {
-				resource: ['docs'],
+				resource: ['item'],
 				operation: ['update'],
 			},
 		},
