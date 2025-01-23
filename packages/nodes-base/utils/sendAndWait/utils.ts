@@ -100,10 +100,6 @@ const limitWaitTimeProperties: INodeProperties = {
 					},
 					options: [
 						{
-							name: 'Seconds',
-							value: 'seconds',
-						},
-						{
 							name: 'Minutes',
 							value: 'minutes',
 						},
