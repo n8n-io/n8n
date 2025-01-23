@@ -1461,7 +1461,7 @@ defineExpose({ enterEditMode });
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<div v-if="props.calloutMessage" :class="$style.hintCallout">
-			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+			<N8nCallout theme="info" data-test-id="run-data-callout">
 				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 			</N8nCallout>
 		</div>
