@@ -470,8 +470,7 @@ describe('RunData', () => {
 							},
 						},
 						message: 'yo [line 1]',
-						stack:
-							'Error: yo\n    at /Users/miloradfilipovic/workspace/n8n/packages/nodes-base/dist/nodes/Code:1:104\n    at /Users/miloradfilipovic/workspace/n8n/packages/nodes-base/dist/nodes/Code:2:2\n    at VM2 Wrapper.apply (/Users/miloradfilipovic/workspace/n8n/node_modules/.pnpm/@n8n+vm2@3.9.25/node_modules/@n8n/vm2/lib/bridge.js:490:11)\n    at NodeVM.run (/Users/miloradfilipovic/workspace/n8n/node_modules/.pnpm/@n8n+vm2@3.9.25/node_modules/@n8n/vm2/lib/nodevm.js:497:23)\n    at JavaScriptSandbox.runCodeAllItems (/Users/miloradfilipovic/workspace/n8n/packages/nodes-base/nodes/Code/JavaScriptSandbox.ts:73:36)\n    at ExecuteContext.execute (/Users/miloradfilipovic/workspace/n8n/packages/nodes-base/nodes/Code/Code.node.ts:155:28)\n    at WorkflowExecute.runNode (/Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1097:31)\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1505:38\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:2066:11',
+						stack: 'Error: yo\n n8n/packages/core/src/execution-engine/workflow-execute.ts:2066:11',
 					},
 				},
 			],
