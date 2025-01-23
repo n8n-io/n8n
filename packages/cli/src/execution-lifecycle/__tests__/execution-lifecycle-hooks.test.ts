@@ -349,15 +349,6 @@ describe('Execution Lifecycle Hooks', () => {
 					);
 				});
 
-				it('should handle errors when updating execution', async () => {
-					const error = new Error('Failed to update execution');
-					executionRepository.updateExistingExecution.mockRejectedValueOnce(error);
-
-					await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
-
-					expect(errorReporter.error).toHaveBeenCalledWith(error);
-				});
-
 				it('should not delete unfinished executions', async () => {
 					const unfinishedRun = mock<IRun>({ finished: false, status: 'running' });
 

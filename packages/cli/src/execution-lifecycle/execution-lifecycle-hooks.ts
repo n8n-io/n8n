@@ -331,23 +331,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 					}
-				} catch (error) {
-					Container.get(ErrorReporter).error(error);
-					logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
-						executionId: this.executionId,
-						workflowId: this.workflowData.id,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						error,
-					});
-					if (!isManualMode) {
-						executeErrorWorkflow(
-							this.workflowData,
-							fullRunData,
-							this.mode,
-							this.executionId,
-							this.retryOf,
-						);
-					}
 				} finally {
 					workflowStatisticsService.emit('workflowExecutionCompleted', {
 						workflowData: this.workflowData,
@@ -440,16 +423,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						workflowId: this.workflowData.id,
 						executionData: fullExecutionData,
 					});
-				} catch (error) {
-					if (!isManualMode) {
-						executeErrorWorkflow(
-							this.workflowData,
-							fullRunData,
-							this.mode,
-							this.executionId,
-							this.retryOf,
-						);
-					}
 				} finally {
 					workflowStatisticsService.emit('workflowExecutionCompleted', {
 						workflowData: this.workflowData,
