@@ -257,9 +257,9 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
-	let text = context.getNodeParameter('message', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
+	let text = config.message;
 
 	const instanceId = context.getInstanceId();
 	const attributionText = 'This message was sent automatically with ';
