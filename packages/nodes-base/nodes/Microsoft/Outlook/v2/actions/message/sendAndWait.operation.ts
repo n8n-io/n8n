@@ -49,7 +49,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 	const body: IDataObject = { message };
 
-	await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
+	await microsoftApiRequest.call(this, 'POST', '/sendMail', body);
 
 	return items;
 }
