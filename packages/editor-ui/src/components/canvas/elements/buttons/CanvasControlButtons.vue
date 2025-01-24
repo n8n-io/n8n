@@ -2,8 +2,6 @@
 import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
-import { useBugReporting } from '@/composables/useBugReporting';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 
 const props = withDefaults(
@@ -22,7 +20,6 @@ const emit = defineEmits<{
 	'zoom-to-fit': [];
 }>();
 
-const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const isResetZoomVisible = computed(() => props.zoom !== 1);
