@@ -13,6 +13,7 @@ import { labelFields, labelOperations } from './LabelDescription';
 import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { sendAndWaitWebhooks } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	configureWaitTillDate,
@@ -68,26 +69,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	webhooks: sendAndWaitWebhooks,
 	properties: [
 		{
 			displayName: 'Authentication',

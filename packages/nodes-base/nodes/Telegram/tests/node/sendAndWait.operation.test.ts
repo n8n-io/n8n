@@ -47,6 +47,9 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 
+		// configureWaitTillDate
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
+
 		const result = await telegram.execute.call(mockExecuteFunctions);
 
 		expect(result).toEqual([items]);

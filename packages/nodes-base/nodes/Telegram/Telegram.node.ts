@@ -21,6 +21,7 @@ import {
 	getPropertyName,
 } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { sendAndWaitWebhooks } from '../../utils/sendAndWait/descriptions';
 import {
 	configureWaitTillDate,
 	getSendAndWaitProperties,
@@ -48,26 +49,7 @@ export class Telegram implements INodeType {
 				required: true,
 			},
 		],
-		webhooks: [
-			{
-				name: 'default',
-				httpMethod: 'GET',
-				responseMode: 'onReceived',
-				responseData: '',
-				path: '={{ $nodeId }}',
-				restartWebhook: true,
-				isFullPath: true,
-			},
-			{
-				name: 'default',
-				httpMethod: 'POST',
-				responseMode: 'onReceived',
-				responseData: '',
-				path: '={{ $nodeId }}',
-				restartWebhook: true,
-				isFullPath: true,
-			},
-		],
+		webhooks: sendAndWaitWebhooks,
 		properties: [
 			{
 				displayName: 'Resource',
