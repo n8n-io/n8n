@@ -63,7 +63,11 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 					</n8n-text>
 				</div>
 			</div>
+			<div :class="$style.cardApiKey">
+				<n8n-text color="text-light" size="small"> {{ apiKey.apiKey.slice(0, 10) }}</n8n-text>
+			</div>
 		</template>
+
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
@@ -86,8 +90,9 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 
 .cardHeading {
 	font-size: var(--font-size-s);
-	word-break: break-word;
+	word-break: word-break;
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	width: 200px;
 }
 
 .cardDescription {
@@ -104,5 +109,11 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 	align-items: center;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+.cardApiKey {
+	flex-grow: 1;
+	display: flex;
+	justify-content: center;
 }
 </style>

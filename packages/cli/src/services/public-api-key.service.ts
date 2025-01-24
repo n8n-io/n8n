@@ -12,8 +12,8 @@ import { JwtService } from './jwt.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
-const REDACT_API_KEY_REVEAL_COUNT = 15;
-const REDACT_API_KEY_MAX_LENGTH = 80;
+const REDACT_API_KEY_REVEAL_COUNT = 4;
+const REDACT_API_KEY_MAX_LENGTH = 10;
 
 @Service()
 export class PublicApiKeyService {
@@ -84,12 +84,12 @@ export class PublicApiKeyService {
 	 * ```
 	 */
 	redactApiKey(apiKey: string) {
-		const visiblePart = apiKey.slice(0, REDACT_API_KEY_REVEAL_COUNT);
-		const redactedPart = '*'.repeat(apiKey.length - REDACT_API_KEY_REVEAL_COUNT);
+		const visiblePart = apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT);
+		const redactedPart = '*'.repeat(
+			Math.max(0, REDACT_API_KEY_MAX_LENGTH - REDACT_API_KEY_REVEAL_COUNT),
+		);
 
-		const completeRedactedApiKey = visiblePart + redactedPart;
-
-		return completeRedactedApiKey.slice(0, REDACT_API_KEY_MAX_LENGTH);
+		return redactedPart + visiblePart;
 	}
 
 	getAuthMiddleware(version: string) {

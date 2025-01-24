@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
 import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -102,11 +102,23 @@ const onSave = async () => {
 		loading.value = false;
 	}
 };
+
+const modalTitle = computed(() => {
+	let path = 'edit';
+	if (props.mode === 'new') {
+		if (newApiKey.value) {
+			path = 'created';
+		} else {
+			path = 'create';
+		}
+	}
+	return i18n.baseText(`settings.api.view.modal.title.${path}`);
+});
 </script>
 
 <template>
 	<Modal
-		:title="mode === 'new' ? 'Create API Key' : 'Edit API Key'"
+		:title="modalTitle"
 		:event-bus="modalBus"
 		:name="API_KEY_EDIT_MODAL_KEY"
 		width="600px"
@@ -166,13 +178,18 @@ const onSave = async () => {
 					</n8n-link>
 				</div>
 
-				<N8nInputLabel v-else label="Label" color="text-dark">
+				<N8nInputLabel
+					v-else
+					:label="i18n.baseText('settings.api.view.modal.form.label')"
+					color="text-dark"
+				>
 					<N8nInput
 						ref="inputRef"
 						required
 						:model-value="label"
 						type="text"
-						placeholder="e.g Internal Project"
+						:placeholder="i18n.baseText('settings.api.view.modal.form.label.placeholder')"
+						:maxlength="50"
 						@update:model-value="onInput"
 					/>
 				</N8nInputLabel>
@@ -184,23 +201,27 @@ const onSave = async () => {
 					v-if="mode === 'new' && !newApiKey"
 					float="right"
 					:loading="loading"
-					label="Save"
+					:label="i18n.baseText('settings.api.view.modal.save.button')"
 					@click="onSave"
 				/>
-				<N8nButton v-else-if="mode === 'new'" float="right" label="Done" @click="closeModal" />
-				<N8nButton v-else-if="mode === 'edit'" float="right" label="Edit" @click="onEdit" />
+				<N8nButton
+					v-else-if="mode === 'new'"
+					float="right"
+					:label="i18n.baseText('settings.api.view.modal.done.button')"
+					@click="closeModal"
+				/>
+				<N8nButton
+					v-else-if="mode === 'edit'"
+					float="right"
+					:label="i18n.baseText('settings.api.view.modal.edit.button')"
+					@click="onEdit"
+				/>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style module lang="scss">
-// .modalFooter {
-// 	justify-content: space-between;
-// 	display: flex;
-// 	flex-direction: row;
-// }
-
 .card {
 	margin-bottom: 50px;
 }
@@ -212,9 +233,5 @@ const onSave = async () => {
 .hint {
 	color: var(--color-text-light);
 	margin-bottom: var(--spacing-s);
-}
-
-.modal-content {
-	// overflow-y: hidden !important;
 }
 </style>

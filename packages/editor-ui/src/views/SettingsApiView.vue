@@ -5,13 +5,11 @@ import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { API_KEY_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { createEventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
@@ -19,7 +17,6 @@ import { storeToRefs } from 'pinia';
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
-const { baseUrl } = useRootStore();
 
 const { showError, showMessage } = useToast();
 const { confirm } = useMessage();
@@ -29,20 +26,11 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
 
 const loading = ref(false);
-const apiDocsURL = ref('');
 const apiKeysStore = useApiKeysStore();
 const { getAllApiKeys, deleteApiKey } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 
-const eventBus = createEventBus();
-
-const { isPublicApiEnabled, isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } =
-	settingsStore;
-
-// const isRedactedApiKey = computed((): boolean => {
-// 	if (!apiKeys.value) return false;
-// 	return apiKeys.value[0].apiKey.includes('*');
-// });
+const { isPublicApiEnabled } = settingsStore;
 
 const onCreateApiKey = async () => {
 	uiStore.openModalWithData({
@@ -57,9 +45,6 @@ onMounted(async () => {
 	if (!isPublicApiEnabled) return;
 
 	await getApiKeys();
-	apiDocsURL.value = isSwaggerUIEnabled
-		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
-		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 });
 
 function onUpgrade() {
@@ -108,10 +93,6 @@ function onEdit(id: string) {
 		data: { mode: 'edit', activeId: id },
 	});
 }
-
-function onCopy() {
-	telemetry.track('User clicked copy API key button');
-}
 </script>
 
 <template>
@@ -159,62 +140,6 @@ function onCopy() {
 			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="onCreateApiKey"
 		/>
-
-		<!-- <div v-if="apiKeys.length">
-			<p class="mb-s">
-				<n8n-info-tip :bold="false">
-					<i18n-t keypath="settings.api.view.info" tag="span">
-						<template #apiAction>
-							<a
-								href="https://docs.n8n.io/api"
-								target="_blank"
-								v-text="i18n.baseText('settings.api.view.info.api')"
-							/>
-						</template>
-						<template #webhookAction>
-							<a
-								href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
-								target="_blank"
-								v-text="i18n.baseText('settings.api.view.info.webhook')"
-							/>
-						</template>
-					</i18n-t>
-				</n8n-info-tip>
-			</p>
-			<n8n-card class="mb-4xs" :class="$style.card">
-				<span :class="$style.delete">
-					<n8n-link :bold="true" @click="showDeleteModal">
-						{{ i18n.baseText('generic.delete') }}
-					</n8n-link>
-				</span>
-
-				<div>
-					<CopyInput
-						:label="apiKeys[0].label"
-						:value="apiKeys[0].apiKey"
-						:copy-button-text="i18n.baseText('generic.clickToCopy')"
-						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
-						:redact-value="true"
-						:disable-copy="isRedactedApiKey"
-						:hint="!isRedactedApiKey ? i18n.baseText('settings.api.view.copy') : ''"
-						@copy="onCopy"
-					/>
-				</div>
-			</n8n-card>
-			<div :class="$style.hint">
-				<n8n-text size="small">
-					{{ i18n.baseText(`settings.api.view.${isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`) }}
-				</n8n-text>
-				{{ ' ' }}
-				<n8n-link :to="apiDocsURL" :new-window="true" size="small">
-					{{
-						i18n.baseText(
-							`settings.api.view.${isSwaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
-						)
-					}}
-				</n8n-link>
-			</div>
-		</div>// -->
 	</div>
 </template>
 
