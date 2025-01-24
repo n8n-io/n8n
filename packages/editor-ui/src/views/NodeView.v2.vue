@@ -351,6 +351,8 @@ async function initializeRoute(force = false) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
 
+			await loadCredentials();
+
 			// If there is no workflow id, treat it as a new workflow
 			if (isNewWorkflowRoute.value || !workflowId.value) {
 				if (route.meta?.nodeView === true) {
@@ -360,8 +362,6 @@ async function initializeRoute(force = false) {
 			}
 
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
-
-			await loadCredentials();
 
 			void nextTick(() => {
 				nodeHelpers.updateNodesInputIssues();
@@ -822,8 +822,8 @@ function onClickNodeAdd(source: string, sourceHandle: string) {
 async function loadCredentials() {
 	let options: { workflowId: string } | { projectId: string };
 
-	if (editableWorkflow.value) {
-		options = { workflowId: editableWorkflow.value.id };
+	if (workflowId.value) {
+		options = { workflowId: workflowId.value };
 	} else {
 		const queryParam =
 			typeof route.query?.projectId === 'string' ? route.query?.projectId : undefined;
