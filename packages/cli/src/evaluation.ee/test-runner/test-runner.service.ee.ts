@@ -141,7 +141,7 @@ export class TestRunnerService {
 			pinData,
 			workflowData: { ...workflow, pinData },
 			userId: metadata.userId,
-			partialExecutionVersion: '1',
+			partialExecutionVersion: 2,
 		};
 
 		// Trigger the workflow under test with mocked data

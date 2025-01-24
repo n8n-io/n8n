@@ -2298,7 +2298,7 @@ export interface IWorkflowExecutionDataProcess {
 	 * -1 - the backend chooses which flow based on the environment variable
 	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
 	 */
-	partialExecutionVersion?: string;
+	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;

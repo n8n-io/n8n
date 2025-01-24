@@ -178,4 +178,8 @@ export interface FrontendSettings {
 	};
 	betaFeatures: FrontendBetaFeatures[];
 	easyAIWorkflowOnboarded: boolean;
+	partialExecution: {
+		version: 1 | 2;
+		enforce: boolean;
+	};
 }
