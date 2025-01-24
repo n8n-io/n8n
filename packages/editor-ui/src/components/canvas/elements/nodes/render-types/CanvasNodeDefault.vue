@@ -3,9 +3,13 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import {
+	LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+} from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useLocalStorage } from '@vueuse/core';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -106,6 +110,8 @@ const isStrikethroughVisible = computed(() => {
 
 const showTooltip = ref(false);
 
+const triggerButtonVariant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
+
 watch(initialized, () => {
 	if (initialized.value) {
 		showTooltip.value = true;
@@ -128,20 +134,24 @@ function openContextMenu(event: MouseEvent) {
 	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
+		<CanvasNodeTriggerIcon
+			v-if="renderOptions.trigger && triggerButtonVariant === 2"
+			:variant="2"
+		/>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<CanvasNodeTriggerIcon v-if="renderOptions.trigger" />
+				<CanvasNodeTriggerIcon
+					v-if="renderOptions.trigger && triggerButtonVariant === 1"
+					:variant="1"
+				/>
 			</div>
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
 			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
-		</div>
-		<div v-if="$slots.button" :class="$style['button-container']">
-			<slot name="button" />
 		</div>
 	</div>
 </template>
@@ -315,12 +325,5 @@ function openContextMenu(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
-}
-
-.button-container {
-	position: absolute;
-	right: 100%;
-	top: auto;
-	margin: var(--spacing-m);
 }
 </style>

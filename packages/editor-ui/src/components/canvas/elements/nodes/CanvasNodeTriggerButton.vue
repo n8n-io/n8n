@@ -9,7 +9,7 @@ import { type CanvasNodeData } from '@/types';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { data } = defineProps<{ data: CanvasNodeData }>();
+const { data, variant } = defineProps<{ data: CanvasNodeData; variant: 1 | 2 }>();
 
 const router = useRouter();
 const i18n = useI18n();
@@ -24,7 +24,7 @@ const isExecuting = computed(() => uiStore.isActionActive['workflowRunning']);
 
 <template>
 	<N8nButton
-		v-if="data.type === CHAT_TRIGGER_NODE_TYPE"
+		v-if="variant === 1 && data.type === CHAT_TRIGGER_NODE_TYPE"
 		type="secondary"
 		size="large"
 		:disabled="isExecuting"
@@ -32,11 +32,29 @@ const isExecuting = computed(() => uiStore.isActionActive['workflowRunning']);
 		>{{ isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title') }}</N8nButton
 	>
 	<N8nButton
-		v-else
+		v-else-if="variant === 1"
 		type="secondary"
 		size="large"
 		:disabled="isExecuting"
 		@click="runEntireWorkflow('node', data.name)"
 		>{{ i18n.baseText('nodeView.runButtonText.executeWorkflow') }}</N8nButton
 	>
+	<N8nButton
+		v-else-if="variant === 2 && data.type === CHAT_TRIGGER_NODE_TYPE"
+		type="primary"
+		size="large"
+		:disabled="isExecuting"
+		:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+		icon="comment"
+		@click="toggleChatOpen('node')"
+	/>
+	<N8nButton
+		v-else
+		type="primary"
+		size="large"
+		:disabled="isExecuting"
+		:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
+		icon="bolt"
+		@click="runEntireWorkflow('node', data.name)"
+	/>
 </template>
