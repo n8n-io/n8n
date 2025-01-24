@@ -41,7 +41,7 @@ import { reactionFields, reactionOperations } from './ReactionDescription';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-import { sendAndWaitWebhooks } from '../../../utils/sendAndWait/descriptions';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import {
 	configureWaitTillDate,
 	getSendAndWaitProperties,
@@ -81,7 +81,7 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
-			webhooks: sendAndWaitWebhooks,
+			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
 					displayName: 'Authentication',
