@@ -13,7 +13,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import {
 	// attachmentFields,
@@ -27,10 +27,22 @@ import {
 	messageFields,
 	messageOperations,
 	spaceFields,
+	spaceIdPtoperty,
 	spaceOperations,
 } from './descriptions';
-import { googleApiRequest, googleApiRequestAllItems, validateJSON } from './GenericFunctions';
+import {
+	createSendAndWaitMessageBody,
+	googleApiRequest,
+	googleApiRequestAllItems,
+	validateJSON,
+} from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
+import { sendAndWaitWebhooks } from '../../../utils/sendAndWait/descriptions';
+import {
+	configureWaitTillDate,
+	getSendAndWaitProperties,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,6 +58,7 @@ export class GoogleChat implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		webhooks: sendAndWaitWebhooks,
 		credentials: [
 			{
 				name: 'googleApi',
@@ -131,8 +144,15 @@ export class GoogleChat implements INodeType {
 			...messageFields,
 			...spaceOperations,
 			...spaceFields,
+			...getSendAndWaitProperties([spaceIdPtoperty], 'message', undefined, {
+				noButtonStyle: true,
+				defaultApproveLabel: '✅ Approve',
+				defaultDisapproveLabel: '❌ Decline',
+			}).filter((p) => p.name !== 'subject'),
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	methods = {
 		loadOptions: {
@@ -227,6 +247,19 @@ export class GoogleChat implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			const spaceId = this.getNodeParameter('spaceId', 0) as string;
+			const body = createSendAndWaitMessageBody(this);
+
+			await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'media') {
