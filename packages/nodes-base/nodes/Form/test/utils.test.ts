@@ -743,6 +743,22 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json.formQueryParameters).toEqual(staticData);
 	});
+
+	it('should return html if field name is set', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '<div>hi</div>', 'field-1': '<h1><haha/hi>' },
+			files: {},
+		});
+
+		const formFields = [
+			{ fieldLabel: '', fieldNameOptional: 'greeting', fieldType: 'html' },
+			{ fieldLabel: '', fieldNameOptional: '', fieldType: 'html' },
+		];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'production');
+
+		expect(result.json.greeting).toBe('<div>hi</div>');
+		expect(result.json.formMode).toBe('production');
+	});
 });
 
 describe('resolveRawData', () => {

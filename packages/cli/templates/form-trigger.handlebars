@@ -6,13 +6,9 @@
 		<meta property="og:title" content="{{formTitle}}" />
 		<meta property="og:description" content="{{formDescriptionMetadata}}" />
 		<meta property="og:type" content="website" />
-		<meta property="og:image" content="https://raw.githubusercontent.com/n8n-io/n8n/80be10551eb081cb11bd8cab6c6ff89e44493d2c/assets/og_image.png?raw=true" />
+		<meta property="og:image" content="/static/og_image.png" />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
-		<link
-			href='https://fonts.googleapis.com/css?family=Open+Sans'
-			rel='stylesheet'
-			type='text/css'
-		/>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 		<title>{{formTitle}}</title>
 		<style>
 			*,
@@ -25,7 +21,7 @@
 
 			body {
 				font-family:
-					Open Sans,
+					"Open Sans",
 					sans-serif;
 				font-weight: 400;
 				font-size: 12px;
@@ -288,6 +284,63 @@
 					display: inline-block;
 			}
 
+			div.html h1, div.html h2, div.html h3, div.html h4, div.html h5, div.html h6, div.html p, div.html ul, div.html ol, div.html a {
+				color: #555;
+				font-weight: 400;
+				font-style: normal;
+			}
+
+			div.html ul, div.html ol {
+				font-size: 14px;
+				display: flex;
+    		align-self: stretch;
+				line-height: normal;
+			}
+
+			div.html b {
+				font-weight: 600;
+			}
+
+			div.html h1 {
+				text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+
+				font-size: 28px;
+				line-height: 35px;
+			}
+
+			div.html h2 {
+				font-size: 20px;
+				line-height: 26px;
+			}
+
+			div.html h3 {
+				font-size: 16px;
+				line-height: 24px;
+			}
+
+			div.html h4 {
+				font-size: 14px;
+				line-height: 18px;
+			}
+
+			div.html h5 {
+				font-size: 12px;
+			}
+
+			div.html h6 {
+				font-size: 10px;
+			}
+
+
+			div.html p {
+				font-size: 14px;
+			}
+
+			div.html a {
+				color:  #FF6D5A;
+				font-size: var(--Font-sizes---font-size-s, 14px);
+			}
+
 			@media only screen and (max-width: 500px) {
 				body {
 					background-color: white;
@@ -372,7 +425,7 @@
 								{{/if}}
 
 								{{#if isHtml}}
-									<div class="form-group">
+									<div class="form-group html">
 										{{{html}}}
 										<input type="hidden" id="{{id}}" name="{{id}}" value="{{html}}" />
 									</div>

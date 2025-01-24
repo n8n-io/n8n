@@ -121,6 +121,34 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
+					displayName: 'Field Name',
+					name: 'fieldLabel',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. What is your name?',
+					description: 'Label that appears above the input field',
+					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldNameOptional',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. What is your name?',
+					description:
+						"Optional field name. It can be used to show the field in the output. If it's not provided, the field will not be shown in the output.",
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
+						},
+					},
+				},
+				{
 					displayName: 'Placeholder',
 					name: 'placeholder',
 					description: 'Sample text to display inside the field',
@@ -212,7 +240,7 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					noDataExpression: true,
 					default: placeholder,
-					description: 'HTML template to render',
+					description: 'Rendered as HTML on the form page',
 					displayOptions: {
 						show: {
 							fieldType: ['html'],
@@ -254,17 +282,6 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
-						},
-					},
-				},
-				{
-					displayName: 'HTML elements to render',
-					name: 'htmlTips',
-					type: 'notice',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['html'],
 						},
 					},
 				},
