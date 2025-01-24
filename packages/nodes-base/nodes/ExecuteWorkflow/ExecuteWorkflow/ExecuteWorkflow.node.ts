@@ -15,7 +15,7 @@ import {
 } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Execute Workflow',
+		displayName: 'Execute Sub-workflow',
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
@@ -38,7 +38,7 @@ export class ExecuteWorkflow implements INodeType {
 				default: 'call_workflow',
 				options: [
 					{
-						name: 'Call Another Workflow',
+						name: 'Execute a Sub-Workflow',
 						value: 'call_workflow',
 					},
 				],

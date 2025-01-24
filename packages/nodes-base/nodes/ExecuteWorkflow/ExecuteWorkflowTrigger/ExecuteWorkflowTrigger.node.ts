@@ -30,7 +30,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'Workflow Input Trigger',
+			name: 'When Called by Another Workflow',
 			color: '#ff6d5a',
 		},
 		inputs: [],
