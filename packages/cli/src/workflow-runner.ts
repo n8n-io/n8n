@@ -37,6 +37,8 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { MaxStalledCountError } from './errors/max-stalled-count.error';
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -424,6 +426,14 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
+
+					if (
+						error instanceof Error &&
+						error.message.includes('job stalled more than maxStalledCount')
+					) {
+						error = new MaxStalledCountError(error);
+					}
+
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);
