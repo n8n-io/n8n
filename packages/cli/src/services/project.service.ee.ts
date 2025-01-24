@@ -409,8 +409,12 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUser(projectId: string, relation: Relation) {
-		return await this.addUsersToProject(projectId, [relation]);
+	async addUser(projectId: string, { userId, role }: Relation) {
+		return await this.projectRelationRepository.save({
+			projectId,
+			userId,
+			role,
+		});
 	}
 
 	async getProject(projectId: string): Promise<Project> {
