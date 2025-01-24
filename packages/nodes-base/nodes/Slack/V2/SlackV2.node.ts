@@ -18,7 +18,6 @@ import {
 	NodeConnectionType,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -42,7 +41,11 @@ import { reactionFields, reactionOperations } from './ReactionDescription';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	configureWaitTillDate,
+	getSendAndWaitProperties,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -386,7 +389,9 @@ export class SlackV2 implements INodeType {
 				createSendAndWaitMessageBody(this),
 			);
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 
