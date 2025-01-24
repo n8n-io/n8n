@@ -236,7 +236,7 @@ export class ObjectStoreService {
 			service: 's3',
 			region: this.s3Config.bucket.region,
 			host: this.s3Config.host,
-			path: url.pathname,
+			path: `${url.pathname}${url.search}`,
 		};
 
 		if (headers) optionsToSign.headers = headers;
