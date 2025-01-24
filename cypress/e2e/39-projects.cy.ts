@@ -1,3 +1,5 @@
+import { setCredentialValues } from "../composables/modals/credential-modal";
+import { clickCreateNewCredential, selectResourceLocatorItem } from "../composables/ndv";
 import * as projects from '../composables/projects';
 import {
 	INSTANCE_ADMIN,
@@ -828,6 +830,40 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('be.visible')
 				.find('input')
 				.should('not.have.length');
+		});
+
+		it('should create sub workflow and credential in the sub workflow in the same project', () => {
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.createProject('Dev');
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.saveWorkflowOnButtonClick();
+			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
+
+			cy.window().then((win) => {
+				cy.stub(win, 'open').callsFake((url) => {
+					cy.visit(url);
+				});
+			});
+
+			selectResourceLocatorItem('workflowId', 0, 'Create a');
+
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			clickCreateNewCredential();
+			setCredentialValues({
+				apiKey: 'abc123',
+			});
+			ndv.actions.close();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
 		});
 	});
 
