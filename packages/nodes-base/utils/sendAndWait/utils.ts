@@ -213,7 +213,7 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		[
+		...[
 			options?.noButtonStyle
 				? ({} as INodeProperties)
 				: {

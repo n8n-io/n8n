@@ -11,7 +11,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	NodeConnectionType,
 	NodeOperationError,
-	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -22,7 +21,11 @@ import {
 	getPropertyName,
 } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
+import {
+	configureWaitTillDate,
+	getSendAndWaitProperties,
+	sendAndWaitWebhook,
+} from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -1822,7 +1825,9 @@ export class Telegram implements INodeType {
 
 			await apiRequest.call(this, 'POST', 'sendMessage', body);
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 
