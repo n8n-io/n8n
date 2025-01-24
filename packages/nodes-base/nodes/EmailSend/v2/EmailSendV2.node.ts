@@ -10,6 +10,7 @@ import { NodeConnectionType, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
 import { smtpConnectionTest } from './utils';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
 export const versionDescription: INodeTypeDescription = {
@@ -33,26 +34,7 @@ export const versionDescription: INodeTypeDescription = {
 			testedBy: 'smtpConnectionTest',
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Resource',

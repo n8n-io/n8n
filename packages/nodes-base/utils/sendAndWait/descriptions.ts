@@ -1,6 +1,6 @@
 import type { IWebhookDescription } from 'n8n-workflow';
 
-export const sendAndWaitWebhooks: IWebhookDescription[] = [
+export const sendAndWaitWebhooksDescription: IWebhookDescription[] = [
 	{
 		name: 'default',
 		httpMethod: 'GET',
