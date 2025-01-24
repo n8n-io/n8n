@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ManyToOne, RelationId } from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import { IDataObject } from 'n8n-workflow';
 
 import {
@@ -6,10 +6,11 @@ import {
 	jsonColumnType,
 	WithTimestampsAndStringId,
 } from '@/databases/entities/abstract-entity';
+import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
-type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
+export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
@@ -69,4 +70,7 @@ export class TestRun extends WithTimestampsAndStringId {
 	 */
 	@Column(jsonColumnType, { nullable: true })
 	errorDetails: IDataObject;
+
+	@OneToMany('TestCaseExecution', 'testRun')
+	testCaseExecutions: TestCaseExecution[];
 }

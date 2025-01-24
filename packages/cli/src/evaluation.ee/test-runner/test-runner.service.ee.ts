@@ -284,13 +284,14 @@ export class TestRunnerService {
 			userId: user.id,
 		};
 
-		const evaluationWorkflow = await this.workflowRepository.findById(test.evaluationWorkflowId);
-		if (!evaluationWorkflow) {
-			throw new TestRunError('EVALUATION_WORKFLOW_NOT_FOUND');
-		}
-
 		const abortSignal = abortController.signal;
 		try {
+			// Get the evaluation workflow
+			const evaluationWorkflow = await this.workflowRepository.findById(test.evaluationWorkflowId);
+			if (!evaluationWorkflow) {
+				throw new TestRunError('EVALUATION_WORKFLOW_NOT_FOUND');
+			}
+
 			///
 			// 1. Make test cases from previous executions
 			///
@@ -472,6 +473,7 @@ export class TestRunnerService {
 				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
+
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
 				this.logger.debug('Test run finished', { testId: test.id });

@@ -28,6 +28,7 @@ export class TestCaseExecutionError extends Error {
 export type TestRunErrorCode =
 	| 'PAST_EXECUTIONS_NOT_FOUND'
 	| 'EVALUATION_WORKFLOW_NOT_FOUND'
+	| 'INTERRUPTED'
 	| 'UNKNOWN_ERROR';
 
 export class TestRunError extends Error {

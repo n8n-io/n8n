@@ -1,6 +1,7 @@
 import assert from 'assert';
 import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
+import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
@@ -60,4 +61,16 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
 	});
+}
+
+export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]) {
+	for (const testCaseExecution of testCaseExecutions) {
+		if (testCaseExecution.status === 'error') {
+			return 'error';
+		} else if (testCaseExecution.status === 'warning') {
+			return 'warning';
+		}
+	}
+
+	return 'success';
 }

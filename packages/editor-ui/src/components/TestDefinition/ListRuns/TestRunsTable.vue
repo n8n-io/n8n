@@ -22,11 +22,35 @@ const locale = useI18n();
 const navigateToRunDetail = (run: TestRunRecord) => emit('getRunDetail', run);
 const selectedRows = ref<TestRunRecord[]>([]);
 
+// Combine test run statuses and finalResult to get the final status
+const runSummaries = computed(() => {
+	return props.runs.map(({ status, finalResult, ...run }) => {
+		if (status === 'completed') {
+			return { ...run, status: finalResult };
+		}
+
+		return { ...run, status };
+	});
+});
+
 const metrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
 		const metricKeys = Object.keys(run.metrics ?? {});
 		return [...new Set([...acc, ...metricKeys])];
 	}, [] as string[]);
+});
+
+const getErrorTooltipLinkRoute = computed(() => (row: TestRunRecord) => {
+	if (row.errorCode === 'EVALUATION_WORKFLOW_NOT_FOUND') {
+		return {
+			name: VIEWS.TEST_DEFINITION_EDIT,
+			params: {
+				testId: row.testDefinitionId,
+			},
+		};
+	}
+
+	return undefined;
 });
 
 const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
@@ -51,6 +75,7 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
 				{ text: locale.baseText('testDefinition.listRuns.status.cancelled'), value: 'cancelled' },
 			],
+			errorRoute: getErrorTooltipLinkRoute.value,
 			filterMethod: (value: string, row: TestRunRecord) => row.status === value,
 		},
 		{
@@ -105,7 +130,7 @@ async function deleteRuns() {
 			</n8n-button>
 		</div>
 		<TestTableBase
-			:data="runs"
+			:data="runSummaries"
 			:columns="columns"
 			selectable
 			@row-click="navigateToRunDetail"

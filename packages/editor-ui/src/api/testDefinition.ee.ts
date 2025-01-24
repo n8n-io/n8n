@@ -49,6 +49,8 @@ export interface TestRunRecord {
 	updatedAt: string;
 	runAt: string;
 	completedAt: string;
+	errorCode?: string;
+	errorDetails?: Record<string, unknown>;
 }
 
 interface GetTestRunParams {

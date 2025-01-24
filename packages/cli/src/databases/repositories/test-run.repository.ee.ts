@@ -6,7 +6,12 @@ import type { IDataObject } from 'n8n-workflow';
 import type { AggregatedTestRunMetrics } from '@/databases/entities/test-run.ee';
 import { TestRun } from '@/databases/entities/test-run.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
+import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
 import type { ListQuery } from '@/requests';
+
+export type TestRunSummary = TestRun & {
+	finalResult: 'success' | 'error' | 'warning';
+};
 
 @Service()
 export class TestRunRepository extends Repository<TestRun> {
@@ -46,7 +51,10 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	async markAllIncompleteAsFailed() {
-		return await this.update({ status: In(['new', 'running']) }, { status: 'error' });
+		return await this.update(
+			{ status: In(['new', 'running']) },
+			{ status: 'error', errorCode: 'INTERRUPTED' },
+		);
 	}
 
 	async incrementPassed(id: string) {
@@ -58,9 +66,11 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	async getMany(testDefinitionId: string, options: ListQuery.Options) {
+		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { testDefinition: { id: testDefinitionId } },
 			order: { createdAt: 'DESC' },
+			relations: ['testCaseExecutions'],
 		};
 
 		if (options?.take) {
@@ -68,6 +78,12 @@ export class TestRunRepository extends Repository<TestRun> {
 			findManyOptions.take = options.take;
 		}
 
-		return await this.find(findManyOptions);
+		const testRuns = await this.find(findManyOptions);
+
+		return testRuns.map(({ testCaseExecutions, ...testRun }) => {
+			const finalResult =
+				testRun.status === 'completed' ? getTestRunFinalResult(testCaseExecutions) : null;
+			return { ...testRun, finalResult };
+		});
 	}
 }
