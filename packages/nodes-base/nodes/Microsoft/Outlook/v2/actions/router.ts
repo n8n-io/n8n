@@ -1,5 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import * as calendar from './calendar';
 import * as contact from './contact';
@@ -24,6 +29,16 @@ export async function router(this: IExecuteFunctions) {
 		resource,
 		operation,
 	} as MicrosoftOutlook;
+
+	if (
+		microsoftOutlook.resource === 'message' &&
+		microsoftOutlook.operation === SEND_AND_WAIT_OPERATION
+	) {
+		await message[microsoftOutlook.operation].execute.call(this, 0, items);
+
+		await this.putExecutionToWait(WAIT_INDEFINITELY);
+		return [items];
+	}
 
 	for (let i = 0; i < items.length; i++) {
 		try {
