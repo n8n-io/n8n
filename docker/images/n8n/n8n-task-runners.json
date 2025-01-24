@@ -6,6 +6,7 @@
 			"command": "/usr/local/bin/node",
 			"args": [
 				"--disallow-code-generation-from-strings",
+				"--disable-proto=delete",
 				"/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"
 			],
 			"allowed-env": [

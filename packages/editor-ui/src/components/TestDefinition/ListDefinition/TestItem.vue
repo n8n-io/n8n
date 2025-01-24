@@ -1,49 +1,25 @@
 <script setup lang="ts">
-import type { TestListItem } from '@/components/TestDefinition/types';
+import type { TestListItem, TestItemAction } from '@/components/TestDefinition/types';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
+import { computed } from 'vue';
 
 export interface TestItemProps {
 	test: TestListItem;
+	actions: TestItemAction[];
 }
 
 const props = defineProps<TestItemProps>();
 const locale = useI18n();
 
-const emit = defineEmits<{
-	'run-test': [testId: string];
+defineEmits<{
 	'view-details': [testId: string];
-	'edit-test': [testId: string];
-	'delete-test': [testId: string];
 }>();
 
-const actions = [
-	{
-		icon: 'play',
-		id: 'run',
-		event: () => emit('run-test', props.test.id),
-		tooltip: locale.baseText('testDefinition.runTest'),
-	},
-	{
-		icon: 'list',
-		id: 'view',
-		event: () => emit('view-details', props.test.id),
-		tooltip: locale.baseText('testDefinition.viewDetails'),
-	},
-	{
-		icon: 'pen',
-		id: 'edit',
-		event: () => emit('edit-test', props.test.id),
-		tooltip: locale.baseText('testDefinition.editTest'),
-	},
-	{
-		icon: 'trash',
-		id: 'delete',
-		event: () => emit('delete-test', props.test.id),
-		tooltip: locale.baseText('testDefinition.deleteTest'),
-	},
-];
+const visibleActions = computed(() =>
+	props.actions.filter((action) => action.show?.(props.test.id) ?? true),
+);
 </script>
 
 <template>
@@ -85,17 +61,21 @@ const actions = [
 		</div>
 
 		<div :class="$style.actions">
-			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top" :show-after="1000">
-				<template #content>
-					{{ action.tooltip }}
-				</template>
+			<n8n-tooltip
+				v-for="action in visibleActions"
+				:key="action.icon"
+				placement="top"
+				:show-after="1000"
+				:content="action.tooltip(test.id)"
+			>
 				<component
 					:is="n8nIconButton"
 					:icon="action.icon"
 					:data-test-id="`${action.id}-test-button-${test.id}`"
 					type="tertiary"
 					size="mini"
-					@click.stop="action.event"
+					:disabled="action?.disabled ? action.disabled(test.id) : false"
+					@click.stop="action.event(test.id)"
 				/>
 			</n8n-tooltip>
 		</div>

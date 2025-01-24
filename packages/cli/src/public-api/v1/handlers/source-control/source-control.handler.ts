@@ -36,7 +36,7 @@ export = {
 			try {
 				const payload = PullWorkFolderRequestDto.parse(req.body);
 				const sourceControlService = Container.get(SourceControlService);
-				const result = await sourceControlService.pullWorkfolder(req.user.id, payload);
+				const result = await sourceControlService.pullWorkfolder(req.user, payload);
 
 				if (result.statusCode === 200) {
 					Container.get(EventService).emit('source-control-user-pulled-api', {

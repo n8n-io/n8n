@@ -43,7 +43,7 @@ export interface UpdateTestResponse {
 export interface TestRunRecord {
 	id: string;
 	testDefinitionId: string;
-	status: 'new' | 'running' | 'completed' | 'error';
+	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 	metrics?: Record<string, number>;
 	createdAt: string;
 	updatedAt: string;
@@ -215,6 +215,21 @@ export const startTestRun = async (context: IRestApiContext, testDefinitionId: s
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `${endpoint}/${testDefinitionId}/run`,
+		headers: { 'push-ref': context.pushRef },
+	});
+	// CLI is returning the response without wrapping it in `data` key
+	return response as { success: boolean };
+};
+
+export const cancelTestRun = async (
+	context: IRestApiContext,
+	testDefinitionId: string,
+	testRunId: string,
+) => {
+	const response = await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${endpoint}/${testDefinitionId}/runs/${testRunId}/cancel`,
 		headers: { 'push-ref': context.pushRef },
 	});
 	// CLI is returning the response without wrapping it in `data` key

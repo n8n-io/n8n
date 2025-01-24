@@ -20,7 +20,15 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { EventService } from '@/events/event.service';
+import {
+	getWorkflowHooksMain,
+	getWorkflowHooksWorkerExecuter,
+	getWorkflowHooksWorkerMain,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExternalHooks } from '@/external-hooks';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
@@ -28,10 +36,6 @@ import { PermissionChecker } from '@/user-management/permission-checker';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { ExecutionNotFoundError } from './errors/execution-not-found-error';
-import { EventService } from './events/event.service';
-import { ManualExecutionService } from './manual-execution.service';
 
 @Service()
 export class WorkflowRunner {
@@ -138,7 +142,7 @@ export class WorkflowRunner {
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			const workflowHooks = getWorkflowHooksMain(data, executionId);
 			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
 				undefined,
 				data.executionData,
@@ -267,7 +271,7 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			additionalData.hooks = getWorkflowHooksMain(data, executionId);
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -368,12 +372,9 @@ export class WorkflowRunner {
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
-			);
+			hooks = getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, {
+				retryOf: data.retryOf ? data.retryOf.toString() : undefined,
+			});
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
@@ -381,7 +382,7 @@ export class WorkflowRunner {
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+			const hooks = getWorkflowHooksWorkerExecuter(
 				data.executionMode,
 				executionId,
 				data.workflowData,
@@ -399,7 +400,7 @@ export class WorkflowRunner {
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooksWorker = getWorkflowHooksWorkerExecuter(
 						data.executionMode,
 						executionId,
 						data.workflowData,
@@ -417,7 +418,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooks = getWorkflowHooksWorkerExecuter(
 						data.executionMode,
 						executionId,
 						data.workflowData,
