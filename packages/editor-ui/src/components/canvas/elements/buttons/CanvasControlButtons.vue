@@ -9,11 +9,9 @@ import { useI18n } from '@/composables/useI18n';
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
-		showBugReportingButton?: boolean;
 	}>(),
 	{
 		zoom: 1,
-		showBugReportingButton: false,
 	},
 );
 
@@ -24,7 +22,6 @@ const emit = defineEmits<{
 	'zoom-to-fit': [];
 }>();
 
-const { getReportingURL } = useBugReporting();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
@@ -44,10 +41,6 @@ function onZoomOut() {
 
 function onZoomToFit() {
 	emit('zoom-to-fit');
-}
-
-function trackBugReport() {
-	telemetry.track('User clicked bug report button in canvas', {}, { withPostHog: true });
 }
 </script>
 <template>
@@ -94,14 +87,6 @@ function trackBugReport() {
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
 			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			v-if="props.showBugReportingButton"
-			:label="i18n.baseText('nodeView.reportBug')"
-		>
-			<a :href="getReportingURL()" target="_blank" @click="trackBugReport">
-				<N8nIconButton type="tertiary" size="large" icon="bug" data-test-id="report-bug" />
-			</a>
 		</KeyboardShortcutTooltip>
 	</Controls>
 </template>
