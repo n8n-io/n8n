@@ -49,6 +49,9 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 
+		// configureWaitTillDate
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
+
 		const result = await emailSendV2.execute.call(mockExecuteFunctions);
 
 		expect(result).toEqual([items]);
