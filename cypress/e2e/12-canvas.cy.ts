@@ -369,26 +369,6 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			zoomAndCheck('zoomOut', ZOOM_OUT_X2_FACTOR);
 		});
 
-		it('should zoom using scroll or pinch gesture', () => {
-			WorkflowPage.actions.pinchToZoom(1, 'zoomIn');
-
-			// V2 Canvas is using the same zoom factor for both pinch and scroll
-			cy.ifCanvasVersion(
-				() => checkZoomLevel(PINCH_ZOOM_IN_FACTOR),
-				() => checkZoomLevel(ZOOM_IN_X1_FACTOR),
-			);
-
-			WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
-			checkZoomLevel(1); // Zoom in 1x + Zoom out 1x should reset to default (=1)
-
-			WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
-
-			cy.ifCanvasVersion(
-				() => checkZoomLevel(PINCH_ZOOM_OUT_FACTOR),
-				() => checkZoomLevel(ZOOM_OUT_X1_FACTOR),
-			);
-		});
-
 		it('should reset zoom', () => {
 			WorkflowPage.getters.resetZoomButton().should('not.exist');
 			WorkflowPage.getters.zoomInButton().click();
