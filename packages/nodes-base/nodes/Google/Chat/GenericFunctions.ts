@@ -11,46 +11,67 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../GenericFunctions';
 
+async function googleServiceAccountApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	options: IRequestOptions,
+	noCredentials = false,
+): Promise<any> {
+	if (noCredentials) {
+		return await this.helpers.request(options);
+	}
+
+	const credentials = await this.getCredentials('googleApi');
+
+	const { access_token } = await getGoogleAccessToken.call(this, credentials, 'chat');
+	options.headers!.Authorization = `Bearer ${access_token}`;
+
+	return await this.helpers.request(options);
+}
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	noCredentials = false,
 	encoding?: null | undefined,
-): Promise<any> {
+) {
 	const options: IRequestOptions = {
 		headers: {
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
 		uri: uri || `https://chat.googleapis.com${resource}`,
+		qsStringifyOptions: {
+			arrayFormat: 'repeat',
+		},
 		json: true,
 	};
-
-	if (Object.keys(body as IDataObject).length === 0) {
-		delete options.body;
-	}
 
 	if (encoding === null) {
 		options.encoding = null;
 	}
 
-	let responseData: IDataObject | undefined;
-	try {
-		if (noCredentials) {
-			responseData = await this.helpers.request(options);
-		} else {
-			const credentials = await this.getCredentials('googleApi');
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
 
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'chat');
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			responseData = await this.helpers.request(options);
+	let responseData;
+
+	try {
+		if (noCredentials || this.getNodeParameter('authentication', 0) === 'serviceAccount') {
+			responseData = await googleServiceAccountApiRequest.call(this, options, noCredentials);
+		} else {
+			responseData = await this.helpers.requestWithAuthentication.call(
+				this,
+				'googleChatOAuth2Api',
+				options,
+			);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -59,6 +80,7 @@ export async function googleApiRequest(
 
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
 	if (Object.keys(responseData as IDataObject).length !== 0) {
 		return responseData;
 	} else {

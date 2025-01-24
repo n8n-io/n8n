@@ -51,9 +51,40 @@ export class GoogleChat implements INodeType {
 				name: 'googleApi',
 				required: true,
 				testedBy: 'testGoogleTokenAuth',
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			},
+			{
+				name: 'googleChatOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

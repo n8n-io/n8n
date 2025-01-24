@@ -132,6 +132,7 @@
       "dist/credentials/GoogleBigQueryOAuth2Api.credentials.js",
       "dist/credentials/GoogleBooksOAuth2Api.credentials.js",
       "dist/credentials/GoogleCalendarOAuth2Api.credentials.js",
+      "dist/credentials/GoogleChatOAuth2Api.credentials.js",
       "dist/credentials/GoogleCloudNaturalLanguageOAuth2Api.credentials.js",
       "dist/credentials/GoogleCloudStorageOAuth2Api.credentials.js",
       "dist/credentials/GoogleContactsOAuth2Api.credentials.js",
