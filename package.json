@@ -21,7 +21,7 @@
     "dev:fe": "run-p start \"dev:fe:editor --filter=n8n-design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
-    "dev:e2e:v2": "cd cypress && pnpm run test:e2e:dev:v2",
+    "dev:e2e:v1": "cd cypress && pnpm run test:e2e:dev:v1",
     "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
