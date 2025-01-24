@@ -172,7 +172,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				executedNode = options.triggerNode;
 			}
 
-			if (options.triggerNode && options.nodeData) {
+			if (options.triggerNode) {
 				triggerToStartFrom = {
 					name: options.triggerNode,
 					data: options.nodeData,
