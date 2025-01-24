@@ -1,6 +1,16 @@
 import jp from 'jsonpath';
-import { useDataSchema } from '@/composables/useDataSchema';
-import type { Schema } from '@/Interface';
+import { useDataSchema, useFlattenSchema } from '@/composables/useDataSchema';
+import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import {
+	NodeConnectionType,
+	type INodeExecutionData,
+	type ITaskDataConnections,
+} from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+
+vi.mock('@/stores/workflows.store');
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
@@ -523,5 +533,155 @@ describe('useDataSchema', () => {
 
 			expect(filterSchema(flatSchema, '')).toEqual(flatSchema);
 		});
+	});
+	describe('getNodeInputData', () => {
+		const getNodeInputData = useDataSchema().getNodeInputData;
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		const name = 'a';
+		const makeMockData = (data: ITaskDataConnections | undefined, runDataKey?: string) => ({
+			data: {
+				resultData: {
+					runData: {
+						[runDataKey ?? name]: [{ data, startTime: 0, executionTime: 0, source: [] }],
+					},
+				},
+			},
+		});
+
+		const mockExecutionDataMarker = Symbol() as unknown as INodeExecutionData[];
+		const Main = NodeConnectionType.Main;
+
+		test.each<
+			[
+				[Partial<INodeUi> | null, number, number, Partial<IExecutionResponse> | null],
+				ReturnType<typeof getNodeInputData>,
+			]
+		>([
+			//
+			// Null / Out of Bounds Cases
+			//
+			[[null, 0, 0, null], []],
+			[[{ name }, 0, 0, null], []],
+			[[{ name }, 0, 0, { data: undefined }], []],
+			[[{ name }, 0, 0, { data: { resultData: { runData: {} } } }], []],
+			[[{ name }, 0, 0, { data: { resultData: { runData: { [name]: [] } } } }], []],
+			[[{ name }, 0, 0, makeMockData(undefined)], []],
+			[[{ name }, 1, 0, makeMockData({})], []],
+			[[{ name }, -1, 0, makeMockData({})], []],
+			[[{ name }, 0, 0, makeMockData({}, 'DIFFERENT_NAME')], []],
+			// getMainInputData cases
+			[[{ name }, 0, 0, makeMockData({ [Main]: [] })], []],
+			[[{ name }, 0, 0, makeMockData({ [Main]: [null] })], []],
+			[[{ name }, 0, 1, makeMockData({ [Main]: [null] })], []],
+			[[{ name }, 0, -1, makeMockData({ [Main]: [null] })], []],
+			[
+				[{ name }, 0, 0, makeMockData({ [Main]: [mockExecutionDataMarker] })],
+				mockExecutionDataMarker,
+			],
+			[
+				[{ name }, 0, 0, makeMockData({ [Main]: [mockExecutionDataMarker, null] })],
+				mockExecutionDataMarker,
+			],
+			[
+				[{ name }, 0, 1, makeMockData({ [Main]: [null, mockExecutionDataMarker] })],
+				mockExecutionDataMarker,
+			],
+			[
+				[
+					{ name },
+					0,
+					1,
+					makeMockData({ DIFFERENT_NAME: [], [Main]: [null, mockExecutionDataMarker] }),
+				],
+				mockExecutionDataMarker,
+			],
+			[
+				[
+					{ name },
+					2,
+					1,
+					{
+						data: {
+							resultData: {
+								runData: {
+									[name]: [
+										{
+											startTime: 0,
+											executionTime: 0,
+											source: [],
+										},
+										{
+											startTime: 0,
+											executionTime: 0,
+											source: [],
+										},
+										{
+											data: { [Main]: [null, mockExecutionDataMarker] },
+											startTime: 0,
+											executionTime: 0,
+											source: [],
+										},
+									],
+								},
+							},
+						},
+					},
+				],
+				mockExecutionDataMarker,
+			],
+		])(
+			'should return correct output %s',
+			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
+				vi.mocked(useWorkflowsStore).mockReturnValue({
+					...useWorkflowsStore(),
+					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
+				});
+				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
+			},
+		);
+	});
+});
+
+describe('useFlattenSchema', () => {
+	it('flattens a schema', () => {
+		const schema: Schema = {
+			path: '',
+			type: 'object',
+			value: [
+				{
+					key: 'obj',
+					path: '.obj',
+					type: 'object',
+					value: [
+						{
+							key: 'foo',
+							path: '.obj.foo',
+							type: 'object',
+							value: [
+								{
+									key: 'nested',
+									path: '.obj.foo.nested',
+									type: 'string',
+									value: 'bar',
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		expect(
+			useFlattenSchema().flattenSchema({
+				schema,
+			}).length,
+		).toBe(3);
 	});
 });

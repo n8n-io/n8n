@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
+import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import type {
 	IBinaryData,
 	ICredentialDataDecryptedObject,

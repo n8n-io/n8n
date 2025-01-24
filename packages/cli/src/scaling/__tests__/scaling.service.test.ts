@@ -1,11 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
+import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
 
-import type { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance, mockLogger } from '@test/mocking';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
@@ -47,7 +46,6 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
-	const orchestrationService = mock<OrchestrationService>({ isMultiMainSetupEnabled: false });
 	const jobProcessor = mock<JobProcessor>();
 
 	let scalingService: ScalingService;
@@ -77,11 +75,12 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mockLogger(),
 			mock(),
+			mock(),
 			jobProcessor,
 			globalConfig,
 			mock(),
 			instanceSettings,
-			orchestrationService,
+			mock(),
 			mock(),
 		);
 
@@ -288,6 +287,8 @@ describe('ScalingService', () => {
 			const result = await scalingService.stopJob(job);
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
+			expect(job.discard).toHaveBeenCalled();
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 

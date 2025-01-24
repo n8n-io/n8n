@@ -86,7 +86,7 @@ function getMultipleNodesText(nodeName: string): string {
 		props.workflow.connectionsByDestinationNode[activeNode.value.name].main || [];
 	// Collect indexes of connected nodes
 	const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
-		if (node[0] && node[0].node === nodeName) return [...acc, index];
+		if (node?.[0] && node[0].node === nodeName) return [...acc, index];
 		return acc;
 	}, []);
 

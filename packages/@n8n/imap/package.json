@@ -1,6 +1,6 @@
 {
   "name": "@n8n/imap",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -20,7 +20,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "iconv-lite": "0.6.3",
+    "iconv-lite": "catalog:",
     "imap": "0.8.19",
     "quoted-printable": "1.0.1",
     "utf8": "3.0.0",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
+import { v4 as uuid } from 'uuid';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
@@ -16,6 +17,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
+
+// Polyfill crypto.randomUUID
+if (!('randomUUID' in crypto)) {
+	Object.defineProperty(crypto, 'randomUUID', { value: uuid });
+}
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -128,7 +134,8 @@ watch(defaultLocale, (newLocale) => {
 .container {
 	height: 100vh;
 	overflow: hidden;
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr auto;
 }
 
 // App grid is the main app layout including modals and other absolute positioned elements
@@ -136,13 +143,12 @@ watch(defaultLocale, (newLocale) => {
 	position: relative;
 	display: grid;
 	height: 100vh;
-	flex-basis: 100%;
 	grid-template-areas:
 		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: minmax(0, max-content) 1fr;
-	grid-template-rows: auto fit-content($header-height) 1fr;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: auto auto 1fr;
 }
 
 .banners {
@@ -186,11 +192,12 @@ watch(defaultLocale, (newLocale) => {
 .header {
 	grid-area: header;
 	z-index: var(--z-index-app-header);
+	min-width: 0;
+	min-height: 0;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100%;
 	z-index: var(--z-index-app-sidebar);
 }
 

@@ -24,7 +24,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -102,6 +101,7 @@ import type {
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
 	NodeFilterType,
+	WorkflowDataWithTemplateId,
 } from '@/Interface';
 
 import { type RouteLocation, useRoute, useRouter } from 'vue-router';
@@ -181,6 +181,8 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import { AI_CREDITS_EXPERIMENT } from '@/constants';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -219,6 +221,7 @@ export default defineComponent({
 		const router = useRouter();
 		const route = useRoute();
 
+		const posthogStore = usePostHog();
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
@@ -232,7 +235,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution, runWorkflowResolvePending } = useRunWorkflow({
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({
 			router,
 		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -253,8 +256,8 @@ export default defineComponent({
 			nodeViewRef,
 			onMouseMoveEnd,
 			workflowHelpers,
+			posthogStore,
 			runWorkflow,
-			runWorkflowResolvePending,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
@@ -827,7 +830,7 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					dangerouslyUseHTMLString: true,
+
 					onClose: () => {
 						this.readOnlyNotification = null;
 					},
@@ -852,11 +855,7 @@ export default defineComponent({
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
 
-			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
-				void this.runWorkflowResolvePending({ destinationNode: nodeName, source });
-			} else {
-				void this.runWorkflow({ destinationNode: nodeName, source });
-			}
+			void this.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
 			const telemetryPayload = {
@@ -883,11 +882,7 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			if (!this.isExecutionPreview && this.workflowsStore.isWaitingExecution) {
-				void this.runWorkflowResolvePending({});
-			} else {
-				void this.runWorkflow({});
-			}
+			void this.runWorkflow({});
 
 			this.refreshEndpointsErrorsState();
 		},
@@ -944,7 +939,6 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
-				dangerouslyUseHTMLString: true,
 			});
 		},
 		async clearExecutionData() {
@@ -1100,6 +1094,42 @@ export default defineComponent({
 			}
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
+		},
+		async openWorkflowTemplateFromJson(data: { workflow: WorkflowDataWithTemplateId }) {
+			if (!data.workflow.nodes || !data.workflow.connections) {
+				this.showError(
+					new Error(this.i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+					this.i18n.baseText('nodeView.couldntImportWorkflow'),
+				);
+				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				return;
+			}
+			this.canvasStore.startLoading();
+			this.canvasStore.setLoadingText(this.i18n.baseText('nodeView.loadingTemplate'));
+			this.resetWorkspace();
+
+			this.workflowsStore.currentWorkflowExecutions = [];
+			this.executionsStore.activeExecution = null;
+
+			this.blankRedirect = true;
+			await this.$router.replace({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { templateId: data.workflow.meta.templateId },
+			});
+
+			const convertedNodes = data.workflow.nodes.map(
+				this.workflowsStore.convertTemplateNodeToNodeUi,
+			);
+			await this.nodeHelpers.addNodes(convertedNodes, data.workflow.connections);
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.workflow.name,
+					this.projectsStore.currentProjectId,
+				)) || {};
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = true;
+			this.canvasStore.stopLoading();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
@@ -1404,7 +1434,11 @@ export default defineComponent({
 					lastSelectedNode.name,
 				);
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1438,7 +1472,11 @@ export default defineComponent({
 
 				const connections = workflow.connectionsByDestinationNode[lastSelectedNode.name];
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1470,7 +1508,11 @@ export default defineComponent({
 					return;
 				}
 
-				const parentNode = connections.main[0][0].node;
+				const parentNode = connections.main[0]?.[0].node;
+				if (!parentNode) {
+					return;
+				}
+
 				const connectionsParent = this.workflowsStore.outgoingConnectionsByNodeName(parentNode);
 
 				if (!Array.isArray(connectionsParent.main) || !connectionsParent.main.length) {
@@ -1482,7 +1524,7 @@ export default defineComponent({
 				let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 				let nextSelectNode: string | null = null;
 				for (const ouputConnections of connectionsParent.main) {
-					for (const ouputConnection of ouputConnections) {
+					for (const ouputConnection of ouputConnections ?? []) {
 						if (ouputConnection.node === lastSelectedNode.name) {
 							// Ignore current node
 							continue;
@@ -1758,6 +1800,8 @@ export default defineComponent({
 				} else {
 					this.showError(error, this.i18n.baseText('nodeView.showError.stopExecution.title'));
 				}
+			} finally {
+				this.workflowsStore.markExecutionAsStopped();
 			}
 			this.stopExecutionInProgress = false;
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
@@ -1823,7 +1867,6 @@ export default defineComponent({
 							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
-							dangerouslyUseHTMLString: true,
 						},
 					);
 
@@ -1836,7 +1879,7 @@ export default defineComponent({
 						return;
 					}
 				} else {
-					// Pasted data is is possible workflow data
+					// Pasted data is possible workflow data
 					try {
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);
@@ -2054,10 +2097,7 @@ export default defineComponent({
 			);
 			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
-				const insertNodePosition = [
-					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
-					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-				] as XYPosition;
+				const insertNodePosition: XYPosition = [mousePosition[0], mousePosition[1]];
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;
@@ -3352,17 +3392,35 @@ export default defineComponent({
 		async initView(): Promise<void> {
 			await this.loadCredentialsForWorkflow();
 
-			if (this.$route.params.action === 'workflowSave') {
+			if (this.$route.query.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
 				this.uiStore.stateIsDirty = false;
+
+				// Remove the action from the query
+				await this.$router.replace({
+					query: { ...this.$route.query, action: undefined },
+				});
 				return;
 			}
 			if (this.blankRedirect) {
 				this.blankRedirect = false;
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;
-				await this.openWorkflowTemplate(templateId.toString());
+				const loadWorkflowFromJSON = this.$route.query.fromJson === 'true';
+				if (loadWorkflowFromJSON) {
+					const isAiCreditsExperimentEnabled =
+						this.posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) ===
+						AI_CREDITS_EXPERIMENT.variant;
+
+					const easyAiWorkflowJson = getEasyAiWorkflowJson({
+						isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
+						withOpenAiFreeCredits: useSettingsStore().aiCreditsQuota,
+					});
+					await this.openWorkflowTemplateFromJson({ workflow: easyAiWorkflowJson });
+				} else {
+					await this.openWorkflowTemplate(templateId.toString());
+				}
 			} else {
 				if (
 					this.uiStore.stateIsDirty &&
@@ -3588,7 +3646,6 @@ export default defineComponent({
 			if (node.type === STICKY_NODE_TYPE) {
 				this.$telemetry.track('User deleted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
-					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
 				void this.externalHooks.run('node.deleteNode', { node });
@@ -3886,13 +3943,10 @@ export default defineComponent({
 						sourceIndex++
 					) {
 						const nodeSourceConnections = [];
-						if (currentConnections[sourceNode][type][sourceIndex]) {
-							for (
-								connectionIndex = 0;
-								connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
-								connectionIndex++
-							) {
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+						const connections = currentConnections[sourceNode][type][sourceIndex];
+						if (connections) {
+							for (connectionIndex = 0; connectionIndex < connections.length; connectionIndex++) {
+								connectionData = connections[connectionIndex];
 								if (!createNodeNames.includes(connectionData.node)) {
 									// Node does not get created so skip input connection
 									continue;
@@ -4022,14 +4076,17 @@ export default defineComponent({
 				for (type of Object.keys(connections)) {
 					for (sourceIndex = 0; sourceIndex < connections[type].length; sourceIndex++) {
 						connectionToKeep = [];
-						for (
-							connectionIndex = 0;
-							connectionIndex < connections[type][sourceIndex].length;
-							connectionIndex++
-						) {
-							connectionData = connections[type][sourceIndex][connectionIndex];
-							if (exportNodeNames.indexOf(connectionData.node) !== -1) {
-								connectionToKeep.push(connectionData);
+						const connectionsToCheck = connections[type][sourceIndex];
+						if (connectionsToCheck) {
+							for (
+								connectionIndex = 0;
+								connectionIndex < connectionsToCheck.length;
+								connectionIndex++
+							) {
+								connectionData = connectionsToCheck[connectionIndex];
+								if (exportNodeNames.indexOf(connectionData.node) !== -1) {
+									connectionToKeep.push(connectionData);
+								}
 							}
 						}
 
@@ -4633,11 +4690,10 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					label="Chat"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 					size="large"
 					icon="comment"
-					type="primary"
-					:outline="isChatOpen === false"
+					:type="isChatOpen ? 'tertiary' : 'primary'"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>

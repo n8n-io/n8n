@@ -50,6 +50,7 @@ describe('FormTrigger', () => {
 			appendAttribution: false,
 			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -201,6 +202,7 @@ describe('FormTrigger', () => {
 							name: 'Test Respond To Webhook',
 							type: 'n8n-nodes-base.respondToWebhook',
 							typeVersion: 1,
+							disabled: false,
 						},
 					],
 				}),

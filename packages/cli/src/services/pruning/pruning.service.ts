@@ -1,21 +1,28 @@
-import { PruningConfig } from '@n8n/config';
-import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { ExecutionsConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
-import { Service } from 'typedi';
 
 import { Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { connectionState as dbConnectionState } from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 
 import { OrchestrationService } from '../orchestration.service';
 
 /**
- * Responsible for pruning executions from the database and their associated binary data
- * from the filesystem, on a rolling basis. By default we soft-delete execution rows
- * every cycle and hard-delete them and their binary data every 4th cycle.
+ * Responsible for deleting old executions from the database and deleting their
+ * associated binary data from the filesystem, on a rolling basis.
+ *
+ * By default:
+ *
+ * - Soft deletion (every 60m) identifies all prunable executions based on max
+ *   age and/or max count, exempting annotated executions.
+ * - Hard deletion (every 15m) processes prunable executions in batches of 100,
+ *   switching to 1s intervals until the total to prune is back down low enough,
+ *   or in case the hard deletion fails.
+ * - Once mostly caught up, hard deletion goes back to the 15m schedule.
  */
 @Service()
 export class PruningService {
@@ -26,8 +33,8 @@ export class PruningService {
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;
 
 	private readonly rates = {
-		softDeletion: this.pruningConfig.softDeleteInterval * Time.minutes.toMilliseconds,
-		hardDeletion: this.pruningConfig.hardDeleteInterval * Time.minutes.toMilliseconds,
+		softDeletion: this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toMilliseconds,
+		hardDeletion: this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toMilliseconds,
 	};
 
 	/** Max number of executions to hard-delete in a cycle. */
@@ -41,7 +48,7 @@ export class PruningService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly pruningConfig: PruningConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('pruning');
 	}
@@ -51,7 +58,7 @@ export class PruningService {
 
 		if (this.instanceSettings.isLeader) this.startPruning();
 
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
+		if (this.instanceSettings.isMultiMain) {
 			this.orchestrationService.multiMainSetup.on('leader-takeover', () => this.startPruning());
 			this.orchestrationService.multiMainSetup.on('leader-stepdown', () => this.stopPruning());
 		}
@@ -59,7 +66,7 @@ export class PruningService {
 
 	get isEnabled() {
 		return (
-			this.pruningConfig.isEnabled &&
+			this.executionsConfig.pruneData &&
 			this.instanceSettings.instanceType === 'main' &&
 			this.instanceSettings.isLeader
 		);

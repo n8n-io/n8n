@@ -15,15 +15,10 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
@@ -48,7 +43,7 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',
 			minHeight: '20vh',
@@ -58,9 +53,7 @@ const extensions = computed(() => {
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
 			history(),
-			Prec.highest(
-				keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			createLinter(jsonParseLinter()),
 			lintGutter(),
 			n8nAutocompletion(),
@@ -82,6 +75,11 @@ const extensions = computed(() => {
 
 onMounted(() => {
 	createEditor();
+});
+
+onBeforeUnmount(() => {
+	if (!editor.value) return;
+	editor.value.destroy();
 });
 
 watch(

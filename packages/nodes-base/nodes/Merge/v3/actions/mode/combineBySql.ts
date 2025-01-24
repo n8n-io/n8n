@@ -1,3 +1,5 @@
+import alasql from 'alasql';
+import type { Database } from 'alasql';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,10 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import alasql from 'alasql';
-import type { Database } from 'alasql';
-import { numberInputsProperty } from '../../helpers/descriptions';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import { numberInputsProperty } from '../../helpers/descriptions';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -41,7 +42,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const nodeId = this.getNode().id;
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
@@ -132,5 +133,5 @@ export async function execute(
 
 	delete alasql.databases[nodeId];
 
-	return returnData;
+	return [returnData];
 }

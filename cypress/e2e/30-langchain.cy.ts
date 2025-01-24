@@ -26,7 +26,9 @@ import {
 	clickCreateNewCredential,
 	clickExecuteNode,
 	clickGetBackToCanvas,
-	toggleParameterCheckboxInputByName,
+	getRunDataInfoCallout,
+	getOutputPanelTable,
+	checkParameterCheckboxInputByName,
 } from '../composables/ndv';
 import {
 	addLanguageModelNodeToParent,
@@ -36,8 +38,6 @@ import {
 	addToolNodeToParent,
 	clickExecuteWorkflowButton,
 	clickManualChatButton,
-	disableNode,
-	getExecuteWorkflowButton,
 	navigateToNewWorkflowPage,
 	getNodes,
 	openNode,
@@ -71,31 +71,10 @@ describe('Langchain Integration', () => {
 		getManualChatModal().should('not.exist');
 	});
 
-	it('should disable test workflow button', () => {
-		addNodeToCanvas('Schedule Trigger', true);
-		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
-
-		clickGetBackToCanvas();
-
-		addNodeToCanvas(AGENT_NODE_NAME, true, true);
-		clickGetBackToCanvas();
-
-		addLanguageModelNodeToParent(
-			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-			AGENT_NODE_NAME,
-			true,
-		);
-		clickGetBackToCanvas();
-
-		disableNode('Schedule Trigger');
-
-		getExecuteWorkflowButton().should('be.disabled');
-	});
-
 	it('should add nodes to all Agent node input types', () => {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
-		toggleParameterCheckboxInputByName('hasOutputParser');
+		checkParameterCheckboxInputByName('hasOutputParser');
 		clickGetBackToCanvas();
 
 		addLanguageModelNodeToParent(
@@ -366,56 +345,127 @@ describe('Langchain Integration', () => {
 		getConnectionBySourceAndTarget(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME).should('exist');
 		getNodes().should('have.length', 3);
 	});
-	it('should render runItems for sub-nodes and allow switching between them', () => {
+
+	it('should show tool info notice if no existing tools were used during execution', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true);
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
+		});
+		clickGetBackToCanvas();
+
+		addToolNodeToParent(AI_TOOL_CALCULATOR_NODE_NAME, AGENT_NODE_NAME);
+		clickGetBackToCanvas();
+		openNode(AGENT_NODE_NAME);
+
+		const inputMessage = 'Hello!';
+		const outputMessage = 'Hi there! How can I assist you today?';
+
+		clickExecuteNode();
+
+		runMockWorkflowExecution({
+			trigger: () => sendManualChatMessage(inputMessage),
+			runData: [
+				createMockNodeExecutionData(AGENT_NODE_NAME, {
+					jsonData: {
+						main: { output: outputMessage },
+					},
+					metadata: {
+						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
+					},
+				}),
+			],
+			lastNodeExecuted: AGENT_NODE_NAME,
+		});
+		closeManualChatModal();
+		openNode(AGENT_NODE_NAME);
+
+		getRunDataInfoCallout().should('exist');
+	});
+
+	it('should not show tool info notice if tools were used during execution', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		getRunDataInfoCallout().should('not.exist');
+		clickGetBackToCanvas();
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			apiKey: 'sk_test_123',
+		});
+		clickGetBackToCanvas();
+
+		addToolNodeToParent(AI_TOOL_CALCULATOR_NODE_NAME, AGENT_NODE_NAME);
+		clickGetBackToCanvas();
+		openNode(AGENT_NODE_NAME);
+
+		getRunDataInfoCallout().should('not.exist');
+
+		const inputMessage = 'Hello!';
+		const outputMessage = 'Hi there! How can I assist you today?';
+
+		clickExecuteNode();
+
+		runMockWorkflowExecution({
+			trigger: () => sendManualChatMessage(inputMessage),
+			runData: [
+				createMockNodeExecutionData(AGENT_NODE_NAME, {
+					jsonData: {
+						main: { output: outputMessage },
+					},
+					metadata: {
+						subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
+					},
+				}),
+				createMockNodeExecutionData(AI_TOOL_CALCULATOR_NODE_NAME, {}),
+			],
+			lastNodeExecuted: AGENT_NODE_NAME,
+		});
+
+		closeManualChatModal();
+		openNode(AGENT_NODE_NAME);
+		// This waits to ensure the output panel is rendered
+		getOutputPanelTable();
+
+		getRunDataInfoCallout().should('not.exist');
+	});
+
+	it('should execute up to Node 1 when using partial execution', () => {
 		const workflowPage = new WorkflowPage();
 		const ndv = new NDV();
 
 		cy.visit(workflowPage.url);
-		cy.createFixtureWorkflow('In_memory_vector_store_fake_embeddings.json');
+		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
 		workflowPage.actions.zoomToFit();
 
-		workflowPage.actions.executeNode('Populate VS');
-		cy.get('[data-label="25 items"]').should('exist');
+		getManualChatModal().should('not.exist');
+		openNode('Node 1');
+		ndv.actions.execute();
 
-		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
-			ndv.getters.outputPanel().contains(text).should(assertion);
-			ndv.getters.inputPanel().contains(text).should(assertion);
-		};
+		getManualChatModal().should('exist');
+		sendManualChatMessage('Test');
 
-		workflowPage.actions.openNode('Character Text Splitter');
-		ndv.getters.outputRunSelector().should('exist');
-		ndv.getters.inputRunSelector().should('exist');
-		ndv.getters.inputRunSelector().find('input').should('include.value', '3 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '3 of 3');
-		assertInputOutputText('Kyiv', 'exist');
-		assertInputOutputText('Berlin', 'not.exist');
-		assertInputOutputText('Prague', 'not.exist');
+		getManualChatMessages().should('contain', 'this_my_field_1');
+		cy.getByTestId('refresh-session-button').click();
+		cy.get('button').contains('Reset').click();
+		getManualChatMessages().should('not.exist');
 
-		ndv.actions.changeOutputRunSelector('2 of 3');
-		assertInputOutputText('Berlin', 'exist');
-		assertInputOutputText('Kyiv', 'not.exist');
-		assertInputOutputText('Prague', 'not.exist');
-
-		ndv.actions.changeOutputRunSelector('1 of 3');
-		assertInputOutputText('Prague', 'exist');
-		assertInputOutputText('Berlin', 'not.exist');
-		assertInputOutputText('Kyiv', 'not.exist');
-
-		ndv.actions.toggleInputRunLinking();
-		ndv.actions.changeOutputRunSelector('2 of 3');
-		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '2 of 3');
-		ndv.getters.inputPanel().contains('Prague').should('exist');
-		ndv.getters.inputPanel().contains('Berlin').should('not.exist');
-
-		ndv.getters.outputPanel().contains('Berlin').should('exist');
-		ndv.getters.outputPanel().contains('Prague').should('not.exist');
-
-		ndv.actions.toggleInputRunLinking();
-		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
-		ndv.getters.outputRunSelector().find('input').should('include.value', '1 of 3');
-		assertInputOutputText('Prague', 'exist');
-		assertInputOutputText('Berlin', 'not.exist');
-		assertInputOutputText('Kyiv', 'not.exist');
+		sendManualChatMessage('Another test');
+		getManualChatMessages().should('contain', 'this_my_field_3');
+		getManualChatMessages().should('contain', 'this_my_field_4');
 	});
 });

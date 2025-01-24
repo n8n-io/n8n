@@ -1,10 +1,11 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
-import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 import { updateCurrentUser } from '@/api/users';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -64,7 +65,7 @@ export const useSSOStore = defineStore('sso', () => {
 		state.samlConfig = samlConfig;
 		return samlConfig;
 	};
-	const saveSamlConfig = async (config: SamlPreferences) =>
+	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
 

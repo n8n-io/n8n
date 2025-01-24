@@ -27,16 +27,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
-import type { N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import { getOptionalOutputParsers } from '../../../utils/output_parsers/N8nOutputParser';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getTracingConfig } from '../../../utils/tracing';
+import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
+
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
-import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
 
 interface MessagesTemplate {
 	type: string;
@@ -253,6 +254,7 @@ export class ChainLlm implements INodeType {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
 		icon: 'fa:link',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'A simple chain to prompt a large language model',

@@ -7,12 +7,7 @@ import { computed, ref, watch } from 'vue';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
@@ -42,9 +37,7 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
-	Prec.highest(
-		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
 	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
@@ -114,27 +107,14 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		ref="root"
-		title=""
-		:class="$style.editor"
-		data-test-id="inline-expression-editor-input"
-	></div>
+	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
 </template>
-
-<style lang="scss" module>
-.editor div[contenteditable='false'] {
-	background-color: var(--disabled-fill, var(--color-background-light));
-	cursor: not-allowed;
-}
-</style>
 
 <style lang="scss" scoped>
 :deep(.cm-editor) {
 	padding-left: 0;
 }
 :deep(.cm-content) {
-	--disabled-fill: var(--color-background-medium);
 	padding-left: var(--spacing-2xs);
 
 	&[aria-readonly='true'] {

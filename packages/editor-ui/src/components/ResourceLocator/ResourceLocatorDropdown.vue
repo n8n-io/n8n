@@ -5,7 +5,7 @@ import { N8nLoading } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { NodeParameterValue } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -22,6 +22,9 @@ type Props = {
 	filterRequired?: boolean;
 	width?: number;
 	eventBus?: EventBus;
+	allowNewResources?: {
+		label?: string;
+	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	errorView: false,
 	filterRequired: false,
 	width: undefined,
+	allowNewResources: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
@@ -42,9 +46,11 @@ const emit = defineEmits<{
 	'update:modelValue': [value: NodeParameterValue];
 	loadMore: [];
 	filter: [filter: string];
+	addResourceClick: [];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -193,6 +199,12 @@ function onResultsEnd() {
 		}
 	}
 }
+
+function isWithinDropdown(element: HTMLElement) {
+	return Boolean(element.closest('.' + $style.popover));
+}
+
+defineExpose({ isWithinDropdown });
 </script>
 
 <template>
@@ -225,7 +237,7 @@ function onResultsEnd() {
 			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			v-else-if="!errorView && !allowNewResources.label && sortedResources.length === 0 && !loading"
 			:class="$style.messageContainer"
 		>
 			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
@@ -237,17 +249,35 @@ function onResultsEnd() {
 			@scroll="onResultsEnd"
 		>
 			<div
+				v-if="allowNewResources.label"
+				key="addResourceKey"
+				ref="itemsRef"
+				data-test-id="rlc-item"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.hovering]: hoverIndex === 0,
+				}"
+				@mouseenter="() => onItemHover(0)"
+				@mouseleave="() => onItemHoverLeave()"
+				@click="() => emit('addResourceClick')"
+			>
+				<div :class="$style.resourceNameContainer">
+					<span :class="$style.addResourceText">{{ allowNewResources.label }}</span>
+					<font-awesome-icon :class="$style.addResourceIcon" :icon="['fa', 'plus']" />
+				</div>
+			</div>
+			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value.toString()"
 				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === modelValue,
-					[$style.hovering]: hoverIndex === i,
+					[$style.hovering]: hoverIndex === i + 1,
 				}"
 				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value)"
-				@mouseenter="() => onItemHover(i)"
+				@mouseenter="() => onItemHover(i + 1)"
 				@mouseleave="() => onItemHoverLeave()"
 			>
 				<div :class="$style.resourceNameContainer">
@@ -255,7 +285,7 @@ function onResultsEnd() {
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
-						v-if="showHoverUrl && result.url && hoverIndex === i"
+						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link-alt"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
@@ -383,5 +413,15 @@ function onResultsEnd() {
 
 .searchIcon {
 	color: var(--color-text-light);
+}
+
+.addResourceText {
+	font-weight: bold;
+}
+
+.addResourceIcon {
+	color: var(--color-text-light);
+
+	margin-left: var(--spacing-2xs);
 }
 </style>

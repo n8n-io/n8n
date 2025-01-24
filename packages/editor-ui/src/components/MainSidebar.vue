@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@/stores/root.store';
@@ -11,6 +10,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
@@ -23,6 +23,11 @@ import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from 'n8n-design-system';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
+import Logo from './Logo/Logo.vue';
+
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -32,6 +37,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
+const sourceControlStore = useSourceControlStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -158,12 +164,9 @@ const mainMenuItems = computed(() => [
 		],
 	},
 ]);
+const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
-
-const logoPath = computed(
-	() => basePath.value + (isCollapsed.value ? 'static/logo/collapsed.svg' : uiStore.logo),
-);
 
 const hasVersionUpdates = computed(
 	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
@@ -182,12 +185,9 @@ onMounted(async () => {
 		});
 	}
 
-	await nextTick(() => {
-		uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
-		fullyExpanded.value = !isCollapsed.value;
-	});
-
 	becomeTemplateCreatorStore.startMonitoringCta();
+
+	await nextTick(onResizeEnd);
 });
 
 onBeforeUnmount(() => {
@@ -215,7 +215,7 @@ const onUserActionToggle = (action: string) => {
 			onLogout();
 			break;
 		case 'settings':
-			void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			void router.push({ name: VIEWS.SETTINGS });
 			break;
 		default:
 			break;
@@ -270,22 +270,34 @@ const handleSelect = (key: string) => {
 	}
 };
 
-const onResize = (event: UIEvent) => {
-	void callDebounced(onResizeEnd, { debounceTime: 100 }, event);
-};
+function onResize() {
+	void callDebounced(onResizeEnd, { debounceTime: 250 });
+}
 
-const onResizeEnd = async (event: UIEvent) => {
-	const browserWidth = (event.target as Window).outerWidth;
-	await checkWidthAndAdjustSidebar(browserWidth);
-};
-
-const checkWidthAndAdjustSidebar = async (width: number) => {
-	if (width < 900) {
+async function onResizeEnd() {
+	if (window.outerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
-		await nextTick();
-		fullyExpanded.value = !isCollapsed.value;
+	} else {
+		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
 	}
-};
+
+	void nextTick(() => {
+		fullyExpanded.value = !isCollapsed.value;
+	});
+}
+
+const {
+	menu,
+	handleSelect: handleMenuSelect,
+	createProjectAppendSlotName,
+	createWorkflowsAppendSlotName,
+	createCredentialsAppendSlotName,
+	projectsLimitReachedMessage,
+	upgradeLabel,
+} = useGlobalEntityCreation();
+onClickOutside(createBtn as Ref<VueInstance>, () => {
+	createBtn.value?.close();
+});
 </script>
 
 <template>
@@ -302,14 +314,75 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
 		>
-			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+		<div :class="$style.logo">
+			<Logo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			>
+				<N8nTooltip
+					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
+					placement="bottom"
+				>
+					<template #content>
+						<i18n-t keypath="readOnlyEnv.tooltip">
+							<template #link>
+								<N8nLink
+									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
+									size="small"
+								>
+									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
+								</N8nLink>
+							</template>
+						</i18n-t>
+					</template>
+					<N8nIcon icon="lock" size="xsmall" :class="$style.readOnlyEnvironmentIcon" />
+				</N8nTooltip>
+			</Logo>
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+				<template #[createWorkflowsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createCredentialsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createProjectAppendSlotName]="{ item }">
+					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+						<N8nButton
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(item.id)"
+						>
+							{{ upgradeLabel }}
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</N8nNavigationDropdown>
+		</div>
+		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
@@ -330,14 +403,14 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
-						<n8n-text
+						<N8nText
 							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
 							color="text-base"
 						>
 							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
 								nextVersions.length > 1 ? 's' : ''
 							}}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
@@ -346,35 +419,35 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 				<div ref="user" :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+						<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar
+								<N8nAvatar
 									:first-name="usersStore.currentUser?.firstName"
 									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
 							<template v-if="isCollapsed" #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item command="settings">
+								<ElDropdownMenu>
+									<ElDropdownItem command="settings">
 										{{ i18n.baseText('settings') }}
-									</el-dropdown-item>
-									<el-dropdown-item command="logout">
+									</ElDropdownItem>
+									<ElDropdownItem command="logout">
 										{{ i18n.baseText('auth.signout') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
+									</ElDropdownItem>
+								</ElDropdownMenu>
 							</template>
-						</el-dropdown>
+						</ElDropdown>
 					</div>
 					<div
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<n8n-text size="small" :bold="true" color="text-dark">{{
+						<N8nText size="small" :bold="true" color="text-dark">{{
 							usersStore.currentUser?.fullName
-						}}</n8n-text>
+						}}</N8nText>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-action-dropdown
+						<N8nActionDropdown
 							:items="userMenuItems"
 							placement="top-start"
 							data-test-id="user-menu"
@@ -383,7 +456,7 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 					</div>
 				</div>
 			</template>
-		</n8n-menu>
+		</N8nMenu>
 	</div>
 </template>
 
@@ -394,11 +467,18 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
+	padding-top: 54px;
+	background-color: var(--menu-background, var(--color-background-xlight));
+
 	.logo {
-		height: $header-height;
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
+		justify-content: space-between;
 
 		img {
 			position: relative;
@@ -409,9 +489,11 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+		padding-top: 100px;
 
-		.logo img {
-			left: 0;
+		.logo {
+			flex-direction: column;
+			gap: 12px;
 		}
 	}
 }
@@ -498,5 +580,15 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	:global(#help) {
 		display: none;
 	}
+}
+
+.readOnlyEnvironmentIcon {
+	display: inline-block;
+	color: white;
+	background-color: var(--color-warning);
+	align-self: center;
+	padding: 2px;
+	border-radius: var(--border-radius-small);
+	margin: 5px 5px 0;
 }
 </style>

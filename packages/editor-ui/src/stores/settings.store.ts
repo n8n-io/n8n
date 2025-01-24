@@ -69,6 +69,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
+	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
+
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
 	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
@@ -94,6 +96,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
+
+	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+
+	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -275,7 +281,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				message: i18n.baseText('startupError.message'),
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			});
 
 			throw e;
@@ -368,6 +373,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		security,
 		nodeJsVersion,
 		concurrency,
+		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
@@ -407,6 +413,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isCommunityPlan,
 		isAskAiEnabled,
 		isCanvasV2Enabled,
+		isAiCreditsEnabled,
+		aiCreditsQuota,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

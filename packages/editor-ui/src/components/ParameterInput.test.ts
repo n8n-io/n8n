@@ -13,6 +13,27 @@ let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
 
+beforeEach(() => {
+	mockNdvState = {
+		hasInputData: true,
+		activeNode: {
+			id: faker.string.uuid(),
+			name: faker.word.words(3),
+			parameters: {},
+			position: [faker.number.int(), faker.number.int()],
+			type: 'test',
+			typeVersion: 1,
+		},
+		isInputPanelEmpty: false,
+		isOutputPanelEmpty: false,
+	};
+	mockNodeTypesState = {
+		allNodeTypes: [],
+	};
+	mockCompletionResult = {};
+	createAppModals();
+});
+
 vi.mock('@/stores/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),

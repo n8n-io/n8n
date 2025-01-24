@@ -83,7 +83,6 @@ function onClickAdd() {
 			<CanvasHandlePlus
 				v-if="!isConnected && !isReadOnly"
 				v-show="isHandlePlusVisible"
-				data-test-id="canvas-handle-plus"
 				:data-plus-type="plusType"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
@@ -133,9 +132,9 @@ function onClickAdd() {
 
 .runDataLabel {
 	position: absolute;
-	top: 0;
+	top: 50%;
 	left: 50%;
-	transform: translate(-50%, -50%);
+	transform: translate(-50%, -150%);
 	font-size: var(--font-size-xs);
 	color: var(--color-success);
 }

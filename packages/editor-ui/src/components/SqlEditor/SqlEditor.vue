@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { codeNodeEditorEventBus } from '@/event-bus';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { ifNotIn } from '@codemirror/autocomplete';
-import { history, toggleComment } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { Prec, type Line } from '@codemirror/state';
 import {
@@ -34,10 +30,9 @@ import {
 	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { onClickOutside } from '@vueuse/core';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -87,7 +82,7 @@ const extensions = computed(() => {
 	const baseExtensions = [
 		sqlWithN8nLanguageSupport(),
 		expressionInputHandler(),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fullscreen ? '100%' : '40vh',
 			minHeight: '10vh',
@@ -100,15 +95,7 @@ const extensions = computed(() => {
 	if (!props.isReadOnly) {
 		return baseExtensions.concat([
 			history(),
-			Prec.highest(
-				keymap.of([
-					...tabKeyMap(),
-					...enterKeyMap,
-					...historyKeyMap,
-					...autocompleteKeyMap,
-					{ key: 'Mod-/', run: toggleComment },
-				]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			n8nAutocompletion(),
 			indentOnInput(),
 			highlightActiveLine(),
@@ -127,6 +114,7 @@ const {
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
+	isDirty,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue,
@@ -161,6 +149,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	if (isDirty.value) emit('update:model-value', readEditorValue());
 	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
@@ -185,10 +174,10 @@ function line(lineNumber: number): Line | null {
 	}
 }
 
-function highlightLine(lineNumber: number | 'final') {
+function highlightLine(lineNumber: number | 'last') {
 	if (!editor.value) return;
 
-	if (lineNumber === 'final') {
+	if (lineNumber === 'last') {
 		editor.value.dispatch({
 			selection: { anchor: editor.value.state.doc.length },
 		});
@@ -239,6 +228,10 @@ async function onDrop(value: string, event: MouseEvent) {
 .sqlEditor {
 	position: relative;
 	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
 }
 
 .codemirror {

@@ -47,6 +47,8 @@ jobs:
       nodeVersion: ${{ matrix.node-version }}
       cacheKey: ${{ github.sha }}-base:build
       collectCoverage: ${{ matrix.node-version == '20.x' }}
+      ignoreTurboCache: ${{ matrix.node-version == '20.x' }}
+      skipFrontendTests: ${{ matrix.node-version != '20.x' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

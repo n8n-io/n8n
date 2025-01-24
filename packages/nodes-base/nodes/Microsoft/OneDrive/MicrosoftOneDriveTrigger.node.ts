@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import {
 	type IPollFunctions,
 	type IDataObject,
@@ -7,9 +8,8 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
-import { triggerDescription } from './TriggerDescription';
 import { getPath, microsoftApiRequest, microsoftApiRequestAllItemsDelta } from './GenericFunctions';
+import { triggerDescription } from './TriggerDescription';
 
 export class MicrosoftOneDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {

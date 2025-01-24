@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,9 +8,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -87,6 +87,36 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Dimensions',
+						name: 'dimensions',
+						default: undefined,
+						description:
+							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
+						type: 'options',
+						options: [
+							{
+								name: '256',
+								value: 256,
+							},
+							{
+								name: '512',
+								value: 512,
+							},
+							{
+								name: '1024',
+								value: 1024,
+							},
+							{
+								name: '1536',
+								value: 1536,
+							},
+							{
+								name: '3072',
+								value: 3072,
+							},
+						],
+					},
 				],
 			},
 		],
@@ -98,6 +128,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
+			endpoint?: string;
 		}>('azureOpenAiApi');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -105,6 +136,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			batchSize?: number;
 			stripNewLines?: boolean;
 			timeout?: number;
+			dimensions?: number | undefined;
 		};
 
 		if (options.timeout === -1) {
@@ -113,9 +145,15 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
-			azureOpenAIApiInstanceName: credentials.resourceName,
+			// instance name only needed to set base url
+			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
 			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
+			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
+			// only setting azureOpenAIBasePath worked
+			azureOpenAIBasePath: credentials.endpoint
+				? `${credentials.endpoint}/openai/deployments`
+				: undefined,
 			...options,
 		});
 
