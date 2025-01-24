@@ -6,22 +6,21 @@ import { createComponentRenderer } from '@/__tests__/render';
 import TestDefinitionListView from '@/views/TestDefinition/TestDefinitionListView.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { nextTick, ref } from 'vue';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');
-vi.mock('@/composables/useMessage');
+
 describe('TestDefinitionListView', () => {
 	const renderComponent = createComponentRenderer(TestDefinitionListView);
 
 	let showMessageMock: Mock;
 	let showErrorMock: Mock;
-	let confirmMock: Mock;
 	let startTestRunMock: Mock;
 	let fetchTestRunsMock: Mock;
 	let deleteByIdMock: Mock;
@@ -66,7 +65,6 @@ describe('TestDefinitionListView', () => {
 
 		showMessageMock = vi.fn();
 		showErrorMock = vi.fn();
-		confirmMock = vi.fn().mockResolvedValue(MODAL_CONFIRM);
 		startTestRunMock = vi.fn().mockResolvedValue({ success: true });
 		fetchTestRunsMock = vi.fn();
 		deleteByIdMock = vi.fn();
@@ -76,10 +74,6 @@ describe('TestDefinitionListView', () => {
 			showMessage: showMessageMock,
 			showError: showErrorMock,
 		} as unknown as ReturnType<typeof useToast>);
-
-		vi.mocked(useMessage).mockReturnValue({
-			confirm: confirmMock,
-		} as unknown as ReturnType<typeof useMessage>);
 	});
 
 	afterEach(() => {
@@ -95,6 +89,7 @@ describe('TestDefinitionListView', () => {
 		setActivePinia(pinia);
 
 		const testDefinitionStore = mockedStore(useTestDefinitionStore);
+		// const tagsStore = mockedStore(useAnnotationTagsStore);
 		testDefinitionStore.isFeatureEnabled = true;
 		testDefinitionStore.fetchAll = fetchAllMock;
 		testDefinitionStore.startTestRun = startTestRunMock;
@@ -125,6 +120,7 @@ describe('TestDefinitionListView', () => {
 		expect(testDefinitionStore.fetchAll).toHaveBeenCalledWith({
 			workflowId: 'workflow1',
 		});
+		expect(mockedStore(useAnnotationTagsStore).fetchAll).toHaveBeenCalled();
 	});
 
 	it('should start test run and show success message', async () => {
@@ -154,12 +150,13 @@ describe('TestDefinitionListView', () => {
 	});
 
 	it('should delete test and show success message', async () => {
-		const { getByTestId } = await renderComponentWithFeatureEnabled();
+		const { getByTestId, testDefinitionStore } = await renderComponentWithFeatureEnabled();
+
 		const deleteButton = getByTestId('delete-test-button-1');
 		deleteButton.click();
-		await waitAllPromises();
+		await nextTick();
 
-		expect(deleteByIdMock).toHaveBeenCalledWith('1');
+		expect(testDefinitionStore.deleteById).toHaveBeenCalledWith('1');
 		expect(showMessageMock).toHaveBeenCalledWith({
 			title: expect.any(String),
 			type: 'success',

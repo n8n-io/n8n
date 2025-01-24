@@ -79,7 +79,7 @@ export function useMetricsChart(mode: AppliedThemeOption = 'light') {
 						color: colors.text.primary,
 					},
 					title: {
-						display: false,
+						display: true,
 						text: params.metric,
 						padding: 16,
 						color: colors.text.primary,
@@ -90,11 +90,14 @@ export function useMetricsChart(mode: AppliedThemeOption = 'light') {
 						display: false,
 					},
 					ticks: {
-						display: false,
+						maxRotation: 45,
+						minRotation: 45,
+						color: colors.text.primary,
 					},
 					title: {
+						display: true,
 						text: params.xTitle,
-						padding: 1,
+						padding: 16,
 						color: colors.text.primary,
 					},
 				},

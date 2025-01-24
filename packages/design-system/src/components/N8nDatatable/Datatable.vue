@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
@@ -33,6 +33,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const rowsPerPageOptions = ref([1, 10, 25, 50, 100]);
 
+const $style = useCssModule();
+
 const totalPages = computed(() => {
 	return Math.ceil(props.rows.length / props.rowsPerPage);
 });
@@ -49,6 +51,11 @@ const visibleRows = computed(() => {
 
 	return props.rows.slice(start, end);
 });
+
+const classes = computed(() => ({
+	datatable: true,
+	[$style.datatableWrapper]: true,
+}));
 
 function onUpdateCurrentPage(value: number) {
 	emit('update:currentPage', value);
@@ -80,9 +87,9 @@ function getThStyle(column: DatatableColumn) {
 </script>
 
 <template>
-	<div class="datatable datatableWrapper" v-bind="$attrs">
-		<table>
-			<thead>
+	<div :class="classes" v-bind="$attrs">
+		<table :class="$style.datatable">
+			<thead :class="$style.datatableHeader">
 				<tr>
 					<th
 						v-for="column in columns"
@@ -108,7 +115,7 @@ function getThStyle(column: DatatableColumn) {
 			</tbody>
 		</table>
 
-		<div class="pagination">
+		<div :class="$style.pagination">
 			<N8nPagination
 				v-if="totalPages > 1"
 				background
@@ -120,7 +127,7 @@ function getThStyle(column: DatatableColumn) {
 				@update:current-page="onUpdateCurrentPage"
 			/>
 
-			<div class="pageSizeSelector">
+			<div :class="$style.pageSizeSelector">
 				<N8nSelect
 					size="mini"
 					:model-value="rowsPerPage"
@@ -141,75 +148,47 @@ function getThStyle(column: DatatableColumn) {
 	</div>
 </template>
 
-<style lang="scss" scoped>
-:deep(table) {
-	border: 1px solid var(--color-foreground-base);
-	border-collapse: separate;
-	overflow: hidden;
-	border-spacing: 0;
-	border-radius: 10px;
-	text-align: left;
-	width: 100%;
-	background-color: var(--color-background-xlight);
-	table-layout: fixed;
-
-	th {
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-regular);
-		padding: 10px 8px;
-	}
-
-	td {
-		font-size: var(--font-size-s);
-		padding: 3px 8px;
-		height: 47px;
-		width: auto;
-		&:first-child {
-			padding-left: 16px;
-		}
-		&:last-child {
-			padding-right: 16px;
-		}
-	}
-
-	th,
-	td {
-		vertical-align: middle;
-		border-bottom: 1px solid var(--color-foreground-base);
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
-
-		&:last-child {
-			border-right: none;
-		}
-	}
-
-	tbody {
-		tr {
-			&:hover {
-				background-color: var(--color-background-light);
-			}
-
-			&:last-child {
-				th,
-				td {
-					border-bottom: none;
-				}
-			}
-		}
-	}
-}
-
+<style lang="scss" module>
 .datatableWrapper {
 	display: block;
 	width: 100%;
 }
 
+.datatable {
+	width: 100%;
+
+	tbody {
+		tr {
+			td {
+				vertical-align: top;
+				color: var(--color-text-base);
+				padding: var(--spacing-s) var(--spacing-2xs);
+			}
+
+			&:nth-of-type(even) {
+				background: var(--color-background-xlight);
+			}
+
+			&:nth-of-type(odd) {
+				background: var(--color-background-light);
+			}
+		}
+	}
+}
+
+.datatableHeader {
+	background: var(--color-background-base);
+
+	th {
+		text-align: left;
+		padding: var(--spacing-s) var(--spacing-2xs);
+	}
+}
+
 .pagination {
 	width: 100%;
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
 	align-items: center;
 	bottom: 0;
 	overflow: visible;

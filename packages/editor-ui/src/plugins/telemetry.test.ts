@@ -21,8 +21,6 @@ describe('telemetry', () => {
 		);
 	});
 
-	beforeEach(() => vitest.clearAllMocks());
-
 	describe('identify', () => {
 		it('Rudderstack identify method should be called when proving userId ', () => {
 			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');

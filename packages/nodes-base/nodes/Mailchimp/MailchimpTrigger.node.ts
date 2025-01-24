@@ -214,6 +214,7 @@ export class MailchimpTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
+				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const listId = this.getNodeParameter('list') as string;
 				const events = this.getNodeParameter('events', []) as string[];
@@ -232,7 +233,11 @@ export class MailchimpTrigger implements INodeType {
 					}, {}),
 				};
 				const endpoint = `/lists/${listId}/webhooks`;
-				const webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
+				try {
+					webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
+				} catch (error) {
+					throw error;
+				}
 				if (webhook.id === undefined) {
 					return false;
 				}

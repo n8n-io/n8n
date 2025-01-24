@@ -9,8 +9,6 @@ interface EvaluationStep {
 	small?: boolean;
 	expanded?: boolean;
 	description?: string;
-	issues?: Array<{ field: string; message: string }>;
-	showIssues?: boolean;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -18,8 +16,6 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
-	issues: () => [],
-	showIssues: true,
 });
 
 const locale = useI18n();
@@ -50,11 +46,7 @@ const toggleExpand = async () => {
 					<slot name="icon" />
 				</div>
 				<h3 :class="$style.title">{{ title }}</h3>
-				<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
-					<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
-						{{ issues.map((issue) => issue.message).join(', ') }}
-					</N8nInfoTip>
-				</span>
+				<span v-if="warning" :class="$style.warningIcon">⚠</span>
 				<button
 					v-if="$slots.cardContent"
 					:class="$style.collapseButton"
@@ -98,7 +90,6 @@ const toggleExpand = async () => {
 
 	&.small {
 		width: 80%;
-		margin-left: auto;
 	}
 }
 .icon {

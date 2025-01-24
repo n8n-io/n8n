@@ -4,8 +4,8 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { configurePostgres } from '../../transport';
-import type { PgpConnection, PostgresNodeCredentials } from '../helpers/interfaces';
+import type { PgpClient, PostgresNodeCredentials } from '../helpers/interfaces';
+import { configurePostgres } from '../transport';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
@@ -13,12 +13,14 @@ export async function postgresConnectionTest(
 ): Promise<INodeCredentialTestResult> {
 	const credentials = credential.data as PostgresNodeCredentials;
 
-	let connection: PgpConnection | undefined;
+	let pgpClientCreated: PgpClient | undefined;
 
 	try {
-		const { db } = await configurePostgres.call(this, credentials, {});
+		const { db, pgp } = await configurePostgres.call(this, credentials, {});
 
-		connection = await db.connect();
+		pgpClientCreated = pgp;
+
+		await db.connect();
 	} catch (error) {
 		let message = error.message as string;
 
@@ -39,8 +41,8 @@ export async function postgresConnectionTest(
 			message,
 		};
 	} finally {
-		if (connection) {
-			await connection.done();
+		if (pgpClientCreated) {
+			pgpClientCreated.end();
 		}
 	}
 	return {

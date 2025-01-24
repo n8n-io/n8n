@@ -50,7 +50,6 @@ describe('FormTrigger', () => {
 			appendAttribution: false,
 			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
-			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',

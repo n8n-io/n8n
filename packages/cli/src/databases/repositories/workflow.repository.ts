@@ -44,12 +44,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
+	async getActiveIds() {
 		const activeWorkflows = await this.find({
 			select: ['id'],
 			where: { active: true },
-			// 'take' and 'order' are only needed when maxResults is provided:
-			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
 		return activeWorkflows.map((workflow) => workflow.id);
 	}

@@ -198,7 +198,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	return returnData;
 }
 
-export async function streamRequest<T extends object>(
+export async function streamRequest<T>(
 	context: IRestApiContext,
 	apiEndpoint: string,
 	payload: object,
@@ -220,7 +220,7 @@ export async function streamRequest<T extends object>(
 	try {
 		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
 
-		if (response.body) {
+		if (response.ok && response.body) {
 			// Handle the streaming response
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder('utf-8');
@@ -252,18 +252,7 @@ export async function streamRequest<T extends object>(
 						}
 
 						try {
-							if (response.ok) {
-								// Call chunk callback if request was successful
-								onChunk?.(data);
-							} else {
-								// Otherwise, call error callback
-								const message = 'message' in data ? data.message : response.statusText;
-								onError?.(
-									new ResponseError(String(message), {
-										httpStatusCode: response.status,
-									}),
-								);
-							}
+							onChunk?.(data);
 						} catch (e: unknown) {
 							if (e instanceof Error) {
 								onError?.(e);

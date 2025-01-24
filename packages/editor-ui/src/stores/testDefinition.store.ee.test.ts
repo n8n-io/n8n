@@ -2,9 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
-import { mockedStore } from '@/__tests__/utils';
 
 const {
 	createTestDefinition,
@@ -103,7 +101,6 @@ describe('testDefinition.store.ee', () => {
 		rootStoreMock = useRootStore();
 		posthogStoreMock = usePostHog();
 
-		mockedStore(useAnnotationTagsStore).fetchAll = vi.fn().mockResolvedValue([]);
 		getTestDefinitions.mockResolvedValue({
 			count: 2,
 			testDefinitions: [TEST_DEF_A, TEST_DEF_B],
@@ -117,7 +114,6 @@ describe('testDefinition.store.ee', () => {
 		getTestRun.mockResolvedValue(TEST_RUN);
 		startTestRun.mockResolvedValue({ success: true });
 		deleteTestRun.mockResolvedValue({ success: true });
-		getTestMetrics.mockResolvedValue([TEST_METRIC]);
 	});
 
 	test('Initialization', () => {
@@ -280,6 +276,8 @@ describe('testDefinition.store.ee', () => {
 
 	describe('Metrics', () => {
 		test('Fetching Metrics for a Test Definition', async () => {
+			getTestMetrics.mockResolvedValue([TEST_METRIC]);
+
 			const metrics = await store.fetchMetrics('1');
 
 			expect(getTestMetrics).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');

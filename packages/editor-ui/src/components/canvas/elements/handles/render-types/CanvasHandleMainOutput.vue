@@ -132,9 +132,9 @@ function onClickAdd() {
 
 .runDataLabel {
 	position: absolute;
-	top: 50%;
+	top: 0;
 	left: 50%;
-	transform: translate(-50%, -150%);
+	transform: translate(-50%, -50%);
 	font-size: var(--font-size-xs);
 	color: var(--color-success);
 }

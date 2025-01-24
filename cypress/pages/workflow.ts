@@ -1,6 +1,5 @@
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
-import { clickContextMenuAction, getCanvasPane, openContextMenu } from '../composables/workflow';
 import { META_KEY } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
@@ -39,7 +38,15 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodes: () => cy.getByTestId('canvas-node'),
+		canvasNodes: () =>
+			cy.ifCanvasVersion(
+				() => cy.getByTestId('canvas-node'),
+				() =>
+					cy
+						.getByTestId('canvas-node')
+						.not('[data-node-type="n8n-nodes-internal.addNodes"]')
+						.not('[data-node-type="n8n-nodes-base.stickyNote"]'),
+			),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		nodeIssuesByName: (nodeName: string) =>
@@ -103,7 +110,7 @@ export class WorkflowPage extends BasePage {
 		disabledNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.node-box.disabled'),
-				() => cy.get('[data-canvas-node-render-type][class*="disabled"]'),
+				() => cy.get('[data-test-id*="node"][class*="disabled"]'),
 			),
 		selectedNodes: () =>
 			cy.ifCanvasVersion(
@@ -281,77 +288,71 @@ export class WorkflowPage extends BasePage {
 			nodeTypeName?: string,
 			{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
 		) => {
-			cy.ifCanvasVersion(
-				() => {
-					const target = nodeTypeName
-						? this.getters.canvasNodeByName(nodeTypeName)
-						: this.getters.nodeViewBackground();
+			const target = nodeTypeName
+				? this.getters.canvasNodeByName(nodeTypeName)
+				: this.getters.nodeViewBackground();
 
-					if (method === 'right-click') {
-						target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
-					} else {
-						target.realHover();
-						target.find('[data-test-id="overflow-node-button"]').click({ force: true });
-					}
-				},
-				() => {
-					openContextMenu(nodeTypeName, { method, anchor });
-				},
-			);
+			if (method === 'right-click') {
+				target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
+			} else {
+				target.realHover();
+				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+			}
 		},
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
 		duplicateNode: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('duplicate');
+			this.actions.contextMenuAction('duplicate');
 		},
 		deleteNodeFromContextMenu: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('delete');
+			this.actions.contextMenuAction('delete');
 		},
 		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
 			this.actions.openContextMenu(nodeTypeName, options);
-			clickContextMenuAction('execute');
+			this.actions.contextMenuAction('execute');
 		},
 		addStickyFromContextMenu: () => {
 			this.actions.openContextMenu();
-			clickContextMenuAction('add_sticky');
+			this.actions.contextMenuAction('add_sticky');
 		},
 		renameNode: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('rename');
+			this.actions.contextMenuAction('rename');
 		},
 		copyNode: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('copy');
+			this.actions.contextMenuAction('copy');
 		},
 		contextMenuAction: (action: string) => {
 			this.getters.contextMenuAction(action).click();
 		},
 		disableNode: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('toggle_activation');
+			this.actions.contextMenuAction('toggle_activation');
 		},
 		pinNode: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName);
-			clickContextMenuAction('toggle_pin');
+			this.actions.contextMenuAction('toggle_pin');
 		},
 		openNodeFromContextMenu: (nodeTypeName: string) => {
 			this.actions.openContextMenu(nodeTypeName, { method: 'overflow-button' });
-			clickContextMenuAction('open');
+			this.actions.contextMenuAction('open');
 		},
 		selectAllFromContextMenu: () => {
 			this.actions.openContextMenu();
-			clickContextMenuAction('select_all');
+			this.actions.contextMenuAction('select_all');
 		},
 		deselectAll: () => {
 			cy.ifCanvasVersion(
 				() => {
 					this.actions.openContextMenu();
-					clickContextMenuAction('deselect_all');
+					this.actions.contextMenuAction('deselect_all');
 				},
-				() => getCanvasPane().click('topLeft'),
+				// rightclick doesn't work with vueFlow canvas
+				() => this.getters.nodeViewBackground().click('topLeft'),
 			);
 		},
 		openExpressionEditorModal: () => {
@@ -430,7 +431,7 @@ export class WorkflowPage extends BasePage {
 		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
-				this.getters.canvasViewport().trigger('wheel', {
+				this.getters.nodeView().trigger('wheel', {
 					force: true,
 					bubbles: true,
 					ctrlKey: true,

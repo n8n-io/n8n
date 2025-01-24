@@ -30,26 +30,6 @@ export const description: INodeTypeDescription = {
 			required: true,
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
 	properties: [
 		{
 			displayName: 'Resource',

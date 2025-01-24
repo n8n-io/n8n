@@ -1000,10 +1000,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			}
 
 			if (redirect) {
-				await router.replace({
+				void router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
-					query: { action: 'workflowSave' },
+					params: { name: workflowData.id, action: 'workflowSave' },
 				});
 			}
 

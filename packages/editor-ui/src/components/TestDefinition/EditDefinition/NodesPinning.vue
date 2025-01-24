@@ -115,13 +115,7 @@ onMounted(loadData);
 </script>
 
 <template>
-	<div v-if="mappedNodes.length === 0" :class="$style.noNodes">
-		<N8nHeading size="large" :bold="true" :class="$style.noNodesTitle">{{
-			locale.baseText('testDefinition.edit.pinNodes.noNodes.title')
-		}}</N8nHeading>
-		<N8nText>{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.description') }}</N8nText>
-	</div>
-	<div v-else :class="$style.container">
+	<div :class="$style.container">
 		<N8nSpinner v-if="isLoading" size="xlarge" type="dots" :class="$style.spinner" />
 		<Canvas
 			:id="canvasId"
@@ -190,12 +184,5 @@ onMounted(loadData);
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-}
-.noNodes {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	height: 100%;
 }
 </style>

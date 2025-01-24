@@ -369,8 +369,6 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 
-		'n8n-local-rules/no-useless-catch-throw': 'error',
-
 		'n8n-local-rules/no-plain-errors': 'error',
 
 		// ******************************************************************

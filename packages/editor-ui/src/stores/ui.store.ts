@@ -175,7 +175,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannersHeight = ref<number>(0);
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const processingExecutionResults = ref<boolean>(false);
 
 	const appGridWidth = ref<number>(0);
 
@@ -329,12 +328,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const isAnyModalOpen = computed(() => {
 		return modalStack.value.length > 0;
 	});
-
-	/**
-	 * Whether we are currently in the process of fetching and deserializing
-	 * the full execution data and loading it to the store.
-	 */
-	const isProcessingExecutionResults = computed(() => processingExecutionResults.value);
 
 	// Methods
 
@@ -573,14 +566,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastCancelledConnectionPosition.value = undefined;
 	}
 
-	/**
-	 * Set whether we are currently in the process of fetching and deserializing
-	 * the full execution data and loading it to the store.
-	 */
-	const setProcessingExecutionResults = (value: boolean) => {
-		processingExecutionResults.value = value;
-	};
-
 	return {
 		appGridWidth,
 		appliedTheme,
@@ -619,7 +604,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isAnyModalOpen,
 		pendingNotificationsForViews,
 		activeModals,
-		isProcessingExecutionResults,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -654,7 +638,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		deleteNotificationsForView,
 		resetLastInteractedWith,
-		setProcessingExecutionResults,
 	};
 });
 

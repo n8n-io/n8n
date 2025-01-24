@@ -7,22 +7,13 @@ export interface EditableField<T = string> {
 	isEditing: boolean;
 }
 
-export interface TestItemAction {
-	icon: string;
-	id: string;
-	event: (testId: string) => void | Promise<void>;
-	tooltip: (testId: string) => string;
-	disabled?: (testId: string) => boolean;
-	show?: (testId: string) => boolean;
-}
-
 export interface EditableFormState {
 	name: EditableField<string>;
 	tags: EditableField<string[]>;
-	description: EditableField<string>;
 }
 
 export interface EvaluationFormState extends EditableFormState {
+	description: string;
 	evaluationWorkflow: INodeParameterResourceLocator;
 	metrics: TestMetricRecord[];
 	mockedNodes: Array<{ name: string; id: string }>;
@@ -33,7 +24,6 @@ export interface TestExecution {
 	errorRate: number | null;
 	metrics: Record<string, number>;
 	status: TestRunRecord['status'];
-	id: string | null;
 }
 
 export interface TestListItem {
@@ -42,5 +32,4 @@ export interface TestListItem {
 	tagName: string;
 	testCases: number;
 	execution: TestExecution;
-	fieldsIssues?: Array<{ field: string; message: string }>;
 }

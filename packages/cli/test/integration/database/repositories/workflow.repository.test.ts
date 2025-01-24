@@ -73,7 +73,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('getActiveIds', () => {
-		it('should return all active workflow IDs when invoked without maxResults', async () => {
+		it('should return active workflow IDs', async () => {
 			//
 			// ARRANGE
 			//
@@ -92,28 +92,6 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(activeIds).toEqual([workflows[0].id]);
-			expect(activeIds).toHaveLength(1);
-		});
-
-		it('should return a capped number of active workflow IDs when invoked with maxResults', async () => {
-			//
-			// ARRANGE
-			//
-			await Promise.all([
-				createWorkflow({ active: true }),
-				createWorkflow({ active: false }),
-				createWorkflow({ active: true }),
-			]);
-
-			//
-			// ACT
-			//
-			const activeIds = await Container.get(WorkflowRepository).getActiveIds({ maxResults: 1 });
-
-			//
-			// ASSERT
-			//
-			expect(activeIds).toHaveLength(1);
 		});
 	});
 });

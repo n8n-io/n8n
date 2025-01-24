@@ -35,10 +35,6 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
 	}
 
-	async markAsCancelled(id: string) {
-		return await this.update(id, { status: 'cancelled' });
-	}
-
 	async incrementPassed(id: string) {
 		return await this.increment({ id }, 'passedCases', 1);
 	}

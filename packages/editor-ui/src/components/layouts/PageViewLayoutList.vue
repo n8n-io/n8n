@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 interface Props {
-	overflow?: boolean;
+	overflow: boolean;
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+	overflow: false,
+});
 </script>
 
 <template>

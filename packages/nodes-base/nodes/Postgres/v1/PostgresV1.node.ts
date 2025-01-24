@@ -1,6 +1,7 @@
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
+	IDataObject,
 	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -9,12 +10,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
-import { configurePostgres } from '../transport';
-import type { PgpConnection, PostgresNodeCredentials } from '../v2/helpers/interfaces';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -298,27 +298,33 @@ export class PostgresV1 implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as PostgresNodeCredentials;
-
-				let connection: PgpConnection | undefined;
-
+				const credentials = credential.data as IDataObject;
 				try {
-					const { db } = await configurePostgres.call(this, credentials, {});
+					const pgp = pgPromise();
+					const config: IDataObject = {
+						host: credentials.host as string,
+						port: credentials.port as number,
+						database: credentials.database as string,
+						user: credentials.user as string,
+						password: credentials.password as string,
+					};
 
-					// Acquires a new connection that can be used to to run multiple
-					// queries on the same connection and must be released again
-					// manually.
-					connection = await db.connect();
+					if (credentials.allowUnauthorizedCerts === true) {
+						config.ssl = {
+							rejectUnauthorized: false,
+						};
+					} else {
+						config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+						config.sslmode = (credentials.ssl as string) || 'disable';
+					}
+
+					const db = pgp(config);
+					await db.connect();
 				} catch (error) {
 					return {
 						status: 'Error',
 						message: error.message,
 					};
-				} finally {
-					if (connection) {
-						// release connection
-						await connection.done();
-					}
 				}
 				return {
 					status: 'OK',
@@ -329,19 +335,42 @@ export class PostgresV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
+		const credentials = await this.getCredentials('postgres');
 		const largeNumbersOutput = this.getNodeParameter(
 			'additionalFields.largeNumbersOutput',
 			0,
 			'',
 		) as string;
 
-		const { db, pgp } = await configurePostgres.call(this, credentials, {
-			largeNumbersOutput:
-				largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
-					? largeNumbersOutput
-					: undefined,
-		});
+		const pgp = pgPromise();
+
+		if (largeNumbersOutput === 'numbers') {
+			pgp.pg.types.setTypeParser(20, (value: string) => {
+				return parseInt(value, 10);
+			});
+			pgp.pg.types.setTypeParser(1700, (value: string) => {
+				return parseFloat(value);
+			});
+		}
+
+		const config: IDataObject = {
+			host: credentials.host as string,
+			port: credentials.port as number,
+			database: credentials.database as string,
+			user: credentials.user as string,
+			password: credentials.password as string,
+		};
+
+		if (credentials.allowUnauthorizedCerts === true) {
+			config.ssl = {
+				rejectUnauthorized: false,
+			};
+		} else {
+			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+			config.sslmode = (credentials.ssl as string) || 'disable';
+		}
+
+		const db = pgp(config);
 
 		let returnItems: INodeExecutionData[] = [];
 

@@ -115,6 +115,7 @@ export class PayPalTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
+				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events', []) as string[];
 				const body = {
@@ -124,7 +125,11 @@ export class PayPalTrigger implements INodeType {
 					}),
 				};
 				const endpoint = '/notifications/webhooks';
-				const webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+				try {
+					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+				} catch (error) {
+					throw error;
+				}
 
 				if (webhook.id === undefined) {
 					return false;
@@ -151,6 +156,7 @@ export class PayPalTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		let webhook;
 		const webhookData = this.getWorkflowStaticData('node');
 		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
@@ -182,7 +188,11 @@ export class PayPalTrigger implements INodeType {
 				webhook_id: webhookData.webhookId,
 				webhook_event: bodyData,
 			};
-			const webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+			try {
+				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+			} catch (error) {
+				throw error;
+			}
 			if (webhook.verification_status !== 'SUCCESS') {
 				return {};
 			}

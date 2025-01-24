@@ -4,15 +4,10 @@ import InputPanel, { type Props } from '@/components/InputPanel.vue';
 import { STORES } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
-import {
-	NodeConnectionType,
-	type IConnections,
-	type INodeExecutionData,
-	type IRunData,
-} from 'n8n-workflow';
+import { NodeConnectionType, type IConnections, type INodeExecutionData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '../__tests__/utils';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => {
 	return {
@@ -29,7 +24,7 @@ const nodes = [
 	createTestNode({ name: 'Tool' }),
 ];
 
-const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runData?: IRunData) => {
+const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[]) => {
 	const connections: IConnections = {
 		[nodes[0].name]: {
 			[NodeConnectionType.Main]: [
@@ -55,36 +50,10 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowStore = useWorkflowsStore();
-
-	workflowStore.setWorkflow(workflow);
+	useWorkflowsStore().setWorkflow(workflow);
 
 	if (pinData) {
 		mockedStore(useWorkflowsStore).pinDataByNodeName.mockReturnValue(pinData);
-	}
-
-	if (runData) {
-		workflowStore.setWorkflowExecutionData({
-			id: '',
-			workflowData: {
-				id: '',
-				name: '',
-				active: false,
-				createdAt: '',
-				updatedAt: '',
-				nodes,
-				connections,
-				versionId: '',
-			},
-			finished: false,
-			mode: 'trigger',
-			status: 'success',
-			startedAt: new Date(),
-			createdAt: new Date(),
-			data: {
-				resultData: { runData },
-			},
-		});
 	}
 
 	const workflowObject = createTestWorkflowObject({
@@ -113,28 +82,5 @@ describe('InputPanel', () => {
 
 		await waitFor(() => expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument());
 		expect(container).toMatchSnapshot();
-	});
-
-	it("opens mapping tab by default if the node hasn't run yet", async () => {
-		const { findByTestId } = render({ currentNodeName: 'Tool' });
-
-		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
-	});
-
-	it('opens debugging tab by default if the node has already run', async () => {
-		const { findByTestId } = render({ currentNodeName: 'Tool' }, undefined, {
-			Tool: [
-				{
-					startTime: 0,
-					executionTime: 0,
-					source: [],
-					data: {},
-				},
-			],
-		});
-
-		expect((await findByTestId('radio-button-mapping')).parentNode).not.toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).toBeChecked();
 	});
 });

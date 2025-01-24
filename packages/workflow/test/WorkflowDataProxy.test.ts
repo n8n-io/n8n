@@ -1,4 +1,3 @@
-import { ensureError } from '@/errors/ensure-error';
 import { ExpressionError } from '@/errors/expression.error';
 import {
 	NodeConnectionType,
@@ -335,9 +334,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual(
-					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
-				);
+				expect(exprError.message).toEqual("Can't get data for expression");
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
 			}
@@ -412,66 +409,6 @@ describe('WorkflowDataProxy', () => {
 
 		test('$node[PinnedSet].json.firstName', () => {
 			expect(proxy.$node.PinnedSet.json.firstName).toBe('Joe');
-		});
-	});
-
-	describe('Pinned data with paired items', () => {
-		const fixture = loadFixture('pindata_paireditem');
-		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Set', 'manual', {
-			runIndex: 0,
-			throwOnMissingExecutionData: false,
-		});
-
-		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
-			'$methodName should throw when it cannot find a paired item',
-			async ({ methodName }) => {
-				try {
-					proxy.$('DebugHelper')[methodName](0);
-					fail('should throw');
-				} catch (e) {
-					const error = ensureError(e);
-					expect(error.message).toEqual(
-						`Using the ${methodName} method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.`,
-					);
-
-					expect(error).toMatchObject({
-						functionality: 'pairedItem',
-						context: {
-							runIndex: 0,
-							itemIndex: 0,
-							type: 'paired_item_no_info',
-							descriptionKey: 'pairedItemNoInfo',
-							nodeCause: 'Edit Fields',
-							causeDetailed:
-								"Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
-						},
-					});
-				}
-			},
-		);
-
-		test('item should throw when it cannot find a paired item', async () => {
-			try {
-				proxy.$('DebugHelper').item;
-				fail('should throw');
-			} catch (e) {
-				const error = ensureError(e);
-				expect(error.message).toEqual(
-					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.",
-				);
-
-				expect(error).toMatchObject({
-					functionality: 'pairedItem',
-					context: {
-						runIndex: 0,
-						itemIndex: 0,
-						type: 'paired_item_no_info',
-						descriptionKey: 'pairedItemNoInfo',
-						nodeCause: 'Edit Fields',
-						causeDetailed: "Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
-					},
-				});
-			}
 		});
 	});
 

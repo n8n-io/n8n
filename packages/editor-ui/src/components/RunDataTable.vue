@@ -451,13 +451,12 @@ watch(focusedMappableInput, (curr) => {
 							<N8nIconButton
 								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
-								element="a"
 								type="secondary"
 								icon="external-link-alt"
 								data-test-id="debug-sub-execution"
 								size="mini"
-								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
 							/>
 						</N8nTooltip>
@@ -585,18 +584,20 @@ watch(focusedMappableInput, (curr) => {
 							placement="left"
 							:hide-after="0"
 						>
-							<N8nIconButton
+							<a
 								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
-								icon="external-link-alt"
-								data-test-id="debug-sub-execution"
-								size="mini"
-								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
-							/>
+							>
+								<N8nIconButton
+									type="secondary"
+									icon="external-link-alt"
+									data-test-id="debug-sub-execution"
+									size="mini"
+								/>
+							</a>
 						</N8nTooltip>
 					</td>
 					<td

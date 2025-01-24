@@ -149,7 +149,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				credentialId: credential.id,
 			});
 
-			return res.render('oauth-callback', { imagePath: 'n8n-logo.png' });
+			return res.render('oauth-callback');
 		} catch (error) {
 			return this.renderCallbackError(
 				res,

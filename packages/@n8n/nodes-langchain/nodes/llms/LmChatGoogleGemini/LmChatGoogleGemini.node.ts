@@ -140,7 +140,6 @@ export class LmChatGoogleGemini implements INodeType {
 
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
-			baseUrl: credentials.host as string,
 			modelName,
 			topK: options.topK,
 			topP: options.topP,

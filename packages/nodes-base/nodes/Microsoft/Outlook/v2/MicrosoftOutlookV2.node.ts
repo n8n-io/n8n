@@ -8,7 +8,6 @@ import type {
 import { description } from './actions/node.description';
 import { router } from './actions/router';
 import { loadOptions, listSearch } from './methods';
-import { sendAndWaitWebhook } from '../../../../utils/sendAndWait/utils';
 
 export class MicrosoftOutlookV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -21,8 +20,6 @@ export class MicrosoftOutlookV2 implements INodeType {
 	}
 
 	methods = { loadOptions, listSearch };
-
-	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);

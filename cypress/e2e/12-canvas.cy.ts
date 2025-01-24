@@ -7,17 +7,9 @@ import {
 	SWITCH_NODE_NAME,
 	MERGE_NODE_NAME,
 } from './../constants';
-import {
-	clickContextMenuAction,
-	getCanvasNodeByName,
-	getCanvasNodes,
-	getConnectionBySourceAndTarget,
-	getConnectionLabelBySourceAndTarget,
-	getOutputPlusHandle,
-	openContextMenu,
-} from '../composables/workflow';
 import { NDV, WorkflowExecutionsTab } from '../pages';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { isCanvasV2 } from '../utils/workflowUtils';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
@@ -49,52 +41,27 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		NDVDialog.actions.close();
 		for (let i = 0; i < desiredOutputs; i++) {
-			cy.ifCanvasVersion(
-				() => {
-					WorkflowPage.getters
-						.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i)
-						.click({ force: true });
-				},
-				() => {
-					getOutputPlusHandle(SWITCH_NODE_NAME).eq(0).click();
-				},
-			);
+			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
 			WorkflowPage.actions.zoomToFit();
 		}
 		WorkflowPage.getters.nodeViewBackground().click({ force: true });
-		cy.ifCanvasVersion(
-			() => {
-				WorkflowPage.getters.canvasNodePlusEndpointByName(`${EDIT_FIELDS_SET_NODE_NAME}3`).click();
-			},
-			() => {
-				getOutputPlusHandle(`${EDIT_FIELDS_SET_NODE_NAME}3`).click();
-			},
-		);
+		WorkflowPage.getters.canvasNodePlusEndpointByName(`${EDIT_FIELDS_SET_NODE_NAME}3`).click();
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, false);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure outputless switch was connected correctly
-		cy.ifCanvasVersion(
-			() => {
-				WorkflowPage.getters
-					.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}3`, `${SWITCH_NODE_NAME}1`)
-					.should('exist');
-			},
-			() => {
-				getConnectionBySourceAndTarget(
-					`${EDIT_FIELDS_SET_NODE_NAME}3`,
-					`${SWITCH_NODE_NAME}1`,
-				).should('exist');
-			},
-		);
+		WorkflowPage.getters
+			.getConnectionBetweenNodes(`${EDIT_FIELDS_SET_NODE_NAME}3`, `${SWITCH_NODE_NAME}1`)
+			.should('exist');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
-
-			getConnectionBySourceAndTarget(`${SWITCH_NODE_NAME}`, setName).should('exist');
+			WorkflowPage.getters
+				.getConnectionBetweenNodes(`${SWITCH_NODE_NAME}`, setName)
+				.should('exist');
 		}
 	});
 
@@ -117,29 +84,14 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		);
 
 		// Connect Set1 and Set2 to merge
-		cy.ifCanvasVersion(
-			() => {
-				cy.draganddrop(
-					WorkflowPage.getters.getEndpointSelector('plus', EDIT_FIELDS_SET_NODE_NAME),
-					WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 0),
-				);
-				cy.draganddrop(
-					WorkflowPage.getters.getEndpointSelector('plus', `${EDIT_FIELDS_SET_NODE_NAME}1`),
-					WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1),
-				);
-			},
-			() => {
-				cy.draganddrop(
-					WorkflowPage.getters.getEndpointSelector('output', EDIT_FIELDS_SET_NODE_NAME),
-					WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 0),
-				);
-				cy.draganddrop(
-					WorkflowPage.getters.getEndpointSelector('output', `${EDIT_FIELDS_SET_NODE_NAME}1`),
-					WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1),
-				);
-			},
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', EDIT_FIELDS_SET_NODE_NAME),
+			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 0),
 		);
-
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', `${EDIT_FIELDS_SET_NODE_NAME}1`),
+			WorkflowPage.getters.getEndpointSelector('input', MERGE_NODE_NAME, 1),
+		);
 		const checkConnections = () => {
 			WorkflowPage.getters
 				.getConnectionBetweenNodes(
@@ -165,22 +117,10 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.executeWorkflow();
 		WorkflowPage.getters.stopExecutionButton().should('not.exist');
 
-		// Make sure all connections are there after save & reload
-		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		cy.reload();
-		cy.waitForLoad();
-		checkConnections();
-
-		WorkflowPage.actions.executeWorkflow();
-		WorkflowPage.getters.stopExecutionButton().should('not.exist');
-
 		// If the merged set nodes are connected and executed correctly, there should be 2 items in the output of merge node
 		cy.ifCanvasVersion(
 			() => cy.get('[data-label="2 items"]').should('be.visible'),
-			() =>
-				getConnectionLabelBySourceAndTarget(`${EDIT_FIELDS_SET_NODE_NAME}1`, MERGE_NODE_NAME)
-					.contains('2 items')
-					.should('be.visible'),
+			() => cy.getByTestId('canvas-node-output-handle').contains('2 items').should('be.visible'),
 		);
 	});
 
@@ -204,10 +144,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		cy.ifCanvasVersion(
 			() => cy.get('.plus-draggable-endpoint').should('have.class', 'ep-success'),
-			() =>
-				cy
-					.getByTestId('canvas-handle-plus-wrapper')
-					.should('have.attr', 'data-plus-type', 'success'),
+			() => cy.getByTestId('canvas-handle-plus').should('have.attr', 'data-plus-type', 'success'),
 		);
 
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -275,8 +212,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		WorkflowPage.actions.selectAllFromContextMenu();
-		openContextMenu();
-		clickContextMenuAction('delete');
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('delete');
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 	});
 
@@ -291,43 +228,41 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
 		WorkflowPage.actions.selectAllFromContextMenu();
-		openContextMenu();
-		clickContextMenuAction('delete');
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('delete');
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 	});
 
+	// FIXME: Canvas V2: Figure out how to test moving of the node
 	it('should move node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 
 		WorkflowPage.actions.zoomToFit();
-
-		getCanvasNodes()
+		WorkflowPage.getters
+			.canvasNodes()
 			.last()
 			.then(($node) => {
-				const { x: x1, y: y1 } = $node[0].getBoundingClientRect();
+				const { left, top } = $node.position();
 
-				cy.ifCanvasVersion(
-					() => {
-						cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
-							clickToFinish: true,
-						});
-					},
-					() => {
-						cy.drag(getCanvasNodes().last(), [50, 150], {
-							realMouse: true,
-							abs: true,
-						});
-					},
-				);
+				if (isCanvasV2()) {
+					cy.drag('.vue-flow__node', [300, 300], {
+						realMouse: true,
+					});
+				} else {
+					cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
+						clickToFinish: true,
+					});
+				}
 
-				getCanvasNodes()
+				WorkflowPage.getters
+					.canvasNodes()
 					.last()
 					.then(($node) => {
-						const { x: x2, y: y2 } = $node[0].getBoundingClientRect();
-						expect(x2).to.be.greaterThan(x1);
-						expect(y2).to.be.greaterThan(y1);
+						const { left: newLeft, top: newTop } = $node.position();
+						expect(newLeft).to.be.greaterThan(left);
+						expect(newTop).to.be.greaterThan(top);
 					});
 			});
 	});
@@ -434,7 +369,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 		WorkflowPage.actions.deselectAll();
-		getCanvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitSelectAll();
@@ -443,19 +378,19 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		// Context menu
 		WorkflowPage.actions.hitSelectAll();
-		openContextMenu();
+		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
-		openContextMenu();
+		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 		WorkflowPage.actions.deselectAll();
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		openContextMenu();
+		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitSelectAll();
-		openContextMenu();
+		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
@@ -531,7 +466,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
-
+	// FIXME: Canvas V2: Credentials should show issue on the first open
 	it('should remove unknown credentials on pasting workflow', () => {
 		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));

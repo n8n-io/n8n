@@ -58,7 +58,7 @@ export namespace ChatRequest {
 		user: {
 			firstName: string;
 		};
-		context?: UserContext & WorkflowContext;
+		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		question: string;
 	}

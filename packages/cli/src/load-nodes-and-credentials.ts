@@ -323,15 +323,7 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(
-				types.credentials.map(({ supportedNodes, ...rest }) => ({
-					...rest,
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
-				})),
-			);
+			this.types.credentials = this.types.credentials.concat(types.credentials);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {

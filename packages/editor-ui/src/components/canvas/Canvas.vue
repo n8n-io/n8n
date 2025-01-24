@@ -218,9 +218,8 @@ const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
-	// Support both key and code for zooming in and out
-	'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
-	'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
+	'shift_+|+|=': async () => await onZoomIn(),
+	'shift+_|-|_': async () => await onZoomOut(),
 	0: async () => await onResetZoom(),
 	1: async () => await onFitView(),
 	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),

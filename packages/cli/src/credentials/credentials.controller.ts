@@ -251,7 +251,7 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
+		await this.credentialsService.delete(credential);
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,

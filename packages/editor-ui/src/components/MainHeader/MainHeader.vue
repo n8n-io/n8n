@@ -276,7 +276,6 @@ function hideGithubButton() {
 }
 
 .main-header {
-	min-height: var(--navbar--height);
 	background-color: var(--color-background-xlight);
 	width: 100%;
 	box-sizing: border-box;

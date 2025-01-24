@@ -66,10 +66,14 @@ export async function disqusApiRequestAllItems(
 
 	let responseData;
 
-	do {
-		responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
-		qs.cursor = responseData.cursor.id;
-		returnData.push.apply(returnData, responseData.response as IDataObject[]);
-	} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
-	return returnData;
+	try {
+		do {
+			responseData = await disqusApiRequest.call(this, method, qs, uri, body, option);
+			qs.cursor = responseData.cursor.id;
+			returnData.push.apply(returnData, responseData.response as IDataObject[]);
+		} while (responseData.cursor.more === true && responseData.cursor.hasNext === true);
+		return returnData;
+	} catch (error) {
+		throw error;
+	}
 }

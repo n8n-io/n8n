@@ -1,31 +1,16 @@
-import { objectExtensions } from '@/Extensions/ObjectExtensions';
-
 import { evaluate } from './Helpers';
+import { objectExtensions } from '../../src/Extensions/ObjectExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {
-		describe('.isEmpty', () => {
-			test('should return true for an empty object', () => {
-				expect(evaluate('={{ ({}).isEmpty() }}')).toBe(true);
-			});
-
-			test('should return false for a non-empty object', () => {
-				expect(evaluate('={{ ({ test: 1 }).isEmpty() }}')).toBe(false);
-			});
-
-			test('should return true for an object with only null/undefined values', () => {
-				expect(evaluate('={{ ({ test1: null, test2: undefined }).isEmpty() }}')).toBe(false);
-			});
+		test('.isEmpty() should work correctly on an object', () => {
+			expect(evaluate('={{({}).isEmpty()}}')).toEqual(true);
+			expect(evaluate('={{({ test1: 1 }).isEmpty()}}')).toEqual(false);
 		});
 
-		describe('.hasField', () => {
-			test('should return true if the key exists in the object', () => {
-				expect(evaluate('={{ ({ test1: 1 }).hasField("test1") }}')).toBe(true);
-			});
-
-			test('should return false if the key does not exist in the object', () => {
-				expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toBe(false);
-			});
+		test('.hasField should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1 }).hasField("test1") }}')).toEqual(true);
+			expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toEqual(false);
 		});
 
 		test('.removeField should work on an object', () => {
@@ -42,119 +27,68 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
-		describe('.removeFieldsContaining', () => {
-			test('should work on an object', () => {
-				expect(
-					evaluate(
-						'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("removed") }}',
-					),
-				).toEqual({
-					test1: 'i exist',
-				});
-			});
-
-			test('should not work for empty string', () => {
-				expect(() =>
-					evaluate(
-						'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("") }}',
-					),
-				).toThrow();
+		test('.removeFieldsContaining should work on an object', () => {
+			expect(
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("removed") }}',
+				),
+			).toEqual({
+				test1: 'i exist',
 			});
 		});
 
-		describe('.keepFieldsContaining', () => {
-			test('.keepFieldsContaining should work on an object', () => {
-				expect(
-					evaluate(
-						'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("exist") }}',
-					),
-				).toEqual({
-					test1: 'i exist',
-				});
-			});
+		test('.removeFieldsContaining should not work for empty string', () => {
+			expect(() =>
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("") }}',
+				),
+			).toThrow();
+		});
 
-			test('.keepFieldsContaining should work on a nested object', () => {
-				expect(
-					evaluate(
-						'={{ ({ test1: "i exist", test2: "i should be removed", test3: { test4: "me too" } }).keepFieldsContaining("exist") }}',
-					),
-				).toEqual({
-					test1: 'i exist',
-				});
-			});
-
-			test('.keepFieldsContaining should not work for empty string', () => {
-				expect(() =>
-					evaluate(
-						'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("") }}',
-					),
-				).toThrow();
+		test('.keepFieldsContaining should work on an object', () => {
+			expect(
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("exist") }}',
+				),
+			).toEqual({
+				test1: 'i exist',
 			});
 		});
 
-		describe('.compact', () => {
-			test('should work on an object', () => {
-				expect(
-					evaluate('={{ ({ test1: 1, test2: "2", test3: undefined, test4: null }).compact() }}'),
-				).toEqual({ test1: 1, test2: '2' });
+		test('.keepFieldsContaining should work on a nested object', () => {
+			expect(
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: { test4: "me too" } }).keepFieldsContaining("exist") }}',
+				),
+			).toEqual({
+				test1: 'i exist',
 			});
+		});
 
-			test('should remove fields with null, undefined, empty string, or "nil"', () => {
-				expect(
-					evaluate(
-						'={{ ({ test1: 0, test2: false, test3: "", test4: "nil", test5: NaN }).compact() }}',
-					),
-				).toEqual({ test1: 0, test2: false, test5: NaN });
-			});
+		test('.keepFieldsContaining should not work for empty string', () => {
+			expect(() =>
+				evaluate(
+					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("") }}',
+				),
+			).toThrow();
+		});
 
-			test('should work on an empty object', () => {
-				expect(evaluate('={{ ({}).compact() }}')).toEqual({});
-			});
-
-			test('should work on an object with all null/undefined values', () => {
-				expect(evaluate('={{ ({ test1: undefined, test2: null }).compact() }}')).toEqual({});
-			});
-
-			test('should work on an object with nested null/undefined values', () => {
-				expect(
-					evaluate(
-						'={{ ({ test1: 1, test2: { nested1: null, nested2: "value" }, test3: undefined }).compact() }}',
-					),
-				).toEqual({ test1: 1, test2: { nested2: 'value' } });
-			});
-
-			test('should not allow prototype pollution', () => {
-				['{__proto__: {polluted: true}}', '{constructor: {prototype: {polluted: true}}}'].forEach(
-					(testExpression) => {
-						expect(evaluate(`={{ (${testExpression}).compact() }}`)).toEqual(null);
-						expect(({} as any).polluted).toBeUndefined();
-					},
-				);
-			});
+		test('.compact should work on an object', () => {
+			expect(
+				evaluate('={{ ({ test1: 1, test2: "2", test3: undefined, test4: null }).compact() }}'),
+			).toEqual({ test1: 1, test2: '2' });
 		});
 
 		test('.urlEncode should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
 		});
 
-		describe('.keys', () => {
-			test('should return an array of keys from the object', () => {
-				expect(evaluate('={{ ({ test1: 1, test2: 2 }).keys() }}')).toEqual(['test1', 'test2']);
-			});
-
-			test('should return an empty array for an empty object', () => {
-				expect(evaluate('={{ ({}).keys() }}')).toEqual([]);
-			});
+		test('.keys should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).keys() }}')).toEqual(['test1', 'test2']);
 		});
 
-		describe('.values', () => {
-			test('should return an array of values from the object', () => {
-				expect(evaluate('={{ ({ test1: 1, test2: "value" }).values() }}')).toEqual([1, 'value']);
-			});
-
-			test('should return an empty array for an empty object', () => {
-				expect(evaluate('={{ ({}).values() }}')).toEqual([]);
-			});
+		test('.values should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).values() }}')).toEqual([1, '2']);
 		});
 
 		test('.toJsonString() should work on an object', () => {

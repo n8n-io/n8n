@@ -114,7 +114,6 @@ const {
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
-	isDirty,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue,
@@ -149,7 +148,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	if (isDirty.value) emit('update:model-value', readEditorValue());
 	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
@@ -228,10 +226,6 @@ async function onDrop(value: string, event: MouseEvent) {
 .sqlEditor {
 	position: relative;
 	height: 100%;
-
-	& > div {
-		height: 100%;
-	}
 }
 
 .codemirror {

@@ -167,13 +167,11 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<FontAwesomeIcon :class="[$style.icon, $style.manual]" icon="flask" />
-				</N8nTooltip>
-				<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
-					<template #content>
-						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
-					</template>
-					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="tasks" />
+					<FontAwesomeIcon
+						v-if="execution.mode === 'manual'"
+						:class="[$style.icon, $style.manual]"
+						icon="flask"
+					/>
 				</N8nTooltip>
 			</div>
 		</router-link>
@@ -184,7 +182,7 @@ function onRetryMenuItemSelect(action: string): void {
 @import '@/styles/variables';
 
 .WorkflowExecutionsCard {
-	--execution-list-item-background: var(--execution-card-background);
+	--execution-list-item-background: var(--color-foreground-xlight);
 	--execution-list-item-highlight-background: var(--color-warning-tint-1);
 
 	display: flex;
@@ -202,7 +200,7 @@ function onRetryMenuItemSelect(action: string): void {
 	&:hover,
 	&.active {
 		.executionLink {
-			--execution-list-item-background: var(--execution-card-background-hover);
+			--execution-list-item-background: var(--color-foreground-light);
 		}
 	}
 

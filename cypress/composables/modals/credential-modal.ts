@@ -2,8 +2,6 @@
  * Getters
  */
 
-import { clearNotifications } from '../../pages/notifications';
-
 export function getCredentialConnectionParameterInputs() {
 	return cy.getByTestId('credential-connection-parameter');
 }
@@ -57,6 +55,5 @@ export function setCredentialValues(values: Record<string, string>, save = true)
 	if (save) {
 		saveCredential();
 		closeCredentialModal();
-		clearNotifications();
 	}
 }

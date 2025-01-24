@@ -4,11 +4,10 @@ import { useRouter } from 'vue-router';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
-import { useMessage } from '@/composables/useMessage';
 
 const router = useRouter();
 const testDefinitionStore = useTestDefinitionStore();
@@ -76,19 +75,6 @@ async function runTest() {
 }
 
 async function onDeleteRuns(runsToDelete: TestRunRecord[]) {
-	const { confirm } = useMessage();
-
-	const deleteConfirmed = await confirm(locale.baseText('testDefinition.deleteTest'), {
-		type: 'warning',
-		confirmButtonText: locale.baseText(
-			'settings.log-streaming.destinationDelete.confirmButtonText',
-		),
-		cancelButtonText: locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
-	});
-
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
-	}
 	await Promise.all(
 		runsToDelete.map(async (run) => {
 			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });
@@ -112,10 +98,10 @@ onMounted(async () => {
 			<N8nLoading :rows="5" />
 			<N8nLoading :rows="10" />
 		</template>
-		<div v-else-if="runs.length > 0" :class="$style.details">
+		<template v-else-if="runs.length > 0">
 			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
 			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" @delete-runs="onDeleteRuns" />
-		</div>
+		</template>
 		<template v-else>
 			<N8nActionBox
 				:heading="locale.baseText('testDefinition.listRuns.noRuns')"
@@ -128,24 +114,16 @@ onMounted(async () => {
 </template>
 <style module lang="scss">
 .container {
+	padding: var(--spacing-xl) var(--spacing-l);
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
-	margin: auto;
-	display: flex;
-	flex-direction: column;
 }
 .backButton {
 	color: var(--color-text-base);
 }
 .description {
-	margin: var(--spacing-s) 0;
+	margin-top: var(--spacing-xs);
 	display: block;
-}
-.details {
-	display: flex;
-	height: 100%;
-	flex-direction: column;
-	gap: var(--spacing-xl);
 }
 </style>

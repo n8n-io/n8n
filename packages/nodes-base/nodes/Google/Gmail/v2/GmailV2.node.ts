@@ -6,7 +6,12 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import { draftFields, draftOperations } from './DraftDescription';
 import { labelFields, labelOperations } from './LabelDescription';
@@ -15,7 +20,6 @@ import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
-	configureWaitTillDate,
 	createEmail,
 	getSendAndWaitProperties,
 	sendAndWaitWebhook,
@@ -200,9 +204,7 @@ export class GmailV2 implements INodeType {
 				raw: await encodeEmail(email),
 			});
 
-			const waitTill = configureWaitTillDate(this);
-
-			await this.putExecutionToWait(waitTill);
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
 			return [this.getInputData()];
 		}
 

@@ -75,7 +75,7 @@ describe('TestDefinitionEditView', () => {
 		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			state: ref({
 				name: { value: '', isEditing: false, tempValue: '' },
-				description: { value: '', isEditing: false, tempValue: '' },
+				description: '',
 				tags: { value: [], tempValue: [], isEditing: false },
 				evaluationWorkflow: { mode: 'list', value: '', __rl: true },
 				metrics: [],
@@ -147,6 +147,21 @@ describe('TestDefinitionEditView', () => {
 		expect(createTestMock).toHaveBeenCalled();
 	});
 
+	it('should update test and show success message on save if testId is present', async () => {
+		vi.mocked(useRoute).mockReturnValue({
+			params: { testId: '1' },
+			name: VIEWS.TEST_DEFINITION_EDIT,
+		} as unknown as ReturnType<typeof useRoute>);
+
+		const { getByTestId } = renderComponentWithFeatureEnabled();
+
+		const saveButton = getByTestId('run-test-button');
+		saveButton.click();
+		await nextTick();
+
+		expect(updateTestMock).toHaveBeenCalledWith('1');
+	});
+
 	it('should show error message on failed test creation', async () => {
 		createTestMock.mockRejectedValue(new Error('Save failed'));
 
@@ -165,37 +180,51 @@ describe('TestDefinitionEditView', () => {
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
 
-	it('should display disabled "run test" button when editing test without tags', async () => {
+	it('should display "Save Test" button when editing test without eval workflow and tags', async () => {
 		vi.mocked(useRoute).mockReturnValue({
 			params: { testId: '1' },
 			name: VIEWS.TEST_DEFINITION_EDIT,
 		} as unknown as ReturnType<typeof useRoute>);
 
-		const { getByTestId, mockedTestDefinitionStore } = renderComponentWithFeatureEnabled();
-
-		mockedTestDefinitionStore.getFieldIssues = vi
-			.fn()
-			.mockReturnValue([{ field: 'tags', message: 'Tag is required' }]);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
 		await nextTick();
-
 		const updateButton = getByTestId('run-test-button');
-		expect(updateButton.textContent?.toLowerCase()).toContain('run test');
-		expect(updateButton).toHaveClass('disabled');
+		expect(updateButton.textContent?.toLowerCase()).toContain('save');
+	});
 
-		mockedTestDefinitionStore.getFieldIssues = vi.fn().mockReturnValue([]);
-		await nextTick();
-		expect(updateButton).not.toHaveClass('disabled');
+	it('should display "Save Test" button when creating new test', async () => {
+		vi.mocked(useRoute).mockReturnValue({
+			params: {},
+			name: VIEWS.NEW_TEST_DEFINITION,
+		} as unknown as ReturnType<typeof useRoute>);
+
+		const { getByTestId } = renderComponentWithFeatureEnabled();
+
+		const saveButton = getByTestId('run-test-button');
+		expect(saveButton.textContent?.toLowerCase()).toContain('save test');
 	});
 
 	it('should apply "has-issues" class to inputs with issues', async () => {
-		const { container, mockedTestDefinitionStore } = renderComponentWithFeatureEnabled();
-		mockedTestDefinitionStore.getFieldIssues = vi
-			.fn()
-			.mockReturnValue([{ field: 'tags', message: 'Tag is required' }]);
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
+			fieldsIssues: ref([
+				{ field: 'name', message: 'Name is required' },
+				{ field: 'tags', message: 'Tag is required' },
+			]),
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
+
+		const { container } = renderComponentWithFeatureEnabled();
+
 		await nextTick();
 		const issueElements = container.querySelectorAll('.has-issues');
 		expect(issueElements.length).toBeGreaterThan(0);
+	});
+
+	it('should fetch all tags on mount', async () => {
+		renderComponentWithFeatureEnabled();
+		await nextTick();
+		expect(mockedStore(useAnnotationTagsStore).fetchAll).toHaveBeenCalled();
 	});
 
 	describe('Test Runs functionality', () => {
@@ -244,7 +273,7 @@ describe('TestDefinitionEditView', () => {
 				...vi.mocked(useTestDefinitionForm)(),
 				state: ref({
 					name: { value: 'Test', isEditing: false, tempValue: '' },
-					description: { value: '', isEditing: false, tempValue: '' },
+					description: '',
 					tags: { value: ['tag1'], tempValue: [], isEditing: false },
 					evaluationWorkflow: { mode: 'list', value: 'workflow1', __rl: true },
 					metrics: [],

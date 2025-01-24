@@ -1,7 +1,6 @@
 import set from 'lodash/set';
-import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject, Expression } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -98,55 +97,12 @@ export class JsTaskRunner extends TaskRunner {
 		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
-			moduleList === '*'
-				? '*'
-				: new Set(
-						moduleList
-							.split(',')
-							.map((x) => x.trim())
-							.filter((x) => x !== ''),
-					);
-
-		const allowedBuiltInModules = parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? '');
-		const allowedExternalModules = parseModuleAllowList(
-			jsRunnerConfig.allowedExternalModules ?? '',
-		);
+			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
 
 		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules,
-			allowedExternalModules,
+			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
+			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
 		});
-
-		this.preventPrototypePollution(allowedExternalModules);
-	}
-
-	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
-		if (allowedExternalModules instanceof Set) {
-			// This is a workaround to enable the allowed external libraries to mutate
-			// prototypes directly. For example momentjs overrides .toString() directly
-			// on the Moment.prototype, which doesn't work if Object.prototype has been
-			// frozen. This works as long as the overrides are done when the library is
-			// imported.
-			for (const module of allowedExternalModules) {
-				require(module);
-			}
-		}
-
-		// Freeze globals, except for Jest
-		if (process.env.NODE_ENV !== 'test') {
-			Object.getOwnPropertyNames(globalThis)
-				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.map((name) => globalThis[name])
-				.filter((value) => typeof value === 'function')
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.forEach((fn) => Object.freeze(fn.prototype));
-		}
-
-		// Freeze internal classes
-		[Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration]
-			.map((constructor) => constructor.prototype)
-			.forEach(Object.freeze);
 	}
 
 	async executeTask(
@@ -247,11 +203,8 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const preventPrototypeManipulation =
-					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
-
 				const taskResult = runInContext(
-					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 					{ timeout: this.taskTimeout * 1000 },
 				) as Promise<TaskResultData['result']>;
@@ -508,7 +461,7 @@ export class JsTaskRunner extends TaskRunner {
 	 * @param dataProxy The data proxy object that provides access to built-ins
 	 * @param additionalProperties Additional properties to add to the context
 	 */
-	buildContext(
+	private buildContext(
 		taskId: string,
 		workflow: Workflow,
 		node: INode,

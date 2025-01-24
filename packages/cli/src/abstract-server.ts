@@ -7,7 +7,6 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
 import { Logger } from 'n8n-core';
-import path from 'path';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
@@ -67,9 +66,6 @@ export abstract class AbstractServer {
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
-
-		const assetsPath: string = path.join(__dirname, '../../../assets');
-		this.app.use(express.static(assetsPath));
 
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);

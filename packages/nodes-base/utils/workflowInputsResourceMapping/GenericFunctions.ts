@@ -97,7 +97,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
-	return inputData.map(({ json, binary }, itemIndex) => {
+	return inputData.map((item, itemIndex) => {
 		const itemFieldValues = this.getNodeParameter(
 			'workflowInputs.value',
 			itemIndex,
@@ -106,14 +106,13 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 
 		return {
 			json: {
-				...json,
+				...item.json,
 				...itemFieldValues,
 			},
 			index: itemIndex,
 			pairedItem: {
 				item: itemIndex,
 			},
-			binary,
 		};
 	});
 }

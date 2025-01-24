@@ -1,7 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
-import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import {
 	CLOUD_TEMP_PRODUCTION_LIMIT,
 	CLOUD_TEMP_REPORTABLE_THRESHOLDS,
@@ -25,71 +24,61 @@ describe('ConcurrencyControlService', () => {
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
-		config.set('executions.concurrency.evaluationLimit', -1);
 		config.set('executions.mode', 'integrated');
 
 		jest.clearAllMocks();
 	});
 
 	describe('constructor', () => {
-		it.each(['production', 'evaluation'])(
-			'should be enabled if %s cap is positive',
-			(type: ConcurrencyQueueType) => {
-				/**
-				 * Arrange
-				 */
-				config.set(`executions.concurrency.${type}Limit`, 1);
+		it('should be enabled if production cap is positive', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionLimit', 1);
 
+			/**
+			 * Act
+			 */
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+			);
+
+			/**
+			 * Assert
+			 */
+			// @ts-expect-error Private property
+			expect(service.isEnabled).toBe(true);
+			// @ts-expect-error Private property
+			expect(service.productionQueue).toBeDefined();
+		});
+
+		it('should throw if production cap is 0', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionLimit', 0);
+
+			try {
 				/**
 				 * Act
 				 */
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-
+				new ConcurrencyControlService(logger, executionRepository, telemetry, eventService);
+			} catch (error) {
 				/**
 				 * Assert
 				 */
-				// @ts-expect-error Private property
-				expect(service.isEnabled).toBe(true);
-				// @ts-expect-error Private property
-				expect(service.queues.get(type)).toBeDefined();
-				// @ts-expect-error Private property
-				expect(service.queues.size).toBe(1);
-			},
-		);
+				expect(error).toBeInstanceOf(InvalidConcurrencyLimitError);
+			}
+		});
 
-		it.each(['production', 'evaluation'])(
-			'should throw if %s cap is 0',
-			(type: ConcurrencyQueueType) => {
-				/**
-				 * Arrange
-				 */
-				config.set(`executions.concurrency.${type}Limit`, 0);
-
-				try {
-					/**
-					 * Act
-					 */
-					new ConcurrencyControlService(logger, executionRepository, telemetry, eventService);
-				} catch (error) {
-					/**
-					 * Assert
-					 */
-					expect(error).toBeInstanceOf(InvalidConcurrencyLimitError);
-				}
-			},
-		);
-
-		it('should be disabled if both production and evaluation caps are -1', () => {
+		it('should be disabled if production cap is -1', () => {
 			/**
 			 * Arrange
 			 */
 			config.set('executions.concurrency.productionLimit', -1);
-			config.set('executions.concurrency.evaluationLimit', -1);
 
 			/**
 			 * Act
@@ -108,31 +97,28 @@ describe('ConcurrencyControlService', () => {
 			expect(service.isEnabled).toBe(false);
 		});
 
-		it.each(['production', 'evaluation'])(
-			'should be disabled if %s cap is lower than -1',
-			(type: ConcurrencyQueueType) => {
-				/**
-				 * Arrange
-				 */
-				config.set(`executions.concurrency.${type}Limit`, -2);
+		it('should be disabled if production cap is lower than -1', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionLimit', -2);
 
-				/**
-				 * Act
-				 */
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
+			/**
+			 * Act
+			 */
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventService,
+			);
 
-				/**
-				 * Act
-				 */
-				// @ts-expect-error Private property
-				expect(service.isEnabled).toBe(false);
-			},
-		);
+			/**
+			 * Act
+			 */
+			// @ts-expect-error Private property
+			expect(service.isEnabled).toBe(false);
+		});
 
 		it('should be disabled on queue mode', () => {
 			/**
@@ -217,31 +203,6 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(enqueueSpy).toHaveBeenCalled();
 			});
-
-			it('should enqueue on evaluation mode', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
-
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
-
-				/**
-				 * Act
-				 */
-				await service.throttle({ mode: 'evaluation', executionId: '1' });
-
-				/**
-				 * Assert
-				 */
-				expect(enqueueSpy).toHaveBeenCalled();
-			});
 		});
 
 		describe('release', () => {
@@ -291,31 +252,6 @@ describe('ConcurrencyControlService', () => {
 				 * Act
 				 */
 				service.release({ mode });
-
-				/**
-				 * Assert
-				 */
-				expect(dequeueSpy).toHaveBeenCalled();
-			});
-
-			it('should dequeue on evaluation mode', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
-
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
-
-				/**
-				 * Act
-				 */
-				service.release({ mode: 'evaluation' });
 
 				/**
 				 * Assert
@@ -380,12 +316,14 @@ describe('ConcurrencyControlService', () => {
 					expect(removeSpy).toHaveBeenCalled();
 				},
 			);
+		});
 
-			it('should remove an execution on evaluation mode', () => {
+		describe('removeAll', () => {
+			it('should remove all executions from the production queue', async () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
+				config.set('executions.concurrency.productionLimit', 2);
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -393,112 +331,28 @@ describe('ConcurrencyControlService', () => {
 					telemetry,
 					eventService,
 				);
+
+				jest
+					.spyOn(ConcurrencyQueue.prototype, 'getAll')
+					.mockReturnValueOnce(new Set(['1', '2', '3']));
+
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
 				 * Act
 				 */
-				service.remove({ mode: 'evaluation', executionId: '1' });
+				await service.removeAll({
+					'1': mock<IExecutingWorkflowData>(),
+					'2': mock<IExecutingWorkflowData>(),
+					'3': mock<IExecutingWorkflowData>(),
+				});
 
 				/**
 				 * Assert
 				 */
-				expect(removeSpy).toHaveBeenCalled();
-			});
-		});
-
-		describe('removeAll', () => {
-			it.each(['production', 'evaluation'])(
-				'should remove all executions from the %s queue',
-				async (type: ConcurrencyQueueType) => {
-					/**
-					 * Arrange
-					 */
-					config.set(`executions.concurrency.${type}Limit`, 2);
-
-					const service = new ConcurrencyControlService(
-						logger,
-						executionRepository,
-						telemetry,
-						eventService,
-					);
-
-					jest
-						.spyOn(ConcurrencyQueue.prototype, 'getAll')
-						.mockReturnValueOnce(new Set(['1', '2', '3']));
-
-					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
-
-					/**
-					 * Act
-					 */
-					await service.removeAll({
-						'1': mock<IExecutingWorkflowData>(),
-						'2': mock<IExecutingWorkflowData>(),
-						'3': mock<IExecutingWorkflowData>(),
-					});
-
-					/**
-					 * Assert
-					 */
-					expect(removeSpy).toHaveBeenNthCalledWith(1, '1');
-					expect(removeSpy).toHaveBeenNthCalledWith(2, '2');
-					expect(removeSpy).toHaveBeenNthCalledWith(3, '3');
-				},
-			);
-		});
-
-		describe('get queue', () => {
-			it('should choose the production queue', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.productionLimit', 2);
-				config.set('executions.concurrency.evaluationLimit', 2);
-
-				/**
-				 * Act
-				 */
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				// @ts-expect-error Private property
-				const queue = service.getQueue('webhook');
-
-				/**
-				 * Assert
-				 */
-				// @ts-expect-error Private property
-				expect(queue).toEqual(service.queues.get('production'));
-			});
-
-			it('should choose the evaluation queue', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.productionLimit', 2);
-				config.set('executions.concurrency.evaluationLimit', 2);
-
-				/**
-				 * Act
-				 */
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				// @ts-expect-error Private property
-				const queue = service.getQueue('evaluation');
-
-				/**
-				 * Assert
-				 */
-				// @ts-expect-error Private property
-				expect(queue).toEqual(service.queues.get('evaluation'));
+				expect(removeSpy).toHaveBeenNthCalledWith(1, '1');
+				expect(removeSpy).toHaveBeenNthCalledWith(2, '2');
+				expect(removeSpy).toHaveBeenNthCalledWith(3, '3');
 			});
 		});
 	});
@@ -534,32 +388,6 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(enqueueSpy).not.toHaveBeenCalled();
 			});
-
-			it('should do nothing for evaluation executions', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
-
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
-
-				/**
-				 * Act
-				 */
-				await service.throttle({ mode: 'evaluation', executionId: '1' });
-				await service.throttle({ mode: 'evaluation', executionId: '2' });
-
-				/**
-				 * Assert
-				 */
-				expect(enqueueSpy).not.toHaveBeenCalled();
-			});
 		});
 
 		describe('release', () => {
@@ -587,31 +415,6 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(dequeueSpy).not.toHaveBeenCalled();
 			});
-
-			it('should do nothing for evaluation executions', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
-
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
-
-				/**
-				 * Act
-				 */
-				service.release({ mode: 'evaluation' });
-
-				/**
-				 * Assert
-				 */
-				expect(dequeueSpy).not.toHaveBeenCalled();
-			});
 		});
 
 		describe('remove', () => {
@@ -633,31 +436,6 @@ describe('ConcurrencyControlService', () => {
 				 * Act
 				 */
 				service.remove({ mode: 'webhook', executionId: '1' });
-
-				/**
-				 * Assert
-				 */
-				expect(removeSpy).not.toHaveBeenCalled();
-			});
-
-			it('should do nothing for evaluation executions', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
-
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-				);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
-
-				/**
-				 * Act
-				 */
-				service.remove({ mode: 'evaluation', executionId: '1' });
 
 				/**
 				 * Assert
@@ -692,17 +470,14 @@ describe('ConcurrencyControlService', () => {
 					 * Act
 					 */
 					// @ts-expect-error Private property
-					service.queues.get('production').emit('concurrency-check', {
+					service.productionQueue.emit('concurrency-check', {
 						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
 					});
 
 					/**
 					 * Assert
 					 */
-					expect(telemetry.track).toHaveBeenCalledWith('User hit concurrency limit', {
-						threshold,
-						concurrencyQueue: 'production',
-					});
+					expect(telemetry.track).toHaveBeenCalledWith('User hit concurrency limit', { threshold });
 				},
 			);
 
@@ -725,7 +500,7 @@ describe('ConcurrencyControlService', () => {
 					 * Act
 					 */
 					// @ts-expect-error Private property
-					service.queues.get('production').emit('concurrency-check', {
+					service.productionQueue.emit('concurrency-check', {
 						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
 					});
 
@@ -757,7 +532,7 @@ describe('ConcurrencyControlService', () => {
 					 * Act
 					 */
 					// @ts-expect-error Private property
-					service.queues.get('production').emit('concurrency-check', {
+					service.productionQueue.emit('concurrency-check', {
 						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
 					});
 

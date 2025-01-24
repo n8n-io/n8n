@@ -39,13 +39,11 @@ const availableProjects = computed(() =>
 		'name',
 		projectsStore.availableProjects.filter(
 			(p) =>
+				p.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				p.id !== props.data.resource.homeProject?.id &&
 				(!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create),
 		),
 	),
-);
-const filteredProjects = computed(() =>
-	availableProjects.value.filter((p) => p.name?.toLowerCase().includes(filter.value.toLowerCase())),
 );
 const selectedProject = computed(() =>
 	availableProjects.value.find((p) => p.id === projectId.value),
@@ -171,7 +169,7 @@ onMounted(() => {
 						<N8nIcon icon="search" />
 					</template>
 					<N8nOption
-						v-for="p in filteredProjects"
+						v-for="p in availableProjects"
 						:key="p.id"
 						:value="p.id"
 						:label="p.name"

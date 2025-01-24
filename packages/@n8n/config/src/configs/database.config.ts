@@ -107,7 +107,7 @@ class MysqlConfig {
 }
 
 @Config
-export class SqliteConfig {
+class SqliteConfig {
 	/** SQLite database file name */
 	@Env('DB_SQLITE_DATABASE')
 	database: string = 'database.sqlite';

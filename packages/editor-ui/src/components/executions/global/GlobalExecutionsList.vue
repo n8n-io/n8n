@@ -73,15 +73,8 @@ const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 
-/**
- * Calculate the number of executions counted towards the production executions concurrency limit.
- * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
- */
 const runningExecutionsCount = computed(() => {
-	return props.executions.filter(
-		(execution) =>
-			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-	).length;
+	return props.executions.filter((execution) => execution.status === 'running').length;
 });
 
 watch(

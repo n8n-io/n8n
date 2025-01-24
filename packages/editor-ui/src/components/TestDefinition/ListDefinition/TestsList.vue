@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import TestItem from './TestItem.vue';
-import type { TestListItem, TestItemAction } from '@/components/TestDefinition/types';
+import type { TestListItem } from '@/components/TestDefinition/types';
 export interface TestListProps {
 	tests: TestListItem[];
-	actions: TestItemAction[];
 }
 
-defineEmits<{ 'create-test': []; 'view-details': [testId: string] }>();
+defineEmits<{ 'create-test': [] }>();
 defineProps<TestListProps>();
 const locale = useI18n();
 </script>
@@ -20,13 +19,7 @@ const locale = useI18n();
 				@click="$emit('create-test')"
 			/>
 		</div>
-		<TestItem
-			v-for="test in tests"
-			:key="test.id"
-			:test="test"
-			:actions="actions"
-			@view-details="$emit('view-details', test.id)"
-		/>
+		<TestItem v-for="test in tests" :key="test.id" :test="test" v-bind="$attrs" />
 	</div>
 </template>
 

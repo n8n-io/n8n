@@ -877,7 +877,12 @@ export class StripeTrigger implements INodeType {
 					enabled_events: events,
 				};
 
-				const responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
+				let responseData;
+				try {
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
+				} catch (error) {
+					throw error;
+				}
 
 				if (
 					responseData.id === undefined ||

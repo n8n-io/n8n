@@ -30,6 +30,7 @@ import {
 } from '@codemirror/view';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { html } from 'codemirror-lang-html-n8n';
+import { debounce } from 'lodash-es';
 import { jsonParse, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import {
@@ -46,8 +47,6 @@ import {
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
-import { debounce } from 'lodash-es';
-import { ignoreUpdateAnnotation } from '../utils/forceParse';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -86,6 +85,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
+	const lastChange = ref<ViewUpdate>();
 	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
@@ -157,19 +157,14 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	const emitChanges = debounce((update: ViewUpdate) => {
 		onChange(update);
 	}, 300);
-	const lastChange = ref<ViewUpdate>();
 
 	function onEditorUpdate(update: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(update.view.state);
 		updateSelection(update);
 
-		const shouldIgnoreUpdate = update.transactions.some((tr) =>
-			tr.annotation(ignoreUpdateAnnotation),
-		);
-
-		if (update.docChanged && !shouldIgnoreUpdate) {
-			lastChange.value = update;
+		if (update.docChanged) {
 			hasChanges.value = true;
+			lastChange.value = update;
 			emitChanges(update);
 		}
 	}
@@ -374,10 +369,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				// Code is too large, localStorage quota exceeded
 				localStorage.removeItem(storedStateId.value);
 			}
-
-			if (lastChange.value) {
-				onChange(lastChange.value);
-			}
+			if (lastChange.value) onChange(lastChange.value);
 			editor.value.destroy();
 		}
 	});

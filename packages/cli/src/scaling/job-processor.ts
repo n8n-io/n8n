@@ -1,12 +1,6 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import {
-	WorkflowHasIssuesError,
-	InstanceSettings,
-	WorkflowExecute,
-	ErrorReporter,
-	Logger,
-} from 'n8n-core';
+import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -19,7 +13,6 @@ import type PCancelable from 'p-cancelable';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { getWorkflowHooksWorkerExecuter } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -131,7 +124,7 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = getWorkflowHooksWorkerExecuter(
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
@@ -184,33 +177,13 @@ export class JobProcessor {
 				userId: manualData?.userId,
 			};
 
-			try {
-				workflowRun = this.manualExecutionService.runManually(
-					data,
-					workflow,
-					additionalData,
-					executionId,
-					resultData.pinData,
-				);
-			} catch (error) {
-				if (error instanceof WorkflowHasIssuesError) {
-					// execution did not even start, but we call `workflowExecuteAfter` to notify main
-
-					const now = new Date();
-					const runData: IRun = {
-						mode: 'manual',
-						status: 'error',
-						finished: false,
-						startedAt: now,
-						stoppedAt: now,
-						data: { resultData: { error, runData: {} } },
-					};
-
-					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
-					return { success: false };
-				}
-				throw error;
-			}
+			workflowRun = this.manualExecutionService.runManually(
+				data,
+				workflow,
+				additionalData,
+				executionId,
+				resultData.pinData,
+			);
 		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);

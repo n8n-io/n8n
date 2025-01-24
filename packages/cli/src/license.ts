@@ -43,10 +43,7 @@ export class License {
 		this.logger = this.logger.scoped('license');
 	}
 
-	async init({
-		forceRecreate = false,
-		isCli = false,
-	}: { forceRecreate?: boolean; isCli?: boolean } = {}) {
+	async init(forceRecreate = false) {
 		if (this.manager && !forceRecreate) {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
@@ -76,13 +73,10 @@ export class License {
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
-		const eligibleToRenew = isCli || isLeader;
 
-		const shouldRenew = eligibleToRenew && autoRenewalEnabled;
+		const shouldRenew = isLeader && autoRenewalEnabled;
 
-		if (eligibleToRenew && !autoRenewalEnabled) {
-			this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
-		}
+		if (isLeader && !autoRenewalEnabled) this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
 
 		try {
 			this.manager = new LicenseManager({
@@ -396,7 +390,7 @@ export class License {
 
 	async reinit() {
 		this.manager?.reset();
-		await this.init({ forceRecreate: true });
+		await this.init(true);
 		this.logger.debug('License reinitialized');
 	}
 }

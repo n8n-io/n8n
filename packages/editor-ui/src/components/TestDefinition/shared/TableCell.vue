@@ -1,10 +1,10 @@
 <script setup lang="ts" generic="T">
 import { useI18n } from '@/composables/useI18n';
-import type { TestTableColumn } from './TestTableBase.vue';
+import type { TestDefinitionTableColumn } from './TestDefinitionTable.vue';
 import { useRouter } from 'vue-router';
 
 defineProps<{
-	column: TestTableColumn<T>;
+	column: TestDefinitionTableColumn<T>;
 	row: T;
 }>();
 
@@ -28,7 +28,6 @@ const statusThemeMap: Record<string, string> = {
 	completed: 'success',
 	error: 'danger',
 	success: 'success',
-	cancelled: 'default',
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -37,14 +36,13 @@ const statusLabelMap: Record<string, string> = {
 	completed: locale.baseText('testDefinition.listRuns.status.completed'),
 	error: locale.baseText('testDefinition.listRuns.status.error'),
 	success: locale.baseText('testDefinition.listRuns.status.success'),
-	cancelled: locale.baseText('testDefinition.listRuns.status.cancelled'),
 };
 
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {
 	return typeof row === 'object' && row !== null && prop in row;
 }
 
-const getCellContent = (column: TestTableColumn<T>, row: T) => {
+const getCellContent = (column: TestDefinitionTableColumn<T>, row: T) => {
 	if (column.formatter) {
 		return column.formatter(row);
 	}

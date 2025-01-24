@@ -200,25 +200,22 @@ async function createExecutionPromise() {
 }
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
-	const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
-		triggerNode: payload.triggerNode,
-		nodeData: payload.nodeData,
-		source: payload.source,
-	};
+	try {
+		const response = await runWorkflow({
+			triggerNode: payload.triggerNode,
+			nodeData: payload.nodeData,
+			source: payload.source,
+		});
 
-	if (workflowsStore.chatPartialExecutionDestinationNode) {
-		runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		if (response) {
+			await createExecutionPromise();
+			workflowsStore.appendChatMessage(payload.message);
+			return response;
+		}
+		return;
+	} catch (error) {
+		throw error;
 	}
-
-	const response = await runWorkflow(runWorkflowOptions);
-
-	if (response) {
-		await createExecutionPromise();
-		workflowsStore.appendChatMessage(payload.message);
-		return response;
-	}
-	return;
 }
 
 // Initialize chat config

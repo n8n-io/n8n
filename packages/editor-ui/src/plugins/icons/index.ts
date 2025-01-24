@@ -53,7 +53,6 @@ import {
 	faEnvelope,
 	faEquals,
 	faEye,
-	faEyeSlash,
 	faExclamationTriangle,
 	faExpand,
 	faExpandAlt,
@@ -229,7 +228,6 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faEnvelope);
 		addIcon(faEquals);
 		addIcon(faEye);
-		addIcon(faEyeSlash);
 		addIcon(faExclamationTriangle);
 		addIcon(faExclamationCircle);
 		addIcon(faExpand);

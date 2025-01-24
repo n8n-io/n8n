@@ -1,5 +1,5 @@
-import { ExpressionError } from '@/errors/expression.error';
-import { createEnvProvider, createEnvProviderState } from '@/WorkflowDataProxyEnvProvider';
+import { ExpressionError } from '../src/errors/expression.error';
+import { createEnvProvider, createEnvProviderState } from '../src/WorkflowDataProxyEnvProvider';
 
 describe('createEnvProviderState', () => {
 	afterEach(() => {

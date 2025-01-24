@@ -16,7 +16,6 @@ module.exports = {
 
 	rules: {
 		complexity: 'error',
-		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 		// TODO: Remove this
 		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],

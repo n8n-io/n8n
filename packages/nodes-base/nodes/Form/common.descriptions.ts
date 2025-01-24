@@ -2,12 +2,6 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { appendAttributionOption } from '../../utils/descriptions';
 
-export const placeholder: string = `
-<!-- Your custom HTML here --->
-
-
-`.trimStart();
-
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
 	name: 'path',
@@ -35,16 +29,16 @@ export const formDescription: INodeProperties = {
 	default: '',
 	placeholder: "e.g. We'll get back to you soon",
 	description:
-		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.',
+		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
 	typeOptions: {
 		rows: 2,
 	},
 };
 
 export const formFields: INodeProperties = {
-	displayName: 'Form Elements',
+	displayName: 'Form Fields',
 	name: 'formFields',
-	placeholder: 'Add Form Element',
+	placeholder: 'Add Form Field',
 	type: 'fixedCollection',
 	default: { values: [{ label: '', fieldType: 'text' }] },
 	typeOptions: {
@@ -66,16 +60,12 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
-					displayName: 'Element Type',
+					displayName: 'Field Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
 					options: [
-						{
-							name: 'Custom HTML',
-							value: 'html',
-						},
 						{
 							name: 'Date',
 							value: 'date',
@@ -119,7 +109,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html'],
+							fieldType: ['dropdown', 'date', 'file'],
 						},
 					},
 				},
@@ -169,21 +159,6 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'HTML Template',
-					name: 'html',
-					typeOptions: {
-						editor: 'htmlEditor',
-					},
-					type: 'string',
-					default: placeholder,
-					description: 'HTML template to render',
-					displayOptions: {
-						show: {
-							fieldType: ['html'],
-						},
-					},
-				},
-				{
 					displayName: 'Multiple Files',
 					name: 'multipleFiles',
 					type: 'boolean',
@@ -211,25 +186,17 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: "The displayed date is formatted based on the locale of the user's browser",
+					displayName: 'Format Date As',
 					name: 'formatDate',
-					type: 'notice',
+					type: 'string',
 					default: '',
+					description:
+						'How to format the date in the output data. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
+					placeholder: 'e.g. dd/mm/yyyy',
+					hint: 'Leave empty to use the default format',
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
-						},
-					},
-				},
-				{
-					displayName:
-						'Does not accept <code>&lt;style&gt;</code> <code>&lt;script&gt;</code> or <code>&lt;input&gt;</code> tags.',
-					name: 'htmlTips',
-					type: 'notice',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['html'],
 						},
 					},
 				},
@@ -240,11 +207,6 @@ export const formFields: INodeProperties = {
 					default: false,
 					description:
 						'Whether to require the user to enter a value for this field before submitting the form',
-					displayOptions: {
-						hide: {
-							fieldType: ['html'],
-						},
-					},
 				},
 			],
 		},
