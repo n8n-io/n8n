@@ -313,6 +313,8 @@ export class VectorStorePGVector extends createVectorStoreNode({
 	},
 
 	releaseVectorStoreClient(vectorStore) {
-		(vectorStore as PGVectorStore).client?.release();
+		if (vectorStore instanceof PGVectorStore) {
+			vectorStore.client?.release();
+		}
 	},
 }) {}
