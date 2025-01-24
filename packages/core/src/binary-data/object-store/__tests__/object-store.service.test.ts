@@ -243,7 +243,7 @@ describe('deleteMany()', () => {
 		expect(mockAxios.request).toHaveBeenCalledWith(
 			expect.objectContaining({
 				method: 'POST',
-				url: `${mockUrl}/?delete`,
+				url: `${mockUrl}?delete=`,
 				headers: expect.objectContaining({
 					'Content-Type': 'application/xml',
 					'Content-Length': expect.any(Number),

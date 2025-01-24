@@ -16,7 +16,7 @@ import type { BinaryData } from '../types';
 
 @Service()
 export class ObjectStoreService {
-	private baseUrl: string;
+	private baseUrl: URL;
 
 	private isReady = false;
 
@@ -40,7 +40,7 @@ export class ObjectStoreService {
 			);
 		}
 
-		this.baseUrl = `${protocol}://${host}/${bucket.name}`;
+		this.baseUrl = new URL(`${protocol}://${host}/${bucket.name}`);
 	}
 
 	async init() {
@@ -145,7 +145,7 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		return await this.request('POST', '?delete', { headers, body });
+		return await this.request('POST', '', { headers, body, qs: { delete: '' } });
 	}
 
 	/**
@@ -223,29 +223,20 @@ export class ObjectStoreService {
 		rawPath = '',
 		{ qs, headers, body, responseType }: RequestOptions = {},
 	) {
-		const {
-			host,
-			bucket: { region },
-		} = this.s3Config;
-		let url = this.baseUrl;
+		const url = new URL(this.baseUrl);
 		if (rawPath && rawPath !== '/') {
-			url = `${url}/${rawPath}`;
+			url.pathname = `${url.pathname}/${rawPath}`;
 		}
-		if (qs) {
-			url +=
-				'?' +
-				Object.entries(qs)
-					.map(([key, value]) => `${key}=${value}`)
-					.join('&');
-		}
-		const path = new URL(url).pathname;
+		Object.entries(qs ?? {}).forEach(([key, value]) => {
+			url.searchParams.set(key, String(value));
+		});
 
 		const optionsToSign: Aws4Options = {
 			method,
 			service: 's3',
-			region,
-			host,
-			path,
+			region: this.s3Config.bucket.region,
+			host: this.s3Config.host,
+			path: url.pathname,
 		};
 
 		if (headers) optionsToSign.headers = headers;
@@ -259,7 +250,7 @@ export class ObjectStoreService {
 
 		const config: AxiosRequestConfig = {
 			method,
-			url,
+			url: url.toString(),
 			headers: signedOptions.headers,
 		};
 
