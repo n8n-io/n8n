@@ -1621,6 +1621,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function markExecutionAsStopped() {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
+		executingNodeCompletionQueue.value.length = 0;
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
