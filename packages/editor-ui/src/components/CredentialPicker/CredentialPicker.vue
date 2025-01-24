@@ -101,6 +101,7 @@ listenForModalChanges({
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
 				:selected-credential-id="props.selectedCredentialId"
+				data-test-id="credential-dropdown"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>
