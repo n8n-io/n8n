@@ -154,9 +154,9 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		const path = `${this.bucket.name}/?delete`;
+		const path = this.bucket.name;
 
-		return await this.request('POST', this.host, path, { headers, body });
+		return await this.request('POST', this.host, path, { headers, body, qs: { delete: '' } });
 	}
 
 	/**
