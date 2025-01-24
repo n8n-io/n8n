@@ -220,6 +220,16 @@ function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 	};
 }
 
+function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
+	return {
+		workflowExecuteAfter: [
+			async function (fullRunData: IRun) {
+				fullRunData.status = determineFinalExecutionStatus(fullRunData);
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  */
@@ -260,9 +270,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						}
 					}
 
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
-					fullRunData.status = executionStatus;
-
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
@@ -281,8 +288,8 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					}
 
 					const shouldNotSave =
-						(executionStatus === 'success' && !saveSettings.success) ||
-						(executionStatus !== 'success' && !saveSettings.error);
+						(fullRunData.status === 'success' && !saveSettings.success) ||
+						(fullRunData.status !== 'success' && !saveSettings.error);
 
 					if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 						executeErrorWorkflow(
@@ -306,7 +313,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					const fullExecutionData = prepareExecutionDataForDbUpdate({
 						runData: fullRunData,
 						workflowData: this.workflowData,
-						workflowStatusFinal: executionStatus,
+						workflowStatusFinal: fullRunData.status,
 						retryOf: this.retryOf,
 					});
 
@@ -386,13 +393,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
-					fullRunData.status = workflowStatusFinal;
-
 					if (
 						!isManualMode &&
-						workflowStatusFinal !== 'success' &&
-						workflowStatusFinal !== 'waiting'
+						fullRunData.status !== 'success' &&
+						fullRunData.status !== 'waiting'
 					) {
 						executeErrorWorkflow(
 							this.workflowData,
@@ -408,7 +412,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					const fullExecutionData = prepareExecutionDataForDbUpdate({
 						runData: fullRunData,
 						workflowData: this.workflowData,
-						workflowStatusFinal,
+						workflowStatusFinal: fullRunData.status,
 						retryOf: this.retryOf,
 					});
 
@@ -470,6 +474,7 @@ export function getWorkflowHooksIntegrated(
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(userId),
 		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave(),
 		hookFunctionsPreExecute(),
 	);
@@ -485,7 +490,12 @@ export function getWorkflowHooksWorkerExecuter(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	const toMerge = [hookFunctionsNodeEvents(), hookFunctionsSaveWorker(), hookFunctionsPreExecute()];
+	const toMerge = [
+		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
+		hookFunctionsSaveWorker(),
+		hookFunctionsPreExecute(),
+	];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		toMerge.push(hookFunctionsPush());
@@ -507,14 +517,12 @@ export function getWorkflowHooksWorkerMain(
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsPreExecute(),
+		hookFunctionsFinalizeExecutionStatus(),
 		{
 			workflowExecuteAfter: [
 				async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 					// Don't delete executions before they are finished
 					if (!fullRunData.finished) return;
-
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
-					fullRunData.status = executionStatus;
 
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
@@ -536,8 +544,8 @@ export function getWorkflowHooksWorkerMain(
 					}
 
 					const shouldNotSave =
-						(executionStatus === 'success' && !saveSettings.success) ||
-						(executionStatus !== 'success' && !saveSettings.error);
+						(fullRunData.status === 'success' && !saveSettings.success) ||
+						(fullRunData.status !== 'success' && !saveSettings.error);
 
 					if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
 						await Container.get(ExecutionRepository).hardDelete({
@@ -549,6 +557,7 @@ export function getWorkflowHooksWorkerMain(
 			],
 		},
 	);
+
 	// When running with worker mode, main process executes
 	// Only workflowExecuteBefore + workflowExecuteAfter
 	// So to avoid confusion, we are removing other hooks.
@@ -568,6 +577,7 @@ export function getWorkflowHooksMain(
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave(),
 		hookFunctionsPush(),
 		hookFunctionsPreExecute(),

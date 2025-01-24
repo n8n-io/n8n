@@ -187,7 +187,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
@@ -520,7 +520,9 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(0);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(0);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(0);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('workflowExecuteBefore', () => {
@@ -595,7 +597,9 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('saving static data', () => {
@@ -689,7 +693,9 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 	});
 });
