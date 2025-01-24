@@ -2,29 +2,29 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
-import { searchCollections } from './GenericFunctions';
+import { searchCollections, searchDatabases } from './GenericFunctions';
 import { itemFields, itemOperations } from '../../Aws/DynamoDB/ItemDescription';
 
-export class AzureCosmoDb implements INodeType {
+export class AzureCosmosDb implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Azure Cosmo DB',
-		name: 'azureCosmoDb',
+		displayName: 'Azure Cosmos DB',
+		name: 'azureCosmosDb',
 		icon: {
-			light: 'file:CosmoDB.svg',
-			dark: 'file:CosmoDB.svg',
+			light: 'file:CosmosDB.svg',
+			dark: 'file:CosmosDB.svg',
 		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with Azure Cosmo DB API',
+		description: 'Interact with Azure Cosmos DB API',
 		defaults: {
-			name: 'Azure Cosmo Db',
+			name: 'Azure Cosmos Db',
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
-				name: 'azureCosmoDbSharedKeyApi',
+				name: 'azureCosmosDbSharedKeyApi',
 				required: true,
 				displayOptions: {
 					show: {
@@ -34,7 +34,10 @@ export class AzureCosmoDb implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL: '=https://{$credentials.databaseAccount}.documents.azure.com',
+			headers: {
+				Accept: 'application/json',
+			},
 		},
 		properties: [
 			{
@@ -64,7 +67,7 @@ export class AzureCosmoDb implements INodeType {
 						value: 'item',
 					},
 				],
-				default: 'collections',
+				default: 'container',
 			},
 			...itemFields,
 			...itemOperations,
@@ -76,6 +79,7 @@ export class AzureCosmoDb implements INodeType {
 	methods = {
 		listSearch: {
 			searchCollections,
+			searchDatabases,
 		},
 	};
 }

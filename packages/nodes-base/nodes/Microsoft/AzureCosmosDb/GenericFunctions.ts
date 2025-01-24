@@ -61,7 +61,7 @@ export function getAuthorizationTokenUsingMasterKey(
 	return authorizationString;
 }
 
-export async function azureCosmoDbRequest(
+export async function azureCosmosDbRequest(
 	this: ILoadOptionsFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
@@ -136,7 +136,7 @@ export async function searchCollections(
 	}
 
 	const credentials = await this.getCredentials('azureCosmosDb');
-	const databaseAccount = credentials?.databaseaccount;
+	const databaseAccount = credentials?.databaseAccount;
 
 	if (!databaseAccount) {
 		throw new ApplicationError('Database account not found in credentials!', { level: 'error' });
@@ -151,7 +151,7 @@ export async function searchCollections(
 		},
 	};
 
-	const responseData: IDataObject = await azureCosmoDbRequest.call(this, opts);
+	const responseData: IDataObject = await azureCosmosDbRequest.call(this, opts);
 
 	const responseBody = responseData as {
 		Collections: IDataObject[];
@@ -187,7 +187,7 @@ export async function searchDatabases(
 		},
 	};
 
-	const responseData: IDataObject = await azureCosmoDbRequest.call(this, opts);
+	const responseData: IDataObject = await azureCosmosDbRequest.call(this, opts);
 
 	const responseBody = responseData as {
 		Databases: IDataObject[];
