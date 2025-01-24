@@ -302,6 +302,10 @@ describe('GlobalConfig', () => {
 		tags: {
 			disabled: false,
 		},
+		partialExecutions: {
+			version: 1,
+			enforce: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
