@@ -37,7 +37,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message: 'Please make sure to define your input fields.',
+				message:
+					"This workflow isn't set to accept any input data. Fill out the workflow input schema or change the workflow to accept any data passed to it.",
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
@@ -142,7 +143,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Workflow Inputs',
+				displayName: 'Workflow Input Schema',
 				name: WORKFLOW_INPUTS,
 				placeholder: 'Add field',
 				type: 'fixedCollection',
@@ -168,7 +169,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'e.g. fieldName',
-								description: 'Name of the field',
+								description:
+									'A unique name for this workflow input, used to reference it from another workflows',
 								required: true,
 								noDataExpression: true,
 							},
@@ -176,7 +178,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The field value type',
+								description:
+									"Expected data type for this input value. Determines how this field's values are stored, validated, and displayed.",
 								options: TYPE_OPTIONS,
 								required: true,
 								default: 'string',
