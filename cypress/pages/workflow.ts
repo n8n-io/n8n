@@ -430,7 +430,7 @@ export class WorkflowPage extends BasePage {
 		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
-				this.getters.canvasViewport().trigger('wheel', {
+				getCanvasPane().trigger('wheel', {
 					force: true,
 					bubbles: true,
 					ctrlKey: true,
