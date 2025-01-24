@@ -2660,6 +2660,8 @@ export interface IExecutionSummaryNodeExecutionResult {
 
 export interface ResourceMapperFields {
 	fields: ResourceMapperField[];
+	mode?: string;
+	emptyFieldsNotice?: string;
 }
 
 export interface ResourceMapperField {

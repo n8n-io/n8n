@@ -65,7 +65,11 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
+// TODO: Find better name for `mode`
+export function getFieldEntries(context: IWorkflowNodeContext): {
+	mode: string;
+	fields: FieldValueOption[];
+} {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
@@ -89,7 +93,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 	}
 
 	if (Array.isArray(result)) {
-		return result;
+		return { mode: String(inputSource), fields: result };
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
@@ -143,11 +147,27 @@ export async function loadWorkflowInputMappings(
 ): Promise<ResourceMapperFields> {
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
+	let mode = undefined;
+	let emptyFieldsNotice = undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);
+		mode = fieldValues.mode;
 
-		fields = fieldValues.map((currentWorkflowInput) => {
+		if (fieldValues.fields.length === 0) {
+			switch (mode) {
+				case WORKFLOW_INPUTS:
+					emptyFieldsNotice =
+						"The sub-workflow isn't set up to accept any inputs. Change this in the sub-workflow's trigger.";
+					break;
+				case PASSTHROUGH:
+					emptyFieldsNotice =
+						"All input data to this node will be passed to the sub-workflow. You can change this in the sub-workflow's trigger.";
+					break;
+			}
+		}
+
+		fields = fieldValues.fields.map((currentWorkflowInput) => {
 			const field: ResourceMapperField = {
 				id: currentWorkflowInput.name,
 				displayName: currentWorkflowInput.name,
@@ -164,5 +184,5 @@ export async function loadWorkflowInputMappings(
 			return field;
 		});
 	}
-	return { fields };
+	return { fields, mode, emptyFieldsNotice };
 }
