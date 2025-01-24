@@ -9,6 +9,7 @@ import * as folder from './folder';
 import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
+import { sendAndWaitWebhooks } from '../../../../../utils/sendAndWait/descriptions';
 
 export const description: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -30,26 +31,7 @@ export const description: INodeTypeDescription = {
 			required: true,
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	webhooks: sendAndWaitWebhooks,
 	properties: [
 		{
 			displayName: 'Resource',
