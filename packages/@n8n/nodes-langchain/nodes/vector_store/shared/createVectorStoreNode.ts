@@ -476,9 +476,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 				return {
-					response: logWrapper(vectorStore, this, () =>
-						args.releaseVectorStoreClient?.(vectorStore),
-					),
+					response: logWrapper(vectorStore, this),
+					closeFunction: async () => {
+						args.releaseVectorStoreClient?.(vectorStore);
+					},
 				};
 			}
 
