@@ -1,4 +1,4 @@
-import { Config, Env, Nested } from '@n8n/config';
+import { Config, Env, Nested } from '../decorators';
 
 @Config
 class S3BucketConfig {
@@ -32,8 +32,14 @@ export class S3Config {
 	protocol: 'http' | 'https' = 'https';
 
 	@Nested
-	bucket: S3BucketConfig = new S3BucketConfig();
+	bucket: S3BucketConfig;
 
 	@Nested
-	credentials: S3CredentialsConfig = new S3CredentialsConfig();
+	credentials: S3CredentialsConfig;
+}
+
+@Config
+export class ExternalStorageConfig {
+	@Nested
+	s3: S3Config;
 }

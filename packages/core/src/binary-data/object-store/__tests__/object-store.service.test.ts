@@ -1,9 +1,9 @@
+import type { S3Config } from '@n8n/config';
 import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
-import type { S3Config } from '@/binary-data/object-store/s3.config';
 import { writeBlockedMessage } from '@/binary-data/object-store/utils';
 
 jest.mock('axios');

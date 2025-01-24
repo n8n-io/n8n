@@ -1,3 +1,4 @@
+import { S3Config } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { sign } from 'aws4';
 import type { Request as Aws4Options } from 'aws4';
@@ -9,7 +10,6 @@ import type { Readable } from 'stream';
 
 import { Logger } from '@/logging/logger';
 
-import { S3Config } from './s3.config';
 import type { ListPage, MetadataResponseHeaders, RawListPage, RequestOptions } from './types';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
 import type { BinaryData } from '../types';
