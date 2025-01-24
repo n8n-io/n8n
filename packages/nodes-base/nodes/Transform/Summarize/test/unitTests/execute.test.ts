@@ -10,10 +10,7 @@ let summarizeNode: Summarize;
 let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 
 describe('Test Summarize Node, execute', () => {
-	let nodeExecutionOutputSpy: jest.SpyInstance;
 	beforeEach(() => {
-		nodeExecutionOutputSpy = jest.spyOn(NodeExecutionOutput.prototype, 'constructor' as any);
-
 		summarizeNode = new Summarize();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			getNode: jest.fn().mockReturnValue({ name: 'test-node' }),
@@ -26,7 +23,6 @@ describe('Test Summarize Node, execute', () => {
 	});
 
 	afterEach(() => {
-		nodeExecutionOutputSpy.mockRestore();
 		jest.clearAllMocks();
 	});
 
@@ -47,16 +43,14 @@ describe('Test Summarize Node, execute', () => {
 
 		const result = await summarizeNode.execute.call(mockExecuteFunctions);
 
-		expect(result).toBeDefined();
-		expect(nodeExecutionOutputSpy).toHaveBeenCalledWith(
-			expect.any(Array),
-			expect.arrayContaining([
-				expect.objectContaining({
-					message: expect.stringContaining('nonexistentField'),
-					location: 'outputPane',
-				}),
-			]),
-		);
+		expect(result).toBeInstanceOf(NodeExecutionOutput);
+		expect(result).toEqual([[{ json: { sum_nonexistentField: 0 }, pairedItem: [{ item: 0 }] }]]);
+		expect((result as NodeExecutionOutput).getHints()).toEqual([
+			{
+				location: 'outputPane',
+				message: "The field 'nonexistentField' does not exist in any items",
+			},
+		]);
 	});
 
 	it('should throw error if node version is < 1.1 and fields not found', async () => {
