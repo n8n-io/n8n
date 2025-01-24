@@ -4,12 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport } from './utils';
 import { createEmailBody } from '../../../utils/sendAndWait/email-templates';
 import {
+	configureWaitTillDate,
 	createButton,
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
@@ -46,6 +46,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	await transporter.sendMail(mailOptions);
 
-	await this.putExecutionToWait(WAIT_INDEFINITELY);
+	const waitTill = configureWaitTillDate(this);
+
+	await this.putExecutionToWait(waitTill);
 	return [this.getInputData()];
 }
