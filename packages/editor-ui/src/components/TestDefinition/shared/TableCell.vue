@@ -56,6 +56,7 @@ const statusLabelMap: Record<string, string> = {
 };
 
 const errorTooltipMap: Record<string, BaseTextKey> = {
+	// Test case errors
 	MOCKED_NODE_DOES_NOT_EXIST: 'testDefinition.runDetail.error.mockedNodeMissing',
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
@@ -63,6 +64,10 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
 	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
+
+	// Test run errors
+	PAST_EXECUTIONS_NOT_FOUND: 'testDefinition.listRuns.error.noPastExecutions',
+	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
 };
 
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {

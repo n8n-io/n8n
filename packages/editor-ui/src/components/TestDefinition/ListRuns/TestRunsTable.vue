@@ -57,9 +57,10 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 			prop: 'date',
 			label: locale.baseText('testDefinition.listRuns.runDate'),
 			sortable: true,
-			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
+			formatter: (row: TestRunRecord) =>
+				convertToDisplayDate(new Date(row.runAt ?? row.createdAt).getTime()),
 			sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
-				new Date(a.runAt).getTime() - new Date(b.runAt).getTime(),
+				new Date(a.runAt ?? a.createdAt).getTime() - new Date(b.runAt ?? b.createdAt).getTime(),
 		},
 
 		...metrics.value.map((metric) => ({

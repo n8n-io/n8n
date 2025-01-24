@@ -23,7 +23,7 @@ import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
+import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { NodeTypes } from '@/node-types';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -269,9 +269,6 @@ export class TestRunnerService {
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
-		const evaluationWorkflow = await this.workflowRepository.findById(test.evaluationWorkflowId);
-		assert(evaluationWorkflow, 'Evaluation workflow not found');
-
 		// 0. Create new Test Run
 		const testRun = await this.testRunRepository.createTestRun(test.id);
 		assert(testRun, 'Unable to create a test run');
@@ -286,6 +283,11 @@ export class TestRunnerService {
 			testRunId: testRun.id,
 			userId: user.id,
 		};
+
+		const evaluationWorkflow = await this.workflowRepository.findById(test.evaluationWorkflowId);
+		if (!evaluationWorkflow) {
+			throw new TestRunError('EVALUATION_WORKFLOW_NOT_FOUND');
+		}
 
 		const abortSignal = abortController.signal;
 		try {
@@ -306,6 +308,10 @@ export class TestRunnerService {
 					.getMany();
 
 			this.logger.debug('Found past executions', { count: pastExecutions.length });
+
+			if (pastExecutions.length === 0) {
+				throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
+			}
 
 			// Add all past executions mappings to the test run.
 			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
@@ -479,7 +485,10 @@ export class TestRunnerService {
 
 				await this.testRunRepository.markAsCancelled(testRun.id);
 				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
+			} else if (e instanceof TestRunError) {
+				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra);
 			} else {
+				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
 				throw e;
 			}
 		} finally {

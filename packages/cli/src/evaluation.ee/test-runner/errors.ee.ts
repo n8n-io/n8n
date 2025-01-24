@@ -24,3 +24,21 @@ export class TestCaseExecutionError extends Error {
 		this.extra = extra;
 	}
 }
+
+export type TestRunErrorCode =
+	| 'PAST_EXECUTIONS_NOT_FOUND'
+	| 'EVALUATION_WORKFLOW_NOT_FOUND'
+	| 'UNKNOWN_ERROR';
+
+export class TestRunError extends Error {
+	readonly code: TestRunErrorCode;
+
+	readonly extra: IDataObject;
+
+	constructor(code: TestRunErrorCode, extra: IDataObject = {}) {
+		super('Test Run: ' + code);
+
+		this.code = code;
+		this.extra = extra;
+	}
+}

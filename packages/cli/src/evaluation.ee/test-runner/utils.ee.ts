@@ -43,7 +43,7 @@ export function createPinData(
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
 			} else {
-				// throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
+				throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
 			}
 		}
 	}

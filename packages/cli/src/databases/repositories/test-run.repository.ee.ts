@@ -1,9 +1,11 @@
 import { Service } from '@n8n/di';
 import type { FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
+import type { IDataObject } from 'n8n-workflow';
 
 import type { AggregatedTestRunMetrics } from '@/databases/entities/test-run.ee';
 import { TestRun } from '@/databases/entities/test-run.ee';
+import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 import type { ListQuery } from '@/requests';
 
 @Service()
@@ -37,6 +39,10 @@ export class TestRunRepository extends Repository<TestRun> {
 
 	async markAsCancelled(id: string) {
 		return await this.update(id, { status: 'cancelled' });
+	}
+
+	async markAsError(id: string, errorCode: TestRunErrorCode, errorDetails?: IDataObject) {
+		return await this.update(id, { status: 'error', errorCode, errorDetails });
 	}
 
 	async markAllIncompleteAsFailed() {
