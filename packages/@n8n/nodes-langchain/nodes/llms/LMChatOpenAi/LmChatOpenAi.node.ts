@@ -11,18 +11,25 @@ import {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenAi implements INodeType {
+	methods = {
+		listSearch: {
+			searchModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenAI Chat Model',
@@ -130,6 +137,42 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-4o-mini',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'gpt-4o-mini' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'gpt-4o-mini',
+					},
+				],
+				description: 'The model. Choose from the list, or specify an ID.',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName:
@@ -251,7 +294,12 @@ export class LmChatOpenAi implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const version = this.getNode().typeVersion;
+		const modelName =
+			version >= 1.2
+				? (this.getNodeParameter('model.value', itemIndex) as string)
+				: (this.getNodeParameter('model', itemIndex) as string);
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			frequencyPenalty?: number;

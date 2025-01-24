@@ -852,6 +852,7 @@ export type NodeTypeAndVersion = {
 	type: string;
 	typeVersion: number;
 	disabled: boolean;
+	parameters?: INodeParameters;
 };
 
 export interface FunctionsBase {
@@ -869,7 +870,10 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	getChildNodes(nodeName: string): NodeTypeAndVersion[];
+	getChildNodes(
+		nodeName: string,
+		options?: { includeNodeParameters?: boolean },
+	): NodeTypeAndVersion[];
 	getParentNodes(nodeName: string): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
@@ -2680,6 +2684,7 @@ export type FormFieldsParameter = Array<{
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
 	formatDate?: string;
+	html?: string;
 	placeholder?: string;
 }>;
 

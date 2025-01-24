@@ -36,6 +36,7 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
+			if (key === 'constructor') return Array;
 			const value = Reflect.get(newData ?? target, key, receiver) as unknown;
 			const newValue = augment(value);
 			if (newValue !== value) {
@@ -83,6 +84,8 @@ export function augmentObject<T extends object>(data: T): T {
 
 	const proxy = new Proxy(data, {
 		get(target, key: string, receiver): unknown {
+			if (key === 'constructor') return Object;
+
 			if (deletedProperties.has(key)) {
 				return undefined;
 			}

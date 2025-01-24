@@ -17,7 +17,7 @@ import {
 
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
@@ -75,6 +75,11 @@ const extensions = computed(() => {
 
 onMounted(() => {
 	createEditor();
+});
+
+onBeforeUnmount(() => {
+	if (!editor.value) return;
+	editor.value.destroy();
 });
 
 watch(

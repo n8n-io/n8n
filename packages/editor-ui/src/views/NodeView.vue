@@ -3392,10 +3392,15 @@ export default defineComponent({
 		async initView(): Promise<void> {
 			await this.loadCredentialsForWorkflow();
 
-			if (this.$route.params.action === 'workflowSave') {
+			if (this.$route.query.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
 				this.uiStore.stateIsDirty = false;
+
+				// Remove the action from the query
+				await this.$router.replace({
+					query: { ...this.$route.query, action: undefined },
+				});
 				return;
 			}
 			if (this.blankRedirect) {
