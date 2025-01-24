@@ -23,7 +23,6 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
-		showBugReportingButton?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -70,7 +69,6 @@ onNodesInitialized(() => {
 				:id="id"
 				:nodes="mappedNodes"
 				:connections="mappedConnections"
-				:show-bug-reporting-button="showBugReportingButton"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"
