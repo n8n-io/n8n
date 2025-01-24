@@ -1493,14 +1493,13 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
-				!hasRunError &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled && !hasRunError"
+			v-show="!editMode.enabled"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
