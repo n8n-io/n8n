@@ -10,7 +10,10 @@ let summarizeNode: Summarize;
 let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 
 describe('Test Summarize Node, execute', () => {
+	let nodeExecutionOutputSpy: jest.SpyInstance;
 	beforeEach(() => {
+		nodeExecutionOutputSpy = jest.spyOn(NodeExecutionOutput.prototype, 'constructor' as any);
+
 		summarizeNode = new Summarize();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			getNode: jest.fn().mockReturnValue({ name: 'test-node' }),
@@ -23,6 +26,7 @@ describe('Test Summarize Node, execute', () => {
 	});
 
 	afterEach(() => {
+		nodeExecutionOutputSpy.mockRestore();
 		jest.clearAllMocks();
 	});
 
@@ -44,7 +48,7 @@ describe('Test Summarize Node, execute', () => {
 		const result = await summarizeNode.execute.call(mockExecuteFunctions);
 
 		expect(result).toBeDefined();
-		expect(NodeExecutionOutput).toHaveBeenCalledWith(
+		expect(nodeExecutionOutputSpy).toHaveBeenCalledWith(
 			expect.any(Array),
 			expect.arrayContaining([
 				expect.objectContaining({
