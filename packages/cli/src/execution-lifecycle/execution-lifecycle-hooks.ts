@@ -45,15 +45,14 @@ function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflo
 	};
 	for (const hooks of hookFunctions) {
 		for (const key in hooks) {
-			if (hooks.hasOwnProperty(key)) {
-				result[key]!.push(...hooks[key]!);
-			}
+			if (!result[key] || !hooks[key]) continue;
+			result[key]?.push(...hooks[key]);
 		}
 	}
 	return result;
 }
 
-function hookFunctionsWorkflowTelemetry(userId?: string): IWorkflowExecuteHooks {
+function hookFunctionsWorkflowEvents(userId?: string): IWorkflowExecuteHooks {
 	const eventService = Container.get(EventService);
 	return {
 		workflowExecuteBefore: [
@@ -71,7 +70,7 @@ function hookFunctionsWorkflowTelemetry(userId?: string): IWorkflowExecuteHooks 
 	};
 }
 
-function hookFunctionsNodeTelemetry(): IWorkflowExecuteHooks {
+function hookFunctionsNodeEvents(): IWorkflowExecuteHooks {
 	const eventService = Container.get(EventService);
 	return {
 		nodeExecuteBefore: [
@@ -469,8 +468,8 @@ export function getWorkflowHooksIntegrated(
 	userId: string | undefined,
 ): WorkflowHooks {
 	const hookFunctions = mergeHookFunctions(
-		hookFunctionsWorkflowTelemetry(userId),
-		hookFunctionsNodeTelemetry(),
+		hookFunctionsWorkflowEvents(userId),
+		hookFunctionsNodeEvents(),
 		hookFunctionsSave(),
 		hookFunctionsPreExecute(),
 	);
@@ -486,11 +485,7 @@ export function getWorkflowHooksWorkerExecuter(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	const toMerge = [
-		hookFunctionsNodeTelemetry(),
-		hookFunctionsSaveWorker(),
-		hookFunctionsPreExecute(),
-	];
+	const toMerge = [hookFunctionsNodeEvents(), hookFunctionsSaveWorker(), hookFunctionsPreExecute()];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		toMerge.push(hookFunctionsPush());
@@ -509,8 +504,8 @@ export function getWorkflowHooksWorkerMain(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	const toMerge = [
-		hookFunctionsWorkflowTelemetry(),
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowEvents(),
 		hookFunctionsPreExecute(),
 		{
 			workflowExecuteAfter: [
@@ -553,13 +548,7 @@ export function getWorkflowHooksWorkerMain(
 				},
 			],
 		},
-	];
-
-	// TODO: why are workers pushing to frontend?
-	// TODO: simplifying this for now to just leave the bare minimum hooks
-	// hookFunctions.push(hookFunctionsPush());
-
-	const hookFunctions = mergeHookFunctions(...toMerge);
+	);
 	// When running with worker mode, main process executes
 	// Only workflowExecuteBefore + workflowExecuteAfter
 	// So to avoid confusion, we are removing other hooks.
@@ -577,8 +566,8 @@ export function getWorkflowHooksMain(
 	executionId: string,
 ): WorkflowHooks {
 	const hookFunctions = mergeHookFunctions(
-		hookFunctionsWorkflowTelemetry(),
-		hookFunctionsNodeTelemetry(),
+		hookFunctionsWorkflowEvents(),
+		hookFunctionsNodeEvents(),
 		hookFunctionsSave(),
 		hookFunctionsPush(),
 		hookFunctionsPreExecute(),
