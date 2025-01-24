@@ -624,7 +624,7 @@ defineExpose({
 			@refresh-field-list="initFetching(true)"
 		/>
 		<N8nNotice v-else-if="state.emptyFieldsNotice && !state.hasStaleFields" type="info">
-			{{ state.emptyFieldsNotice }}
+			<span v-n8n-html="state.emptyFieldsNotice"></span>
 		</N8nNotice>
 		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}

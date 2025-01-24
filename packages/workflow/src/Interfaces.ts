@@ -1030,7 +1030,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
 export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
-	Pick<FunctionsBase, 'getNode'>;
+	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
 	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;

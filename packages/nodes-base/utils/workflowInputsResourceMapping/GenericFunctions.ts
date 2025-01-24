@@ -155,10 +155,10 @@ export async function loadWorkflowInputMappings(
 		mode = fieldValues.mode;
 
 		if (fieldValues.fields.length === 0) {
+			const id = nodeLoadContext.getWorkflow().id as string;
 			switch (mode) {
 				case WORKFLOW_INPUTS:
-					emptyFieldsNotice =
-						"The sub-workflow isn't set up to accept any inputs. Change this in the sub-workflow's trigger.";
+					emptyFieldsNotice = `The sub-workflow isn't set up to accept any inputs. Change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>.`;
 					break;
 				case PASSTHROUGH:
 					emptyFieldsNotice =
