@@ -57,7 +57,10 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /api-keys should create an api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		const newApiKey = newApiKeyResponse.body.data as ApiKey;
 
@@ -79,7 +82,10 @@ describe('Owner shell', () => {
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
@@ -96,7 +102,10 @@ describe('Owner shell', () => {
 	});
 
 	test('DELETE /api-keys/:id should delete the api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
@@ -122,7 +131,10 @@ describe('Member', () => {
 	});
 
 	test('POST /api-keys should create an api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
@@ -143,7 +155,10 @@ describe('Member', () => {
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
@@ -164,7 +179,10 @@ describe('Member', () => {
 	});
 
 	test('DELETE /api-keys/:id should delete the api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(member)

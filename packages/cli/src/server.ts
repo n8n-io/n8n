@@ -139,10 +139,6 @@ export class Server extends AbstractServer {
 			await import('@/controllers/tags.controller');
 		}
 
-		if (isApiEnabled()) {
-			await import('@/controllers/api-keys.controller');
-		}
-
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------

@@ -74,13 +74,15 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Redacts an API key by keeping the first few characters and replacing the rest with asterisks.
-	 * @param apiKey - The API key to be redacted. If null, the function returns undefined.
-	 * @returns The redacted API key with a fixed prefix and asterisks replacing the rest of the characters.
+	 * Redacts an API key by replacing a portion of it with asterisks.
+	 *
+	 * The function keeps the last `REDACT_API_KEY_REVEAL_COUNT` characters of the API key visible
+	 * and replaces the rest with asterisks, up to a maximum length defined by `REDACT_API_KEY_MAX_LENGTH`.
+	 *
 	 * @example
 	 * ```typescript
 	 * const redactedKey = PublicApiKeyService.redactApiKey('12345-abcdef-67890');
-	 * console.log(redactedKey); // Output: '12345-*****'
+	 * console.log(redactedKey); // Output: '*****-67890'
 	 * ```
 	 */
 	redactApiKey(apiKey: string) {

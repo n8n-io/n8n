@@ -12,7 +12,7 @@ import { useRootStore } from '@/stores/root.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
