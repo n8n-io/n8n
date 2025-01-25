@@ -162,7 +162,13 @@ export async function extractDataFromPDF(
 ) {
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-	const params: DocumentInitParameters = { password, isEvalSupported: false };
+	const params: DocumentInitParameters = {
+		password,
+		isEvalSupported: false,
+		cMapUrl: '../../../node_modules/pdfjs-dist/cmaps/',
+		cMapPacked: true,
+		standardFontDataUrl: '../../../node_modules/pdfjs-dist/standard_fonts/',
+	};
 
 	if (binaryData.id) {
 		params.data = await this.helpers.binaryToBuffer(
