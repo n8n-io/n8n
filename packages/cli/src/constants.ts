@@ -104,6 +104,7 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	API_KEYS_LIMIT: 'quota:apiKeys',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 

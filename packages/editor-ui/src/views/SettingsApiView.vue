@@ -118,7 +118,11 @@ function onEdit(id: string) {
 			</el-row>
 
 			<div class="mt-m text-right">
-				<n8n-button size="large" @click="onCreateApiKey">
+				<n8n-button
+					size="large"
+					:disabled="!apiKeysStore.canAddMoreApiKeys"
+					@click="onCreateApiKey"
+				>
 					{{ i18n.baseText('settings.api.create.button') }}
 				</n8n-button>
 			</div>

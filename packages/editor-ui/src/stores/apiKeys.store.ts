@@ -5,11 +5,13 @@ import { useRootStore } from '@/stores/root.store';
 
 import * as publicApiApi from '@/api/api-keys';
 import { computed, ref } from 'vue';
+import { useSettingsStore } from './settings.store';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
 
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 
 	const apiKeysSortByCreationDate = computed(() =>
 		apiKeys.value.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -24,6 +26,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 			{} as Record<string, ApiKey>,
 		);
 	});
+
+	const canAddMoreApiKeys = computed(() => apiKeys.value.length < settingsStore.api.apiKeysLimit);
 
 	const getAllApiKeys = async () => {
 		if (apiKeys.value.length) return apiKeys.value;
@@ -55,5 +59,6 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeysSortByCreationDate,
 		apiKeysById,
 		apiKeys,
+		canAddMoreApiKeys,
 	};
 });

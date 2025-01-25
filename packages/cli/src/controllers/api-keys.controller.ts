@@ -1,7 +1,10 @@
 import { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
 
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
@@ -10,6 +13,8 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly apiKeysRepository: ApiKeyRepository,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -21,6 +26,12 @@ export class ApiKeysController {
 		_res: Response,
 		@Body payload: CreateOrUpdateApiKeyRequestDto,
 	) {
+		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
+
+		if (currentNumberOfApiKeys >= this.license.getApiKeysLimit()) {
+			throw new BadRequestError('You have reached the maximum number of API keys allowed.');
+		}
+
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
 			withLabel: payload.label,
 		});

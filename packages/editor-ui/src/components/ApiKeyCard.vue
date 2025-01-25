@@ -63,8 +63,8 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 					</n8n-text>
 				</div>
 			</div>
-			<div :class="$style.cardApiKey">
-				<n8n-text color="text-light" size="small"> {{ apiKey.apiKey.slice(0, 10) }}</n8n-text>
+			<div v-if="apiKey.apiKey.includes('*')" :class="$style.cardApiKey">
+				<n8n-text color="text-light" size="small"> {{ apiKey.apiKey }}</n8n-text>
 			</div>
 		</template>
 
