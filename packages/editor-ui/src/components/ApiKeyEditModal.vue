@@ -12,6 +12,7 @@ import { useRootStore } from '@/stores/root.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
+import { BaseTextKey } from '@/plugins/i18n';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -112,7 +113,7 @@ const modalTitle = computed(() => {
 			path = 'create';
 		}
 	}
-	return i18n.baseText(`settings.api.view.modal.title.${path}`);
+	return i18n.baseText(`settings.api.view.modal.title.${path}` as BaseTextKey);
 });
 </script>
 
