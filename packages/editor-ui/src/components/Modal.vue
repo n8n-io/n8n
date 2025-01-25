@@ -31,7 +31,7 @@ const props = withDefaults(
 		closeOnClickModal?: boolean;
 		closeOnPressEscape?: boolean;
 		appendToBody?: boolean;
-		lookScroll?: boolean;
+		lockScroll?: boolean;
 	}>(),
 	{
 		title: '',
@@ -47,7 +47,7 @@ const props = withDefaults(
 		closeOnClickModal: true,
 		closeOnPressEscape: true,
 		appendToBody: false,
-		lookScroll: true,
+		lockScroll: true,
 	},
 );
 
@@ -145,7 +145,7 @@ function getCustomClass() {
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		:append-to="appendToBody ? undefined : appModalsId"
-		:lock-scroll="lookScroll"
+		:lock-scroll="lockScroll"
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"
