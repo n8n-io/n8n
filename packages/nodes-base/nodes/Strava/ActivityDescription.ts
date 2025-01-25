@@ -76,20 +76,6 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'JC',
-		name: 'jc',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['activity'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'This is the descirption',
-	},
-	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
