@@ -3,8 +3,10 @@ import { mock } from 'jest-mock-extended';
 
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { EventService } from '@/events/event.service';
-import type { ApiKeysRequest, AuthenticatedRequest } from '@/requests';
+import { License } from '@/license';
+import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
@@ -13,6 +15,8 @@ import { ApiKeysController } from '../api-keys.controller';
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);
 	const eventService = mockInstance(EventService);
+	mockInstance(ApiKeyRepository);
+	mockInstance(License);
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
@@ -38,7 +42,7 @@ describe('ApiKeysController', () => {
 
 			// Act
 
-			const newApiKey = await controller.createAPIKey(req);
+			const newApiKey = await controller.createAPIKey(req, mock(), mock());
 
 			// Assert
 
@@ -91,11 +95,11 @@ describe('ApiKeysController', () => {
 				mfaEnabled: false,
 			});
 
-			const req = mock<ApiKeysRequest.DeleteAPIKey>({ user, params: { id: user.id } });
+			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
 
 			// Act
 
-			await controller.deleteAPIKey(req);
+			await controller.deleteAPIKey(req, mock(), user.id);
 
 			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
 
