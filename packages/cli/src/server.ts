@@ -138,6 +138,11 @@ export class Server extends AbstractServer {
 		if (!this.globalConfig.tags.disabled) {
 			await import('@/controllers/tags.controller');
 		}
+
+		if (isApiEnabled()) {
+			await import('@/controllers/api-keys.controller');
+		}
+
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------

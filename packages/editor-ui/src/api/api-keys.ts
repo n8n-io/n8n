@@ -1,5 +1,6 @@
 import type { ApiKey, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
 
 export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys');
@@ -7,7 +8,7 @@ export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 
 export async function createApiKey(
 	context: IRestApiContext,
-	{ label }: { label: string },
+	{ label }: CreateOrUpdateApiKeyRequestDto,
 ): Promise<ApiKey> {
 	return await makeRestApiRequest(context, 'POST', '/api-keys', { label });
 }
@@ -22,7 +23,7 @@ export async function deleteApiKey(
 export async function updateApiKey(
 	context: IRestApiContext,
 	id: string,
-	{ label }: { label: string },
+	{ label }: CreateOrUpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, { label });
 }
