@@ -32,13 +32,15 @@ describe('ApiKeysController', () => {
 				id: '123',
 				userId: '123',
 				label: 'My API Key',
-				apiKey: 'apiKey********',
+				apiKey: 'apiKey123',
 				createdAt: new Date(),
 			} as ApiKey;
 
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
 			publicApiKeyService.createPublicApiKeyForUser.mockResolvedValue(apiKeyData);
+
+			publicApiKeyService.redactApiKey.mockImplementation(() => '***123');
 
 			// Act
 
@@ -47,7 +49,16 @@ describe('ApiKeysController', () => {
 			// Assert
 
 			expect(publicApiKeyService.createPublicApiKeyForUser).toHaveBeenCalled();
-			expect(apiKeyData).toEqual(newApiKey);
+			expect(newApiKey).toEqual(
+				expect.objectContaining({
+					id: '123',
+					userId: '123',
+					label: 'My API Key',
+					apiKey: '***123',
+					createdAt: expect.any(Date),
+					rawApiKey: 'apiKey123',
+				}),
+			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'public-api-key-created',
 				expect.objectContaining({ user: req.user, publicApi: false }),
