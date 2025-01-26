@@ -62,7 +62,7 @@ describe('Owner shell', () => {
 			.post('/api-keys')
 			.send({ label: 'My API Key' });
 
-		const newApiKey = newApiKeyResponse.body.data as ApiKey;
+		const newApiKey = newApiKeyResponse.body.data as ApiKey & { rawApiKey: string };
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
@@ -75,7 +75,7 @@ describe('Owner shell', () => {
 			id: expect.any(String),
 			label: 'My API Key',
 			userId: ownerShell.id,
-			apiKey: newApiKey.apiKey,
+			apiKey: newApiKey.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
@@ -91,11 +91,13 @@ describe('Owner shell', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
+		const redactedApiKey = publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.rawApiKey);
+
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
 			id: newApiKeyResponse.body.data.id,
 			label: 'My API Key',
 			userId: ownerShell.id,
-			apiKey: publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.apiKey),
+			apiKey: redactedApiKey,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 		});
@@ -148,7 +150,7 @@ describe('Member', () => {
 			id: expect.any(String),
 			label: 'My API Key',
 			userId: member.id,
-			apiKey: newApiKeyResponse.body.data.apiKey,
+			apiKey: newApiKeyResponse.body.data.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
@@ -164,16 +166,18 @@ describe('Member', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
+		const redactedApiKey = publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.rawApiKey);
+
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
 			id: newApiKeyResponse.body.data.id,
 			label: 'My API Key',
 			userId: member.id,
-			apiKey: publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.apiKey),
+			apiKey: redactedApiKey,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 		});
 
-		expect(newApiKeyResponse.body.data.apiKey).not.toEqual(
+		expect(newApiKeyResponse.body.data.rawApiKey).not.toEqual(
 			retrieveAllApiKeysResponse.body.data[0].apiKey,
 		);
 	});

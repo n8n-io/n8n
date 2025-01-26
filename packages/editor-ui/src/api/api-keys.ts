@@ -1,4 +1,4 @@
-import type { ApiKey, IRestApiContext } from '@/Interface';
+import type { ApiKey, ApiKeyWithRawValue, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
 
@@ -9,7 +9,7 @@ export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 export async function createApiKey(
 	context: IRestApiContext,
 	{ label }: CreateOrUpdateApiKeyRequestDto,
-): Promise<ApiKey> {
+): Promise<ApiKeyWithRawValue> {
 	return await makeRestApiRequest(context, 'POST', '/api-keys', { label });
 }
 

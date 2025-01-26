@@ -1492,6 +1492,8 @@ export type ApiKey = {
 	updatedAt: string;
 };
 
+export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
+
 export type InputPanel = {
 	nodeName?: string;
 	run?: number;

@@ -37,7 +37,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const createApiKey = async (label: string) => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, { label });
-		apiKeys.value.push(newApiKey);
+		const { rawApiKey, ...rest } = newApiKey;
+		apiKeys.value.push(rest);
 		return newApiKey;
 	};
 

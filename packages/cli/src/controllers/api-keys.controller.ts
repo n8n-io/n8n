@@ -48,7 +48,11 @@ export class ApiKeysController {
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
-		return newApiKey;
+		const rawApiKey = newApiKey.apiKey;
+
+		newApiKey.apiKey = this.publicApiKeyService.redactApiKey(newApiKey.apiKey);
+
+		return { ...newApiKey, rawApiKey };
 	}
 
 	/**

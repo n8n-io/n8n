@@ -7,7 +7,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ApiKey } from '@/Interface';
+import type { ApiKeyWithRawValue } from '@/Interface';
 import { useRootStore } from '@/stores/root.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
@@ -27,9 +27,10 @@ const documentTitle = useDocumentTitle();
 
 const label = ref('');
 const modalBus = createEventBus();
-const newApiKey = ref<ApiKey | null>(null);
+const newApiKey = ref<ApiKeyWithRawValue | null>(null);
 const apiDocsURL = ref('');
 const loading = ref(false);
+const rawApiKey = ref('');
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
@@ -92,6 +93,8 @@ const onSave = async () => {
 	try {
 		loading.value = true;
 		newApiKey.value = await createApiKey(label.value);
+		rawApiKey.value = newApiKey.value.rawApiKey;
+
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.api.create.toast'),
@@ -153,7 +156,7 @@ const modalTitle = computed(() => {
 				<n8n-card v-if="newApiKey" class="mb-4xs" :class="$style.card">
 					<CopyInput
 						:label="newApiKey.label"
-						:value="newApiKey.apiKey"
+						:value="newApiKey.rawApiKey"
 						:redact-value="true"
 						:copy-button-text="i18n.baseText('generic.clickToCopy')"
 						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
