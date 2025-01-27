@@ -241,10 +241,14 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 );
 
 function applyOverride() {
-	telemetry.track('User turned on fromAI override', {
-		nodeType: node.value?.type,
-		parameter: props.path,
-	});
+	telemetry.track(
+		'User turned on fromAI override',
+		{
+			nodeType: node.value?.type,
+			parameter: props.path,
+		},
+		{ withPostHog: true },
+	);
 	valueChanged({
 		name: props.path,
 		value: parameterOverrides.value?.buildValueFromOverride(props, true),
@@ -252,10 +256,14 @@ function applyOverride() {
 }
 
 function removeOverride() {
-	telemetry.track('User turned off fromAI override', {
-		nodeType: node.value?.type,
-		parameter: props.path,
-	});
+	telemetry.track(
+		'User turned off fromAI override',
+		{
+			nodeType: node.value?.type,
+			parameter: props.path,
+		},
+		{ withPostHog: true },
+	);
 	valueChanged({
 		node: node.value?.name,
 		name: props.path,
