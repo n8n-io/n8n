@@ -249,6 +249,15 @@ describe('NDV', () => {
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
 
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
