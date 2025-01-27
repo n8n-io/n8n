@@ -213,7 +213,7 @@ class ExtendedPGVectorStore extends PGVectorStore {
 	}
 }
 
-export class VectorStorePGVector extends createVectorStoreNode({
+export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorStore>({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
@@ -313,8 +313,6 @@ export class VectorStorePGVector extends createVectorStoreNode({
 	},
 
 	releaseVectorStoreClient(vectorStore) {
-		if (vectorStore instanceof PGVectorStore) {
-			vectorStore.client?.release();
-		}
+		vectorStore.client?.release();
 	},
 }) {}

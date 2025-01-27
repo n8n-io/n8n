@@ -49,7 +49,7 @@ interface NodeMeta {
 	operationModes?: NodeOperationMode[];
 }
 
-export interface VectorStoreNodeConstructorArgs {
+export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {
 	meta: NodeMeta;
 	methods?: {
 		listSearch?: {
@@ -77,8 +77,8 @@ export interface VectorStoreNodeConstructorArgs {
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
-	) => Promise<VectorStore>;
-	releaseVectorStoreClient?: (vectorStore: VectorStore) => void;
+	) => Promise<T>;
+	releaseVectorStoreClient?: (vectorStore: T) => void;
 }
 
 function transformDescriptionForOperationMode(
@@ -91,11 +91,15 @@ function transformDescriptionForOperationMode(
 	}));
 }
 
-function isUpdateSupported(args: VectorStoreNodeConstructorArgs): boolean {
+function isUpdateSupported<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): boolean {
 	return args.meta.operationModes?.includes('update') ?? false;
 }
 
-function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
+function getOperationModeOptions<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): INodePropertyOptions[] {
 	const enabledOperationModes = args.meta.operationModes ?? DEFAULT_OPERATION_MODES;
 
 	const allOptions = [
@@ -138,7 +142,9 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 	);
 }
 
-export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
+export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+) =>
 	class VectorStoreNodeType implements INodeType {
 		description: INodeTypeDescription = {
 			displayName: args.meta.displayName,
