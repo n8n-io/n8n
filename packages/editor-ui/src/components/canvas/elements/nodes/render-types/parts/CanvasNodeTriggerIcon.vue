@@ -30,10 +30,10 @@ const i18n = useI18n();
 	margin: auto;
 	color: var(--color-primary);
 	padding: var(--spacing-s);
-	animation: slide-in 0.2s ease forwards;
+	animation: slide-in 0.1s ease-in forwards;
 
 	:global(.hovered) & {
-		animation: slide-out 0.2s ease forwards;
+		animation: slide-out 0.1s ease-in forwards;
 	}
 }
 

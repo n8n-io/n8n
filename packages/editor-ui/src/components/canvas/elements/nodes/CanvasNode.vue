@@ -479,11 +479,11 @@ onBeforeUnmount(() => {
 	padding-right: calc(200% + var(--spacing-s));
 
 	& button {
-		animation: slide-out 0.2s ease forwards;
+		animation: slide-out 0.1s ease-in forwards;
 	}
 
 	.canvasNode:hover & > button {
-		animation: slide-in 0.2s ease forwards;
+		animation: slide-in 0.1s ease-in forwards;
 	}
 }
 
