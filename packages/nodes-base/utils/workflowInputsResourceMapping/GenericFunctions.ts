@@ -98,7 +98,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): {
 			const id = context.getWorkflow().id;
 			switch (dataMode) {
 				case PASSTHROUGH:
-					noFieldsMessage = `All input data to this node will be passed to the sub-workflow. You can change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>..`;
+					noFieldsMessage = `All input data to this node will be passed to the sub-workflow. You can change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>.`;
 					break;
 				default:
 					noFieldsMessage = `The sub-workflow isn't set up to accept any inputs. Change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>.`;
