@@ -24,6 +24,28 @@ import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
 
+function getQueryParamsFormTriggerNode(context: IWebhookFunctions) {
+	const query = context.getRequestObject().query as IDataObject;
+	const workflowStaticData = context.getWorkflowStaticData('node');
+	for (const key of Object.keys(query)) {
+		workflowStaticData[key] = query[key];
+	}
+
+	return { context, query };
+}
+
+function getQueryParamsFormNode(context: IWebhookFunctions, query: IDataObject) {
+	const parentNodes = context.getParentNodes(context.getNode().name);
+	const trigger = parentNodes.find(
+		(node) => node.type === FORM_TRIGGER_NODE_TYPE,
+	) as NodeTypeAndVersion;
+	const triggerQueryParameters = context.evaluateExpression(
+		`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+	) as IDataObject;
+
+	return triggerQueryParameters ?? query;
+}
+
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
 		allowedTags: [
@@ -342,26 +364,15 @@ export function renderForm({
 
 	let query: IDataObject = {};
 
-	if (context.getNode().type === FORM_TRIGGER_NODE_TYPE) {
-		query = context.getRequestObject().query as IDataObject;
-		const workflowStaticData = context.getWorkflowStaticData('node');
-		for (const key of Object.keys(query)) {
-			workflowStaticData[key] = query[key];
-		}
-	} else if (context.getNode().type === FORM_NODE_TYPE) {
-		const parentNodes = context.getParentNodes(context.getNode().name);
-		const trigger = parentNodes.find(
-			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
-		) as NodeTypeAndVersion;
-		try {
-			const triggerQueryParameters = context.evaluateExpression(
-				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
-			) as IDataObject;
+	const nodeType = context.getNode().type;
 
-			if (triggerQueryParameters) {
-				query = triggerQueryParameters;
-			}
-		} catch (error) {}
+	if (nodeType === FORM_TRIGGER_NODE_TYPE) {
+		const { context: contextWithQuery, query: queryFromFormTriggerNode } =
+			getQueryParamsFormTriggerNode(context);
+		query = queryFromFormTriggerNode;
+		context = contextWithQuery;
+	} else if (nodeType === FORM_NODE_TYPE) {
+		query = getQueryParamsFormNode(context, query);
 	}
 
 	const data = prepareFormData({
