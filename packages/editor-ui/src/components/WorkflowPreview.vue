@@ -151,7 +151,9 @@ const onReady = () => {
 	ready.value = true;
 
 	if (props.focusOnLoad) {
-		iframeRef.value?.contentWindow?.focus();
+		setTimeout(() => {
+			iframeRef.value?.contentWindow?.focus();
+		});
 	}
 };
 
