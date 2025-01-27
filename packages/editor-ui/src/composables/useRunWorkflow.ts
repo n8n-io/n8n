@@ -271,7 +271,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				runData: !isPartialExecution
 					? // if it's a full execution we don't want to send any run data
 						undefined
-					: version === 1
+					: version === 2
 						? // With the new partial execution version the backend decides
 							//what run data to use and what to ignore.
 							(runData ?? undefined)

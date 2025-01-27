@@ -323,8 +323,8 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toEqual(mockExecutionResponse);
 		});
 
-		it('should send dirty nodes for partial executions', async () => {
-			vi.mocked(settingsStore).partialExecutionVersion = 1;
+		it('should send dirty nodes for partial executions v2', async () => {
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			const composable = useRunWorkflow({ router });
 			const parentName = 'When clicking';
 			const executeName = 'Code';
@@ -405,7 +405,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 		});
 
-		it('does not use the original run data if `PartialExecution.version` is set to 0', async () => {
+		it('does not use the original run data if `partialExecutionVersion` is set to 1', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -414,7 +414,7 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 0;
+			vi.mocked(settingsStore).partialExecutionVersion = 1;
 			vi.mocked(rootStore).pushConnectionActive = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
@@ -436,7 +436,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('retains the original run data if `PartialExecution.version` is set to 1', async () => {
+		it('retains the original run data if `partialExecutionVersion` is set to 2', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -445,7 +445,7 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 1;
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			vi.mocked(rootStore).pushConnectionActive = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
@@ -465,7 +465,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
-		it("does not send run data if it's not a partial execution even if `PartialExecution.version` is set to 1", async () => {
+		it("does not send run data if it's not a partial execution even if `partialExecutionVersion` is set to 2", async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -474,7 +474,7 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 1;
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			vi.mocked(rootStore).pushConnectionActive = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
