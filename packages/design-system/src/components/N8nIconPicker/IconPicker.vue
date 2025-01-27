@@ -3,7 +3,7 @@
 // eslint-disable import/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
-import { ref, defineProps, computed } from 'vue';
+import { ref, computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nTooltip from '../N8nTooltip';
