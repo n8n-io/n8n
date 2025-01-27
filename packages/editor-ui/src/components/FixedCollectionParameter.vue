@@ -211,7 +211,7 @@ const onDragChange = (optionName: string) => {
 };
 
 const trackWorkflowInputFieldTypeChange = (parameterData: IUpdateInformation) => {
-	telemetry.track('User change workflow input field type', {
+	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
 		workflow_id: workflowsStore.workflow.id,
 		node_id: ndvStore.activeNode?.id,
