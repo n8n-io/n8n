@@ -58,11 +58,6 @@ export class FromAiOverride implements ParameterOverride {
 
 	readonly overridePlaceholder = i18n.baseText('parameterOverride.overridePanelText');
 
-	readonly providers = {
-		key: (props: OverrideContext) => sanitizeFromAiParameterName(props.parameter.displayName),
-		type: (props: OverrideContext) => this.fieldTypeToFromAiType(props),
-	};
-
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
 		description: {
 			initialValue: '',
@@ -73,13 +68,12 @@ export class FromAiOverride implements ParameterOverride {
 
 	extraPropValues: Partial<Record<FromAiOverrideExtraProps, NodeParameterValueType>> = {};
 
-	private fieldTypeToFromAiType(props: OverrideContext) {
-		switch (props.parameter.type) {
+	private fieldTypeToFromAiType(propType: NodePropertyTypes) {
+		switch (propType) {
 			case 'boolean':
-				return 'boolean';
 			case 'number':
-				return 'number';
-			case 'string':
+			case 'json':
+				return propType;
 			default:
 				return 'string';
 		}
@@ -91,12 +85,12 @@ export class FromAiOverride implements ParameterOverride {
 
 	isOverrideValue = FromAiOverride.isOverrideValue;
 
-	buildValueFromOverride(props: OverrideContext, includeMarker: boolean) {
+	buildValueFromOverride(props: Pick<OverrideContext, 'parameter'>, includeMarker: boolean) {
 		const marker = includeMarker ? FromAiOverride.MARKER : '';
-		const key = this.providers.key(props);
+		const key = sanitizeFromAiParameterName(props.parameter.displayName);
 		const description =
 			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;
-		const type = this.providers.type(props);
+		const type = this.fieldTypeToFromAiType(props.parameter.type);
 
 		return `={{ ${marker}$fromAI('${key}', '${description}', '${type}') }}`;
 	}
