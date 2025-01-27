@@ -10,12 +10,12 @@ export interface ParameterOverride {
 	readonly overridePlaceholder: string;
 	readonly extraProps: Record<string, ExtraPropValue>;
 	extraPropValues: Partial<Record<keyof ParameterOverride['extraProps'], NodeParameterValueType>>;
-	buildValueFromOverride: (props: Context, excludeMarker: boolean) => string;
+	buildValueFromOverride: (props: OverrideContext, excludeMarker: boolean) => string;
 	isOverrideValue: (s: string) => boolean;
 	parseOverrides: (s: string) => Partial<Record<string, string>> | null;
 }
 
-type Context = {
+export type OverrideContext = {
 	parameter: {
 		name: string;
 		displayName: string;
@@ -45,7 +45,7 @@ function sanitizeFromAiParameterName(s: string) {
 }
 
 export class FromAiOverride implements ParameterOverride {
-	static readonly MARKER = '/* n8n-auto-generated-fromAi-override */';
+	static readonly MARKER = '/* n8n-auto-generated-fromAI-override */ ';
 
 	static readonly NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
@@ -59,8 +59,8 @@ export class FromAiOverride implements ParameterOverride {
 	readonly overridePlaceholder = i18n.baseText('parameterOverride.overridePanelText');
 
 	readonly providers = {
-		key: (props: Context) => sanitizeFromAiParameterName(props.parameter.displayName),
-		type: (props: Context) => this.fieldTypeToFromAiType(props),
+		key: (props: OverrideContext) => sanitizeFromAiParameterName(props.parameter.displayName),
+		type: (props: OverrideContext) => this.fieldTypeToFromAiType(props),
 	};
 
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
@@ -73,7 +73,7 @@ export class FromAiOverride implements ParameterOverride {
 
 	extraPropValues: Partial<Record<FromAiOverrideExtraProps, NodeParameterValueType>> = {};
 
-	private fieldTypeToFromAiType(props: Context) {
+	private fieldTypeToFromAiType(props: OverrideContext) {
 		switch (props.parameter.type) {
 			case 'boolean':
 				return 'boolean';
@@ -86,23 +86,25 @@ export class FromAiOverride implements ParameterOverride {
 	}
 
 	static isOverrideValue(s: string) {
-		return s.startsWith(`={{ ${FromAiOverride.MARKER} $fromAI(`);
+		return s.startsWith(`={{ ${FromAiOverride.MARKER}$fromAI(`);
 	}
 
 	isOverrideValue = FromAiOverride.isOverrideValue;
 
-	buildValueFromOverride(props: Context, includeMarker: boolean) {
+	buildValueFromOverride(props: OverrideContext, includeMarker: boolean) {
 		const marker = includeMarker ? FromAiOverride.MARKER : '';
 		const key = this.providers.key(props);
 		const description =
 			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;
 		const type = this.providers.type(props);
 
-		return `={{ ${marker} $fromAI('${key}', '${description}', '${type}') }}`;
+		return `={{ ${marker}$fromAI('${key}', '${description}', '${type}') }}`;
 	}
 
-	parseOverrides(s: string): Record<keyof typeof this.extraProps, string | undefined> | null {
-		if (!this.isOverrideValue(s)) return null;
+	static parseOverrides(
+		s: string,
+	): Record<keyof FromAiOverride['extraProps'], string | undefined> | null {
+		if (!FromAiOverride.isOverrideValue(s)) return null;
 
 		try {
 			const calls = extractFromAICalls(s);
@@ -116,7 +118,12 @@ export class FromAiOverride implements ParameterOverride {
 		return null;
 	}
 
-	static canBeContentOverride(props: Context, nodeType: INodeTypeDescription | null) {
+	parseOverrides = FromAiOverride.parseOverrides;
+
+	static canBeContentOverride(
+		props: Pick<OverrideContext, 'path' | 'parameter'>,
+		nodeType: INodeTypeDescription | null,
+	) {
 		if (FromAiOverride.NODE_DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false))
 			return false;
 
@@ -131,7 +138,7 @@ export class FromAiOverride implements ParameterOverride {
 }
 
 export function makeOverrideValue(
-	context: Context,
+	context: OverrideContext,
 	nodeType: INodeTypeDescription | null,
 ): ParameterOverride | null {
 	if (!nodeType) return null;

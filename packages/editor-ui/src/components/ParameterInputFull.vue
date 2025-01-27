@@ -19,7 +19,7 @@ import {
 } from 'n8n-workflow';
 import { N8nButton, N8nInputLabel, N8nSelectableList, N8nTooltip } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
-import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
+import { type ParameterOverride, makeOverrideValue } from '../utils/parameterInputOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
