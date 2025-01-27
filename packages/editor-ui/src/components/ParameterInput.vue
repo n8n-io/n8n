@@ -837,6 +837,25 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 			parameter: props.parameter.name,
 		});
 	}
+	// Track workflow input data mode change
+	const isWorkflowInputParameter =
+		props.parameter.name === 'inputSource' && props.parameter.default === 'workflowInputs';
+	if (isWorkflowInputParameter) {
+		trackWorkflowInputModeEvent(value as string);
+	}
+}
+
+function trackWorkflowInputModeEvent(value: string) {
+	const telemetryValuesMap: Record<string, string> = {
+		workflowInputs: 'fields',
+		jsonExample: 'json',
+		passthrough: 'all',
+	};
+	telemetry.track('User chose input data mode', {
+		option: telemetryValuesMap[value],
+		workflow_id: workflowsStore.workflowId,
+		node_id: node.value?.id,
+	});
 }
 
 async function optionSelected(command: string) {

@@ -51,7 +51,7 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStorePinecone extends createVectorStoreNode({
+export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',
