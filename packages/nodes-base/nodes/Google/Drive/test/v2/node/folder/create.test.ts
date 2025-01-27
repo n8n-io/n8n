@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as create from '../../../../v2/actions/folder/create.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -15,12 +13,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: folder create', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	afterAll(() => {
-		nock.restore();
 		jest.unmock('../../../../v2/transport');
 	});
 

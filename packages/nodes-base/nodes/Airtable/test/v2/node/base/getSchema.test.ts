@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as getSchema from '../../../../v2/actions/base/getSchema.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -15,12 +13,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, base => getSchema', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	afterAll(() => {
-		nock.restore();
 		jest.unmock('../../../../v2/transport');
 	});
 

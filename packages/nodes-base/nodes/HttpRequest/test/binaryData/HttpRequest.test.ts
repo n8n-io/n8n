@@ -17,8 +17,6 @@ describe('Test Binary Data Download', () => {
 	beforeAll(async () => {
 		await initBinaryDataService();
 
-		nock.disableNetConnect();
-
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')
@@ -32,10 +30,6 @@ describe('Test Binary Data Download', () => {
 		nock(baseUrl).persist().get('/custom-content-disposition').reply(200, Buffer.from('testing'), {
 			'content-disposition': 'attachment; filename="testing.jpg"',
 		});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	const nodeTypes = setup(tests);

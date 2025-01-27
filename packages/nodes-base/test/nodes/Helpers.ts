@@ -36,7 +36,6 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
-import nock from 'nock';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -223,16 +222,6 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
 		testData = [testData];
-	}
-
-	if (testData.some((t) => !!t.nock)) {
-		beforeAll(() => {
-			nock.disableNetConnect();
-		});
-
-		afterAll(() => {
-			nock.restore();
-		});
 	}
 
 	const nodeTypes = new NodeTypes();

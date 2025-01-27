@@ -33,10 +33,6 @@ describe('Cron Node', () => {
 		},
 	});
 
-	afterAll(() => {
-		jest.resetAllMocks();
-	});
-
 	it('should return a function to trigger', async () => {
 		expect(await node.trigger.call(triggerFunctions)).toEqual({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

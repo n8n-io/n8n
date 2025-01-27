@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as update from '../../../../v2/actions/record/update.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -40,12 +38,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, update operation', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	afterAll(() => {
-		nock.restore();
 		jest.unmock('../../../../v2/transport');
 	});
 

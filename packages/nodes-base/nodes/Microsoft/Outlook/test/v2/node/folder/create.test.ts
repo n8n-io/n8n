@@ -1,5 +1,4 @@
 import type { INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
@@ -35,12 +34,7 @@ describe('Test MicrosoftOutlookV2, contact => folder', () => {
 	const workflows = ['nodes/Microsoft/Outlook/test/v2/node/folder/create.workflow.json'];
 	const tests = workflowToTests(workflows);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	afterAll(() => {
-		nock.restore();
 		jest.unmock('../../../../v2/transport');
 	});
 
