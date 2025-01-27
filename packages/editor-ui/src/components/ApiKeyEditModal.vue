@@ -194,6 +194,7 @@ const modalTitle = computed(() => {
 						type="text"
 						:placeholder="i18n.baseText('settings.api.view.modal.form.label.placeholder')"
 						:maxlength="50"
+						data-test-id="api-key-label"
 						@update:model-value="onInput"
 					/>
 				</N8nInputLabel>
