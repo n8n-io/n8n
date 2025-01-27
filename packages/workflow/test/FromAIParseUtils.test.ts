@@ -1,4 +1,8 @@
-import { extractFromAICalls, FromAIArgument, traverseNodeParameters } from '@/FromAIParseUtils';
+import {
+	extractFromAICalls,
+	type FromAIArgument,
+	traverseNodeParameters,
+} from '@/FromAIParseUtils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
 
