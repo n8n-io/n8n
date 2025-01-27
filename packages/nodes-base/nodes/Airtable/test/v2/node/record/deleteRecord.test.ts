@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as deleteRecord from '../../../../v2/actions/record/deleteRecord.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -15,19 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, deleteRecord operation', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
-	afterEach(() => {
-		jest.restoreAllMocks();
-	});
-
 	it('should delete a record', async () => {
 		const nodeParameters = {
 			operation: 'deleteRecord',
