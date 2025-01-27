@@ -41,11 +41,6 @@ jest.mock('../../../v2/transport', () => {
 describe('Test Google BigQuery V2, insert define manually', () => {
 	const workflows = ['nodes/Google/BigQuery/test/v2/node/insert.manualMode.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

@@ -40,11 +40,6 @@ describe('test GoogleDriveV2: file upload', () => {
 		jest.clearAllMocks();
 	});
 
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-		jest.unmock('../../../../v2/helpers/utils');
-	});
-
 	it('should upload buffers', async () => {
 		const nodeParameters = {
 			name: 'newFile.txt',

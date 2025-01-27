@@ -26,11 +26,6 @@ jest.mock('../../../../v2/transport', () => {
 describe('Test MicrosoftOutlookV2, folderMessage => getAll', () => {
 	const workflows = ['nodes/Microsoft/Outlook/test/v2/node/folderMessage/getAll.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

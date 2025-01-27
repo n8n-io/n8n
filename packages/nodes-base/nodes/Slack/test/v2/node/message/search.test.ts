@@ -218,11 +218,6 @@ jest.mock('../../../../V2/GenericFunctions', () => {
 describe('Test SlackV2, message => search', () => {
 	const workflows = ['nodes/Slack/test/v2/node/message/search.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../../../V2/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

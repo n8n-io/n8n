@@ -38,10 +38,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, update operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should update a record by id, autoMapInputData', async () => {
 		const nodeParameters = {
 			operation: 'update',

@@ -12,7 +12,6 @@ describe('Test RSS Feed Trigger Node', () => {
 	beforeAll(() => {
 		nock('https://lorem-rss.herokuapp.com').get('/feed?length=3').reply(200, feed);
 	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

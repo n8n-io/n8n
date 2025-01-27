@@ -22,10 +22,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: fileFolder search', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('returnAll = false', async () => {
 		const nodeParameters = {
 			searchMethod: 'name',

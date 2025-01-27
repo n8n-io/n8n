@@ -191,7 +191,6 @@ describe('Test HTTP Request Node', () => {
 				return getPaginationReturnData.call(this, limit, skip);
 			});
 	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

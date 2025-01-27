@@ -13,10 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: file createFromText', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'createFromText',

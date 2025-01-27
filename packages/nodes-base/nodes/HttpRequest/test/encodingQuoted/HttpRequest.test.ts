@@ -26,7 +26,6 @@ describe('Test Quoted Response Encoding', () => {
 			.get('/index.html')
 			.reply(200, payload, { 'content-type': 'text/plain; charset="latin1"' });
 	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

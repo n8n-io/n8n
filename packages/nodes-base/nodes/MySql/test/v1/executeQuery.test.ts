@@ -24,11 +24,6 @@ jest.mock('../../v1/GenericFunctions', () => {
 describe('Test MySqlV1, executeQuery', () => {
 	const workflows = ['nodes/MySql/test/v1/executeQuery.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../v1/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

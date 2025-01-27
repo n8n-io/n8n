@@ -30,7 +30,6 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 describe('Test MicrosoftTeamsV2, channel => get', () => {
 	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channel/get.workflow.json'];
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

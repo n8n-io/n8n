@@ -37,11 +37,6 @@ jest.mock('../../../../v2/transport', () => {
 describe('Test MicrosoftExcelV2, worksheet => append', () => {
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/append.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

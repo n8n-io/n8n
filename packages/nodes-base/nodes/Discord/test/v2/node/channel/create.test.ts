@@ -30,7 +30,6 @@ discordApiRequestSpy.mockImplementation(async (method: string) => {
 describe('Test DiscordV2, channel => create', () => {
 	const workflows = ['nodes/Discord/test/v2/node/channel/create.workflow.json'];
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

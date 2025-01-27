@@ -372,7 +372,6 @@ export const workflowToTests = (workflowFiles: string[]) => {
 
 export const testWorkflows = (workflows: string[]) => {
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

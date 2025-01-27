@@ -31,7 +31,6 @@ describe('Test Binary Data Download', () => {
 			'content-disposition': 'attachment; filename="testing.jpg"',
 		});
 	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

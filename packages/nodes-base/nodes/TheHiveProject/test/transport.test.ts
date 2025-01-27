@@ -16,10 +16,6 @@ jest.mock('../transport/requestApi', () => {
 const fakeExecuteFunction = {} as unknown as IExecuteFunctions;
 
 describe('Test TheHiveProject, theHiveApiQuery', () => {
-	afterAll(() => {
-		jest.unmock('../transport/requestApi');
-	});
-
 	it('should make list query request', async () => {
 		const scope = {
 			query: 'listOrganisationPage',

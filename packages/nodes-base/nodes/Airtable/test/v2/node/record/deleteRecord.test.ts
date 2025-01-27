@@ -13,14 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, deleteRecord operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
-	afterEach(() => {
-		jest.restoreAllMocks();
-	});
-
 	it('should delete a record', async () => {
 		const nodeParameters = {
 			operation: 'deleteRecord',

@@ -19,7 +19,6 @@ discordApiRequestSpy.mockImplementation(async (method: string) => {
 describe('Test DiscordV2, member => roleRemove', () => {
 	const workflows = ['nodes/Discord/test/v2/node/member/roleRemove.workflow.json'];
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

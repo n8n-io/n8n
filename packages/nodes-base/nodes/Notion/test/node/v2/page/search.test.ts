@@ -72,11 +72,6 @@ jest.mock('../../../../shared/GenericFunctions', () => {
 describe('Test NotionV2, page => search', () => {
 	const workflows = ['nodes/Notion/test/node/v2/page/search.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	afterAll(() => {
-		jest.unmock('../../../../shared/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

@@ -13,10 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: folder deleteFolder', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with PATCH', async () => {
 		const nodeParameters = {
 			resource: 'folder',

@@ -22,10 +22,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: drive list', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with limit', async () => {
 		const nodeParameters = {
 			resource: 'drive',

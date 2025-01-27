@@ -47,10 +47,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, search operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should return all records', async () => {
 		const nodeParameters = {
 			operation: 'search',

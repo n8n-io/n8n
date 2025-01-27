@@ -55,7 +55,6 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 describe('Test MicrosoftTeamsV2, chatMessage => create', () => {
 	const workflows = ['nodes/Microsoft/Teams/test/v2/node/chatMessage/create.workflow.json'];
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

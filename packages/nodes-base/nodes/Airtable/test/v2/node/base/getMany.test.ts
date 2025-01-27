@@ -31,10 +31,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, base => getMany', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should return all bases', async () => {
 		const nodeParameters = {
 			resource: 'base',

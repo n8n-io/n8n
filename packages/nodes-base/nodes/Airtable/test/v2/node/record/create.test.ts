@@ -13,13 +13,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, create operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
-	afterEach(() => {
-		jest.restoreAllMocks();
-	});
+	beforeEach(() => jest.clearAllMocks());
 
 	it('should create a record, autoMapInputData', async () => {
 		const nodeParameters = {

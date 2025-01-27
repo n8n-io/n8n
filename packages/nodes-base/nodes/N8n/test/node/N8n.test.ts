@@ -14,7 +14,6 @@ describe('Test N8n Node, expect base_url to be received from credentials', () =>
 		const baseUrl = 'https://test.app.n8n.cloud/api/v1';
 		nock(baseUrl).get('/workflows?tags=n8n-test').reply(200, {});
 	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

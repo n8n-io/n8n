@@ -23,10 +23,6 @@ jest.mock('uuid', () => {
 });
 
 describe('test GoogleDriveV2: drive create', () => {
-	afterAll(() => {
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with', async () => {
 		const nodeParameters = {
 			resource: 'drive',
