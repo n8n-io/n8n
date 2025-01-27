@@ -131,6 +131,18 @@ BQIDAQAB
 			},
 		},
 	},
+	microsoftExcelOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
+	microsoftTeamsOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
@@ -238,5 +250,8 @@ BQIDAQAB
 		host: 'https://api.baserow.io',
 		username: 'nathan@n8n.io',
 		password: 'fake-password',
+	},
+	discordWebhookApi: {
+		webhookUri: 'https://discord.com/webhook',
 	},
 } as const;

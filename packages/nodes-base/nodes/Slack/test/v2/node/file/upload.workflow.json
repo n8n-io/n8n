@@ -82,7 +82,7 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"test": "OK"
+					"id": "file_id"
 				}
 			}
 		]

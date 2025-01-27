@@ -1,6 +1,6 @@
-import { executeWorkflow } from '../ExecuteWorkflow';
-import * as Helpers from '../Helpers';
-import type { WorkflowTestData } from '../types';
+import type { WorkflowTestData } from 'n8n-workflow';
+
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Execute Start Node', () => {
 	const tests: WorkflowTestData[] = [
@@ -28,12 +28,10 @@ describe('Execute Start Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
 		test(testData.description, async () => {
 			// execute workflow
-			const { result, nodeExecutionOrder } = await executeWorkflow(testData, nodeTypes);
+			const { result, nodeExecutionOrder } = await executeWorkflow(testData);
 			// Check if the nodes did execute in the correct order
 			expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 			// Check if other data has correct value
