@@ -1,5 +1,4 @@
 import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
@@ -30,16 +29,6 @@ jest.mock('../../../../v2/transport', () => {
 describe('Test MicrosoftExcelV2, worksheet => deleteWorksheet', () => {
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/deleteWorksheet.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
