@@ -68,9 +68,17 @@ describe('Credentials', () => {
 
 		test('should throw an error when decryption fails', () => {
 			const credentials = new Credentials(nodeCredentials, credentialType);
-			credentials.data = 'invalid-credentials-data';
+			credentials.data = '{"key": "already-decrypted-credentials-data" }';
 
 			expect(() => credentials.getData()).toThrow(CREDENTIAL_ERRORS.DECRYPTION_FAILED);
+
+			try {
+				credentials.getData();
+			} catch (error) {
+				expect(error.constructor.name).toBe('CredentialDataError');
+				expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
+				expect((error.cause.code as string).startsWith('ERR_OSSL_')).toBe(true);
+			}
 		});
 
 		test('should throw an error when JSON parsing fails', () => {
