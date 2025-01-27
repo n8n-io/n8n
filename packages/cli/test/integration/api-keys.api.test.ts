@@ -81,6 +81,17 @@ describe('Owner shell', () => {
 		});
 	});
 
+	test('POST /api-keys should fail if max number of API keys reached', async () => {
+		await testServer.authAgentFor(ownerShell).post('/api-keys').send({ label: 'My API Key' });
+
+		const secondApiKey = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
+
+		expect(secondApiKey.statusCode).toBe(400);
+	});
+
 	test('GET /api-keys should fetch the api key redacted', async () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
@@ -154,6 +165,17 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
+	});
+
+	test('POST /api-keys should fail if max number of API keys reached', async () => {
+		await testServer.authAgentFor(member).post('/api-keys').send({ label: 'My API Key' });
+
+		const secondApiKey = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
+
+		expect(secondApiKey.statusCode).toBe(400);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
