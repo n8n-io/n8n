@@ -7,7 +7,13 @@ import { N8nText } from 'n8n-design-system';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeConnectionType, type IConnectedNode, type IDataObject } from 'n8n-workflow';
+import {
+	createResultError,
+	createResultOk,
+	NodeConnectionType,
+	type IConnectedNode,
+	type IDataObject,
+} from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import MappingPill from './MappingPill.vue';
@@ -23,6 +29,8 @@ import {
 } from 'vue-virtual-scroller';
 
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -55,6 +63,7 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const schemaPreviewStore = useSchemaPreviewStore();
 const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
@@ -105,9 +114,32 @@ const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	};
 };
 
-const nodeSchema = computed(() =>
-	filterSchema(getSchemaForExecutionData(props.data), props.search),
-);
+const nodeSchema = asyncComputed(async () => {
+	if (props.data.length === 0) {
+		const previewSchema = await getPreviewSchema();
+		if (previewSchema.ok) {
+			return filterSchema(previewSchema.result, props.search);
+		}
+	}
+
+	return filterSchema(getSchemaForExecutionData(props.data), props.search);
+});
+
+async function getPreviewSchema() {
+	if (!props.node) return createResultError(new Error());
+	const {
+		type,
+		typeVersion,
+		parameters: { resource, operation },
+	} = props.node;
+
+	return await schemaPreviewStore.getSchemaPreview({
+		nodeName: type,
+		version: typeVersion,
+		resource: resource as string,
+		operation: operation as string,
+	});
+}
 
 const nodesSchemas = computed<SchemaNode[]>(() => {
 	return props.nodes.reduce<SchemaNode[]>((acc, node) => {

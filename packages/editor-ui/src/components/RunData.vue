@@ -81,6 +81,8 @@ import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useUIStore } from '@/stores/ui.store';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -181,6 +183,7 @@ const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
 const route = useRoute();
@@ -542,6 +545,22 @@ const hasInputOverwrite = computed((): boolean => {
 	}
 	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
 	return Boolean(taskData?.inputOverride);
+});
+
+const hasPreviewSchema = asyncComputed(async () => {
+	if (!node.value) return false;
+	const {
+		type,
+		typeVersion,
+		parameters: { resource, operation },
+	} = node.value;
+	const preview = await schemaPreviewStore.getSchemaPreview({
+		nodeName: type,
+		version: typeVersion,
+		resource: resource as string,
+		operation: operation as string,
+	});
+	return preview.ok;
 });
 
 watch(node, (newNode, prevNode) => {
@@ -1346,7 +1365,8 @@ defineExpose({ enterEditMode });
 
 				<N8nRadioButtons
 					v-show="
-						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
+						hasPreviewSchema ||
+						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
 					"
 					:model-value="displayMode"
 					:options="displayModes"
@@ -1590,7 +1610,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled) && !hasPreviewSchema"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
@@ -1781,7 +1801,7 @@ defineExpose({ enterEditMode });
 				<LazyRunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && isSchemaView">
+			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"

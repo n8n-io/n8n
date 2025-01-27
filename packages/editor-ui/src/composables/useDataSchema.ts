@@ -13,6 +13,7 @@ import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
+import type { JsonSchema } from '@n8n/json-schema-to-zod';
 
 export function useDataSchema() {
 	function getSchema(
@@ -65,6 +66,45 @@ export function useDataSchema() {
 		const [head, ...tail] = data;
 
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
+	}
+
+	function getSchemaForJsonSchema(schema: JsonSchema) {
+		let output: Schema = { type: 'undefined', value: 'undefined', path: '' };
+
+		if (typeof schema === 'boolean') return output;
+
+		if (schema.type === 'object' && schema.properties) {
+			output = {
+				type: 'object',
+				value: Object.entries(schema.properties).map(([key, subSchema]) => {
+					const subPath = generatePath(path, [key]);
+					return {
+						key,
+						...getSchemaForJsonSchema(subSchema as JsonSchema, subPath),
+					};
+				}),
+				path,
+			};
+		} else if (schema.type === 'array' && schema.items) {
+			output = {
+				type: 'array',
+				value: [
+					{
+						key: '0',
+						...getSchemaForJsonSchema(schema.items as JsonSchema, `${path}[0]`),
+					},
+				],
+				path,
+			};
+		} else if (schema.type) {
+			output = {
+				type: schema.type,
+				value: schema.default !== undefined ? String(schema.default) : '',
+				path,
+			};
+		}
+
+		return output;
 	}
 
 	// Returns the data of the main input
