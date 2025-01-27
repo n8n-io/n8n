@@ -21,6 +21,7 @@ import { N8nButton, N8nInputLabel, N8nSelectableList, N8nTooltip } from 'n8n-des
 import AiStarsIcon from './AiStarsIcon.vue';
 import { type ParameterOverride, makeOverrideValue } from '../utils/parameterOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	parameter: INodeProperties;
@@ -62,6 +63,7 @@ const forceShowExpression = ref(false);
 
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 
 const node = computed(() => ndvStore.activeNode);
 const parameterOverrides = ref<ParameterOverride | null>(
@@ -238,10 +240,26 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
 );
 
-function updateOverriddenValue() {
+function applyOverride() {
+	telemetry.track('User turned on fromAI override', {
+		nodeType: node.value?.type,
+		parameter: props.path,
+	});
 	valueChanged({
 		name: props.path,
 		value: parameterOverrides.value?.buildValueFromOverride(props, true),
+	});
+}
+
+function removeOverride() {
+	telemetry.track('User turned off fromAI override', {
+		nodeType: node.value?.type,
+		parameter: props.path,
+	});
+	valueChanged({
+		node: node.value?.name,
+		name: props.path,
+		value: parameterOverrides.value?.buildValueFromOverride(props, false),
 	});
 }
 </script>
@@ -271,7 +289,7 @@ function updateOverriddenValue() {
 				<N8nButton
 					:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
 					type="tertiary"
-					@click="updateOverriddenValue"
+					@click="applyOverride"
 				>
 					<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 				</N8nButton>
@@ -314,19 +332,11 @@ function updateOverriddenValue() {
 					<N8nIconButton
 						v-if="!isReadOnly"
 						type="tertiary"
-						:class="['n8n-input', $style.overrideCloseButton]"
+						:class="['n8n-input', $style.overrideInput, $style.overrideCloseButton]"
 						outline="false"
 						icon="xmark"
 						size="xsmall"
-						@click="
-							() => {
-								valueChanged({
-									node: node?.name,
-									name: props.path,
-									value: parameterOverrides?.buildValueFromOverride(props, false),
-								});
-							}
-						"
+						@click="removeOverride"
 					/>
 				</div>
 				<div v-else>
@@ -362,11 +372,7 @@ function updateOverriddenValue() {
 									</div>
 								</template>
 
-								<N8nButton
-									:class="[$style.overrideButton]"
-									type="tertiary"
-									@click="updateOverriddenValue"
-								>
+								<N8nButton :class="[$style.overrideButton]" type="tertiary" @click="applyOverride">
 									<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
 								</N8nButton>
 							</N8nTooltip>
@@ -421,7 +427,7 @@ function updateOverriddenValue() {
 					@update="
 						(x) => {
 							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value;
-							updateOverriddenValue();
+							applyOverride();
 						}
 					"
 				/>
@@ -452,9 +458,9 @@ function updateOverriddenValue() {
 	padding: 0px 8px 3px; // the icon used is off-center vertically
 	border: 0px;
 	color: var(--color-text-base);
-	:hover {
-		background-color: none;
-	}
+
+	--button-hover-background-color: transparent;
+	--button-active-background-color: transparent;
 }
 
 .overrideButton {
