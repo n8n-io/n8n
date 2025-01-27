@@ -171,7 +171,7 @@ watch(
 			v-model:name="state.name"
 			v-model:description="state.description"
 			v-model:tags="state.tags"
-			:has-runs="hasRuns"
+			:show-config-toggle="hasRuns"
 			:is-saving="isSaving"
 			:get-field-issues="getFieldIssues"
 			:start-editing="startEditing"

@@ -6,7 +6,7 @@ import type { EditableField, EditableFormState } from '@/components/TestDefiniti
 import { computed } from 'vue';
 
 const props = defineProps<{
-	hasRuns: boolean;
+	showConfigToggle: boolean;
 	isSaving: boolean;
 	showConfig: boolean;
 	runTestEnabled: boolean;
@@ -64,7 +64,7 @@ const showSavingIndicator = computed(() => {
 		</div>
 		<div :class="$style.controls">
 			<N8nButton
-				v-if="props.hasRuns"
+				v-if="props.showConfigToggle"
 				size="small"
 				:icon="showConfig ? 'eye-slash' : 'eye'"
 				data-test-id="toggle-config-button"

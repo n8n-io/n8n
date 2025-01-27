@@ -24,6 +24,14 @@ defineProps<{
 }>();
 
 const changedFieldsKeys = ref<string[]>([]);
+const activeTooltip = ref<string | null>(null);
+const tooltipPosition = ref<{
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	right: number;
+} | null>(null);
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
 const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']>(
 	'evaluationWorkflow',
@@ -49,6 +57,25 @@ function updateChangedFieldsKeys(key: string) {
 function showFieldIssues(fieldKey: string) {
 	return changedFieldsKeys.value.includes(fieldKey);
 }
+
+function showTooltip(event: MouseEvent, tooltip: string) {
+	const container = event.target as HTMLElement;
+	const containerRect = container.getBoundingClientRect();
+
+	activeTooltip.value = tooltip;
+	tooltipPosition.value = {
+		x: containerRect.right,
+		y: containerRect.top,
+		width: containerRect.width,
+		height: containerRect.height,
+		right: window.innerWidth,
+	};
+}
+
+function hideTooltip() {
+	activeTooltip.value = null;
+	tooltipPosition.value = null;
+}
 </script>
 
 <template>
@@ -65,9 +92,12 @@ function showFieldIssues(fieldKey: string) {
 					adjustToNumber: tagUsageCount,
 				})
 			"
-			:description="locale.baseText('testDefinition.edit.step.executions.description')"
 			:issues="getFieldIssues('tags')"
 			:show-issues="showFieldIssues('tags')"
+			@mouseenter="
+				showTooltip($event, locale.baseText('testDefinition.edit.step.executions.tooltip'))
+			"
+			@mouseleave="hideTooltip"
 		>
 			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 			<template #cardContent>
@@ -100,9 +130,10 @@ function showFieldIssues(fieldKey: string) {
 			"
 			:small="true"
 			:expanded="true"
-			:description="locale.baseText('testDefinition.edit.step.nodes.description')"
 			:issues="getFieldIssues('mockedNodes')"
 			:show-issues="showFieldIssues('mockedNodes')"
+			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
+			@mouseleave="hideTooltip"
 		>
 			<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 			<template #cardContent>
@@ -121,7 +152,10 @@ function showFieldIssues(fieldKey: string) {
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
 			:small="true"
-			:description="locale.baseText('testDefinition.edit.step.reRunExecutions.description')"
+			@mouseenter="
+				showTooltip($event, locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip'))
+			"
+			@mouseleave="hideTooltip"
 		>
 			<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 		</EvaluationStep>
@@ -130,9 +164,12 @@ function showFieldIssues(fieldKey: string) {
 		<EvaluationStep
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
-			:description="locale.baseText('testDefinition.edit.step.compareExecutions.description')"
 			:issues="getFieldIssues('evaluationWorkflow')"
 			:show-issues="showFieldIssues('evaluationWorkflow')"
+			@mouseenter="
+				showTooltip($event, locale.baseText('testDefinition.edit.step.compareExecutions.tooltip'))
+			"
+			@mouseleave="hideTooltip"
 		>
 			<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 			<template #cardContent>
@@ -148,9 +185,11 @@ function showFieldIssues(fieldKey: string) {
 		<EvaluationStep
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.metrics')"
-			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
 			:issues="getFieldIssues('metrics')"
 			:show-issues="showFieldIssues('metrics')"
+			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
+			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.metrics.tooltip'))"
+			@mouseleave="hideTooltip"
 		>
 			<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 			<template #cardContent>
@@ -165,14 +204,31 @@ function showFieldIssues(fieldKey: string) {
 
 		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
 			<template #header>
-				<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
+				<N8nHeading size="large" :bold="true">{{
 					locale.baseText('testDefinition.edit.selectNodes')
 				}}</N8nHeading>
+				<br />
+				<N8nText :class="$style.modalDescription">{{
+					locale.baseText('testDefinition.edit.modal.description')
+				}}</N8nText>
 			</template>
 			<template #content>
 				<NodesPinning v-model="mockedNodes" data-test-id="nodes-pinning-modal" />
 			</template>
 		</Modal>
+
+		<div
+			v-if="tooltipPosition"
+			:class="$style.customTooltip"
+			:style="{
+				left: `${tooltipPosition.x}px`,
+				top: `${tooltipPosition.y}px`,
+				width: `${tooltipPosition.right - tooltipPosition.x}px`,
+				height: `${tooltipPosition.height}px`,
+			}"
+		>
+			{{ activeTooltip }}
+		</div>
 	</div>
 </template>
 
@@ -182,10 +238,12 @@ function showFieldIssues(fieldKey: string) {
 	display: grid;
 	height: 100%;
 	overflow-y: auto;
+	overflow-x: visible;
 	flex-shrink: 0;
 	padding-bottom: var(--spacing-l);
 	margin-left: var(--spacing-2xl);
 	transition: width 0.2s ease;
+	position: relative;
 
 	&.hidden {
 		margin-left: 0;
@@ -197,6 +255,18 @@ function showFieldIssues(fieldKey: string) {
 	.noRuns & {
 		overflow-y: initial;
 	}
+}
+
+.customTooltip {
+	position: fixed;
+	z-index: 1000;
+	padding: var(--spacing-xs);
+	max-width: 25rem;
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size-xs);
+	color: var(--color-text-light);
+	line-height: 1rem;
 }
 
 .panelIntro {

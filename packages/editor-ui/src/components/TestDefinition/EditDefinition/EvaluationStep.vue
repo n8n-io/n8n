@@ -11,6 +11,7 @@ interface EvaluationStep {
 	description?: string;
 	issues?: Array<{ field: string; message: string }>;
 	showIssues?: boolean;
+	tooltip?: string;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -20,12 +21,14 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	expanded: true,
 	issues: () => [],
 	showIssues: true,
+	tooltip: 'Some tooltip',
 });
 
 const locale = useI18n();
 const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const showTooltip = ref(false);
 
 const toggleExpand = async () => {
 	isExpanded.value = !isExpanded.value;
@@ -36,6 +39,15 @@ const toggleExpand = async () => {
 		}
 	}
 };
+
+const handleMouseEnter = () => {
+	if (!props.tooltip) return;
+	showTooltip.value = true;
+};
+
+const handleMouseLeave = () => {
+	showTooltip.value = false;
+};
 </script>
 
 <template>
@@ -43,6 +55,8 @@ const toggleExpand = async () => {
 		ref="containerRef"
 		:class="[$style.evaluationStep, small && $style.small]"
 		data-test-id="evaluation-step"
+		@mouseenter="handleMouseEnter"
+		@mouseleave="handleMouseLeave"
 	>
 		<div :class="$style.content">
 			<div :class="$style.header">
@@ -95,7 +109,7 @@ const toggleExpand = async () => {
 	border: var(--border-base);
 	width: 100%;
 	color: var(--color-text-dark);
-
+	position: relative;
 	&.small {
 		width: 80%;
 		margin-left: auto;
@@ -160,5 +174,16 @@ const toggleExpand = async () => {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	line-height: 1rem;
+}
+
+.customTooltip {
+	position: absolute;
+	left: 0;
+	background: var(--color-background-dark);
+	color: var(--color-text-light);
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+	border-radius: var(--border-radius-base);
+	font-size: var(--font-size-2xs);
+	pointer-events: none;
 }
 </style>

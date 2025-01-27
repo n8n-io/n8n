@@ -9,7 +9,7 @@ const locale = useI18n();
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<h1>{{ locale.baseText('testDefinition.list.tests') }}</h1>
+			<N8nHeading size="xlarge">{{ locale.baseText('testDefinition.list.tests') }}</N8nHeading>
 		</div>
 		<div :class="$style.content">
 			<n8n-action-box

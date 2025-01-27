@@ -4,7 +4,7 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { deepCopy, type ExecutionSummary } from 'n8n-workflow';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
@@ -73,14 +73,18 @@ watch(
 		if (!value) {
 			return;
 		}
-
+		const currentQuery = deepCopy(router.currentRoute.value.query);
 		router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: props.workflow.id, executionId: value.id },
+				query: currentQuery,
 			})
 			.catch(() => {});
 	},
+	// We only run this watcher once, to update the route when props.execution changes from undefined to a value
+	// other navigation is handled by RouterLink in the WorkflowExecutionCard
+	{ once: true },
 );
 
 onBeforeRouteLeave(async (to, _, next) => {
