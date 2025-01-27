@@ -1,10 +1,85 @@
 <html>
-	<script>
-		(function messageParent() {
-			const broadcastChannel = new BroadcastChannel('oauth-callback');
-			broadcastChannel.postMessage('success');
-		})();
-	</script>
+	<head>
+		<style>
+			html {
+				font-size: 16px;
+			}
+			body {
+				font-family: sans-serif;
+			}
 
-	Got connected. The window can be closed now.
+			.center-container {
+				display: flex;
+				align-items: center;
+				height: 100vh
+			}
+
+			.left-container {
+				margin-left: auto;
+				margin-right: auto;
+				display: flex;
+				flex-direction: column;
+			}
+			.row {
+				display: flex;
+				flex-direction: row;
+				gap: 20px;
+			}
+
+			.icon {
+				width: 2.5rem;
+				fill: #2AA568;
+			}
+
+			.logo {
+				width: 8rem;
+			}
+
+			h1 {
+				font-size: 2.5rem;
+				color: #0F1430;
+			}
+
+			p {
+				font-size: 1.5rem;
+				font-weight: 500;
+				color: #707183;
+				font-size: 1.1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="center-container">
+			<div class="left-container">
+				<div class="row">
+					<img src="{{imagePath}}" class="logo" />
+				</div>
+				<div class="row">
+					<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 512 512"
+							class="icon"
+					>
+							<!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+							<path
+									d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"
+							/>
+					</svg>
+					<h1>Connection successful</h1>
+				</div>
+				<div class="row">
+					<p>This window will close automatically in 5 seconds.</p>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			(function messageParent() {
+				const broadcastChannel = new BroadcastChannel('oauth-callback');
+				broadcastChannel.postMessage('success');
+			})();
+			(function autoclose(){
+				setTimeout(function() { window.close(); }, 5000);
+			})();
+		</script>
+	</body>
 </html>

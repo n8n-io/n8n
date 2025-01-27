@@ -145,6 +145,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
+	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
 
@@ -1638,6 +1639,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeMetadata,
 		isInDebugMode,
 		chatMessages,
+		chatPartialExecutionDestinationNode,
 		workflowName,
 		workflowId,
 		workflowVersionId,

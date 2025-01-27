@@ -110,7 +110,10 @@ describe('NDV', () => {
 		ndv.actions.execute();
 		ndv.getters
 			.nodeRunErrorMessage()
-			.should('have.text', 'Info for expression missing from previous node');
+			.should(
+				'have.text',
+				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+			);
 		ndv.getters
 			.nodeRunErrorDescription()
 			.should(
@@ -245,6 +248,15 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
+
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
 
 		ndv.getters
 			.inputRunSelector()

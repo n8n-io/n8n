@@ -1,12 +1,13 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import {
 	getSendAndWaitProperties,
 	getSendAndWaitConfig,
 	createEmail,
 	sendAndWaitWebhook,
+	configureWaitTillDate,
 } from '../utils';
 
 describe('Send and Wait utils tests', () => {
@@ -240,6 +241,7 @@ describe('Send and Wait utils tests', () => {
 				validForm: true,
 				formTitle: '',
 				formDescription: 'Test message',
+				formDescriptionMetadata: 'Test message',
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
@@ -318,6 +320,7 @@ describe('Send and Wait utils tests', () => {
 				validForm: true,
 				formTitle: 'Test title',
 				formDescription: 'Test description',
+				formDescriptionMetadata: 'Test description',
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
@@ -365,5 +368,102 @@ describe('Send and Wait utils tests', () => {
 
 			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
 		});
+	});
+});
+
+describe('configureWaitTillDate', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should return WAIT_INDEFINITELY if limitWaitTime is empty', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		const result = configureWaitTillDate(mockExecuteFunctions);
+		expect(result).toBe(WAIT_INDEFINITELY);
+	});
+
+	it('should calculate future date correctly for afterTimeInterval with minutes', () => {
+		const resumeAmount = 5;
+		const resumeUnit = 'minutes';
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
+			limitType: 'afterTimeInterval',
+			resumeAmount,
+			resumeUnit,
+		});
+
+		const result = configureWaitTillDate(mockExecuteFunctions);
+		const expectedDate = new Date(new Date().getTime() + 5 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2); // Allowing 100ms difference
+	});
+
+	it('should calculate future date correctly for afterTimeInterval with hours', () => {
+		const resumeAmount = 2;
+		const resumeUnit = 'hours';
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
+			limitType: 'afterTimeInterval',
+			resumeAmount,
+			resumeUnit,
+		});
+
+		const result = configureWaitTillDate(mockExecuteFunctions);
+		const expectedDate = new Date(new Date().getTime() + 2 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should calculate future date correctly for afterTimeInterval with days', () => {
+		const resumeAmount = 1;
+		const resumeUnit = 'days';
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
+			limitType: 'afterTimeInterval',
+			resumeAmount,
+			resumeUnit,
+		});
+
+		const result = configureWaitTillDate(mockExecuteFunctions);
+		const expectedDate = new Date(new Date().getTime() + 1 * 24 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should return the specified maxDateAndTime for maxDateAndTime limitType', () => {
+		const maxDateAndTime = '2023-12-31T23:59:59Z';
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
+			limitType: 'maxDateAndTime',
+			maxDateAndTime,
+		});
+
+		const result = configureWaitTillDate(mockExecuteFunctions);
+		expect(result).toEqual(new Date(maxDateAndTime));
+	});
+
+	it('should throw NodeOperationError for invalid maxDateAndTime format', () => {
+		const invalidMaxDateAndTime = 'invalid-date';
+		mockExecuteFunctions.getNodeParameter.mockReturnValue({
+			limitType: 'maxDateAndTime',
+			maxDateAndTime: invalidMaxDateAndTime,
+		});
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(NodeOperationError);
+		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(
+			'Could not configure Limit Wait Time',
+		);
+	});
+
+	it('should throw NodeOperationError for invalid resumeAmount or resumeUnit', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue({
+			limitType: 'afterTimeInterval',
+			resumeAmount: 'invalid',
+			resumeUnit: 'minutes',
+		});
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(NodeOperationError);
+		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(
+			'Could not configure Limit Wait Time',
+		);
 	});
 });
