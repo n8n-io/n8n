@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError, type Workflow } from 'n8n-workflow';
 
-import { objectToError } from '../workflow-execute-additional-data';
+import { objectToError } from '../object-to-error';
 
 describe('objectToError', () => {
 	describe('node error handling', () => {

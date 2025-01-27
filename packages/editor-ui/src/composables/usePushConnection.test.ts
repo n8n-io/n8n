@@ -35,8 +35,6 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.useFakeTimers();
-
 describe('usePushConnection()', () => {
 	let router: ReturnType<typeof useRouter>;
 	let pushStore: ReturnType<typeof usePushConnectionStore>;
