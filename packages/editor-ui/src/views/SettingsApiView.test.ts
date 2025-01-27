@@ -68,12 +68,38 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
+		expect(screen.getByText('Edit')).toBeInTheDocument();
+		expect(screen.getByText('Delete')).toBeInTheDocument();
+	});
+
+	it('should show delete warning when trying to delete an API key', async () => {
+		settingsStore.isPublicApiEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			{
+				id: '1',
+				label: 'test-key-1',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Atcr',
+			},
+		];
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.getByText(/Created \d+ seconds ago/)).toBeInTheDocument();
+		expect(screen.getByText('****Atcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-1')).toBeInTheDocument();
+
 		await fireEvent.click(screen.getByTestId('action-toggle'));
 		await fireEvent.click(screen.getByTestId('action-delete'));
 
-		// expect(screen.getByText('Delete this API Key?')).toBeInTheDocument();
-
-		expect(screen.getByText('Edit')).toBeInTheDocument();
-		expect(screen.getByText('Delete')).toBeInTheDocument();
+		expect(screen.getByText('Delete this API Key?')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'Any application using this API Key will no longer have access to n8n. This operation cannot be undone.',
+			),
+		).toBeInTheDocument();
+		expect(screen.getByText('Cancel')).toBeInTheDocument();
 	});
 });
