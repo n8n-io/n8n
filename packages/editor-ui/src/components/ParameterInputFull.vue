@@ -241,7 +241,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 function updateOverriddenValue() {
 	valueChanged({
 		name: props.path,
-		value: parameterOverrides.value?.buildValueFromOverride(props, false),
+		value: parameterOverrides.value?.buildValueFromOverride(props, true),
 	});
 }
 </script>
@@ -323,7 +323,7 @@ function updateOverriddenValue() {
 								valueChanged({
 									node: node?.name,
 									name: props.path,
-									value: parameterOverrides?.buildValueFromOverride(props, true),
+									value: parameterOverrides?.buildValueFromOverride(props, false),
 								});
 							}
 						"
@@ -452,6 +452,9 @@ function updateOverriddenValue() {
 	padding: 0px 8px 3px; // the icon used is off-center vertically
 	border: 0px;
 	color: var(--color-text-base);
+	:hover {
+		background-color: none;
+	}
 }
 
 .overrideButton {

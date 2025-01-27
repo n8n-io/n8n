@@ -1,4 +1,9 @@
-import type { INodeTypeDescription, NodeParameterValueType, NodePropertyTypes } from 'n8n-workflow';
+import {
+	extractFromAICalls,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type NodePropertyTypes,
+} from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 
 export interface ParameterOverride {
@@ -86,35 +91,29 @@ export class FromAiOverride implements ParameterOverride {
 
 	isOverrideValue = FromAiOverride.isOverrideValue;
 
-	buildValueFromOverride(props: Context, excludeMarker: boolean) {
-		const { key, type } = this.providers;
-		return `={{ ${excludeMarker ? '' : FromAiOverride.MARKER} $fromAI('${key(props)}', '${this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue}', '${type(props)}') }}`;
+	buildValueFromOverride(props: Context, includeMarker: boolean) {
+		const marker = includeMarker ? FromAiOverride.MARKER : '';
+		const key = this.providers.key(props);
+		const description =
+			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;
+		const type = this.providers.type(props);
+
+		return `={{ ${marker} $fromAI('${key}', '${description}', '${type}') }}`;
 	}
 
 	parseOverrides(s: string): Record<keyof typeof this.extraProps, string | undefined> | null {
-		/*
-			Approaches:
-			- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts - unclear where to move it
-			- Fun and dangerous: Use eval, see below
-		*/
 		if (!this.isOverrideValue(s)) return null;
 
-		const fromAI = (...args: unknown[]) => args;
-		const fns = `const $fromAI = ${fromAI}; const $fromAi = ${fromAI}; const $fromai = ${fromAI};`;
-		const cursor = '={{ /* n8n-auto-generated-override */ '.length;
-		const end = '}}'.length;
-
-		let params: unknown[] = [];
 		try {
-			// `eval?.` is an indirect evaluation, outside of local scope
-			const code = `${fns} ${s.slice(cursor, -end)}`;
-			params = eval?.(code) ?? [];
+			const calls = extractFromAICalls(s);
+			if (calls.length === 1) {
+				return {
+					description: calls[0].description,
+				};
+			}
 		} catch (e) {}
-		return {
-			// key: params[0],
-			description: params[1] as string | undefined,
-			// type: params[2],
-		};
+
+		return null;
 	}
 
 	static canBeContentOverride(props: Context, nodeType: INodeTypeDescription | null) {
