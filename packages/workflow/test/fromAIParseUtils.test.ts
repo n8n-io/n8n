@@ -1,4 +1,4 @@
-import { extractFromAICalls } from '@/FromAIParseUtils';
+import { extractFromAICalls, FromAIArgument, traverseNodeParameters } from '@/FromAIParseUtils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
 
@@ -50,4 +50,31 @@ describe('extractFromAICalls', () => {
 
 		expect(extractFromAICalls(code)).toEqual([]);
 	});
+});
+
+describe('traverseNodeParameters', () => {
+	test.each<[string | string[] | Record<string, string>, [unknown, unknown, unknown, unknown]]>([
+		['$fromAI("a", "b", "string")', ['a', 'b', 'string', undefined]],
+		['$fromAI("a", "b", "number", 5)', ['a', 'b', 'number', 5]],
+		['{{ $fromAI("a", "b", "boolean") }}', ['a', 'b', 'boolean', undefined]],
+		[{ a: '{{ $fromAI("a", "b", "boolean") }}', b: 'five' }, ['a', 'b', 'boolean', undefined]],
+		[
+			['red', '{{ $fromAI("a", "b", "boolean") }}'],
+			['a', 'b', 'boolean', undefined],
+		],
+	])(
+		'should parse args as expected for %s',
+		(parameters, [key, description, type, defaultValue]) => {
+			const out: FromAIArgument[] = [];
+			traverseNodeParameters(parameters, out);
+			expect(out).toEqual([
+				{
+					key,
+					description,
+					type,
+					defaultValue,
+				},
+			]);
+		},
+	);
 });
