@@ -46,7 +46,7 @@ function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflo
 	for (const hooks of hookFunctions) {
 		for (const key in hooks) {
 			if (!result[key] || !hooks[key]) continue;
-			result[key]?.push(...hooks[key]);
+			result[key].push(...hooks[key]);
 		}
 	}
 	return result;
@@ -220,6 +220,7 @@ function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 	};
 }
 
+/** This should ideally be added before any other `workflowExecuteAfter` hook to ensure all hooks get the same execution status */
 function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
 	return {
 		workflowExecuteAfter: [
@@ -469,7 +470,7 @@ export function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	userId: string | undefined,
+	userId?: string,
 ): WorkflowHooks {
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(userId),

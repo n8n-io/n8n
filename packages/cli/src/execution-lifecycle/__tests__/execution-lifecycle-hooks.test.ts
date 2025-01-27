@@ -104,7 +104,7 @@ describe('Execution Lifecycle Hooks', () => {
 		};
 	});
 
-	const workflowTelemetryTests = () => {
+	const workflowEventTests = () => {
 		describe('workflowExecuteBefore', () => {
 			it('should emit workflow-pre-execute events', async () => {
 				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
@@ -129,7 +129,7 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	};
 
-	const nodeTelemetryTests = () => {
+	const nodeEventsTests = () => {
 		describe('nodeExecuteBefore', () => {
 			it('should emit node-pre-execute event', async () => {
 				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
@@ -172,8 +172,8 @@ describe('Execution Lifecycle Hooks', () => {
 			);
 		});
 
-		workflowTelemetryTests();
-		nodeTelemetryTests();
+		workflowEventTests();
+		nodeEventsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -506,7 +506,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
-		workflowTelemetryTests();
+		workflowEventTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -583,7 +583,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
-		nodeTelemetryTests();
+		nodeEventsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -678,8 +678,8 @@ describe('Execution Lifecycle Hooks', () => {
 			hooks = getWorkflowHooksIntegrated(executionMode, executionId, workflowData, undefined);
 		});
 
-		workflowTelemetryTests();
-		nodeTelemetryTests();
+		workflowEventTests();
+		nodeEventsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
