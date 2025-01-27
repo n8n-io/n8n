@@ -9,6 +9,9 @@ import type { InstanceSettings } from '@/instance-settings';
 import { Credentials } from '../credentials';
 
 describe('Credentials', () => {
+	const nodeCredentials = { id: '123', name: 'Test Credential' };
+	const credentialType = 'testApi';
+
 	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
 	Container.set(Cipher, cipher);
 
@@ -25,7 +28,7 @@ describe('Credentials', () => {
 
 	describe('without nodeType set', () => {
 		test('should be able to set and read key data without initial data set', () => {
-			const credentials = new Credentials({ id: null, name: 'testCredential' }, 'testType');
+			const credentials = new Credentials(nodeCredentials, credentialType);
 
 			const key = 'key1';
 			const newData = 1234;
@@ -42,11 +45,7 @@ describe('Credentials', () => {
 			const initialData = 4321;
 			const initialDataEncoded = 'U2FsdGVkX1+0baznXt+Ag/ub8A2kHLyoLxn/rR9h4XQ=';
 
-			const credentials = new Credentials(
-				{ id: null, name: 'testName' },
-				'testType',
-				initialDataEncoded,
-			);
+			const credentials = new Credentials(nodeCredentials, credentialType, initialDataEncoded);
 
 			const newData = 1234;
 
@@ -60,9 +59,6 @@ describe('Credentials', () => {
 	});
 
 	describe('getData', () => {
-		const nodeCredentials = { id: '123', name: 'Test Credential' };
-		const credentialType = 'testApi';
-
 		test('should throw an error when data is missing', () => {
 			const credentials = new Credentials(nodeCredentials, credentialType);
 			credentials.data = undefined;
