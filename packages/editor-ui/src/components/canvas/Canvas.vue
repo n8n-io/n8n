@@ -85,7 +85,6 @@ const props = withDefaults(
 		readOnly?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
-		showBugReportingButton?: boolean;
 		loading?: boolean;
 	}>(),
 	{
@@ -218,8 +217,9 @@ const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
-	'shift_+|+|=': async () => await onZoomIn(),
-	'shift+_|-|_': async () => await onZoomOut(),
+	// Support both key and code for zooming in and out
+	'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
+	'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
 	0: async () => await onResetZoom(),
 	1: async () => await onFitView(),
 	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),
@@ -770,7 +770,6 @@ provide(CanvasKey, {
 			:class="$style.canvasControls"
 			:position="controlsPosition"
 			:show-interactive="false"
-			:show-bug-reporting-button="showBugReportingButton"
 			:zoom="viewport.zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"

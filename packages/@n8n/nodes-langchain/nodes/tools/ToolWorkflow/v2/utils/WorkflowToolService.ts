@@ -292,7 +292,11 @@ export class WorkflowToolService {
 		fromAIParser: AIParametersParser,
 	): Promise<FromAIArgument[]> {
 		const collectedArguments: FromAIArgument[] = [];
-		fromAIParser.traverseNodeParameters(this.context.getNode().parameters, collectedArguments);
+		try {
+			fromAIParser.traverseNodeParameters(this.context.getNode().parameters, collectedArguments);
+		} catch (error) {
+			throw new NodeOperationError(this.context.getNode(), error as Error);
+		}
 
 		const uniqueArgsMap = new Map<string, FromAIArgument>();
 		for (const arg of collectedArguments) {

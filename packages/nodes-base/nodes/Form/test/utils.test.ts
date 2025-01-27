@@ -5,17 +5,87 @@ import type {
 	INode,
 	IWebhookFunctions,
 	MultiPartFormData,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 
-import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
+import {
+	formWebhook,
+	createDescriptionMetadata,
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+	isFormConnected,
+	sanitizeHtml,
+} from '../utils';
+
+describe('FormTrigger, parseFormDescription', () => {
+	it('should remove HTML tags and truncate to 150 characters', () => {
+		const descriptions = [
+			{ description: '<p>This is a test description</p>', expected: 'This is a test description' },
+			{ description: 'Test description', expected: 'Test description' },
+			{
+				description:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+			{
+				description:
+					'<p>Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.</p>',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+		];
+
+		descriptions.forEach(({ description, expected }) => {
+			expect(createDescriptionMetadata(description)).toBe(expected);
+		});
+	});
+});
+
+describe('FormTrigger, sanitizeHtml', () => {
+	it('should remove forbidden HTML tags', () => {
+		const givenHtml = [
+			{
+				html: '<script>alert("hello world")</script>',
+				expected: '',
+			},
+			{
+				html: '<style>body { color: red; }</style>',
+				expected: '',
+			},
+			{
+				html: '<input type="text" value="test">',
+				expected: '',
+			},
+		];
+
+		givenHtml.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+});
 
 describe('FormTrigger, formWebhook', () => {
+	const executeFunctions = mock<IWebhookFunctions>();
+	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+	executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+	executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+	executeFunctions.getNodeParameter
+		.calledWith('formDescription')
+		.mockReturnValue('Test Description');
+	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+	executeFunctions.getMode.mockReturnValue('manual');
+	executeFunctions.getInstanceId.mockReturnValue('instanceId');
+	executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
+	executeFunctions.getChildNodes.mockReturnValue([]);
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	it('should call response render', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockRender = jest.fn();
 
 		const formFields: FormFieldsParameter = [
@@ -34,22 +104,16 @@ describe('FormTrigger, formWebhook', () => {
 				acceptFileTypes: '.pdf,.doc',
 				multipleFiles: false,
 			},
+			{
+				fieldLabel: 'Custom HTML',
+				fieldType: 'html',
+				html: '<div>Test HTML</div>',
+				requiredField: false,
+			},
 		];
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
-		executeFunctions.getNodeParameter
-			.calledWith('formDescription')
-			.mockReturnValue('Test Description');
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
-		executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
-		executeFunctions.getChildNodes.mockReturnValue([]);
 
 		await formWebhook(executeFunctions);
 
@@ -57,6 +121,7 @@ describe('FormTrigger, formWebhook', () => {
 			appendAttribution: true,
 			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -99,6 +164,16 @@ describe('FormTrigger, formWebhook', () => {
 					multipleFiles: '',
 					placeholder: undefined,
 				},
+				{
+					id: 'field-4',
+					errorId: 'error-field-4',
+					label: 'Custom HTML',
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+					html: '<div>Test HTML</div>',
+					isHtml: true,
+				},
 			],
 			formSubmittedText: 'Your response has been recorded',
 			formTitle: 'Test Form',
@@ -110,8 +185,55 @@ describe('FormTrigger, formWebhook', () => {
 		});
 	});
 
+	it('should sanitize form descriptions', async () => {
+		const mockRender = jest.fn();
+
+		const formDescription = [
+			{ description: 'Test Description', expected: 'Test Description' },
+			{ description: '<i>hello</i>', expected: '<i>hello</i>' },
+			{ description: '<script>alert("hello world")</script>', expected: '' },
+		];
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+
+		for (const { description, expected } of formDescription) {
+			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
+
+			await formWebhook(executeFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+				appendAttribution: true,
+				buttonLabel: 'Submit',
+				formDescription: expected,
+				formDescriptionMetadata: createDescriptionMetadata(expected),
+				formFields: [
+					{
+						defaultValue: '',
+						errorId: 'error-field-0',
+						id: 'field-0',
+						inputRequired: 'form-required',
+						isInput: true,
+						label: 'Name',
+						placeholder: undefined,
+						type: 'text',
+					},
+				],
+				formSubmittedText: 'Your response has been recorded',
+				formTitle: 'Test Form',
+				n8nWebsiteLink:
+					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+				testRun: true,
+				useResponseData: false,
+				validForm: true,
+			});
+		}
+	});
+
 	it('should return workflowData on POST request', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
 
@@ -125,15 +247,9 @@ describe('FormTrigger, formWebhook', () => {
 			'field-1': '30',
 		};
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-		executeFunctions.getChildNodes.mockReturnValue([]);
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
 		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
 
 		const result = await formWebhook(executeFunctions);
@@ -206,6 +322,7 @@ describe('FormTrigger, prepareFormData', () => {
 			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Thank you for your submission',
 			n8nWebsiteLink:
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=test-instance',
@@ -285,6 +402,7 @@ describe('FormTrigger, prepareFormData', () => {
 			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Your response has been recorded',
 			n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 			formFields: [
@@ -719,5 +837,38 @@ describe('resolveRawData', () => {
 		expect(resolveRawData(mockContext, input)).toBe(
 			'Address object: {"street":"123 Main St","zipCode":"10001","country":"USA"}.',
 		);
+	});
+});
+
+describe('FormTrigger, isFormConnected', () => {
+	it('should return false if Wait node is connected but resume parameter is not form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'timeInterval',
+				},
+			}),
+		]);
+		expect(result).toBe(false);
+	});
+	it('should return true if Wait node is connected and resume parameter is form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'form',
+				},
+			}),
+		]);
+		expect(result).toBe(true);
+	});
+	it('should return true if Form node is connected', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.form',
+			}),
+		]);
+		expect(result).toBe(true);
 	});
 });

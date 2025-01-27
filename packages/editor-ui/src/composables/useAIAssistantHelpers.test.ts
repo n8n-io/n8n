@@ -4,6 +4,13 @@ import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { IWorkflowDb } from '@/Interface';
+import type { ChatRequest } from '@/types/assistant.types';
+import {
+	ERROR_HELPER_TEST_PAYLOAD,
+	PAYLOAD_SIZE_FOR_1_PASS,
+	PAYLOAD_SIZE_FOR_2_PASSES,
+	SUPPORT_CHAT_TEST_PAYLOAD,
+} from './useAIAssistantHelpers.test.constants';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -547,5 +554,69 @@ describe('Simplify assistant payloads', () => {
 		for (const nodeName of Object.keys(simplifiedResultData.runData)) {
 			expect(simplifiedResultData.runData[nodeName][0]).not.toHaveProperty('data');
 		}
+	});
+});
+
+describe('Trim Payload Size', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should trim active node parameters in error helper payload', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
+		aiAssistantHelpers.trimPayloadSize(payload);
+		expect((payload.payload as ChatRequest.InitErrorHelper).node.parameters).toEqual({});
+	});
+
+	it('Should trim all node parameters in support chat', () => {
+		// Testing the scenario where only one trimming pass is needed
+		// (payload is under the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming to 4kb should be successful
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_1_PASS),
+		).not.toThrow();
+		// All active node parameters should be removed
+		expect(supportPayload?.context?.activeNodeInfo?.node?.parameters).toEqual({});
+		// Also, all node parameters in the workflow should be removed
+		supportPayload.context?.currentWorkflow?.nodes?.forEach((node) => {
+			expect(node.parameters).toEqual({});
+		});
+		// Node parameters in the execution data should be removed
+		expect(supportPayload.context?.executionData?.runData).toEqual({});
+		if (
+			supportPayload.context?.executionData?.error &&
+			'node' in supportPayload.context.executionData.error
+		) {
+			expect(supportPayload.context?.executionData?.error?.node?.parameters).toEqual({});
+		}
+		// Context object should still be there
+		expect(supportPayload.context).to.be.an('object');
+	});
+
+	it('Should trim the whole context in support chat', () => {
+		// Testing the scenario where both trimming passes are needed
+		// (payload is over the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming should be successful
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_2_PASSES),
+		).not.toThrow();
+		// The whole context object should be removed
+		expect(supportPayload.context).not.toBeDefined();
+	});
+
+	it('Should throw an error if payload is too big after trimming', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
+		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 0.2)).toThrow();
 	});
 });
