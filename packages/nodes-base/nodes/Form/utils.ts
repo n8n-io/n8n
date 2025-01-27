@@ -178,7 +178,7 @@ export function prepareFormData({
 	return formData;
 }
 
-const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
+const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
@@ -437,7 +437,7 @@ export async function formWebhook(
 	);
 	const method = context.getRequestObject().method;
 
-	checkResponseModeConfiguration(context);
+	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {
