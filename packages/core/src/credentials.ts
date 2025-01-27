@@ -5,6 +5,15 @@ import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 
+class CredentialDataError extends ApplicationError {
+	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
+		super(message, {
+			extra: { name, type, id },
+			cause,
+		});
+	}
+}
+
 export class Credentials<
 	T extends object = ICredentialDataDecryptedObject,
 > extends ICredentials<T> {
@@ -22,20 +31,20 @@ export class Credentials<
 	 */
 	getData(): T {
 		if (this.data === undefined) {
-			throw new ApplicationError(CREDENTIAL_ERRORS.NO_DATA);
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.NO_DATA);
 		}
 
 		let decryptedData: string;
 		try {
 			decryptedData = this.cipher.decrypt(this.data);
-		} catch (e) {
-			throw new ApplicationError(CREDENTIAL_ERRORS.DECRYPTION_FAILED, { cause: e });
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.DECRYPTION_FAILED, cause);
 		}
 
 		try {
 			return jsonParse(decryptedData);
-		} catch (e) {
-			throw new ApplicationError(CREDENTIAL_ERRORS.INVALID_JSON, { cause: e });
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause);
 		}
 	}
 

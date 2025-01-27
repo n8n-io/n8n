@@ -25,7 +25,7 @@ describe('Credentials', () => {
 
 	describe('without nodeType set', () => {
 		test('should be able to set and read key data without initial data set', () => {
-			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType');
+			const credentials = new Credentials({ id: null, name: 'testCredential' }, 'testType');
 
 			const key = 'key1';
 			const newData = 1234;
@@ -60,7 +60,7 @@ describe('Credentials', () => {
 	});
 
 	describe('getData', () => {
-		const nodeCredentials = { id: '123', name: 'testName' };
+		const nodeCredentials = { id: '123', name: 'Test Credential' };
 		const credentialType = 'testApi';
 
 		test('should throw an error when data is missing', () => {
@@ -82,7 +82,18 @@ describe('Credentials', () => {
 			credentials.data = cipher.encrypt('invalid-json-string');
 
 			expect(() => credentials.getData()).toThrow(CREDENTIAL_ERRORS.INVALID_JSON);
+
+			try {
+				credentials.getData();
+			} catch (error) {
+				expect(error.constructor.name).toBe('CredentialDataError');
+				expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
+				expect(error.cause).toEqual(
+					new SyntaxError('Unexpected token \'i\', "invalid-json-string" is not valid JSON'),
+				);
+			}
 		});
+
 		test('should successfully decrypt and parse valid JSON credentials', () => {
 			const credentials = new Credentials(nodeCredentials, credentialType);
 			credentials.setData({ username: 'testuser', password: 'testpass' });
