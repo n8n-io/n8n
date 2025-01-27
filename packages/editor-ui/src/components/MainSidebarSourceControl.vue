@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -9,10 +9,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { groupBy } from 'lodash-es';
-import { RouterLink } from 'vue-router';
-import { VIEWS } from '@/constants';
-import type { SourceControlledFile } from '@n8n/api-types';
+import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -67,66 +64,6 @@ async function pushWorkfolder() {
 	}
 }
 
-const variablesToast = {
-	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
-	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () =>
-		i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
-	),
-	type: 'info' as const,
-	closeOnClick: true,
-	duration: 0,
-};
-
-const credentialsToast = {
-	title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
-	message: h(RouterLink, { to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } }, () =>
-		i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
-	),
-	type: 'info' as const,
-	closeOnClick: true,
-	duration: 0,
-};
-
-const pullMessage = ({
-	credential,
-	tags,
-	variables,
-	workflow,
-}: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
-	const messages: string[] = [];
-
-	if (workflow?.length) {
-		messages.push(
-			i18n.baseText('generic.workflow', {
-				adjustToNumber: workflow.length,
-				interpolate: { count: workflow.length },
-			}),
-		);
-	}
-
-	if (credential?.length) {
-		messages.push(
-			i18n.baseText('generic.credential', {
-				adjustToNumber: credential.length,
-				interpolate: { count: credential.length },
-			}),
-		);
-	}
-
-	if (variables?.length) {
-		messages.push(i18n.baseText('generic.variable_plural'));
-	}
-
-	if (tags?.length) {
-		messages.push(i18n.baseText('generic.tag_plural'));
-	}
-
-	return [
-		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
-		'were pulled',
-	].join(' ');
-};
-
 async function pullWorkfolder() {
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
@@ -134,38 +71,7 @@ async function pullWorkfolder() {
 	try {
 		const status = await sourceControlStore.pullWorkfolder(false);
 
-		if (!status.length) {
-			toast.showMessage({
-				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
-				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
-				type: 'success',
-			});
-			return;
-		}
-
-		const { credential, tags, variables, workflow } = groupBy(status, 'type');
-
-		const toastMessages = [
-			...(variables?.length ? [variablesToast] : []),
-			...(credential?.length ? [credentialsToast] : []),
-			{
-				title: i18n.baseText('settings.sourceControl.pull.success.title'),
-				message: pullMessage({ credential, tags, variables, workflow }),
-				type: 'success' as const,
-			},
-		];
-
-		for (const message of toastMessages) {
-			/**
-			 * the toasts stack in a reversed way, resulting in
-			 * Success
-			 * Credentials
-			 * Variables
-			 */
-			//
-			toast.showToast(message);
-			await nextTick();
-		}
+		await notifyUserAboutPullWorkFolderOutcome(status, toast);
 
 		sourceControlEventBus.emit('pull');
 	} catch (error) {

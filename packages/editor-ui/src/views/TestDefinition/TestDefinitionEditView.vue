@@ -8,19 +8,12 @@ import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 
-import EvaluationHeader from '@/components/TestDefinition/EditDefinition/EvaluationHeader.vue';
-import DescriptionInput from '@/components/TestDefinition/EditDefinition/DescriptionInput.vue';
-import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
-import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue';
-import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
-import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
+import HeaderSection from '@/components/TestDefinition/EditDefinition/sections/HeaderSection.vue';
+import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
-import Modal from '@/components/Modal.vue';
-import type { ModalState } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
-import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-
+import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 const props = defineProps<{
 	testId?: string;
 }>();
@@ -33,9 +26,9 @@ const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
+
 const {
 	state,
-	fieldsIssues,
 	isSaving,
 	cancelEditing,
 	loadTestData,
@@ -58,10 +51,10 @@ const tagUsageCount = computed(
 	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
 );
 const hasRuns = computed(() => runs.value.length > 0);
-const nodePinningModal = ref<ModalState | null>(null);
-const modalContentWidth = ref(0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
+
+const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value) ?? []);
 
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {
@@ -76,7 +69,6 @@ onMounted(async () => {
 		});
 		return; // Add early return to prevent loading if feature is disabled
 	}
-	void tagsStore.fetchAll({ withUsageCount: true });
 	if (testId.value) {
 		await loadTestData(testId.value);
 	} else {
@@ -103,8 +95,8 @@ async function onSaveTest() {
 	}
 }
 
-function hasIssues(key: string) {
-	return fieldsIssues.value.some((issue) => issue.field === key);
+function getFieldIssues(key: string) {
+	return fieldsIssues.value.filter((issue) => issue.field === key);
 }
 
 async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
@@ -137,6 +129,9 @@ const runs = computed(() =>
 		(run) => run.testDefinitionId === testId.value,
 	),
 );
+
+const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
+const isRunTestEnabled = computed(() => fieldsIssues.value.length === 0 && !isRunning.value);
 
 async function onDeleteRuns(toDelete: TestRunRecord[]) {
 	await Promise.all(
@@ -172,196 +167,62 @@ watch(
 
 <template>
 	<div :class="[$style.container, { [$style.noRuns]: !hasRuns }]">
-		<div :class="$style.headerSection">
-			<div :class="$style.headerMeta">
-				<div :class="$style.name">
-					<EvaluationHeader
-						v-model="state.name"
-						:class="{ 'has-issues': hasIssues('name') }"
-						:start-editing="startEditing"
-						:save-changes="saveChanges"
-						:handle-keydown="handleKeydown"
-					/>
-					<div :class="$style.lastSaved">
-						<template v-if="isSaving">
-							{{ locale.baseText('testDefinition.edit.saving') }}
-						</template>
-						<template v-else> {{ locale.baseText('testDefinition.edit.saved') }} </template>
-					</div>
-				</div>
-				<DescriptionInput
-					v-model="state.description"
-					:start-editing="startEditing"
-					:save-changes="saveChanges"
-					:handle-keydown="handleKeydown"
-					:class="$style.descriptionInput"
-				/>
-			</div>
-			<div :class="$style.controls">
-				<n8n-button
-					v-if="runs.length > 0"
-					size="small"
-					:icon="showConfig ? 'eye-slash' : 'eye'"
-					data-test-id="toggle-config-button"
-					:label="
-						showConfig
-							? locale.baseText('testDefinition.edit.hideConfig')
-							: locale.baseText('testDefinition.edit.showConfig')
-					"
-					type="tertiary"
-					@click="toggleConfig"
-				/>
-				<n8n-button
-					v-if="state.evaluationWorkflow.value && state.tags.value.length > 0"
-					:class="$style.runTestButton"
-					size="small"
-					data-test-id="run-test-button"
-					:label="locale.baseText('testDefinition.runTest')"
-					type="primary"
-					@click="runTest"
-				/>
-				<n8n-button
-					v-else
-					:class="$style.runTestButton"
-					size="small"
-					data-test-id="run-test-button"
-					:label="locale.baseText('testDefinition.edit.saveTest')"
-					type="primary"
-					@click="onSaveTest"
-				/>
-			</div>
-		</div>
+		<HeaderSection
+			v-model:name="state.name"
+			v-model:description="state.description"
+			v-model:tags="state.tags"
+			:has-runs="hasRuns"
+			:is-saving="isSaving"
+			:get-field-issues="getFieldIssues"
+			:start-editing="startEditing"
+			:save-changes="saveChanges"
+			:handle-keydown="handleKeydown"
+			:on-save-test="onSaveTest"
+			:run-test="runTest"
+			:show-config="showConfig"
+			:toggle-config="toggleConfig"
+			:run-test-enabled="isRunTestEnabled"
+		>
+			<template #runTestTooltip>
+				<template v-if="fieldsIssues.length > 0">
+					<div>{{ locale.baseText('testDefinition.completeConfig') }}</div>
+					<div v-for="issue in fieldsIssues" :key="issue.field">- {{ issue.message }}</div>
+				</template>
+				<template v-if="isRunning">
+					{{ locale.baseText('testDefinition.testIsRunning') }}
+				</template>
+			</template>
+		</HeaderSection>
 
 		<div :class="$style.content">
-			<div v-if="runs.length > 0" :class="$style.runs">
-				<!-- Metrics Chart -->
-				<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
-				<!-- Past Runs Table -->
-				<TestRunsTable
-					:class="$style.runsTable"
-					:runs="runs"
-					:selectable="true"
-					data-test-id="past-runs-table"
-					@delete-runs="onDeleteRuns"
-				/>
-			</div>
+			<RunsSection
+				v-if="runs.length > 0"
+				v-model:selectedMetric="selectedMetric"
+				:runs="runs"
+				:test-id="testId"
+				:applied-theme="appliedTheme"
+				@delete-runs="onDeleteRuns"
+			/>
 
-			<div :class="[$style.panelBlock, { [$style.hidden]: !showConfig }]">
-				<div :class="$style.panelIntro">
-					{{ locale.baseText('testDefinition.edit.step.intro') }}
-				</div>
-				<BlockArrow :class="$style.introArrow" />
-				<!-- Select Executions -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="
-						locale.baseText('testDefinition.edit.step.executions', {
-							adjustToNumber: tagUsageCount,
-						})
-					"
-					:description="locale.baseText('testDefinition.edit.step.executions.description')"
-				>
-					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
-					<template #cardContent>
-						<TagsInput
-							v-model="state.tags"
-							:class="{ 'has-issues': hasIssues('tags') }"
-							:all-tags="allTags"
-							:tags-by-id="tagsById"
-							:is-loading="isLoading"
-							:start-editing="startEditing"
-							:save-changes="saveChanges"
-							:cancel-editing="cancelEditing"
-							:create-tag="handleCreateTag"
-						/>
-					</template>
-				</EvaluationStep>
-				<div :class="$style.evaluationArrows">
-					<BlockArrow />
-					<BlockArrow />
-				</div>
-
-				<!-- Mocked Nodes -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="
-						locale.baseText('testDefinition.edit.step.mockedNodes', {
-							adjustToNumber: state.mockedNodes?.length ?? 0,
-						})
-					"
-					:small="true"
-					:expanded="true"
-					:description="locale.baseText('testDefinition.edit.step.nodes.description')"
-				>
-					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-					<template #cardContent>
-						<n8n-button
-							size="small"
-							data-test-id="select-nodes-button"
-							:label="locale.baseText('testDefinition.edit.selectNodes')"
-							type="tertiary"
-							@click="openPinningModal"
-						/>
-					</template>
-				</EvaluationStep>
-
-				<!-- Re-run Executions -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
-					:small="true"
-					:description="locale.baseText('testDefinition.edit.step.reRunExecutions.description')"
-				>
-					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
-				</EvaluationStep>
-
-				<!-- Compare Executions -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
-					:description="locale.baseText('testDefinition.edit.step.compareExecutions.description')"
-				>
-					<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
-					<template #cardContent>
-						<WorkflowSelector
-							v-model="state.evaluationWorkflow"
-							:class="{ 'has-issues': hasIssues('evaluationWorkflow') }"
-						/>
-					</template>
-				</EvaluationStep>
-
-				<!-- Metrics -->
-				<EvaluationStep
-					:class="$style.step"
-					:title="locale.baseText('testDefinition.edit.step.metrics')"
-					:description="locale.baseText('testDefinition.edit.step.metrics.description')"
-				>
-					<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
-					<template #cardContent>
-						<MetricsInput
-							v-model="state.metrics"
-							:class="{ 'has-issues': hasIssues('metrics') }"
-							@delete-metric="onDeleteMetric"
-						/>
-					</template>
-				</EvaluationStep>
-			</div>
+			<ConfigSection
+				v-model:tags="state.tags"
+				v-model:evaluationWorkflow="state.evaluationWorkflow"
+				v-model:metrics="state.metrics"
+				v-model:mockedNodes="state.mockedNodes"
+				:cancel-editing="cancelEditing"
+				:show-config="showConfig"
+				:tag-usage-count="tagUsageCount"
+				:all-tags="allTags"
+				:tags-by-id="tagsById"
+				:is-loading="isLoading"
+				:get-field-issues="getFieldIssues"
+				:start-editing="startEditing"
+				:save-changes="saveChanges"
+				:create-tag="handleCreateTag"
+				@open-pinning-modal="openPinningModal"
+				@delete-metric="onDeleteMetric"
+			/>
 		</div>
-
-		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
-			<template #header>
-				<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
-					locale.baseText('testDefinition.edit.selectNodes')
-				}}</N8nHeading>
-			</template>
-			<template #content>
-				<NodesPinning
-					v-model="state.mockedNodes"
-					:width="modalContentWidth"
-					data-test-id="nodes-pinning-modal"
-				/>
-			</template>
-		</Modal>
 	</div>
 </template>
 
@@ -391,105 +252,5 @@ watch(
 		justify-content: center;
 		overflow-y: auto;
 	}
-}
-
-.headerSection {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	background-color: var(--color-background-light);
-	width: 100%;
-}
-
-.headerMeta {
-	max-width: 50%;
-}
-
-.name {
-	display: flex;
-	align-items: center;
-
-	.lastSaved {
-		font-size: var(--font-size-s);
-		color: var(--color-text-light);
-	}
-}
-
-.descriptionInput {
-	margin-top: var(--spacing-2xs);
-}
-
-.runs {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-	flex: 1;
-	padding-top: var(--spacing-3xs);
-	overflow: auto;
-
-	@media (min-height: 56rem) {
-		margin-top: var(--spacing-2xl);
-	}
-}
-
-.panelBlock {
-	width: var(--evaluation-edit-panel-width);
-	display: grid;
-	height: 100%;
-	overflow-y: auto;
-	flex-shrink: 0;
-	padding-bottom: var(--spacing-l);
-	margin-left: var(--spacing-2xl);
-	transition: width 0.2s ease;
-
-	&.hidden {
-		margin-left: 0;
-		width: 0;
-		overflow: hidden;
-		flex-shrink: 1;
-	}
-
-	.noRuns & {
-		overflow-y: initial;
-	}
-}
-
-.panelIntro {
-	font-size: var(--font-size-m);
-	color: var(--color-text-dark);
-
-	justify-self: center;
-	position: relative;
-	display: block;
-}
-
-.step {
-	position: relative;
-
-	&:not(:first-child) {
-		margin-top: var(--spacing-m);
-	}
-}
-
-.introArrow {
-	--arrow-height: 1.5rem;
-	margin-bottom: -1rem;
-	justify-self: center;
-}
-
-.evaluationArrows {
-	--arrow-height: 22rem;
-	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	max-width: 80%;
-	margin: 0 auto;
-	margin-bottom: -100%;
-	z-index: 0;
-}
-
-.controls {
-	display: flex;
-	gap: var(--spacing-s);
 }
 </style>

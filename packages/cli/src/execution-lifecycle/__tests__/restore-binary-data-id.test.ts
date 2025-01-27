@@ -2,7 +2,7 @@ import { BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
 import config from '@/config';
-import { restoreBinaryDataId } from '@/execution-lifecycle-hooks/restore-binary-data-id';
+import { restoreBinaryDataId } from '@/execution-lifecycle/restore-binary-data-id';
 import { mockInstance } from '@test/mocking';
 
 function toIRun(item?: object) {

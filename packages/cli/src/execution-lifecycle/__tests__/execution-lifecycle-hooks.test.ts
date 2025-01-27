@@ -26,8 +26,9 @@ import { mockInstance } from '@test/mocking';
 
 import {
 	getWorkflowHooksMain,
+	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
-} from '../workflow-execute-additional-data';
+} from '../execution-lifecycle-hooks';
 
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);
@@ -500,6 +501,10 @@ describe('Execution Lifecycle Hooks', () => {
 					saveDataSuccessExecution: 'none',
 					saveDataErrorExecution: 'all',
 				};
+				const hooks = getWorkflowHooksWorkerMain('webhook', executionId, workflowData, {
+					pushRef,
+					retryOf,
+				});
 
 				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
 
@@ -514,6 +519,10 @@ describe('Execution Lifecycle Hooks', () => {
 					saveDataSuccessExecution: 'all',
 					saveDataErrorExecution: 'none',
 				};
+				const hooks = getWorkflowHooksWorkerMain('webhook', executionId, workflowData, {
+					pushRef,
+					retryOf,
+				});
 
 				await hooks.executeHookFunctions('workflowExecuteAfter', [failedRun, {}]);
 
@@ -521,6 +530,87 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowId,
 					executionId,
 				});
+			});
+		});
+	});
+
+	describe('getWorkflowHooksWorkerExecuter', () => {
+		let hooks: WorkflowHooks;
+
+		beforeEach(() => {
+			hooks = getWorkflowHooksWorkerExecuter(executionMode, executionId, workflowData, {
+				pushRef,
+				retryOf,
+			});
+		});
+
+		describe('saving static data', () => {
+			it('should skip saving static data for manual executions', async () => {
+				hooks.mode = 'manual';
+
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, staticData]);
+
+				expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
+			});
+
+			it('should save static data for prod executions', async () => {
+				hooks.mode = 'trigger';
+
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, staticData]);
+
+				expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith(
+					workflowId,
+					staticData,
+				);
+			});
+
+			it('should handle static data saving errors', async () => {
+				hooks.mode = 'trigger';
+				const error = new Error('Static data save failed');
+				workflowStaticDataService.saveStaticDataById.mockRejectedValueOnce(error);
+
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, staticData]);
+
+				expect(errorReporter.error).toHaveBeenCalledWith(error);
+			});
+		});
+
+		describe('error workflow', () => {
+			it('should not execute error workflow for manual executions', async () => {
+				hooks.mode = 'manual';
+
+				await hooks.executeHookFunctions('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should execute error workflow for failed non-manual executions', async () => {
+				hooks.mode = 'trigger';
+				const errorWorkflow = 'error-workflow-id';
+				workflowData.settings = { errorWorkflow };
+				const project = mock<Project>();
+				ownershipService.getWorkflowProjectCached.calledWith(workflowId).mockResolvedValue(project);
+
+				await hooks.executeHookFunctions('workflowExecuteAfter', [failedRun, {}]);
+
+				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+					errorWorkflow,
+					{
+						workflow: {
+							id: workflowId,
+							name: workflowData.name,
+						},
+						execution: {
+							id: executionId,
+							error: expressionError,
+							mode: 'trigger',
+							retryOf,
+							lastNodeExecuted: undefined,
+							url: `http://localhost:5678/workflow/${workflowId}/executions/${executionId}`,
+						},
+					},
+					project,
+				);
 			});
 		});
 	});

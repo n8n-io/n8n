@@ -135,7 +135,6 @@ describe('Node Creator', () => {
 			'OpenThesaurus',
 			'Spontit',
 			'Vonage',
-			'Send Email',
 			'Toggl Trigger',
 		];
 		const doubleActionNode = 'OpenWeatherMap';

@@ -67,6 +67,15 @@ export class Jira implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'jiraSoftwareServerPatApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['serverPat'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -81,6 +90,10 @@ export class Jira implements INodeType {
 					{
 						name: 'Server (Self Hosted)',
 						value: 'server',
+					},
+					{
+						name: 'Server Pat (Self Hosted)',
+						value: 'serverPat',
 					},
 				],
 				default: 'cloud',
@@ -139,7 +152,7 @@ export class Jira implements INodeType {
 				let endpoint = '';
 				let projects;
 
-				if (jiraVersion === 'server') {
+				if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 					endpoint = '/api/2/project';
 					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 				} else {
@@ -276,8 +289,12 @@ export class Jira implements INodeType {
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
 				const operation = this.getCurrentNodeParameter('operation') as string;
+				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
 				let projectId: string;
 				let issueTypeId: string;
+				let issueId: string = ''; // /editmeta endpoint requires issueId
+
 				if (operation === 'create') {
 					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
 					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
@@ -292,6 +309,26 @@ export class Jira implements INodeType {
 					);
 					projectId = res.fields.project.id;
 					issueTypeId = res.fields.issuetype.id;
+					issueId = res.id;
+				}
+
+				if (jiraVersion === 'server' && operation === 'update' && issueId) {
+					// https://developer.atlassian.com/server/jira/platform/jira-rest-api-example-edit-issues-6291632/?utm_source=chatgpt.com
+					const { fields } = await jiraSoftwareCloudApiRequest.call(
+						this,
+						`/api/2/issue/${issueId}/editmeta`,
+						'GET',
+					);
+
+					for (const field of Object.keys(fields || {})) {
+						if (field.startsWith('customfield_')) {
+							returnData.push({
+								name: fields[field].name,
+								value: field,
+							});
+						}
+					}
+					return { results: returnData };
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(
@@ -478,7 +515,7 @@ export class Jira implements INodeType {
 						};
 					}
 					if (additionalFields.assignee) {
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 							fields.assignee = {
 								name: additionalFields.assignee as string,
 							};
@@ -489,7 +526,7 @@ export class Jira implements INodeType {
 						}
 					}
 					if (additionalFields.reporter) {
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 							fields.reporter = {
 								name: additionalFields.reporter as string,
 							};
@@ -608,7 +645,7 @@ export class Jira implements INodeType {
 						};
 					}
 					if (updateFields.assignee) {
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 							fields.assignee = {
 								name: updateFields.assignee as string,
 							};
@@ -619,7 +656,7 @@ export class Jira implements INodeType {
 						}
 					}
 					if (updateFields.reporter) {
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 							fields.reporter = {
 								name: updateFields.reporter as string,
 							};
@@ -1001,7 +1038,8 @@ export class Jira implements INodeType {
 			}
 		}
 		if (resource === 'issueAttachment') {
-			const apiVersion = jiraVersion === 'server' ? '2' : ('3' as string);
+			const apiVersion =
+				jiraVersion === 'server' || jiraVersion === 'serverPat' ? '2' : ('3' as string);
 
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
 			if (operation === 'add') {
@@ -1159,7 +1197,8 @@ export class Jira implements INodeType {
 		}
 
 		if (resource === 'issueComment') {
-			let apiVersion = jiraVersion === 'server' ? '2' : ('3' as string);
+			let apiVersion =
+				jiraVersion === 'server' || jiraVersion === 'serverPat' ? '2' : ('3' as string);
 
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 			if (operation === 'add') {
@@ -1181,7 +1220,7 @@ export class Jira implements INodeType {
 					Object.assign(body, options);
 					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
-						if (jiraVersion === 'server' || options.wikiMarkup) {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat' || options.wikiMarkup) {
 							Object.assign(body, { body: comment });
 						} else {
 							Object.assign(body, {
@@ -1332,7 +1371,7 @@ export class Jira implements INodeType {
 					Object.assign(qs, options);
 					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
-						if (jiraVersion === 'server' || options.wikiMarkup) {
+						if (jiraVersion === 'server' || jiraVersion === 'serverPat' || options.wikiMarkup) {
 							Object.assign(body, { body: comment });
 						} else {
 							Object.assign(body, {
@@ -1383,7 +1422,8 @@ export class Jira implements INodeType {
 		}
 
 		if (resource === 'user') {
-			const apiVersion = jiraVersion === 'server' ? '2' : ('3' as string);
+			const apiVersion =
+				jiraVersion === 'server' || jiraVersion === 'serverPat' ? '2' : ('3' as string);
 
 			if (operation === 'create') {
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-post
