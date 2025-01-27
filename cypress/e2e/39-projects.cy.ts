@@ -1,5 +1,5 @@
-import { setCredentialValues } from "../composables/modals/credential-modal";
-import { clickCreateNewCredential, selectResourceLocatorItem } from "../composables/ndv";
+import { setCredentialValues } from '../composables/modals/credential-modal';
+import { clickCreateNewCredential, selectResourceLocatorItem } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
 	INSTANCE_ADMIN,
