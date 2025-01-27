@@ -84,6 +84,7 @@ function getInputs(
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -112,6 +113,7 @@ function getInputs(
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
