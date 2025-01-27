@@ -138,6 +138,7 @@ describe('GlobalConfig', () => {
 		externalStorage: {
 			s3: {
 				host: '',
+				protocol: 'https',
 				bucket: {
 					name: '',
 					region: '',
@@ -221,7 +222,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: true,
+			enabled: false,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
