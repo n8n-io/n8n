@@ -27,10 +27,6 @@ export const WORKFLOW_INPUTS_TEST_PARAMETER: INodeProperties = {
 			showTypeConversionOptions: false,
 		},
 	},
-	displayOptions: {
-		show: { source: ['database'], '@version': [{ _cnd: { gte: 1.2 } }] },
-		hide: { workflowId: [''] },
-	},
 };
 
 export const WORKFLOW_INPUTS_TEST_NODE: INode = {
@@ -39,9 +35,9 @@ export const WORKFLOW_INPUTS_TEST_NODE: INode = {
 		source: 'database',
 		workflowId: {
 			__rl: true,
-			value: 'yjNDOVueewSXi3tY',
+			value: 'test123',
 			mode: 'list',
-			cachedResultName: 'Workflow inputs — child-test',
+			cachedResultName: 'Workflow inputs—test',
 		},
 		workflowInputs: {
 			_custom: {
@@ -53,49 +49,22 @@ export const WORKFLOW_INPUTS_TEST_NODE: INode = {
 					matchingColumns: [],
 					schema: [
 						{
-							_custom: {
-								type: 'reactive',
-								stateTypeName: 'Reactive',
-								value: {
-									id: 'aField',
-									displayName: 'aField',
-									required: false,
-									defaultMatch: false,
-									display: true,
-									canBeUsedToMatch: true,
-									type: 'string',
-								},
-							},
+							id: 'firstName',
+							displayName: 'First Name',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							canBeUsedToMatch: true,
+							type: 'string',
 						},
 						{
-							_custom: {
-								type: 'reactive',
-								stateTypeName: 'Reactive',
-								value: {
-									id: 'aNumber',
-									displayName: 'aNumber',
-									required: false,
-									defaultMatch: false,
-									display: true,
-									canBeUsedToMatch: true,
-									type: 'number',
-								},
-							},
-						},
-						{
-							_custom: {
-								type: 'reactive',
-								stateTypeName: 'Reactive',
-								value: {
-									id: 'hello',
-									displayName: 'hello',
-									required: false,
-									defaultMatch: false,
-									display: true,
-									canBeUsedToMatch: true,
-									type: 'string',
-								},
-							},
+							id: 'lastName',
+							displayName: 'Last Name',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							canBeUsedToMatch: true,
+							type: 'string',
 						},
 					],
 					attemptToConvertTypes: false,
@@ -109,7 +78,7 @@ export const WORKFLOW_INPUTS_TEST_NODE: INode = {
 	type: 'n8n-nodes-base.executeWorkflow',
 	typeVersion: 1.2,
 	position: [220, 0],
-	id: '571e6db4-404f-40d2-8bf1-5c04d3101be4',
+	id: 'test-123',
 	name: 'Execute Workflow',
 };
 

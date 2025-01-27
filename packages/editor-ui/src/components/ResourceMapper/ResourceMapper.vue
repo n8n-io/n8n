@@ -623,7 +623,11 @@ defineExpose({
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
-		<N8nNotice v-else-if="state.emptyFieldsNotice && !state.hasStaleFields" type="info">
+		<N8nNotice
+			v-else-if="state.emptyFieldsNotice && !state.hasStaleFields"
+			type="info"
+			data-test-id="empty-fields-notice"
+		>
 			<span v-n8n-html="state.emptyFieldsNotice"></span>
 		</N8nNotice>
 		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">

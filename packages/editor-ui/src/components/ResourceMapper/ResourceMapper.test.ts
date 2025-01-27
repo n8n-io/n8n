@@ -66,18 +66,24 @@ describe('ResourceMapper::Workflow Inputs', () => {
 		).not.toThrow();
 	});
 
-	it.only('renders workflow inputs list correctly', async () => {
+	it('renders workflow inputs list correctly', async () => {
 		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
 			fields: [
 				{
-					id: 'name',
-					displayName: 'name',
+					id: 'firstName',
+					displayName: 'First Name',
+					type: 'string',
 					required: false,
 					defaultMatch: false,
 					display: true,
-					canBeUsedToMatch: true,
+				},
+				{
+					id: 'lastName',
+					displayName: 'Last Name',
 					type: 'string',
-					removed: false,
+					required: false,
+					defaultMatch: false,
+					display: true,
 				},
 			],
 		});
@@ -90,6 +96,24 @@ describe('ResourceMapper::Workflow Inputs', () => {
 		});
 		await waitAllPromises();
 		expect(getByTestId('mapping-fields-container')).toBeInTheDocument();
-		expect(getAllByTestId('field-input')).toHaveLength(1);
+		expect(getAllByTestId('field-input')).toHaveLength(2);
+	});
+
+	it('renders provided empty fields message', async () => {
+		nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({
+			fields: [],
+			emptyFieldsNotice: 'Nothing <b>here</b>',
+		});
+		const { queryByTestId, queryAllByTestId, getByTestId } = renderComponent({
+			props: {
+				parameter: WORKFLOW_INPUTS_TEST_PARAMETER,
+				node: WORKFLOW_INPUTS_TEST_NODE,
+				path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+			},
+		});
+		await waitAllPromises();
+		expect(queryByTestId('mapping-fields-container')).not.toBeInTheDocument();
+		expect(queryAllByTestId('field-input')).toHaveLength(0);
+		expect(getByTestId('empty-fields-notice')).toHaveTextContent('Nothing here');
 	});
 });
