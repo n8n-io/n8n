@@ -418,6 +418,13 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
+					if (
+						error instanceof Error &&
+						error.message.includes('job stalled more than maxStalledCount')
+					) {
+						error = new MaxStalledCountError(error);
+					}
+
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = getWorkflowHooksWorkerExecuter(
@@ -426,13 +433,6 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
-
-					if (
-						error instanceof Error &&
-						error.message.includes('job stalled more than maxStalledCount')
-					) {
-						error = new MaxStalledCountError(error);
-					}
 
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
