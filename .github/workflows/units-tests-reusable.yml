@@ -26,6 +26,10 @@ on:
         required: false
         default: false
         type: boolean
+      skipFrontendTests:
+        required: false
+        default: false
+        type: boolean
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov upload token.'
@@ -74,6 +78,7 @@ jobs:
         run: pnpm test:nodes
 
       - name: Test Frontend
+        if: ${{ !inputs.skipFrontendTests }}
         run: pnpm test:frontend
 
       - name: Upload coverage to Codecov
