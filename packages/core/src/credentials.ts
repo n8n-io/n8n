@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
 
+import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 
 export class Credentials<
@@ -21,17 +22,20 @@ export class Credentials<
 	 */
 	getData(): T {
 		if (this.data === undefined) {
-			throw new ApplicationError('No data is set so nothing can be returned.');
+			throw new ApplicationError(CREDENTIAL_ERRORS.NO_DATA);
+		}
+
+		let decryptedData: string;
+		try {
+			decryptedData = this.cipher.decrypt(this.data);
+		} catch (e) {
+			throw new ApplicationError(CREDENTIAL_ERRORS.DECRYPTION_FAILED, { cause: e });
 		}
 
 		try {
-			const decryptedData = this.cipher.decrypt(this.data);
-
 			return jsonParse(decryptedData);
 		} catch (e) {
-			throw new ApplicationError(
-				'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
-			);
+			throw new ApplicationError(CREDENTIAL_ERRORS.INVALID_JSON, { cause: e });
 		}
 	}
 

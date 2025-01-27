@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
 
+import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 import type { InstanceSettings } from '@/instance-settings';
 
@@ -55,6 +56,40 @@ describe('Credentials', () => {
 
 			// Read the data which got provided encrypted on init
 			expect(credentials.getData().key1).toEqual(initialData);
+		});
+	});
+
+	describe('getData', () => {
+		const nodeCredentials = { id: '123', name: 'testName' };
+		const credentialType = 'testApi';
+
+		test('should throw an error when data is missing', () => {
+			const credentials = new Credentials(nodeCredentials, credentialType);
+			credentials.data = undefined;
+
+			expect(() => credentials.getData()).toThrow(CREDENTIAL_ERRORS.NO_DATA);
+		});
+
+		test('should throw an error when decryption fails', () => {
+			const credentials = new Credentials(nodeCredentials, credentialType);
+			credentials.data = 'invalid-credentials-data';
+
+			expect(() => credentials.getData()).toThrow(CREDENTIAL_ERRORS.DECRYPTION_FAILED);
+		});
+
+		test('should throw an error when JSON parsing fails', () => {
+			const credentials = new Credentials(nodeCredentials, credentialType);
+			credentials.data = cipher.encrypt('invalid-json-string');
+
+			expect(() => credentials.getData()).toThrow(CREDENTIAL_ERRORS.INVALID_JSON);
+		});
+		test('should successfully decrypt and parse valid JSON credentials', () => {
+			const credentials = new Credentials(nodeCredentials, credentialType);
+			credentials.setData({ username: 'testuser', password: 'testpass' });
+
+			const decryptedData = credentials.getData();
+			expect(decryptedData.username).toBe('testuser');
+			expect(decryptedData.password).toBe('testpass');
 		});
 	});
 });
