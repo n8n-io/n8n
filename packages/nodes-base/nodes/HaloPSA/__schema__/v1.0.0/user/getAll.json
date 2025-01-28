@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "emailaddress",
+            "type": "string",
+            "value": "",
+            "path": ".emailaddress"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "inactive",
+            "type": "boolean",
+            "value": "",
+            "path": ".inactive"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "site_id",
+            "type": "integer",
+            "value": "",
+            "path": ".site_id"
+        },
+        {
+            "key": "surname",
+            "type": "string",
+            "value": "",
+            "path": ".surname"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
