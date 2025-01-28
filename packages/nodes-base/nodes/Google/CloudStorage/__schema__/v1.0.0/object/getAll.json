@@ -1,0 +1,114 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "bucket",
+            "type": "string",
+            "value": "",
+            "path": ".bucket"
+        },
+        {
+            "key": "contentType",
+            "type": "string",
+            "value": "",
+            "path": ".contentType"
+        },
+        {
+            "key": "crc32c",
+            "type": "string",
+            "value": "",
+            "path": ".crc32c"
+        },
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "generation",
+            "type": "string",
+            "value": "",
+            "path": ".generation"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "md5Hash",
+            "type": "string",
+            "value": "",
+            "path": ".md5Hash"
+        },
+        {
+            "key": "mediaLink",
+            "type": "string",
+            "value": "",
+            "path": ".mediaLink"
+        },
+        {
+            "key": "metageneration",
+            "type": "string",
+            "value": "",
+            "path": ".metageneration"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "selfLink",
+            "type": "string",
+            "value": "",
+            "path": ".selfLink"
+        },
+        {
+            "key": "size",
+            "type": "string",
+            "value": "",
+            "path": ".size"
+        },
+        {
+            "key": "storageClass",
+            "type": "string",
+            "value": "",
+            "path": ".storageClass"
+        },
+        {
+            "key": "timeCreated",
+            "type": "string",
+            "value": "",
+            "path": ".timeCreated"
+        },
+        {
+            "key": "timeStorageClassUpdated",
+            "type": "string",
+            "value": "",
+            "path": ".timeStorageClassUpdated"
+        },
+        {
+            "key": "updated",
+            "type": "string",
+            "value": "",
+            "path": ".updated"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
