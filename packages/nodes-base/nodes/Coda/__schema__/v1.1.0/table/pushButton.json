@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "columnId",
+            "type": "string",
+            "value": "",
+            "path": ".columnId"
+        },
+        {
+            "key": "requestId",
+            "type": "string",
+            "value": "",
+            "path": ".requestId"
+        },
+        {
+            "key": "rowId",
+            "type": "string",
+            "value": "",
+            "path": ".rowId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
