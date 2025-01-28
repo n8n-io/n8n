@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "tag",
+                    "type": "string",
+                    "value": "",
+                    "path": "..tag"
+                }
+            ],
+            "path": "."
+        },
+        {
+            "key": "file_owner_team_encrypted_id",
+            "type": "string",
+            "value": "",
+            "path": ".file_owner_team_encrypted_id"
+        },
+        {
+            "key": "highlight_spans",
+            "type": "array",
+            "value": "",
+            "path": ".highlight_spans"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "match_type",
+            "type": "string",
+            "value": "",
+            "path": ".match_type"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "path_display",
+            "type": "string",
+            "value": "",
+            "path": ".path_display"
+        },
+        {
+            "key": "path_lower",
+            "type": "string",
+            "value": "",
+            "path": ".path_lower"
+        }
+    ],
+    "path": ""
+}
