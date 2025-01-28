@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "version",
+            "type": "string",
+            "value": "",
+            "path": ".version"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
