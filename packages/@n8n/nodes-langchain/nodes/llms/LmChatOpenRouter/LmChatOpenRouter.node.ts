@@ -53,7 +53,7 @@ export class LmChatOpenRouter implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials?.url || "https://openrouter.ai/api/v1" }}',
+			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -226,7 +226,7 @@ export class LmChatOpenRouter implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: credentials.url ?? 'https://openrouter.ai/api/v1',
+			baseURL: credentials.url,
 		};
 
 		const model = new ChatOpenAI({
