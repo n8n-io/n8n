@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "context_team_id",
+            "type": "string",
+            "value": "",
+            "path": ".context_team_id"
+        },
+        {
+            "key": "created",
+            "type": "integer",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "is_archived",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_archived"
+        },
+        {
+            "key": "is_im",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_im"
+        },
+        {
+            "key": "is_org_shared",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_org_shared"
+        },
+        {
+            "key": "is_user_deleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_user_deleted"
+        },
+        {
+            "key": "updated",
+            "type": "integer",
+            "value": "",
+            "path": ".updated"
+        },
+        {
+            "key": "user",
+            "type": "string",
+            "value": "",
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
