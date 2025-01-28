@@ -17,7 +17,7 @@ describe('Workflow Selector Parameter', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.addInitialNodeToCanvas(EXECUTE_WORKFLOW_NODE_NAME, {
 			keepNdvOpen: true,
-			action: 'Call Another Workflow',
+			action: 'Execute A Sub Workflow',
 		});
 	});
 	it('should render sub-workflows list', () => {

@@ -11,28 +11,21 @@ import {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { searchModels } from './methods/loadModels';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
-export class LmChatOpenAi implements INodeType {
-	methods = {
-		listSearch: {
-			searchModels,
-		},
-	};
-
+export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI Chat Model',
+		displayName: 'DeepSeek Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'lmChatOpenAi',
-		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
+		name: 'lmChatDeepSeek',
+		icon: 'file:deepseek.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'OpenAI Chat Model',
+			name: 'DeepSeek Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -43,7 +36,7 @@ export class LmChatOpenAi implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatdeepseek/',
 					},
 				],
 			},
@@ -55,14 +48,13 @@ export class LmChatOpenAi implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'openAiApi',
+				name: 'deepSeekApi',
 				required: true,
 			},
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL:
-				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials?.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -83,13 +75,13 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://api-docs.deepseek.com/quick_start/pricing">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || $credentials?.url?.split("/").slice(-1).pop() || "v1" }}/models',
+								url: '/models',
 							},
 							output: {
 								postReceive: [
@@ -97,19 +89,6 @@ export class LmChatOpenAi implements INodeType {
 										type: 'rootProperty',
 										properties: {
 											property: 'data',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											// If the baseURL is not set or is set to api.openai.com, include only chat models
-											pass: `={{
-												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
-												($credentials?.url && !$credentials.url.includes('api.openai.com')) ||
-												$responseItem.id.startsWith('ft:') ||
-												$responseItem.id.startsWith('o1') ||
-												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
-											}}`,
 										},
 									},
 									{
@@ -136,55 +115,7 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-4o-mini',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
-					},
-				},
-			},
-			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-4o-mini' },
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select a model...',
-						typeOptions: {
-							searchListMethod: 'searchModels',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'gpt-4o-mini',
-					},
-				],
-				description: 'The model. Choose from the list, or specify an ID.',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lte: 1.1 } }],
-					},
-				},
-			},
-			{
-				displayName:
-					'When using non-OpenAI models via "Base URL" override, not all models might be chat-compatible or support other features, like tools calling or JSON response format',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'/options.baseURL': [{ _cnd: { exists: true } }],
-					},
-				},
+				default: 'deepseek-chat',
 			},
 			{
 				displayName: 'Options',
@@ -194,18 +125,6 @@ export class LmChatOpenAi implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
-					{
-						displayName: 'Base URL',
-						name: 'baseURL',
-						default: 'https://api.openai.com/v1',
-						description: 'Override the default base URL for the API',
-						type: 'string',
-						displayOptions: {
-							hide: {
-								'@version': [{ _cnd: { gte: 1.1 } }],
-							},
-						},
-					},
 					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
@@ -266,7 +185,7 @@ export class LmChatOpenAi implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 60000,
+						default: 360000,
 						description: 'Maximum amount of time a request is allowed to take in milliseconds',
 						type: 'number',
 					},
@@ -292,16 +211,11 @@ export class LmChatOpenAi implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openAiApi');
+		const credentials = await this.getCredentials<OpenAICompatibleCredential>('deepSeekApi');
 
-		const version = this.getNode().typeVersion;
-		const modelName =
-			version >= 1.2
-				? (this.getNodeParameter('model.value', itemIndex) as string)
-				: (this.getNodeParameter('model', itemIndex) as string);
+		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			baseURL?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
@@ -312,15 +226,12 @@ export class LmChatOpenAi implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const configuration: ClientOptions = {};
-		if (options.baseURL) {
-			configuration.baseURL = options.baseURL;
-		} else if (credentials.url) {
-			configuration.baseURL = credentials.url as string;
-		}
+		const configuration: ClientOptions = {
+			baseURL: credentials.url,
+		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			openAIApiKey: credentials.apiKey,
 			modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
