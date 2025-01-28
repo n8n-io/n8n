@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "event",
+            "type": "string",
+            "value": "",
+            "path": ".event"
+        },
+        {
+            "key": "listener_count",
+            "type": "integer",
+            "value": "",
+            "path": ".listener_count"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
