@@ -1,11 +1,11 @@
 import { STORES } from '@/constants';
-import type { ApiKey } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 
 import * as publicApiApi from '@/api/api-keys';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
+import type { ApiKey } from '@n8n/api-types';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
