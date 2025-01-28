@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Created Date",
+            "type": "string",
+            "value": "",
+            "path": ".Created Date"
+        },
+        {
+            "key": "Modified Date",
+            "type": "string",
+            "value": "",
+            "path": ".Modified Date"
+        },
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "Created By",
+            "type": "string",
+            "value": "",
+            "path": ".Created By"
+        }
+    ],
+    "path": ""
+}
