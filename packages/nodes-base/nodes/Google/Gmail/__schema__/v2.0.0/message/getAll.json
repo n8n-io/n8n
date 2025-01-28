@@ -1,0 +1,117 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "From",
+            "type": "string",
+            "value": "",
+            "path": ".From"
+        },
+        {
+            "key": "Subject",
+            "type": "string",
+            "value": "",
+            "path": ".Subject"
+        },
+        {
+            "key": "historyId",
+            "type": "string",
+            "value": "",
+            "path": ".historyId"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "internalDate",
+            "type": "string",
+            "value": "",
+            "path": ".internalDate"
+        },
+        {
+            "key": "labels",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".labels.items.id"
+                        },
+                        {
+                            "key": "name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".labels.items.name"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".labels.items.required"
+                        }
+                    ],
+                    "path": ".labels.items"
+                }
+            ],
+            "path": ".labels"
+        },
+        {
+            "key": "payload",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "mimeType",
+                    "type": "string",
+                    "value": "",
+                    "path": ".payload.mimeType"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".payload.required"
+                }
+            ],
+            "path": ".payload"
+        },
+        {
+            "key": "sizeEstimate",
+            "type": "integer",
+            "value": "",
+            "path": ".sizeEstimate"
+        },
+        {
+            "key": "snippet",
+            "type": "string",
+            "value": "",
+            "path": ".snippet"
+        },
+        {
+            "key": "threadId",
+            "type": "string",
+            "value": "",
+            "path": ".threadId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "To",
+            "type": "string",
+            "value": "",
+            "path": ".To"
+        }
+    ],
+    "path": ""
+}
