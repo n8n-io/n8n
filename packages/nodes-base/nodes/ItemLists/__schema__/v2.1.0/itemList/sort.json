@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "categorias_ids",
+            "type": "integer",
+            "value": "",
+            "path": ".categorias_ids"
+        },
+        {
+            "key": "complemento_prompt",
+            "type": "string",
+            "value": "",
+            "path": ".complemento_prompt"
+        },
+        {
+            "key": "data_prevista_agendamento",
+            "type": "string",
+            "value": "",
+            "path": ".data_prevista_agendamento"
+        },
+        {
+            "key": "id_post",
+            "type": "string",
+            "value": "",
+            "path": ".id_post"
+        },
+        {
+            "key": "link",
+            "type": "string",
+            "value": "",
+            "path": ".link"
+        },
+        {
+            "key": "link_imagem",
+            "type": "string",
+            "value": "",
+            "path": ".link_imagem"
+        },
+        {
+            "key": "palavras-chave",
+            "type": "string",
+            "value": "",
+            "path": ".palavras-chave"
+        },
+        {
+            "key": "qtd_capitulos",
+            "type": "string",
+            "value": "",
+            "path": ".qtd_capitulos"
+        },
+        {
+            "key": "resumo",
+            "type": "string",
+            "value": "",
+            "path": ".resumo"
+        },
+        {
+            "key": "row_number",
+            "type": "integer",
+            "value": "",
+            "path": ".row_number"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "tipo",
+            "type": "string",
+            "value": "",
+            "path": ".tipo"
+        },
+        {
+            "key": "titulo",
+            "type": "string",
+            "value": "",
+            "path": ".titulo"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
