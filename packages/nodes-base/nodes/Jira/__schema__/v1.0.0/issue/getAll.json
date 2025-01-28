@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "expand",
+            "type": "string",
+            "value": "",
+            "path": ".expand"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "key",
+            "type": "string",
+            "value": "",
+            "path": ".key"
+        },
+        {
+            "key": "self",
+            "type": "string",
+            "value": "",
+            "path": ".self"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
