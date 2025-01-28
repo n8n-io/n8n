@@ -4,7 +4,6 @@ import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
@@ -14,7 +13,6 @@ import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 
-const telemetry = useTelemetry();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 
@@ -102,7 +100,6 @@ const onSave = async () => {
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.create.error'));
 	} finally {
-		telemetry.track('User clicked create API key button');
 		loading.value = false;
 	}
 };

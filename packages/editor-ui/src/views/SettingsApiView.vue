@@ -33,6 +33,8 @@ const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 const { isPublicApiEnabled } = settingsStore;
 
 const onCreateApiKey = async () => {
+	telemetry.track('User clicked create API key button');
+
 	uiStore.openModalWithData({
 		name: API_KEY_EDIT_MODAL_KEY,
 		data: { mode: 'new' },
