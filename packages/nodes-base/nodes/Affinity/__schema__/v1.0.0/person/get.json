@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "emails",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".emails.items"
+                }
+            ],
+            "path": ".emails"
+        },
+        {
+            "key": "first_name",
+            "type": "string",
+            "value": "",
+            "path": ".first_name"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "last_name",
+            "type": "string",
+            "value": "",
+            "path": ".last_name"
+        },
+        {
+            "key": "list_entries",
+            "type": "array",
+            "value": "",
+            "path": ".list_entries"
+        },
+        {
+            "key": "organization_ids",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".organization_ids.items"
+                }
+            ],
+            "path": ".organization_ids"
+        },
+        {
+            "key": "primary_email",
+            "type": "string",
+            "value": "",
+            "path": ".primary_email"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
