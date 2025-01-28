@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created",
+            "type": "string",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "personEmail",
+            "type": "string",
+            "value": "",
+            "path": ".personEmail"
+        },
+        {
+            "key": "personId",
+            "type": "string",
+            "value": "",
+            "path": ".personId"
+        },
+        {
+            "key": "roomId",
+            "type": "string",
+            "value": "",
+            "path": ".roomId"
+        },
+        {
+            "key": "roomType",
+            "type": "string",
+            "value": "",
+            "path": ".roomType"
+        },
+        {
+            "key": "text",
+            "type": "string",
+            "value": "",
+            "path": ".text"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
