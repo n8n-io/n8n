@@ -1,0 +1,138 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "text",
+            "type": "string",
+            "value": "",
+            "path": ".text"
+        },
+        {
+            "key": "ts",
+            "type": "string",
+            "value": "",
+            "path": ".ts"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "user",
+            "type": "string",
+            "value": "",
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "blocks",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "block_id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".blocks.items.block_id"
+                        },
+                        {
+                            "key": "elements",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "items",
+                                    "type": "Object",
+                                    "value": [
+                                        {
+                                            "key": "elements",
+                                            "type": "Object",
+                                            "value": [
+                                                {
+                                                    "key": "items",
+                                                    "type": "Object",
+                                                    "value": [
+                                                        {
+                                                            "key": "text",
+                                                            "type": "string",
+                                                            "value": "",
+                                                            "path": ".blocks.items.elements.items.elements.items.text"
+                                                        },
+                                                        {
+                                                            "key": "type",
+                                                            "type": "string",
+                                                            "value": "",
+                                                            "path": ".blocks.items.elements.items.elements.items.type"
+                                                        },
+                                                        {
+                                                            "key": "required",
+                                                            "type": "string",
+                                                            "value": "",
+                                                            "path": ".blocks.items.elements.items.elements.items.required"
+                                                        }
+                                                    ],
+                                                    "path": ".blocks.items.elements.items.elements.items"
+                                                }
+                                            ],
+                                            "path": ".blocks.items.elements.items.elements"
+                                        },
+                                        {
+                                            "key": "type",
+                                            "type": "string",
+                                            "value": "",
+                                            "path": ".blocks.items.elements.items.type"
+                                        },
+                                        {
+                                            "key": "required",
+                                            "type": "string",
+                                            "value": "",
+                                            "path": ".blocks.items.elements.items.required"
+                                        }
+                                    ],
+                                    "path": ".blocks.items.elements.items"
+                                }
+                            ],
+                            "path": ".blocks.items.elements"
+                        },
+                        {
+                            "key": "type",
+                            "type": "string",
+                            "value": "",
+                            "path": ".blocks.items.type"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".blocks.items.required"
+                        }
+                    ],
+                    "path": ".blocks.items"
+                }
+            ],
+            "path": ".blocks"
+        },
+        {
+            "key": "client_msg_id",
+            "type": "string",
+            "value": "",
+            "path": ".client_msg_id"
+        },
+        {
+            "key": "team",
+            "type": "string",
+            "value": "",
+            "path": ".team"
+        }
+    ],
+    "path": ""
+}
