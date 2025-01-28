@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "collections",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "hidePasswords",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".collections.items.hidePasswords"
+                        },
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".collections.items.id"
+                        },
+                        {
+                            "key": "manage",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".collections.items.manage"
+                        },
+                        {
+                            "key": "readOnly",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".collections.items.readOnly"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".collections.items.required"
+                        }
+                    ],
+                    "path": ".collections.items"
+                }
+            ],
+            "path": ".collections"
+        },
+        {
+            "key": "externalId",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".externalId.type"
+                }
+            ],
+            "path": ".externalId"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
