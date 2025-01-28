@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "branch",
+            "type": "string",
+            "value": "",
+            "path": ".branch"
+        },
+        {
+            "key": "file_path",
+            "type": "string",
+            "value": "",
+            "path": ".file_path"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
