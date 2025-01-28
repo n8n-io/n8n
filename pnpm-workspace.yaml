@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - packages/modules/**/*
   - packages/@n8n/*
   - packages/@n8n_io/*
   - cypress
@@ -34,6 +35,7 @@ catalogs:
   frontend:
     '@vitest/coverage-v8': ^3.0.2
     '@vitejs/plugin-vue': ^5.2.1
+    '@vue/tsconfig': ^0.7.0
     '@sentry/vue': ^8.33.1
     vite: ^6.0.2
     vitest: ^3.0.2

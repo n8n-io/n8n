@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/module-common",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "types": "./dist/n8n-module-common.d.ts",
+  "main": "./dist/n8n-module-common.umd.cjs",
+  "module": "./dist/n8n-module-common.js",
+  "exports": {
+    ".": {
+      "types": "./dist/n8n-module-common.d.ts",
+      "import": "./dist/n8n-module-common.js",
+      "require": "./dist/n8n-module-common.umd.cjs"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/tsconfig": "catalog:frontend",
+    "typescript": "~5.6.2",
+    "vite": "catalog:frontend",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
+    "vue-tsc": "catalog:frontend"
+  }
+}

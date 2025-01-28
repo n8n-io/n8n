@@ -36,6 +36,14 @@ const alias = [
 		find: /^@n8n\/chat\//,
 		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
 	},
+	{
+		find: /^@n8n\/module-common$/,
+		replacement: resolve(__dirname, '..', 'modules', 'common', 'src', 'index.ts'),
+	},
+	{
+		find: /^@n8n\/module-example$/,
+		replacement: resolve(__dirname, '..', 'modules', 'example', 'src', 'index.ts'),
+	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: `lodash-es/${name}`,

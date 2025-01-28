@@ -30,6 +30,8 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+import { registerModule } from '@/modules';
+import { FrontEndModuleContext } from '@n8n/module-common';
 
 const pinia = createPinia();
 
@@ -46,6 +48,19 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+const defaultModules = [import('@n8n/module-example')];
+
+const moduleContext: FrontEndModuleContext = {
+	app,
+	registerRoute: () => {},
+};
+
+for (const module of defaultModules) {
+	await module.then(({ frontEndModule }) => {
+		registerModule(frontEndModule, moduleContext);
+	});
+}
 
 app.mount('#app');
 
