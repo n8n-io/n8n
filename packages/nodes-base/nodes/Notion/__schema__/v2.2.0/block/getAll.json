@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "archived",
+            "type": "boolean",
+            "value": "",
+            "path": ".archived"
+        },
+        {
+            "key": "content",
+            "type": "string",
+            "value": "",
+            "path": ".content"
+        },
+        {
+            "key": "has_children",
+            "type": "boolean",
+            "value": "",
+            "path": ".has_children"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "in_trash",
+            "type": "boolean",
+            "value": "",
+            "path": ".in_trash"
+        },
+        {
+            "key": "last_edited_by",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".last_edited_by.id"
+                },
+                {
+                    "key": "object",
+                    "type": "string",
+                    "value": "",
+                    "path": ".last_edited_by.object"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".last_edited_by.required"
+                }
+            ],
+            "path": ".last_edited_by"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "parent",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.type"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.required"
+                },
+                {
+                    "key": "page_id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.page_id"
+                }
+            ],
+            "path": ".parent"
+        },
+        {
+            "key": "parent_id",
+            "type": "string",
+            "value": "",
+            "path": ".parent_id"
+        },
+        {
+            "key": "root_id",
+            "type": "string",
+            "value": "",
+            "path": ".root_id"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
