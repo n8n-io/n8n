@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "appId",
+            "type": "integer",
+            "value": "",
+            "path": ".appId"
+        },
+        {
+            "key": "attemptNumber",
+            "type": "integer",
+            "value": "",
+            "path": ".attemptNumber"
+        },
+        {
+            "key": "changeSource",
+            "type": "string",
+            "value": "",
+            "path": ".changeSource"
+        },
+        {
+            "key": "contactId",
+            "type": "integer",
+            "value": "",
+            "path": ".contactId"
+        },
+        {
+            "key": "eventId",
+            "type": "integer",
+            "value": "",
+            "path": ".eventId"
+        },
+        {
+            "key": "occurredAt",
+            "type": "integer",
+            "value": "",
+            "path": ".occurredAt"
+        },
+        {
+            "key": "portalId",
+            "type": "integer",
+            "value": "",
+            "path": ".portalId"
+        },
+        {
+            "key": "subscriptionId",
+            "type": "integer",
+            "value": "",
+            "path": ".subscriptionId"
+        },
+        {
+            "key": "subscriptionType",
+            "type": "string",
+            "value": "",
+            "path": ".subscriptionType"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
