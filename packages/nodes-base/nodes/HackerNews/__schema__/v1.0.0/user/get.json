@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "karma",
+            "type": "integer",
+            "value": "",
+            "path": ".karma"
+        },
+        {
+            "key": "username",
+            "type": "string",
+            "value": "",
+            "path": ".username"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
