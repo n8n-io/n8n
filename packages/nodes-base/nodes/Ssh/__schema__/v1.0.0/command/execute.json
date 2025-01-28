@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "code",
+            "type": "integer",
+            "value": "",
+            "path": ".code"
+        },
+        {
+            "key": "signal",
+            "type": "null",
+            "value": "",
+            "path": ".signal"
+        },
+        {
+            "key": "stderr",
+            "type": "string",
+            "value": "",
+            "path": ".stderr"
+        },
+        {
+            "key": "stdout",
+            "type": "string",
+            "value": "",
+            "path": ".stdout"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
