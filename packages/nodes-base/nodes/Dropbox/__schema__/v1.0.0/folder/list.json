@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "pathDisplay",
+            "type": "string",
+            "value": "",
+            "path": ".pathDisplay"
+        },
+        {
+            "key": "pathLower",
+            "type": "string",
+            "value": "",
+            "path": ".pathLower"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        }
+    ],
+    "path": ""
+}
