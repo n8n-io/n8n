@@ -9,8 +9,8 @@ import type {
 	IDataObject,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
-	ResourceMapperFields,
 	ISupplyDataFunctions,
+	WorkflowInputsData,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -66,8 +66,9 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 }
 
 export function getFieldEntries(context: IWorkflowNodeContext): {
-	noFieldsMessage: string | undefined;
+	dataMode: WorkflowInputsData['dataMode'];
 	fields: FieldValueOption[];
+	subworkflowInfo?: WorkflowInputsData['subworkflowInfo'];
 } {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
@@ -92,20 +93,9 @@ export function getFieldEntries(context: IWorkflowNodeContext): {
 	}
 
 	if (Array.isArray(result)) {
-		let noFieldsMessage: string | undefined;
 		const dataMode = String(inputSource);
-		if (result.length === 0) {
-			const id = context.getWorkflow().id;
-			switch (dataMode) {
-				case PASSTHROUGH:
-					noFieldsMessage = `All input data to this node will be passed to the sub-workflow. You can change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>.`;
-					break;
-				default:
-					noFieldsMessage = `The sub-workflow isn't set up to accept any inputs. Change this in the <a href="/workflow/${id}" target="_blank">sub-workflow's trigger</a>.`;
-					break;
-			}
-		}
-		return { fields: result, noFieldsMessage };
+		const workflow = context.getWorkflow();
+		return { fields: result, dataMode, subworkflowInfo: { id: workflow.id } };
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
@@ -156,14 +146,16 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
-): Promise<ResourceMapperFields> {
+): Promise<WorkflowInputsData> {
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
-	let emptyFieldsNotice: string | undefined;
+	let dataMode: string = PASSTHROUGH;
+	let subworkflowInfo: { id?: string } | undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);
-		emptyFieldsNotice = fieldValues.noFieldsMessage;
+		dataMode = fieldValues.dataMode;
+		subworkflowInfo = fieldValues.subworkflowInfo;
 
 		fields = fieldValues.fields.map((currentWorkflowInput) => {
 			const field: ResourceMapperField = {
@@ -182,5 +174,5 @@ export async function loadWorkflowInputMappings(
 			return field;
 		});
 	}
-	return { fields, emptyFieldsNotice };
+	return { fields, dataMode, subworkflowInfo };
 }

@@ -2660,8 +2660,13 @@ export interface IExecutionSummaryNodeExecutionResult {
 
 export interface ResourceMapperFields {
 	fields: ResourceMapperField[];
-	mode?: string;
 	emptyFieldsNotice?: string;
+}
+
+export interface WorkflowInputsData {
+	fields: ResourceMapperField[];
+	dataMode: string;
+	subworkflowInfo?: { id?: string };
 }
 
 export interface ResourceMapperField {
