@@ -11,14 +11,7 @@ export async function loadSubWorkflowInputs(
 			? `<a href="/workflow/${subworkflowInfo?.id}" target="_blank">sub-workflow’s trigger</a>`
 			: 'sub-workflow’s trigger';
 
-		switch (dataMode) {
-			case 'passthrough':
-				emptyFieldsNotice = `This sub-workflow will consume all input data passed to it. Define specific expected input in the ${subworkflowLink}.`;
-				break;
-			default:
-				emptyFieldsNotice = `This sub-workflow will not receive any input when called by your AI node. Define your expected input in the ${subworkflowLink}.`;
-				break;
-		}
+		emptyFieldsNotice = `This sub-workflow will not receive any input when called by your AI node. Define your expected input in the ${subworkflowLink}.`;
 	}
 	return { fields, emptyFieldsNotice };
 }
