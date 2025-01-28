@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "country",
+            "type": "null",
+            "value": "",
+            "path": ".country"
+        },
+        {
+            "key": "has_eod",
+            "type": "boolean",
+            "value": "",
+            "path": ".has_eod"
+        },
+        {
+            "key": "has_intraday",
+            "type": "boolean",
+            "value": "",
+            "path": ".has_intraday"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "stock_exchange",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "acronym",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.acronym"
+                },
+                {
+                    "key": "city",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.city"
+                },
+                {
+                    "key": "country",
+                    "type": "null",
+                    "value": "",
+                    "path": ".stock_exchange.country"
+                },
+                {
+                    "key": "country_code",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.country_code"
+                },
+                {
+                    "key": "mic",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.mic"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.name"
+                },
+                {
+                    "key": "website",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.website"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".stock_exchange.required"
+                }
+            ],
+            "path": ".stock_exchange"
+        },
+        {
+            "key": "symbol",
+            "type": "string",
+            "value": "",
+            "path": ".symbol"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
