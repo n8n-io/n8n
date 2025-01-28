@@ -1,0 +1,129 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "assignee",
+            "type": "null",
+            "value": "",
+            "path": ".assignee"
+        },
+        {
+            "key": "comment",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "text",
+                            "type": "string",
+                            "value": "",
+                            "path": ".comment.items.text"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".comment.items.required"
+                        }
+                    ],
+                    "path": ".comment.items"
+                }
+            ],
+            "path": ".comment"
+        },
+        {
+            "key": "comment_text",
+            "type": "string",
+            "value": "",
+            "path": ".comment_text"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "group_assignee",
+            "type": "null",
+            "value": "",
+            "path": ".group_assignee"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "reactions",
+            "type": "array",
+            "value": "",
+            "path": ".reactions"
+        },
+        {
+            "key": "reply_count",
+            "type": "integer",
+            "value": "",
+            "path": ".reply_count"
+        },
+        {
+            "key": "user",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "color",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.color"
+                },
+                {
+                    "key": "email",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.email"
+                },
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".user.id"
+                },
+                {
+                    "key": "initials",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.initials"
+                },
+                {
+                    "key": "profilePicture",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.profilePicture"
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.username"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.required"
+                }
+            ],
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
