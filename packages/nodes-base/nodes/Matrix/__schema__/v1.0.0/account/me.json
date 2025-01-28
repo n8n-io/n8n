@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "device_id",
+            "type": "string",
+            "value": "",
+            "path": ".device_id"
+        },
+        {
+            "key": "is_guest",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_guest"
+        },
+        {
+            "key": "user_id",
+            "type": "string",
+            "value": "",
+            "path": ".user_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
