@@ -5,6 +5,7 @@ import * as a from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
+import { isObjectLiteral } from '@/utils';
 
 export class CredentialDataError extends ApplicationError {
 	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
@@ -74,7 +75,7 @@ export class Credentials<
 		try {
 			const stringified = JSON.stringify(data);
 
-			a.equal(typeof JSON.parse(stringified), 'object');
+			a.equal(isObjectLiteral(JSON.parse(stringified)), true);
 
 			return stringified;
 		} catch (cause) {

@@ -113,20 +113,25 @@ describe('Credentials', () => {
 		const trySetData = (credentials: Credentials<{}>, data: {}): CredentialDataError => {
 			try {
 				credentials.setData(data);
-				throw new Error('setData should have thrown an error');
 			} catch (e) {
 				return e;
 			}
+
+			throw new Error('setData should have thrown an error');
 		};
 
-		test('should throw an error when data is not an object', () => {
+		test.each<{}>([
+			[123, AssertionError],
+			[null, AssertionError],
+			[undefined, SyntaxError],
+		])('should throw a CredentialDataError when data is %s', (data, expectedError) => {
 			const credentials = new Credentials<{}>(nodeCredentials, credentialType);
 
-			const error = trySetData(credentials, 123);
+			const error = trySetData(credentials, data);
 			expect(error).toBeInstanceOf(CredentialDataError);
 			expect(error.message).toEqual(CREDENTIAL_ERRORS.INVALID_DATA);
 			expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
-			expect(error.cause).toBeInstanceOf(AssertionError);
+			expect(error.cause).toBeInstanceOf(expectedError);
 		});
 
 		test('should throw an error when data stringifies to malformed JSON', () => {
