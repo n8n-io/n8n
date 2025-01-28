@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "author",
+            "type": "string",
+            "value": "",
+            "path": ".author"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_at_i",
+            "type": "integer",
+            "value": "",
+            "path": ".created_at_i"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "options",
+            "type": "array",
+            "value": "",
+            "path": ".options"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "story_id",
+            "type": "integer",
+            "value": "",
+            "path": ".story_id"
+        }
+    ],
+    "path": ""
+}
