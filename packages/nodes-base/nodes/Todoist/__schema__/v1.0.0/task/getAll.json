@@ -1,0 +1,126 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "assignee_id",
+            "type": "null",
+            "value": "",
+            "path": ".assignee_id"
+        },
+        {
+            "key": "assigner_id",
+            "type": "null",
+            "value": "",
+            "path": ".assigner_id"
+        },
+        {
+            "key": "comment_count",
+            "type": "integer",
+            "value": "",
+            "path": ".comment_count"
+        },
+        {
+            "key": "content",
+            "type": "string",
+            "value": "",
+            "path": ".content"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "creator_id",
+            "type": "string",
+            "value": "",
+            "path": ".creator_id"
+        },
+        {
+            "key": "deadline",
+            "type": "null",
+            "value": "",
+            "path": ".deadline"
+        },
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "due",
+            "type": "null",
+            "value": "",
+            "path": ".due"
+        },
+        {
+            "key": "duration",
+            "type": "null",
+            "value": "",
+            "path": ".duration"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "is_completed",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_completed"
+        },
+        {
+            "key": "labels",
+            "type": "array",
+            "value": "",
+            "path": ".labels"
+        },
+        {
+            "key": "order",
+            "type": "integer",
+            "value": "",
+            "path": ".order"
+        },
+        {
+            "key": "parent_id",
+            "type": "null",
+            "value": "",
+            "path": ".parent_id"
+        },
+        {
+            "key": "priority",
+            "type": "integer",
+            "value": "",
+            "path": ".priority"
+        },
+        {
+            "key": "project_id",
+            "type": "string",
+            "value": "",
+            "path": ".project_id"
+        },
+        {
+            "key": "section_id",
+            "type": "null",
+            "value": "",
+            "path": ".section_id"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
