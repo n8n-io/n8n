@@ -41,7 +41,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
-		expect(activeExecutions.getActiveExecutions().length).toBe(0);
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 	});
 
 	test('Should add execution to active execution list', async () => {
@@ -49,7 +49,7 @@ describe('ActiveExecutions', () => {
 		const executionId = await activeExecutions.add(newExecution);
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
-		expect(activeExecutions.getActiveExecutions().length).toBe(1);
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(createNewExecution).toHaveBeenCalledTimes(1);
 		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
@@ -59,7 +59,7 @@ describe('ActiveExecutions', () => {
 		const executionId = await activeExecutions.add(newExecution, FAKE_SECOND_EXECUTION_ID);
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
-		expect(activeExecutions.getActiveExecutions().length).toBe(1);
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(createNewExecution).toHaveBeenCalledTimes(0);
 		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
@@ -120,7 +120,7 @@ describe('ActiveExecutions', () => {
 		await new Promise(setImmediate);
 
 		// Execution should still be in activeExecutions
-		expect(activeExecutions.getActiveExecutions().length).toBe(1);
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(activeExecutions.getStatus(executionId)).toBe('waiting');
 	});
 
@@ -136,7 +136,7 @@ describe('ActiveExecutions', () => {
 		await new Promise(setImmediate);
 
 		// ASSERT
-		expect(activeExecutions.getActiveExecutions().length).toBe(0);
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 	});
 
 	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
