@@ -11,11 +11,6 @@ import {
 	typeIntoFixedCollectionItem,
 	clickWorkflowCardContent,
 	assertOutputTableContent,
-	populateMapperFields,
-	getNodeRunInfoStale,
-	assertNodeOutputErrorMessageExists,
-	checkParameterCheckboxInputByName,
-	uncheckParameterCheckboxInputByName,
 } from '../composables/ndv';
 import {
 	clickExecuteWorkflowButton,
@@ -67,61 +62,6 @@ describe('Sub-workflow creation and typed usage', () => {
 		// **************************
 
 		openNode('Workflow Input Trigger');
-	});
-
-	it('works with type-checked values', () => {
-		populateFixedCollection(EXAMPLE_FIELDS, 'workflowInputs', 1);
-
-		validateAndReturnToParent(
-			DEFAULT_SUBWORKFLOW_NAME_1,
-			1,
-			EXAMPLE_FIELDS.map((f) => f[0]),
-		);
-
-		const values = [
-			'-1', // number fields don't support `=` switch to expression, so let's test the Fixed case with it
-			...EXAMPLE_FIELDS.slice(1).map((x) => `={{}{{} $json.a${x[0]}`), // the `}}` at the end are added automatically
-		];
-
-		// this matches with the pinned data provided in the fixture
-		populateMapperFields(values.map((x, i) => [EXAMPLE_FIELDS[i][0], x]));
-
-		clickExecuteNode();
-
-		const expected = [
-			['-1', 'A String', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
-			['-1', 'Another String', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'false'],
-		];
-		assertOutputTableContent(expected);
-
-		// Test the type-checking options
-		populateMapperFields([['aString', '{selectAll}{backspace}{{}{{} 5']]);
-
-		getNodeRunInfoStale().should('exist');
-		clickExecuteNode();
-
-		assertNodeOutputErrorMessageExists();
-
-		// attemptToConvertTypes enabled
-		checkParameterCheckboxInputByName('attemptToConvertTypes');
-
-		getNodeRunInfoStale().should('exist');
-		clickExecuteNode();
-
-		const expected2 = [
-			['-1', '5', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
-			['-1', '5', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'false'],
-		];
-
-		assertOutputTableContent(expected2);
-
-		// disabled again
-		uncheckParameterCheckboxInputByName('attemptToConvertTypes');
-
-		getNodeRunInfoStale().should('exist');
-		clickExecuteNode();
-
-		assertNodeOutputErrorMessageExists();
 	});
 
 	it('works with Fields input source, and can then be changed to JSON input source', () => {

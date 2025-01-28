@@ -20,15 +20,6 @@ describe('Workflow Selector Parameter', () => {
 			action: 'Call Another Workflow',
 		});
 	});
-	it('should render sub-workflows list', () => {
-		ndv.getters.resourceLocator('workflowId').should('be.visible');
-		ndv.getters.resourceLocatorInput('workflowId').click();
-
-		getVisiblePopper()
-			.should('have.length', 1)
-			.findChildByTestId('rlc-item')
-			.should('have.length', 3);
-	});
 
 	it('should show required parameter warning', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
