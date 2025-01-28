@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "assignedTo",
+            "type": "string",
+            "value": "",
+            "path": ".assignedTo"
+        },
+        {
+            "key": "body",
+            "type": "string",
+            "value": "",
+            "path": ".body"
+        },
+        {
+            "key": "completed",
+            "type": "boolean",
+            "value": "",
+            "path": ".completed"
+        },
+        {
+            "key": "contactId",
+            "type": "string",
+            "value": "",
+            "path": ".contactId"
+        },
+        {
+            "key": "dueDate",
+            "type": "string",
+            "value": "",
+            "path": ".dueDate"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
