@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "items",
+            "type": "array",
+            "value": "",
+            "path": ".items"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "orderindex",
+            "type": "integer",
+            "value": "",
+            "path": ".orderindex"
+        },
+        {
+            "key": "resolved",
+            "type": "integer",
+            "value": "",
+            "path": ".resolved"
+        },
+        {
+            "key": "task_id",
+            "type": "string",
+            "value": "",
+            "path": ".task_id"
+        },
+        {
+            "key": "unresolved",
+            "type": "integer",
+            "value": "",
+            "path": ".unresolved"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
