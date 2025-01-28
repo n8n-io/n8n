@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "settings",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "from_name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".settings.from_name"
+                },
+                {
+                    "key": "reply_to",
+                    "type": "string",
+                    "value": "",
+                    "path": ".settings.reply_to"
+                },
+                {
+                    "key": "title",
+                    "type": "string",
+                    "value": "",
+                    "path": ".settings.title"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".settings.required"
+                }
+            ],
+            "path": ".settings"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "tracking",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "clicktale",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tracking.clicktale"
+                },
+                {
+                    "key": "ecomm360",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".tracking.ecomm360"
+                },
+                {
+                    "key": "goal_tracking",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".tracking.goal_tracking"
+                },
+                {
+                    "key": "google_analytics",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tracking.google_analytics"
+                },
+                {
+                    "key": "html_clicks",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".tracking.html_clicks"
+                },
+                {
+                    "key": "opens",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".tracking.opens"
+                },
+                {
+                    "key": "text_clicks",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".tracking.text_clicks"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tracking.required"
+                }
+            ],
+            "path": ".tracking"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
