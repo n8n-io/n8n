@@ -53,7 +53,7 @@ export class LmChatOpenRouter implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://openrouter.ai/api/v1',
+			baseURL: '={{ $credentials?.url || "https://openrouter.ai/api/v1" }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -80,7 +80,7 @@ export class LmChatOpenRouter implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: 'https://openrouter.ai/api/v1/models',
+								url: '/models',
 							},
 							output: {
 								postReceive: [
@@ -210,7 +210,7 @@ export class LmChatOpenRouter implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openRouterApi');
+		const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -226,11 +226,11 @@ export class LmChatOpenRouter implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: 'https://openrouter.ai/api/v1',
+			baseURL: credentials.url ?? 'https://openrouter.ai/api/v1',
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			openAIApiKey: credentials.apiKey,
 			modelName,
 			...options,
 			timeout: options.timeout ?? 60000,

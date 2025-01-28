@@ -21,6 +21,13 @@ export class OpenRouterApi implements ICredentialType {
 			required: true,
 			default: '',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'string',
+			default: 'https://openrouter.ai/api/v1',
+			description: 'Override the default base URL for the API',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -34,7 +41,7 @@ export class OpenRouterApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://openrouter.ai/api/v1',
+			baseURL: '={{ $credentials.url }}',
 			url: '/models',
 		},
 	};
