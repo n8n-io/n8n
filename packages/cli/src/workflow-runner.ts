@@ -186,7 +186,6 @@ export class WorkflowRunner {
 							executionId,
 						]);
 					} catch (error) {
-						this.errorReporter.error(error);
 						this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 					}
 				})

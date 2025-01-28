@@ -443,7 +443,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.executionId,
 					]);
 				} catch (error) {
-					Container.get(ErrorReporter).error(error);
 					Container.get(Logger).error(
 						'There was a problem running hook "workflow.postExecute"',
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
