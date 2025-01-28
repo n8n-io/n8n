@@ -1,0 +1,31 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "data",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.required"
+                },
+                {
+                    "key": "approved",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".data.approved"
+                }
+            ],
+            "path": ".data"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
