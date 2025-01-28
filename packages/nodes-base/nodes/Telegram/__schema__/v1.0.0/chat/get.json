@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "ok",
+            "type": "boolean",
+            "value": "",
+            "path": ".ok"
+        },
+        {
+            "key": "result",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "accent_color_id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.accent_color_id"
+                },
+                {
+                    "key": "active_usernames",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "items",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.active_usernames.items"
+                        }
+                    ],
+                    "path": ".result.active_usernames"
+                },
+                {
+                    "key": "first_name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.first_name"
+                },
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.id"
+                },
+                {
+                    "key": "max_reaction_count",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.max_reaction_count"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.type"
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.username"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.required"
+                }
+            ],
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
