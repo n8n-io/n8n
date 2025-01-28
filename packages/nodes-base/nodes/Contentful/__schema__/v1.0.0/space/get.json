@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "locales",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "code",
+                            "type": "string",
+                            "value": "",
+                            "path": ".locales.items.code"
+                        },
+                        {
+                            "key": "default",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".locales.items.default"
+                        },
+                        {
+                            "key": "fallbackCode",
+                            "type": "null",
+                            "value": "",
+                            "path": ".locales.items.fallbackCode"
+                        },
+                        {
+                            "key": "name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".locales.items.name"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".locales.items.required"
+                        }
+                    ],
+                    "path": ".locales.items"
+                }
+            ],
+            "path": ".locales"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "sys",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.id"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.type"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.required"
+                }
+            ],
+            "path": ".sys"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
