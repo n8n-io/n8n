@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "person",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "email",
+                    "type": "string",
+                    "value": "",
+                    "path": ".person.email"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".person.required"
+                }
+            ],
+            "path": ".person"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
