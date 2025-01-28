@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "grade",
+            "type": "string",
+            "value": "",
+            "path": ".grade"
+        },
+        {
+            "key": "grade_url",
+            "type": "string",
+            "value": "",
+            "path": ".grade_url"
+        },
+        {
+            "key": "issue_summary",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "count",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".issue_summary.items.count"
+                        },
+                        {
+                            "key": "detail_url",
+                            "type": "string",
+                            "value": "",
+                            "path": ".issue_summary.items.detail_url"
+                        },
+                        {
+                            "key": "severity",
+                            "type": "string",
+                            "value": "",
+                            "path": ".issue_summary.items.severity"
+                        },
+                        {
+                            "key": "total_score_impact",
+                            "type": "number",
+                            "value": "",
+                            "path": ".issue_summary.items.total_score_impact"
+                        },
+                        {
+                            "key": "type",
+                            "type": "string",
+                            "value": "",
+                            "path": ".issue_summary.items.type"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".issue_summary.items.required"
+                        }
+                    ],
+                    "path": ".issue_summary.items"
+                }
+            ],
+            "path": ".issue_summary"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "score",
+            "type": "integer",
+            "value": "",
+            "path": ".score"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
