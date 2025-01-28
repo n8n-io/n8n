@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "age",
+            "type": "integer",
+            "value": "",
+            "path": ".age"
+        },
+        {
+            "key": "biological_sex",
+            "type": "string",
+            "value": "",
+            "path": ".biological_sex"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "height",
+            "type": "number",
+            "value": "",
+            "path": ".height"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "weight",
+            "type": "number",
+            "value": "",
+            "path": ".weight"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
