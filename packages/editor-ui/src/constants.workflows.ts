@@ -7,7 +7,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 		{
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
 			typeVersion: 1.1,
-			name: 'Workflow Input Trigger',
+			name: 'When Executed by Another Workflow',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
 			position: [260, 340],
 			parameters: {},
@@ -21,7 +21,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 		},
 	] as INodeUi[],
 	connections: {
-		'Workflow Input Trigger': {
+		'When Executed by Another Workflow': {
 			main: [
 				[
 					{
