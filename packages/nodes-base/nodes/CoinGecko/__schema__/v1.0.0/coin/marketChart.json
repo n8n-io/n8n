@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "price",
+            "type": "number",
+            "value": "",
+            "path": ".price"
+        },
+        {
+            "key": "time",
+            "type": "string",
+            "value": "",
+            "path": ".time"
+        },
+        {
+            "key": "totalVolume",
+            "type": "number",
+            "value": "",
+            "path": ".totalVolume"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
