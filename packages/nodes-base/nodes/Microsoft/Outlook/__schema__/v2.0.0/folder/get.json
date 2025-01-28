@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        },
+        {
+            "key": "totalItemCount",
+            "type": "integer",
+            "value": "",
+            "path": ".totalItemCount"
+        }
+    ],
+    "path": ""
+}
