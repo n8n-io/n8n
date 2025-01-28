@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "agent_id",
+            "type": "integer",
+            "value": "",
+            "path": ".agent_id"
+        },
+        {
+            "key": "details",
+            "type": "string",
+            "value": "",
+            "path": ".details"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "summary",
+            "type": "string",
+            "value": "",
+            "path": ".summary"
+        },
+        {
+            "key": "targetdate",
+            "type": "string",
+            "value": "",
+            "path": ".targetdate"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
