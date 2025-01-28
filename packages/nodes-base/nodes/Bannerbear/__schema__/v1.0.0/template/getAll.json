@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "available_modifications",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "background",
+                            "type": "null",
+                            "value": "",
+                            "path": ".available_modifications.items.background"
+                        },
+                        {
+                            "key": "color",
+                            "type": "null",
+                            "value": "",
+                            "path": ".available_modifications.items.color"
+                        },
+                        {
+                            "key": "image_url",
+                            "type": "null",
+                            "value": "",
+                            "path": ".available_modifications.items.image_url"
+                        },
+                        {
+                            "key": "name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".available_modifications.items.name"
+                        },
+                        {
+                            "key": "text",
+                            "type": "null",
+                            "value": "",
+                            "path": ".available_modifications.items.text"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".available_modifications.items.required"
+                        }
+                    ],
+                    "path": ".available_modifications.items"
+                }
+            ],
+            "path": ".available_modifications"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "height",
+            "type": "integer",
+            "value": "",
+            "path": ".height"
+        },
+        {
+            "key": "metadata",
+            "type": "null",
+            "value": "",
+            "path": ".metadata"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "self",
+            "type": "string",
+            "value": "",
+            "path": ".self"
+        },
+        {
+            "key": "tags",
+            "type": "array",
+            "value": "",
+            "path": ".tags"
+        },
+        {
+            "key": "uid",
+            "type": "string",
+            "value": "",
+            "path": ".uid"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "width",
+            "type": "integer",
+            "value": "",
+            "path": ".width"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
