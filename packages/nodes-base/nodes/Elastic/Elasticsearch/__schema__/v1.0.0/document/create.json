@@ -1,0 +1,79 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "_index",
+            "type": "string",
+            "value": "",
+            "path": "._index"
+        },
+        {
+            "key": "_primary_term",
+            "type": "integer",
+            "value": "",
+            "path": "._primary_term"
+        },
+        {
+            "key": "_seq_no",
+            "type": "integer",
+            "value": "",
+            "path": "._seq_no"
+        },
+        {
+            "key": "_shards",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "failed",
+                    "type": "integer",
+                    "value": "",
+                    "path": "._shards.failed"
+                },
+                {
+                    "key": "successful",
+                    "type": "integer",
+                    "value": "",
+                    "path": "._shards.successful"
+                },
+                {
+                    "key": "total",
+                    "type": "integer",
+                    "value": "",
+                    "path": "._shards.total"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": "._shards.required"
+                }
+            ],
+            "path": "._shards"
+        },
+        {
+            "key": "_version",
+            "type": "integer",
+            "value": "",
+            "path": "._version"
+        },
+        {
+            "key": "result",
+            "type": "string",
+            "value": "",
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
