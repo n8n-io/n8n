@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "archived",
+            "type": "boolean",
+            "value": "",
+            "path": ".archived"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "createdate",
+            "type": "string",
+            "value": "",
+            "path": ".createdate"
+        },
+        {
+            "key": "hs_lastmodifieddate",
+            "type": "string",
+            "value": "",
+            "path": ".hs_lastmodifieddate"
+        },
+        {
+            "key": "hs_object_id",
+            "type": "string",
+            "value": "",
+            "path": ".hs_object_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "updatedAt",
+            "type": "string",
+            "value": "",
+            "path": ".updatedAt"
+        },
+        {
+            "key": "dealname",
+            "type": "string",
+            "value": "",
+            "path": ".dealname"
+        }
+    ],
+    "path": ""
+}
