@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "inviter",
+            "type": "string",
+            "value": "",
+            "path": ".inviter"
+        },
+        {
+            "key": "subtype",
+            "type": "string",
+            "value": "",
+            "path": ".subtype"
+        },
+        {
+            "key": "text",
+            "type": "string",
+            "value": "",
+            "path": ".text"
+        },
+        {
+            "key": "ts",
+            "type": "string",
+            "value": "",
+            "path": ".ts"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "user",
+            "type": "string",
+            "value": "",
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
