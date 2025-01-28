@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "api_quota",
+            "type": "integer",
+            "value": "",
+            "path": ".api_quota"
+        },
+        {
+            "key": "api_remaining",
+            "type": "string",
+            "value": "",
+            "path": ".api_remaining"
+        },
+        {
+            "key": "api_used",
+            "type": "string",
+            "value": "",
+            "path": ".api_used"
+        },
+        {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "path": ".message"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "subscription_current_period_end",
+            "type": "string",
+            "value": "",
+            "path": ".subscription_current_period_end"
+        },
+        {
+            "key": "subscription_current_period_start",
+            "type": "string",
+            "value": "",
+            "path": ".subscription_current_period_start"
+        },
+        {
+            "key": "subscription_interval",
+            "type": "string",
+            "value": "",
+            "path": ".subscription_interval"
+        },
+        {
+            "key": "subscription_product",
+            "type": "string",
+            "value": "",
+            "path": ".subscription_product"
+        },
+        {
+            "key": "subscription_status",
+            "type": "string",
+            "value": "",
+            "path": ".subscription_status"
+        },
+        {
+            "key": "template_count",
+            "type": "integer",
+            "value": "",
+            "path": ".template_count"
+        },
+        {
+            "key": "template_quota",
+            "type": "integer",
+            "value": "",
+            "path": ".template_quota"
+        },
+        {
+            "key": "template_remaining",
+            "type": "integer",
+            "value": "",
+            "path": ".template_remaining"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
