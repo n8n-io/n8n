@@ -73,11 +73,11 @@ async function onEdit() {
 			type: 'success',
 			title: i18n.baseText('settings.api.update.toast'),
 		});
+		closeModal();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.edit.error'));
 	} finally {
 		loading.value = false;
-		closeModal();
 	}
 }
 
