@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "BeginOffset",
+            "type": "integer",
+            "value": "",
+            "path": ".BeginOffset"
+        },
+        {
+            "key": "EndOffset",
+            "type": "integer",
+            "value": "",
+            "path": ".EndOffset"
+        },
+        {
+            "key": "Score",
+            "type": "number",
+            "value": "",
+            "path": ".Score"
+        },
+        {
+            "key": "Text",
+            "type": "string",
+            "value": "",
+            "path": ".Text"
+        },
+        {
+            "key": "Type",
+            "type": "string",
+            "value": "",
+            "path": ".Type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
