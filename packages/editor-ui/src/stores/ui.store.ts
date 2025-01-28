@@ -36,7 +36,7 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
-	API_KEY_EDIT_MODAL_KEY,
+	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -144,7 +144,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: undefined,
 		},
-		[API_KEY_EDIT_MODAL_KEY]: {
+		[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: {
 			open: false,
 			data: {
 				activeId: null,

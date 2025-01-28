@@ -1,8 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { API_KEY_EDIT_MODAL_KEY, STORES } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, STORES } from '@/constants';
 import { cleanupAppModals, createAppModals, mockedStore, retry } from '@/__tests__/utils';
-import ApiKeyEditModal from './ApiKeyEditModal.vue';
+import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import { fireEvent } from '@testing-library/vue';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 
@@ -11,7 +11,7 @@ const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 		initialState: {
 			[STORES.UI]: {
 				modalsById: {
-					[API_KEY_EDIT_MODAL_KEY]: { open: true },
+					[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: { open: true },
 				},
 			},
 		},
@@ -20,7 +20,7 @@ const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 
 const apiKeysStore = mockedStore(useApiKeysStore);
 
-describe('ApiKeyEditModal', () => {
+describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
 		createAppModals();
 	});

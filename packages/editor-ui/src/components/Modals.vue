@@ -7,7 +7,7 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	API_KEY_EDIT_MODAL_KEY,
+	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
@@ -55,7 +55,7 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
-import ApiKeyEditModal from '@/components/ApiKeyEditModal.vue';
+import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
 import MfaSetupModal from '@/components/MfaSetupModal.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -86,7 +86,7 @@ import type { EventBus } from 'n8n-design-system';
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="API_KEY_EDIT_MODAL_KEY">
+		<ModalRoot :name="API_KEY_CREATE_OR_EDIT_MODAL_KEY">
 			<template
 				#default="{
 					modalName,
@@ -96,7 +96,7 @@ import type { EventBus } from 'n8n-design-system';
 					data: { mode: 'new' | 'edit'; activeId: string };
 				}"
 			>
-				<ApiKeyEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
+				<ApiKeyCreateOrEditModal :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
 

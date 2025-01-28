@@ -6,7 +6,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { API_KEY_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -36,7 +36,7 @@ const onCreateApiKey = async () => {
 	telemetry.track('User clicked create API key button');
 
 	uiStore.openModalWithData({
-		name: API_KEY_EDIT_MODAL_KEY,
+		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 		data: { mode: 'new' },
 	});
 };
@@ -91,7 +91,7 @@ async function onDelete(id: string) {
 
 function onEdit(id: string) {
 	uiStore.openModalWithData({
-		name: API_KEY_EDIT_MODAL_KEY,
+		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 		data: { mode: 'edit', activeId: id },
 	});
 }

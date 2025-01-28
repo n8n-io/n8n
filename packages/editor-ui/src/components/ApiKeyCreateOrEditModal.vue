@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -80,7 +80,7 @@ async function onEdit() {
 }
 
 function closeModal() {
-	uiStore.closeModal(API_KEY_EDIT_MODAL_KEY);
+	uiStore.closeModal(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
 }
 
 const onSave = async () => {
@@ -121,7 +121,7 @@ const modalTitle = computed(() => {
 	<Modal
 		:title="modalTitle"
 		:event-bus="modalBus"
-		:name="API_KEY_EDIT_MODAL_KEY"
+		:name="API_KEY_CREATE_OR_EDIT_MODAL_KEY"
 		width="600px"
 		:lock-scroll="false"
 		:close-on-esc="true"
