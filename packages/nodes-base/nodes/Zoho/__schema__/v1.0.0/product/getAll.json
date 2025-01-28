@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Description",
+            "type": "null",
+            "value": "",
+            "path": ".Description"
+        },
+        {
+            "key": "Manufacturer",
+            "type": "null",
+            "value": "",
+            "path": ".Manufacturer"
+        },
+        {
+            "key": "Product_Category",
+            "type": "null",
+            "value": "",
+            "path": ".Product_Category"
+        },
+        {
+            "key": "Product_Code",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Product_Code.type"
+                }
+            ],
+            "path": ".Product_Code"
+        },
+        {
+            "key": "Qty_in_Stock",
+            "type": "integer",
+            "value": "",
+            "path": ".Qty_in_Stock"
+        },
+        {
+            "key": "Unit_Price",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Unit_Price.type"
+                }
+            ],
+            "path": ".Unit_Price"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
