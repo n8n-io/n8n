@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "comment_karma",
+            "type": "integer",
+            "value": "",
+            "path": ".comment_karma"
+        },
+        {
+            "key": "link_karma",
+            "type": "integer",
+            "value": "",
+            "path": ".link_karma"
+        },
+        {
+            "key": "sr",
+            "type": "string",
+            "value": "",
+            "path": ".sr"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
