@@ -249,7 +249,8 @@ const selectAllIndeterminate = computed(() => {
 		return false;
 	}
 
-	const selectedVisibleItems = toRaw(selectedChanges.value).intersection(sortedWorkflowsSet.value);
+	const selected = new Set(toRaw(selectedChanges.value));
+	const selectedVisibleItems = selected.intersection(toRaw(sortedWorkflowsSet.value));
 
 	if (selectedVisibleItems.size === 0) {
 		return false;
@@ -259,10 +260,11 @@ const selectAllIndeterminate = computed(() => {
 });
 
 function onToggleSelectAll() {
+	const selected = new Set(toRaw(selectedChanges.value));
 	if (selectAll.value) {
-		selectedChanges.value = toRaw(selectedChanges.value).difference(sortedWorkflowsSet.value);
+		selectedChanges.value = selected.difference(sortedWorkflowsSet.value);
 	} else {
-		selectedChanges.value = toRaw(selectedChanges.value).union(sortedWorkflowsSet.value);
+		selectedChanges.value = selected.union(sortedWorkflowsSet.value);
 	}
 }
 
