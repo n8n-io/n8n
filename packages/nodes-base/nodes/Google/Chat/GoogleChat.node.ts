@@ -27,7 +27,7 @@ import {
 	messageFields,
 	messageOperations,
 	spaceFields,
-	spaceIdPtoperty,
+	spaceIdProperty,
 	spaceOperations,
 } from './descriptions';
 import {
@@ -144,7 +144,7 @@ export class GoogleChat implements INodeType {
 			...messageFields,
 			...spaceOperations,
 			...spaceFields,
-			...getSendAndWaitProperties([spaceIdPtoperty], 'message', undefined, {
+			...getSendAndWaitProperties([spaceIdProperty], 'message', undefined, {
 				noButtonStyle: true,
 				defaultApproveLabel: '✅ Approve',
 				defaultDisapproveLabel: '❌ Decline',
