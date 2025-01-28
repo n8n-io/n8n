@@ -1,0 +1,93 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "hasPassword",
+            "type": "boolean",
+            "value": "",
+            "path": ".hasPassword"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "link",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "preventsDownload",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".link.preventsDownload"
+                },
+                {
+                    "key": "scope",
+                    "type": "string",
+                    "value": "",
+                    "path": ".link.scope"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".link.type"
+                },
+                {
+                    "key": "webUrl",
+                    "type": "string",
+                    "value": "",
+                    "path": ".link.webUrl"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".link.required"
+                }
+            ],
+            "path": ".link"
+        },
+        {
+            "key": "roles",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".roles.items"
+                }
+            ],
+            "path": ".roles"
+        },
+        {
+            "key": "shareId",
+            "type": "string",
+            "value": "",
+            "path": ".shareId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
