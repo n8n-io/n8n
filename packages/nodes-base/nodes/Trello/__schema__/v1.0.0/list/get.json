@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "closed",
+            "type": "boolean",
+            "value": "",
+            "path": ".closed"
+        },
+        {
+            "key": "idBoard",
+            "type": "string",
+            "value": "",
+            "path": ".idBoard"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        }
+    ],
+    "path": ""
+}
