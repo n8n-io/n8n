@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Action",
+            "type": "string",
+            "value": "",
+            "path": ".Action"
+        },
+        {
+            "key": "Description",
+            "type": "string",
+            "value": "",
+            "path": ".Description"
+        },
+        {
+            "key": "Label",
+            "type": "string",
+            "value": "",
+            "path": ".Label"
+        },
+        {
+            "key": "Type",
+            "type": "string",
+            "value": "",
+            "path": ".Type"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "process_id",
+            "type": "integer",
+            "value": "",
+            "path": ".process_id"
+        },
+        {
+            "key": "processor",
+            "type": "string",
+            "value": "",
+            "path": ".processor"
+        },
+        {
+            "key": "processor_id",
+            "type": "integer",
+            "value": "",
+            "path": ".processor_id"
+        },
+        {
+            "key": "system_id",
+            "type": "string",
+            "value": "",
+            "path": ".system_id"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "value",
+            "type": "string",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
