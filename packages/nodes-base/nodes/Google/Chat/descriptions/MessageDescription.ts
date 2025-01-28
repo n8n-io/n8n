@@ -47,7 +47,7 @@ export const messageOperations: INodeProperties[] = [
 	},
 ];
 
-export const spaceIdPtoperty: INodeProperties = {
+export const spaceIdProperty: INodeProperties = {
 	displayName: 'Space Name or ID',
 	name: 'spaceId',
 	type: 'options',
