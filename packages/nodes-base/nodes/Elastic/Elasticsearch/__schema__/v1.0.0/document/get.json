@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "_index",
+            "type": "string",
+            "value": "",
+            "path": "._index"
+        },
+        {
+            "key": "_primary_term",
+            "type": "integer",
+            "value": "",
+            "path": "._primary_term"
+        },
+        {
+            "key": "_seq_no",
+            "type": "integer",
+            "value": "",
+            "path": "._seq_no"
+        },
+        {
+            "key": "_source",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": "._source.required"
+                }
+            ],
+            "path": "._source"
+        },
+        {
+            "key": "_version",
+            "type": "integer",
+            "value": "",
+            "path": "._version"
+        },
+        {
+            "key": "found",
+            "type": "boolean",
+            "value": "",
+            "path": ".found"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
