@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "messagesTotal",
+            "type": "integer",
+            "value": "",
+            "path": ".messagesTotal"
+        },
+        {
+            "key": "messagesUnread",
+            "type": "integer",
+            "value": "",
+            "path": ".messagesUnread"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "threadsTotal",
+            "type": "integer",
+            "value": "",
+            "path": ".threadsTotal"
+        },
+        {
+            "key": "threadsUnread",
+            "type": "integer",
+            "value": "",
+            "path": ".threadsUnread"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
