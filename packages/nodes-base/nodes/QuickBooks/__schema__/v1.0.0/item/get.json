@@ -1,0 +1,109 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Active",
+            "type": "boolean",
+            "value": "",
+            "path": ".Active"
+        },
+        {
+            "key": "FullyQualifiedName",
+            "type": "string",
+            "value": "",
+            "path": ".FullyQualifiedName"
+        },
+        {
+            "key": "Id",
+            "type": "string",
+            "value": "",
+            "path": ".Id"
+        },
+        {
+            "key": "MetaData",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "CreateTime",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.CreateTime"
+                },
+                {
+                    "key": "LastUpdatedTime",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.LastUpdatedTime"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.required"
+                }
+            ],
+            "path": ".MetaData"
+        },
+        {
+            "key": "Name",
+            "type": "string",
+            "value": "",
+            "path": ".Name"
+        },
+        {
+            "key": "PurchaseCost",
+            "type": "integer",
+            "value": "",
+            "path": ".PurchaseCost"
+        },
+        {
+            "key": "SyncToken",
+            "type": "string",
+            "value": "",
+            "path": ".SyncToken"
+        },
+        {
+            "key": "Taxable",
+            "type": "boolean",
+            "value": "",
+            "path": ".Taxable"
+        },
+        {
+            "key": "TrackQtyOnHand",
+            "type": "boolean",
+            "value": "",
+            "path": ".TrackQtyOnHand"
+        },
+        {
+            "key": "Type",
+            "type": "string",
+            "value": "",
+            "path": ".Type"
+        },
+        {
+            "key": "UnitPrice",
+            "type": "integer",
+            "value": "",
+            "path": ".UnitPrice"
+        },
+        {
+            "key": "domain",
+            "type": "string",
+            "value": "",
+            "path": ".domain"
+        },
+        {
+            "key": "sparse",
+            "type": "boolean",
+            "value": "",
+            "path": ".sparse"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
