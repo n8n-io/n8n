@@ -1,0 +1,111 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "ok",
+            "type": "boolean",
+            "value": "",
+            "path": ".ok"
+        },
+        {
+            "key": "result",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "chat",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "id",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".result.chat.id"
+                        },
+                        {
+                            "key": "type",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.chat.type"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.chat.required"
+                        }
+                    ],
+                    "path": ".result.chat"
+                },
+                {
+                    "key": "date",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.date"
+                },
+                {
+                    "key": "message_id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.message_id"
+                },
+                {
+                    "key": "text",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.text"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.required"
+                },
+                {
+                    "key": "from",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "first_name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.from.first_name"
+                        },
+                        {
+                            "key": "id",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".result.from.id"
+                        },
+                        {
+                            "key": "is_bot",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".result.from.is_bot"
+                        },
+                        {
+                            "key": "username",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.from.username"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".result.from.required"
+                        }
+                    ],
+                    "path": ".result.from"
+                }
+            ],
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
