@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "actingUserId",
+            "type": "string",
+            "value": "",
+            "path": ".actingUserId"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "device",
+            "type": "integer",
+            "value": "",
+            "path": ".device"
+        },
+        {
+            "key": "groupId",
+            "type": "null",
+            "value": "",
+            "path": ".groupId"
+        },
+        {
+            "key": "installationId",
+            "type": "null",
+            "value": "",
+            "path": ".installationId"
+        },
+        {
+            "key": "ipAddress",
+            "type": "string",
+            "value": "",
+            "path": ".ipAddress"
+        },
+        {
+            "key": "memberId",
+            "type": "null",
+            "value": "",
+            "path": ".memberId"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "policyId",
+            "type": "null",
+            "value": "",
+            "path": ".policyId"
+        },
+        {
+            "key": "secretId",
+            "type": "null",
+            "value": "",
+            "path": ".secretId"
+        },
+        {
+            "key": "serviceAccountId",
+            "type": "null",
+            "value": "",
+            "path": ".serviceAccountId"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
