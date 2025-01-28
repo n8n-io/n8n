@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "count_manager_name",
+            "type": "integer",
+            "value": "",
+            "path": ".count_manager_name"
+        },
+        {
+            "key": "manager_name",
+            "type": "string",
+            "value": "",
+            "path": ".manager_name"
+        },
+        {
+            "key": "supervisor",
+            "type": "string",
+            "value": "",
+            "path": ".supervisor"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
