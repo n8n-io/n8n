@@ -89,6 +89,7 @@ import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUti
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
+import { useExecutingNode } from '@/composables/useExecutingNode';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -140,8 +141,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
-	const executingNode = ref<string[]>([]);
-	const executingNodeCompletionQueue = ref<string[]>([]);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
@@ -149,6 +148,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
+
+	const { executingNode, addExecutingNode, removeExecutingNode } = useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -551,29 +552,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
-	}
-
-	function addExecutingNode(nodeName: string) {
-		clearNodeExecutionQueue();
-		executingNode.value.push(nodeName);
-	}
-
-	function removeExecutingNode(nodeName: string) {
-		executingNodeCompletionQueue.value.push(nodeName);
-		clearNodeExecutionQueue(true);
-	}
-
-	function clearNodeExecutionQueue(keepLastInQueue = false) {
-		const shouldKeepLastExecutingNode =
-			keepLastInQueue && executingNode.value.length <= executingNodeCompletionQueue.value.length;
-		const lastExecutingNode = executingNodeCompletionQueue.value.at(-1);
-		const nodesToRemove = shouldKeepLastExecutingNode
-			? executingNodeCompletionQueue.value.slice(0, -1)
-			: executingNodeCompletionQueue.value;
-
-		executingNode.value = executingNode.value.filter((name) => !nodesToRemove.includes(name));
-		executingNodeCompletionQueue.value =
-			shouldKeepLastExecutingNode && lastExecutingNode ? [lastExecutingNode] : [];
 	}
 
 	function setWorkflowId(id?: string) {
@@ -1648,7 +1626,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
-		executingNodeCompletionQueue,
 		workflowsById,
 		nodeMetadata,
 		isInDebugMode,
@@ -1710,7 +1687,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetState,
 		addExecutingNode,
 		removeExecutingNode,
-		clearNodeExecutionQueue,
 		setWorkflowId,
 		setUsedCredentials,
 		setWorkflowName,
