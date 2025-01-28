@@ -16,6 +16,7 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
@@ -61,7 +62,7 @@ const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.va
 
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
-const examplePinnedData = ref<Record<string, unknown>>();
+const examplePinnedData = ref<IPinData>({});
 
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {

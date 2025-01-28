@@ -9,6 +9,7 @@ import type { EditableFormState, EvaluationFormState } from '@/components/TestDe
 import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref } from 'vue';
+import type { IPinData } from 'n8n-workflow';
 
 defineProps<{
 	showConfig: boolean;
@@ -16,7 +17,7 @@ defineProps<{
 	allTags: ITag[];
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
-	examplePinnedData?: Record<string, unknown>;
+	examplePinnedData?: IPinData;
 	sampleWorkflowName?: string;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
