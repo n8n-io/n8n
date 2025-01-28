@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "beginTime",
+            "type": "string",
+            "value": "",
+            "path": ".beginTime"
+        },
+        {
+            "key": "classType",
+            "type": "string",
+            "value": "",
+            "path": ".classType"
+        },
+        {
+            "key": "endTime",
+            "type": "string",
+            "value": "",
+            "path": ".endTime"
+        },
+        {
+            "key": "flrID",
+            "type": "string",
+            "value": "",
+            "path": ".flrID"
+        },
+        {
+            "key": "instruments",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "displayName",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.displayName"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.required"
+                        }
+                    ],
+                    "path": ".instruments.items"
+                }
+            ],
+            "path": ".instruments"
+        },
+        {
+            "key": "link",
+            "type": "string",
+            "value": "",
+            "path": ".link"
+        },
+        {
+            "key": "note",
+            "type": "string",
+            "value": "",
+            "path": ".note"
+        },
+        {
+            "key": "peakTime",
+            "type": "string",
+            "value": "",
+            "path": ".peakTime"
+        },
+        {
+            "key": "sourceLocation",
+            "type": "string",
+            "value": "",
+            "path": ".sourceLocation"
+        },
+        {
+            "key": "submissionTime",
+            "type": "string",
+            "value": "",
+            "path": ".submissionTime"
+        },
+        {
+            "key": "versionId",
+            "type": "integer",
+            "value": "",
+            "path": ".versionId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "linkedEvents",
+            "type": "null",
+            "value": "",
+            "path": ".linkedEvents"
+        },
+        {
+            "key": "activeRegionNum",
+            "type": "integer",
+            "value": "",
+            "path": ".activeRegionNum"
+        }
+    ],
+    "path": ""
+}
