@@ -135,7 +135,8 @@ export const formFields: INodeProperties = {
 				{
 					displayName: 'Field Name',
 					name: 'fieldName',
-					description: 'Name of field',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
 					type: 'string',
 					default: '',
 					displayOptions: {
@@ -147,7 +148,8 @@ export const formFields: INodeProperties = {
 				{
 					displayName: 'Field Value',
 					name: 'fieldValue',
-					description: 'Value of field',
+					description:
+						'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
 					type: 'string',
 					default: '',
 					displayOptions: {
