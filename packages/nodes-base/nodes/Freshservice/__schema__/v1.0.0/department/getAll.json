@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "custom_fields",
+            "type": "object",
+            "value": "",
+            "path": ".custom_fields"
+        },
+        {
+            "key": "description",
+            "type": "null",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "domains",
+            "type": "array",
+            "value": "",
+            "path": ".domains"
+        },
+        {
+            "key": "head_name",
+            "type": "string",
+            "value": "",
+            "path": ".head_name"
+        },
+        {
+            "key": "head_user_id",
+            "type": "integer",
+            "value": "",
+            "path": ".head_user_id"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "prime_user_id",
+            "type": "null",
+            "value": "",
+            "path": ".prime_user_id"
+        },
+        {
+            "key": "prime_user_name",
+            "type": "null",
+            "value": "",
+            "path": ".prime_user_name"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
