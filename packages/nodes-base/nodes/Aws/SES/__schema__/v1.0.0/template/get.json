@@ -1,0 +1,94 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "$",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "xmlns",
+                    "type": "string",
+                    "value": "",
+                    "path": ".$.xmlns"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".$.required"
+                }
+            ],
+            "path": ".$"
+        },
+        {
+            "key": "GetTemplateResult",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "Template",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "HtmlPart",
+                            "type": "string",
+                            "value": "",
+                            "path": ".GetTemplateResult.Template.HtmlPart"
+                        },
+                        {
+                            "key": "SubjectPart",
+                            "type": "string",
+                            "value": "",
+                            "path": ".GetTemplateResult.Template.SubjectPart"
+                        },
+                        {
+                            "key": "TemplateName",
+                            "type": "string",
+                            "value": "",
+                            "path": ".GetTemplateResult.Template.TemplateName"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".GetTemplateResult.Template.required"
+                        }
+                    ],
+                    "path": ".GetTemplateResult.Template"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".GetTemplateResult.required"
+                }
+            ],
+            "path": ".GetTemplateResult"
+        },
+        {
+            "key": "ResponseMetadata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "RequestId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".ResponseMetadata.RequestId"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".ResponseMetadata.required"
+                }
+            ],
+            "path": ".ResponseMetadata"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
