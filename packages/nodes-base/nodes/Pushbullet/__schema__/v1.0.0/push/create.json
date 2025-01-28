@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "active",
+            "type": "boolean",
+            "value": "",
+            "path": ".active"
+        },
+        {
+            "key": "body",
+            "type": "string",
+            "value": "",
+            "path": ".body"
+        },
+        {
+            "key": "client_iden",
+            "type": "string",
+            "value": "",
+            "path": ".client_iden"
+        },
+        {
+            "key": "created",
+            "type": "number",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "direction",
+            "type": "string",
+            "value": "",
+            "path": ".direction"
+        },
+        {
+            "key": "dismissed",
+            "type": "boolean",
+            "value": "",
+            "path": ".dismissed"
+        },
+        {
+            "key": "iden",
+            "type": "string",
+            "value": "",
+            "path": ".iden"
+        },
+        {
+            "key": "modified",
+            "type": "number",
+            "value": "",
+            "path": ".modified"
+        },
+        {
+            "key": "receiver_email",
+            "type": "string",
+            "value": "",
+            "path": ".receiver_email"
+        },
+        {
+            "key": "receiver_email_normalized",
+            "type": "string",
+            "value": "",
+            "path": ".receiver_email_normalized"
+        },
+        {
+            "key": "receiver_iden",
+            "type": "string",
+            "value": "",
+            "path": ".receiver_iden"
+        },
+        {
+            "key": "sender_name",
+            "type": "string",
+            "value": "",
+            "path": ".sender_name"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
