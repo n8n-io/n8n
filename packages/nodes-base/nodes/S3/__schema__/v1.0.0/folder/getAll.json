@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "ETag",
+            "type": "string",
+            "value": "",
+            "path": ".ETag"
+        },
+        {
+            "key": "Key",
+            "type": "string",
+            "value": "",
+            "path": ".Key"
+        },
+        {
+            "key": "LastModified",
+            "type": "string",
+            "value": "",
+            "path": ".LastModified"
+        },
+        {
+            "key": "Size",
+            "type": "string",
+            "value": "",
+            "path": ".Size"
+        },
+        {
+            "key": "StorageClass",
+            "type": "string",
+            "value": "",
+            "path": ".StorageClass"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
