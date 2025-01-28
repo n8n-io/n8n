@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "create_datetime",
+            "type": "integer",
+            "value": "",
+            "path": ".create_datetime"
+        },
+        {
+            "key": "friendly_name",
+            "type": "string",
+            "value": "",
+            "path": ".friendly_name"
+        },
+        {
+            "key": "http_password",
+            "type": "string",
+            "value": "",
+            "path": ".http_password"
+        },
+        {
+            "key": "http_username",
+            "type": "string",
+            "value": "",
+            "path": ".http_username"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "interval",
+            "type": "integer",
+            "value": "",
+            "path": ".interval"
+        },
+        {
+            "key": "keyword_case_type",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".keyword_case_type.type"
+                }
+            ],
+            "path": ".keyword_case_type"
+        },
+        {
+            "key": "keyword_type",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".keyword_type.type"
+                }
+            ],
+            "path": ".keyword_type"
+        },
+        {
+            "key": "keyword_value",
+            "type": "string",
+            "value": "",
+            "path": ".keyword_value"
+        },
+        {
+            "key": "port",
+            "type": "string",
+            "value": "",
+            "path": ".port"
+        },
+        {
+            "key": "status",
+            "type": "integer",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "sub_type",
+            "type": "string",
+            "value": "",
+            "path": ".sub_type"
+        },
+        {
+            "key": "timeout",
+            "type": "integer",
+            "value": "",
+            "path": ".timeout"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
