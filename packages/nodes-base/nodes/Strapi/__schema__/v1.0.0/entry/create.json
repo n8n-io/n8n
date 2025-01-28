@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "data",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "createdAt",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.createdAt"
+                },
+                {
+                    "key": "documentId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.documentId"
+                },
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".data.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.name"
+                },
+                {
+                    "key": "publishedAt",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.publishedAt"
+                },
+                {
+                    "key": "updatedAt",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.updatedAt"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".data.required"
+                }
+            ],
+            "path": ".data"
+        },
+        {
+            "key": "meta",
+            "type": "object",
+            "value": "",
+            "path": ".meta"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
