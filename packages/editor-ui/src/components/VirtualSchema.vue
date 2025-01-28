@@ -9,7 +9,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	createResultError,
-	createResultOk,
 	NodeConnectionType,
 	type IConnectedNode,
 	type IDataObject,
@@ -64,7 +63,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const { getSchemaForExecutionData, filterSchema } = useDataSchema();
+const { getSchemaForExecutionData, jsonSchemaToDataSchema, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
@@ -118,7 +117,7 @@ const nodeSchema = asyncComputed(async () => {
 	if (props.data.length === 0) {
 		const previewSchema = await getPreviewSchema();
 		if (previewSchema.ok) {
-			return filterSchema(previewSchema.result, props.search);
+			return filterSchema(jsonSchemaToDataSchema(previewSchema.result), props.search);
 		}
 	}
 

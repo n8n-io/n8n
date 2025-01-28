@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
+import type { Optional, Primitives, Schema, INodeUi, SchemaType } from '@/Interface';
 import {
 	type ITaskDataConnections,
 	type IDataObject,
@@ -68,7 +68,7 @@ export function useDataSchema() {
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
 	}
 
-	function getSchemaForJsonSchema(schema: JsonSchema) {
+	function jsonSchemaToDataSchema(schema: JsonSchema, path = '') {
 		let output: Schema = { type: 'undefined', value: 'undefined', path: '' };
 
 		if (typeof schema === 'boolean') return output;
@@ -80,7 +80,7 @@ export function useDataSchema() {
 					const subPath = generatePath(path, [key]);
 					return {
 						key,
-						...getSchemaForJsonSchema(subSchema as JsonSchema, subPath),
+						...jsonSchemaToDataSchema(subSchema as JsonSchema, subPath),
 					};
 				}),
 				path,
@@ -91,14 +91,14 @@ export function useDataSchema() {
 				value: [
 					{
 						key: '0',
-						...getSchemaForJsonSchema(schema.items as JsonSchema, `${path}[0]`),
+						...jsonSchemaToDataSchema(schema.items as JsonSchema, `${path}[0]`),
 					},
 				],
 				path,
 			};
 		} else if (schema.type) {
 			output = {
-				type: schema.type,
+				type: (Array.isArray(schema.type) ? schema.type[0] : schema.type) as SchemaType,
 				value: schema.default !== undefined ? String(schema.default) : '',
 				path,
 			};
@@ -207,6 +207,7 @@ export function useDataSchema() {
 		getNodeInputData,
 		getInputDataWithPinned,
 		filterSchema,
+		jsonSchemaToDataSchema,
 	};
 }
 
@@ -412,5 +413,11 @@ export const useFlattenSchema = () => {
 		}, []);
 	};
 
-	return { closedNodes, toggleLeaf, toggleNode, flattenSchema, flattenMultipleSchemas };
+	return {
+		closedNodes,
+		toggleLeaf,
+		toggleNode,
+		flattenSchema,
+		flattenMultipleSchemas,
+	};
 };

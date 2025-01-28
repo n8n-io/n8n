@@ -35,6 +35,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
+	SCHEMA_PREVIEW_EXPERIMENT,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -83,6 +84,7 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
+import { usePostHog } from '@/stores/posthog.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -184,6 +186,7 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
+const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -547,8 +550,12 @@ const hasInputOverwrite = computed((): boolean => {
 	return Boolean(taskData?.inputOverride);
 });
 
+const isSchemaPreviewEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+);
+
 const hasPreviewSchema = asyncComputed(async () => {
-	if (!node.value) return false;
+	if (!node.value || !isSchemaPreviewEnabled.value) return false;
 	const {
 		type,
 		typeVersion,
