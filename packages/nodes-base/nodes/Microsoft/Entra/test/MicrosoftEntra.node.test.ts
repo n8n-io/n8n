@@ -91,8 +91,6 @@ describe('Gong Node', () => {
 		];
 
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			jest
 				.spyOn(Helpers.CredentialsHelper.prototype, 'authenticate')
 				.mockImplementation(
@@ -114,11 +112,6 @@ describe('Gong Node', () => {
 						}
 					},
 				);
-		});
-
-		afterAll(() => {
-			nock.restore();
-			jest.restoreAllMocks();
 		});
 
 		nock(baseUrl)

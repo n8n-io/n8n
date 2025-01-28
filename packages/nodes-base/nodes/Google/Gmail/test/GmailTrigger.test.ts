@@ -42,8 +42,6 @@ describe('GmailTrigger', () => {
 	}
 
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		jest.spyOn(mailparser, 'simpleParser').mockResolvedValue({
 			headers: new Map([['headerKey', 'headerValue']]),
 			attachments: [],
@@ -61,10 +59,6 @@ describe('GmailTrigger', () => {
 				html: 'to@example.com',
 			},
 		});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	it('should return incoming emails', async () => {
