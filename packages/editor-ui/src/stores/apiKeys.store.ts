@@ -14,7 +14,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const settingsStore = useSettingsStore();
 
 	const apiKeysSortByCreationDate = computed(() =>
-		apiKeys.value.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+		apiKeys.value.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
 	);
 
 	const apiKeysById = computed(() => {
