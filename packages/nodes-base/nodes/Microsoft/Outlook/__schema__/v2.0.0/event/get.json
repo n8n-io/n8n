@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                },
+                {
+                    "key": "nextLink",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.nextLink"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "value",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "object",
+                    "value": [
+                        {
+                            "key": "@odata",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "etag",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".value.items.@odata.etag"
+                                }
+                            ],
+                            "path": ".value.items.@odata"
+                        },
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".value.items.id"
+                        },
+                        {
+                            "key": "start",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "dateTime",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".value.items.start.dateTime"
+                                },
+                                {
+                                    "key": "timeZone",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".value.items.start.timeZone"
+                                },
+                                {
+                                    "key": "required",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".value.items.start.required"
+                                }
+                            ],
+                            "path": ".value.items.start"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".value.items.required"
+                        }
+                    ],
+                    "path": ".value.items"
+                }
+            ],
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
