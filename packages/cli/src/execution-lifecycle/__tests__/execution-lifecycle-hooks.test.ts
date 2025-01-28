@@ -25,6 +25,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { mockInstance } from '@test/mocking';
 
 import {
+	getWorkflowHooksIntegrated,
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
@@ -85,6 +86,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const now = new Date('2025-01-13T18:25:50.267Z');
 	jest.useFakeTimers({ now });
 
+	let hooks: WorkflowHooks;
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowData.settings = {};
@@ -101,8 +104,62 @@ describe('Execution Lifecycle Hooks', () => {
 		};
 	});
 
+	const workflowEventTests = () => {
+		describe('workflowExecuteBefore', () => {
+			it('should emit workflow-pre-execute events', async () => {
+				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
+					executionId,
+					data: workflowData,
+				});
+			});
+		});
+
+		describe('workflowExecuteAfter', () => {
+			it('should emit workflow-post-execute events', async () => {
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRun,
+					workflow: workflowData,
+				});
+			});
+		});
+	};
+
+	const nodeEventsTests = () => {
+		describe('nodeExecuteBefore', () => {
+			it('should emit node-pre-execute event', async () => {
+				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('node-pre-execute', {
+					executionId,
+					workflow: workflowData,
+					nodeName,
+				});
+			});
+		});
+
+		describe('nodeExecuteAfter', () => {
+			it('should emit node-post-execute event', async () => {
+				await hooks.executeHookFunctions('nodeExecuteAfter', [
+					nodeName,
+					taskData,
+					runExecutionData,
+				]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('node-post-execute', {
+					executionId,
+					workflow: workflowData,
+					nodeName,
+				});
+			});
+		});
+	};
+
 	describe('getWorkflowHooksMain', () => {
-		let hooks: WorkflowHooks;
 		beforeEach(() => {
 			hooks = getWorkflowHooksMain(
 				{
@@ -115,6 +172,9 @@ describe('Execution Lifecycle Hooks', () => {
 			);
 		});
 
+		workflowEventTests();
+		nodeEventsTests();
+
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
 			expect(hooks.mode).toBe('manual');
@@ -126,10 +186,10 @@ describe('Execution Lifecycle Hooks', () => {
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
-			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
-			expect(hookFunctions.sendResponse).toBeUndefined();
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('nodeExecuteBefore', () => {
@@ -140,16 +200,6 @@ describe('Execution Lifecycle Hooks', () => {
 					{ type: 'nodeExecuteBefore', data: { executionId, nodeName } },
 					pushRef,
 				);
-			});
-
-			it('should emit node-pre-execute event', async () => {
-				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
-
-				expect(eventService.emit).toHaveBeenCalledWith('node-pre-execute', {
-					executionId,
-					workflow: workflowData,
-					nodeName,
-				});
 			});
 		});
 
@@ -165,20 +215,6 @@ describe('Execution Lifecycle Hooks', () => {
 					{ type: 'nodeExecuteAfter', data: { executionId, nodeName, data: taskData } },
 					pushRef,
 				);
-			});
-
-			it('should emit node-post-execute event', async () => {
-				await hooks.executeHookFunctions('nodeExecuteAfter', [
-					nodeName,
-					taskData,
-					runExecutionData,
-				]);
-
-				expect(eventService.emit).toHaveBeenCalledWith('node-post-execute', {
-					executionId,
-					workflow: workflowData,
-					nodeName,
-				});
 			});
 
 			it('should save execution progress when enabled', async () => {
@@ -230,12 +266,6 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('should not call eventService', async () => {
-				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
-
-				expect(eventService.emit).not.toHaveBeenCalled();
-			});
-
 			it('should run workflow.preExecute external hook', async () => {
 				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
 
@@ -249,7 +279,6 @@ describe('Execution Lifecycle Hooks', () => {
 		describe('workflowExecuteAfter', () => {
 			it('should send executionFinished push event', async () => {
 				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
-				expect(eventService.emit).not.toHaveBeenCalled();
 				expect(push.send).toHaveBeenCalledWith(
 					{
 						type: 'executionFinished',
@@ -318,15 +347,6 @@ describe('Execution Lifecycle Hooks', () => {
 							status: 'success',
 						}),
 					);
-				});
-
-				it('should handle errors when updating execution', async () => {
-					const error = new Error('Failed to update execution');
-					executionRepository.updateExistingExecution.mockRejectedValueOnce(error);
-
-					await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
-
-					expect(errorReporter.error).toHaveBeenCalledWith(error);
 				});
 
 				it('should not delete unfinished executions', async () => {
@@ -457,17 +477,36 @@ describe('Execution Lifecycle Hooks', () => {
 				});
 			});
 		});
+
+		describe("when pushRef isn't set", () => {
+			beforeEach(() => {
+				hooks = getWorkflowHooksMain({ executionMode, workflowData }, executionId);
+			});
+
+			it('should not send any push events', async () => {
+				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+				await hooks.executeHookFunctions('nodeExecuteAfter', [
+					nodeName,
+					taskData,
+					runExecutionData,
+				]);
+				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getWorkflowHooksWorkerMain', () => {
-		let hooks: WorkflowHooks;
-
 		beforeEach(() => {
 			hooks = getWorkflowHooksWorkerMain(executionMode, executionId, workflowData, {
 				pushRef,
 				retryOf,
 			});
 		});
+
+		workflowEventTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -480,8 +519,10 @@ describe('Execution Lifecycle Hooks', () => {
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(0);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(0);
-			expect(hookFunctions.workflowExecuteBefore).toHaveLength(1);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(1);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(0);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('workflowExecuteBefore', () => {
@@ -535,13 +576,30 @@ describe('Execution Lifecycle Hooks', () => {
 	});
 
 	describe('getWorkflowHooksWorkerExecuter', () => {
-		let hooks: WorkflowHooks;
-
 		beforeEach(() => {
 			hooks = getWorkflowHooksWorkerExecuter(executionMode, executionId, workflowData, {
 				pushRef,
 				retryOf,
 			});
+		});
+
+		nodeEventsTests();
+
+		it('should setup the correct set of hooks', () => {
+			expect(hooks).toBeInstanceOf(WorkflowHooks);
+			expect(hooks.mode).toBe('manual');
+			expect(hooks.executionId).toBe(executionId);
+			expect(hooks.workflowData).toEqual(workflowData);
+			expect(hooks.pushRef).toEqual('test-push-ref');
+			expect(hooks.retryOf).toEqual('test-retry-of');
+
+			const { hookFunctions } = hooks;
+			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 
 		describe('saving static data', () => {
@@ -612,6 +670,32 @@ describe('Execution Lifecycle Hooks', () => {
 					project,
 				);
 			});
+		});
+	});
+
+	describe('getWorkflowHooksIntegrated', () => {
+		beforeEach(() => {
+			hooks = getWorkflowHooksIntegrated(executionMode, executionId, workflowData, undefined);
+		});
+
+		workflowEventTests();
+		nodeEventsTests();
+
+		it('should setup the correct set of hooks', () => {
+			expect(hooks).toBeInstanceOf(WorkflowHooks);
+			expect(hooks.mode).toBe('manual');
+			expect(hooks.executionId).toBe(executionId);
+			expect(hooks.workflowData).toEqual(workflowData);
+			expect(hooks.pushRef).toBeUndefined();
+			expect(hooks.retryOf).toBeUndefined();
+
+			const { hookFunctions } = hooks;
+			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
+			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
 	});
 });
