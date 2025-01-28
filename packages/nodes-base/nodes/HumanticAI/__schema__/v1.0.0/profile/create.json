@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "analysis_status",
+            "type": "string",
+            "value": "",
+            "path": ".analysis_status"
+        },
+        {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "path": ".message"
+        },
+        {
+            "key": "results",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "userid",
+                    "type": "string",
+                    "value": "",
+                    "path": ".results.userid"
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "value": "",
+                    "path": ".results.username"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".results.required"
+                }
+            ],
+            "path": ".results"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "status_code",
+            "type": "integer",
+            "value": "",
+            "path": ".status_code"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
