@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "currency",
+            "type": "string",
+            "value": "",
+            "path": ".currency"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "is_one_off_charge",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_one_off_charge"
+        },
+        {
+            "key": "is_paid",
+            "type": "integer",
+            "value": "",
+            "path": ".is_paid"
+        },
+        {
+            "key": "payout_date",
+            "type": "string",
+            "value": "",
+            "path": ".payout_date"
+        },
+        {
+            "key": "subscription_id",
+            "type": "integer",
+            "value": "",
+            "path": ".subscription_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
