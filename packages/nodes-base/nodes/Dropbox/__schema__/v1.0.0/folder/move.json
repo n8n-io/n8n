@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "metadata",
+            "type": "object",
+            "value": [
+                {
+                    "key": "",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "tag",
+                            "type": "string",
+                            "value": "",
+                            "path": ".metadata..tag"
+                        }
+                    ],
+                    "path": ".metadata."
+                },
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".metadata.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".metadata.name"
+                },
+                {
+                    "key": "path_display",
+                    "type": "string",
+                    "value": "",
+                    "path": ".metadata.path_display"
+                },
+                {
+                    "key": "path_lower",
+                    "type": "string",
+                    "value": "",
+                    "path": ".metadata.path_lower"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".metadata.required"
+                }
+            ],
+            "path": ".metadata"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
