@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "color",
+            "type": "string",
+            "value": "",
+            "path": ".color"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "idBoard",
+            "type": "string",
+            "value": "",
+            "path": ".idBoard"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "uses",
+            "type": "integer",
+            "value": "",
+            "path": ".uses"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
