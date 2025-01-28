@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "colour",
+            "type": "string",
+            "value": "",
+            "path": ".colour"
+        },
+        {
+            "key": "exportable",
+            "type": "boolean",
+            "value": "",
+            "path": ".exportable"
+        },
+        {
+            "key": "hide_tag",
+            "type": "boolean",
+            "value": "",
+            "path": ".hide_tag"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "is_custom_galaxy",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_custom_galaxy"
+        },
+        {
+            "key": "is_galaxy",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_galaxy"
+        },
+        {
+            "key": "local_only",
+            "type": "boolean",
+            "value": "",
+            "path": ".local_only"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "numerical_value",
+            "type": "null",
+            "value": "",
+            "path": ".numerical_value"
+        },
+        {
+            "key": "org_id",
+            "type": "string",
+            "value": "",
+            "path": ".org_id"
+        },
+        {
+            "key": "user_id",
+            "type": "string",
+            "value": "",
+            "path": ".user_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
