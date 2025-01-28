@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "download_url",
+            "type": "string",
+            "value": "",
+            "path": ".download_url"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "template_id",
+            "type": "string",
+            "value": "",
+            "path": ".template_id"
+        },
+        {
+            "key": "transaction_ref",
+            "type": "string",
+            "value": "",
+            "path": ".transaction_ref"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
