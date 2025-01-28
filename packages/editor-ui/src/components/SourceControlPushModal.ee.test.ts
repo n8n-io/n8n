@@ -203,7 +203,7 @@ describe('SourceControlPushModal', () => {
 
 		const sourceControlStore = mockedStore(useSourceControlStore);
 
-		const { getByTestId, getByText, getByRole } = renderModal({
+		const { getByTestId, getByRole } = renderModal({
 			props: {
 				data: {
 					eventBus,
