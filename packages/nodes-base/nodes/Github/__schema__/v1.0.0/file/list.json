@@ -1,0 +1,91 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "_links",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "git",
+                    "type": "string",
+                    "value": "",
+                    "path": "._links.git"
+                },
+                {
+                    "key": "html",
+                    "type": "string",
+                    "value": "",
+                    "path": "._links.html"
+                },
+                {
+                    "key": "self",
+                    "type": "string",
+                    "value": "",
+                    "path": "._links.self"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": "._links.required"
+                }
+            ],
+            "path": "._links"
+        },
+        {
+            "key": "git_url",
+            "type": "string",
+            "value": "",
+            "path": ".git_url"
+        },
+        {
+            "key": "html_url",
+            "type": "string",
+            "value": "",
+            "path": ".html_url"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "path",
+            "type": "string",
+            "value": "",
+            "path": ".path"
+        },
+        {
+            "key": "sha",
+            "type": "string",
+            "value": "",
+            "path": ".sha"
+        },
+        {
+            "key": "size",
+            "type": "integer",
+            "value": "",
+            "path": ".size"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        }
+    ],
+    "path": ""
+}
