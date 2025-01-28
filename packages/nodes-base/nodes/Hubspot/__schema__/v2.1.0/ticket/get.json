@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "isDeleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDeleted"
+        },
+        {
+            "key": "objectId",
+            "type": "integer",
+            "value": "",
+            "path": ".objectId"
+        },
+        {
+            "key": "objectType",
+            "type": "string",
+            "value": "",
+            "path": ".objectType"
+        },
+        {
+            "key": "portalId",
+            "type": "integer",
+            "value": "",
+            "path": ".portalId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
