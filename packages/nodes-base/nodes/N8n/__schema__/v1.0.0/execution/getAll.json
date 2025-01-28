@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "finished",
+            "type": "boolean",
+            "value": "",
+            "path": ".finished"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "mode",
+            "type": "string",
+            "value": "",
+            "path": ".mode"
+        },
+        {
+            "key": "stoppedAt",
+            "type": "string",
+            "value": "",
+            "path": ".stoppedAt"
+        },
+        {
+            "key": "workflowId",
+            "type": "string",
+            "value": "",
+            "path": ".workflowId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "retryOf",
+            "type": "null",
+            "value": "",
+            "path": ".retryOf"
+        },
+        {
+            "key": "retrySuccessId",
+            "type": "null",
+            "value": "",
+            "path": ".retrySuccessId"
+        },
+        {
+            "key": "startedAt",
+            "type": "string",
+            "value": "",
+            "path": ".startedAt"
+        },
+        {
+            "key": "waitTill",
+            "type": "null",
+            "value": "",
+            "path": ".waitTill"
+        }
+    ],
+    "path": ""
+}
