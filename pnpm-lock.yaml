@@ -2020,6 +2020,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.1
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
