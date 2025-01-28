@@ -1,0 +1,82 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "SendEmailResponse",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "$",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "xmlns",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.$.xmlns"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.$.required"
+                        }
+                    ],
+                    "path": ".SendEmailResponse.$"
+                },
+                {
+                    "key": "ResponseMetadata",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "RequestId",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.ResponseMetadata.RequestId"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.ResponseMetadata.required"
+                        }
+                    ],
+                    "path": ".SendEmailResponse.ResponseMetadata"
+                },
+                {
+                    "key": "SendEmailResult",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "MessageId",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.SendEmailResult.MessageId"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".SendEmailResponse.SendEmailResult.required"
+                        }
+                    ],
+                    "path": ".SendEmailResponse.SendEmailResult"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".SendEmailResponse.required"
+                }
+            ],
+            "path": ".SendEmailResponse"
+        }
+    ],
+    "path": ""
+}
