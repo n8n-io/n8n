@@ -1,0 +1,75 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Product Title",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Product Title.items"
+                }
+            ],
+            "path": ".Product Title"
+        },
+        {
+            "key": "createdTime",
+            "type": "string",
+            "value": "",
+            "path": ".createdTime"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "ends in con? modify",
+            "type": "string",
+            "value": "",
+            "path": ".ends in con? modify"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "tags_to_add",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tags_to_add.items"
+                }
+            ],
+            "path": ".tags_to_add"
+        },
+        {
+            "key": "tags_to_add_recordID",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tags_to_add_recordID.items"
+                }
+            ],
+            "path": ".tags_to_add_recordID"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
