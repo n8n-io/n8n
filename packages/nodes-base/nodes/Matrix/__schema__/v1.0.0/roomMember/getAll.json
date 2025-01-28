@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "age",
+            "type": "integer",
+            "value": "",
+            "path": ".age"
+        },
+        {
+            "key": "content",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "membership",
+                    "type": "string",
+                    "value": "",
+                    "path": ".content.membership"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".content.required"
+                }
+            ],
+            "path": ".content"
+        },
+        {
+            "key": "event_id",
+            "type": "string",
+            "value": "",
+            "path": ".event_id"
+        },
+        {
+            "key": "origin_server_ts",
+            "type": "integer",
+            "value": "",
+            "path": ".origin_server_ts"
+        },
+        {
+            "key": "room_id",
+            "type": "string",
+            "value": "",
+            "path": ".room_id"
+        },
+        {
+            "key": "sender",
+            "type": "string",
+            "value": "",
+            "path": ".sender"
+        },
+        {
+            "key": "state_key",
+            "type": "string",
+            "value": "",
+            "path": ".state_key"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "unsigned",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "age",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".unsigned.age"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".unsigned.required"
+                }
+            ],
+            "path": ".unsigned"
+        },
+        {
+            "key": "user_id",
+            "type": "string",
+            "value": "",
+            "path": ".user_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
