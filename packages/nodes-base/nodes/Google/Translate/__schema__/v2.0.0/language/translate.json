@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "detectedSourceLanguage",
+            "type": "string",
+            "value": "",
+            "path": ".detectedSourceLanguage"
+        },
+        {
+            "key": "translatedText",
+            "type": "string",
+            "value": "",
+            "path": ".translatedText"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
