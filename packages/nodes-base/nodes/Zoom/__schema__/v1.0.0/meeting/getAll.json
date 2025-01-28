@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "duration",
+            "type": "integer",
+            "value": "",
+            "path": ".duration"
+        },
+        {
+            "key": "host_id",
+            "type": "string",
+            "value": "",
+            "path": ".host_id"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "join_url",
+            "type": "string",
+            "value": "",
+            "path": ".join_url"
+        },
+        {
+            "key": "start_time",
+            "type": "string",
+            "value": "",
+            "path": ".start_time"
+        },
+        {
+            "key": "timezone",
+            "type": "string",
+            "value": "",
+            "path": ".timezone"
+        },
+        {
+            "key": "topic",
+            "type": "string",
+            "value": "",
+            "path": ".topic"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "uuid",
+            "type": "string",
+            "value": "",
+            "path": ".uuid"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
