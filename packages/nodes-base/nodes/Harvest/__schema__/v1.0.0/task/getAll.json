@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "billable_by_default",
+            "type": "boolean",
+            "value": "",
+            "path": ".billable_by_default"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "default_hourly_rate",
+            "type": "null",
+            "value": "",
+            "path": ".default_hourly_rate"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "is_active",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_active"
+        },
+        {
+            "key": "is_default",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_default"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
