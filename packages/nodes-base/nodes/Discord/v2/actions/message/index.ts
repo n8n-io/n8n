@@ -1,13 +1,14 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 import * as deleteMessage from './deleteMessage.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as react from './react.operation';
 import * as send from './send.operation';
+import * as sendAndWait from './sendAndWait.operation';
 import { guildRLC } from '../common.description';
 
-export { getAll, react, send, deleteMessage, get };
+export { getAll, react, send, deleteMessage, get, sendAndWait };
 
 export const description: INodeProperties[] = [
 	{
@@ -52,6 +53,12 @@ export const description: INodeProperties[] = [
 				description: 'Send a message to a channel, thread, or member',
 				action: 'Send a message',
 			},
+			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				description: 'Send a message and wait for response',
+				action: 'Send message and wait for response',
+			},
 		],
 		default: 'send',
 	},
@@ -69,4 +76,5 @@ export const description: INodeProperties[] = [
 	...send.description,
 	...deleteMessage.description,
 	...get.description,
+	...sendAndWait.description,
 ];
