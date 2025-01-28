@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "additionalDomains",
+            "type": "array",
+            "value": "",
+            "path": ".additionalDomains"
+        },
+        {
+            "key": "companyId",
+            "type": "integer",
+            "value": "",
+            "path": ".companyId"
+        },
+        {
+            "key": "isDeleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDeleted"
+        },
+        {
+            "key": "mergeAudits",
+            "type": "array",
+            "value": "",
+            "path": ".mergeAudits"
+        },
+        {
+            "key": "portalId",
+            "type": "integer",
+            "value": "",
+            "path": ".portalId"
+        },
+        {
+            "key": "stateChanges",
+            "type": "array",
+            "value": "",
+            "path": ".stateChanges"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
