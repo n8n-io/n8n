@@ -310,15 +310,6 @@ defineExpose({
 			color="text-dark"
 		>
 			<template #options>
-				<ParameterOptions
-					:parameter="parameter"
-					:custom-actions="parameterActions"
-					:loading="props.refreshInProgress"
-					:loading-message="fetchingFieldsLabel"
-					:is-read-only="isReadOnly"
-					:value="props.paramValue"
-					@update:model-value="onParameterActionSelected"
-				/>
 				<div v-if="props.isDataStale && !props.refreshInProgress" :class="$style.staleDataWarning">
 					<N8nTooltip>
 						<template #content>
@@ -340,6 +331,15 @@ defineExpose({
 						@click="onParameterActionSelected('refreshFieldList')"
 					/>
 				</div>
+				<ParameterOptions
+					:parameter="parameter"
+					:custom-actions="parameterActions"
+					:loading="props.refreshInProgress"
+					:loading-message="fetchingFieldsLabel"
+					:is-read-only="isReadOnly"
+					:value="props.paramValue"
+					@update:model-value="onParameterActionSelected"
+				/>
 			</template>
 		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">

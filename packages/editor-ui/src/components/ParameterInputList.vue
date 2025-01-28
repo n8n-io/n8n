@@ -5,8 +5,8 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy, ADD_FORM_NOTICE } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
+import { deepCopy, ADD_FORM_NOTICE, NodeHelpers } from 'n8n-workflow';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, watchEffect } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 
@@ -432,6 +432,15 @@ function onNoticeAction(action: string) {
 	}
 }
 
+function getParameterIssues(parameter: INodeProperties): string[] {
+	if (!node.value || (parameter.type !== 'collection' && parameter.type !== 'fixedCollection')) {
+		return [];
+	}
+	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+
+	return issues.parameters?.[parameter.name] ?? [];
+}
+
 /**
  * Handles default node button parameter type actions
  * @param parameter
@@ -537,7 +546,21 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					size="small"
 					:underline="true"
 					color="text-dark"
-				/>
+				>
+					<template
+						v-if="parameter.type === 'fixedCollection' && getParameterIssues(parameter).length > 0"
+						#issues
+					>
+						<N8nTooltip>
+							<template #content>
+								<span v-for="(issue, i) in getParameterIssues(parameter)" :key="i">{{
+									issue
+								}}</span>
+							</template>
+							<N8nIcon icon="exclamation-triangle" size="small" color="danger" />
+						</N8nTooltip>
+					</template>
+				</N8nInputLabel>
 				<Suspense v-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
