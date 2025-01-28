@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "collections",
+            "type": "array",
+            "value": "",
+            "path": ".collections"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "externalId",
+            "type": "string",
+            "value": "",
+            "path": ".externalId"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "permissions",
+            "type": "null",
+            "value": "",
+            "path": ".permissions"
+        },
+        {
+            "key": "resetPasswordEnrolled",
+            "type": "boolean",
+            "value": "",
+            "path": ".resetPasswordEnrolled"
+        },
+        {
+            "key": "status",
+            "type": "integer",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "twoFactorEnabled",
+            "type": "boolean",
+            "value": "",
+            "path": ".twoFactorEnabled"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "userId",
+            "type": "string",
+            "value": "",
+            "path": ".userId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
