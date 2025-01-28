@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "isNew",
+            "type": "boolean",
+            "value": "",
+            "path": ".isNew"
+        },
+        {
+            "key": "vid",
+            "type": "integer",
+            "value": "",
+            "path": ".vid"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
