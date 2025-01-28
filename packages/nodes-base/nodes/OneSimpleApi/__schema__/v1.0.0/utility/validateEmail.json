@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "canonical",
+            "type": "string",
+            "value": "",
+            "path": ".canonical"
+        },
+        {
+            "key": "deliverability",
+            "type": "string",
+            "value": "",
+            "path": ".deliverability"
+        },
+        {
+            "key": "domain",
+            "type": "string",
+            "value": "",
+            "path": ".domain"
+        },
+        {
+            "key": "domain_has_valid_mx_records",
+            "type": "boolean",
+            "value": "",
+            "path": ".domain_has_valid_mx_records"
+        },
+        {
+            "key": "elapsed",
+            "type": "number",
+            "value": "",
+            "path": ".elapsed"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "is_domain_valid",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_domain_valid"
+        },
+        {
+            "key": "is_email_disposable",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_email_disposable"
+        },
+        {
+            "key": "is_email_free",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_email_free"
+        },
+        {
+            "key": "is_email_role",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_email_role"
+        },
+        {
+            "key": "is_format_valid",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_format_valid"
+        },
+        {
+            "key": "safe_to_register_as_user",
+            "type": "boolean",
+            "value": "",
+            "path": ".safe_to_register_as_user"
+        },
+        {
+            "key": "user",
+            "type": "string",
+            "value": "",
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
