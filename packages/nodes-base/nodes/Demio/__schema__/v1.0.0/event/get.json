@@ -1,0 +1,104 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "automated",
+            "type": "null",
+            "value": "",
+            "path": ".automated"
+        },
+        {
+            "key": "dates",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "date_id",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".dates.items.date_id"
+                        },
+                        {
+                            "key": "datetime",
+                            "type": "string",
+                            "value": "",
+                            "path": ".dates.items.datetime"
+                        },
+                        {
+                            "key": "status",
+                            "type": "string",
+                            "value": "",
+                            "path": ".dates.items.status"
+                        },
+                        {
+                            "key": "timestamp",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".dates.items.timestamp"
+                        },
+                        {
+                            "key": "zone",
+                            "type": "string",
+                            "value": "",
+                            "path": ".dates.items.zone"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".dates.items.required"
+                        }
+                    ],
+                    "path": ".dates.items"
+                }
+            ],
+            "path": ".dates"
+        },
+        {
+            "key": "description",
+            "type": "null",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "next_date_id",
+            "type": "integer",
+            "value": "",
+            "path": ".next_date_id"
+        },
+        {
+            "key": "registrants_stay_registered",
+            "type": "boolean",
+            "value": "",
+            "path": ".registrants_stay_registered"
+        },
+        {
+            "key": "registration_url",
+            "type": "string",
+            "value": "",
+            "path": ".registration_url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
