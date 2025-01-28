@@ -30,7 +30,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'When Called by Another Workflow',
+			name: 'When Executed by Another Workflow',
 			color: '#ff6d5a',
 		},
 		inputs: [],
@@ -59,8 +59,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					{
 						name: 'Workflow Call',
 						value: 'worklfow_call',
-						description: 'When called by another workflow using Execute Workflow Trigger',
-						action: 'When Called by Another Workflow',
+						description: 'When executed by another workflow using Execute Workflow Trigger',
+						action: 'When executed by Another Workflow',
 					},
 				],
 				default: 'worklfow_call',

@@ -10,7 +10,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 		{
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
 			typeVersion: 1.1,
-			name: 'When Called by Another Workflow',
+			name: 'When Executed by Another Workflow',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
 			position: [260, 340],
 			parameters: {},
@@ -24,7 +24,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 		},
 	] as INodeUi[],
 	connections: {
-		'When Called by Another Workflow': {
+		'When Executed by Another Workflow': {
 			main: [
 				[
 					{
