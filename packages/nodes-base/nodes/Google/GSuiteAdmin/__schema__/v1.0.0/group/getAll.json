@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "adminCreated",
+            "type": "boolean",
+            "value": "",
+            "path": ".adminCreated"
+        },
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "directMembersCount",
+            "type": "string",
+            "value": "",
+            "path": ".directMembersCount"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
