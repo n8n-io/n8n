@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "CreationTime",
+            "type": "number",
+            "value": "",
+            "path": ".CreationTime"
+        },
+        {
+            "key": "Media",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "MediaFileUri",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Media.MediaFileUri"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Media.required"
+                }
+            ],
+            "path": ".Media"
+        },
+        {
+            "key": "Settings",
+            "type": "object",
+            "value": "",
+            "path": ".Settings"
+        },
+        {
+            "key": "StartTime",
+            "type": "number",
+            "value": "",
+            "path": ".StartTime"
+        },
+        {
+            "key": "TranscriptionJobName",
+            "type": "string",
+            "value": "",
+            "path": ".TranscriptionJobName"
+        },
+        {
+            "key": "TranscriptionJobStatus",
+            "type": "string",
+            "value": "",
+            "path": ".TranscriptionJobStatus"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "LanguageCode",
+            "type": "string",
+            "value": "",
+            "path": ".LanguageCode"
+        }
+    ],
+    "path": ""
+}
