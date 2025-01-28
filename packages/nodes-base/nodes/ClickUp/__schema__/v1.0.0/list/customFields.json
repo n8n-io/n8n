@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "date_created",
+            "type": "string",
+            "value": "",
+            "path": ".date_created"
+        },
+        {
+            "key": "hide_from_guests",
+            "type": "boolean",
+            "value": "",
+            "path": ".hide_from_guests"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "type_config",
+            "type": "object",
+            "value": "",
+            "path": ".type_config"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
