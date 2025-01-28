@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "close",
+            "type": "number",
+            "value": "",
+            "path": ".close"
+        },
+        {
+            "key": "high",
+            "type": "number",
+            "value": "",
+            "path": ".high"
+        },
+        {
+            "key": "low",
+            "type": "number",
+            "value": "",
+            "path": ".low"
+        },
+        {
+            "key": "open",
+            "type": "number",
+            "value": "",
+            "path": ".open"
+        },
+        {
+            "key": "time",
+            "type": "string",
+            "value": "",
+            "path": ".time"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
