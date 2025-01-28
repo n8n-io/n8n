@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "canUploadPhoto",
+            "type": "integer",
+            "value": "",
+            "path": ".canUploadPhoto"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        },
+        {
+            "key": "firstName",
+            "type": "string",
+            "value": "",
+            "path": ".firstName"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "jobTitle",
+            "type": "string",
+            "value": "",
+            "path": ".jobTitle"
+        },
+        {
+            "key": "lastName",
+            "type": "string",
+            "value": "",
+            "path": ".lastName"
+        },
+        {
+            "key": "photoUploaded",
+            "type": "boolean",
+            "value": "",
+            "path": ".photoUploaded"
+        },
+        {
+            "key": "photoUrl",
+            "type": "string",
+            "value": "",
+            "path": ".photoUrl"
+        },
+        {
+            "key": "pronouns",
+            "type": "null",
+            "value": "",
+            "path": ".pronouns"
+        },
+        {
+            "key": "workEmail",
+            "type": "string",
+            "value": "",
+            "path": ".workEmail"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "location",
+            "type": "string",
+            "value": "",
+            "path": ".location"
+        }
+    ],
+    "path": ""
+}
