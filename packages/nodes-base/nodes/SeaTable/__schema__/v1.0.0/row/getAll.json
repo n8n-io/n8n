@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "_ctime",
+            "type": "string",
+            "value": "",
+            "path": "._ctime"
+        },
+        {
+            "key": "_mtime",
+            "type": "string",
+            "value": "",
+            "path": "._mtime"
+        }
+    ],
+    "path": ""
+}
