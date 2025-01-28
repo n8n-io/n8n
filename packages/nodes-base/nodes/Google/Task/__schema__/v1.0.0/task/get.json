@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "links",
+            "type": "array",
+            "value": "",
+            "path": ".links"
+        },
+        {
+            "key": "position",
+            "type": "string",
+            "value": "",
+            "path": ".position"
+        },
+        {
+            "key": "selfLink",
+            "type": "string",
+            "value": "",
+            "path": ".selfLink"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "updated",
+            "type": "string",
+            "value": "",
+            "path": ".updated"
+        },
+        {
+            "key": "webViewLink",
+            "type": "string",
+            "value": "",
+            "path": ".webViewLink"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
