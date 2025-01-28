@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "creationTime",
+            "type": "string",
+            "value": "",
+            "path": ".creationTime"
+        },
+        {
+            "key": "customerId",
+            "type": "string",
+            "value": "",
+            "path": ".customerId"
+        },
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isAdmin",
+            "type": "boolean",
+            "value": "",
+            "path": ".isAdmin"
+        },
+        {
+            "key": "isDelegatedAdmin",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDelegatedAdmin"
+        },
+        {
+            "key": "isMailboxSetup",
+            "type": "boolean",
+            "value": "",
+            "path": ".isMailboxSetup"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "name",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "familyName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".name.familyName"
+                },
+                {
+                    "key": "givenName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".name.givenName"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".name.required"
+                }
+            ],
+            "path": ".name"
+        },
+        {
+            "key": "orgUnitPath",
+            "type": "string",
+            "value": "",
+            "path": ".orgUnitPath"
+        },
+        {
+            "key": "primaryEmail",
+            "type": "string",
+            "value": "",
+            "path": ".primaryEmail"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
