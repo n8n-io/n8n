@@ -20,8 +20,6 @@ describe('Spotify', () => {
 		const tests = workflowToTests(workflows);
 
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			const mock = nock('https://api.spotify.com/v1');
 			mock
 				.get('/search')
@@ -31,10 +29,6 @@ describe('Spotify', () => {
 			mock.get('/albums/4R6FV9NSzhPihHR0h4pI93/tracks').reply(200, getAlbumTracks);
 			mock.get('/albums/4R6FV9NSzhPihHR0h4pI93').reply(200, getAlbum);
 			mock.get('/artists/12Chz98pHFMPJEknJQMWvI').reply(200, getArtist);
-		});
-
-		afterAll(() => {
-			nock.restore();
 		});
 
 		const nodeTypes = setup(tests);
