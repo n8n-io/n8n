@@ -5,7 +5,7 @@
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
-    "n8n-copy-icons": "./bin/copy-icons",
+    "n8n-copy-static-files": "./bin/copy-static-files",
     "n8n-generate-translations": "./bin/generate-translations",
     "n8n-generate-metadata": "./bin/generate-metadata"
   },
