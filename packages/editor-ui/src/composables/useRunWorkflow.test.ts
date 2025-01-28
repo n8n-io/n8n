@@ -40,16 +40,6 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
-
-	return {
-		...originalModule, // Keep all original exports
-		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }), // Mock useLocalStorage
-	};
-});
-
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
