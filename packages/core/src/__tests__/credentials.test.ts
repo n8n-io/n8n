@@ -7,7 +7,7 @@ import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 import type { InstanceSettings } from '@/instance-settings';
 
-import { CredentialDataError, Credentials } from '../credentials';
+import { Credentials } from '../credentials';
 
 describe('Credentials', () => {
 	const nodeCredentials = { id: '123', name: 'Test Credential' };
