@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "activityID",
+            "type": "string",
+            "value": "",
+            "path": ".activityID"
+        },
+        {
+            "key": "catalog",
+            "type": "string",
+            "value": "",
+            "path": ".catalog"
+        },
+        {
+            "key": "eventTime",
+            "type": "string",
+            "value": "",
+            "path": ".eventTime"
+        },
+        {
+            "key": "instruments",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "displayName",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.displayName"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.required"
+                        }
+                    ],
+                    "path": ".instruments.items"
+                }
+            ],
+            "path": ".instruments"
+        },
+        {
+            "key": "link",
+            "type": "string",
+            "value": "",
+            "path": ".link"
+        },
+        {
+            "key": "location",
+            "type": "string",
+            "value": "",
+            "path": ".location"
+        },
+        {
+            "key": "submissionTime",
+            "type": "string",
+            "value": "",
+            "path": ".submissionTime"
+        },
+        {
+            "key": "versionId",
+            "type": "integer",
+            "value": "",
+            "path": ".versionId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
