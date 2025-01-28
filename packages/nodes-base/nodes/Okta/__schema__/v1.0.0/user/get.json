@@ -1,0 +1,85 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created",
+            "type": "string",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "lastUpdated",
+            "type": "string",
+            "value": "",
+            "path": ".lastUpdated"
+        },
+        {
+            "key": "passwordChanged",
+            "type": "string",
+            "value": "",
+            "path": ".passwordChanged"
+        },
+        {
+            "key": "profile",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "email",
+                    "type": "string",
+                    "value": "",
+                    "path": ".profile.email"
+                },
+                {
+                    "key": "firstName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".profile.firstName"
+                },
+                {
+                    "key": "lastName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".profile.lastName"
+                },
+                {
+                    "key": "login",
+                    "type": "string",
+                    "value": "",
+                    "path": ".profile.login"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".profile.required"
+                }
+            ],
+            "path": ".profile"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "activated",
+            "type": "string",
+            "value": "",
+            "path": ".activated"
+        }
+    ],
+    "path": ""
+}
