@@ -1,3 +1,5 @@
+import * as a from 'node:assert';
+
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
 import { DEFAULT_HEADERS } from './constants';
 import { auth, expects, getRequestOptions } from './utils';
@@ -65,17 +67,16 @@ export class ClientOAuth2Token {
 	}
 
 	/**
-	 * Refresh a user access token with the supplied token.
+	 * Refresh a user access token with the refresh token.
+	 * As in RFC 6749 Section 6: https://www.rfc-editor.org/rfc/rfc6749.html#section-6
 	 */
 	async refresh(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
 		expects(options, 'clientSecret');
+		a.ok(this.refreshToken, 'refreshToken is required');
 
-		if (!this.refreshToken) throw new Error('No refresh token');
-
-		const clientId = options.clientId;
-		const clientSecret = options.clientSecret;
+		const { clientId, clientSecret } = options;
 		const headers = { ...DEFAULT_HEADERS };
 		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
@@ -99,7 +100,7 @@ export class ClientOAuth2Token {
 			options,
 		);
 
-		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
+		const responseData = await this.client.accessTokenRequest(requestOptions);
 		return this.client.createToken({ ...this.data, ...responseData });
 	}
 
