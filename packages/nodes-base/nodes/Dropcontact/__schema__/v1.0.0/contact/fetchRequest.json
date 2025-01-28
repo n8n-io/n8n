@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "civility",
+            "type": "string",
+            "value": "",
+            "path": ".civility"
+        },
+        {
+            "key": "company",
+            "type": "string",
+            "value": "",
+            "path": ".company"
+        },
+        {
+            "key": "company_linkedin",
+            "type": "string",
+            "value": "",
+            "path": ".company_linkedin"
+        },
+        {
+            "key": "country",
+            "type": "string",
+            "value": "",
+            "path": ".country"
+        },
+        {
+            "key": "first_name",
+            "type": "string",
+            "value": "",
+            "path": ".first_name"
+        },
+        {
+            "key": "full_name",
+            "type": "string",
+            "value": "",
+            "path": ".full_name"
+        },
+        {
+            "key": "last_name",
+            "type": "string",
+            "value": "",
+            "path": ".last_name"
+        },
+        {
+            "key": "nb_employees",
+            "type": "string",
+            "value": "",
+            "path": ".nb_employees"
+        },
+        {
+            "key": "website",
+            "type": "string",
+            "value": "",
+            "path": ".website"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "email",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "email",
+                            "type": "string",
+                            "value": "",
+                            "path": ".email.items.email"
+                        },
+                        {
+                            "key": "qualification",
+                            "type": "string",
+                            "value": "",
+                            "path": ".email.items.qualification"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".email.items.required"
+                        }
+                    ],
+                    "path": ".email.items"
+                }
+            ],
+            "path": ".email"
+        }
+    ],
+    "path": ""
+}
