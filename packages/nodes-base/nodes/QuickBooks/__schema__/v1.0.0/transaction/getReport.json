@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "account_name",
+            "type": "string",
+            "value": "",
+            "path": ".account_name"
+        },
+        {
+            "key": "doc_num",
+            "type": "string",
+            "value": "",
+            "path": ".doc_num"
+        },
+        {
+            "key": "is_no_post",
+            "type": "string",
+            "value": "",
+            "path": ".is_no_post"
+        },
+        {
+            "key": "memo",
+            "type": "string",
+            "value": "",
+            "path": ".memo"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "other_account",
+            "type": "string",
+            "value": "",
+            "path": ".other_account"
+        },
+        {
+            "key": "subt_nat_amount",
+            "type": "string",
+            "value": "",
+            "path": ".subt_nat_amount"
+        },
+        {
+            "key": "tx_date",
+            "type": "string",
+            "value": "",
+            "path": ".tx_date"
+        },
+        {
+            "key": "txn_type",
+            "type": "string",
+            "value": "",
+            "path": ".txn_type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
