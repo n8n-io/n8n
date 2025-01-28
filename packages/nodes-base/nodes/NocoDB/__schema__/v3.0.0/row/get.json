@@ -1,0 +1,102 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "CreatedAt",
+            "type": "string",
+            "value": "",
+            "path": ".CreatedAt"
+        },
+        {
+            "key": "Data Value",
+            "type": "string",
+            "value": "",
+            "path": ".Data Value"
+        },
+        {
+            "key": "Geo Join ID",
+            "type": "string",
+            "value": "",
+            "path": ".Geo Join ID"
+        },
+        {
+            "key": "Geo Place Name",
+            "type": "string",
+            "value": "",
+            "path": ".Geo Place Name"
+        },
+        {
+            "key": "Geo Type Name",
+            "type": "string",
+            "value": "",
+            "path": ".Geo Type Name"
+        },
+        {
+            "key": "Id",
+            "type": "integer",
+            "value": "",
+            "path": ".Id"
+        },
+        {
+            "key": "Indicator ID",
+            "type": "string",
+            "value": "",
+            "path": ".Indicator ID"
+        },
+        {
+            "key": "Measure Info",
+            "type": "string",
+            "value": "",
+            "path": ".Measure Info"
+        },
+        {
+            "key": "Measure",
+            "type": "string",
+            "value": "",
+            "path": ".Measure"
+        },
+        {
+            "key": "Message",
+            "type": "null",
+            "value": "",
+            "path": ".Message"
+        },
+        {
+            "key": "Name",
+            "type": "string",
+            "value": "",
+            "path": ".Name"
+        },
+        {
+            "key": "Start_Date",
+            "type": "string",
+            "value": "",
+            "path": ".Start_Date"
+        },
+        {
+            "key": "Time Period",
+            "type": "string",
+            "value": "",
+            "path": ".Time Period"
+        },
+        {
+            "key": "Unique ID",
+            "type": "string",
+            "value": "",
+            "path": ".Unique ID"
+        },
+        {
+            "key": "UpdatedAt",
+            "type": "null",
+            "value": "",
+            "path": ".UpdatedAt"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
