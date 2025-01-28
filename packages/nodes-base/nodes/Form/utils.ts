@@ -397,7 +397,7 @@ export async function formWebhook(
 		ignoreBots?: boolean;
 		respondWithOptions?: {
 			values: {
-				respondWith: 'text' | 'redirect';
+				respondWith: 'completionScreen' | 'redirect';
 				formSubmittedText: string;
 				redirectUrl: string;
 			};
@@ -451,7 +451,7 @@ export async function formWebhook(
 
 		if (options.respondWithOptions) {
 			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
-			if (values.respondWith === 'text') {
+			if (values.respondWith === 'completionScreen') {
 				formSubmittedText = values.formSubmittedText as string;
 			}
 			if (values.respondWith === 'redirect') {

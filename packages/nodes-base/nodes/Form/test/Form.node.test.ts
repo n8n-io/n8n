@@ -178,7 +178,7 @@ describe('Form Node', () => {
 				if (paramName === 'operation') return 'completion';
 				if (paramName === 'useJson') return false;
 				if (paramName === 'jsonOutput') return '[]';
-				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'respondWith') return 'completionScreen';
 				if (paramName === 'completionTitle') return 'Test Title';
 				if (paramName === 'completionMessage') return 'Test Message';
 				if (paramName === 'redirectUrl') return '';
@@ -221,7 +221,7 @@ describe('Form Node', () => {
 				if (paramName === 'operation') return 'completion';
 				if (paramName === 'useJson') return false;
 				if (paramName === 'jsonOutput') return '[]';
-				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'respondWith') return 'completionScreen';
 				if (paramName === 'completionTitle') return 'Test Title';
 				if (paramName === 'completionMessage') return 'Test Message';
 				if (paramName === 'redirectUrl') return 'https://n8n.io';

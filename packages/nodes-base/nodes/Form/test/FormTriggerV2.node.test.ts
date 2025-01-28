@@ -40,7 +40,7 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 					options: {
 						appendAttribution: false,
-						respondWithOptions: { values: { respondWith: 'text' } },
+						respondWithOptions: { values: { respondWith: 'completionScreen' } },
 					},
 				},
 			},
