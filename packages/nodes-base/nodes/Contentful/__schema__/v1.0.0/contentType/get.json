@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "disabled",
+            "type": "boolean",
+            "value": "",
+            "path": ".disabled"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "localized",
+            "type": "boolean",
+            "value": "",
+            "path": ".localized"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "omitted",
+            "type": "boolean",
+            "value": "",
+            "path": ".omitted"
+        },
+        {
+            "key": "required",
+            "type": "boolean",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        }
+    ],
+    "path": ""
+}
