@@ -1,0 +1,102 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "adj_close",
+            "type": "number",
+            "value": "",
+            "path": ".adj_close"
+        },
+        {
+            "key": "adj_high",
+            "type": "number",
+            "value": "",
+            "path": ".adj_high"
+        },
+        {
+            "key": "adj_low",
+            "type": "number",
+            "value": "",
+            "path": ".adj_low"
+        },
+        {
+            "key": "adj_open",
+            "type": "number",
+            "value": "",
+            "path": ".adj_open"
+        },
+        {
+            "key": "adj_volume",
+            "type": "integer",
+            "value": "",
+            "path": ".adj_volume"
+        },
+        {
+            "key": "close",
+            "type": "number",
+            "value": "",
+            "path": ".close"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "dividend",
+            "type": "integer",
+            "value": "",
+            "path": ".dividend"
+        },
+        {
+            "key": "exchange",
+            "type": "string",
+            "value": "",
+            "path": ".exchange"
+        },
+        {
+            "key": "high",
+            "type": "number",
+            "value": "",
+            "path": ".high"
+        },
+        {
+            "key": "low",
+            "type": "number",
+            "value": "",
+            "path": ".low"
+        },
+        {
+            "key": "open",
+            "type": "number",
+            "value": "",
+            "path": ".open"
+        },
+        {
+            "key": "split_factor",
+            "type": "integer",
+            "value": "",
+            "path": ".split_factor"
+        },
+        {
+            "key": "symbol",
+            "type": "string",
+            "value": "",
+            "path": ".symbol"
+        },
+        {
+            "key": "volume",
+            "type": "integer",
+            "value": "",
+            "path": ".volume"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
