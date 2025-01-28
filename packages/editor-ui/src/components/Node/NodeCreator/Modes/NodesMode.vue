@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
-import type { INodeCreateElement, NodeCreateElement, NodeFilterType } from '@/Interface';
+import type {
+	ActionTypeDescription,
+	INodeCreateElement,
+	NodeCreateElement,
+	NodeFilterType,
+} from '@/Interface';
 import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	HTTP_REQUEST_NODE_TYPE,
@@ -27,7 +32,7 @@ import { useI18n } from '@/composables/useI18n';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useActions } from '../composables/useActions';
-import type { INodeParameters } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -53,12 +58,16 @@ const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDi
 function getFilteredActions(node: NodeCreateElement) {
 	const nodeActions = actions?.[node.key] || [];
 	if (activeViewStack.value.subcategory === HITL_SUBCATEGORY) {
-		return nodeActions.filter((action) => action.actionKey === 'sendAndWait');
+		return getHumanInTheLoopActions(nodeActions);
 	}
 	if (activeViewStack.value.actionsFilter) {
 		return activeViewStack.value.actionsFilter(nodeActions);
 	}
 	return nodeActions;
+}
+
+function getHumanInTheLoopActions(nodeActions: ActionTypeDescription[]) {
+	return nodeActions.filter((action) => action.actionKey === SEND_AND_WAIT_OPERATION);
 }
 
 function selectNodeType(nodeTypes: string[]) {

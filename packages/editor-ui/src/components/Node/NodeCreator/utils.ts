@@ -13,7 +13,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
-	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,7 +47,11 @@ export function transformNodeType(
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
-	const WHITE_LISTED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY, HITL_SUBCATEGORY];
+	const WHITE_LISTED_SUBCATEGORIES = [
+		CORE_NODES_CATEGORY,
+		AI_SUBCATEGORY,
+		HUMAN_IN_THE_LOOP_CATEGORY,
+	];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];

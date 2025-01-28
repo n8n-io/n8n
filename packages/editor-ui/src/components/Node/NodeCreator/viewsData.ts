@@ -56,6 +56,7 @@ import {
 	COMPRESSION_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -517,10 +518,15 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 					],
 				},
 			},
+			// To add node to this subcategory:
+			// - add "HILT" to the "categories" property of the node's codex
+			// - add "HILT": ["Human in the Loop"] to the "subcategories" property of the node's codex
+			// node has to have the "sendAndWait" operation, if a new operation needs to be included here:
+			// - update getHumanInTheLoopActions in packages/editor-ui/src/components/Node/NodeCreator/Modes/NodesMode.vue
 			{
 				type: 'subcategory',
 				key: HITL_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
+				category: HUMAN_IN_THE_LOOP_CATEGORY,
 				properties: {
 					title: HITL_SUBCATEGORY,
 					icon: 'hand-sparkles',
