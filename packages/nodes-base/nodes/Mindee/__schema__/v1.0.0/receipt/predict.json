@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "category",
+            "type": "string",
+            "value": "",
+            "path": ".category"
+        },
+        {
+            "key": "currency",
+            "type": "string",
+            "value": "",
+            "path": ".currency"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "locale",
+            "type": "string",
+            "value": "",
+            "path": ".locale"
+        },
+        {
+            "key": "merchant",
+            "type": "string",
+            "value": "",
+            "path": ".merchant"
+        },
+        {
+            "key": "time",
+            "type": "string",
+            "value": "",
+            "path": ".time"
+        },
+        {
+            "key": "total",
+            "type": "number",
+            "value": "",
+            "path": ".total"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "taxes",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".taxes.required"
+                }
+            ],
+            "path": ".taxes"
+        }
+    ],
+    "path": ""
+}
