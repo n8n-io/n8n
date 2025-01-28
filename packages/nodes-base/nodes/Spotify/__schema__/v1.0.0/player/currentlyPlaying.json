@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "actions",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "disallows",
+                    "type": "Array",
+                    "value": [
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".actions.disallows.required"
+                        }
+                    ],
+                    "path": ".actions.disallows"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".actions.required"
+                }
+            ],
+            "path": ".actions"
+        },
+        {
+            "key": "context",
+            "type": "null",
+            "value": "",
+            "path": ".context"
+        },
+        {
+            "key": "currently_playing_type",
+            "type": "string",
+            "value": "",
+            "path": ".currently_playing_type"
+        },
+        {
+            "key": "is_playing",
+            "type": "boolean",
+            "value": "",
+            "path": ".is_playing"
+        },
+        {
+            "key": "item",
+            "type": "null",
+            "value": "",
+            "path": ".item"
+        },
+        {
+            "key": "progress_ms",
+            "type": "integer",
+            "value": "",
+            "path": ".progress_ms"
+        },
+        {
+            "key": "timestamp",
+            "type": "integer",
+            "value": "",
+            "path": ".timestamp"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
