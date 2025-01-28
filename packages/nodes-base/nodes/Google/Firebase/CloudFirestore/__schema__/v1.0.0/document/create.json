@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "_createTime",
+            "type": "string",
+            "value": "",
+            "path": "._createTime"
+        },
+        {
+            "key": "_name",
+            "type": "string",
+            "value": "",
+            "path": "._name"
+        },
+        {
+            "key": "_updateTime",
+            "type": "string",
+            "value": "",
+            "path": "._updateTime"
+        },
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        }
+    ],
+    "path": ""
+}
