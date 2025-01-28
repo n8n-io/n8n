@@ -1,0 +1,79 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "asset_type_id",
+            "type": "integer",
+            "value": "",
+            "path": ".asset_type_id"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "description_text",
+            "type": "string",
+            "value": "",
+            "path": ".description_text"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "manufacturer",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".manufacturer.type"
+                }
+            ],
+            "path": ".manufacturer"
+        },
+        {
+            "key": "mode_of_procurement",
+            "type": "string",
+            "value": "",
+            "path": ".mode_of_procurement"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
