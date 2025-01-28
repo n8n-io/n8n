@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "msg",
+            "type": "string",
+            "value": "",
+            "path": ".msg"
+        },
+        {
+            "key": "result",
+            "type": "string",
+            "value": "",
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
