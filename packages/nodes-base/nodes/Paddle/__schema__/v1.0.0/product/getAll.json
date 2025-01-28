@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "base_price",
+            "type": "integer",
+            "value": "",
+            "path": ".base_price"
+        },
+        {
+            "key": "currency",
+            "type": "string",
+            "value": "",
+            "path": ".currency"
+        },
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "icon",
+            "type": "string",
+            "value": "",
+            "path": ".icon"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "sale_price",
+            "type": "null",
+            "value": "",
+            "path": ".sale_price"
+        },
+        {
+            "key": "screenshots",
+            "type": "array",
+            "value": "",
+            "path": ".screenshots"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
