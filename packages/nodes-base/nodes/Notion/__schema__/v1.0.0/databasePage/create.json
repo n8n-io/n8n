@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Categories",
+            "type": "array",
+            "value": "",
+            "path": ".Categories"
+        },
+        {
+            "key": "Created time",
+            "type": "string",
+            "value": "",
+            "path": ".Created time"
+        },
+        {
+            "key": "Title",
+            "type": "string",
+            "value": "",
+            "path": ".Title"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
