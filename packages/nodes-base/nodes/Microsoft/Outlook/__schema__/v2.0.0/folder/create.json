@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "childFolderCount",
+            "type": "integer",
+            "value": "",
+            "path": ".childFolderCount"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isHidden",
+            "type": "boolean",
+            "value": "",
+            "path": ".isHidden"
+        },
+        {
+            "key": "parentFolderId",
+            "type": "string",
+            "value": "",
+            "path": ".parentFolderId"
+        },
+        {
+            "key": "sizeInBytes",
+            "type": "integer",
+            "value": "",
+            "path": ".sizeInBytes"
+        },
+        {
+            "key": "totalItemCount",
+            "type": "integer",
+            "value": "",
+            "path": ".totalItemCount"
+        },
+        {
+            "key": "unreadItemCount",
+            "type": "integer",
+            "value": "",
+            "path": ".unreadItemCount"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
