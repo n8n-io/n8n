@@ -1,0 +1,49 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Id",
+            "type": "string",
+            "value": "",
+            "path": ".Id"
+        },
+        {
+            "key": "SystemModstamp",
+            "type": "string",
+            "value": "",
+            "path": ".SystemModstamp"
+        },
+        {
+            "key": "attributes",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.type"
+                },
+                {
+                    "key": "url",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.url"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.required"
+                }
+            ],
+            "path": ".attributes"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
