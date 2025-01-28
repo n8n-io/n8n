@@ -1,13 +1,24 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { ApiKey } from '@/Interface';
+import type { ApiKey } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
 const API_KEY_ITEM_ACTIONS = {
 	EDIT: 'edit',
 	DELETE: 'delete',
 };
+
+const ACTION_LIST = [
+	{
+		label: 'Edit',
+		value: API_KEY_ITEM_ACTIONS.EDIT,
+	},
+	{
+		label: 'Delete',
+		value: API_KEY_ITEM_ACTIONS.DELETE,
+	},
+];
 
 const i18n = useI18n();
 const cardActions = ref<HTMLDivElement | null>(null);
@@ -20,21 +31,6 @@ const emit = defineEmits<{
 	edit: [id: string];
 	delete: [id: string];
 }>();
-
-const actions = computed((): Array<{ label: string; value: string }> => {
-	const actionList = [
-		{
-			label: 'Edit',
-			value: API_KEY_ITEM_ACTIONS.EDIT,
-		},
-	];
-	actionList.push({
-		label: 'Delete',
-		value: API_KEY_ITEM_ACTIONS.DELETE,
-	});
-
-	return actionList;
-});
 
 async function onAction(action: string) {
 	if (action === API_KEY_ITEM_ACTIONS.EDIT) {
@@ -70,7 +66,7 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+				<n8n-action-toggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
 			</div>
 		</template>
 	</n8n-card>
