@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "active",
+            "type": "boolean",
+            "value": "",
+            "path": ".active"
+        },
+        {
+            "key": "connections",
+            "type": "object",
+            "value": "",
+            "path": ".connections"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "meta",
+            "type": "null",
+            "value": "",
+            "path": ".meta"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "nodes",
+            "type": "array",
+            "value": "",
+            "path": ".nodes"
+        },
+        {
+            "key": "pinData",
+            "type": "null",
+            "value": "",
+            "path": ".pinData"
+        },
+        {
+            "key": "settings",
+            "type": "object",
+            "value": "",
+            "path": ".settings"
+        },
+        {
+            "key": "staticData",
+            "type": "null",
+            "value": "",
+            "path": ".staticData"
+        },
+        {
+            "key": "triggerCount",
+            "type": "integer",
+            "value": "",
+            "path": ".triggerCount"
+        },
+        {
+            "key": "updatedAt",
+            "type": "string",
+            "value": "",
+            "path": ".updatedAt"
+        },
+        {
+            "key": "versionId",
+            "type": "string",
+            "value": "",
+            "path": ".versionId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
