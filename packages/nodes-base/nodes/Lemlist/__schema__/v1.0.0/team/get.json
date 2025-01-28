@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "agency",
+            "type": "string",
+            "value": "",
+            "path": ".agency"
+        },
+        {
+            "key": "beta",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".beta.items"
+                }
+            ],
+            "path": ".beta"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "createdBy",
+            "type": "string",
+            "value": "",
+            "path": ".createdBy"
+        },
+        {
+            "key": "customDomain",
+            "type": "string",
+            "value": "",
+            "path": ".customDomain"
+        },
+        {
+            "key": "hooks",
+            "type": "array",
+            "value": "",
+            "path": ".hooks"
+        },
+        {
+            "key": "invitedUsers",
+            "type": "array",
+            "value": "",
+            "path": ".invitedUsers"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "pictureId",
+            "type": "string",
+            "value": "",
+            "path": ".pictureId"
+        },
+        {
+            "key": "slackWebhook",
+            "type": "string",
+            "value": "",
+            "path": ".slackWebhook"
+        },
+        {
+            "key": "userIds",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".userIds.items"
+                }
+            ],
+            "path": ".userIds"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
