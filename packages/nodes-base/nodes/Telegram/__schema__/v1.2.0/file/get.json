@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "ok",
+            "type": "boolean",
+            "value": "",
+            "path": ".ok"
+        },
+        {
+            "key": "result",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "file_id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.file_id"
+                },
+                {
+                    "key": "file_path",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.file_path"
+                },
+                {
+                    "key": "file_size",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".result.file_size"
+                },
+                {
+                    "key": "file_unique_id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.file_unique_id"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".result.required"
+                }
+            ],
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
