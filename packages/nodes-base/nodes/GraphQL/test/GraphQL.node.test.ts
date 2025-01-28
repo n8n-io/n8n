@@ -17,7 +17,6 @@ describe('GraphQL Node', () => {
 
 	beforeAll(async () => {
 		await initBinaryDataService();
-		nock.disableNetConnect();
 
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
@@ -69,10 +68,6 @@ describe('GraphQL Node', () => {
 					},
 				},
 			});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	const nodeTypes = setup(workflowTests);
