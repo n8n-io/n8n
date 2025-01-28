@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "CreationDate",
+            "type": "string",
+            "value": "",
+            "path": ".CreationDate"
+        },
+        {
+            "key": "Name",
+            "type": "string",
+            "value": "",
+            "path": ".Name"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
