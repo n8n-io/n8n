@@ -25,9 +25,9 @@ export class Credentials<
 	 * Sets new credential object
 	 */
 	setData(data: T): void {
-		const stringified = this.stringifyAndValidate(data);
+		a.ok(isObjectLiteral(data));
 
-		this.data = this.cipher.encrypt(stringified);
+		this.data = this.cipher.encrypt(data);
 	}
 
 	/**
@@ -66,20 +66,5 @@ export class Credentials<
 			type: this.type,
 			data: this.data,
 		};
-	}
-
-	/**
-	 * Stringifies the data and makes sure it's a valid JSON object
-	 */
-	private stringifyAndValidate(data: T) {
-		try {
-			const stringified = JSON.stringify(data);
-
-			a.equal(isObjectLiteral(JSON.parse(stringified)), true);
-
-			return stringified;
-		} catch (cause) {
-			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_DATA, cause);
-		}
 	}
 }

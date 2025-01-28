@@ -110,42 +110,13 @@ describe('Credentials', () => {
 	});
 
 	describe('setData', () => {
-		const trySetData = (credentials: Credentials<{}>, data: {}): CredentialDataError => {
-			try {
-				credentials.setData(data);
-			} catch (e) {
-				return e;
-			}
+		test.each<{}>([[123], [null], [undefined]])(
+			'should throw an AssertionError when data is %s',
+			(data) => {
+				const credentials = new Credentials<{}>(nodeCredentials, credentialType);
 
-			throw new Error('setData should have thrown an error');
-		};
-
-		test.each<{}>([
-			[123, AssertionError],
-			[null, AssertionError],
-			[undefined, SyntaxError],
-		])('should throw a CredentialDataError when data is %s', (data, expectedError) => {
-			const credentials = new Credentials<{}>(nodeCredentials, credentialType);
-
-			const error = trySetData(credentials, data);
-			expect(error).toBeInstanceOf(CredentialDataError);
-			expect(error.message).toEqual(CREDENTIAL_ERRORS.INVALID_DATA);
-			expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
-			expect(error.cause).toBeInstanceOf(expectedError);
-		});
-
-		test('should throw an error when data stringifies to malformed JSON', () => {
-			const credentials = new Credentials<{}>(nodeCredentials, credentialType);
-			const error = trySetData(credentials, {
-				toJSON() {
-					return '"jdsalkdjakls';
-				},
-			});
-
-			expect(error).toBeInstanceOf(CredentialDataError);
-			expect(error.message).toEqual(CREDENTIAL_ERRORS.INVALID_DATA);
-			expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
-			expect(error.cause).toBeInstanceOf(AssertionError);
-		});
+				expect(() => credentials.setData(data)).toThrow(AssertionError);
+			},
+		);
 	});
 });
