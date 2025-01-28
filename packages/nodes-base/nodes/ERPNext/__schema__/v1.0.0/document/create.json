@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "creation",
+            "type": "string",
+            "value": "",
+            "path": ".creation"
+        },
+        {
+            "key": "docstatus",
+            "type": "integer",
+            "value": "",
+            "path": ".docstatus"
+        },
+        {
+            "key": "doctype",
+            "type": "string",
+            "value": "",
+            "path": ".doctype"
+        },
+        {
+            "key": "idx",
+            "type": "integer",
+            "value": "",
+            "path": ".idx"
+        },
+        {
+            "key": "modified",
+            "type": "string",
+            "value": "",
+            "path": ".modified"
+        },
+        {
+            "key": "modified_by",
+            "type": "string",
+            "value": "",
+            "path": ".modified_by"
+        },
+        {
+            "key": "owner",
+            "type": "string",
+            "value": "",
+            "path": ".owner"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        }
+    ],
+    "path": ""
+}
