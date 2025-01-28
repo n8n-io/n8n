@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "values",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "Column 2",
+                    "type": "string",
+                    "value": "",
+                    "path": ".values.Column 2"
+                },
+                {
+                    "key": "Column 3",
+                    "type": "string",
+                    "value": "",
+                    "path": ".values.Column 3"
+                },
+                {
+                    "key": "Name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".values.Name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".values.required"
+                }
+            ],
+            "path": ".values"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
