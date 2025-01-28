@@ -236,6 +236,9 @@ function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
+	const errorReporter = Container.get(ErrorReporter);
+	const executionRepository = Container.get(ExecutionRepository);
+	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	return {
 		workflowExecuteAfter: [
@@ -257,12 +260,12 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await Container.get(WorkflowStaticDataService).saveStaticDataById(
+							await workflowStaticDataService.saveStaticDataById(
 								this.workflowData.id,
 								newStaticData,
 							);
 						} catch (e) {
-							Container.get(ErrorReporter).error(e);
+							errorReporter.error(e);
 							logger.error(
 								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
@@ -283,7 +286,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						 * on the next pruning cycle after the grace period set by
 						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
 						 */
-						await Container.get(ExecutionRepository).softDelete(this.executionId);
+						await executionRepository.softDelete(this.executionId);
 
 						return;
 					}
@@ -301,7 +304,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 
-						await Container.get(ExecutionRepository).hardDelete({
+						await executionRepository.hardDelete({
 							workflowId: this.workflowData.id,
 							executionId: this.executionId,
 						});
@@ -361,6 +364,9 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
+	const errorReporter = Container.get(ErrorReporter);
+	const externalHooks = Container.get(ExternalHooks);
+	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	return {
 		workflowExecuteAfter: [
@@ -380,12 +386,12 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await Container.get(WorkflowStaticDataService).saveStaticDataById(
+							await workflowStaticDataService.saveStaticDataById(
 								this.workflowData.id,
 								newStaticData,
 							);
 						} catch (e) {
-							Container.get(ErrorReporter).error(e);
+							errorReporter.error(e);
 							logger.error(
 								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
@@ -435,7 +441,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				}
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
-				const externalHooks = Container.get(ExternalHooks);
 				try {
 					await externalHooks.run('workflow.postExecute', [
 						fullRunData,
@@ -506,6 +511,7 @@ export function getWorkflowHooksWorkerMain(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
+	const executionRepository = Container.get(ExecutionRepository);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsPreExecute(),
@@ -530,7 +536,7 @@ export function getWorkflowHooksWorkerMain(
 						 * on the next pruning cycle after the grace period set by
 						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
 						 */
-						await Container.get(ExecutionRepository).softDelete(this.executionId);
+						await executionRepository.softDelete(this.executionId);
 
 						return;
 					}
@@ -540,7 +546,7 @@ export function getWorkflowHooksWorkerMain(
 						(fullRunData.status !== 'success' && !saveSettings.error);
 
 					if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-						await Container.get(ExecutionRepository).hardDelete({
+						await executionRepository.hardDelete({
 							workflowId: this.workflowData.id,
 							executionId: this.executionId,
 						});
