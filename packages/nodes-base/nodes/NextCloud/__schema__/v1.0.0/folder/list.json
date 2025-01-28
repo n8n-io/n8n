@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "eTag",
+            "type": "string",
+            "value": "",
+            "path": ".eTag"
+        },
+        {
+            "key": "lastModified",
+            "type": "string",
+            "value": "",
+            "path": ".lastModified"
+        },
+        {
+            "key": "path",
+            "type": "string",
+            "value": "",
+            "path": ".path"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
