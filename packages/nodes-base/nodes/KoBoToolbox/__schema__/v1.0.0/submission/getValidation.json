@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "by_whom",
+            "type": "string",
+            "value": "",
+            "path": ".by_whom"
+        },
+        {
+            "key": "color",
+            "type": "string",
+            "value": "",
+            "path": ".color"
+        },
+        {
+            "key": "label",
+            "type": "string",
+            "value": "",
+            "path": ".label"
+        },
+        {
+            "key": "timestamp",
+            "type": "integer",
+            "value": "",
+            "path": ".timestamp"
+        },
+        {
+            "key": "uid",
+            "type": "string",
+            "value": "",
+            "path": ".uid"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
