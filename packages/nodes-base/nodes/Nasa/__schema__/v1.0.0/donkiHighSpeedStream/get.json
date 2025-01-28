@@ -1,0 +1,114 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "eventTime",
+            "type": "string",
+            "value": "",
+            "path": ".eventTime"
+        },
+        {
+            "key": "hssID",
+            "type": "string",
+            "value": "",
+            "path": ".hssID"
+        },
+        {
+            "key": "instruments",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "displayName",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.displayName"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".instruments.items.required"
+                        }
+                    ],
+                    "path": ".instruments.items"
+                }
+            ],
+            "path": ".instruments"
+        },
+        {
+            "key": "link",
+            "type": "string",
+            "value": "",
+            "path": ".link"
+        },
+        {
+            "key": "linkedEvents",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "anyOf",
+                    "type": "object",
+                    "value": [
+                        {
+                            "key": "[0]",
+                            "type": "null",
+                            "value": "",
+                            "path": ".linkedEvents.anyOf.[0]"
+                        },
+                        {
+                            "key": "[1]",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "items",
+                                    "type": "Object",
+                                    "value": [
+                                        {
+                                            "key": "activityID",
+                                            "type": "string",
+                                            "value": "",
+                                            "path": ".linkedEvents.anyOf.[1].items.activityID"
+                                        },
+                                        {
+                                            "key": "required",
+                                            "type": "string",
+                                            "value": "",
+                                            "path": ".linkedEvents.anyOf.[1].items.required"
+                                        }
+                                    ],
+                                    "path": ".linkedEvents.anyOf.[1].items"
+                                }
+                            ],
+                            "path": ".linkedEvents.anyOf.[1]"
+                        }
+                    ],
+                    "path": ".linkedEvents.anyOf"
+                }
+            ],
+            "path": ".linkedEvents"
+        },
+        {
+            "key": "submissionTime",
+            "type": "string",
+            "value": "",
+            "path": ".submissionTime"
+        },
+        {
+            "key": "versionId",
+            "type": "integer",
+            "value": "",
+            "path": ".versionId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
