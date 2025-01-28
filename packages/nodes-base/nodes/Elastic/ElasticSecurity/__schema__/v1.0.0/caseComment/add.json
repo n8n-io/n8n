@@ -1,0 +1,103 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "comment",
+            "type": "string",
+            "value": "",
+            "path": ".comment"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_by",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "email",
+                    "type": "string",
+                    "value": "",
+                    "path": ".created_by.email"
+                },
+                {
+                    "key": "full_name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".created_by.full_name"
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "value": "",
+                    "path": ".created_by.username"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".created_by.required"
+                }
+            ],
+            "path": ".created_by"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "owner",
+            "type": "string",
+            "value": "",
+            "path": ".owner"
+        },
+        {
+            "key": "pushed_at",
+            "type": "null",
+            "value": "",
+            "path": ".pushed_at"
+        },
+        {
+            "key": "pushed_by",
+            "type": "null",
+            "value": "",
+            "path": ".pushed_by"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "updated_at",
+            "type": "null",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "updated_by",
+            "type": "null",
+            "value": "",
+            "path": ".updated_by"
+        },
+        {
+            "key": "version",
+            "type": "string",
+            "value": "",
+            "path": ".version"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
