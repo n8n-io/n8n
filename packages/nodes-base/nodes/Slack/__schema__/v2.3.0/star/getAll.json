@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "channel",
+            "type": "string",
+            "value": "",
+            "path": ".channel"
+        },
+        {
+            "key": "date_create",
+            "type": "integer",
+            "value": "",
+            "path": ".date_create"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
