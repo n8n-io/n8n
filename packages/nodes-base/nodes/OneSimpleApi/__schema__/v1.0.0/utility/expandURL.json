@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "data",
+            "type": "string",
+            "value": "",
+            "path": ".data"
+        },
+        {
+            "key": "elapsed",
+            "type": "number",
+            "value": "",
+            "path": ".elapsed"
+        },
+        {
+            "key": "hops",
+            "type": "integer",
+            "value": "",
+            "path": ".hops"
+        },
+        {
+            "key": "risk_check",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "dangerous",
+                    "type": "string",
+                    "value": "",
+                    "path": ".risk_check.dangerous"
+                },
+                {
+                    "key": "threats",
+                    "type": "array",
+                    "value": "",
+                    "path": ".risk_check.threats"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".risk_check.required"
+                }
+            ],
+            "path": ".risk_check"
+        },
+        {
+            "key": "trace",
+            "type": "array",
+            "value": "",
+            "path": ".trace"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
