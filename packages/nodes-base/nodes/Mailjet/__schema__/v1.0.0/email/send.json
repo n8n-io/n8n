@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Bcc",
+            "type": "array",
+            "value": "",
+            "path": ".Bcc"
+        },
+        {
+            "key": "Cc",
+            "type": "array",
+            "value": "",
+            "path": ".Cc"
+        },
+        {
+            "key": "CustomID",
+            "type": "string",
+            "value": "",
+            "path": ".CustomID"
+        },
+        {
+            "key": "Status",
+            "type": "string",
+            "value": "",
+            "path": ".Status"
+        },
+        {
+            "key": "To",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "Email",
+                            "type": "string",
+                            "value": "",
+                            "path": ".To.items.Email"
+                        },
+                        {
+                            "key": "MessageHref",
+                            "type": "string",
+                            "value": "",
+                            "path": ".To.items.MessageHref"
+                        },
+                        {
+                            "key": "MessageID",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".To.items.MessageID"
+                        },
+                        {
+                            "key": "MessageUUID",
+                            "type": "string",
+                            "value": "",
+                            "path": ".To.items.MessageUUID"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".To.items.required"
+                        }
+                    ],
+                    "path": ".To.items"
+                }
+            ],
+            "path": ".To"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
