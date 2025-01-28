@@ -1,0 +1,140 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "balance",
+            "type": "integer",
+            "value": "",
+            "path": ".balance"
+        },
+        {
+            "key": "debug",
+            "type": "string",
+            "value": "",
+            "path": ".debug"
+        },
+        {
+            "key": "messages",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "encoding",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.encoding"
+                        },
+                        {
+                            "key": "error",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".messages.items.error"
+                        },
+                        {
+                            "key": "error_text",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.error_text"
+                        },
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.id"
+                        },
+                        {
+                            "key": "is_binary",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".messages.items.is_binary"
+                        },
+                        {
+                            "key": "label",
+                            "type": "null",
+                            "value": "",
+                            "path": ".messages.items.label"
+                        },
+                        {
+                            "key": "parts",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".messages.items.parts"
+                        },
+                        {
+                            "key": "price",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".messages.items.price"
+                        },
+                        {
+                            "key": "recipient",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.recipient"
+                        },
+                        {
+                            "key": "sender",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.sender"
+                        },
+                        {
+                            "key": "success",
+                            "type": "boolean",
+                            "value": "",
+                            "path": ".messages.items.success"
+                        },
+                        {
+                            "key": "text",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.text"
+                        },
+                        {
+                            "key": "udh",
+                            "type": "null",
+                            "value": "",
+                            "path": ".messages.items.udh"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.required"
+                        }
+                    ],
+                    "path": ".messages.items"
+                }
+            ],
+            "path": ".messages"
+        },
+        {
+            "key": "sms_type",
+            "type": "string",
+            "value": "",
+            "path": ".sms_type"
+        },
+        {
+            "key": "success",
+            "type": "string",
+            "value": "",
+            "path": ".success"
+        },
+        {
+            "key": "total_price",
+            "type": "integer",
+            "value": "",
+            "path": ".total_price"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
