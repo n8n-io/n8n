@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_archived",
+            "type": "boolean",
+            "value": "",
+            "path": "._archived"
+        },
+        {
+            "key": "_cid",
+            "type": "string",
+            "value": "",
+            "path": "._cid"
+        },
+        {
+            "key": "_draft",
+            "type": "boolean",
+            "value": "",
+            "path": "._draft"
+        },
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "published-by",
+            "type": "string",
+            "value": "",
+            "path": ".published-by"
+        },
+        {
+            "key": "published-on",
+            "type": "string",
+            "value": "",
+            "path": ".published-on"
+        },
+        {
+            "key": "slug",
+            "type": "string",
+            "value": "",
+            "path": ".slug"
+        },
+        {
+            "key": "updated-by",
+            "type": "string",
+            "value": "",
+            "path": ".updated-by"
+        },
+        {
+            "key": "updated-on",
+            "type": "string",
+            "value": "",
+            "path": ".updated-on"
+        },
+        {
+            "key": "value",
+            "type": "integer",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
