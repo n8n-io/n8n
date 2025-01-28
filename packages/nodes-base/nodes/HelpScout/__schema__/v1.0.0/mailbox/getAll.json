@@ -1,0 +1,118 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_links",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "fields",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "href",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.fields.href"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.fields.required"
+                        }
+                    ],
+                    "path": "._links.fields"
+                },
+                {
+                    "key": "folders",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "href",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.folders.href"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.folders.required"
+                        }
+                    ],
+                    "path": "._links.folders"
+                },
+                {
+                    "key": "self",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "href",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.self.href"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.self.required"
+                        }
+                    ],
+                    "path": "._links.self"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": "._links.required"
+                }
+            ],
+            "path": "._links"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "slug",
+            "type": "string",
+            "value": "",
+            "path": ".slug"
+        },
+        {
+            "key": "updatedAt",
+            "type": "string",
+            "value": "",
+            "path": ".updatedAt"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
