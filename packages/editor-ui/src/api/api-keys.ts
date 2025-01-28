@@ -8,9 +8,9 @@ export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 
 export async function createApiKey(
 	context: IRestApiContext,
-	{ label }: CreateOrUpdateApiKeyRequestDto,
+	payload: CreateOrUpdateApiKeyRequestDto,
 ): Promise<ApiKeyWithRawValue> {
-	return await makeRestApiRequest(context, 'POST', '/api-keys', { label });
+	return await makeRestApiRequest(context, 'POST', '/api-keys', payload);
 }
 
 export async function deleteApiKey(
@@ -23,7 +23,7 @@ export async function deleteApiKey(
 export async function updateApiKey(
 	context: IRestApiContext,
 	id: string,
-	{ label }: CreateOrUpdateApiKeyRequestDto,
+	payload: CreateOrUpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
-	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, { label });
+	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
 }
