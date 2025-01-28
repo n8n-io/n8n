@@ -27,7 +27,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { getAllApiKeys, deleteApiKey } = apiKeysStore;
+const { getAndCacheApiKeys, deleteApiKey } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 
 const { isPublicApiEnabled } = settingsStore;
@@ -56,7 +56,7 @@ function onUpgrade() {
 async function getApiKeys() {
 	try {
 		loading.value = true;
-		await getAllApiKeys();
+		await getAndCacheApiKeys();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {

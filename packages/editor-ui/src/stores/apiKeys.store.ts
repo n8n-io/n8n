@@ -29,7 +29,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const canAddMoreApiKeys = computed(() => apiKeys.value.length < settingsStore.api.apiKeysLimit);
 
-	const getAllApiKeys = async () => {
+	const getAndCacheApiKeys = async () => {
 		if (apiKeys.value.length) return apiKeys.value;
 		apiKeys.value = await publicApiApi.getApiKeys(rootStore.restApiContext);
 		return apiKeys.value;
@@ -53,7 +53,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	};
 
 	return {
-		getAllApiKeys,
+		getAndCacheApiKeys,
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
