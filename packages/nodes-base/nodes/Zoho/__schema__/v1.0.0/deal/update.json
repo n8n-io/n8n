@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Created_By",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Created_By.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Created_By.name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Created_By.required"
+                }
+            ],
+            "path": ".Created_By"
+        },
+        {
+            "key": "Created_Time",
+            "type": "string",
+            "value": "",
+            "path": ".Created_Time"
+        },
+        {
+            "key": "Modified_By",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Modified_By.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Modified_By.name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".Modified_By.required"
+                }
+            ],
+            "path": ".Modified_By"
+        },
+        {
+            "key": "Modified_Time",
+            "type": "string",
+            "value": "",
+            "path": ".Modified_Time"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
