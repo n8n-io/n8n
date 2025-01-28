@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "rest_id",
+            "type": "string",
+            "value": "",
+            "path": ".rest_id"
+        },
+        {
+            "key": "retweeted",
+            "type": "boolean",
+            "value": "",
+            "path": ".retweeted"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
