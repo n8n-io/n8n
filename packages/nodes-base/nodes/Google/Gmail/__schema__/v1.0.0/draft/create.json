@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "message",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.id"
+                },
+                {
+                    "key": "labelIds",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "items",
+                            "type": "string",
+                            "value": "",
+                            "path": ".message.labelIds.items"
+                        }
+                    ],
+                    "path": ".message.labelIds"
+                },
+                {
+                    "key": "threadId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.threadId"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.required"
+                }
+            ],
+            "path": ".message"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
