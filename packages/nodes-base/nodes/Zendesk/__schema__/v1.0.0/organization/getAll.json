@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "details",
+            "type": "null",
+            "value": "",
+            "path": ".details"
+        },
+        {
+            "key": "domain_names",
+            "type": "array",
+            "value": "",
+            "path": ".domain_names"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "notes",
+            "type": "null",
+            "value": "",
+            "path": ".notes"
+        },
+        {
+            "key": "organization_fields",
+            "type": "object",
+            "value": "",
+            "path": ".organization_fields"
+        },
+        {
+            "key": "shared_comments",
+            "type": "boolean",
+            "value": "",
+            "path": ".shared_comments"
+        },
+        {
+            "key": "shared_tickets",
+            "type": "boolean",
+            "value": "",
+            "path": ".shared_tickets"
+        },
+        {
+            "key": "tags",
+            "type": "array",
+            "value": "",
+            "path": ".tags"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "external_id",
+            "type": "string",
+            "value": "",
+            "path": ".external_id"
+        }
+    ],
+    "path": ""
+}
