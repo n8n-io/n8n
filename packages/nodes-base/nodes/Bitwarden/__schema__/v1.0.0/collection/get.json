@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "groups",
+            "type": "array",
+            "value": "",
+            "path": ".groups"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
