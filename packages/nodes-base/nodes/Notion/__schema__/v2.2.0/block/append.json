@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "has_more",
+            "type": "boolean",
+            "value": "",
+            "path": ".has_more"
+        },
+        {
+            "key": "next_cursor",
+            "type": "null",
+            "value": "",
+            "path": ".next_cursor"
+        },
+        {
+            "key": "object",
+            "type": "string",
+            "value": "",
+            "path": ".object"
+        },
+        {
+            "key": "request_id",
+            "type": "string",
+            "value": "",
+            "path": ".request_id"
+        },
+        {
+            "key": "results",
+            "type": "array",
+            "value": "",
+            "path": ".results"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
