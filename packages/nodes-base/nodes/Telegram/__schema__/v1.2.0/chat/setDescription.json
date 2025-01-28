@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "ok",
+            "type": "boolean",
+            "value": "",
+            "path": ".ok"
+        },
+        {
+            "key": "result",
+            "type": "boolean",
+            "value": "",
+            "path": ".result"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
