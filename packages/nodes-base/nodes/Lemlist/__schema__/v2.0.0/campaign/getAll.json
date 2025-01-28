@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "createdBy",
+            "type": "string",
+            "value": "",
+            "path": ".createdBy"
+        },
+        {
+            "key": "errors",
+            "type": "array",
+            "value": "",
+            "path": ".errors"
+        },
+        {
+            "key": "hasError",
+            "type": "boolean",
+            "value": "",
+            "path": ".hasError"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        }
+    ],
+    "path": ""
+}
