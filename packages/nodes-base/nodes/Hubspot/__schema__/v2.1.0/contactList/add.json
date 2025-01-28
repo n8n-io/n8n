@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "discarded",
+            "type": "array",
+            "value": "",
+            "path": ".discarded"
+        },
+        {
+            "key": "invalidEmails",
+            "type": "array",
+            "value": "",
+            "path": ".invalidEmails"
+        },
+        {
+            "key": "invalidVids",
+            "type": "array",
+            "value": "",
+            "path": ".invalidVids"
+        },
+        {
+            "key": "updated",
+            "type": "array",
+            "value": "",
+            "path": ".updated"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
