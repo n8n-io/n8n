@@ -213,7 +213,7 @@ class ExtendedPGVectorStore extends PGVectorStore {
 	}
 }
 
-export class VectorStorePGVector extends createVectorStoreNode({
+export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorStore>({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
@@ -274,6 +274,7 @@ export class VectorStorePGVector extends createVectorStoreNode({
 
 		return await ExtendedPGVectorStore.initialize(embeddings, config);
 	},
+
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
 		// shared fields, because you need that strategy when creating the index.
@@ -307,6 +308,11 @@ export class VectorStorePGVector extends createVectorStoreNode({
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
 
-		await PGVectorStore.fromDocuments(documents, embeddings, config);
+		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		vectorStore.client?.release();
+	},
+
+	releaseVectorStoreClient(vectorStore) {
+		vectorStore.client?.release();
 	},
 }) {}

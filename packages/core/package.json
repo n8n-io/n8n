@@ -1,11 +1,11 @@
 {
   "name": "n8n-core",
-  "version": "1.75.0",
+  "version": "1.76.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
-    "n8n-copy-icons": "./bin/copy-icons",
+    "n8n-copy-static-files": "./bin/copy-static-files",
     "n8n-generate-translations": "./bin/generate-translations",
     "n8n-generate-metadata": "./bin/generate-metadata"
   },

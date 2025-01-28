@@ -36,7 +36,6 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
-import nock from 'nock';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -225,16 +224,6 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		testData = [testData];
 	}
 
-	if (testData.some((t) => !!t.nock)) {
-		beforeAll(() => {
-			nock.disableNetConnect();
-		});
-
-		afterAll(() => {
-			nock.restore();
-		});
-	}
-
 	const nodeTypes = new NodeTypes();
 
 	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
@@ -383,7 +372,6 @@ export const workflowToTests = (workflowFiles: string[]) => {
 
 export const testWorkflows = (workflows: string[]) => {
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
