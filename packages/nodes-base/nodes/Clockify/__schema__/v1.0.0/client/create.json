@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "address",
+            "type": "null",
+            "value": "",
+            "path": ".address"
+        },
+        {
+            "key": "archived",
+            "type": "boolean",
+            "value": "",
+            "path": ".archived"
+        },
+        {
+            "key": "currencyCode",
+            "type": "string",
+            "value": "",
+            "path": ".currencyCode"
+        },
+        {
+            "key": "currencyId",
+            "type": "string",
+            "value": "",
+            "path": ".currencyId"
+        },
+        {
+            "key": "email",
+            "type": "null",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "note",
+            "type": "null",
+            "value": "",
+            "path": ".note"
+        },
+        {
+            "key": "workspaceId",
+            "type": "string",
+            "value": "",
+            "path": ".workspaceId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
