@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "status",
+            "type": "object",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "updateTime",
+            "type": "string",
+            "value": "",
+            "path": ".updateTime"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
