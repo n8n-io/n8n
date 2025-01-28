@@ -1,0 +1,124 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Addresses",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "AddressType",
+                            "type": "string",
+                            "value": "",
+                            "path": ".Addresses.items.AddressType"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".Addresses.items.required"
+                        }
+                    ],
+                    "path": ".Addresses.items"
+                }
+            ],
+            "path": ".Addresses"
+        },
+        {
+            "key": "ContactGroups",
+            "type": "array",
+            "value": "",
+            "path": ".ContactGroups"
+        },
+        {
+            "key": "ContactID",
+            "type": "string",
+            "value": "",
+            "path": ".ContactID"
+        },
+        {
+            "key": "ContactPersons",
+            "type": "array",
+            "value": "",
+            "path": ".ContactPersons"
+        },
+        {
+            "key": "ContactStatus",
+            "type": "string",
+            "value": "",
+            "path": ".ContactStatus"
+        },
+        {
+            "key": "HasAttachments",
+            "type": "boolean",
+            "value": "",
+            "path": ".HasAttachments"
+        },
+        {
+            "key": "HasValidationErrors",
+            "type": "boolean",
+            "value": "",
+            "path": ".HasValidationErrors"
+        },
+        {
+            "key": "IsCustomer",
+            "type": "boolean",
+            "value": "",
+            "path": ".IsCustomer"
+        },
+        {
+            "key": "IsSupplier",
+            "type": "boolean",
+            "value": "",
+            "path": ".IsSupplier"
+        },
+        {
+            "key": "Name",
+            "type": "string",
+            "value": "",
+            "path": ".Name"
+        },
+        {
+            "key": "Phones",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "PhoneType",
+                            "type": "string",
+                            "value": "",
+                            "path": ".Phones.items.PhoneType"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".Phones.items.required"
+                        }
+                    ],
+                    "path": ".Phones.items"
+                }
+            ],
+            "path": ".Phones"
+        },
+        {
+            "key": "UpdatedDateUTC",
+            "type": "string",
+            "value": "",
+            "path": ".UpdatedDateUTC"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
