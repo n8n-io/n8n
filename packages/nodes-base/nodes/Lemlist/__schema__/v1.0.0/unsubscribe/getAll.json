@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "source",
+            "type": "string",
+            "value": "",
+            "path": ".source"
+        },
+        {
+            "key": "value",
+            "type": "string",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
