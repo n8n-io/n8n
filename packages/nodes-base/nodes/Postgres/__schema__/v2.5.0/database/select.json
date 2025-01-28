@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "phone",
+            "type": "string",
+            "value": "",
+            "path": ".phone"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
