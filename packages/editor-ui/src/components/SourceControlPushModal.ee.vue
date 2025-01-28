@@ -239,7 +239,7 @@ const selectAll = computed(() => {
 		return false;
 	}
 
-	const notSelectedVisibleItems = sortedWorkflowsSet.value.difference(selectedChanges.value);
+	const notSelectedVisibleItems = toRaw(selectedChanges.value).difference(selectedChanges.value);
 
 	return !Boolean(notSelectedVisibleItems.size);
 });
@@ -249,8 +249,7 @@ const selectAllIndeterminate = computed(() => {
 		return false;
 	}
 
-	const selected = new Set(toRaw(selectedChanges.value));
-	const selectedVisibleItems = selected.intersection(toRaw(sortedWorkflowsSet.value));
+	const selectedVisibleItems = toRaw(selectedChanges.value).intersection(sortedWorkflowsSet.value);
 
 	if (selectedVisibleItems.size === 0) {
 		return false;
@@ -260,11 +259,10 @@ const selectAllIndeterminate = computed(() => {
 });
 
 function onToggleSelectAll() {
-	const selected = new Set(toRaw(selectedChanges.value));
 	if (selectAll.value) {
-		selectedChanges.value = selected.difference(sortedWorkflowsSet.value);
+		selectedChanges.value = toRaw(selectedChanges.value).difference(sortedWorkflowsSet.value);
 	} else {
-		selectedChanges.value = selected.union(sortedWorkflowsSet.value);
+		selectedChanges.value = toRaw(selectedChanges.value).union(sortedWorkflowsSet.value);
 	}
 }
 
@@ -353,8 +351,6 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
-
-const modalHeight = computed(() => (changes.value.workflows.length ? '90%' : 'auto'));
 </script>
 
 <template>
@@ -362,8 +358,8 @@ const modalHeight = computed(() => (changes.value.workflows.length ? '90%' : 'au
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
-		max-height="auto"
-		:height="modalHeight"
+		max-height="90%"
+		height="auto"
 		:custom-class="$style.sourceControlPush"
 	>
 		<template #header>
