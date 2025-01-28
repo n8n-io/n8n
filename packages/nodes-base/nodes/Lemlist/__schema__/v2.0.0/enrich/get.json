@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "data",
+            "type": "object",
+            "value": "",
+            "path": ".data"
+        },
+        {
+            "key": "enrichmentId",
+            "type": "string",
+            "value": "",
+            "path": ".enrichmentId"
+        },
+        {
+            "key": "enrichmentStatus",
+            "type": "string",
+            "value": "",
+            "path": ".enrichmentStatus"
+        },
+        {
+            "key": "input",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "companyDomain",
+                    "type": "string",
+                    "value": "",
+                    "path": ".input.companyDomain"
+                },
+                {
+                    "key": "firstName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".input.firstName"
+                },
+                {
+                    "key": "lastName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".input.lastName"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".input.required"
+                }
+            ],
+            "path": ".input"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
