@@ -357,7 +357,7 @@ export class License {
 	}
 
 	getApiKeysLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_LIMIT) ?? 1;
+		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_PER_USER_MAX_LIMIT) ?? 1;
 	}
 
 	getTriggerLimit() {
