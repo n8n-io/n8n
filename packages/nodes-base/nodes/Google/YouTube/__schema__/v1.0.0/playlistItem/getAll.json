@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "contentDetails",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "videoId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".contentDetails.videoId"
+                },
+                {
+                    "key": "videoPublishedAt",
+                    "type": "string",
+                    "value": "",
+                    "path": ".contentDetails.videoPublishedAt"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".contentDetails.required"
+                }
+            ],
+            "path": ".contentDetails"
+        },
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
