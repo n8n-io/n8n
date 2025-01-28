@@ -189,42 +189,10 @@ export abstract class BaseCommand extends Command {
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
-		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
-
-		if (host === '') {
-			throw new ApplicationError(
-				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
-			);
-		}
-
-		if (bucket.name === '') {
-			throw new ApplicationError(
-				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
-			);
-		}
-
-		if (bucket.region === '') {
-			throw new ApplicationError(
-				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
-			);
-		}
-
-		if (credentials.accessKey === '') {
-			throw new ApplicationError(
-				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
-			);
-		}
-
-		if (credentials.accessSecret === '') {
-			throw new ApplicationError(
-				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
-			);
-		}
-
 		this.logger.debug('Initializing object store service');
 
 		try {
-			await objectStoreService.init(host, bucket, credentials);
+			await objectStoreService.init();
 			objectStoreService.setReadonly(options.isReadOnly);
 
 			this.logger.debug('Object store init completed');

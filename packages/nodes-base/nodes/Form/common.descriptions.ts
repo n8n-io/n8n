@@ -2,6 +2,12 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { appendAttributionOption } from '../../utils/descriptions';
 
+export const placeholder: string = `
+<!-- Your custom HTML here --->
+
+
+`.trimStart();
+
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
 	name: 'path',
@@ -36,9 +42,9 @@ export const formDescription: INodeProperties = {
 };
 
 export const formFields: INodeProperties = {
-	displayName: 'Form Fields',
+	displayName: 'Form Elements',
 	name: 'formFields',
-	placeholder: 'Add Form Field',
+	placeholder: 'Add Form Element',
 	type: 'fixedCollection',
 	default: { values: [{ label: '', fieldType: 'text' }] },
 	typeOptions: {
@@ -60,12 +66,16 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
-					displayName: 'Field Type',
+					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
 					options: [
+						{
+							name: 'Custom HTML',
+							value: 'html',
+						},
 						{
 							name: 'Date',
 							value: 'date',
@@ -109,7 +119,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file'],
+							fieldType: ['dropdown', 'date', 'file', 'html'],
 						},
 					},
 				},
@@ -159,6 +169,21 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'HTML Template',
+					name: 'html',
+					typeOptions: {
+						editor: 'htmlEditor',
+					},
+					type: 'string',
+					default: placeholder,
+					description: 'HTML template to render',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
+						},
+					},
+				},
+				{
 					displayName: 'Multiple Files',
 					name: 'multipleFiles',
 					type: 'boolean',
@@ -190,6 +215,23 @@ export const formFields: INodeProperties = {
 					name: 'formatDate',
 					type: 'notice',
 					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName:
+						'Does not accept <code>&lt;style&gt;</code> <code>&lt;script&gt;</code> or <code>&lt;input&gt;</code> tags.',
+					name: 'htmlTips',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
+						},
+					},
 				},
 				{
 					displayName: 'Required Field',
@@ -198,6 +240,11 @@ export const formFields: INodeProperties = {
 					default: false,
 					description:
 						'Whether to require the user to enter a value for this field before submitting the form',
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+					},
 				},
 			],
 		},

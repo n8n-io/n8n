@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.75.0",
+  "version": "1.76.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -21,7 +21,7 @@
     "dev:fe": "run-p start \"dev:fe:editor --filter=n8n-design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
-    "dev:e2e:v2": "cd cypress && pnpm run test:e2e:dev:v2",
+    "dev:e2e:v1": "cd cypress && pnpm run test:e2e:dev:v1",
     "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
@@ -58,7 +58,7 @@
     "jest-mock": "^29.6.2",
     "jest-mock-extended": "^3.0.4",
     "lefthook": "^1.7.15",
-    "nock": "^13.3.2",
+    "nock": "^14.0.0",
     "nodemon": "^3.0.1",
     "npm-run-all2": "^7.0.2",
     "p-limit": "^3.1.0",
