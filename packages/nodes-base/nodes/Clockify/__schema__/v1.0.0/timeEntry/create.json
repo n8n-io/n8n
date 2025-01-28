@@ -1,0 +1,109 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "billable",
+            "type": "boolean",
+            "value": "",
+            "path": ".billable"
+        },
+        {
+            "key": "customFieldValues",
+            "type": "array",
+            "value": "",
+            "path": ".customFieldValues"
+        },
+        {
+            "key": "description",
+            "type": "null",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isLocked",
+            "type": "boolean",
+            "value": "",
+            "path": ".isLocked"
+        },
+        {
+            "key": "kioskId",
+            "type": "null",
+            "value": "",
+            "path": ".kioskId"
+        },
+        {
+            "key": "projectId",
+            "type": "string",
+            "value": "",
+            "path": ".projectId"
+        },
+        {
+            "key": "tagIds",
+            "type": "null",
+            "value": "",
+            "path": ".tagIds"
+        },
+        {
+            "key": "timeInterval",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "duration",
+                    "type": "string",
+                    "value": "",
+                    "path": ".timeInterval.duration"
+                },
+                {
+                    "key": "end",
+                    "type": "string",
+                    "value": "",
+                    "path": ".timeInterval.end"
+                },
+                {
+                    "key": "start",
+                    "type": "string",
+                    "value": "",
+                    "path": ".timeInterval.start"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".timeInterval.required"
+                }
+            ],
+            "path": ".timeInterval"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "userId",
+            "type": "string",
+            "value": "",
+            "path": ".userId"
+        },
+        {
+            "key": "workspaceId",
+            "type": "string",
+            "value": "",
+            "path": ".workspaceId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
