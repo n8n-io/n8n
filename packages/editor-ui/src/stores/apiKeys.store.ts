@@ -27,7 +27,9 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		);
 	});
 
-	const canAddMoreApiKeys = computed(() => apiKeys.value.length < settingsStore.api.apiKeysLimit);
+	const canAddMoreApiKeys = computed(
+		() => apiKeys.value.length < settingsStore.api.apiKeysPerUserLimit,
+	);
 
 	const getAndCacheApiKeys = async () => {
 		if (apiKeys.value.length) return apiKeys.value;

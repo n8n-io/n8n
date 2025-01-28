@@ -31,7 +31,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
-		apiKeysLimit: 0,
+		apiKeysPerUserLimit: 0,
 		enabled: false,
 		latestVersion: 0,
 		path: '/',

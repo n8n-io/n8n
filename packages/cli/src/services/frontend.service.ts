@@ -146,7 +146,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				apiKeysLimit: this.license.getApiKeysLimit(),
+				apiKeysPerUserLimit: this.license.getApiKeysPerUserLimit(),
 				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,

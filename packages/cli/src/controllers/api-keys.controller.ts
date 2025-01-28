@@ -38,7 +38,7 @@ export class ApiKeysController {
 	) {
 		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
 
-		if (currentNumberOfApiKeys >= this.license.getApiKeysLimit()) {
+		if (currentNumberOfApiKeys >= this.license.getApiKeysPerUserLimit()) {
 			throw new BadRequestError('You have reached the maximum number of API keys allowed.');
 		}
 
