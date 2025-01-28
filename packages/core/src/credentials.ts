@@ -1,11 +1,12 @@
 import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 
-class CredentialDataError extends ApplicationError {
+export class CredentialDataError extends ApplicationError {
 	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
 		super(message, {
 			extra: { name, type, id },
@@ -23,7 +24,9 @@ export class Credentials<
 	 * Sets new credential object
 	 */
 	setData(data: T): void {
-		this.data = this.cipher.encrypt(data);
+		const stringified = this.stringifyAndValidate(data);
+
+		this.data = this.cipher.encrypt(stringified);
 	}
 
 	/**
@@ -62,5 +65,20 @@ export class Credentials<
 			type: this.type,
 			data: this.data,
 		};
+	}
+
+	/**
+	 * Stringifies the data and makes sure it's a valid JSON object
+	 */
+	private stringifyAndValidate(data: T) {
+		try {
+			const stringified = JSON.stringify(data);
+
+			a.equal(typeof JSON.parse(stringified), 'object');
+
+			return stringified;
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_DATA, cause);
+		}
 	}
 }

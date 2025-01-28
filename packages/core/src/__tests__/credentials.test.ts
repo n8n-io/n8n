@@ -1,12 +1,13 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
+import { AssertionError } from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
 import type { InstanceSettings } from '@/instance-settings';
 
-import { Credentials } from '../credentials';
+import { CredentialDataError, Credentials } from '../credentials';
 
 describe('Credentials', () => {
 	const nodeCredentials = { id: '123', name: 'Test Credential' };
@@ -105,6 +106,41 @@ describe('Credentials', () => {
 			const decryptedData = credentials.getData();
 			expect(decryptedData.username).toBe('testuser');
 			expect(decryptedData.password).toBe('testpass');
+		});
+	});
+
+	describe('setData', () => {
+		const trySetData = (credentials: Credentials<{}>, data: {}): CredentialDataError => {
+			try {
+				credentials.setData(data);
+				throw new Error('setData should have thrown an error');
+			} catch (e) {
+				return e;
+			}
+		};
+
+		test('should throw an error when data is not an object', () => {
+			const credentials = new Credentials<{}>(nodeCredentials, credentialType);
+
+			const error = trySetData(credentials, 123);
+			expect(error).toBeInstanceOf(CredentialDataError);
+			expect(error.message).toEqual(CREDENTIAL_ERRORS.INVALID_DATA);
+			expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
+			expect(error.cause).toBeInstanceOf(AssertionError);
+		});
+
+		test('should throw an error when data stringifies to malformed JSON', () => {
+			const credentials = new Credentials<{}>(nodeCredentials, credentialType);
+			const error = trySetData(credentials, {
+				toJSON() {
+					return '"jdsalkdjakls';
+				},
+			});
+
+			expect(error).toBeInstanceOf(CredentialDataError);
+			expect(error.message).toEqual(CREDENTIAL_ERRORS.INVALID_DATA);
+			expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
+			expect(error.cause).toBeInstanceOf(AssertionError);
 		});
 	});
 });
