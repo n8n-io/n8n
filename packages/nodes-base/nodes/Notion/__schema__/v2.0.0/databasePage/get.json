@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "property_description",
+            "type": "string",
+            "value": "",
+            "path": ".property_description"
+        },
+        {
+            "key": "property_events",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".property_events.items"
+                }
+            ],
+            "path": ".property_events"
+        },
+        {
+            "key": "property_founders",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".property_founders.items"
+                }
+            ],
+            "path": ".property_founders"
+        },
+        {
+            "key": "property_industries",
+            "type": "string",
+            "value": "",
+            "path": ".property_industries"
+        },
+        {
+            "key": "property_name",
+            "type": "string",
+            "value": "",
+            "path": ".property_name"
+        },
+        {
+            "key": "property_website",
+            "type": "null",
+            "value": "",
+            "path": ".property_website"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
