@@ -10,8 +10,6 @@ import type {
 } from 'n8n-workflow';
 
 import { Form } from '../Form.node';
-import { formDescription, formTitle } from '../common.descriptions';
-import { placeholder } from 'lodash/partialRight';
 
 describe('Form Node', () => {
 	let form: Form;
