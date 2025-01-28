@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "campaignId",
+            "type": "string",
+            "value": "",
+            "path": ".campaignId"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "firstName",
+            "type": "string",
+            "value": "",
+            "path": ".firstName"
+        },
+        {
+            "key": "isPaused",
+            "type": "boolean",
+            "value": "",
+            "path": ".isPaused"
+        },
+        {
+            "key": "lastName",
+            "type": "string",
+            "value": "",
+            "path": ".lastName"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
