@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "presentationId",
+            "type": "string",
+            "value": "",
+            "path": ".presentationId"
+        },
+        {
+            "key": "replies",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "replaceAllText",
+                            "type": "object",
+                            "value": "",
+                            "path": ".replies.items.replaceAllText"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".replies.items.required"
+                        }
+                    ],
+                    "path": ".replies.items"
+                }
+            ],
+            "path": ".replies"
+        },
+        {
+            "key": "writeControl",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "requiredRevisionId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".writeControl.requiredRevisionId"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".writeControl.required"
+                }
+            ],
+            "path": ".writeControl"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
