@@ -26,7 +26,6 @@ export class OpenRouterApi implements ICredentialType {
 			name: 'url',
 			type: 'hidden',
 			default: 'https://openrouter.ai/api/v1',
-			description: 'Override the default base URL for the API',
 		},
 	];
 
