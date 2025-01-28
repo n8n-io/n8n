@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "beta",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".beta.items"
+                }
+            ],
+            "path": ".beta"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "createdBy",
+            "type": "string",
+            "value": "",
+            "path": ".createdBy"
+        },
+        {
+            "key": "hooks",
+            "type": "array",
+            "value": "",
+            "path": ".hooks"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "userIds",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".userIds.items"
+                }
+            ],
+            "path": ".userIds"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
