@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "country",
+            "type": "string",
+            "value": "",
+            "path": ".country"
+        },
+        {
+            "key": "customField",
+            "type": "array",
+            "value": "",
+            "path": ".customField"
+        },
+        {
+            "key": "dateAdded",
+            "type": "string",
+            "value": "",
+            "path": ".dateAdded"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "emailLowerCase",
+            "type": "string",
+            "value": "",
+            "path": ".emailLowerCase"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "locationId",
+            "type": "string",
+            "value": "",
+            "path": ".locationId"
+        },
+        {
+            "key": "tags",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tags.items"
+                }
+            ],
+            "path": ".tags"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
