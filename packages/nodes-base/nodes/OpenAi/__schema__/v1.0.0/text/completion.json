@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "path": ".message"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
