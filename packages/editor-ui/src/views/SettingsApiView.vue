@@ -164,7 +164,7 @@ function onEdit(id: string) {
 }
 
 .destinationItem {
-	margin-bottom: 0.5em;
+	margin-bottom: var(--spacing-2xs);
 }
 
 .delete {
