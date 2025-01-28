@@ -1,0 +1,120 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "acousticness",
+            "type": "number",
+            "value": "",
+            "path": ".acousticness"
+        },
+        {
+            "key": "analysis_url",
+            "type": "string",
+            "value": "",
+            "path": ".analysis_url"
+        },
+        {
+            "key": "danceability",
+            "type": "number",
+            "value": "",
+            "path": ".danceability"
+        },
+        {
+            "key": "duration_ms",
+            "type": "integer",
+            "value": "",
+            "path": ".duration_ms"
+        },
+        {
+            "key": "energy",
+            "type": "number",
+            "value": "",
+            "path": ".energy"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "instrumentalness",
+            "type": "integer",
+            "value": "",
+            "path": ".instrumentalness"
+        },
+        {
+            "key": "key",
+            "type": "integer",
+            "value": "",
+            "path": ".key"
+        },
+        {
+            "key": "liveness",
+            "type": "number",
+            "value": "",
+            "path": ".liveness"
+        },
+        {
+            "key": "loudness",
+            "type": "number",
+            "value": "",
+            "path": ".loudness"
+        },
+        {
+            "key": "mode",
+            "type": "integer",
+            "value": "",
+            "path": ".mode"
+        },
+        {
+            "key": "speechiness",
+            "type": "number",
+            "value": "",
+            "path": ".speechiness"
+        },
+        {
+            "key": "tempo",
+            "type": "number",
+            "value": "",
+            "path": ".tempo"
+        },
+        {
+            "key": "time_signature",
+            "type": "integer",
+            "value": "",
+            "path": ".time_signature"
+        },
+        {
+            "key": "track_href",
+            "type": "string",
+            "value": "",
+            "path": ".track_href"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "uri",
+            "type": "string",
+            "value": "",
+            "path": ".uri"
+        },
+        {
+            "key": "valence",
+            "type": "number",
+            "value": "",
+            "path": ".valence"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
