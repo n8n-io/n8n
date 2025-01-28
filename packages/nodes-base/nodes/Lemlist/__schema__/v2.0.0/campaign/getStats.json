@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "clickedCount",
+            "type": "integer",
+            "value": "",
+            "path": ".clickedCount"
+        },
+        {
+            "key": "deliveredCount",
+            "type": "integer",
+            "value": "",
+            "path": ".deliveredCount"
+        },
+        {
+            "key": "interestedCount",
+            "type": "integer",
+            "value": "",
+            "path": ".interestedCount"
+        },
+        {
+            "key": "leadCompleted",
+            "type": "integer",
+            "value": "",
+            "path": ".leadCompleted"
+        },
+        {
+            "key": "leadInProgress",
+            "type": "integer",
+            "value": "",
+            "path": ".leadInProgress"
+        },
+        {
+            "key": "leadReadyToSend",
+            "type": "integer",
+            "value": "",
+            "path": ".leadReadyToSend"
+        },
+        {
+            "key": "leadToLaunch",
+            "type": "integer",
+            "value": "",
+            "path": ".leadToLaunch"
+        },
+        {
+            "key": "leadTotal",
+            "type": "integer",
+            "value": "",
+            "path": ".leadTotal"
+        },
+        {
+            "key": "openedCount",
+            "type": "integer",
+            "value": "",
+            "path": ".openedCount"
+        },
+        {
+            "key": "repliedCount",
+            "type": "integer",
+            "value": "",
+            "path": ".repliedCount"
+        },
+        {
+            "key": "sentCount",
+            "type": "integer",
+            "value": "",
+            "path": ".sentCount"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
