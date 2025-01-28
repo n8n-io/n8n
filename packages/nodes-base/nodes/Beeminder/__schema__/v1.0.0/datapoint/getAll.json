@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "canonical",
+            "type": "string",
+            "value": "",
+            "path": ".canonical"
+        },
+        {
+            "key": "comment",
+            "type": "string",
+            "value": "",
+            "path": ".comment"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "creator",
+            "type": "string",
+            "value": "",
+            "path": ".creator"
+        },
+        {
+            "key": "daystamp",
+            "type": "string",
+            "value": "",
+            "path": ".daystamp"
+        },
+        {
+            "key": "fulltext",
+            "type": "string",
+            "value": "",
+            "path": ".fulltext"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "origin",
+            "type": "string",
+            "value": "",
+            "path": ".origin"
+        },
+        {
+            "key": "requestid",
+            "type": "null",
+            "value": "",
+            "path": ".requestid"
+        },
+        {
+            "key": "timestamp",
+            "type": "integer",
+            "value": "",
+            "path": ".timestamp"
+        },
+        {
+            "key": "updated_at",
+            "type": "integer",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "urtext",
+            "type": "null",
+            "value": "",
+            "path": ".urtext"
+        },
+        {
+            "key": "value",
+            "type": "integer",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
