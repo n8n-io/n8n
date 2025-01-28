@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "createdDateTime",
+            "type": "string",
+            "value": "",
+            "path": ".createdDateTime"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "mail",
+            "type": "string",
+            "value": "",
+            "path": ".mail"
+        },
+        {
+            "key": "mailNickname",
+            "type": "string",
+            "value": "",
+            "path": ".mailNickname"
+        },
+        {
+            "key": "securityIdentifier",
+            "type": "string",
+            "value": "",
+            "path": ".securityIdentifier"
+        },
+        {
+            "key": "userPrincipalName",
+            "type": "string",
+            "value": "",
+            "path": ".userPrincipalName"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
