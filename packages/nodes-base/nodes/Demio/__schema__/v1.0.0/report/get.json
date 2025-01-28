@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "attended",
+            "type": "boolean",
+            "value": "",
+            "path": ".attended"
+        },
+        {
+            "key": "custom_fields",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".custom_fields.items.id"
+                        },
+                        {
+                            "key": "name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".custom_fields.items.name"
+                        },
+                        {
+                            "key": "value",
+                            "type": "string",
+                            "value": "",
+                            "path": ".custom_fields.items.value"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".custom_fields.items.required"
+                        }
+                    ],
+                    "path": ".custom_fields.items"
+                }
+            ],
+            "path": ".custom_fields"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
