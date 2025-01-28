@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "flags",
+            "type": "integer",
+            "value": "",
+            "path": ".flags"
+        },
+        {
+            "key": "guild_id",
+            "type": "string",
+            "value": "",
+            "path": ".guild_id"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "nsfw",
+            "type": "boolean",
+            "value": "",
+            "path": ".nsfw"
+        },
+        {
+            "key": "permission_overwrites",
+            "type": "array",
+            "value": "",
+            "path": ".permission_overwrites"
+        },
+        {
+            "key": "position",
+            "type": "integer",
+            "value": "",
+            "path": ".position"
+        },
+        {
+            "key": "rate_limit_per_user",
+            "type": "integer",
+            "value": "",
+            "path": ".rate_limit_per_user"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "topic",
+            "type": "null",
+            "value": "",
+            "path": ".topic"
+        },
+        {
+            "key": "last_message_id",
+            "type": "string",
+            "value": "",
+            "path": ".last_message_id"
+        }
+    ],
+    "path": ""
+}
