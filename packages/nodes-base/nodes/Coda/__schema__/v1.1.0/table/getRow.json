@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Datum",
+            "type": "string",
+            "value": "",
+            "path": ".Datum"
+        },
+        {
+            "key": "Komplizen",
+            "type": "string",
+            "value": "",
+            "path": ".Komplizen"
+        },
+        {
+            "key": "Meetingart",
+            "type": "string",
+            "value": "",
+            "path": ".Meetingart"
+        },
+        {
+            "key": "Name",
+            "type": "string",
+            "value": "",
+            "path": ".Name"
+        },
+        {
+            "key": "Protokoll",
+            "type": "string",
+            "value": "",
+            "path": ".Protokoll"
+        },
+        {
+            "key": "Spannungen",
+            "type": "string",
+            "value": "",
+            "path": ".Spannungen"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "rowId kopieren",
+            "type": "string",
+            "value": "",
+            "path": ".rowId kopieren"
+        },
+        {
+            "key": "rowId",
+            "type": "string",
+            "value": "",
+            "path": ".rowId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
