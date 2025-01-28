@@ -1,0 +1,106 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "accepted",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".accepted.items"
+                }
+            ],
+            "path": ".accepted"
+        },
+        {
+            "key": "ehlo",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".ehlo.items"
+                }
+            ],
+            "path": ".ehlo"
+        },
+        {
+            "key": "envelope",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "from",
+                    "type": "string",
+                    "value": "",
+                    "path": ".envelope.from"
+                },
+                {
+                    "key": "to",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "items",
+                            "type": "string",
+                            "value": "",
+                            "path": ".envelope.to.items"
+                        }
+                    ],
+                    "path": ".envelope.to"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".envelope.required"
+                }
+            ],
+            "path": ".envelope"
+        },
+        {
+            "key": "envelopeTime",
+            "type": "integer",
+            "value": "",
+            "path": ".envelopeTime"
+        },
+        {
+            "key": "messageId",
+            "type": "string",
+            "value": "",
+            "path": ".messageId"
+        },
+        {
+            "key": "messageSize",
+            "type": "integer",
+            "value": "",
+            "path": ".messageSize"
+        },
+        {
+            "key": "messageTime",
+            "type": "integer",
+            "value": "",
+            "path": ".messageTime"
+        },
+        {
+            "key": "rejected",
+            "type": "array",
+            "value": "",
+            "path": ".rejected"
+        },
+        {
+            "key": "response",
+            "type": "string",
+            "value": "",
+            "path": ".response"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
