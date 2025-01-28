@@ -1,0 +1,79 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "closed",
+            "type": "boolean",
+            "value": "",
+            "path": ".closed"
+        },
+        {
+            "key": "color",
+            "type": "null",
+            "value": "",
+            "path": ".color"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "idBoard",
+            "type": "string",
+            "value": "",
+            "path": ".idBoard"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "subscribed",
+            "type": "boolean",
+            "value": "",
+            "path": ".subscribed"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "datasource",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "filter",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".datasource.filter"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".datasource.required"
+                }
+            ],
+            "path": ".datasource"
+        },
+        {
+            "key": "type",
+            "type": "null",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "softLimit",
+            "type": "null",
+            "value": "",
+            "path": ".softLimit"
+        }
+    ],
+    "path": ""
+}
