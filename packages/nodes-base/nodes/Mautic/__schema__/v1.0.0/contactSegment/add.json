@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "success",
+            "type": "integer",
+            "value": "",
+            "path": ".success"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
