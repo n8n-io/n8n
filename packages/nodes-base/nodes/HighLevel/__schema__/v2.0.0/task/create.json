@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "contactId",
+            "type": "string",
+            "value": "",
+            "path": ".contactId"
+        },
+        {
+            "key": "task",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "completed",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".task.completed"
+                },
+                {
+                    "key": "contactId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".task.contactId"
+                },
+                {
+                    "key": "dueDate",
+                    "type": "string",
+                    "value": "",
+                    "path": ".task.dueDate"
+                },
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".task.id"
+                },
+                {
+                    "key": "title",
+                    "type": "string",
+                    "value": "",
+                    "path": ".task.title"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".task.required"
+                }
+            ],
+            "path": ".task"
+        },
+        {
+            "key": "traceId",
+            "type": "string",
+            "value": "",
+            "path": ".traceId"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
