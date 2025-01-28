@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isAccountOwner",
+            "type": "boolean",
+            "value": "",
+            "path": ".isAccountOwner"
+        },
+        {
+            "key": "isActive",
+            "type": "boolean",
+            "value": "",
+            "path": ".isActive"
+        },
+        {
+            "key": "isReadOnly",
+            "type": "boolean",
+            "value": "",
+            "path": ".isReadOnly"
+        },
+        {
+            "key": "metadata",
+            "type": "array",
+            "value": "",
+            "path": ".metadata"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "organization",
+            "type": "string",
+            "value": "",
+            "path": ".organization"
+        },
+        {
+            "key": "phone",
+            "type": "string",
+            "value": "",
+            "path": ".phone"
+        },
+        {
+            "key": "teams",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".teams.items"
+                }
+            ],
+            "path": ".teams"
+        },
+        {
+            "key": "timeCreated",
+            "type": "integer",
+            "value": "",
+            "path": ".timeCreated"
+        },
+        {
+            "key": "timeLastModified",
+            "type": "integer",
+            "value": "",
+            "path": ".timeLastModified"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
