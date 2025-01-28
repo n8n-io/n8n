@@ -3,7 +3,6 @@ import { configure } from '@testing-library/vue';
 import { config } from '@vue/test-utils';
 
 import { N8nPlugin } from 'n8n-design-system/plugin';
-import 'core-js/proposals/set-methods';
 
 configure({ testIdAttribute: 'data-test-id' });
 

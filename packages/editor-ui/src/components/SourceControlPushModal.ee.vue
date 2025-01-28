@@ -37,6 +37,7 @@ import {
 } from '@n8n/api-types';
 import { orderBy, groupBy } from 'lodash-es';
 import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
+import 'core-js/proposals/set-methods';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
