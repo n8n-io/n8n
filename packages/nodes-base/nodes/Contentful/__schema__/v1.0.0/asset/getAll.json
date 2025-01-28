@@ -1,0 +1,99 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "description",
+            "type": "string",
+            "value": "",
+            "path": ".description"
+        },
+        {
+            "key": "file",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "contentType",
+                    "type": "string",
+                    "value": "",
+                    "path": ".file.contentType"
+                },
+                {
+                    "key": "details",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "image",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "height",
+                                    "type": "integer",
+                                    "value": "",
+                                    "path": ".file.details.image.height"
+                                },
+                                {
+                                    "key": "width",
+                                    "type": "integer",
+                                    "value": "",
+                                    "path": ".file.details.image.width"
+                                },
+                                {
+                                    "key": "required",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".file.details.image.required"
+                                }
+                            ],
+                            "path": ".file.details.image"
+                        },
+                        {
+                            "key": "size",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".file.details.size"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".file.details.required"
+                        }
+                    ],
+                    "path": ".file.details"
+                },
+                {
+                    "key": "fileName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".file.fileName"
+                },
+                {
+                    "key": "url",
+                    "type": "string",
+                    "value": "",
+                    "path": ".file.url"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".file.required"
+                }
+            ],
+            "path": ".file"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
