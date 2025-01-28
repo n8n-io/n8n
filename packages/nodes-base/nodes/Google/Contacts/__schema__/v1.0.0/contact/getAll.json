@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "contactId",
+            "type": "string",
+            "value": "",
+            "path": ".contactId"
+        },
+        {
+            "key": "etag",
+            "type": "string",
+            "value": "",
+            "path": ".etag"
+        },
+        {
+            "key": "resourceName",
+            "type": "string",
+            "value": "",
+            "path": ".resourceName"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
