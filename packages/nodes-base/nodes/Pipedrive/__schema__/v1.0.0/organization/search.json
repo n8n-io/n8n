@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "result_score",
+            "type": "number",
+            "value": "",
+            "path": ".result_score"
+        },
+        {
+            "key": "custom_fields",
+            "type": "array",
+            "value": "",
+            "path": ".custom_fields"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "notes",
+            "type": "array",
+            "value": "",
+            "path": ".notes"
+        },
+        {
+            "key": "owner",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".owner.id"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".owner.required"
+                }
+            ],
+            "path": ".owner"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "visible_to",
+            "type": "integer",
+            "value": "",
+            "path": ".visible_to"
+        }
+    ],
+    "path": ""
+}
