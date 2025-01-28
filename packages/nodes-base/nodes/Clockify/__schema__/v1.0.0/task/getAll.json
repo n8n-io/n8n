@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "assigneeId",
+            "type": "null",
+            "value": "",
+            "path": ".assigneeId"
+        },
+        {
+            "key": "assigneeIds",
+            "type": "array",
+            "value": "",
+            "path": ".assigneeIds"
+        },
+        {
+            "key": "billable",
+            "type": "boolean",
+            "value": "",
+            "path": ".billable"
+        },
+        {
+            "key": "budgetEstimate",
+            "type": "integer",
+            "value": "",
+            "path": ".budgetEstimate"
+        },
+        {
+            "key": "costRate",
+            "type": "null",
+            "value": "",
+            "path": ".costRate"
+        },
+        {
+            "key": "estimate",
+            "type": "string",
+            "value": "",
+            "path": ".estimate"
+        },
+        {
+            "key": "hourlyRate",
+            "type": "null",
+            "value": "",
+            "path": ".hourlyRate"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "projectId",
+            "type": "string",
+            "value": "",
+            "path": ".projectId"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "userGroupIds",
+            "type": "array",
+            "value": "",
+            "path": ".userGroupIds"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
