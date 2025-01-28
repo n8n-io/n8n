@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "channel",
+            "type": "string",
+            "value": "",
+            "path": ".channel"
+        },
+        {
+            "key": "ok",
+            "type": "boolean",
+            "value": "",
+            "path": ".ok"
+        },
+        {
+            "key": "permalink",
+            "type": "string",
+            "value": "",
+            "path": ".permalink"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
