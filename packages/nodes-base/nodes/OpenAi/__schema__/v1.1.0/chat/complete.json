@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "finish_reason",
+            "type": "string",
+            "value": "",
+            "path": ".finish_reason"
+        },
+        {
+            "key": "index",
+            "type": "integer",
+            "value": "",
+            "path": ".index"
+        },
+        {
+            "key": "logprobs",
+            "type": "null",
+            "value": "",
+            "path": ".logprobs"
+        },
+        {
+            "key": "message",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "content",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.content"
+                },
+                {
+                    "key": "refusal",
+                    "type": "null",
+                    "value": "",
+                    "path": ".message.refusal"
+                },
+                {
+                    "key": "role",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.role"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".message.required"
+                }
+            ],
+            "path": ".message"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
