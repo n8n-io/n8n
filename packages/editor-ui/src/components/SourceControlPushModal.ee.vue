@@ -352,6 +352,8 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
+
+const modalHeight = computed(() => (changes.value.workflows.length ? 'min(80vh, 850px)' : 'auto'));
 </script>
 
 <template>
@@ -359,8 +361,7 @@ async function commitAndPush() {
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
-		max-height="90%"
-		height="auto"
+		:height="modalHeight"
 		:custom-class="$style.sourceControlPush"
 	>
 		<template #header>
@@ -419,8 +420,10 @@ async function commitAndPush() {
 				</div>
 
 				<div>
-					<N8nText bold>{{ selectedChanges.size }} of {{ changes.workflows.length }}</N8nText>
-					workflows selected
+					<N8nText bold color="text-base" size="small">
+						{{ selectedChanges.size }} of {{ changes.workflows.length }}
+					</N8nText>
+					<N8nText color="text-base" size="small"> workflows selected</N8nText>
 				</div>
 			</div>
 		</template>
@@ -477,7 +480,7 @@ async function commitAndPush() {
 											</span>
 											<strong>{{ file.name || file.id }}</strong>
 										</N8nText>
-										<N8nText v-else tag="div" bold :class="[$style.listItemName]">
+										<N8nText v-else tag="div" bold color="text-dark" :class="[$style.listItemName]">
 											{{ file.name }}
 										</N8nText>
 										<N8nText
@@ -537,6 +540,7 @@ async function commitAndPush() {
 					data-test-id="source-control-push-modal-submit"
 					type="primary"
 					:disabled="isSubmitDisabled"
+					size="large"
 					@click="commitAndPush"
 				>
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
