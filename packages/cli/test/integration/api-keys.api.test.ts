@@ -1,7 +1,7 @@
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -62,7 +62,7 @@ describe('Owner shell', () => {
 			.post('/api-keys')
 			.send({ label: 'My API Key' });
 
-		const newApiKey = newApiKeyResponse.body.data as ApiKey & { rawApiKey: string };
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
