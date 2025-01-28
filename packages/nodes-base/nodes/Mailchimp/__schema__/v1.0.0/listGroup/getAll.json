@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_links",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "href",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.href"
+                        },
+                        {
+                            "key": "method",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.method"
+                        },
+                        {
+                            "key": "rel",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.rel"
+                        },
+                        {
+                            "key": "schema",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.schema"
+                        },
+                        {
+                            "key": "targetSchema",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.targetSchema"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": "._links.items.required"
+                        }
+                    ],
+                    "path": "._links.items"
+                }
+            ],
+            "path": "._links"
+        },
+        {
+            "key": "category_id",
+            "type": "string",
+            "value": "",
+            "path": ".category_id"
+        },
+        {
+            "key": "display_order",
+            "type": "integer",
+            "value": "",
+            "path": ".display_order"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "list_id",
+            "type": "string",
+            "value": "",
+            "path": ".list_id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "subscriber_count",
+            "type": "string",
+            "value": "",
+            "path": ".subscriber_count"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
