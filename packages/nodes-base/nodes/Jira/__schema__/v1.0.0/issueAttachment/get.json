@@ -1,0 +1,128 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "author",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "accountId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".author.accountId"
+                },
+                {
+                    "key": "active",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".author.active"
+                },
+                {
+                    "key": "avatarUrls",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "16x16",
+                            "type": "string",
+                            "value": "",
+                            "path": ".author.avatarUrls.16x16"
+                        },
+                        {
+                            "key": "24x24",
+                            "type": "string",
+                            "value": "",
+                            "path": ".author.avatarUrls.24x24"
+                        },
+                        {
+                            "key": "32x32",
+                            "type": "string",
+                            "value": "",
+                            "path": ".author.avatarUrls.32x32"
+                        },
+                        {
+                            "key": "48x48",
+                            "type": "string",
+                            "value": "",
+                            "path": ".author.avatarUrls.48x48"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".author.avatarUrls.required"
+                        }
+                    ],
+                    "path": ".author.avatarUrls"
+                },
+                {
+                    "key": "displayName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".author.displayName"
+                },
+                {
+                    "key": "self",
+                    "type": "string",
+                    "value": "",
+                    "path": ".author.self"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".author.required"
+                }
+            ],
+            "path": ".author"
+        },
+        {
+            "key": "content",
+            "type": "string",
+            "value": "",
+            "path": ".content"
+        },
+        {
+            "key": "created",
+            "type": "string",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "filename",
+            "type": "string",
+            "value": "",
+            "path": ".filename"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "mimeType",
+            "type": "string",
+            "value": "",
+            "path": ".mimeType"
+        },
+        {
+            "key": "self",
+            "type": "string",
+            "value": "",
+            "path": ".self"
+        },
+        {
+            "key": "size",
+            "type": "integer",
+            "value": "",
+            "path": ".size"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
