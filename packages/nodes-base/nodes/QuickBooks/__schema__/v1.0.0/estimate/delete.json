@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Id",
+            "type": "string",
+            "value": "",
+            "path": ".Id"
+        },
+        {
+            "key": "domain",
+            "type": "string",
+            "value": "",
+            "path": ".domain"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
