@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "bytes",
+            "type": "null",
+            "value": "",
+            "path": ".bytes"
+        },
+        {
+            "key": "date",
+            "type": "string",
+            "value": "",
+            "path": ".date"
+        },
+        {
+            "key": "edgeColor",
+            "type": "null",
+            "value": "",
+            "path": ".edgeColor"
+        },
+        {
+            "key": "fileName",
+            "type": "string",
+            "value": "",
+            "path": ".fileName"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "idMember",
+            "type": "string",
+            "value": "",
+            "path": ".idMember"
+        },
+        {
+            "key": "isUpload",
+            "type": "boolean",
+            "value": "",
+            "path": ".isUpload"
+        },
+        {
+            "key": "limits",
+            "type": "object",
+            "value": "",
+            "path": ".limits"
+        },
+        {
+            "key": "mimeType",
+            "type": "string",
+            "value": "",
+            "path": ".mimeType"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "pos",
+            "type": "integer",
+            "value": "",
+            "path": ".pos"
+        },
+        {
+            "key": "previews",
+            "type": "array",
+            "value": "",
+            "path": ".previews"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
