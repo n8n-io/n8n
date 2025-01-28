@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "archivedAt",
+            "type": "null",
+            "value": "",
+            "path": ".archivedAt"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "creator",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "displayName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".creator.displayName"
+                },
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".creator.id"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".creator.required"
+                }
+            ],
+            "path": ".creator"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "identifier",
+            "type": "string",
+            "value": "",
+            "path": ".identifier"
+        },
+        {
+            "key": "priority",
+            "type": "integer",
+            "value": "",
+            "path": ".priority"
+        },
+        {
+            "key": "state",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".state.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".state.name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".state.required"
+                }
+            ],
+            "path": ".state"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
