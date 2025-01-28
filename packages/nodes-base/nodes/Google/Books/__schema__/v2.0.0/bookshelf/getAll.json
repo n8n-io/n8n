@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "access",
+            "type": "string",
+            "value": "",
+            "path": ".access"
+        },
+        {
+            "key": "created",
+            "type": "string",
+            "value": "",
+            "path": ".created"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "kind",
+            "type": "string",
+            "value": "",
+            "path": ".kind"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "updated",
+            "type": "string",
+            "value": "",
+            "path": ".updated"
+        },
+        {
+            "key": "volumeCount",
+            "type": "integer",
+            "value": "",
+            "path": ".volumeCount"
+        },
+        {
+            "key": "volumesLastUpdated",
+            "type": "string",
+            "value": "",
+            "path": ".volumesLastUpdated"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
