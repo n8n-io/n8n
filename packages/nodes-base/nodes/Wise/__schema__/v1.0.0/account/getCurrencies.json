@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "code",
+            "type": "string",
+            "value": "",
+            "path": ".code"
+        },
+        {
+            "key": "hasBankDetails",
+            "type": "boolean",
+            "value": "",
+            "path": ".hasBankDetails"
+        },
+        {
+            "key": "payInAllowed",
+            "type": "boolean",
+            "value": "",
+            "path": ".payInAllowed"
+        },
+        {
+            "key": "sampleBankDetails",
+            "type": "null",
+            "value": "",
+            "path": ".sampleBankDetails"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
