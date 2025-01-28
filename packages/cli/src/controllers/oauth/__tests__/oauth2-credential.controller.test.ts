@@ -255,7 +255,7 @@ describe('OAuth2CredentialController', () => {
 					type: 'oAuth2Api',
 				}),
 			);
-			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 
 		it('merges oauthTokenData if it already exists', async () => {
@@ -297,7 +297,7 @@ describe('OAuth2CredentialController', () => {
 					type: 'oAuth2Api',
 				}),
 			);
-			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 
 		it('overwrites oauthTokenData if it is a string', async () => {
@@ -335,7 +335,7 @@ describe('OAuth2CredentialController', () => {
 					type: 'oAuth2Api',
 				}),
 			);
-			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 	});
 });
