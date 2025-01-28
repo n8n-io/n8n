@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "rate",
+            "type": "number",
+            "value": "",
+            "path": ".rate"
+        },
+        {
+            "key": "source",
+            "type": "string",
+            "value": "",
+            "path": ".source"
+        },
+        {
+            "key": "target",
+            "type": "string",
+            "value": "",
+            "path": ".target"
+        },
+        {
+            "key": "time",
+            "type": "string",
+            "value": "",
+            "path": ".time"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
