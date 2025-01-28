@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Product Name",
+            "type": "string",
+            "value": "",
+            "path": ".Product Name"
+        },
+        {
+            "key": "SKU",
+            "type": "string",
+            "value": "",
+            "path": ".SKU"
+        },
+        {
+            "key": "品名",
+            "type": "string",
+            "value": "",
+            "path": ".品名"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
