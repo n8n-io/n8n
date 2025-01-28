@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "attributes",
+            "type": "object",
+            "value": [
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.required"
+                }
+            ],
+            "path": ".attributes"
+        },
+        {
+            "key": "createdAt",
+            "type": "string",
+            "value": "",
+            "path": ".createdAt"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "emailBlacklisted",
+            "type": "boolean",
+            "value": "",
+            "path": ".emailBlacklisted"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "listIds",
+            "type": "array",
+            "value": "",
+            "path": ".listIds"
+        },
+        {
+            "key": "listUnsubscribed",
+            "type": "null",
+            "value": "",
+            "path": ".listUnsubscribed"
+        },
+        {
+            "key": "modifiedAt",
+            "type": "string",
+            "value": "",
+            "path": ".modifiedAt"
+        },
+        {
+            "key": "smsBlacklisted",
+            "type": "boolean",
+            "value": "",
+            "path": ".smsBlacklisted"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
