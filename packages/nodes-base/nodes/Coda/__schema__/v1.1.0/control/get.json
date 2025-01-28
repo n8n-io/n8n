@@ -1,0 +1,91 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "controlType",
+            "type": "string",
+            "value": "",
+            "path": ".controlType"
+        },
+        {
+            "key": "href",
+            "type": "string",
+            "value": "",
+            "path": ".href"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "parent",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "browserLink",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.browserLink"
+                },
+                {
+                    "key": "href",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.href"
+                },
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.name"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.type"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".parent.required"
+                }
+            ],
+            "path": ".parent"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "value",
+            "type": "string",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
