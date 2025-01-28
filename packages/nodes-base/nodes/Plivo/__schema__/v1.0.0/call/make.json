@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "api_id",
+            "type": "string",
+            "value": "",
+            "path": ".api_id"
+        },
+        {
+            "key": "message",
+            "type": "string",
+            "value": "",
+            "path": ".message"
+        },
+        {
+            "key": "request_uuid",
+            "type": "string",
+            "value": "",
+            "path": ".request_uuid"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
