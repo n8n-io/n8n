@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "errors",
+            "type": "null",
+            "value": "",
+            "path": ".errors"
+        },
+        {
+            "key": "result",
+            "type": "string",
+            "value": "",
+            "path": ".result"
+        },
+        {
+            "key": "warnings",
+            "type": "null",
+            "value": "",
+            "path": ".warnings"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
