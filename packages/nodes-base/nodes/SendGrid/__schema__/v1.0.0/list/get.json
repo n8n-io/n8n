@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_metadata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "self",
+                    "type": "string",
+                    "value": "",
+                    "path": "._metadata.self"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": "._metadata.required"
+                }
+            ],
+            "path": "._metadata"
+        },
+        {
+            "key": "contact_count",
+            "type": "integer",
+            "value": "",
+            "path": ".contact_count"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "identifier_counts",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "AID",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".identifier_counts.AID"
+                },
+                {
+                    "key": "EID",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".identifier_counts.EID"
+                },
+                {
+                    "key": "EXTID",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".identifier_counts.EXTID"
+                },
+                {
+                    "key": "PHNID",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".identifier_counts.PHNID"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".identifier_counts.required"
+                }
+            ],
+            "path": ".identifier_counts"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
