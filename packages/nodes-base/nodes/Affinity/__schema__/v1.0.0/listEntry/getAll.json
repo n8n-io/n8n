@@ -1,0 +1,104 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "creator_id",
+            "type": "integer",
+            "value": "",
+            "path": ".creator_id"
+        },
+        {
+            "key": "entity",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "crunchbase_uuid",
+                    "type": "null",
+                    "value": "",
+                    "path": ".entity.crunchbase_uuid"
+                },
+                {
+                    "key": "domains",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "items",
+                            "type": "string",
+                            "value": "",
+                            "path": ".entity.domains.items"
+                        }
+                    ],
+                    "path": ".entity.domains"
+                },
+                {
+                    "key": "global",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".entity.global"
+                },
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".entity.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".entity.name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".entity.required"
+                },
+                {
+                    "key": "domain",
+                    "type": "string",
+                    "value": "",
+                    "path": ".entity.domain"
+                }
+            ],
+            "path": ".entity"
+        },
+        {
+            "key": "entity_id",
+            "type": "integer",
+            "value": "",
+            "path": ".entity_id"
+        },
+        {
+            "key": "entity_type",
+            "type": "integer",
+            "value": "",
+            "path": ".entity_type"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "list_id",
+            "type": "integer",
+            "value": "",
+            "path": ".list_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
