@@ -9,6 +9,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	HITL_SUBCATEGORY,
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -51,6 +52,9 @@ const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDi
 
 function getFilteredActions(node: NodeCreateElement) {
 	const nodeActions = actions?.[node.key] || [];
+	if (activeViewStack.value.subcategory === HITL_SUBCATEGORY) {
+		return nodeActions.filter((action) => action.actionKey === 'sendAndWait');
+	}
 	if (activeViewStack.value.actionsFilter) {
 		return activeViewStack.value.actionsFilter(nodeActions);
 	}

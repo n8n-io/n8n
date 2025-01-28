@@ -49,6 +49,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HELPERS_SUBCATEGORY,
+	HITL_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
@@ -514,6 +515,15 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
 						},
 					],
+				},
+			},
+			{
+				type: 'subcategory',
+				key: HITL_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: HITL_SUBCATEGORY,
+					icon: 'hand-sparkles',
 				},
 			},
 			{
