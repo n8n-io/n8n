@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "gridProperties",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "columnCount",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".gridProperties.columnCount"
+                },
+                {
+                    "key": "rowCount",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".gridProperties.rowCount"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".gridProperties.required"
+                }
+            ],
+            "path": ".gridProperties"
+        },
+        {
+            "key": "index",
+            "type": "integer",
+            "value": "",
+            "path": ".index"
+        },
+        {
+            "key": "sheetId",
+            "type": "integer",
+            "value": "",
+            "path": ".sheetId"
+        },
+        {
+            "key": "sheetType",
+            "type": "string",
+            "value": "",
+            "path": ".sheetType"
+        },
+        {
+            "key": "spreadsheetId",
+            "type": "string",
+            "value": "",
+            "path": ".spreadsheetId"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
