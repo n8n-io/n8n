@@ -239,7 +239,7 @@ const selectAll = computed(() => {
 		return false;
 	}
 
-	const notSelectedVisibleItems = toRaw(selectedChanges.value).difference(selectedChanges.value);
+	const notSelectedVisibleItems = toRaw(sortedWorkflowsSet.value).difference(selectedChanges.value);
 
 	return !Boolean(notSelectedVisibleItems.size);
 });
@@ -259,10 +259,11 @@ const selectAllIndeterminate = computed(() => {
 });
 
 function onToggleSelectAll() {
+	const selected = toRaw(selectedChanges.value);
 	if (selectAll.value) {
-		selectedChanges.value = toRaw(selectedChanges.value).difference(sortedWorkflowsSet.value);
+		selectedChanges.value = selected.difference(sortedWorkflowsSet.value);
 	} else {
-		selectedChanges.value = toRaw(selectedChanges.value).union(sortedWorkflowsSet.value);
+		selectedChanges.value = selected.union(sortedWorkflowsSet.value);
 	}
 }
 
