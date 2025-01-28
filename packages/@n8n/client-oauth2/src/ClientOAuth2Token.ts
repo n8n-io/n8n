@@ -2,6 +2,20 @@ import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } fro
 import { DEFAULT_HEADERS } from './constants';
 import { auth, expects, getRequestOptions } from './utils';
 
+class ClientOAuth2TokenError extends Error {
+	description = '';
+
+	constructor({ message, description }: { message: string; description?: string }) {
+		super();
+
+		this.message = message;
+
+		if (description) {
+			this.description = description;
+		}
+	}
+}
+
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;
 	access_token: string;
@@ -39,7 +53,11 @@ export class ClientOAuth2Token {
 	 */
 	sign(requestObject: ClientOAuth2RequestObject): ClientOAuth2RequestObject {
 		if (!this.accessToken) {
-			throw new Error('Unable to sign without access token');
+			throw new ClientOAuth2TokenError({
+				message: 'Unable to sign without access token',
+				description:
+					'Signing the request requires a valid access token, which is currently missing or invalid. This could be due to incorrect or expired authentication credentials. Please ensure that you have provided the correct credentials.',
+			});
 		}
 
 		requestObject.headers = requestObject.headers ?? {};
@@ -72,7 +90,13 @@ export class ClientOAuth2Token {
 
 		expects(options, 'clientSecret');
 
-		if (!this.refreshToken) throw new Error('No refresh token');
+		if (!this.refreshToken) {
+			throw new ClientOAuth2TokenError({
+				message: 'No refresh token',
+				description:
+					'An error occurred while attempting to refresh the access token. This may be due to missing or incorrect authentication credentials. Please ensure that your credentils are correct and that your account has the required permissions to generate refresh tokens.',
+			});
+		}
 
 		const clientId = options.clientId;
 		const clientSecret = options.clientSecret;
