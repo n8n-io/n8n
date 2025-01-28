@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "deleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".deleted"
+        },
+        {
+            "key": "reason",
+            "type": "string",
+            "value": "",
+            "path": ".reason"
+        },
+        {
+            "key": "vid",
+            "type": "integer",
+            "value": "",
+            "path": ".vid"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
