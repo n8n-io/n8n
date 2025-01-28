@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "binId",
+            "type": "string",
+            "value": "",
+            "path": ".binId"
+        },
+        {
+            "key": "expiresIso",
+            "type": "string",
+            "value": "",
+            "path": ".expiresIso"
+        },
+        {
+            "key": "expiresTimestamp",
+            "type": "integer",
+            "value": "",
+            "path": ".expiresTimestamp"
+        },
+        {
+            "key": "nowIso",
+            "type": "string",
+            "value": "",
+            "path": ".nowIso"
+        },
+        {
+            "key": "nowTimestamp",
+            "type": "integer",
+            "value": "",
+            "path": ".nowTimestamp"
+        },
+        {
+            "key": "requestUrl",
+            "type": "string",
+            "value": "",
+            "path": ".requestUrl"
+        },
+        {
+            "key": "viewUrl",
+            "type": "string",
+            "value": "",
+            "path": ".viewUrl"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
