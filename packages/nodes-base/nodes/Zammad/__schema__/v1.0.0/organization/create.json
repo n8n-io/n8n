@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "active",
+            "type": "boolean",
+            "value": "",
+            "path": ".active"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_by_id",
+            "type": "integer",
+            "value": "",
+            "path": ".created_by_id"
+        },
+        {
+            "key": "domain",
+            "type": "string",
+            "value": "",
+            "path": ".domain"
+        },
+        {
+            "key": "domain_assignment",
+            "type": "boolean",
+            "value": "",
+            "path": ".domain_assignment"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "member_ids",
+            "type": "array",
+            "value": "",
+            "path": ".member_ids"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "note",
+            "type": "string",
+            "value": "",
+            "path": ".note"
+        },
+        {
+            "key": "secondary_member_ids",
+            "type": "array",
+            "value": "",
+            "path": ".secondary_member_ids"
+        },
+        {
+            "key": "shared",
+            "type": "boolean",
+            "value": "",
+            "path": ".shared"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "updated_by_id",
+            "type": "integer",
+            "value": "",
+            "path": ".updated_by_id"
+        },
+        {
+            "key": "vip",
+            "type": "boolean",
+            "value": "",
+            "path": ".vip"
+        }
+    ],
+    "path": ""
+}
