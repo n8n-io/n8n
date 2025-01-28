@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "permissionLevel",
+            "type": "string",
+            "value": "",
+            "path": ".permissionLevel"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
