@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "dealId",
+            "type": "integer",
+            "value": "",
+            "path": ".dealId"
+        },
+        {
+            "key": "isDeleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDeleted"
+        },
+        {
+            "key": "portalId",
+            "type": "integer",
+            "value": "",
+            "path": ".portalId"
+        },
+        {
+            "key": "stateChanges",
+            "type": "array",
+            "value": "",
+            "path": ".stateChanges"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
