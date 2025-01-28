@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "acknowledged",
+            "type": "boolean",
+            "value": "",
+            "path": ".acknowledged"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "shards_acknowledged",
+            "type": "boolean",
+            "value": "",
+            "path": ".shards_acknowledged"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
