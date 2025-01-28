@@ -1,0 +1,143 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "external_urls",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "spotify",
+                    "type": "string",
+                    "value": "",
+                    "path": ".external_urls.spotify"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".external_urls.required"
+                }
+            ],
+            "path": ".external_urls"
+        },
+        {
+            "key": "followers",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "href",
+                    "type": "null",
+                    "value": "",
+                    "path": ".followers.href"
+                },
+                {
+                    "key": "total",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".followers.total"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".followers.required"
+                }
+            ],
+            "path": ".followers"
+        },
+        {
+            "key": "genres",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".genres.items"
+                }
+            ],
+            "path": ".genres"
+        },
+        {
+            "key": "href",
+            "type": "string",
+            "value": "",
+            "path": ".href"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "images",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "height",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".images.items.height"
+                        },
+                        {
+                            "key": "url",
+                            "type": "string",
+                            "value": "",
+                            "path": ".images.items.url"
+                        },
+                        {
+                            "key": "width",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".images.items.width"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".images.items.required"
+                        }
+                    ],
+                    "path": ".images.items"
+                }
+            ],
+            "path": ".images"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "popularity",
+            "type": "integer",
+            "value": "",
+            "path": ".popularity"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "uri",
+            "type": "string",
+            "value": "",
+            "path": ".uri"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
