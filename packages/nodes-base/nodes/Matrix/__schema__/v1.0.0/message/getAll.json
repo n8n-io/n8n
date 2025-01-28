@@ -1,0 +1,79 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "content",
+            "type": "object",
+            "value": "",
+            "path": ".content"
+        },
+        {
+            "key": "event_id",
+            "type": "string",
+            "value": "",
+            "path": ".event_id"
+        },
+        {
+            "key": "origin_server_ts",
+            "type": "integer",
+            "value": "",
+            "path": ".origin_server_ts"
+        },
+        {
+            "key": "room_id",
+            "type": "string",
+            "value": "",
+            "path": ".room_id"
+        },
+        {
+            "key": "sender",
+            "type": "string",
+            "value": "",
+            "path": ".sender"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "unsigned",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".unsigned.required"
+                },
+                {
+                    "key": "age",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".unsigned.age"
+                }
+            ],
+            "path": ".unsigned"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "age",
+            "type": "integer",
+            "value": "",
+            "path": ".age"
+        },
+        {
+            "key": "user_id",
+            "type": "string",
+            "value": "",
+            "path": ".user_id"
+        }
+    ],
+    "path": ""
+}
