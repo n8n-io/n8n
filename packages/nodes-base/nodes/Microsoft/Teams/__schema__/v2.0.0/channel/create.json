@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "createdDateTime",
+            "type": "string",
+            "value": "",
+            "path": ".createdDateTime"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isArchived",
+            "type": "boolean",
+            "value": "",
+            "path": ".isArchived"
+        },
+        {
+            "key": "membershipType",
+            "type": "string",
+            "value": "",
+            "path": ".membershipType"
+        },
+        {
+            "key": "webUrl",
+            "type": "string",
+            "value": "",
+            "path": ".webUrl"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
