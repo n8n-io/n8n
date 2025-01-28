@@ -107,7 +107,7 @@ export const versionDescription: INodeTypeDescription = {
 			typeOptions: {
 				loadOptionsDependsOn: ['workflowId.value'],
 				resourceMapper: {
-					localResourceMapperMethod: 'loadWorkflowInputMappings',
+					localResourceMapperMethod: 'loadSubWorkflowInputs',
 					valuesLabel: 'Workflow Inputs',
 					mode: 'map',
 					fieldWords: {
