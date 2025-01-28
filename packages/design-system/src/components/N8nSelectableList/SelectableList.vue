@@ -67,9 +67,11 @@ function itemComparator(a: Item, b: Item) {
 				:data-test-id="`selectable-list-selectable-${item.name}`"
 				@click="!props.disabled && addToSelectedItems(item.name)"
 			>
-				<slot name="addItem" v-bind="item"
-					>{{ t('selectableList.addDefault') }} {{ item.name }}</slot
-				>
+				<slot name="addItem" v-bind="item">
+					<div :class="$style.selectableTextSize">
+						{{ t('selectableList.addDefault') }} {{ item.name }}
+					</div>
+				</slot>
 			</span>
 		</div>
 		<div
@@ -122,8 +124,13 @@ function itemComparator(a: Item, b: Item) {
 	cursor: pointer;
 
 	:hover {
-		color: var(--color-primary);
+		color: var(--text-color-dark);
 	}
+}
+
+.selectableTextSize {
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-loose);
 }
 
 .slotRemoveIcon {

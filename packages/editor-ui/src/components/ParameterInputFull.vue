@@ -5,6 +5,8 @@ import type { IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
+import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
+import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -17,9 +19,11 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nButton, N8nInputLabel, N8nSelectableList, N8nTooltip } from 'n8n-design-system';
-import AiStarsIcon from './AiStarsIcon.vue';
-import { type ParameterOverride, makeOverrideValue } from '../utils/parameterInputOverrides';
+import { N8nInputLabel } from 'n8n-design-system';
+import {
+	type ParameterOverride,
+	makeOverrideValue,
+} from './ParameterInputOverrides/parameterInputOverrides';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -73,14 +77,17 @@ const parameterOverrides = ref<ParameterOverride | null>(
 	),
 );
 
-const isContentOverride = computed(
-	() => !!parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
-);
 const canBeContentOverride = computed(() => {
 	if (!node.value || isResourceLocator.value) return false;
 
 	return parameterOverrides.value !== null;
 });
+
+const isContentOverride = computed(
+	() =>
+		canBeContentOverride.value &&
+		!!parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
+);
 
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
 
@@ -289,19 +296,10 @@ function removeOverride() {
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
 		>
-			<N8nTooltip>
-				<template #content>
-					<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
-				</template>
-
-				<N8nButton
-					:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
-					type="tertiary"
-					@click="applyOverride"
-				>
-					<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
-				</N8nButton>
-			</N8nTooltip>
+			<FromAiOverrideButton
+				:class="[$style.noCornersBottom, $style.overrideButtonInOptions]"
+				@click="applyOverride"
+			/>
 		</template>
 
 		<template v-if="displayOptions && optionsPosition === 'top'" #options>
@@ -323,30 +321,11 @@ function removeOverride() {
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<div
-					v-if="canBeContentOverride && isContentOverride"
-					:class="$style.contentOverrideContainer"
-				>
-					<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
-						<AiStarsIcon :class="$style.aiStarsIcon" />
-					</div>
-					<N8nInput
-						:model-value="parameterOverrides?.overridePlaceholder"
-						:class="$style.overrideInput"
-						disabled
-						type="text"
-						size="small"
-					/>
-					<N8nIconButton
-						v-if="!isReadOnly"
-						type="tertiary"
-						:class="['n8n-input', $style.overrideInput, $style.overrideCloseButton]"
-						outline="false"
-						icon="xmark"
-						size="xsmall"
-						@click="removeOverride"
-					/>
-				</div>
+				<FromAiOverrideField
+					v-if="parameterOverrides && isContentOverride"
+					:text="parameterOverrides?.overridePlaceholder"
+					@close="removeOverride"
+				/>
 				<div v-else>
 					<ParameterInputWrapper
 						ref="parameterInputWrapper"
@@ -373,17 +352,7 @@ function removeOverride() {
 						@drop="onDrop"
 					>
 						<template v-if="showOverrideButton && isSingleLineInput" #overrideButton>
-							<N8nTooltip>
-								<template #content>
-									<div>
-										{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}
-									</div>
-								</template>
-
-								<N8nButton :class="[$style.overrideButton]" type="tertiary" @click="applyOverride">
-									<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
-								</N8nButton>
-							</N8nTooltip>
+							<FromAiOverrideButton @click="applyOverride" />
 						</template>
 					</ParameterInputWrapper>
 				</div>
@@ -406,41 +375,14 @@ function removeOverride() {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
-		<N8nSelectableList
+		<ParameterOverrideSelectableList
 			v-if="isContentOverride && parameterOverrides"
-			v-model="parameterOverrides.extraPropValues"
-			:class="$style.overrideSelectableList"
-			:inputs="
-				Object.entries(parameterOverrides.extraProps).map(([name, prop]) => ({
-					name,
-					...prop,
-				}))
-			"
-			:disabled="isReadOnly"
-		>
-			<template #displayItem="{ name, tooltip, initialValue, type }">
-				<ParameterInputFull
-					:parameter="{
-						name,
-						displayName: name[0].toUpperCase() + name.slice(1),
-						type,
-						default: initialValue,
-						noDataExpression: true,
-						description: tooltip,
-					}"
-					:is-read-only="isReadOnly"
-					:value="parameterOverrides?.extraPropValues[name]"
-					:path="`${path}.${name}`"
-					input-size="small"
-					@update="
-						(x) => {
-							if (parameterOverrides) parameterOverrides.extraPropValues[name] = x.value;
-							applyOverride();
-						}
-					"
-				/>
-			</template>
-		</N8nSelectableList>
+			v-model="parameterOverrides"
+			:parameter="parameter"
+			:path="path"
+			:read-only="isReadOnly"
+			@update="valueChanged"
+		/>
 	</N8nInputLabel>
 </template>
 
@@ -455,74 +397,15 @@ function removeOverride() {
 	}
 }
 
-.contentOverrideContainer {
-	display: flex;
-	gap: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-foreground-base);
-}
-
-.overrideCloseButton {
-	padding: 0px 8px 3px; // the icon used is off-center vertically
-	border: 0px;
-	color: var(--color-text-base);
-
-	--button-hover-background-color: transparent;
-	--button-active-background-color: transparent;
-}
-
-.overrideButton {
-	display: flex;
-	justify-content: center;
-	border: 0px;
-	height: 30px;
-	width: 30px;
-	background-color: var(--color-foreground-base);
-	color: var(--color-foreground-xdark);
-
-	&:hover {
-		color: var(--color-foreground-xdark);
-		background-color: var(--color-secondary);
-	}
-}
-
 .overrideButtonInOptions {
 	position: relative;
 	// To connect to input panel below the button
 	top: 1px;
 }
 
-.noCornersRight {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-
 .noCornersBottom {
 	border-bottom-right-radius: 0;
 	border-bottom-left-radius: 0;
-}
-
-.iconStars {
-	align-self: center;
-	padding-left: 8px;
-	width: 22px;
-	text-align: center;
-	border: none;
-	color: var(--color-foreground-xdark);
-	background-color: var(--color-foreground-base);
-}
-
-.overrideInput {
-	* > input {
-		padding-left: 0;
-		// We need this in light mode
-		background-color: var(--color-foreground-base) !important;
-		border: none;
-	}
-}
-
-.overrideSelectableList {
-	margin-top: var(--spacing-2xs);
 }
 
 .options {

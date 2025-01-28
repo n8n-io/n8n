@@ -10,7 +10,10 @@ export interface ParameterOverride {
 	readonly overridePlaceholder: string;
 	readonly extraProps: Record<string, ExtraPropValue>;
 	extraPropValues: Partial<Record<keyof ParameterOverride['extraProps'], NodeParameterValueType>>;
-	buildValueFromOverride: (props: OverrideContext, excludeMarker: boolean) => string;
+	buildValueFromOverride: (
+		props: Pick<OverrideContext, 'parameter'>,
+		excludeMarker: boolean,
+	) => string;
 	isOverrideValue: (s: string) => boolean;
 	parseOverrides: (s: string) => Partial<Record<string, string>> | null;
 }
@@ -32,6 +35,7 @@ type ExtraPropValue = {
 	initialValue: string;
 	tooltip: string;
 	type: NodePropertyTypes;
+	typeOptions?: { rows?: number };
 };
 
 function sanitizeFromAiParameterName(s: string) {
@@ -62,6 +66,7 @@ export class FromAiOverride implements ParameterOverride {
 		description: {
 			initialValue: '',
 			type: 'string',
+			typeOptions: { rows: 2 },
 			tooltip: i18n.baseText('parameterOverride.descriptionTooltip'),
 		},
 	};
@@ -90,9 +95,15 @@ export class FromAiOverride implements ParameterOverride {
 		const key = sanitizeFromAiParameterName(props.parameter.displayName);
 		const description =
 			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;
+
+		// We want to escape these characters here as the generated formula needs to be valid JS code, and we risk
+		// closing the string prematurely without it.
+		// If we don't escape \ then 'my \` description' as user input would end up as 'my \\` description'
+		// in the generated code, causing an unescaped backtick to close the string.
+		const sanitizedDescription = description.replace(/\\/g, '\\\\').replace(/`/g, '\\`');
 		const type = this.fieldTypeToFromAiType(props.parameter.type);
 
-		return `={{ ${marker}$fromAI('${key}', '${description}', '${type}') }}`;
+		return `={{ ${marker}$fromAI('${key}', \`${sanitizedDescription}\`, '${type}') }}`;
 	}
 
 	static parseOverrides(
