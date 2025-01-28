@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "messageBody",
+            "type": "string",
+            "value": "",
+            "path": ".messageBody"
+        },
+        {
+            "key": "messageID",
+            "type": "string",
+            "value": "",
+            "path": ".messageID"
+        },
+        {
+            "key": "messageIssueTime",
+            "type": "string",
+            "value": "",
+            "path": ".messageIssueTime"
+        },
+        {
+            "key": "messageType",
+            "type": "string",
+            "value": "",
+            "path": ".messageType"
+        },
+        {
+            "key": "messageURL",
+            "type": "string",
+            "value": "",
+            "path": ".messageURL"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
