@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "createdTimestamp",
+            "type": "string",
+            "value": "",
+            "path": ".createdTimestamp"
+        },
+        {
+            "key": "fields",
+            "type": "array",
+            "value": "",
+            "path": ".fields"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "links",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "accountContacts",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.accountContacts"
+                },
+                {
+                    "key": "accountCustomFieldData",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.accountCustomFieldData"
+                },
+                {
+                    "key": "contactEmails",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.contactEmails"
+                },
+                {
+                    "key": "emailActivities",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.emailActivities"
+                },
+                {
+                    "key": "notes",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.notes"
+                },
+                {
+                    "key": "owner",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.owner"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".links.required"
+                }
+            ],
+            "path": ".links"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "owner",
+            "type": "string",
+            "value": "",
+            "path": ".owner"
+        },
+        {
+            "key": "updatedTimestamp",
+            "type": "string",
+            "value": "",
+            "path": ".updatedTimestamp"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
