@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "assigned_tickets",
+            "type": "integer",
+            "value": "",
+            "path": ".assigned_tickets"
+        },
+        {
+            "key": "ccd_tickets",
+            "type": "integer",
+            "value": "",
+            "path": ".ccd_tickets"
+        },
+        {
+            "key": "followed_tickets",
+            "type": "integer",
+            "value": "",
+            "path": ".followed_tickets"
+        },
+        {
+            "key": "organization_subscriptions",
+            "type": "integer",
+            "value": "",
+            "path": ".organization_subscriptions"
+        },
+        {
+            "key": "requested_tickets",
+            "type": "integer",
+            "value": "",
+            "path": ".requested_tickets"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
