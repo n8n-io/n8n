@@ -43,7 +43,7 @@ export class ApiKeysController {
 		}
 
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			withLabel: payload.label,
+			label: payload.label,
 		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });

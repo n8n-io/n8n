@@ -82,7 +82,7 @@ export async function createUserWithMfaEnabled(
 
 export const addApiKey = async (user: User) => {
 	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
-		withLabel: randomName(),
+		label: randomName(),
 	});
 };
 
