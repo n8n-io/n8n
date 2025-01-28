@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "actionName",
+            "type": "string",
+            "value": "",
+            "path": ".actionName"
+        },
+        {
+            "key": "errors",
+            "type": "null",
+            "value": "",
+            "path": ".errors"
+        },
+        {
+            "key": "invocationId",
+            "type": "null",
+            "value": "",
+            "path": ".invocationId"
+        },
+        {
+            "key": "isSuccess",
+            "type": "boolean",
+            "value": "",
+            "path": ".isSuccess"
+        },
+        {
+            "key": "outputValues",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "Flow__InterviewGuid",
+                    "type": "string",
+                    "value": "",
+                    "path": ".outputValues.Flow__InterviewGuid"
+                },
+                {
+                    "key": "Flow__InterviewStatus",
+                    "type": "string",
+                    "value": "",
+                    "path": ".outputValues.Flow__InterviewStatus"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".outputValues.required"
+                }
+            ],
+            "path": ".outputValues"
+        },
+        {
+            "key": "sortOrder",
+            "type": "integer",
+            "value": "",
+            "path": ".sortOrder"
+        },
+        {
+            "key": "version",
+            "type": "integer",
+            "value": "",
+            "path": ".version"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
