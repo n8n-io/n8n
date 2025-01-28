@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "312",
+            "type": "string",
+            "value": "",
+            "path": ".312"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
