@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "attributes",
+            "type": "object",
+            "value": [
+                {
+                    "key": "friendly_name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.friendly_name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".attributes.required"
+                }
+            ],
+            "path": ".attributes"
+        },
+        {
+            "key": "context",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".context.id"
+                },
+                {
+                    "key": "parent_id",
+                    "type": "null",
+                    "value": "",
+                    "path": ".context.parent_id"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".context.required"
+                }
+            ],
+            "path": ".context"
+        },
+        {
+            "key": "entity_id",
+            "type": "string",
+            "value": "",
+            "path": ".entity_id"
+        },
+        {
+            "key": "last_changed",
+            "type": "string",
+            "value": "",
+            "path": ".last_changed"
+        },
+        {
+            "key": "last_reported",
+            "type": "string",
+            "value": "",
+            "path": ".last_reported"
+        },
+        {
+            "key": "last_updated",
+            "type": "string",
+            "value": "",
+            "path": ".last_updated"
+        },
+        {
+            "key": "state",
+            "type": "string",
+            "value": "",
+            "path": ".state"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
