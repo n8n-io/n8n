@@ -1,0 +1,103 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "addresses",
+            "type": "array",
+            "value": "",
+            "path": ".addresses"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_in",
+            "type": "string",
+            "value": "",
+            "path": ".created_in"
+        },
+        {
+            "key": "disable_auto_group_change",
+            "type": "integer",
+            "value": "",
+            "path": ".disable_auto_group_change"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "extension_attributes",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "is_subscribed",
+                    "type": "boolean",
+                    "value": "",
+                    "path": ".extension_attributes.is_subscribed"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".extension_attributes.required"
+                }
+            ],
+            "path": ".extension_attributes"
+        },
+        {
+            "key": "firstname",
+            "type": "string",
+            "value": "",
+            "path": ".firstname"
+        },
+        {
+            "key": "group_id",
+            "type": "integer",
+            "value": "",
+            "path": ".group_id"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "lastname",
+            "type": "string",
+            "value": "",
+            "path": ".lastname"
+        },
+        {
+            "key": "store_id",
+            "type": "integer",
+            "value": "",
+            "path": ".store_id"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "website_id",
+            "type": "integer",
+            "value": "",
+            "path": ".website_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
