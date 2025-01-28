@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "finish_reason",
+            "type": "string",
+            "value": "",
+            "path": ".finish_reason"
+        },
+        {
+            "key": "index",
+            "type": "integer",
+            "value": "",
+            "path": ".index"
+        },
+        {
+            "key": "logprobs",
+            "type": "null",
+            "value": "",
+            "path": ".logprobs"
+        },
+        {
+            "key": "text",
+            "type": "string",
+            "value": "",
+            "path": ".text"
+        }
+    ],
+    "path": ""
+}
