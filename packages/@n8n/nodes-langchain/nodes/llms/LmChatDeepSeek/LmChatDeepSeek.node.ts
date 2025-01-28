@@ -54,7 +54,7 @@ export class LmChatDeepSeek implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.deepseek.com',
+			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -81,7 +81,7 @@ export class LmChatDeepSeek implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: 'https://api.deepseek.com/models',
+								url: '/models',
 							},
 							output: {
 								postReceive: [
@@ -211,7 +211,7 @@ export class LmChatDeepSeek implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('deepSeekApi');
+		const credentials = await this.getCredentials<OpenAICompatibleCredential>('deepSeekApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -227,11 +227,11 @@ export class LmChatDeepSeek implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: 'https://api.deepseek.com',
+			baseURL: credentials.url,
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
+			openAIApiKey: credentials.apiKey,
 			modelName,
 			...options,
 			timeout: options.timeout ?? 60000,

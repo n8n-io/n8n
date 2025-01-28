@@ -21,6 +21,12 @@ export class DeepSeekApi implements ICredentialType {
 			required: true,
 			default: '',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://api.deepseek.com',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -34,7 +40,7 @@ export class DeepSeekApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.deepseek.com',
+			baseURL: '={{ $credentials.url }}',
 			url: '/models',
 		},
 	};
