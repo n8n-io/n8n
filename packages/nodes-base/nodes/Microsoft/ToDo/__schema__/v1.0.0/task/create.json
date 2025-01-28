@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                },
+                {
+                    "key": "etag",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.etag"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "body",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "content",
+                    "type": "string",
+                    "value": "",
+                    "path": ".body.content"
+                },
+                {
+                    "key": "contentType",
+                    "type": "string",
+                    "value": "",
+                    "path": ".body.contentType"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".body.required"
+                }
+            ],
+            "path": ".body"
+        },
+        {
+            "key": "categories",
+            "type": "array",
+            "value": "",
+            "path": ".categories"
+        },
+        {
+            "key": "createdDateTime",
+            "type": "string",
+            "value": "",
+            "path": ".createdDateTime"
+        },
+        {
+            "key": "hasAttachments",
+            "type": "boolean",
+            "value": "",
+            "path": ".hasAttachments"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "importance",
+            "type": "string",
+            "value": "",
+            "path": ".importance"
+        },
+        {
+            "key": "isReminderOn",
+            "type": "boolean",
+            "value": "",
+            "path": ".isReminderOn"
+        },
+        {
+            "key": "lastModifiedDateTime",
+            "type": "string",
+            "value": "",
+            "path": ".lastModifiedDateTime"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        }
+    ],
+    "path": ""
+}
