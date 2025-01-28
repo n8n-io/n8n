@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "creator",
+            "type": "integer",
+            "value": "",
+            "path": ".creator"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "tag_bg",
+            "type": "string",
+            "value": "",
+            "path": ".tag_bg"
+        },
+        {
+            "key": "tag_fg",
+            "type": "string",
+            "value": "",
+            "path": ".tag_fg"
+        },
+        {
+            "key": "team_id",
+            "type": "string",
+            "value": "",
+            "path": ".team_id"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
