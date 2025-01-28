@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "error",
+            "type": "string",
+            "value": "",
+            "path": ".error"
+        }
+    ],
+    "path": ""
+}
