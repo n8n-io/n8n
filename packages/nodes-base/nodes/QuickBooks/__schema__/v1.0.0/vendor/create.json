@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Active",
+            "type": "boolean",
+            "value": "",
+            "path": ".Active"
+        },
+        {
+            "key": "Balance",
+            "type": "integer",
+            "value": "",
+            "path": ".Balance"
+        },
+        {
+            "key": "CurrencyRef",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".CurrencyRef.name"
+                },
+                {
+                    "key": "value",
+                    "type": "string",
+                    "value": "",
+                    "path": ".CurrencyRef.value"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".CurrencyRef.required"
+                }
+            ],
+            "path": ".CurrencyRef"
+        },
+        {
+            "key": "DisplayName",
+            "type": "string",
+            "value": "",
+            "path": ".DisplayName"
+        },
+        {
+            "key": "Id",
+            "type": "string",
+            "value": "",
+            "path": ".Id"
+        },
+        {
+            "key": "MetaData",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "CreateTime",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.CreateTime"
+                },
+                {
+                    "key": "LastUpdatedTime",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.LastUpdatedTime"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".MetaData.required"
+                }
+            ],
+            "path": ".MetaData"
+        },
+        {
+            "key": "PrintOnCheckName",
+            "type": "string",
+            "value": "",
+            "path": ".PrintOnCheckName"
+        },
+        {
+            "key": "SyncToken",
+            "type": "string",
+            "value": "",
+            "path": ".SyncToken"
+        },
+        {
+            "key": "Vendor1099",
+            "type": "boolean",
+            "value": "",
+            "path": ".Vendor1099"
+        },
+        {
+            "key": "domain",
+            "type": "string",
+            "value": "",
+            "path": ".domain"
+        },
+        {
+            "key": "sparse",
+            "type": "boolean",
+            "value": "",
+            "path": ".sparse"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
