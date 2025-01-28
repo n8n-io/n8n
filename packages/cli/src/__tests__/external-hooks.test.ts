@@ -1,21 +1,19 @@
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
-import config from '@/config';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExternalHooks } from '@/external-hooks';
 
-jest.mock('@/config', () => ({
-	getEnv: jest.fn(),
-}));
-
 describe('ExternalHooks', () => {
+	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
+	const globalConfig = mock<GlobalConfig>();
 	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -28,8 +26,11 @@ describe('ExternalHooks', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		globalConfig.externalHooks.files = [];
 		externalHooks = new ExternalHooks(
+			logger,
 			errorReporter,
+			globalConfig,
 			userRepository,
 			settingsRepository,
 			credentialsRepository,
@@ -39,15 +40,14 @@ describe('ExternalHooks', () => {
 
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
-			jest.mocked(config.getEnv).mockReturnValue('');
-
+			// @ts-expect-error private method
+			const loadHooksSpy = jest.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
-
-			expect(config.getEnv).toHaveBeenCalledWith('externalHookFiles');
+			expect(loadHooksSpy).not.toHaveBeenCalled();
 		});
 
 		it('should throw an error if hook file cannot be loaded', async () => {
-			jest.mocked(config.getEnv).mockReturnValue('/path/to/non-existent-hook.js');
+			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
 
 			jest.mock(
 				'/path/to/non-existent-hook.js',
@@ -67,12 +67,13 @@ describe('ExternalHooks', () => {
 				},
 			};
 
-			jest.mocked(config.getEnv).mockReturnValue('/path/to/valid-hook.js');
+			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
 			jest.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
 
 			await externalHooks.init();
 
-			expect(externalHooks.registered['workflow.create']).toHaveLength(1);
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			expect(externalHooks['registered']['workflow.create']).toHaveLength(1);
 
 			await externalHooks.run('workflow.create', [workflowData]);
 
@@ -87,17 +88,27 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should execute registered hooks', async () => {
-			externalHooks.registered['workflow.create'] = [hookFn];
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			externalHooks['registered']['workflow.create'] = [hookFn];
 
 			await externalHooks.run('workflow.create', [workflowData]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
-			expect(hookFn.mock.instances[0]).toHaveProperty('dbCollections');
+
+			const hookInvocationContext = hookFn.mock.instances[0];
+			expect(hookInvocationContext).toHaveProperty('dbCollections');
+			expect(hookInvocationContext.dbCollections).toEqual({
+				User: userRepository,
+				Settings: settingsRepository,
+				Credentials: credentialsRepository,
+				Workflow: workflowRepository,
+			});
 		});
 
 		it('should report error if hook execution fails', async () => {
 			hookFn.mockRejectedValueOnce(new Error('Hook failed'));
-			externalHooks.registered['workflow.create'] = [hookFn];
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			externalHooks['registered']['workflow.create'] = [hookFn];
 
 			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(
 				ApplicationError,
@@ -106,6 +117,9 @@ describe('ExternalHooks', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(ApplicationError), {
 				level: 'fatal',
 			});
+			expect(logger.error).toHaveBeenCalledWith(
+				'There was a problem running hook "workflow.create"',
+			);
 		});
 	});
 });

@@ -442,13 +442,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.workflowData,
 						this.executionId,
 					]);
-				} catch (error) {
-					Container.get(Logger).error(
-						'There was a problem running hook "workflow.postExecute"',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-						error,
-					);
-				}
+				} catch {}
 			},
 		],
 		nodeFetchedData: [

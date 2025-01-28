@@ -185,9 +185,7 @@ export class WorkflowRunner {
 							data.workflowData,
 							executionId,
 						]);
-					} catch (error) {
-						this.logger.error('There was a problem running hook "workflow.postExecute"', error);
-					}
+					} catch {}
 				})
 				.catch((error) => {
 					if (error instanceof ExecutionCancelledError) return;
