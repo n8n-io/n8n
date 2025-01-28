@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "referrer",
+            "type": "null",
+            "value": "",
+            "path": ".referrer"
+        },
+        {
+            "key": "source",
+            "type": "string",
+            "value": "",
+            "path": ".source"
+        },
+        {
+            "key": "state",
+            "type": "string",
+            "value": "",
+            "path": ".state"
+        },
+        {
+            "key": "subscribable_id",
+            "type": "integer",
+            "value": "",
+            "path": ".subscribable_id"
+        },
+        {
+            "key": "subscribable_type",
+            "type": "string",
+            "value": "",
+            "path": ".subscribable_type"
+        },
+        {
+            "key": "subscriber",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "created_at",
+                    "type": "string",
+                    "value": "",
+                    "path": ".subscriber.created_at"
+                },
+                {
+                    "key": "email_address",
+                    "type": "string",
+                    "value": "",
+                    "path": ".subscriber.email_address"
+                },
+                {
+                    "key": "fields",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "gamza",
+                            "type": "null",
+                            "value": "",
+                            "path": ".subscriber.fields.gamza"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".subscriber.fields.required"
+                        }
+                    ],
+                    "path": ".subscriber.fields"
+                },
+                {
+                    "key": "first_name",
+                    "type": "null",
+                    "value": "",
+                    "path": ".subscriber.first_name"
+                },
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".subscriber.id"
+                },
+                {
+                    "key": "state",
+                    "type": "string",
+                    "value": "",
+                    "path": ".subscriber.state"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".subscriber.required"
+                }
+            ],
+            "path": ".subscriber"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
