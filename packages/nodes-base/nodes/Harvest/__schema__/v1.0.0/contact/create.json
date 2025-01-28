@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "client",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".client.id"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".client.name"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".client.required"
+                }
+            ],
+            "path": ".client"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "email",
+            "type": "string",
+            "value": "",
+            "path": ".email"
+        },
+        {
+            "key": "fax",
+            "type": "string",
+            "value": "",
+            "path": ".fax"
+        },
+        {
+            "key": "first_name",
+            "type": "string",
+            "value": "",
+            "path": ".first_name"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "last_name",
+            "type": "string",
+            "value": "",
+            "path": ".last_name"
+        },
+        {
+            "key": "phone_mobile",
+            "type": "string",
+            "value": "",
+            "path": ".phone_mobile"
+        },
+        {
+            "key": "phone_office",
+            "type": "string",
+            "value": "",
+            "path": ".phone_office"
+        },
+        {
+            "key": "title",
+            "type": "null",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "updated_at",
+            "type": "string",
+            "value": "",
+            "path": ".updated_at"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
