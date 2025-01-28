@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "createTime",
+            "type": "string",
+            "value": "",
+            "path": ".createTime"
+        },
+        {
+            "key": "member",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "displayName",
+                    "type": "string",
+                    "value": "",
+                    "path": ".member.displayName"
+                },
+                {
+                    "key": "domainId",
+                    "type": "string",
+                    "value": "",
+                    "path": ".member.domainId"
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".member.name"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".member.type"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".member.required"
+                }
+            ],
+            "path": ".member"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "role",
+            "type": "string",
+            "value": "",
+            "path": ".role"
+        },
+        {
+            "key": "state",
+            "type": "string",
+            "value": "",
+            "path": ".state"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
