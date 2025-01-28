@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "refreshed_at",
+            "type": "string",
+            "value": "",
+            "path": ".refreshed_at"
+        },
+        {
+            "key": "value",
+            "type": "integer",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
