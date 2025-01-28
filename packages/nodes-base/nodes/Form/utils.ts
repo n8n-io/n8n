@@ -284,8 +284,8 @@ export async function prepareFormReturnItem(
 		}
 
 		if (field.fieldType === 'html') {
-			if (field.fieldNameOptional) {
-				returnItem.json[field.fieldNameOptional as string] = value;
+			if (field.elementName) {
+				returnItem.json[field.elementName as string] = value;
 			}
 			continue;
 		}

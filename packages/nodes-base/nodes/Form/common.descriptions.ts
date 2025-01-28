@@ -135,13 +135,12 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Field Name',
-					name: 'fieldNameOptional',
+					displayName: 'Element Name',
+					name: 'elementName',
 					type: 'string',
 					default: '',
-					placeholder: 'e.g. What is your name?',
-					description:
-						"Optional field name. It can be used to show the field in the output. If it's not provided, the field will not be shown in the output.",
+					placeholder: 'e.g. content-section',
+					description: 'Optional field. It can be used to include the html in the output.',
 					displayOptions: {
 						show: {
 							fieldType: ['html'],
@@ -240,7 +239,7 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					noDataExpression: true,
 					default: placeholder,
-					description: 'Rendered as HTML on the form page',
+					description: 'HTML elements to display on the form page',
 					displayOptions: {
 						show: {
 							fieldType: ['html'],
@@ -282,6 +281,18 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName:
+						'Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags',
+					name: 'htmlLimitations',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
 						},
 					},
 				},

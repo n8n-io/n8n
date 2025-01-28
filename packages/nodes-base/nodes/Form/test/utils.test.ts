@@ -751,8 +751,8 @@ describe('prepareFormReturnItem', () => {
 		});
 
 		const formFields = [
-			{ fieldLabel: '', fieldNameOptional: 'greeting', fieldType: 'html' },
-			{ fieldLabel: '', fieldNameOptional: '', fieldType: 'html' },
+			{ fieldLabel: '', elementName: 'greeting', fieldType: 'html' },
+			{ fieldLabel: '', elementName: '', fieldType: 'html' },
 		];
 		const result = await prepareFormReturnItem(mockContext, formFields, 'production');
 
