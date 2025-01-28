@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "count_closed_cases",
+            "type": "integer",
+            "value": "",
+            "path": ".count_closed_cases"
+        },
+        {
+            "key": "count_in_progress_cases",
+            "type": "integer",
+            "value": "",
+            "path": ".count_in_progress_cases"
+        },
+        {
+            "key": "count_open_cases",
+            "type": "integer",
+            "value": "",
+            "path": ".count_open_cases"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
