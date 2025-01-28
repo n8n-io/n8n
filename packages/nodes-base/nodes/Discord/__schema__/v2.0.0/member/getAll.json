@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "roles",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".roles.items"
+                }
+            ],
+            "path": ".roles"
+        },
+        {
+            "key": "user",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "accent_color",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.accent_color"
+                },
+                {
+                    "key": "avatar_decoration_data",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.avatar_decoration_data"
+                },
+                {
+                    "key": "banner",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.banner"
+                },
+                {
+                    "key": "banner_color",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.banner_color"
+                },
+                {
+                    "key": "clan",
+                    "type": "null",
+                    "value": "",
+                    "path": ".user.clan"
+                },
+                {
+                    "key": "discriminator",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.discriminator"
+                },
+                {
+                    "key": "flags",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".user.flags"
+                },
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.id"
+                },
+                {
+                    "key": "public_flags",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".user.public_flags"
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.username"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".user.required"
+                }
+            ],
+            "path": ".user"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
