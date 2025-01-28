@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "authorId",
+            "type": "string",
+            "value": "",
+            "path": ".authorId"
+        },
+        {
+            "key": "canonicalUrl",
+            "type": "string",
+            "value": "",
+            "path": ".canonicalUrl"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "license",
+            "type": "string",
+            "value": "",
+            "path": ".license"
+        },
+        {
+            "key": "licenseUrl",
+            "type": "string",
+            "value": "",
+            "path": ".licenseUrl"
+        },
+        {
+            "key": "publishStatus",
+            "type": "string",
+            "value": "",
+            "path": ".publishStatus"
+        },
+        {
+            "key": "tags",
+            "type": "array",
+            "value": "",
+            "path": ".tags"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        }
+    ],
+    "path": ""
+}
