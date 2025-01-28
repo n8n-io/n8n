@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "code",
+            "type": "string",
+            "value": "",
+            "path": ".code"
+        },
+        {
+            "key": "msg",
+            "type": "string",
+            "value": "",
+            "path": ".msg"
+        },
+        {
+            "key": "params",
+            "type": "null",
+            "value": "",
+            "path": ".params"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
