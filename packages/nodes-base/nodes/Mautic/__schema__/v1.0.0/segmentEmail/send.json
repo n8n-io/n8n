@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "failedRecipients",
+            "type": "integer",
+            "value": "",
+            "path": ".failedRecipients"
+        },
+        {
+            "key": "sentCount",
+            "type": "integer",
+            "value": "",
+            "path": ".sentCount"
+        },
+        {
+            "key": "success",
+            "type": "integer",
+            "value": "",
+            "path": ".success"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
