@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "creator_id",
+            "type": "integer",
+            "value": "",
+            "path": ".creator_id"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "list_size",
+            "type": "integer",
+            "value": "",
+            "path": ".list_size"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "owner_id",
+            "type": "integer",
+            "value": "",
+            "path": ".owner_id"
+        },
+        {
+            "key": "public",
+            "type": "boolean",
+            "value": "",
+            "path": ".public"
+        },
+        {
+            "key": "type",
+            "type": "integer",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
