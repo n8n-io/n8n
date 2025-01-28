@@ -1,0 +1,85 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "lastActiveTime",
+            "type": "string",
+            "value": "",
+            "path": ".lastActiveTime"
+        },
+        {
+            "key": "membershipCount",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "joinedDirectHumanUserCount",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".membershipCount.joinedDirectHumanUserCount"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".membershipCount.required"
+                }
+            ],
+            "path": ".membershipCount"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "spaceHistoryState",
+            "type": "string",
+            "value": "",
+            "path": ".spaceHistoryState"
+        },
+        {
+            "key": "spaceThreadingState",
+            "type": "string",
+            "value": "",
+            "path": ".spaceThreadingState"
+        },
+        {
+            "key": "spaceType",
+            "type": "string",
+            "value": "",
+            "path": ".spaceType"
+        },
+        {
+            "key": "spaceUri",
+            "type": "string",
+            "value": "",
+            "path": ".spaceUri"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "createTime",
+            "type": "string",
+            "value": "",
+            "path": ".createTime"
+        },
+        {
+            "key": "displayName",
+            "type": "string",
+            "value": "",
+            "path": ".displayName"
+        }
+    ],
+    "path": ""
+}
