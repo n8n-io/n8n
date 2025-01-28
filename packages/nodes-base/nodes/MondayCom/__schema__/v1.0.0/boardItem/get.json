@@ -1,0 +1,99 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "column_values",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "column",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "archived",
+                                    "type": "boolean",
+                                    "value": "",
+                                    "path": ".column_values.items.column.archived"
+                                },
+                                {
+                                    "key": "settings_str",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".column_values.items.column.settings_str"
+                                },
+                                {
+                                    "key": "title",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".column_values.items.column.title"
+                                },
+                                {
+                                    "key": "required",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".column_values.items.column.required"
+                                }
+                            ],
+                            "path": ".column_values.items.column"
+                        },
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".column_values.items.id"
+                        },
+                        {
+                            "key": "type",
+                            "type": "string",
+                            "value": "",
+                            "path": ".column_values.items.type"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".column_values.items.required"
+                        }
+                    ],
+                    "path": ".column_values.items"
+                }
+            ],
+            "path": ".column_values"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "state",
+            "type": "string",
+            "value": "",
+            "path": ".state"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
