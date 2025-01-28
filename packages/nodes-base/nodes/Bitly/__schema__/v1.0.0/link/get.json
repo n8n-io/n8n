@@ -1,0 +1,91 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "archived",
+            "type": "boolean",
+            "value": "",
+            "path": ".archived"
+        },
+        {
+            "key": "client_id",
+            "type": "string",
+            "value": "",
+            "path": ".client_id"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_by",
+            "type": "string",
+            "value": "",
+            "path": ".created_by"
+        },
+        {
+            "key": "custom_bitlinks",
+            "type": "array",
+            "value": "",
+            "path": ".custom_bitlinks"
+        },
+        {
+            "key": "deeplinks",
+            "type": "array",
+            "value": "",
+            "path": ".deeplinks"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "link",
+            "type": "string",
+            "value": "",
+            "path": ".link"
+        },
+        {
+            "key": "long_url",
+            "type": "string",
+            "value": "",
+            "path": ".long_url"
+        },
+        {
+            "key": "references",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "group",
+                    "type": "string",
+                    "value": "",
+                    "path": ".references.group"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".references.required"
+                }
+            ],
+            "path": ".references"
+        },
+        {
+            "key": "tags",
+            "type": "array",
+            "value": "",
+            "path": ".tags"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
