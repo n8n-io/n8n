@@ -1,0 +1,100 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "batch_header",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "batch_status",
+                    "type": "string",
+                    "value": "",
+                    "path": ".batch_header.batch_status"
+                },
+                {
+                    "key": "payout_batch_id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".batch_header.payout_batch_id"
+                },
+                {
+                    "key": "sender_batch_header",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "sender_batch_id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".batch_header.sender_batch_header.sender_batch_id"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".batch_header.sender_batch_header.required"
+                        }
+                    ],
+                    "path": ".batch_header.sender_batch_header"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".batch_header.required"
+                }
+            ],
+            "path": ".batch_header"
+        },
+        {
+            "key": "links",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "encType",
+                            "type": "string",
+                            "value": "",
+                            "path": ".links.items.encType"
+                        },
+                        {
+                            "key": "href",
+                            "type": "string",
+                            "value": "",
+                            "path": ".links.items.href"
+                        },
+                        {
+                            "key": "method",
+                            "type": "string",
+                            "value": "",
+                            "path": ".links.items.method"
+                        },
+                        {
+                            "key": "rel",
+                            "type": "string",
+                            "value": "",
+                            "path": ".links.items.rel"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".links.items.required"
+                        }
+                    ],
+                    "path": ".links.items"
+                }
+            ],
+            "path": ".links"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
