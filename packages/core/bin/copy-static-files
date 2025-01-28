@@ -6,13 +6,18 @@ const { cp } = require('fs/promises');
 const { packageDir } = require('./common');
 
 const limiter = pLimit(20);
-const icons = glob.sync('{nodes,credentials}/**/*.{png,svg}', { cwd: packageDir });
+const staticFiles = glob.sync(
+	['{nodes,credentials}/**/*.{png,svg}', 'nodes/**/__schema__/**/*.json'],
+	{
+		cwd: packageDir,
+	},
+);
 
 (async () => {
 	await Promise.all(
-		icons.map((icon) =>
+		staticFiles.map((path) =>
 			limiter(() => {
-				return cp(icon, `dist/${icon}`, { recursive: true });
+				return cp(path, `dist/${path}`, { recursive: true });
 			}),
 		),
 	);
