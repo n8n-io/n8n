@@ -1,0 +1,79 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "cmsLocaleId",
+            "type": "string",
+            "value": "",
+            "path": ".cmsLocaleId"
+        },
+        {
+            "key": "createdOn",
+            "type": "string",
+            "value": "",
+            "path": ".createdOn"
+        },
+        {
+            "key": "fieldData",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "name",
+                    "type": "string",
+                    "value": "",
+                    "path": ".fieldData.name"
+                },
+                {
+                    "key": "slug",
+                    "type": "string",
+                    "value": "",
+                    "path": ".fieldData.slug"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".fieldData.required"
+                }
+            ],
+            "path": ".fieldData"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isArchived",
+            "type": "boolean",
+            "value": "",
+            "path": ".isArchived"
+        },
+        {
+            "key": "isDraft",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDraft"
+        },
+        {
+            "key": "lastPublished",
+            "type": "null",
+            "value": "",
+            "path": ".lastPublished"
+        },
+        {
+            "key": "lastUpdated",
+            "type": "string",
+            "value": "",
+            "path": ".lastUpdated"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
