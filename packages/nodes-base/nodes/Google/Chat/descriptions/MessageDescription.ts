@@ -65,7 +65,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		...spaceIdPtoperty,
+		...spaceIdProperty,
 		displayOptions: {
 			show: {
 				resource: ['message'],
