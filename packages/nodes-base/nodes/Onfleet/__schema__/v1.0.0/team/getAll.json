@@ -1,0 +1,94 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "enableSelfAssignment",
+            "type": "boolean",
+            "value": "",
+            "path": ".enableSelfAssignment"
+        },
+        {
+            "key": "hub",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".hub.type"
+                }
+            ],
+            "path": ".hub"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "managers",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".managers.items"
+                }
+            ],
+            "path": ".managers"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "tasks",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".tasks.items"
+                }
+            ],
+            "path": ".tasks"
+        },
+        {
+            "key": "timeCreated",
+            "type": "integer",
+            "value": "",
+            "path": ".timeCreated"
+        },
+        {
+            "key": "timeLastModified",
+            "type": "integer",
+            "value": "",
+            "path": ".timeLastModified"
+        },
+        {
+            "key": "workers",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".workers.items"
+                }
+            ],
+            "path": ".workers"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
