@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "board_kind",
+            "type": "string",
+            "value": "",
+            "path": ".board_kind"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "owners",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".owners.items.id"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".owners.items.required"
+                        }
+                    ],
+                    "path": ".owners.items"
+                }
+            ],
+            "path": ".owners"
+        },
+        {
+            "key": "state",
+            "type": "string",
+            "value": "",
+            "path": ".state"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        },
+        {
+            "key": "board_folder_id",
+            "type": "null",
+            "value": "",
+            "path": ".board_folder_id"
+        }
+    ],
+    "path": ""
+}
