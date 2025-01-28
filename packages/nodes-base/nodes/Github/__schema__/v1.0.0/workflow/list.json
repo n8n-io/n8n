@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "total_count",
+            "type": "integer",
+            "value": "",
+            "path": ".total_count"
+        },
+        {
+            "key": "workflows",
+            "type": "array",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "badge_url",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.badge_url"
+                        },
+                        {
+                            "key": "created_at",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.created_at"
+                        },
+                        {
+                            "key": "html_url",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.html_url"
+                        },
+                        {
+                            "key": "id",
+                            "type": "integer",
+                            "value": "",
+                            "path": ".workflows.items.id"
+                        },
+                        {
+                            "key": "name",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.name"
+                        },
+                        {
+                            "key": "node_id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.node_id"
+                        },
+                        {
+                            "key": "path",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.path"
+                        },
+                        {
+                            "key": "state",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.state"
+                        },
+                        {
+                            "key": "updated_at",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.updated_at"
+                        },
+                        {
+                            "key": "url",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.url"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".workflows.items.required"
+                        }
+                    ],
+                    "path": ".workflows.items"
+                }
+            ],
+            "path": ".workflows"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
