@@ -115,8 +115,9 @@ export async function shopifyApiRequestAllItems(
 		});
 		if (responseData.headers.link?.includes('rel="next"')) {
 			uri = responseData.headers.link
-				.split(';')
+				.split(', ')
 				.filter((s: string) => s.includes('rel="next"'))[0]
+				.split(';')[0]
 				.replace('<', '')
 				.replace('>', '');
 		}
