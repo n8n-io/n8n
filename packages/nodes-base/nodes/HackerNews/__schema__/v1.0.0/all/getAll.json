@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "author",
+            "type": "string",
+            "value": "",
+            "path": ".author"
+        },
+        {
+            "key": "created_at",
+            "type": "string",
+            "value": "",
+            "path": ".created_at"
+        },
+        {
+            "key": "created_at_i",
+            "type": "integer",
+            "value": "",
+            "path": ".created_at_i"
+        },
+        {
+            "key": "id",
+            "type": "integer",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "options",
+            "type": "array",
+            "value": "",
+            "path": ".options"
+        },
+        {
+            "key": "parent_id",
+            "type": "null",
+            "value": "",
+            "path": ".parent_id"
+        },
+        {
+            "key": "points",
+            "type": "integer",
+            "value": "",
+            "path": ".points"
+        },
+        {
+            "key": "story_id",
+            "type": "integer",
+            "value": "",
+            "path": ".story_id"
+        },
+        {
+            "key": "text",
+            "type": "null",
+            "value": "",
+            "path": ".text"
+        },
+        {
+            "key": "title",
+            "type": "string",
+            "value": "",
+            "path": ".title"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "url",
+            "type": "string",
+            "value": "",
+            "path": ".url"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
