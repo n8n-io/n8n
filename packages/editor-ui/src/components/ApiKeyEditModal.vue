@@ -7,12 +7,12 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ApiKeyWithRawValue } from '@/Interface';
 import { useRootStore } from '@/stores/root.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@/plugins/i18n';
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
