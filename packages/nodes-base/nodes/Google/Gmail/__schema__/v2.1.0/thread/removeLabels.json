@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "messages",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "Object",
+                    "value": [
+                        {
+                            "key": "id",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.id"
+                        },
+                        {
+                            "key": "labelIds",
+                            "type": "Object",
+                            "value": [
+                                {
+                                    "key": "items",
+                                    "type": "string",
+                                    "value": "",
+                                    "path": ".messages.items.labelIds.items"
+                                }
+                            ],
+                            "path": ".messages.items.labelIds"
+                        },
+                        {
+                            "key": "threadId",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.threadId"
+                        },
+                        {
+                            "key": "required",
+                            "type": "string",
+                            "value": "",
+                            "path": ".messages.items.required"
+                        }
+                    ],
+                    "path": ".messages.items"
+                }
+            ],
+            "path": ".messages"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
