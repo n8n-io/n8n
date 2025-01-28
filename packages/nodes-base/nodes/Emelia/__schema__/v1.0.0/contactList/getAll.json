@@ -1,0 +1,49 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "_id",
+            "type": "string",
+            "value": "",
+            "path": "._id"
+        },
+        {
+            "key": "contactCount",
+            "type": "integer",
+            "value": "",
+            "path": ".contactCount"
+        },
+        {
+            "key": "fields",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "items",
+                    "type": "string",
+                    "value": "",
+                    "path": ".fields.items"
+                }
+            ],
+            "path": ".fields"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "usedInCampaign",
+            "type": "boolean",
+            "value": "",
+            "path": ".usedInCampaign"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
