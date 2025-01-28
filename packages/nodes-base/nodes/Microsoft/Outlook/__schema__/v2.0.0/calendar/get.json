@@ -1,0 +1,109 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "@odata",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "context",
+                    "type": "string",
+                    "value": "",
+                    "path": ".@odata.context"
+                }
+            ],
+            "path": ".@odata"
+        },
+        {
+            "key": "allowedOnlineMeetingProviders",
+            "type": "array",
+            "value": "",
+            "path": ".allowedOnlineMeetingProviders"
+        },
+        {
+            "key": "canEdit",
+            "type": "boolean",
+            "value": "",
+            "path": ".canEdit"
+        },
+        {
+            "key": "canShare",
+            "type": "boolean",
+            "value": "",
+            "path": ".canShare"
+        },
+        {
+            "key": "canViewPrivateItems",
+            "type": "boolean",
+            "value": "",
+            "path": ".canViewPrivateItems"
+        },
+        {
+            "key": "changeKey",
+            "type": "string",
+            "value": "",
+            "path": ".changeKey"
+        },
+        {
+            "key": "color",
+            "type": "string",
+            "value": "",
+            "path": ".color"
+        },
+        {
+            "key": "defaultOnlineMeetingProvider",
+            "type": "string",
+            "value": "",
+            "path": ".defaultOnlineMeetingProvider"
+        },
+        {
+            "key": "hexColor",
+            "type": "string",
+            "value": "",
+            "path": ".hexColor"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "isDefaultCalendar",
+            "type": "boolean",
+            "value": "",
+            "path": ".isDefaultCalendar"
+        },
+        {
+            "key": "isRemovable",
+            "type": "boolean",
+            "value": "",
+            "path": ".isRemovable"
+        },
+        {
+            "key": "isTallyingResponses",
+            "type": "boolean",
+            "value": "",
+            "path": ".isTallyingResponses"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "owner",
+            "type": "null",
+            "value": "",
+            "path": ".owner"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
