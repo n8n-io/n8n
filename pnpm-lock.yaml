@@ -1429,9 +1429,6 @@ importers:
       '@n8n/codemirror-lang-sql':
         specifier: ^1.0.2
         version: 1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
-      '@n8n/json-schema-to-zod':
-        specifier: workspace:*
-        version: link:../@n8n/json-schema-to-zod
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions

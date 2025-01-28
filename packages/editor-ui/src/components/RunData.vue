@@ -27,6 +27,7 @@ import type {
 } from '@/Interface';
 
 import {
+	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
 	HTML_NODE_TYPE,
@@ -550,8 +551,13 @@ const hasInputOverwrite = computed((): boolean => {
 	return Boolean(taskData?.inputOverride);
 });
 
-const isSchemaPreviewEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+const isSchemaPreviewEnabled = computed(
+	() =>
+		props.paneType === 'input' &&
+		!(nodeType.value?.codex?.categories ?? []).some(
+			(category) => category === CORE_NODES_CATEGORY,
+		) &&
+		posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
@@ -568,7 +574,7 @@ const hasPreviewSchema = asyncComputed(async () => {
 		operation: operation as string,
 	});
 	return preview.ok;
-});
+}, false);
 
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;

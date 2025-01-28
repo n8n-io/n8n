@@ -3,7 +3,7 @@
 	"value": [
 		{
 			"key": "account",
-			"type": "Object",
+			"type": "object",
 			"value": [
 				{
 					"key": "accountUrl",
@@ -25,7 +25,7 @@
 				},
 				{
 					"key": "links",
-					"type": "Object",
+					"type": "object",
 					"value": [
 						{
 							"key": "accountContacts",

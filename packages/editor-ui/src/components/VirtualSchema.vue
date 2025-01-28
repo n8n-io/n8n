@@ -63,7 +63,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const { getSchemaForExecutionData, jsonSchemaToDataSchema, filterSchema } = useDataSchema();
+const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
@@ -87,7 +87,7 @@ watch(
 	},
 );
 
-const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
+const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
 	const data =
@@ -106,10 +106,22 @@ const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 			)
 			.flat();
 
+	let schema = getSchemaForExecutionData(data);
+	let preview = false;
+
+	if (data.length === 0) {
+		const previewSchema = await getPreviewSchema();
+		if (previewSchema.ok) {
+			schema = previewSchema.result;
+			preview = true;
+		}
+	}
+
 	return {
-		schema: getSchemaForExecutionData(data),
+		schema,
 		connectedOutputIndexes,
 		itemsCount: data.length,
+		preview,
 	};
 };
 
@@ -117,7 +129,7 @@ const nodeSchema = asyncComputed(async () => {
 	if (props.data.length === 0) {
 		const previewSchema = await getPreviewSchema();
 		if (previewSchema.ok) {
-			return filterSchema(jsonSchemaToDataSchema(previewSchema.result), props.search);
+			return filterSchema(previewSchema.result, props.search);
 		}
 	}
 
@@ -140,31 +152,38 @@ async function getPreviewSchema() {
 	});
 }
 
-const nodesSchemas = computed<SchemaNode[]>(() => {
-	return props.nodes.reduce<SchemaNode[]>((acc, node) => {
+const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
+	const result: SchemaNode[] = [];
+
+	for (const node of props.nodes) {
 		const fullNode = workflowsStore.getNodeByName(node.name);
-		if (!fullNode) return acc;
+		if (!fullNode) continue;
 
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
-		if (!nodeType) return acc;
+		if (!nodeType) continue;
 
-		const { schema, connectedOutputIndexes, itemsCount } = getNodeSchema(fullNode, node);
+		const { schema, connectedOutputIndexes, itemsCount, preview } = await getNodeSchema(
+			fullNode,
+			node,
+		);
 
 		const filteredSchema = filterSchema(schema, props.search);
 
-		if (!filteredSchema) return acc;
+		if (!filteredSchema) continue;
 
-		acc.push({
+		result.push({
 			node: fullNode,
 			connectedOutputIndexes,
 			depth: node.depth,
 			itemsCount,
 			nodeType,
 			schema: filteredSchema,
+			preview,
 		});
-		return acc;
-	}, []);
-});
+	}
+
+	return result;
+}, []);
 
 const nodeAdditionalInfo = (node: INodeUi) => {
 	const returnData: string[] = [];
@@ -274,21 +293,21 @@ const onDragEnd = (el: HTMLElement) => {
 				class="full-height scroller"
 			>
 				<template #default="{ item, index, active }">
-					<VirtualSchemaHeader
-						v-if="item.type === 'header'"
-						v-bind="item"
-						:collapsed="closedNodes.has(item.id)"
-						@click:toggle="toggleLeaf(item.id)"
-						@click="toggleNodeAndScrollTop(item.id)"
-					/>
 					<DynamicScrollerItem
-						v-else
 						:item="item"
 						:active="active"
-						:size-dependencies="[item.value]"
+						:size-dependencies="[item]"
 						:data-index="index"
 					>
+						<VirtualSchemaHeader
+							v-if="item.type === 'header'"
+							v-bind="item"
+							:collapsed="closedNodes.has(item.id)"
+							@click:toggle="toggleLeaf(item.id)"
+							@click="toggleNodeAndScrollTop(item.id)"
+						/>
 						<VirtualSchemaItem
+							v-else
 							v-bind="item"
 							:search="search"
 							:draggable="mappingEnabled"
@@ -314,6 +333,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 .scroller {
 	padding: 0 var(--spacing-s);
+	padding-bottom: var(--spacing-2xl);
 }
 
 .no-results {

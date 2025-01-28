@@ -100,10 +100,9 @@ const emit = defineEmits<{
 	&.pill--preview {
 		border-style: dashed;
 		border-width: 1.5px;
-		.label {
+
+		.title {
 			color: var(--color-text-light);
-		}
-		.label > span {
 			border-left: 1.5px dashed var(--color-foreground-light);
 		}
 	}

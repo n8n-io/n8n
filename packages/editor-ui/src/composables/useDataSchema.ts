@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { Optional, Primitives, Schema, INodeUi, SchemaType } from '@/Interface';
+import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
 import {
 	type ITaskDataConnections,
 	type IDataObject,
@@ -13,7 +13,6 @@ import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { JsonSchema } from '@n8n/json-schema-to-zod';
 
 export function useDataSchema() {
 	function getSchema(
@@ -66,45 +65,6 @@ export function useDataSchema() {
 		const [head, ...tail] = data;
 
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
-	}
-
-	function jsonSchemaToDataSchema(schema: JsonSchema, path = '') {
-		let output: Schema = { type: 'undefined', value: 'undefined', path: '' };
-
-		if (typeof schema === 'boolean') return output;
-
-		if (schema.type === 'object' && schema.properties) {
-			output = {
-				type: 'object',
-				value: Object.entries(schema.properties).map(([key, subSchema]) => {
-					const subPath = generatePath(path, [key]);
-					return {
-						key,
-						...jsonSchemaToDataSchema(subSchema as JsonSchema, subPath),
-					};
-				}),
-				path,
-			};
-		} else if (schema.type === 'array' && schema.items) {
-			output = {
-				type: 'array',
-				value: [
-					{
-						key: '0',
-						...jsonSchemaToDataSchema(schema.items as JsonSchema, `${path}[0]`),
-					},
-				],
-				path,
-			};
-		} else if (schema.type) {
-			output = {
-				type: (Array.isArray(schema.type) ? schema.type[0] : schema.type) as SchemaType,
-				value: schema.default !== undefined ? String(schema.default) : '',
-				path,
-			};
-		}
-
-		return output;
 	}
 
 	// Returns the data of the main input
@@ -207,7 +167,6 @@ export function useDataSchema() {
 		getNodeInputData,
 		getInputDataWithPinned,
 		filterSchema,
-		jsonSchemaToDataSchema,
 	};
 }
 
@@ -218,6 +177,7 @@ export type SchemaNode = {
 	connectedOutputIndexes: number[];
 	itemsCount: number;
 	schema: Schema;
+	preview: boolean;
 };
 
 export type RenderItem = {
@@ -231,6 +191,7 @@ export type RenderItem = {
 	icon: string;
 	collapsable?: boolean;
 	nodeType?: INodeUi['type'];
+	preview?: boolean;
 	type: 'item';
 };
 
@@ -242,6 +203,7 @@ export type RenderHeader = {
 	nodeType: INodeTypeDescription;
 	itemCount: number | null;
 	type: 'header';
+	preview?: boolean;
 };
 
 type Renders = RenderHeader | RenderItem;
@@ -266,6 +228,15 @@ const emptyItem = (): RenderItem => ({
 	icon: '',
 	value: useI18n().baseText('dataMapping.schemaView.emptyData'),
 	type: 'item',
+});
+
+const dummyItem = (): RenderItem => ({
+	id: `dummy-${window.crypto.randomUUID()}`,
+	icon: '',
+	level: 1,
+	title: '...',
+	type: 'item',
+	preview: true,
 });
 
 const isDataEmpty = (schema: Schema) => {
@@ -305,12 +276,14 @@ export const useFlattenSchema = () => {
 		depth = 0,
 		prefix = '',
 		level = 0,
+		preview,
 	}: {
 		schema: Schema;
 		node?: { name: string; type: string };
 		depth?: number;
 		prefix?: string;
 		level?: number;
+		preview?: boolean;
 	}): RenderItem[] => {
 		// only show empty item for the first level
 		if (isDataEmpty(schema) && depth <= 0) {
@@ -338,6 +311,7 @@ export const useFlattenSchema = () => {
 					collapsable: true,
 					nodeType: node.type,
 					type: 'item',
+					preview,
 				});
 			}
 
@@ -355,6 +329,7 @@ export const useFlattenSchema = () => {
 							depth,
 							prefix: itemPrefix,
 							level: level + 1,
+							preview,
 						});
 					})
 					.flat(),
@@ -373,6 +348,7 @@ export const useFlattenSchema = () => {
 					collapsable: false,
 					nodeType: node.type,
 					type: 'item',
+					preview,
 				},
 			];
 		}
@@ -395,6 +371,7 @@ export const useFlattenSchema = () => {
 				itemCount: item.itemsCount,
 				info: additionalInfo(item.node),
 				type: 'header',
+				preview: item.preview,
 			});
 
 			headerIds.value.add(item.node.name);
@@ -409,6 +386,11 @@ export const useFlattenSchema = () => {
 			}
 
 			acc.push(...flattenSchema(item));
+
+			if (item.preview) {
+				acc.push(dummyItem());
+			}
+
 			return acc;
 		}, []);
 	};
