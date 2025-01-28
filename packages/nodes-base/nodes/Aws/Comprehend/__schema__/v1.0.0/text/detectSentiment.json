@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "Sentiment",
+            "type": "string",
+            "value": "",
+            "path": ".Sentiment"
+        },
+        {
+            "key": "SentimentScore",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "Mixed",
+                    "type": "number",
+                    "value": "",
+                    "path": ".SentimentScore.Mixed"
+                },
+                {
+                    "key": "Negative",
+                    "type": "number",
+                    "value": "",
+                    "path": ".SentimentScore.Negative"
+                },
+                {
+                    "key": "Neutral",
+                    "type": "number",
+                    "value": "",
+                    "path": ".SentimentScore.Neutral"
+                },
+                {
+                    "key": "Positive",
+                    "type": "number",
+                    "value": "",
+                    "path": ".SentimentScore.Positive"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".SentimentScore.required"
+                }
+            ],
+            "path": ".SentimentScore"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
