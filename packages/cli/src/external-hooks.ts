@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
@@ -20,6 +21,7 @@ export class ExternalHooks {
 	private dbCollections: IExternalHooksFunctions['dbCollections'];
 
 	constructor(
+		private readonly errorReporter: ErrorReporter,
 		userRepository: UserRepository,
 		settingsRepository: SettingsRepository,
 		credentialsRepository: CredentialsRepository,
@@ -94,7 +96,14 @@ export class ExternalHooks {
 		};
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			await externalHookFunction.apply(externalHookFunctions, hookParameters);
+			try {
+				await externalHookFunction.apply(externalHookFunctions, hookParameters);
+			} catch (cause) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const error = new ApplicationError(`External hook "${hookName}" failed`, { cause });
+				this.errorReporter.error(error, { level: 'fatal' });
+				throw error;
+			}
 		}
 	}
 
