@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "advertisingChannelType",
+            "type": "string",
+            "value": "",
+            "path": ".advertisingChannelType"
+        },
+        {
+            "key": "amountMicros",
+            "type": "string",
+            "value": "",
+            "path": ".amountMicros"
+        },
+        {
+            "key": "conversions",
+            "type": "integer",
+            "value": "",
+            "path": ".conversions"
+        },
+        {
+            "key": "costMicros",
+            "type": "string",
+            "value": "",
+            "path": ".costMicros"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "impressions",
+            "type": "string",
+            "value": "",
+            "path": ".impressions"
+        },
+        {
+            "key": "interactions",
+            "type": "string",
+            "value": "",
+            "path": ".interactions"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "period",
+            "type": "string",
+            "value": "",
+            "path": ".period"
+        },
+        {
+            "key": "resourceName",
+            "type": "string",
+            "value": "",
+            "path": ".resourceName"
+        },
+        {
+            "key": "status",
+            "type": "string",
+            "value": "",
+            "path": ".status"
+        },
+        {
+            "key": "videoViews",
+            "type": "string",
+            "value": "",
+            "path": ".videoViews"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
