@@ -64,7 +64,6 @@
     "flatted": "catalog:",
     "highlight.js": "catalog:frontend",
     "humanize-duration": "^3.27.2",
-    "js-base64": "3.7.2",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",
     "luxon": "catalog:",

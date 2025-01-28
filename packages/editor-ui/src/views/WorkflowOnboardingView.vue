@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
-import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { IWorkflowDataCreate } from '@/Interface';
-import { SAMPLE_EVALUATION_WORKFLOW, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
-import { fromBase64 } from 'js-base64';
-import { IPinData, jsonParse } from 'n8n-workflow';
 
 const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
@@ -19,15 +15,6 @@ const route = useRoute();
 const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
-	if (
-		[
-			SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId,
-			SAMPLE_EVALUATION_WORKFLOW.meta.templateId,
-		].includes(templateId)
-	) {
-		await openSampleSubworkflow(templateId);
-		return;
-	}
 	try {
 		loadingService.startLoading();
 		const template = await templateStore.getFixedWorkflowTemplate(templateId);
@@ -62,51 +49,6 @@ const openWorkflowTemplate = async (templateId: string) => {
 		loadingService.stopLoading();
 
 		throw new Error(`Could not load onboarding template ${templateId}`); // sentry reporing
-	}
-};
-
-const openSampleSubworkflow = async (templateId: string) => {
-	const sampleWorkflows = [SAMPLE_SUBWORKFLOW_WORKFLOW, SAMPLE_EVALUATION_WORKFLOW];
-
-	const sampleWorkflow = sampleWorkflows.find((w) => w.meta.templateId === templateId);
-
-	if (!sampleWorkflow) {
-		throw new Error(`Could not load onboarding template ${templateId}`); // sentry reporing
-	}
-
-	try {
-		loadingService.startLoading();
-
-		const projectId = route.query?.projectId;
-		const sampleSubWorkflows = Number(route.query?.sampleSubWorkflows ?? 0);
-		const workflowPinnedData = route.query?.sampleWorkflowPinnedData
-			? jsonParse<IPinData>(fromBase64(route.query.sampleWorkflowPinnedData as string))
-			: {};
-
-		const workflowName = route.query?.sampleWorkflowName ?? sampleWorkflow.name;
-
-		const workflow: IWorkflowDataCreate = {
-			...sampleWorkflow,
-			name: `${workflowName} ${sampleSubWorkflows + 1}`,
-			pinData: workflowPinnedData ?? sampleWorkflow.pinData,
-		};
-
-		if (projectId) {
-			workflow.projectId = projectId as string;
-		}
-
-		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
-
-		const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
-		sampleSubworkflowChannel.postMessage({ workflowId: newWorkflow.id });
-		await router.replace({
-			name: VIEWS.WORKFLOW,
-			params: { name: newWorkflow.id },
-		});
-		loadingService.stopLoading();
-	} catch (e) {
-		await router.replace({ name: VIEWS.NEW_WORKFLOW });
-		loadingService.stopLoading();
 	}
 };
 

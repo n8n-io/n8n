@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { SAMPLE_EVALUATION_WORKFLOW } from '@/constants.workflows';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type { IWorkflowDataCreate } from '@/Interface';
+import type { INodeParameterResourceLocator, IPinData } from 'n8n-workflow';
 import { computed } from 'vue';
 
 interface WorkflowSelectorProps {
 	modelValue: INodeParameterResourceLocator;
-	examplePinnedData?: Record<string, unknown>;
+	examplePinnedData?: IPinData;
 	sampleWorkflowName?: string;
 }
 
@@ -25,13 +26,19 @@ const locale = useI18n();
 
 const subworkflowName = computed(() => {
 	if (props.sampleWorkflowName) {
-		return `Evaluation workflow for ${props.sampleWorkflowName}`;
+		return locale.baseText('testDefinition.workflowInput.subworkflowName', {
+			interpolate: { name: props.sampleWorkflowName },
+		});
 	}
-	return 'My Evaluation Sub-Workflow';
+	return locale.baseText('testDefinition.workflowInput.subworkflowName.default');
 });
 
-const sampleWorkflowRegex = computed(() => {
-	return new RegExp(subworkflowName.value);
+const sampleWorkflow = computed<IWorkflowDataCreate>(() => {
+	return {
+		...SAMPLE_EVALUATION_WORKFLOW,
+		name: subworkflowName.value,
+		pinData: props.examplePinnedData,
+	};
 });
 </script>
 <template>
@@ -54,10 +61,7 @@ const sampleWorkflowRegex = computed(() => {
 				:expression-edit-dialog-visible="false"
 				:path="'workflows'"
 				allow-new
-				:sample-workflow-regex="sampleWorkflowRegex"
-				:sample-workflow-template-id="SAMPLE_EVALUATION_WORKFLOW.meta.templateId"
-				:sample-workflow-pinned-data="examplePinnedData"
-				:sample-workflow-name="subworkflowName"
+				:sample-workflow="sampleWorkflow"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>

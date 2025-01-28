@@ -6,75 +6,24 @@ settings:
 
 catalogs:
   default:
-    '@langchain/core':
-      specifier: 0.3.30
-      version: 0.3.30
-    '@sentry/node':
-      specifier: 8.42.0
-      version: 8.42.0
-    '@types/basic-auth':
-      specifier: ^1.1.3
-      version: 1.1.3
-    '@types/express':
-      specifier: ^4.17.21
-      version: 4.17.21
-    '@types/lodash':
-      specifier: ^4.14.195
-      version: 4.14.195
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
-    '@types/xml2js':
-      specifier: ^0.4.14
-      version: 0.4.14
     axios:
       specifier: 1.7.4
       version: 1.7.4
-    basic-auth:
-      specifier: 2.0.1
-      version: 2.0.1
-    callsites:
-      specifier: 3.1.0
-      version: 3.1.0
-    fast-glob:
-      specifier: 3.2.12
-      version: 3.2.12
     flatted:
       specifier: 3.2.7
       version: 3.2.7
-    form-data:
-      specifier: 4.0.0
-      version: 4.0.0
-    iconv-lite:
-      specifier: 0.6.3
-      version: 0.6.3
-    lodash:
-      specifier: 4.17.21
-      version: 4.17.21
     luxon:
       specifier: 3.4.4
       version: 3.4.4
-    nanoid:
-      specifier: 3.3.8
-      version: 3.3.8
-    picocolors:
-      specifier: 1.0.1
-      version: 1.0.1
-    reflect-metadata:
-      specifier: 0.2.2
-      version: 0.2.2
     uuid:
       specifier: 10.0.0
       version: 10.0.0
-    xml2js:
-      specifier: 0.6.2
-      version: 0.6.2
     xss:
       specifier: 1.0.15
       version: 1.0.15
-    zod:
-      specifier: 3.24.1
-      version: 3.24.1
   frontend:
     '@sentry/vue':
       specifier: ^8.33.1
@@ -1504,9 +1453,6 @@ importers:
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
-      js-base64:
-        specifier: 3.7.2
-        version: 3.7.2
       jsonpath:
         specifier: ^1.1.1
         version: 1.1.1
@@ -19196,7 +19142,7 @@ snapshots:
 
   '@typescript/vfs@1.6.0(typescript@5.7.2)':
     dependencies:
-      debug: 4.3.6(supports-color@8.1.1)
+      debug: 4.3.6
       typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
@@ -19891,7 +19837,7 @@ snapshots:
 
   axios@1.7.4:
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
+      follow-redirects: 1.15.6
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -20980,6 +20926,10 @@ snapshots:
       ms: 2.1.2
 
   debug@4.3.5:
+    dependencies:
+      ms: 2.1.2
+
+  debug@4.3.6:
     dependencies:
       ms: 2.1.2
 
@@ -22166,6 +22116,8 @@ snapshots:
   flatted@3.2.7: {}
 
   fn.name@1.1.0: {}
+
+  follow-redirects@1.15.6: {}
 
   follow-redirects@1.15.6(debug@4.3.6):
     optionalDependencies:

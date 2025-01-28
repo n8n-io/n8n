@@ -4,12 +4,11 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import {
-	isObjectEmpty,
-	type INodeParameterResourceLocator,
-	type INodeProperties,
-	type NodeParameterValue,
-	type ResourceLocatorModes,
+import type {
+	INodeParameterResourceLocator,
+	INodeProperties,
+	NodeParameterValue,
+	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
@@ -21,9 +20,9 @@ import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorMod
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL } from '@/constants';
+import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
-import { toBase64 } from 'js-base64';
+import type { IWorkflowDataCreate } from '@/Interface';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -36,10 +35,7 @@ interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
-	sampleWorkflowTemplateId?: string;
-	sampleWorkflowName?: string;
-	sampleWorkflowRegex?: RegExp;
-	sampleWorkflowPinnedData?: Record<string, unknown>;
+	sampleWorkflow?: IWorkflowDataCreate;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,10 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 	forceShowExpression: false,
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
-	sampleWorkflowTemplateId: SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId,
-	sampleWorkflowName: SAMPLE_SUBWORKFLOW_WORKFLOW.name,
-	sampleWorkflowRegex: () => /My\s+Sub-Workflow\s+\d+/,
-	sampleWorkflowPinnedData: () => ({}),
+	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
 });
 
 const emit = defineEmits<{
@@ -215,41 +208,30 @@ onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
 
-const onAddResourceClicked = () => {
-	const urlSearchParams = new URLSearchParams();
-
-	if (projectStore.currentProjectId) {
-		urlSearchParams.set('projectId', projectStore.currentProjectId);
-	}
-
+const onAddResourceClicked = async () => {
+	const projectId = projectStore.currentProjectId;
+	const sampleWorkflow = props.sampleWorkflow;
+	const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
 	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
-		(w) => w.name && props.sampleWorkflowRegex.test(w.name),
+		(w) => w.name && new RegExp(workflowName).test(w.name),
 	);
 
-	urlSearchParams.set('sampleSubWorkflows', sampleSubWorkflows.length.toString());
-	urlSearchParams.set('sampleWorkflowName', props.sampleWorkflowName);
-
-	if (!isObjectEmpty(props.sampleWorkflowPinnedData)) {
-		urlSearchParams.set(
-			'sampleWorkflowPinnedData',
-			toBase64(JSON.stringify(props.sampleWorkflowPinnedData), true),
-		);
+	const workflow: IWorkflowDataCreate = {
+		...sampleWorkflow,
+		name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
+	};
+	if (projectId) {
+		workflow.projectId = projectId;
 	}
-
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
-	const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
-	sampleSubworkflowChannel.onmessage = async (event: MessageEvent<{ workflowId: string }>) => {
-		const workflowId = event.data.workflowId;
-		await reloadWorkflows();
-		onInputChange(workflowId);
-		hideDropdown();
-	};
+	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+	const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: newWorkflow.id } });
+	await reloadWorkflows();
+	onInputChange(newWorkflow.id);
+	hideDropdown();
 
-	window.open(
-		`/workflows/onboarding/${props.sampleWorkflowTemplateId}?${urlSearchParams.toString()}`,
-		'_blank',
-	);
+	window.open(href, '_blank');
 };
 </script>
 <template>

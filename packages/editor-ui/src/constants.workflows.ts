@@ -1,11 +1,8 @@
 import { NodeConnectionType } from 'n8n-workflow';
-import type { INodeUi, WorkflowDataWithTemplateId } from './Interface';
+import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
+export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
-	meta: {
-		templateId: 'VMiAxXa3lCAizGB5f7dVZQSFfg3FtHkdTKvLuupqBls=',
-	},
 	nodes: [
 		{
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
@@ -42,11 +39,8 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 	pinData: {},
 };
 
-export const SAMPLE_EVALUATION_WORKFLOW: WorkflowDataWithTemplateId = {
+export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Evaluation Sub-Workflow',
-	meta: {
-		templateId: 'VMiAxXa3lCAizGB5f7dVZQSFfg3FtHkdTKvLuupqBl2=',
-	},
 	nodes: [
 		{
 			parameters: {
