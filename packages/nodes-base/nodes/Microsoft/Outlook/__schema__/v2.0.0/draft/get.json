@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "bodyPreview",
+            "type": "string",
+            "value": "",
+            "path": ".bodyPreview"
+        },
+        {
+            "key": "categories",
+            "type": "array",
+            "value": "",
+            "path": ".categories"
+        },
+        {
+            "key": "conversationId",
+            "type": "string",
+            "value": "",
+            "path": ".conversationId"
+        },
+        {
+            "key": "hasAttachments",
+            "type": "boolean",
+            "value": "",
+            "path": ".hasAttachments"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "subject",
+            "type": "string",
+            "value": "",
+            "path": ".subject"
+        },
+        {
+            "key": "to",
+            "type": "array",
+            "value": "",
+            "path": ".to"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
