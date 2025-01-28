@@ -1,0 +1,126 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "category",
+            "type": "string",
+            "value": "",
+            "path": ".category"
+        },
+        {
+            "key": "comment",
+            "type": "string",
+            "value": "",
+            "path": ".comment"
+        },
+        {
+            "key": "deleted",
+            "type": "boolean",
+            "value": "",
+            "path": ".deleted"
+        },
+        {
+            "key": "disable_correlation",
+            "type": "boolean",
+            "value": "",
+            "path": ".disable_correlation"
+        },
+        {
+            "key": "distribution",
+            "type": "string",
+            "value": "",
+            "path": ".distribution"
+        },
+        {
+            "key": "event_id",
+            "type": "string",
+            "value": "",
+            "path": ".event_id"
+        },
+        {
+            "key": "first_seen",
+            "type": "null",
+            "value": "",
+            "path": ".first_seen"
+        },
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "last_seen",
+            "type": "null",
+            "value": "",
+            "path": ".last_seen"
+        },
+        {
+            "key": "object_id",
+            "type": "string",
+            "value": "",
+            "path": ".object_id"
+        },
+        {
+            "key": "object_relation",
+            "type": "string",
+            "value": "",
+            "path": ".object_relation"
+        },
+        {
+            "key": "sharing_group_id",
+            "type": "string",
+            "value": "",
+            "path": ".sharing_group_id"
+        },
+        {
+            "key": "timestamp",
+            "type": "string",
+            "value": "",
+            "path": ".timestamp"
+        },
+        {
+            "key": "to_ids",
+            "type": "boolean",
+            "value": "",
+            "path": ".to_ids"
+        },
+        {
+            "key": "type",
+            "type": "string",
+            "value": "",
+            "path": ".type"
+        },
+        {
+            "key": "uuid",
+            "type": "string",
+            "value": "",
+            "path": ".uuid"
+        },
+        {
+            "key": "value",
+            "type": "string",
+            "value": "",
+            "path": ".value"
+        },
+        {
+            "key": "value1",
+            "type": "string",
+            "value": "",
+            "path": ".value1"
+        },
+        {
+            "key": "value2",
+            "type": "string",
+            "value": "",
+            "path": ".value2"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
