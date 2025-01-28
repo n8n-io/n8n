@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "id",
+            "type": "string",
+            "value": "",
+            "path": ".id"
+        },
+        {
+            "key": "image",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "small",
+                    "type": "string",
+                    "value": "",
+                    "path": ".image.small"
+                },
+                {
+                    "key": "thumb",
+                    "type": "string",
+                    "value": "",
+                    "path": ".image.thumb"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".image.required"
+                }
+            ],
+            "path": ".image"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "symbol",
+            "type": "string",
+            "value": "",
+            "path": ".symbol"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
