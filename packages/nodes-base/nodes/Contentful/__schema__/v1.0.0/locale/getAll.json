@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "value": [
+        {
+            "key": "code",
+            "type": "string",
+            "value": "",
+            "path": ".code"
+        },
+        {
+            "key": "default",
+            "type": "boolean",
+            "value": "",
+            "path": ".default"
+        },
+        {
+            "key": "fallbackCode",
+            "type": "Array",
+            "value": [
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".fallbackCode.type"
+                }
+            ],
+            "path": ".fallbackCode"
+        },
+        {
+            "key": "name",
+            "type": "string",
+            "value": "",
+            "path": ".name"
+        },
+        {
+            "key": "sys",
+            "type": "Object",
+            "value": [
+                {
+                    "key": "id",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.id"
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.type"
+                },
+                {
+                    "key": "version",
+                    "type": "integer",
+                    "value": "",
+                    "path": ".sys.version"
+                },
+                {
+                    "key": "required",
+                    "type": "string",
+                    "value": "",
+                    "path": ".sys.required"
+                }
+            ],
+            "path": ".sys"
+        },
+        {
+            "key": "required",
+            "type": "string",
+            "value": "",
+            "path": ".required"
+        }
+    ],
+    "path": ""
+}
