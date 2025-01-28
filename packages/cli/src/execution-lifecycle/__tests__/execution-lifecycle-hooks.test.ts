@@ -159,6 +159,31 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	};
 
+	const externalHooksTests = () => {
+		describe('workflowExecuteBefore', () => {
+			it('should run workflow.preExecute hook', async () => {
+				await hooks.executeHookFunctions('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
+					workflow,
+					executionMode,
+				]);
+			});
+		});
+
+		describe('workflowExecuteAfter', () => {
+			it('should run workflow.postExecute hook', async () => {
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(externalHooks.run).toHaveBeenCalledWith('workflow.postExecute', [
+					successfulRun,
+					workflowData,
+					executionId,
+				]);
+			});
+		});
+	};
+
 	describe('getWorkflowHooksMain', () => {
 		beforeEach(() => {
 			hooks = getWorkflowHooksMain(
@@ -174,6 +199,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 		workflowEventTests();
 		nodeEventsTests();
+		externalHooksTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -187,7 +213,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(5);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
@@ -507,6 +533,7 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		workflowEventTests();
+		externalHooksTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -520,7 +547,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(0);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(0);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(0);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});
@@ -584,6 +611,7 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		nodeEventsTests();
+		externalHooksTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -680,6 +708,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 		workflowEventTests();
 		nodeEventsTests();
+		externalHooksTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -693,7 +722,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
 			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.workflowExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
 			expect(hookFunctions.sendResponse).toHaveLength(0);
 		});

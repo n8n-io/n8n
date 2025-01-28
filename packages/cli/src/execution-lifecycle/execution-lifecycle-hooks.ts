@@ -192,7 +192,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	};
 }
 
-function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
+function hookFunctionsExternalHooks(): IWorkflowExecuteHooks {
 	const externalHooks = Container.get(ExternalHooks);
 	return {
 		workflowExecuteBefore: [
@@ -200,6 +200,20 @@ function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
+		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, fullRunData: IRun) {
+				await externalHooks.run('workflow.postExecute', [
+					fullRunData,
+					this.workflowData,
+					this.executionId,
+				]);
+			},
+		],
+	};
+}
+
+function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
+	return {
 		nodeExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -365,7 +379,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
-	const externalHooks = Container.get(ExternalHooks);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	return {
@@ -440,15 +453,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					});
 				}
 			},
-			async function (this: WorkflowHooks, fullRunData: IRun) {
-				try {
-					await externalHooks.run('workflow.postExecute', [
-						fullRunData,
-						this.workflowData,
-						this.executionId,
-					]);
-				} catch {}
-			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
@@ -474,6 +478,7 @@ export function getWorkflowHooksIntegrated(
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave(),
 		hookFunctionsPreExecute(),
+		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
@@ -492,6 +497,7 @@ export function getWorkflowHooksWorkerExecuter(
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSaveWorker(),
 		hookFunctionsPreExecute(),
+		hookFunctionsExternalHooks(),
 	];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
@@ -515,6 +521,7 @@ export function getWorkflowHooksWorkerMain(
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsPreExecute(),
+		hookFunctionsExternalHooks(),
 		hookFunctionsFinalizeExecutionStatus(),
 		{
 			workflowExecuteAfter: [
@@ -579,6 +586,7 @@ export function getWorkflowHooksMain(
 		hookFunctionsSave(),
 		hookFunctionsPush(),
 		hookFunctionsPreExecute(),
+		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
 		pushRef: data.pushRef,
