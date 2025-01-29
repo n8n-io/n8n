@@ -6,6 +6,7 @@ import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
@@ -50,6 +51,9 @@ export class GlobalConfig {
 
 	@Nested
 	publicApi: PublicApiConfig;
+
+	@Nested
+	externalHooks: ExternalHooksConfig;
 
 	@Nested
 	externalSecrets: ExternalSecretsConfig;
