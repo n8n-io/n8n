@@ -14,18 +14,18 @@ export function useExecutingNode() {
 	const executingNodeCompletionQueue = ref<string[]>([]);
 
 	function addExecutingNode(nodeName: string) {
-		clearNodeExecutionQueue();
+		resolveNodeExecutionQueue();
 		executingNode.value.push(nodeName);
 	}
 
 	function removeExecutingNode(nodeName: string) {
 		executingNodeCompletionQueue.value.push(nodeName);
-		clearNodeExecutionQueue(
+		resolveNodeExecutionQueue(
 			executingNode.value.length <= executingNodeCompletionQueue.value.length,
 		);
 	}
 
-	function clearNodeExecutionQueue(keepLastInQueue = false) {
+	function resolveNodeExecutionQueue(keepLastInQueue = false) {
 		const lastExecutingNode = executingNodeCompletionQueue.value.at(-1);
 		const nodesToRemove = keepLastInQueue
 			? executingNodeCompletionQueue.value.slice(0, -1)
@@ -36,11 +36,17 @@ export function useExecutingNode() {
 			keepLastInQueue && lastExecutingNode ? [lastExecutingNode] : [];
 	}
 
+	function clearNodeExecutionQueue() {
+		executingNode.value = [];
+		executingNodeCompletionQueue.value = [];
+	}
+
 	return {
 		executingNode,
 		executingNodeCompletionQueue,
 		addExecutingNode,
 		removeExecutingNode,
+		resolveNodeExecutionQueue,
 		clearNodeExecutionQueue,
 	};
 }

@@ -149,7 +149,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
 
-	const { executingNode, addExecutingNode, removeExecutingNode } = useExecutingNode();
+	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
+		useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -1598,8 +1599,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function markExecutionAsStopped() {
 		activeExecutionId.value = null;
-		executingNode.value.length = 0;
-		executingNodeCompletionQueue.value.length = 0;
+		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');

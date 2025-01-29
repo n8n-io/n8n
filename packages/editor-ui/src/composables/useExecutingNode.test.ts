@@ -41,66 +41,66 @@ describe('useExecutingNode', () => {
 		expect(executingNodeCompletionQueue.value).toEqual([]);
 	});
 
-	describe('clearNodeExecutionQueue', () => {
+	describe('resolveNodeExecutionQueue', () => {
 		it('should clear all nodes from the execution queue', () => {
-			const { executingNode, executingNodeCompletionQueue, clearNodeExecutionQueue } =
+			const { executingNode, executingNodeCompletionQueue, resolveNodeExecutionQueue } =
 				useExecutingNode();
 
 			executingNode.value = ['node1', 'node2'];
 			executingNodeCompletionQueue.value = ['node1', 'node2'];
 
-			clearNodeExecutionQueue();
+			resolveNodeExecutionQueue();
 
 			expect(executingNode.value).toEqual([]);
 			expect(executingNodeCompletionQueue.value).toEqual([]);
 		});
 
 		it('should keep the last executing node if keepLastInQueue is true and only one node is executing', () => {
-			const { executingNode, executingNodeCompletionQueue, clearNodeExecutionQueue } =
+			const { executingNode, executingNodeCompletionQueue, resolveNodeExecutionQueue } =
 				useExecutingNode();
 			executingNode.value = ['node1'];
 			executingNodeCompletionQueue.value = ['node1'];
 
-			clearNodeExecutionQueue(true);
+			resolveNodeExecutionQueue(true);
 
 			expect(executingNode.value).toEqual(['node1']);
 			expect(executingNodeCompletionQueue.value).toEqual(['node1']);
 		});
 
 		it('should remove all nodes except the last one if keepLastInQueue is true and more than one node is executing', () => {
-			const { executingNode, executingNodeCompletionQueue, clearNodeExecutionQueue } =
+			const { executingNode, executingNodeCompletionQueue, resolveNodeExecutionQueue } =
 				useExecutingNode();
 
 			executingNode.value = ['node1', 'node2'];
 			executingNodeCompletionQueue.value = ['node1', 'node2'];
 
-			clearNodeExecutionQueue(true);
+			resolveNodeExecutionQueue(true);
 
 			expect(executingNode.value).toEqual(['node2']);
 			expect(executingNodeCompletionQueue.value).toEqual(['node2']);
 		});
 
 		it('should clear all nodes if keepLastInQueue is false', () => {
-			const { executingNode, executingNodeCompletionQueue, clearNodeExecutionQueue } =
+			const { executingNode, executingNodeCompletionQueue, resolveNodeExecutionQueue } =
 				useExecutingNode();
 
 			executingNode.value = ['node1', 'node2'];
 			executingNodeCompletionQueue.value = ['node1', 'node2'];
 
-			clearNodeExecutionQueue(false);
+			resolveNodeExecutionQueue(false);
 
 			expect(executingNode.value).toEqual([]);
 			expect(executingNodeCompletionQueue.value).toEqual([]);
 		});
 
 		it('should handle empty execution queue gracefully', () => {
-			const { executingNode, executingNodeCompletionQueue, clearNodeExecutionQueue } =
+			const { executingNode, executingNodeCompletionQueue, resolveNodeExecutionQueue } =
 				useExecutingNode();
 
 			executingNode.value = [];
 			executingNodeCompletionQueue.value = [];
 
-			clearNodeExecutionQueue();
+			resolveNodeExecutionQueue();
 
 			expect(executingNode.value).toEqual([]);
 			expect(executingNodeCompletionQueue.value).toEqual([]);
