@@ -1202,7 +1202,7 @@ export async function prepareBinaryData(
 	};
 
 	if (filePath) {
-		const filePathParts = path.parse(filePath as string);
+		const filePathParts = path.parse(filePath);
 
 		if (filePathParts.dir !== '') {
 			returnData.directory = filePathParts.dir;
