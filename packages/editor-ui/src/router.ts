@@ -275,20 +275,12 @@ export const routes: RouteRecordRaw[] = [
 				components: {
 					default: TestDefinitionListView,
 				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
 			},
 			{
 				path: 'new',
 				name: VIEWS.NEW_TEST_DEFINITION,
 				components: {
 					default: TestDefinitionEditView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -297,10 +289,6 @@ export const routes: RouteRecordRaw[] = [
 				components: {
 					default: TestDefinitionEditView,
 				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
 			},
 			{
 				path: ':testId/runs',
@@ -308,20 +296,12 @@ export const routes: RouteRecordRaw[] = [
 				components: {
 					default: TestDefinitionRunsListView,
 				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
 			},
 			{
 				path: ':testId/runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 				components: {
 					default: TestDefinitionRunDetailView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
 				},
 			},
 		],

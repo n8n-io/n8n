@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { ButtonType } from 'n8n-design-system';
 import { N8nIconButton, N8nActionToggle } from 'n8n-design-system';
+import { ref } from 'vue';
 
 type Action = {
 	label: string;
@@ -16,12 +17,19 @@ defineProps<{
 const emit = defineEmits<{
 	action: [id: string];
 }>();
+
+const actionToggleRef = ref<InstanceType<typeof N8nActionToggle> | null>(null);
+
+defineExpose({
+	openActionToggle: (isOpen: boolean) => actionToggleRef.value?.openActionToggle(isOpen),
+});
 </script>
 
 <template>
 	<div :class="[$style.buttonGroup]">
 		<slot></slot>
 		<N8nActionToggle
+			ref="actionToggleRef"
 			data-test-id="add-resource"
 			:actions="actions"
 			placement="bottom-end"

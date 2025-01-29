@@ -15,8 +15,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ButtonType } from 'n8n-design-system';
+import type { ButtonType, N8nActionToggle } from 'n8n-design-system';
 import { useExecutionsStore } from '@/stores/executions.store';
+import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
+import { useRouter } from 'vue-router';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -31,6 +33,7 @@ const emit = defineEmits<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
@@ -41,6 +44,7 @@ const settingsStore = useSettingsStore();
 const testDefinitionStore = useTestDefinitionStore();
 const executionsStore = useExecutionsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
+const actionToggleRef = ref<InstanceType<typeof ProjectCreateResource> | null>(null);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
@@ -83,16 +87,24 @@ const testDefinition = computed(() =>
 );
 
 const addToTestActions = computed(() => {
-	return testDefinitions.value
+	const testAction = testDefinitions.value
 		.filter((test) => test.annotationTagId)
 		.map((test) => {
 			const isAlreadyAdded = isTagAlreadyAdded(test.annotationTagId ?? '');
 			return {
-				label: `Add to "${test.name}" ${isAlreadyAdded ? '✅' : ''} `,
-				value: test.annotationTagId,
+				label: `${test.name}`,
+				value: test.annotationTagId ?? '',
 				disabled: !workflowPermissions.value.update || isAlreadyAdded,
 			};
 		});
+
+	const newTestAction = {
+		label: '+ New Test',
+		value: 'new',
+		disabled: !workflowPermissions.value.update,
+	};
+
+	return [newTestAction, ...testAction];
 });
 
 const addTestButtonData = computed<{ label: string; type: ButtonType }>(() => ({
@@ -144,10 +156,27 @@ function onRetryButtonBlur(event: FocusEvent) {
 	}
 }
 
-async function handleAddToTestAction(tag: string) {
+async function handleAddToTestAction(actionValue: string) {
+	if (actionValue === 'new') {
+		await router.push({
+			name: VIEWS.NEW_TEST_DEFINITION,
+			params: {
+				name: workflowId.value,
+			},
+		});
+		return;
+	}
 	const currentTags = props.execution?.annotation?.tags ?? [];
-	const newTags = [...currentTags.map((t) => t.id), tag];
+	const newTags = [...currentTags.map((t) => t.id), actionValue];
 	await executionsStore.annotateExecution(props.execution.id, { tags: newTags });
+}
+
+async function handleEvaluationButton() {
+	if (!testDefinition.value) {
+		actionToggleRef.value?.openActionToggle(true);
+	} else {
+		await handleAddToTestAction(route.query.tag as string);
+	}
 }
 
 onMounted(async () => {
@@ -248,6 +277,7 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.actions">
 				<ProjectCreateResource
+					ref="actionToggleRef"
 					v-if="testDefinitions && testDefinitions.length"
 					:actions="addToTestActions"
 					:type="addTestButtonData.type"
@@ -256,7 +286,7 @@ onMounted(async () => {
 					<N8nButton
 						data-test-id="add-to-test-button"
 						v-bind="addTestButtonData"
-						@click="handleAddToTestAction(route?.query?.tag as string)"
+						@click="handleEvaluationButton"
 					/>
 				</ProjectCreateResource>
 				<router-link

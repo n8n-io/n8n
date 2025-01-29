@@ -10,6 +10,7 @@ import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref, computed } from 'vue';
 import { useMessage } from '@/composables/useMessage';
 import type { IPinData } from 'n8n-workflow';
+import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
 
 const props = defineProps<{
 	showConfig: boolean;
@@ -17,6 +18,7 @@ const props = defineProps<{
 	isLoading: boolean;
 	examplePinnedData?: IPinData;
 	sampleWorkflowName?: string;
+	hasRuns: boolean;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
@@ -117,19 +119,24 @@ function hideTooltip() {
 		<div :class="$style.panelIntro">
 			{{ locale.baseText('testDefinition.edit.step.intro') }}
 		</div>
-		<BlockArrow :class="$style.introArrow" />
 		<!-- Select Executions -->
 		<EvaluationStep
-			:class="$style.step"
+			:class="[$style.step, $style.reducedSpacing]"
 			:issues="getFieldIssues('tags')"
 			:show-issues="showFieldIssues('tags')"
+			:tooltip="
+				hasRuns ? locale.baseText('testDefinition.edit.step.executions.tooltip') : undefined
+			"
 			@mouseenter="
 				showTooltip($event, locale.baseText('testDefinition.edit.step.executions.tooltip'))
 			"
 			@mouseleave="hideTooltip"
 		>
+			<template #containerPrefix>
+				<BlockArrow :class="[$style.middle, $style.diagramArrow, $style.sm]" />
+			</template>
 			<template #title>
-				Fetch the {{ selectedTag?.usageCount }} past executions tagged
+				1. Fetch {{ selectedTag?.usageCount }} past executions tagged
 				<N8nTag :class="$style.tagInputTag" :text="selectedTag.name" :clickable="false" />
 			</template>
 			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
@@ -147,11 +154,6 @@ function hideTooltip() {
 				</div>
 			</template>
 		</EvaluationStep>
-		<div :class="$style.evaluationArrows">
-			<BlockArrow />
-			<BlockArrow />
-		</div>
-
 		<!-- Mocked Nodes -->
 		<EvaluationStep
 			:class="$style.step"
@@ -163,9 +165,13 @@ function hideTooltip() {
 			:small="true"
 			:issues="getFieldIssues('mockedNodes')"
 			:show-issues="showFieldIssues('mockedNodes')"
+			:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.nodes.tooltip') : undefined"
 			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
 			@mouseleave="hideTooltip"
 		>
+			<template #containerPrefix>
+				<BlockArrow :class="[$style.diagramArrow, $style.right]" hoverable />
+			</template>
 			<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 			<template #cardContent>
 				<n8n-button
@@ -183,11 +189,17 @@ function hideTooltip() {
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
 			:small="true"
+			:tooltip="
+				hasRuns ? locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip') : undefined
+			"
 			@mouseenter="
 				showTooltip($event, locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip'))
 			"
 			@mouseleave="hideTooltip"
 		>
+			<template #containerPrefix>
+				<BlockArrow :class="[$style.right, $style.diagramArrow]" hoverable />
+			</template>
 			<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 		</EvaluationStep>
 
@@ -197,11 +209,18 @@ function hideTooltip() {
 			:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
 			:issues="getFieldIssues('evaluationWorkflow')"
 			:show-issues="showFieldIssues('evaluationWorkflow')"
+			:tooltip="
+				hasRuns ? locale.baseText('testDefinition.edit.step.compareExecutions.tooltip') : undefined
+			"
 			@mouseenter="
 				showTooltip($event, locale.baseText('testDefinition.edit.step.compareExecutions.tooltip'))
 			"
 			@mouseleave="hideTooltip"
 		>
+			<template #containerPrefix>
+				<BlockArrow hoverable :class="[$style.right, $style.diagramArrow]" />
+				<BlockArrow hoverable :class="[$style.left, $style.diagramArrow, $style.lg]" />
+			</template>
 			<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 			<template #cardContent>
 				<WorkflowSelector
@@ -221,9 +240,13 @@ function hideTooltip() {
 			:issues="getFieldIssues('metrics')"
 			:show-issues="showFieldIssues('metrics')"
 			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
+			:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.metrics.tooltip') : undefined"
 			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.metrics.tooltip'))"
 			@mouseleave="hideTooltip"
 		>
+			<template #containerPrefix>
+				<BlockArrow hoverable :class="[$style.middle, $style.diagramArrow]" />
+			</template>
 			<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 			<template #cardContent>
 				<MetricsInput
@@ -251,7 +274,7 @@ function hideTooltip() {
 		</Modal>
 
 		<div
-			v-if="tooltipPosition"
+			v-if="tooltipPosition && !hasRuns"
 			:class="$style.customTooltip"
 			:style="{
 				left: `${tooltipPosition.x}px`,
@@ -277,6 +300,7 @@ function hideTooltip() {
 	margin-left: var(--spacing-2xl);
 	transition: width 0.2s ease;
 	position: relative;
+	gap: var(--spacing-xl);
 
 	&.hidden {
 		margin-left: 0;
@@ -314,27 +338,36 @@ function hideTooltip() {
 .step {
 	position: relative;
 
-	&:not(:first-child) {
+	&:not(.reducedSpacing) {
 		margin-top: var(--spacing-m);
 	}
 }
 
-.introArrow {
-	--arrow-height: 1.5rem;
-	margin-bottom: -1rem;
-	justify-self: center;
+.diagramArrow {
+	--arrow-height: 5rem;
+	position: absolute;
+	bottom: 100%;
+	left: var(--spacing-2xl);
+	z-index: 0;
+	// increase hover radius of the arrow
+	&.right {
+		left: unset;
+		right: var(--spacing-2xl);
+	}
+	&.middle {
+		left: 50%;
+		transform: translateX(-50%);
+	}
+
+	&.sm {
+		--arrow-height: 1.5rem;
+	}
+
+	&.lg {
+		--arrow-height: 20rem;
+	}
 }
 
-.evaluationArrows {
-	--arrow-height: 11.5rem;
-	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	max-width: 80%;
-	margin: 0 auto;
-	margin-bottom: -100%;
-	z-index: 0;
-}
 .tagInputContainer {
 	display: flex;
 	flex-direction: column;

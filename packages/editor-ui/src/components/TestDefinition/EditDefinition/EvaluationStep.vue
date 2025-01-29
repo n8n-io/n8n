@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	expanded: false,
 	issues: () => [],
 	showIssues: true,
-	tooltip: 'Some tooltip',
+	title: '',
 });
 
 const locale = useI18n();
@@ -51,55 +51,77 @@ const handleMouseLeave = () => {
 </script>
 
 <template>
-	<div
-		ref="containerRef"
-		:class="[$style.evaluationStep, small && $style.small]"
-		data-test-id="evaluation-step"
-		@mouseenter="handleMouseEnter"
-		@mouseleave="handleMouseLeave"
-	>
-		<div :class="$style.content">
-			<div :class="$style.header">
-				<div :class="[$style.icon, warning && $style.warning]">
-					<slot name="icon" />
-				</div>
-				<h3 :class="$style.title">
-					<slot v-if="$slots.title" name="title" />
-					<span v-else>{{ title }}</span>
-				</h3>
-				<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
-					<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
-						{{ issues.map((issue) => issue.message).join(', ') }}
-					</N8nInfoTip>
-				</span>
-				<button
-					v-if="$slots.cardContent"
-					:class="$style.collapseButton"
-					:aria-expanded="isExpanded"
-					data-test-id="evaluation-step-collapse-button"
-					@click="toggleExpand"
-				>
-					{{
-						isExpanded
-							? locale.baseText('testDefinition.edit.step.collapse')
-							: locale.baseText('testDefinition.edit.step.expand')
-					}}
-					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
-				</button>
-			</div>
-			<div v-if="description" :class="$style.description">{{ description }}</div>
-			<ElCollapseTransition v-if="$slots.cardContent">
-				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
-						<slot name="cardContent" />
+	<div :class="$style.wrap">
+		<slot name="containerPrefix" />
+		<div
+			ref="containerRef"
+			:class="[$style.evaluationStep, small && $style.small]"
+			data-test-id="evaluation-step"
+			@mouseenter="handleMouseEnter"
+			@mouseleave="handleMouseLeave"
+		>
+			<div :class="$style.content">
+				<div :class="$style.header">
+					<div :class="[$style.icon, warning && $style.warning]">
+						<slot name="icon" />
 					</div>
+					<h3 :class="$style.title">
+						<span :class="$style.label">
+							<slot v-if="$slots.title" name="title" />
+							<span v-else>{{ title }}</span>
+							<N8nInfoTip
+								v-if="tooltip"
+								:class="$style.infoTip"
+								:bold="true"
+								type="tooltip"
+								theme="info"
+								tooltip-placement="top"
+							>
+								{{ tooltip }}
+							</N8nInfoTip>
+						</span>
+					</h3>
+					<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
+						<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
+							{{ issues.map((issue) => issue.message).join(', ') }}
+						</N8nInfoTip>
+					</span>
+					<button
+						v-if="$slots.cardContent"
+						:class="$style.collapseButton"
+						:aria-expanded="isExpanded"
+						data-test-id="evaluation-step-collapse-button"
+						@click="toggleExpand"
+					>
+						{{
+							isExpanded
+								? locale.baseText('testDefinition.edit.step.collapse')
+								: locale.baseText('testDefinition.edit.step.expand')
+						}}
+						<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+					</button>
 				</div>
-			</ElCollapseTransition>
+				<div v-if="description" :class="$style.description">{{ description }}</div>
+				<ElCollapseTransition v-if="$slots.cardContent">
+					<div v-show="isExpanded" :class="$style.cardContentWrapper">
+						<div
+							ref="contentRef"
+							:class="$style.cardContent"
+							data-test-id="evaluation-step-content"
+						>
+							<slot name="cardContent" />
+						</div>
+					</div>
+				</ElCollapseTransition>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+.wrap {
+	position: relative;
+}
 .evaluationStep {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -112,6 +134,7 @@ const handleMouseLeave = () => {
 	width: 100%;
 	color: var(--color-text-dark);
 	position: relative;
+	z-index: 1;
 	&.small {
 		width: 80%;
 		margin-left: auto;
@@ -147,7 +170,17 @@ const handleMouseLeave = () => {
 	font-size: var(--font-size-s);
 	line-height: 1.125rem;
 }
-
+.label {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+}
+.infoTip {
+	opacity: 0;
+}
+.evaluationStep:hover .infoTip {
+	opacity: 1;
+}
 .warningIcon {
 	color: var(--color-warning);
 }

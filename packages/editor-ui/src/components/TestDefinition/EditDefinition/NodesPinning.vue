@@ -9,6 +9,7 @@ import { createEventBus, N8nTooltip } from 'n8n-design-system';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { useI18n } from '@/composables/useI18n';
+import { NodeHelpers } from 'n8n-workflow';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -102,8 +103,8 @@ function onPinButtonClick(data: CanvasNodeData) {
 	emit('update:modelValue', updatedNodes);
 	updateNodeClasses([data.id], !isPinned);
 }
-function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
-	return outputs.length === 1;
+function isPinButtonVisible(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
+	return outputs.length === 1 && inputs.length >= 1;
 }
 
 onNodesInitialized(async () => {
@@ -133,9 +134,9 @@ onMounted(loadData);
 			:read-only="true"
 			:event-bus="eventBus"
 		>
-			<template #nodeToolbar="{ data, outputs }">
+			<template #nodeToolbar="{ data, outputs, inputs }">
 				<div :class="$style.pinButtonContainer">
-					<N8nTooltip v-if="isPinButtonVisible(outputs)" placement="left">
+					<N8nTooltip v-if="isPinButtonVisible(outputs, inputs)" placement="left">
 						<template #content>
 							{{ locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip') }}
 						</template>
@@ -180,6 +181,7 @@ onMounted(loadData);
 }
 .pinnedNode {
 	--canvas-node--border-color: hsla(247, 49%, 55%, 1);
+	--canvas-node--background: hsla(247, 49%, 55%, 0.3);
 
 	:global(.n8n-node-icon) > div {
 		filter: contrast(40%) brightness(1.5) grayscale(100%);

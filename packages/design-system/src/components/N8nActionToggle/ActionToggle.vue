@@ -5,6 +5,7 @@ import type { UserAction } from 'n8n-design-system/types';
 import type { IconOrientation, IconSize } from 'n8n-design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
+import { ref } from 'vue';
 
 const SIZE = ['mini', 'small', 'medium'] as const;
 const THEME = ['default', 'dark'] as const;
@@ -27,17 +28,30 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	iconOrientation: 'vertical',
 });
 
+const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 const emit = defineEmits<{
 	action: [value: string];
 	'visible-change': [value: boolean];
 }>();
 const onCommand = (value: string) => emit('action', value);
 const onVisibleChange = (value: boolean) => emit('visible-change', value);
+const openActionToggle = (isOpen: boolean) => {
+	if (isOpen) {
+		actionToggleRef.value?.handleOpen();
+	} else {
+		actionToggleRef.value?.handleClose();
+	}
+};
+
+defineExpose({
+	openActionToggle,
+});
 </script>
 
 <template>
 	<span :class="$style.container" data-test-id="action-toggle" @click.stop.prevent>
 		<ElDropdown
+			ref="actionToggleRef"
 			:placement="placement"
 			:size="size"
 			trigger="click"

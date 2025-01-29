@@ -88,10 +88,10 @@ onMounted(async () => {
 	}
 
 	document.addEventListener('visibilitychange', async () => {
-		// Refresh the tags when tab is activated
+		// Refresh the tags & example pinned data when tab is activated
 		if (document.visibilityState === 'visible') {
-			// Tab is now active
 			await tagsStore.fetchAll({ force: true, withUsageCount: true });
+			await getExamplePinnedDataForTags();
 		}
 	});
 });
@@ -257,6 +257,7 @@ watch(
 			:handle-keydown="handleKeydown"
 			:on-save-test="onSaveTest"
 			:run-test="runTest"
+			:has-runs="hasRuns"
 			:show-config="showConfig"
 			:toggle-config="toggleConfig"
 			:run-test-enabled="isRunTestEnabled"
@@ -295,6 +296,7 @@ watch(
 				:get-field-issues="getFieldIssues"
 				:start-editing="startEditing"
 				:save-changes="saveChanges"
+				:has-runs="hasRuns"
 				@rename-tag="renameTag"
 				:example-pinned-data="examplePinnedData"
 				:sample-workflow-name="workflowName"
