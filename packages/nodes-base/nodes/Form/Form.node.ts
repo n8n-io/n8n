@@ -179,6 +179,43 @@ const completionProperties = updateDisplayOptions(
 				},
 			},
 		},
+		{
+			displayName: 'Response Data Source',
+			name: 'responseDataSource',
+			type: 'options',
+			displayOptions: {
+				show: {
+					respondWith: ['respondBinary'],
+				},
+			},
+			options: [
+				{
+					name: 'Choose Automatically From Input',
+					value: 'automatically',
+					description: 'Use if input data will contain a single piece of binary data',
+				},
+				{
+					name: 'Specify Myself',
+					value: 'set',
+					description: 'Enter the name of the input field the binary data will be in',
+				},
+			],
+			default: 'automatically',
+		},
+		{
+			displayName: 'Input Field Name',
+			name: 'inputFieldName',
+			type: 'string',
+			required: true,
+			default: 'data',
+			displayOptions: {
+				show: {
+					respondWith: ['respondBinary'],
+					responseDataSource: ['set'],
+				},
+			},
+			description: 'The name of the node input field with the binary data',
+		},
 	],
 );
 
