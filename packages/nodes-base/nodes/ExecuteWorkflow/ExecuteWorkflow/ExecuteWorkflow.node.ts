@@ -8,14 +8,12 @@ import type {
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
+import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
-import {
-	getCurrentWorkflowInputData,
-	loadWorkflowInputMappings,
-} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Execute Workflow',
+		displayName: 'Execute Sub-workflow',
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
@@ -38,7 +36,7 @@ export class ExecuteWorkflow implements INodeType {
 				default: 'call_workflow',
 				options: [
 					{
-						name: 'Call Another Workflow',
+						name: 'Execute a Sub-Workflow',
 						value: 'call_workflow',
 					},
 				],
@@ -210,7 +208,7 @@ export class ExecuteWorkflow implements INodeType {
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
-						localResourceMapperMethod: 'loadWorkflowInputMappings',
+						localResourceMapperMethod: 'loadSubWorkflowInputs',
 						valuesLabel: 'Workflow Inputs',
 						mode: 'map',
 						fieldWords: {
@@ -275,9 +273,7 @@ export class ExecuteWorkflow implements INodeType {
 	};
 
 	methods = {
-		localResourceMapping: {
-			loadWorkflowInputMappings,
-		},
+		localResourceMapping,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

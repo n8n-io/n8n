@@ -904,6 +904,6 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
-
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
+
+export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes

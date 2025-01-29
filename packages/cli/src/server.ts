@@ -322,8 +322,27 @@ export class Server extends AbstractServer {
 				res.sendStatus(404);
 			};
 
+			const serveSchemas: express.RequestHandler = async (req, res) => {
+				const { node, version, resource, operation } = req.params;
+				const filePath = this.loadNodesAndCredentials.resolveSchema({
+					node,
+					resource,
+					operation,
+					version,
+				});
+
+				if (filePath) {
+					try {
+						await fsAccess(filePath);
+						return res.sendFile(filePath, cacheOptions);
+					} catch {}
+				}
+				res.sendStatus(404);
+			};
+
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/schemas/:node/:version/:resource?/:operation?.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
