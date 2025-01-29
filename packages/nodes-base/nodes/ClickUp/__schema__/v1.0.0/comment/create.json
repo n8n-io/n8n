@@ -1,0 +1,160 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "hist_id": {
+            "type": "string"
+        },
+        "date": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "object",
+            "properties": {
+                "object_type": {
+                    "type": "string"
+                },
+                "object_id": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "operation": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "context": {
+                            "type": "object",
+                            "properties": {
+                                "audit_context": {
+                                    "type": "object",
+                                    "properties": {
+                                        "userid": {
+                                            "type": "integer"
+                                        },
+                                        "current_time": {
+                                            "type": "integer"
+                                        },
+                                        "route": {
+                                            "type": "string"
+                                        },
+                                        "ip": {
+                                            "type": "string"
+                                        },
+                                        "user_agent": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "userid",
+                                        "current_time",
+                                        "route"
+                                    ]
+                                },
+                                "originating_service": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "audit_context",
+                                "originating_service"
+                            ]
+                        },
+                        "relationships": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "object_type": {
+                                        "type": "string"
+                                    },
+                                    "workspace_id": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "object_type",
+                                    "object_id",
+                                    "workspace_id"
+                                ]
+                            }
+                        },
+                        "changes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "field": {
+                                        "type": "string"
+                                    },
+                                    "after": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "field",
+                                    "after"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "context",
+                        "relationships",
+                        "changes"
+                    ]
+                },
+                "master_id": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "traceparent": {
+                    "type": "string"
+                },
+                "date_created": {
+                    "type": "integer"
+                },
+                "date_updated": {
+                    "type": "integer"
+                },
+                "event_publish_time": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "object_type",
+                "object_id",
+                "workspace_id",
+                "operation",
+                "data",
+                "master_id",
+                "version",
+                "deleted",
+                "traceparent",
+                "date_created",
+                "date_updated",
+                "event_publish_time"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "hist_id",
+        "date",
+        "version"
+    ]
+}
