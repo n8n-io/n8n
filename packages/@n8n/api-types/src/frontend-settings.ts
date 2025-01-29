@@ -87,6 +87,7 @@ export interface FrontendSettings {
 		};
 	};
 	publicApi: {
+		apiKeysPerUserLimit: number;
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
