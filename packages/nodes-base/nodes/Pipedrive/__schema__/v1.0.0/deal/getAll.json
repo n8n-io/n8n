@@ -1,0 +1,299 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "creator_user_id": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "email",
+                "has_pic",
+                "pic_hash",
+                "active_flag",
+                "value"
+            ]
+        },
+        "user_id": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "email",
+                "has_pic",
+                "pic_hash",
+                "active_flag",
+                "value"
+            ]
+        },
+        "person_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "primary"
+                        ]
+                    }
+                },
+                "phone": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            },
+                            "primary": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "primary"
+                        ]
+                    }
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "active_flag",
+                "name",
+                "email",
+                "phone",
+                "owner_id",
+                "value"
+            ]
+        },
+        "org_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "people_count": {
+                    "type": "integer"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "label_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "cc_email": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "people_count",
+                "owner_id",
+                "address",
+                "label_ids",
+                "active_flag",
+                "cc_email",
+                "owner_name",
+                "value"
+            ]
+        },
+        "stage_id": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "pipeline_id": {
+            "type": "integer"
+        },
+        "products_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "participants_count": {
+            "type": "integer"
+        },
+        "stage_order_nr": {
+            "type": "integer"
+        },
+        "next_activity_duration": {
+            "type": "null"
+        },
+        "formatted_value": {
+            "type": "string"
+        },
+        "formatted_weighted_value": {
+            "type": "string"
+        },
+        "weighted_value_currency": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "org_hidden": {
+            "type": "boolean"
+        },
+        "person_hidden": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "stage_id",
+        "active",
+        "deleted",
+        "status",
+        "next_activity_time",
+        "next_activity_id",
+        "last_activity_id",
+        "pipeline_id",
+        "first_won_time",
+        "products_count",
+        "files_count",
+        "notes_count",
+        "followers_count",
+        "participants_count",
+        "local_won_date",
+        "local_lost_date",
+        "local_close_date",
+        "stage_order_nr",
+        "person_name",
+        "org_name",
+        "next_activity_subject",
+        "next_activity_type",
+        "next_activity_duration",
+        "next_activity_note",
+        "formatted_value",
+        "formatted_weighted_value",
+        "rotten_time",
+        "owner_name",
+        "cc_email",
+        "org_hidden",
+        "person_hidden"
+    ]
+}
