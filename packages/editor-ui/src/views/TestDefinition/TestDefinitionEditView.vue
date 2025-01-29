@@ -14,6 +14,8 @@ import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/root.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IPinData } from 'n8n-workflow';
@@ -30,6 +32,7 @@ const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
 
@@ -97,6 +100,18 @@ async function onSaveTest() {
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				params: { testId: savedTest.id },
 			});
+
+			telemetry.track(
+				'User created test',
+				{
+					test_id: savedTest.id,
+					workflow_id: currentWorkflowId.value,
+					session_id: useRootStore().pushRef,
+				},
+				{
+					withPostHog: true,
+				},
+			);
 		}
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));
