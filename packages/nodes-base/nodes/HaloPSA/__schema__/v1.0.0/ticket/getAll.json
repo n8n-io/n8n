@@ -1,0 +1,295 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "dateoccurred": {
+            "type": "string"
+        },
+        "summary": {
+            "type": "string"
+        },
+        "details": {
+            "type": "string"
+        },
+        "status_id": {
+            "type": "integer"
+        },
+        "tickettype_id": {
+            "type": "integer"
+        },
+        "sla_id": {
+            "type": "integer"
+        },
+        "priority_id": {
+            "type": "integer"
+        },
+        "client_id": {
+            "type": "integer"
+        },
+        "client_name": {
+            "type": "string"
+        },
+        "site_id": {
+            "type": "integer"
+        },
+        "site_name": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "integer"
+        },
+        "user_name": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
+        "agent_id": {
+            "type": "integer"
+        },
+        "category_1": {
+            "type": "string"
+        },
+        "category_2": {
+            "type": "string"
+        },
+        "category_3": {
+            "type": "string"
+        },
+        "category_4": {
+            "type": "string"
+        },
+        "estimatedays": {
+            "type": "integer"
+        },
+        "child_count": {
+            "type": "integer"
+        },
+        "attachment_count": {
+            "type": "integer"
+        },
+        "flagged": {
+            "type": "boolean"
+        },
+        "read": {
+            "type": "boolean"
+        },
+        "enduserstatus": {
+            "type": "integer"
+        },
+        "onhold": {
+            "type": "boolean"
+        },
+        "respondbydate": {
+            "type": "string"
+        },
+        "responsedate": {
+            "type": "string"
+        },
+        "slaresponsestate": {
+            "type": "string"
+        },
+        "fixbydate": {
+            "type": "string"
+        },
+        "dateassigned": {
+            "type": "string"
+        },
+        "excludefromsla": {
+            "type": "boolean"
+        },
+        "site_timezone": {
+            "type": "string"
+        },
+        "lastactiondate": {
+            "type": "string"
+        },
+        "last_update": {
+            "type": "string"
+        },
+        "organisation_id": {
+            "type": "integer"
+        },
+        "department_id": {
+            "type": "integer"
+        },
+        "reportedby": {
+            "type": "string"
+        },
+        "user_email": {
+            "type": "string"
+        },
+        "emailtolist": {
+            "type": "string"
+        },
+        "matched_kb_id": {
+            "type": "integer"
+        },
+        "product_id": {
+            "type": "integer"
+        },
+        "release_id": {
+            "type": "integer"
+        },
+        "release2_id": {
+            "type": "integer"
+        },
+        "release3_id": {
+            "type": "integer"
+        },
+        "lastincomingemail": {
+            "type": "string"
+        },
+        "workflow_id": {
+            "type": "integer"
+        },
+        "workflow_step": {
+            "type": "integer"
+        },
+        "workflow_seq": {
+            "type": "integer"
+        },
+        "pipeline_stage_id": {
+            "type": "integer"
+        },
+        "is_vip": {
+            "type": "boolean"
+        },
+        "isimportantcontact": {
+            "type": "boolean"
+        },
+        "inactive": {
+            "type": "boolean"
+        },
+        "impact": {
+            "type": "integer"
+        },
+        "urgency": {
+            "type": "integer"
+        },
+        "starttime": {
+            "type": "string"
+        },
+        "starttimeslot": {
+            "type": "integer"
+        },
+        "targetdate": {
+            "type": "string"
+        },
+        "targettime": {
+            "type": "string"
+        },
+        "targettimeslot": {
+            "type": "integer"
+        },
+        "deadlinedate": {
+            "type": "string"
+        },
+        "oppcompanyname": {
+            "type": "string"
+        },
+        "oppvalueadjusted": {
+            "type": "integer"
+        },
+        "cost": {
+            "type": "integer"
+        },
+        "quantity": {
+            "type": "integer"
+        },
+        "userdef1": {
+            "type": "string"
+        },
+        "userdef2": {
+            "type": "string"
+        },
+        "userdef3": {
+            "type": "string"
+        },
+        "userdef4": {
+            "type": "string"
+        },
+        "userdef5": {
+            "type": "string"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "release_important": {
+            "type": "boolean"
+        },
+        "releasenotegroup_id": {
+            "type": "integer"
+        },
+        "supplier_status": {
+            "type": "integer"
+        },
+        "appointment_type": {
+            "type": "integer"
+        },
+        "section_timezone": {
+            "type": "string"
+        },
+        "projectinternaltask": {
+            "type": "boolean"
+        },
+        "impactlevel": {
+            "type": "integer"
+        },
+        "guid": {
+            "type": "string"
+        },
+        "reviewed": {
+            "type": "boolean"
+        },
+        "merged_into_id": {
+            "type": "integer"
+        },
+        "table": {
+            "type": "integer"
+        },
+        "use": {
+            "type": "string"
+        },
+        "maximumRestrictedPriority": {
+            "type": "integer"
+        },
+        "idsummary": {
+            "type": "string"
+        },
+        "ticketage": {
+            "type": "number"
+        },
+        "useful_count": {
+            "type": "integer"
+        },
+        "notuseful_count": {
+            "type": "integer"
+        },
+        "updateservicestatus": {
+            "type": "boolean"
+        },
+        "servicestatusnote": {
+            "type": "string"
+        },
+        "itil_requesttype_id": {
+            "type": "integer"
+        },
+        "ticket_tags": {
+            "type": "string"
+        },
+        "invoiceseperatelyoverride": {
+            "type": "boolean"
+        },
+        "purchaseordernumber": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "agent_id",
+        "targetdate"
+    ]
+}
