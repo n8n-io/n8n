@@ -21,7 +21,7 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
  * as a child process and executes tasks on it via the broker.
  */
-describe('JS TaskRunner execution', () => {
+describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
 	runnerConfig.enabled = true;
