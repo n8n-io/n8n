@@ -474,7 +474,7 @@ describe('NodeExecuteFunctions', () => {
 				body: 'Not Found',
 				headers: {},
 				statusCode: 404,
-				statusMessage: null,
+				statusMessage: 'Not Found',
 			});
 			expect(hooks.executeHookFunctions).toHaveBeenCalledWith('nodeFetchedData', [
 				workflow.id,

@@ -264,14 +264,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// 0 is the old flow
 			// 1 is the new flow
 			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
+			// partial executions must have a destination node
+			const isPartialExecution = options.destinationNode !== undefined;
 			const startRunData: IStartRunData = {
 				workflowData,
-				// With the new partial execution version the backend decides what run
-				// data to use and what to ignore.
-				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
+				runData: !isPartialExecution
+					? // if it's a full execution we don't want to send any run data
+						undefined
+					: partialExecutionVersion.value === 1
+						? // With the new partial execution version the backend decides
+							//what run data to use and what to ignore.
+							(runData ?? undefined)
+						: // for v0 we send the run data the FE constructed
+							newRunData,
 				startNodes,
 				triggerToStartFrom,
 			};
+
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 			}

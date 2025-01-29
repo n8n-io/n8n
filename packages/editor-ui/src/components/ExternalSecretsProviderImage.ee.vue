@@ -5,27 +5,20 @@ import { computed } from 'vue';
 import infisical from '../assets/images/infisical.webp';
 import doppler from '../assets/images/doppler.webp';
 import vault from '../assets/images/hashicorp.webp';
-import awsSecretsManager from '../assets/images/aws-secrets-manager.svg';
-import azureKeyVault from '../assets/images/azure-key-vault.svg';
-import gcpSecretsManager from '../assets/images/gcp-secrets-manager.svg';
+import AwsSecretsManager from '../assets/images/aws-secrets-manager.svg';
+import AzureKeyVault from '../assets/images/azure-key-vault.svg';
+import GcpSecretsManager from '../assets/images/gcp-secrets-manager.svg';
 
-const props = defineProps<{
+const { provider } = defineProps<{
 	provider: ExternalSecretsProvider;
 }>();
 
-const image = computed(
-	() =>
-		({
-			doppler,
-			infisical,
-			vault,
-			awsSecretsManager,
-			azureKeyVault,
-			gcpSecretsManager,
-		})[props.provider.name],
-);
+const image = computed(() => ({ doppler, infisical, vault })[provider.name]);
 </script>
 
 <template>
-	<img :src="image" :alt="provider.displayName" width="28" height="28" />
+	<AwsSecretsManager v-if="provider.name === 'awsSecretsManager'" />
+	<AzureKeyVault v-else-if="provider.name === 'azureKeyVault'" />
+	<GcpSecretsManager v-else-if="provider.name === 'gcpSecretsManager'" />
+	<img v-else :src="image" :alt="provider.displayName" width="28" height="28" />
 </template>

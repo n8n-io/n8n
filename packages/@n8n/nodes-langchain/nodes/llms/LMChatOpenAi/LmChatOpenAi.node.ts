@@ -258,7 +258,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 						type: 'number',
