@@ -1,0 +1,171 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@microsoft.graph.downloadUrl": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveType": {
+                    "type": "string"
+                },
+                "driveId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "siteId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "driveType",
+                "driveId"
+            ]
+        },
+        "webUrl": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "file": {
+            "type": "object",
+            "properties": {
+                "hashes": {
+                    "type": "object",
+                    "properties": {
+                        "quickXorHash": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "quickXorHash"
+                    ]
+                },
+                "mimeType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "hashes",
+                "mimeType"
+            ]
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "createdDateTime",
+                "lastModifiedDateTime"
+            ]
+        },
+        "size": {
+            "type": "integer"
+        },
+        "shared": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "scope"
+            ]
+        }
+    },
+    "required": [
+        "createdDateTime",
+        "id",
+        "lastModifiedDateTime",
+        "name",
+        "parentReference",
+        "webUrl",
+        "fileSystemInfo",
+        "size"
+    ]
+}
