@@ -209,12 +209,17 @@ describe('JS TaskRunner execution on internal mode', () => {
 			// Act
 			const result = await runTaskWithCode(`
 				const crypto = require("crypto");
-				return [{ randomUUID: crypto.randomUUID() }]
+				return [{
+					digest: crypto
+						.createHmac("sha256", Buffer.from("MySecretKey"))
+						.update("MESSAGE")
+						.digest("base64")
+				}]
 			`);
 
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { randomUUID: expect.any(String) } }],
+				result: [{ json: { digest: 'T09DMv7upNDKMD3Ht36FkwzrmWSgWpPiUNlcIX9/yaI=' } }],
 			});
 		});
 
