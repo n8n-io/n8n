@@ -70,6 +70,7 @@ jobs:
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
+          fail-on-cache-miss: true
 
       - name: Test Backend
         run: pnpm test:backend
