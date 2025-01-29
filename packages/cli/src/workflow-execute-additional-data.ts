@@ -182,9 +182,6 @@ async function startExecution(
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
 ): Promise<ExecuteWorkflowData> {
-	const externalHooks = Container.get(ExternalHooks);
-	await externalHooks.init();
-
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -306,6 +303,7 @@ async function startExecution(
 		);
 	}
 
+	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
