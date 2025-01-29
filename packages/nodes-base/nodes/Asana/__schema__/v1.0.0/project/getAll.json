@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "gid": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "gid",
+        "name",
+        "resource_type"
+    ]
+}
