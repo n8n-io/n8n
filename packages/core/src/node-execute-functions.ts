@@ -1201,12 +1201,7 @@ export async function prepareBinaryData(
 		data: '',
 	};
 
-	if (filePath) {
-		if (filePath.includes('?')) {
-			// Remove maybe present query parameters
-			filePath = filePath.split('?').shift();
-		}
-
+ 	if (filePath) {
 		const filePathParts = path.parse(filePath as string);
 
 		if (filePathParts.dir !== '') {
