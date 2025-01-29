@@ -1,0 +1,123 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dateTime",
+                "timeZone"
+            ]
+        },
+        "end": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dateTime",
+                "timeZone"
+            ]
+        },
+        "attendees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "response",
+                            "time"
+                        ]
+                    },
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "address": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "address"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "status",
+                    "emailAddress"
+                ]
+            }
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "address": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "address"
+                    ]
+                }
+            },
+            "required": [
+                "emailAddress"
+            ]
+        }
+    },
+    "required": [
+        "@odata.etag",
+        "id"
+    ]
+}
