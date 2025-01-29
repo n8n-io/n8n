@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "null"
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "twitter_id": {
+            "type": "null"
+        },
+        "facebook_id": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "unique_external_id": {
+            "type": "null"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "visitor_id": {
+            "type": "string"
+        },
+        "org_contact_id": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "active",
+        "address",
+        "description",
+        "email",
+        "id",
+        "job_title",
+        "language",
+        "mobile",
+        "name",
+        "phone",
+        "time_zone",
+        "twitter_id",
+        "custom_fields",
+        "facebook_id",
+        "created_at",
+        "updated_at",
+        "csat_rating",
+        "preferred_source",
+        "company_id",
+        "unique_external_id"
+    ]
+}
