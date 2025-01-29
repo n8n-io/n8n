@@ -1,0 +1,89 @@
+{
+    "type": "object",
+    "properties": {
+        "ContactID": {
+            "type": "string"
+        },
+        "ContactStatus": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "EmailAddress": {
+            "type": "string"
+        },
+        "Addresses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "AddressType": {
+                        "type": "string"
+                    },
+                    "City": {
+                        "type": "string"
+                    },
+                    "PostalCode": {
+                        "type": "string"
+                    },
+                    "AddressLine1": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "AddressType"
+                ]
+            }
+        },
+        "Phones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "PhoneType": {
+                        "type": "string"
+                    },
+                    "PhoneNumber": {
+                        "type": "string"
+                    },
+                    "PhoneAreaCode": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "PhoneType"
+                ]
+            }
+        },
+        "UpdatedDateUTC": {
+            "type": "string"
+        },
+        "IsSupplier": {
+            "type": "boolean"
+        },
+        "IsCustomer": {
+            "type": "boolean"
+        },
+        "HasAttachments": {
+            "type": "boolean"
+        },
+        "HasValidationErrors": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "ContactID",
+        "ContactStatus",
+        "Name",
+        "Addresses",
+        "Phones",
+        "UpdatedDateUTC",
+        "ContactGroups",
+        "IsSupplier",
+        "IsCustomer",
+        "ContactPersons",
+        "HasAttachments",
+        "HasValidationErrors"
+    ]
+}
