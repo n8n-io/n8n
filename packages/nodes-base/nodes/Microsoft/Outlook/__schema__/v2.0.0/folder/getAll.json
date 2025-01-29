@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "childFolderCount": {
+            "type": "integer"
+        },
+        "unreadItemCount": {
+            "type": "integer"
+        },
+        "totalItemCount": {
+            "type": "integer"
+        },
+        "sizeInBytes": {
+            "type": "integer"
+        },
+        "isHidden": {
+            "type": "boolean"
+        }
+    }
+}
