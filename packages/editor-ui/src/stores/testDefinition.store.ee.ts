@@ -167,11 +167,21 @@ export const useTestDefinitionStore = defineStore(
 			return testDefinition;
 		};
 
+		const fetchTestDefinitionsByWorkflowId = async (workflowId: string) => {
+			const testDefinitions = await testDefinitionsApi.getTestDefinitions(
+				rootStore.restApiContext,
+				{ workflowId },
+			);
+			setAllTestDefinitions(testDefinitions.testDefinitions);
+			return testDefinitions.testDefinitions;
+		};
+
 		/**
 		 * Fetches all test definitions from the API.
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
 		 */
 		const fetchAll = async (params?: { force?: boolean; workflowId?: string }) => {
+			console.log('🚀 ~ fetchAll ~ workflowId:');
 			const { force = false, workflowId } = params ?? {};
 			if (!force && fetchedAll.value && !workflowId) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
@@ -183,16 +193,15 @@ export const useTestDefinitionStore = defineStore(
 
 			loading.value = true;
 			try {
-				const retrievedDefinitions = await testDefinitionsApi.getTestDefinitions(
-					rootStore.restApiContext,
-					{ workflowId },
-				);
+				if (!workflowId) {
+					return;
+				}
 
-				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
+				const retrievedDefinitions = await fetchTestDefinitionsByWorkflowId(workflowId);
 				fetchedAll.value = true;
 
 				await Promise.all([
-					tagsStore.fetchAll({ withUsageCount: true }),
+					tagsStore.fetchAll({ force: true, withUsageCount: true }),
 					fetchRunsForAllTests(),
 					fetchMetricsForAllTests(),
 				]);
@@ -435,6 +444,7 @@ export const useTestDefinitionStore = defineStore(
 
 			// Methods
 			fetchTestDefinition,
+			fetchTestDefinitionsByWorkflowId,
 			fetchAll,
 			create,
 			update,

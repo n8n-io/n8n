@@ -67,26 +67,6 @@ const onRetryExecution = (payload: { execution: ExecutionSummary; command: strin
 	});
 };
 
-watch(
-	() => props.execution,
-	(value: ExecutionSummary | undefined) => {
-		if (!value) {
-			return;
-		}
-		const currentQuery = deepCopy(router.currentRoute.value.query);
-		router
-			.push({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: props.workflow.id, executionId: value.id },
-				query: currentQuery,
-			})
-			.catch(() => {});
-	},
-	// We only run this watcher once, to update the route when props.execution changes from undefined to a value
-	// other navigation is handled by RouterLink in the WorkflowExecutionCard
-	{ once: true },
-);
-
 onBeforeRouteLeave(async (to, _, next) => {
 	if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 		next();

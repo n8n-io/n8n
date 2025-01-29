@@ -47,9 +47,7 @@ const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 const appliedTheme = computed(() => uiStore.appliedTheme);
-const tagUsageCount = computed(
-	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
-);
+
 const hasRuns = computed(() => runs.value.length > 0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
@@ -70,11 +68,33 @@ onMounted(async () => {
 		return; // Add early return to prevent loading if feature is disabled
 	}
 	if (testId.value) {
-		await loadTestData(testId.value);
+		await loadTestData(testId.value, currentWorkflowId.value);
 	} else {
 		await onSaveTest();
+		// 1. Create a tag from the test name
+		const tag = generateTagFromName(state.value.name.value);
+		const testTag = await createTag(tag);
+		state.value.tags.value = [testTag.id];
 	}
+
+	document.addEventListener('visibilitychange', async () => {
+		// Refresh the tags when tab is activated
+		if (document.visibilityState === 'visible') {
+			// Tab is now active
+			await tagsStore.fetchAll({ force: true, withUsageCount: true });
+		}
+	});
 });
+
+function generateTagFromName(name: string): string {
+	let tag = name.toLowerCase().replace(/\s+/g, '_');
+	if (tag.length > 18) {
+		const start = tag.slice(0, 10);
+		const end = tag.slice(-8);
+		tag = `${start}..${end}`;
+	}
+	return tag;
+}
 
 async function onSaveTest() {
 	try {
@@ -105,7 +125,7 @@ async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
 	}
 }
 
-async function handleCreateTag(tagName: string) {
+async function createTag(tagName: string) {
 	try {
 		const newTag = await tagsStore.create(tagName);
 		return newTag;
@@ -122,6 +142,16 @@ async function openPinningModal() {
 async function runTest() {
 	await testDefinitionStore.startTestRun(testId.value);
 	await testDefinitionStore.fetchTestRuns(testId.value);
+}
+
+async function openExecutionsViewForTag() {
+	const executionsRoute = router.resolve({
+		name: VIEWS.WORKFLOW_EXECUTIONS,
+		params: { name: currentWorkflowId.value },
+		query: { tag: state.value.tags.value[0], testId: testId.value },
+	});
+
+	window.open(executionsRoute.href, '_blank');
 }
 
 const runs = computed(() =>
@@ -145,10 +175,25 @@ function toggleConfig() {
 	showConfig.value = !showConfig.value;
 }
 
+async function renameTag(newName: string) {
+	await tagsStore.rename({ id: state.value.tags.value[0], name: newName });
+}
+
 // Debounced watchers for auto-saving
 watch(
 	() => state.value.metrics,
 	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
+	{ deep: true },
+);
+
+watch(
+	() => state.value.name,
+	async (newName) => {
+		if (newName && !state.value.name.isEditing) {
+			const tag = generateTagFromName(newName.value);
+			await renameTag(tag);
+		}
+	},
 	{ deep: true },
 );
 
@@ -211,16 +256,16 @@ watch(
 				v-model:mockedNodes="state.mockedNodes"
 				:cancel-editing="cancelEditing"
 				:show-config="showConfig"
-				:tag-usage-count="tagUsageCount"
 				:all-tags="allTags"
 				:tags-by-id="tagsById"
 				:is-loading="isLoading"
 				:get-field-issues="getFieldIssues"
 				:start-editing="startEditing"
 				:save-changes="saveChanges"
-				:create-tag="handleCreateTag"
+				@rename-tag="renameTag"
 				@open-pinning-modal="openPinningModal"
 				@delete-metric="onDeleteMetric"
+				@open-executions-view-for-tag="openExecutionsViewForTag"
 			/>
 		</div>
 	</div>

@@ -4,7 +4,7 @@ import { ElCollapseTransition } from 'element-plus';
 import { ref, nextTick } from 'vue';
 
 interface EvaluationStep {
-	title: string;
+	title?: string;
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	description: '',
 	warning: false,
 	small: false,
-	expanded: true,
+	expanded: false,
 	issues: () => [],
 	showIssues: true,
 	tooltip: 'Some tooltip',
@@ -63,7 +63,10 @@ const handleMouseLeave = () => {
 				<div :class="[$style.icon, warning && $style.warning]">
 					<slot name="icon" />
 				</div>
-				<h3 :class="$style.title">{{ title }}</h3>
+				<h3 :class="$style.title">
+					<slot v-if="$slots.title" name="title" />
+					<span v-else>{{ title }}</span>
+				</h3>
 				<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
 					<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
 						{{ issues.map((issue) => issue.message).join(', ') }}
@@ -73,7 +76,6 @@ const handleMouseLeave = () => {
 					v-if="$slots.cardContent"
 					:class="$style.collapseButton"
 					:aria-expanded="isExpanded"
-					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
 					data-test-id="evaluation-step-collapse-button"
 					@click="toggleExpand"
 				>

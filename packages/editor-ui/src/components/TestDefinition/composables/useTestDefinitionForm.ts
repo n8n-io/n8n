@@ -56,9 +56,9 @@ export function useTestDefinitionForm() {
 	/**
 	 * Load test data including metrics.
 	 */
-	const loadTestData = async (testId: string) => {
+	const loadTestData = async (testId: string, workflowId: string) => {
 		try {
-			await evaluationsStore.fetchAll({ force: true });
+			await evaluationsStore.fetchAll({ force: true, workflowId });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ButtonType } from 'n8n-design-system';
 import { N8nIconButton, N8nActionToggle } from 'n8n-design-system';
 
 type Action = {
@@ -9,6 +10,7 @@ type Action = {
 defineProps<{
 	actions: Action[];
 	disabled?: boolean;
+	type?: ButtonType;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +28,12 @@ const emit = defineEmits<{
 			:teleported="false"
 			@action="emit('action', $event)"
 		>
-			<N8nIconButton :disabled="disabled" :class="[$style.buttonGroupDropdown]" icon="angle-down" />
+			<N8nIconButton
+				:disabled="disabled"
+				:class="[$style.buttonGroupDropdown]"
+				icon="angle-down"
+				:type="type ?? 'primary'"
+			/>
 		</N8nActionToggle>
 	</div>
 </template>

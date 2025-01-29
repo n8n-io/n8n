@@ -1,28 +1,32 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
-import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue';
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
 import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useMessage } from '@/composables/useMessage';
 
-defineProps<{
+const props = defineProps<{
 	showConfig: boolean;
-	tagUsageCount: number;
-	allTags: ITag[];
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
 	cancelEditing: (field: keyof EditableFormState) => void;
-	createTag?: (name: string) => Promise<ITag>;
+}>();
+const emit = defineEmits<{
+	openPinningModal: [];
+	deleteMetric: [metric: Partial<TestMetricRecord>];
+	openExecutionsViewForTag: [];
+	renameTag: [tag: string];
 }>();
 
+const locale = useI18n();
 const changedFieldsKeys = ref<string[]>([]);
 const activeTooltip = ref<string | null>(null);
 const tooltipPosition = ref<{
@@ -33,6 +37,31 @@ const tooltipPosition = ref<{
 	right: number;
 } | null>(null);
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
+
+const renameTag = async () => {
+	const { prompt } = useMessage();
+
+	const result = await prompt('Enter new tag name', {
+		inputValue: props.tagsById[tags.value.value[0]]?.name,
+		inputPlaceholder: 'Enter new tag name',
+		inputValidator: (value) => {
+			if (!value) {
+				return 'Tag name is required';
+			}
+
+			if (value.length > 21) {
+				return 'Tag name is too long';
+			}
+
+			return true;
+		},
+	});
+
+	if (result?.action === 'confirm') {
+		emit('renameTag', result.value);
+	}
+};
+
 const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']>(
 	'evaluationWorkflow',
 	{ required: true },
@@ -43,12 +72,14 @@ const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes
 });
 
 const nodePinningModal = ref<ModalState | null>(null);
-const emit = defineEmits<{
-	openPinningModal: [];
-	deleteMetric: [metric: Partial<TestMetricRecord>];
-}>();
 
-const locale = useI18n();
+const selectedTag = computed(() => {
+	return props.tagsById[tags.value.value[0]] ?? {};
+});
+
+function openExecutionsView() {
+	emit('openExecutionsViewForTag');
+}
 
 function updateChangedFieldsKeys(key: string) {
 	changedFieldsKeys.value.push(key);
@@ -87,11 +118,6 @@ function hideTooltip() {
 		<!-- Select Executions -->
 		<EvaluationStep
 			:class="$style.step"
-			:title="
-				locale.baseText('testDefinition.edit.step.executions', {
-					adjustToNumber: tagUsageCount,
-				})
-			"
 			:issues="getFieldIssues('tags')"
 			:show-issues="showFieldIssues('tags')"
 			@mouseenter="
@@ -99,20 +125,23 @@ function hideTooltip() {
 			"
 			@mouseleave="hideTooltip"
 		>
+			<template #title>
+				Fetch the {{ selectedTag?.usageCount }} past executions tagged
+				<N8nTag :class="$style.tagInputTag" :text="selectedTag.name" :clickable="false" />
+			</template>
 			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 			<template #cardContent>
-				<TagsInput
-					v-model="tags"
-					:class="{ 'has-issues': getFieldIssues('tags') }"
-					:all-tags="allTags"
-					:tags-by-id="tagsById"
-					:is-loading="isLoading"
-					:start-editing="startEditing"
-					:save-changes="saveChanges"
-					:cancel-editing="cancelEditing"
-					:create-tag="createTag"
-					@update:model-value="updateChangedFieldsKeys('tags')"
-				/>
+				<div :class="$style.tagInputContainer">
+					<div :class="$style.tagInputControls">
+						<n8n-button label="Rename tag" type="tertiary" size="small" @click="renameTag" />
+						<n8n-button
+							label="Select executions"
+							type="tertiary"
+							size="small"
+							@click="openExecutionsView"
+						/>
+					</div>
+				</div>
 			</template>
 		</EvaluationStep>
 		<div :class="$style.evaluationArrows">
@@ -129,7 +158,6 @@ function hideTooltip() {
 				})
 			"
 			:small="true"
-			:expanded="true"
 			:issues="getFieldIssues('mockedNodes')"
 			:show-issues="showFieldIssues('mockedNodes')"
 			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
@@ -293,7 +321,7 @@ function hideTooltip() {
 }
 
 .evaluationArrows {
-	--arrow-height: 23rem;
+	--arrow-height: 11.5rem;
 	display: flex;
 	justify-content: space-between;
 	width: 100%;
@@ -301,5 +329,18 @@ function hideTooltip() {
 	margin: 0 auto;
 	margin-bottom: -100%;
 	z-index: 0;
+}
+.tagInputContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.tagInputTag {
+	width: fit-content;
+}
+.tagInputControls {
+	display: flex;
+	gap: var(--spacing-2xs);
 }
 </style>

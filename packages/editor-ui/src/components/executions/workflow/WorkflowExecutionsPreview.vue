@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -10,10 +10,13 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
+import type { ButtonType } from 'n8n-design-system';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -35,7 +38,8 @@ const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-
+const testDefinitionStore = useTestDefinitionStore();
+const executionsStore = useExecutionsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
@@ -69,6 +73,37 @@ const hasAnnotation = computed(
 		!!props.execution?.annotation &&
 		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
 );
+
+const testDefinitions = computed(
+	() => testDefinitionStore.allTestDefinitionsByWorkflowId[workflowId.value],
+);
+
+const testDefinition = computed(() =>
+	testDefinitions.value.find((test) => test.id === route.query.testId),
+);
+
+const addToTestActions = computed(() => {
+	return testDefinitions.value
+		.filter((test) => test.annotationTagId)
+		.map((test) => {
+			const isAlreadyAdded = isTagAlreadyAdded(test.annotationTagId ?? '');
+			return {
+				label: `Add to "${test.name}" ${isAlreadyAdded ? '✅' : ''} `,
+				value: test.annotationTagId,
+				disabled: !workflowPermissions.value.update || isAlreadyAdded,
+			};
+		});
+});
+
+const addTestButtonData = computed<{ label: string; type: ButtonType }>(() => ({
+	label: testDefinition.value ? `Add to "${testDefinition.value?.name}"` : 'Add to Test',
+	type: route.query.testId ? 'primary' : 'secondary',
+	disabled: !workflowPermissions.value.update || isTagAlreadyAdded(route.query.tag as string),
+}));
+
+function isTagAlreadyAdded(tagId?: string | null) {
+	return tagId && props.execution?.annotation?.tags.some((tag) => tag.id === tagId);
+}
 
 async function onDeleteExecution(): Promise<void> {
 	// Prepend the message with a note about annotations if they exist
@@ -108,6 +143,16 @@ function onRetryButtonBlur(event: FocusEvent) {
 		retryDropdownRef.value.handleClose();
 	}
 }
+
+async function handleAddToTestAction(tag: string) {
+	const currentTags = props.execution?.annotation?.tags ?? [];
+	const newTags = [...currentTags.map((t) => t.id), tag];
+	await executionsStore.annotateExecution(props.execution.id, { tags: newTags });
+}
+
+onMounted(async () => {
+	await testDefinitionStore.fetchTestDefinitionsByWorkflowId(workflowId.value);
+});
 </script>
 
 <template>
@@ -201,7 +246,19 @@ function onRetryButtonBlur(event: FocusEvent) {
 					</router-link>
 				</N8nText>
 			</div>
-			<div>
+			<div :class="$style.actions">
+				<ProjectCreateResource
+					v-if="testDefinitions && testDefinitions.length"
+					:actions="addToTestActions"
+					:type="addTestButtonData.type"
+					@action="handleAddToTestAction"
+				>
+					<N8nButton
+						data-test-id="add-to-test-button"
+						v-bind="addTestButtonData"
+						@click="handleAddToTestAction(route?.query?.tag as string)"
+					/>
+				</ProjectCreateResource>
 				<router-link
 					:to="{
 						name: VIEWS.EXECUTION_DEBUG,
@@ -341,12 +398,15 @@ function onRetryButtonBlur(event: FocusEvent) {
 }
 
 .debugLink {
-	margin-right: var(--spacing-xs);
-
 	a > span {
 		display: block;
 		padding: var(--button-padding-vertical, var(--spacing-xs))
 			var(--button-padding-horizontal, var(--spacing-m));
 	}
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing-xs);
 }
 </style>
