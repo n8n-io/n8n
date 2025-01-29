@@ -7,7 +7,6 @@ import TestDefinitionRunDetailView from '@/views/TestDefinition/TestDefinitionRu
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nextTick, ref } from 'vue';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -23,8 +22,7 @@ describe('TestDefinitionRunDetailView', () => {
 
 	let showErrorMock: Mock;
 	let getTestRunMock: Mock;
-	let fetchExecutionsMock: Mock;
-	let fetchExecutionMock: Mock;
+	let fetchTestCaseExecutionsMock: Mock;
 
 	const mockTestRun: TestRunRecord = {
 		id: 'run1',
@@ -52,12 +50,10 @@ describe('TestDefinitionRunDetailView', () => {
 		name: 'Evaluation Workflow',
 	};
 
-	const mockExecutions = {
-		results: [
-			{ id: 'exec1', status: 'success' },
-			{ id: 'exec2', status: 'error' },
-		],
-	};
+	const mockTestCaseExecutions = [
+		{ id: 'exec1', status: 'success' },
+		{ id: 'exec2', status: 'error' },
+	];
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -78,17 +74,7 @@ describe('TestDefinitionRunDetailView', () => {
 
 		showErrorMock = vi.fn();
 		getTestRunMock = vi.fn().mockResolvedValue(mockTestRun);
-		fetchExecutionsMock = vi.fn().mockResolvedValue(mockExecutions);
-		fetchExecutionMock = vi.fn().mockResolvedValue({
-			data: {
-				resultData: {
-					lastNodeExecuted: 'Node1',
-					runData: {
-						Node1: [{ data: { main: [[{ json: { accuracy: 0.95 } }]] } }],
-					},
-				},
-			},
-		});
+		fetchTestCaseExecutionsMock = vi.fn().mockResolvedValue(mockTestCaseExecutions);
 
 		vi.mocked(useToast).mockReturnValue({
 			showError: showErrorMock,
@@ -107,10 +93,6 @@ describe('TestDefinitionRunDetailView', () => {
 		testDefinitionStore.testRunsById = { run1: mockTestRun };
 		testDefinitionStore.testDefinitionsById = { test1: mockTestDefinition };
 		testDefinitionStore.getTestRun = getTestRunMock;
-
-		const executionsStore = mockedStore(useExecutionsStore);
-		executionsStore.fetchExecutions = fetchExecutionsMock;
-		executionsStore.fetchExecution = fetchExecutionMock;
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflowsById = { workflow1: mockWorkflow as IWorkflowDb };
@@ -151,7 +133,7 @@ describe('TestDefinitionRunDetailView', () => {
 		testDefinitionStore.getTestRun = vi.fn().mockRejectedValue(new Error('Failed to load'));
 
 		renderComponent({ pinia });
-		await nextTick();
+		await waitAllPromises();
 
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'Failed to load run details');
 	});
@@ -243,7 +225,6 @@ describe('TestDefinitionRunDetailView', () => {
 		setActivePinia(pinia);
 
 		const testDefinitionStore = mockedStore(useTestDefinitionStore);
-		const executionsStore = mockedStore(useExecutionsStore);
 
 		// Mock all required store methods
 		testDefinitionStore.testRunsById = { run1: mockTestRun };
@@ -251,17 +232,14 @@ describe('TestDefinitionRunDetailView', () => {
 		testDefinitionStore.getTestRun = getTestRunMock;
 		// Add this mock for fetchTestDefinition
 		testDefinitionStore.fetchTestDefinition = vi.fn().mockResolvedValue(mockTestDefinition);
-
-		executionsStore.fetchExecutions = fetchExecutionsMock;
-		executionsStore.fetchExecution = fetchExecutionMock;
+		testDefinitionStore.fetchTestCaseExecutions = fetchTestCaseExecutionsMock;
 
 		const { container } = renderComponent({ pinia });
-		await nextTick();
 
 		// Wait for all promises to resolve
 		await waitAllPromises();
 
 		const tableRows = container.querySelectorAll('.el-table__row');
-		expect(tableRows.length).toBe(mockExecutions.results.length);
+		expect(tableRows.length).toBe(mockTestCaseExecutions.length);
 	});
 });
