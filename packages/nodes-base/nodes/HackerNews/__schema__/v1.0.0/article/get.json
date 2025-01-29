@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "author": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_at_i": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "options": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "author",
+        "created_at",
+        "created_at_i",
+        "id",
+        "options",
+        "parent_id",
+        "points",
+        "story_id",
+        "text",
+        "title",
+        "type",
+        "url"
+    ]
+}
