@@ -9,6 +9,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
+import 'core-js/proposals/set-methods';
 
 const eventBus = createEventBus();
 
