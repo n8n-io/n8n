@@ -1,0 +1,106 @@
+{
+    "type": "object",
+    "properties": {
+        "account_sid": {
+            "type": "string"
+        },
+        "api_version": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "from": {
+            "type": "string"
+        },
+        "price": {
+            "type": "null"
+        },
+        "price_unit": {
+            "type": "string"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subresource_uris": {
+            "type": "object",
+            "properties": {
+                "notifications": {
+                    "type": "string"
+                },
+                "user_defined_messages": {
+                    "type": "string"
+                },
+                "transcriptions": {
+                    "type": "string"
+                },
+                "recordings": {
+                    "type": "string"
+                },
+                "streams": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "string"
+                },
+                "user_defined_message_subscriptions": {
+                    "type": "string"
+                },
+                "siprec": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                }
+            }
+        },
+        "to": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        },
+        "parent_call_sid": {
+            "type": "null"
+        },
+        "caller_name": {
+            "type": "null"
+        },
+        "duration": {
+            "type": "null"
+        },
+        "annotation": {
+            "type": "null"
+        },
+        "answered_by": {
+            "type": "null"
+        },
+        "queue_time": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "null"
+        },
+        "from_formatted": {
+            "type": "string"
+        },
+        "group_sid": {
+            "type": "null"
+        },
+        "trunk_sid": {
+            "type": "null"
+        },
+        "forwarded_from": {
+            "type": "null"
+        },
+        "end_time": {
+            "type": "null"
+        },
+        "to_formatted": {
+            "type": "string"
+        }
+    }
+}
