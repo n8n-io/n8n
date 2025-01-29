@@ -47,7 +47,8 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 </script>
 
 <template>
-	<div :class="buttonContainerClass" @click.stop.prevent>
+	<!-- click and mousedown event are suppressed to avoid unwanted selection or dragging of the node -->
+	<div :class="buttonContainerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div v-if="variant === 2" :class="$style.bolt">
 				<FontAwesomeIcon icon="bolt" size="lg" />
@@ -102,6 +103,8 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 
 	& > div {
 		position: relative;
+		display: flex;
+		align-items: center;
 	}
 }
 
@@ -119,13 +122,13 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 .variant2 {
 	& button {
 		margin-right: var(--spacing-s);
-		animation: slide-out 0.1s ease-in 0.1s forwards;
+		animation: slide-out 0.1s ease-in 0.2s forwards;
 	}
 
 	&.interactive.hovered button {
 		translate: -12px 0;
 		opacity: 0;
-		animation: slide-in 0.1s ease-in 0.1s forwards;
+		animation: slide-in 0.1s ease-in 0.2s forwards;
 	}
 }
 
@@ -134,14 +137,14 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 	right: 0;
 	color: var(--color-primary);
 	padding: var(--spacing-s);
-	animation: slide-in 0.1s ease-in 0.1s forwards;
+	animation: slide-in 0.1s ease-in 0.2s forwards;
 	translate: -12px 0;
 	opacity: 0;
 
 	.container.interactive.hovered & {
 		opacity: 1;
 		translate: 0 0;
-		animation: slide-out 0.1s ease-in 0.1s forwards;
+		animation: slide-out 0.1s ease-in 0.2s forwards;
 	}
 }
 
