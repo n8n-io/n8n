@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.type": {
+            "type": "string"
+        },
+        "@odata.mediaContentType": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "contentType": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "isInline": {
+            "type": "boolean"
+        }
+    }
+}
