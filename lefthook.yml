@@ -2,7 +2,7 @@ pre-commit:
   commands:
     biome_check:
       glob: 'packages/**/*.{js,ts,json}'
-      run: biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
       skip:
         - merge
