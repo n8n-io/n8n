@@ -384,11 +384,13 @@ export class TestRunnerService {
 					// Extract the output of the last node executed in the evaluation workflow
 					const addedMetrics = metrics.addResults(this.extractEvaluationResult(evalExecution));
 
-					await Db.transaction(async (trx) => {
-						if (evalExecution.data.resultData.error) {
+					if (evalExecution.data.resultData.error) {
+						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
 							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, trx);
-						} else {
+						});
+					} else {
+						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementPassed(testRun.id, trx);
 							await this.testCaseExecutionRepository.markAsCompleted(
 								testRun.id,
@@ -396,8 +398,8 @@ export class TestRunnerService {
 								addedMetrics,
 								trx,
 							);
-						}
-					});
+						});
+					}
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case
 					await Db.transaction(async (trx) => {
@@ -413,7 +415,7 @@ export class TestRunnerService {
 			if (abortSignal.aborted) {
 				await Db.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
-					await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id, trx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
@@ -430,7 +432,7 @@ export class TestRunnerService {
 
 				await Db.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
-					await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id, trx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 			} else {
 				throw e;
@@ -458,8 +460,11 @@ export class TestRunnerService {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		} else {
-			// If there is no abort controller - just mark the test run as cancelled
-			await this.testRunRepository.markAsCancelled(testRunId);
+			// If there is no abort controller - just mark the test run and all its' pending test case executions as cancelled
+			await Db.transaction(async (trx) => {
+				await this.testRunRepository.markAsCancelled(testRunId, trx);
+				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+			});
 		}
 	}
 }

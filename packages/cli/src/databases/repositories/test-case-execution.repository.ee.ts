@@ -71,7 +71,7 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markPendingAsCancelled(testRunId: string, trx?: EntityManager) {
+	async markAllPendingAsCancelled(testRunId: string, trx?: EntityManager) {
 		trx = trx ?? this.manager;
 
 		return await trx.update(
