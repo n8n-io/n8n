@@ -76,10 +76,7 @@ describe('init()', () => {
 	it('should call external hook', async () => {
 		await activeWorkflowManager.init();
 
-		const [hook, arg] = externalHooks.run.mock.calls[0];
-
-		expect(hook).toBe('activeWorkflows.initialized');
-		expect(arg).toBeEmptyArray();
+		expect(externalHooks.run).toHaveBeenCalledWith('activeWorkflows.initialized');
 	});
 
 	it('should check that workflow can be activated', async () => {
