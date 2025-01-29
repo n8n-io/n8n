@@ -24,6 +24,7 @@ import { sortBy } from 'lodash-es';
 import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -179,12 +180,20 @@ export function groupItemsInSections(
 
 		return 0;
 	});
-	if (result.length <= 1) {
+	if (!shouldRenderSectionSubtitle(result)) {
 		return items;
 	}
 
 	return result;
 }
+
+const shouldRenderSectionSubtitle = (sections: SectionCreateElement[]) => {
+	if (!sections.length) return false;
+	if (sections.length > 1) return true;
+	if (sections[0].key === SEND_AND_WAIT_OPERATION) return true;
+
+	return false;
+};
 
 export const formatTriggerActionName = (actionPropertyName: string) => {
 	let name = actionPropertyName;
