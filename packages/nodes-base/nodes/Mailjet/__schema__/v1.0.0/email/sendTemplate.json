@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "Status": {
+            "type": "string"
+        },
+        "CustomID": {
+            "type": "string"
+        },
+        "To": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "Email",
+                    "MessageUUID",
+                    "MessageID",
+                    "MessageHref"
+                ]
+            }
+        },
+        "Cc": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "Email",
+                    "MessageUUID",
+                    "MessageID",
+                    "MessageHref"
+                ]
+            }
+        },
+        "Bcc": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "Email",
+                    "MessageUUID",
+                    "MessageID",
+                    "MessageHref"
+                ]
+            }
+        }
+    },
+    "required": [
+        "Status",
+        "CustomID",
+        "To",
+        "Cc",
+        "Bcc"
+    ]
+}
