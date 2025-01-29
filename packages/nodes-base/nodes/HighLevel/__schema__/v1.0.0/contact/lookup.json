@@ -1,0 +1,89 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "country": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "fingerprint": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "customField": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "value"
+                ]
+            }
+        },
+        "assignedTo": {
+            "type": "string"
+        },
+        "address1": {
+            "type": "string"
+        },
+        "city": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "postalCode": {
+            "type": "string"
+        }
+    }
+}
