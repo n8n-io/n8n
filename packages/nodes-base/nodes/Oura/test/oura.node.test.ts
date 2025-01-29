@@ -56,15 +56,9 @@ describe('Oura', () => {
 		const tests = workflowToTests(workflows);
 
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			nock('https://api.ouraring.com/v2')
 				.get('/usercollection/personal_info')
 				.reply(200, profileResponse);
-		});
-
-		afterAll(() => {
-			nock.restore();
 		});
 
 		const nodeTypes = setup(tests);

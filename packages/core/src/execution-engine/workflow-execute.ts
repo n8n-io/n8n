@@ -44,7 +44,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
-	WorkflowOperationError,
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
@@ -56,6 +55,7 @@ import {
 import PCancelable from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 
 import { ExecuteContext, PollContext } from './node-execution-context';
@@ -1246,9 +1246,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowOperationError(
-				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
-			);
+			throw new WorkflowHasIssuesError();
 		}
 
 		// Variables which hold temporary data for each node-execution

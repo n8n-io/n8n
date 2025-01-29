@@ -102,8 +102,8 @@ export const useKeybindings = (
 	function toShortcutString(event: KeyboardEvent) {
 		const { shiftKey, altKey } = event;
 		const ctrlKey = isCtrlKeyPressed(event);
-		const keys = [event.key];
-		const codes = [keyboardEventCodeToKey(event.code)];
+		const keys = 'key' in event ? [event.key] : [];
+		const codes = 'code' in event ? [keyboardEventCodeToKey(event.code)] : [];
 		const modifiers: string[] = [];
 
 		if (shiftKey) {

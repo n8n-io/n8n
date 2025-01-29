@@ -272,6 +272,13 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
+	/**
+	 * Deletes a workflow and returns it.
+	 *
+	 * If the workflow is active this will deactivate the workflow.
+	 * If the user does not have the permissions to delete the workflow this does
+	 * nothing and returns void.
+	 */
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 

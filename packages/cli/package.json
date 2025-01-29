@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.75.0",
+  "version": "1.77.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -96,7 +96,7 @@
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n_io/ai-assistant-sdk": "1.13.0",
-    "@n8n_io/license-sdk": "2.14.0",
+    "@n8n_io/license-sdk": "2.15.0",
     "@oclif/core": "4.0.7",
     "@rudderstack/rudder-sdk-node": "2.0.9",
     "@sentry/node": "catalog:",

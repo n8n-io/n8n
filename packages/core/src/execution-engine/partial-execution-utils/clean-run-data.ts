@@ -24,7 +24,7 @@ export function cleanRunData(
 			// Delete runData for subNodes
 			const subNodeConnections = graph.getParentConnections(node);
 			for (const subNodeConnection of subNodeConnections) {
-				// Sub nodes never use the Main connection type, so this filters our
+				// Sub nodes never use the Main connection type, so this filters out
 				// the connection that goes upstream of the startNode.
 				if (subNodeConnection.type === NodeConnectionType.Main) {
 					continue;
