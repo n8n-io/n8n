@@ -26,6 +26,10 @@ import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
 
+jest.mock('@/db', () => ({
+	transaction: (cb: any) => cb(),
+}));
+
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
 );
