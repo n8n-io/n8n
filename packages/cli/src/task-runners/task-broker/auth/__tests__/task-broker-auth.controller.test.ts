@@ -9,10 +9,10 @@ import { BadRequestError } from '../../../../errors/response-errors/bad-request.
 import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
 import type { AuthlessRequest } from '../../../../requests';
 import type { TaskBrokerServerInitRequest } from '../../task-broker-types';
-import { TaskRunnerAuthController } from '../task-runner-auth.controller';
-import { TaskRunnerAuthService } from '../task-runner-auth.service';
+import { TaskBrokerAuthController } from '../task-broker-auth.controller';
+import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
-describe('TaskRunnerAuthController', () => {
+describe('TaskBrokerAuthController', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		cache: {
 			backend: 'memory',
@@ -27,8 +27,8 @@ describe('TaskRunnerAuthController', () => {
 	});
 	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskRunnerAuthService(globalConfig, cacheService, TTL);
-	const authController = new TaskRunnerAuthController(authService);
+	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
+	const authController = new TaskBrokerAuthController(authService);
 
 	const createMockGrantTokenReq = (token?: string) =>
 		({

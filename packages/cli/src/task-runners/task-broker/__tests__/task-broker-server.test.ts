@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { ServerResponse } from 'node:http';
 import type WebSocket from 'ws';
 
-import type { TaskRunnerAuthController } from '@/task-runners/task-broker/auth/task-runner-auth.controller';
+import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
 
@@ -19,7 +19,7 @@ describe('TaskBrokerServer', () => {
 			const server = new TaskBrokerServer(
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskRunnerAuthController>(),
+				mock<TaskBrokerAuthController>(),
 				mock(),
 			);
 
@@ -46,7 +46,7 @@ describe('TaskBrokerServer', () => {
 			const server = new TaskBrokerServer(
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskRunnerAuthController>(),
+				mock<TaskBrokerAuthController>(),
 				mock(),
 			);
 

@@ -14,7 +14,7 @@ import { Server as WSServer } from 'ws';
 import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
-import { TaskRunnerAuthController } from '@/task-runners/task-broker/auth/task-runner-auth.controller';
+import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
 import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
@@ -43,7 +43,7 @@ export class TaskBrokerServer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly taskRunnerAuthController: TaskRunnerAuthController,
+		private readonly authController: TaskBrokerAuthController,
 		private readonly taskRunnerWsServer: TaskBrokerWsServer,
 	) {
 		this.app = express();
@@ -159,7 +159,7 @@ export class TaskBrokerServer {
 			this.upgradeEndpoint,
 			createRateLimiter(),
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.taskRunnerAuthController.authMiddleware,
+			this.authController.authMiddleware,
 			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
 				this.taskRunnerWsServer.handleRequest(req, res),
 		);
@@ -168,7 +168,7 @@ export class TaskBrokerServer {
 		this.app.post(
 			authEndpoint,
 			createRateLimiter(),
-			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
+			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
 		this.app.get('/healthz', (_, res) => res.send({ status: 'ok' }));

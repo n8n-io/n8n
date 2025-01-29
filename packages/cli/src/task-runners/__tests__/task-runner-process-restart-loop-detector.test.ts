@@ -3,14 +3,14 @@ import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 
 import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
-import type { TaskRunnerAuthService } from '@/task-runners/task-broker/auth/task-runner-auth.service';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 describe('TaskRunnerProcessRestartLoopDetector', () => {
 	const mockLogger = mock<Logger>();
-	const mockAuthService = mock<TaskRunnerAuthService>();
+	const mockAuthService = mock<TaskBrokerAuthService>();
 	const runnerConfig = new TaskRunnersConfig();
 	const taskRunnerProcess = new TaskRunnerProcess(
 		mockLogger,
