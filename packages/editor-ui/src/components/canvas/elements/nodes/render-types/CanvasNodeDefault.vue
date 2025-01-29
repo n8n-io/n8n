@@ -10,6 +10,7 @@ import {
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useLocalStorage } from '@vueuse/core';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -134,19 +135,18 @@ function openContextMenu(event: MouseEvent) {
 	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
-		<CanvasNodeTriggerIcon
-			v-if="renderOptions.trigger && triggerButtonVariant === 2"
-			:variant="2"
-		/>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<CanvasNodeTriggerIcon
+				<div
 					v-if="renderOptions.trigger && triggerButtonVariant === 1"
 					:variant="1"
-				/>
+					:class="$style.triggerIcon"
+				>
+					<FontAwesomeIcon icon="bolt" size="lg" />
+				</div>
 			</div>
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
@@ -293,6 +293,7 @@ function openContextMenu(event: MouseEvent) {
 	flex-direction: column;
 	gap: var(--spacing-4xs);
 	align-items: center;
+	pointer-events: none;
 }
 
 .label,
@@ -325,5 +326,12 @@ function openContextMenu(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
+}
+
+.triggerIcon {
+	display: inline;
+	position: static;
+	color: var(--color-primary);
+	padding: var(--spacing-4xs);
 }
 </style>

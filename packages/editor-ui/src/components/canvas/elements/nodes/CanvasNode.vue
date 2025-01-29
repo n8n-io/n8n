@@ -21,10 +21,9 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
-import CanvasNodeTriggerButton from '@/components/canvas/elements/nodes/CanvasNodeTriggerButton.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasNodeKey, LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT } from '@/constants';
+import { CanvasNodeKey } from '@/constants';
 import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
@@ -36,7 +35,7 @@ import {
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { isEqual } from 'lodash-es';
-import { useLocalStorage } from '@vueuse/core';
+import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -116,13 +115,6 @@ const dataTestId = computed(() =>
 		? undefined
 		: 'canvas-node',
 );
-
-const triggerButtonVariant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
-
-const buttonContainerClass = computed(() => ({
-	[style['button-container']]: true,
-	[style['button-container-variant-2']]: triggerButtonVariant.value === 2,
-}));
 
 /**
  * Event bus
@@ -416,16 +408,15 @@ onBeforeUnmount(() => {
 			<!-- @TODO :color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
 
-		<div
+		<CanvasNodeTrigger
 			v-if="
-				!isDisabled &&
-				props.data.render.type === CanvasNodeRenderType.Default &&
-				props.data.render.options.trigger
+				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
 			"
-			:class="buttonContainerClass"
-		>
-			<CanvasNodeTriggerButton :data="props.data" :variant="triggerButtonVariant" />
-		</div>
+			:name="data.name"
+			:type="data.type"
+			:hovered="hovered"
+			:disabled="isDisabled"
+		/>
 	</div>
 </template>
 
@@ -452,62 +443,6 @@ onBeforeUnmount(() => {
 	&:focus-within,
 	&:hover {
 		opacity: 1;
-	}
-}
-
-.button-container {
-	z-index: -1;
-	position: absolute;
-	display: flex;
-	align-items: center;
-	/**
-	background: rgba(255, 0, 0, 0.1);
-	 */
-	height: 300%;
-	right: -100%;
-	top: -100%;
-	padding-right: calc(200% + var(--spacing-xl));
-
-	&:not(.button-container-variant-2) {
-		button {
-			opacity: 1;
-		}
-	}
-}
-
-.button-container-variant-2 {
-	padding-right: calc(200% + var(--spacing-s));
-
-	& button {
-		animation: slide-out 0.1s ease-in forwards;
-	}
-
-	.canvasNode:hover & > button {
-		animation: slide-in 0.1s ease-in forwards;
-	}
-}
-
-@keyframes slide-in {
-	from {
-		translate: -12px 0;
-		opacity: 0;
-	}
-
-	to {
-		translate: 0 0;
-		opacity: 1;
-	}
-}
-
-@keyframes slide-out {
-	from {
-		translate: 0 0;
-		opacity: 1;
-	}
-
-	to {
-		translate: -12px 0;
-		opacity: 0;
 	}
 }
 </style>
