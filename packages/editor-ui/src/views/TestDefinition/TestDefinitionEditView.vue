@@ -16,7 +16,7 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { IPinData } from 'n8n-workflow';
+import type { IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
