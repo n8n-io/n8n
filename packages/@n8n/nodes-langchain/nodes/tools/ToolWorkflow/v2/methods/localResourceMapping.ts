@@ -4,7 +4,7 @@ import type { ILocalLoadOptionsFunctions, ResourceMapperFields } from 'n8n-workf
 export async function loadSubWorkflowInputs(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const { fields, dataMode, subworkflowInfo } = await loadWorkflowInputMappings.bind(this)();
+	const { fields, subworkflowInfo } = await loadWorkflowInputMappings.bind(this)();
 	let emptyFieldsNotice: string | undefined;
 	if (fields.length === 0) {
 		const subworkflowLink = subworkflowInfo?.id

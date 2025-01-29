@@ -6,7 +6,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy, ADD_FORM_NOTICE, NodeHelpers } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, watchEffect } from 'vue';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 
