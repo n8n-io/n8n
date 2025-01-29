@@ -351,7 +351,9 @@ async function initializeRoute(force = false) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
 
-			await loadCredentials();
+			if (!isDemoRoute.value) {
+				await loadCredentials();
+			}
 
 			// If there is no workflow id, treat it as a new workflow
 			if (isNewWorkflowRoute.value || !workflowId.value) {
@@ -396,9 +398,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			trackOpenWorkflowFromOnboardingTemplate();
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
-			editableWorkflow.value.homeProject,
-		);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -1672,7 +1672,6 @@ onBeforeUnmount(() => {
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
 		:executing="isWorkflowRunning"
-		:show-bug-reporting-button="!isDemoRoute || !!executionsStore.activeExecution"
 		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
