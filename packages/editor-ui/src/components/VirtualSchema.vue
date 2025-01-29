@@ -30,6 +30,8 @@ import {
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
+import { usePostHog } from '@/stores/posthog.store';
+import { SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -63,6 +65,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
+const posthogStore = usePostHog();
 const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
@@ -109,8 +112,8 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	let schema = getSchemaForExecutionData(data);
 	let preview = false;
 
-	if (data.length === 0) {
-		const previewSchema = await getPreviewSchema();
+	if (data.length === 0 && isSchemaPreviewEnabled.value) {
+		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
 			schema = previewSchema.result;
 			preview = true;
@@ -125,9 +128,13 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	};
 };
 
+const isSchemaPreviewEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+);
+
 const nodeSchema = asyncComputed(async () => {
-	if (props.data.length === 0) {
-		const previewSchema = await getPreviewSchema();
+	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
+		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
 			return filterSchema(previewSchema.result, props.search);
 		}
@@ -136,13 +143,13 @@ const nodeSchema = asyncComputed(async () => {
 	return filterSchema(getSchemaForExecutionData(props.data), props.search);
 });
 
-async function getPreviewSchema() {
-	if (!props.node) return createResultError(new Error());
+async function getSchemaPreview(node: INodeUi | null) {
+	if (!node) return createResultError(new Error());
 	const {
 		type,
 		typeVersion,
 		parameters: { resource, operation },
-	} = props.node;
+	} = node;
 
 	return await schemaPreviewStore.getSchemaPreview({
 		nodeName: type,

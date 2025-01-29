@@ -1,13 +1,768 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`VirtualSchema.vue > renders preview schema when enabled and available 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Manual Trigger"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon icon icon-trigger icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="trigger-icon"
+              data-v-882a318e=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="bolt"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="xs"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <!--v-if-->
+          </div>
+          <div
+            class="notice"
+            data-test-id="schema-preview-warning"
+            data-v-882a318e=""
+            theme="warning"
+          >
+            
+            
+            This is a preview of the schema, execute the node to see the exact schema and data. 
+            
+            <a
+              class="n8n-link"
+              data-v-882a318e=""
+              href="https://docs.n8n.io/data/data-editing/"
+              target="_blank"
+            >
+              
+              <span
+                class="primary"
+              >
+                <span
+                  class="n8n-text size-small regular"
+                >
+                  
+                  
+                  Learn more
+                  
+                  
+                </span>
+              </span>
+              
+            </a>
+            
+            
+            
+          </div>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="1"
+            data-name="account"
+            data-nest-level="1"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".account"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.account }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                account
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".account.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.account.id }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--preview"
+            data-name="..."
+            data-nest-level="1"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon=""
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                ...
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Set2"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon icon icon"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Set2 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <div
+            class="notice"
+            data-test-id="schema-preview-warning"
+            data-v-882a318e=""
+            theme="warning"
+          >
+            
+            
+            This is a preview of the schema, execute the node to see the exact schema and data. 
+            
+            <a
+              class="n8n-link"
+              data-v-882a318e=""
+              href="https://docs.n8n.io/data/data-editing/"
+              target="_blank"
+            >
+              
+              <span
+                class="primary"
+              >
+                <span
+                  class="n8n-text size-small regular"
+                >
+                  
+                  
+                  Learn more
+                  
+                  
+                </span>
+              </span>
+              
+            </a>
+            
+            
+            
+          </div>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="2"
+            data-name="account"
+            data-nest-level="1"
+            data-node-type="n8n-nodes-base.set"
+            data-path=".account"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $('Set2').item.json.account }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                account
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="2"
+            data-name="id"
+            data-nest-level="2"
+            data-node-type="n8n-nodes-base.set"
+            data-path=".account.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $('Set2').item.json.account.id }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--preview"
+            data-name="..."
+            data-nest-level="1"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon=""
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                ...
+              </span>
+              
+            </span>
+          </div>
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
 exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
 <div
   class="schema-header"
   data-test-id="run-data-schema-header"
   data-v-882a318e=""
-  data-v-d00cba9a=""
-  id="If"
-  type="header"
 >
   <div
     class="toggle"
@@ -80,9 +835,6 @@ exports[`VirtualSchema.vue > renders schema for correct output branch 1`] = `
   class="schema-header"
   data-test-id="run-data-schema-header"
   data-v-882a318e=""
-  data-v-d00cba9a=""
-  id="If"
-  type="header"
 >
   <div
     class="toggle"
@@ -603,100 +1355,108 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
       >
         
         
+        
         <div
-          class="schema-header"
-          data-test-id="run-data-schema-header"
+          class="schema-header-wrapper"
           data-v-882a318e=""
           data-v-d00cba9a=""
           id="Manual Trigger"
           type="header"
         >
           <div
-            class="toggle"
+            class="schema-header"
+            data-test-id="run-data-schema-header"
             data-v-882a318e=""
           >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon icon icon-trigger icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
             <font-awesome-icon-stub
               beat="false"
               beatfade="false"
               border="false"
               bounce="false"
-              class="collapse-icon"
+              class="trigger-icon"
               data-v-882a318e=""
               fade="false"
               fixedwidth="false"
               flash="false"
               flip="false"
-              icon="angle-down"
+              icon="bolt"
               inverse="false"
               listitem="false"
               pulse="false"
               shake="false"
+              size="xs"
               spin="false"
               spinpulse="false"
               spinreverse="false"
               swapopacity="false"
               symbol="false"
             />
-          </div>
-          <div
-            class="n8n-node-icon icon icon-trigger icon icon-trigger"
-            data-v-882a318e=""
-          >
             <div
-              class="nodeIconWrapper"
-              style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              class="item-count"
+              data-test-id="run-data-schema-node-item-count"
+              data-v-882a318e=""
             >
-              <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-              
-              <div
-                class="icon"
-              >
-                <img
-                  class="nodeIconImage"
-                />
-                <!--v-if-->
-              </div>
-              
+              1 item
             </div>
           </div>
-          <div
-            class="title"
-            data-v-882a318e=""
-          >
-            Manual Trigger 
-            <!--v-if-->
-          </div>
-          <font-awesome-icon-stub
-            beat="false"
-            beatfade="false"
-            border="false"
-            bounce="false"
-            class="trigger-icon"
-            data-v-882a318e=""
-            fade="false"
-            fixedwidth="false"
-            flash="false"
-            flip="false"
-            icon="bolt"
-            inverse="false"
-            listitem="false"
-            pulse="false"
-            shake="false"
-            size="xs"
-            spin="false"
-            spinpulse="false"
-            spinreverse="false"
-            swapopacity="false"
-            symbol="false"
-          />
-          <div
-            class="item-count"
-            data-test-id="run-data-schema-node-item-count"
-            data-v-882a318e=""
-          >
-            1 item
-          </div>
+          <!--v-if-->
         </div>
+        
         
         
         
@@ -1147,72 +1907,80 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
         
         
         
+        
         <div
-          class="schema-header"
-          data-test-id="run-data-schema-header"
+          class="schema-header-wrapper"
           data-v-882a318e=""
           data-v-d00cba9a=""
           id="Set2"
           type="header"
         >
           <div
-            class="toggle"
-            data-v-882a318e=""
-          >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="collapse-icon"
-              data-v-882a318e=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon="angle-down"
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-          </div>
-          <div
-            class="n8n-node-icon icon icon"
+            class="schema-header"
+            data-test-id="run-data-schema-header"
             data-v-882a318e=""
           >
             <div
-              class="nodeIconWrapper"
-              style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              class="toggle"
+              data-v-882a318e=""
             >
-              <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-              
-              <div
-                class="icon"
-              >
-                <img
-                  class="nodeIconImage"
-                />
-                <!--v-if-->
-              </div>
-              
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
             </div>
-          </div>
-          <div
-            class="title"
-            data-v-882a318e=""
-          >
-            Set2 
+            <div
+              class="n8n-node-icon icon icon"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Set2 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
             <!--v-if-->
           </div>
           <!--v-if-->
-          <!--v-if-->
         </div>
+        
         
         
         

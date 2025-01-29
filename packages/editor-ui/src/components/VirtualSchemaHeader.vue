@@ -5,6 +5,7 @@ import { type INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { DATA_EDITING_DOCS_URL } from '@/constants';
+import { N8nNotice } from 'n8n-design-system';
 
 const props = defineProps<{
 	title: string;
@@ -45,7 +46,12 @@ const emit = defineEmits<{
 				{{ i18n.baseText('ndv.output.items', { interpolate: { count: itemCount } }) }}
 			</div>
 		</div>
-		<N8nNotice v-if="preview && !collapsed" class="notice" theme="warning">
+		<N8nNotice
+			v-if="preview && !collapsed"
+			class="notice"
+			theme="warning"
+			data-test-id="schema-preview-warning"
+		>
 			<i18n-t keypath="dataMapping.schemaView.preview">
 				<template #link>
 					<N8nLink :to="DATA_EDITING_DOCS_URL" size="small">
