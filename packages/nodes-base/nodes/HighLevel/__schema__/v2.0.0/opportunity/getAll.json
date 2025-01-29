@@ -1,0 +1,183 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pipelineId": {
+            "type": "string"
+        },
+        "pipelineStageId": {
+            "type": "string"
+        },
+        "pipelineStageUId": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "lastStatusChangeAt": {
+            "type": "string"
+        },
+        "lastStageChangeAt": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "indexVersion": {
+            "type": "integer"
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fieldValueString": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "fieldValueDate": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "type"
+                ]
+            }
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "relations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "associationId": {
+                        "type": "string"
+                    },
+                    "relationId": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "objectKey": {
+                        "type": "string"
+                    },
+                    "recordId": {
+                        "type": "string"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "associationId",
+                    "relationId",
+                    "primary",
+                    "objectKey",
+                    "recordId",
+                    "fullName",
+                    "contactName",
+                    "companyName",
+                    "email",
+                    "phone",
+                    "tags",
+                    "attributed"
+                ]
+            }
+        },
+        "contact": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "tags"
+            ]
+        },
+        "attributions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "utmSessionSource": {
+                        "type": "string"
+                    },
+                    "isFirst": {
+                        "type": "boolean"
+                    },
+                    "medium": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "medium"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "monetaryValue",
+        "pipelineId",
+        "pipelineStageId",
+        "pipelineStageUId",
+        "assignedTo",
+        "status",
+        "source",
+        "lastStatusChangeAt",
+        "lastStageChangeAt",
+        "createdAt",
+        "updatedAt",
+        "contactId",
+        "locationId",
+        "customFields",
+        "lostReasonId",
+        "followers",
+        "relations",
+        "contact",
+        "sort",
+        "attributions"
+    ]
+}
