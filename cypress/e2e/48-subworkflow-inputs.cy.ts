@@ -66,7 +66,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
 
-		openNode('Workflow Input Trigger');
+		openNode('When Executed by Another Workflow');
 	});
 
 	it('works with type-checked values', () => {
@@ -142,7 +142,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		});
 		selectResourceLocatorItem('workflowId', 0, 'Create a');
 
-		openNode('Workflow Input Trigger');
+		openNode('When Executed by Another Workflow');
 
 		getParameterInputByName('inputSource').click();
 
@@ -181,7 +181,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// Executing the workflow should show an error toast
 		clickExecuteWorkflowButton();
 		errorToast().should('contain', 'The workflow has issues');
-		openNode('Workflow Input Trigger');
+		openNode('When Executed by Another Workflow');
 		// Add a field to the workflowInputs fixedCollection
 		addItemToFixedCollection('workflowInputs');
 		typeIntoFixedCollectionItem('workflowInputs', 0, 'test');
