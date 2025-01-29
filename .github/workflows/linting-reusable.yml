@@ -47,6 +47,7 @@ jobs:
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
+          fail-on-cache-miss: true
 
       - name: Lint Backend
         run: pnpm lint:backend
