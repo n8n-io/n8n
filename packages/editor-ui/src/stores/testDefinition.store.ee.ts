@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import {
+import type {
 	TestCaseExecutionRecord,
 	TestDefinitionRecord,
 	TestRunRecord,
