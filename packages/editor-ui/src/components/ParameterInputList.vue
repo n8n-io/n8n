@@ -548,6 +548,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
+					:input-name="parameter.name"
 					color="text-dark"
 				>
 					<template
