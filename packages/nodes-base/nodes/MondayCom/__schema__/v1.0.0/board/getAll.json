@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "board_kind": {
+            "type": "string"
+        },
+        "owners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "description",
+        "state",
+        "board_folder_id",
+        "board_kind",
+        "owners"
+    ]
+}
