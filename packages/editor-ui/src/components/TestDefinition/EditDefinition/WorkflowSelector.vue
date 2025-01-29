@@ -1,20 +1,45 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { SAMPLE_EVALUATION_WORKFLOW } from '@/constants.workflows';
+import type { IWorkflowDataCreate } from '@/Interface';
+import type { INodeParameterResourceLocator, IPinData } from 'n8n-workflow';
+import { computed } from 'vue';
+
 interface WorkflowSelectorProps {
 	modelValue: INodeParameterResourceLocator;
+	examplePinnedData?: IPinData;
+	sampleWorkflowName?: string;
 }
 
-withDefaults(defineProps<WorkflowSelectorProps>(), {
+const props = withDefaults(defineProps<WorkflowSelectorProps>(), {
 	modelValue: () => ({
 		mode: 'id',
 		value: '',
 		__rl: true,
 	}),
+	examplePinnedData: () => ({}),
+	sampleWorkflowName: undefined,
 });
 
 defineEmits<{ 'update:modelValue': [value: WorkflowSelectorProps['modelValue']] }>();
 const locale = useI18n();
+
+const subworkflowName = computed(() => {
+	if (props.sampleWorkflowName) {
+		return locale.baseText('testDefinition.workflowInput.subworkflowName', {
+			interpolate: { name: props.sampleWorkflowName },
+		});
+	}
+	return locale.baseText('testDefinition.workflowInput.subworkflowName.default');
+});
+
+const sampleWorkflow = computed<IWorkflowDataCreate>(() => {
+	return {
+		...SAMPLE_EVALUATION_WORKFLOW,
+		name: subworkflowName.value,
+		pinData: props.examplePinnedData,
+	};
+});
 </script>
 <template>
 	<div>
@@ -36,6 +61,7 @@ const locale = useI18n();
 				:expression-edit-dialog-visible="false"
 				:path="'workflows'"
 				allow-new
+				:sample-workflow="sampleWorkflow"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>
