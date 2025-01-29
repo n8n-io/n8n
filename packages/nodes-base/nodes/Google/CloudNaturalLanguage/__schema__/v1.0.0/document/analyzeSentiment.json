@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "language": {
+            "type": "string"
+        },
+        "sentences": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "beginOffset": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "content",
+                            "beginOffset"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "sentiment"
+                ]
+            }
+        }
+    },
+    "required": [
+        "documentSentiment",
+        "language",
+        "sentences"
+    ]
+}
