@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "profileUrl": {
+            "type": "string"
+        },
+        "query": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    }
+}
