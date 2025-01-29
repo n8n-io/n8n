@@ -140,11 +140,7 @@ function openContextMenu(event: MouseEvent) {
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<div
-					v-if="renderOptions.trigger && triggerButtonVariant === 1"
-					:variant="1"
-					:class="$style.triggerIcon"
-				>
+				<div v-if="renderOptions.trigger && triggerButtonVariant === 1" :class="$style.triggerIcon">
 					<FontAwesomeIcon icon="bolt" size="lg" />
 				</div>
 			</div>
@@ -293,7 +289,6 @@ function openContextMenu(event: MouseEvent) {
 	flex-direction: column;
 	gap: var(--spacing-4xs);
 	align-items: center;
-	pointer-events: none;
 }
 
 .label,

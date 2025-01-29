@@ -9,17 +9,25 @@ import { useLocalStorage } from '@vueuse/core';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { name, type, hovered, disabled } = defineProps<{
+const {
+	name,
+	type,
+	hovered,
+	disabled,
+	class: cls,
+} = defineProps<{
 	name: string;
 	type: string;
 	hovered?: boolean;
 	disabled?: boolean;
+	class?: string;
 }>();
 
 const variant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
 
 const style = useCssModule();
 const buttonContainerClass = computed(() => ({
+	[cls ?? '']: true,
 	[style.container]: true,
 	[style.interactive]: !disabled,
 	[style.hovered]: !!hovered,
@@ -95,15 +103,16 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 	& > div {
 		position: relative;
 	}
-
-	& button {
-		margin-right: var(--spacing-xl);
-	}
 }
 
 .variant1 {
+	& button {
+		margin-right: var(--spacing-xl);
+		display: none;
+	}
+
 	&.interactive button {
-		opacity: 1;
+		display: block;
 	}
 }
 

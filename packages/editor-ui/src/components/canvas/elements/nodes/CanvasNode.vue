@@ -416,15 +416,16 @@ onBeforeUnmount(() => {
 			:type="data.type"
 			:hovered="hovered"
 			:disabled="isDisabled"
+			:class="$style.trigger"
 		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .canvasNode {
-	&:focus-within,
-	&.showToolbar,
-	&:has(> :hover:not(.button-container)) {
+	&:has(> :hover:not(.trigger)), // exclude .trigger which has extended hit zone
+	&:focus-within:not(:has(.trigger:focus-within)), // similarly, ignore focus on elements within .trigger
+	&.showToolbar {
 		.canvasNodeToolbar {
 			opacity: 1;
 		}
