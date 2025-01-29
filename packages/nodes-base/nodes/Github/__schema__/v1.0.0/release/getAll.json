@@ -1,0 +1,149 @@
+{
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string"
+        },
+        "assets_url": {
+            "type": "string"
+        },
+        "upload_url": {
+            "type": "string"
+        },
+        "html_url": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "type": "string"
+                },
+                "gravatar_id": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "html_url": {
+                    "type": "string"
+                },
+                "followers_url": {
+                    "type": "string"
+                },
+                "following_url": {
+                    "type": "string"
+                },
+                "gists_url": {
+                    "type": "string"
+                },
+                "starred_url": {
+                    "type": "string"
+                },
+                "subscriptions_url": {
+                    "type": "string"
+                },
+                "organizations_url": {
+                    "type": "string"
+                },
+                "repos_url": {
+                    "type": "string"
+                },
+                "events_url": {
+                    "type": "string"
+                },
+                "received_events_url": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "user_view_type": {
+                    "type": "string"
+                },
+                "site_admin": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "login",
+                "id",
+                "node_id",
+                "avatar_url",
+                "gravatar_id",
+                "url",
+                "html_url",
+                "followers_url",
+                "following_url",
+                "gists_url",
+                "starred_url",
+                "subscriptions_url",
+                "organizations_url",
+                "repos_url",
+                "events_url",
+                "received_events_url",
+                "type",
+                "site_admin"
+            ]
+        },
+        "node_id": {
+            "type": "string"
+        },
+        "tag_name": {
+            "type": "string"
+        },
+        "target_commitish": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "draft": {
+            "type": "boolean"
+        },
+        "prerelease": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "body": {
+            "type": "string"
+        },
+        "mentions_count": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "url",
+        "assets_url",
+        "upload_url",
+        "html_url",
+        "id",
+        "author",
+        "node_id",
+        "tag_name",
+        "target_commitish",
+        "name",
+        "draft",
+        "prerelease",
+        "created_at",
+        "published_at",
+        "assets",
+        "tarball_url",
+        "zipball_url",
+        "body"
+    ]
+}
