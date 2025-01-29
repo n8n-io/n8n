@@ -13,8 +13,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	handleErrorPostReceive,
-	parseContainerGetProperties,
+	HeaderConstants,
 	parseContainerList,
+	parseHeaders,
+	XMsVersion,
 } from '../GenericFunctions';
 
 export const containerOperations: INodeProperties[] = [
@@ -41,15 +43,24 @@ export const containerOperations: INodeProperties[] = [
 							restype: 'container',
 						},
 						url: '=/{{ $parameter["container"] }}',
+						headers: {
+							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
+							[HeaderConstants.X_MS_VERSION]: XMsVersion,
+						},
 					},
 					output: {
 						postReceive: [
 							handleErrorPostReceive,
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "created": true } }}',
-								},
+							async function (
+								this: IExecuteSingleFunctions,
+								_data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								return [
+									{
+										json: parseHeaders(response.headers),
+									},
+								];
 							},
 						],
 					},
@@ -68,15 +79,24 @@ export const containerOperations: INodeProperties[] = [
 							restype: 'container',
 						},
 						url: '=/{{ $parameter["container"] }}',
+						headers: {
+							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
+							[HeaderConstants.X_MS_VERSION]: XMsVersion,
+						},
 					},
 					output: {
 						postReceive: [
 							handleErrorPostReceive,
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "deleted": true } }}',
-								},
+							async function (
+								this: IExecuteSingleFunctions,
+								_data: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							): Promise<INodeExecutionData[]> {
+								return [
+									{
+										json: parseHeaders(response.headers),
+									},
+								];
 							},
 						],
 					},
@@ -95,6 +115,10 @@ export const containerOperations: INodeProperties[] = [
 							restype: 'container',
 						},
 						url: '=/{{ $parameter["container"] }}',
+						headers: {
+							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
+							[HeaderConstants.X_MS_VERSION]: XMsVersion,
+						},
 					},
 					output: {
 						postReceive: [
@@ -104,12 +128,13 @@ export const containerOperations: INodeProperties[] = [
 								_data: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
-								const result = await parseContainerGetProperties(response.headers);
+								const { metadata, ...properties } = parseHeaders(response.headers);
 								return [
 									{
 										json: {
 											name: (this.getNodeParameter('container') as ResourceMapperValue).value,
-											...result,
+											properties,
+											...(metadata ? { metadata: metadata as IDataObject } : {}),
 										},
 									},
 								];
@@ -131,6 +156,10 @@ export const containerOperations: INodeProperties[] = [
 							comp: 'list',
 						},
 						url: '/',
+						headers: {
+							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
+							[HeaderConstants.X_MS_VERSION]: XMsVersion,
+						},
 					},
 					output: {
 						postReceive: [
@@ -140,10 +169,9 @@ export const containerOperations: INodeProperties[] = [
 								data: INodeExecutionData[],
 								_response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
-								const result = await parseContainerList(data[0].json as unknown as string);
 								return [
 									{
-										json: result,
+										json: await parseContainerList(data[0].json as unknown as string),
 									},
 								];
 							},
@@ -254,7 +282,7 @@ const createFields: INodeProperties[] = [
 				routing: {
 					request: {
 						headers: {
-							'x-ms-blob-public-access': '={{ $value || undefined }}',
+							[HeaderConstants.X_MS_BLOB_PUBLIC_ACCESS]: '={{ $value || undefined }}',
 						},
 					},
 				},
@@ -275,7 +303,8 @@ const createFields: INodeProperties[] = [
 								displayName: 'Field Name',
 								name: 'fieldName',
 								default: '',
-								description: 'Names must adhere to the naming rules for C# identifiers',
+								description:
+									'Names must adhere to the naming rules for <a href="https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/">C# identifiers</a>',
 								type: 'string',
 							},
 							{
@@ -298,8 +327,9 @@ const createFields: INodeProperties[] = [
 								requestOptions.headers ??= {};
 								const metadata = this.getNodeParameter('additionalFields.metadata') as IDataObject;
 								for (const data of metadata.metadataValues as IDataObject[]) {
-									requestOptions.headers[`x-ms-meta-${data.fieldName as string}`] =
-										data.fieldValue as string;
+									requestOptions.headers[
+										`${HeaderConstants.PREFIX_X_MS}${data.fieldName as string}`
+									] = data.fieldValue as string;
 								}
 								return requestOptions;
 							},
@@ -465,29 +495,6 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Filter',
-		name: 'filter',
-		default: '',
-		description:
-			'Filters the results to return only containers with a name that begins with the specified prefix',
-		displayOptions: {
-			show: {
-				resource: ['container'],
-				operation: ['getAll'],
-			},
-		},
-		placeholder: 'e.g. mycontainer',
-		routing: {
-			send: {
-				property: 'prefix',
-				type: 'query',
-				value: '={{ $value ? $value : undefined }}',
-			},
-		},
-		type: 'string',
-		validateType: 'string',
-	},
-	{
 		displayName: 'Fields',
 		name: 'fields',
 		default: [],
@@ -520,6 +527,29 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		type: 'multiOptions',
+	},
+	{
+		displayName: 'Filter',
+		name: 'filter',
+		default: '',
+		description:
+			'Filters the results to return only containers with a name that begins with the specified prefix',
+		displayOptions: {
+			show: {
+				resource: ['container'],
+				operation: ['getAll'],
+			},
+		},
+		placeholder: 'e.g. mycontainer',
+		routing: {
+			send: {
+				property: 'prefix',
+				type: 'query',
+				value: '={{ $value ? $value : undefined }}',
+			},
+		},
+		type: 'string',
+		validateType: 'string',
 	},
 ];
 

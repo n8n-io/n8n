@@ -1,3 +1,4 @@
+import { camelCase } from 'change-case';
 import type {
 	JsonObject,
 	IDataObject,
@@ -6,7 +7,6 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
 	INodeListSearchResult,
@@ -20,33 +20,60 @@ import { firstCharLowerCase, parseBooleans, parseNumbers } from 'xml2js/lib/proc
 
 import { compareHeader } from './compare-header';
 
+export const XMsVersion = '2020-10-02';
+
 export const HeaderConstants = {
-	AUTHORIZATION: 'Authorization',
-	// AUTHORIZATION_SCHEME: 'Bearer',
-	CONTENT_ENCODING: 'Content-Encoding',
-	// CONTENT_ID: 'Content-ID',
-	CONTENT_LANGUAGE: 'Content-Language',
-	CONTENT_LENGTH: 'Content-Length',
-	CONTENT_MD5: 'Content-Md5',
-	// CONTENT_TRANSFER_ENCODING: 'Content-Transfer-Encoding',
-	CONTENT_TYPE: 'Content-Type',
-	// COOKIE: 'Cookie',
+	AUTHORIZATION: 'authorization',
+	CONTENT_ENCODING: 'content-encoding',
+	CONTENT_LANGUAGE: 'content-language',
+	CONTENT_LENGTH: 'content-length',
+	CONTENT_MD5: 'content-md5',
+	CONTENT_TYPE: 'content-Type',
 	DATE: 'date',
+	ETAG: 'etag',
 	IF_MATCH: 'if-match',
-	IF_MODIFIED_SINCE: 'if-modified-since',
+	IF_MODIFIED_SINCE: 'if-Modified-since',
 	IF_NONE_MATCH: 'if-none-match',
 	IF_UNMODIFIED_SINCE: 'if-unmodified-since',
-	RANGE: 'Range',
-	// USER_AGENT: 'User-Agent',
-	PREFIX_FOR_STORAGE: 'x-ms-',
-	X_MS_CLIENT_REQUEST_ID: 'x-ms-client-request-id',
+	ORIGIN: 'origin',
+	RANGE: 'range',
 	X_MS_COPY_SOURCE: 'x-ms-copy-source',
 	X_MS_DATE: 'x-ms-date',
-	// X_MS_ERROR_CODE: 'x-ms-error-code',
 	X_MS_VERSION: 'x-ms-version',
-	// X_MS_CopySourceErrorCode: 'x-ms-copy-source-error-code',
 	X_MS_BLOB_TYPE: 'x-ms-blob-type',
 	X_MS_BLOB_CONTENT_DISPOSITION: 'x-ms-blob-content-disposition',
+	X_MS_BLOB_PUBLIC_ACCESS: 'x-ms-blob-public-access',
+	X_MS_HAS_IMMUTABILITY_POLICY: 'x-ms-has-immutability-policy',
+	X_MS_HAS_LEGAL_HOLD: 'x-ms-has-legal-hold',
+	X_MS_CONTENT_CRC64: 'x-ms-content-crc64',
+	X_MS_REQUEST_SERVER_ENCRYPTED: 'x-ms-request-server-encrypted',
+	X_MS_ENCRYPTION_SCOPE: 'x-ms-encryption-scope',
+	X_MS_VERSION_ID: 'x-ms-version-id',
+	X_MS_TAG_COUNT: 'x-ms-tag-count',
+	X_MS_COPY_PROGRESS: 'x-ms-copy-progress',
+	X_MS_INCREMENTAL_COPY: 'x-ms-incremental-copy',
+	X_MS_BLOB_SEQUENCE_NUMBER: 'x-ms-blob-sequence-number',
+	X_MS_BLOB_COMMITTED_BLOCK_COUNT: 'x-ms-blob-committed-block-count',
+	X_MS_SERVER_ENCRYPTED: 'x-ms-server-encrypted',
+	X_MS_ENCRYPTION_CONTEXT: 'x-ms-encryption-context',
+	X_MS_BLOB_CONTENT_MD5: 'x-ms-blob-content-md5',
+	X_MS_BLOB_SEALED: 'x-ms-blob-sealed',
+	X_MS_IMMUTABILITY_POLICY_UNTIL_DATE: 'x-ms-immutability-policy-until-date',
+	X_MS_IMMUTABILITY_POLICY_MODE: 'x-ms-immutability-policy-mode',
+	X_MS_LEGAL_HOLD: 'x-ms-legal-hold',
+	X_MS_DELETE_TYPE_PERMANENT: 'x-ms-delete-type-permanent',
+	X_MS_ACCESS_TIER: 'x-ms-access-tier',
+	X_MS_BLOB_CACHE_CONTROL: 'x-ms-blob-cache-control',
+	X_MS_LEASE_ID: 'x-ms-lease-id',
+	X_MS_BLOB_CONTENT_ENCODING: 'x-ms-blob-content-encoding',
+	X_MS_BLOB_CONTENT_LANGUAGE: 'x-ms-blob-content-language',
+	X_MS_BLOB_CONTENT_TYPE: 'x-ms-blob-content-type',
+	X_MS_EXPIRY_OPTION: 'x-ms-expiry-option',
+	X_MS_EXPIRY_TIME: 'x-ms-expiry-time',
+	X_MS_TAGS: 'x-ms-tags',
+	X_MS_UPN: 'x-ms-upn',
+	PREFIX_X_MS: 'x-ms-',
+	PREFIX_X_MS_META: 'x-ms-meta-',
 };
 
 export async function microsoftApiRequest(
@@ -73,6 +100,10 @@ export async function microsoftApiRequest(
 		qs,
 	};
 
+	options.headers ??= {};
+	options.headers[HeaderConstants.X_MS_DATE] = new Date().toUTCString();
+	options.headers[HeaderConstants.X_MS_VERSION] = XMsVersion;
+
 	// XML response
 	const response = (await this.helpers.requestWithAuthentication.call(
 		this,
@@ -81,51 +112,6 @@ export async function microsoftApiRequest(
 	)) as string;
 
 	return response;
-}
-
-export async function microsoftApiPaginateRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: IDataObject = {},
-	qs?: IDataObject,
-	headers?: IDataObject,
-	url?: string,
-	itemIndex: number = 0,
-): Promise<IDataObject[]> {
-	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
-	const options: IRequestOptions = {
-		method,
-		uri: url ?? `https://myaccount.file.core.windows.net/myshare/mydirectorypath/myfile${endpoint}`,
-		json: true,
-		headers,
-		body,
-		qs,
-	};
-
-	const pages = await this.helpers.requestWithAuthenticationPaginated.call(
-		this,
-		options,
-		itemIndex,
-		{
-			continue: '={{ !!$response.body?.["@odata.nextLink"] }}',
-			request: {
-				url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
-			},
-			requestInterval: 0,
-		},
-		'microsoftStorageOAuth2Api',
-	);
-
-	let results: IDataObject[] = [];
-	for (const page of pages) {
-		const items = page.body.value as IDataObject[];
-		if (items) {
-			results = results.concat(items);
-		}
-	}
-
-	return results;
 }
 
 export async function handleErrorPostReceive(
@@ -149,11 +135,61 @@ export async function handleErrorPostReceive(
 				};
 			}) ?? {};
 
+		if (
+			error?.code === 'InvalidAuthenticationInfo' &&
+			((error as IDataObject)?.authenticationErrorDetail as string) ===
+				'Lifetime validation failed. The token is expired.'
+		) {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: 'Lifetime validation failed. The token is expired.',
+				description: 'Please check your credentials and try again',
+			});
+		}
+
 		if (resource === 'blob') {
+			if (error?.code === 'ContainerNotFound') {
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
+					message: "The required container doesn't match any existing one",
+					description: "Double-check the value in the parameter 'Container Name' and try again",
+				});
+			}
+
 			if (operation === 'create') {
 			} else if (operation === 'delete') {
+				if (error?.code === 'BlobNotFound') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: "The required blob doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Blob to Delete' and try again",
+					});
+				}
 			} else if (operation === 'get') {
+				if (error?.code === 'BlobNotFound') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: "The required blob doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Blob to Get' and try again",
+					});
+				}
 			} else if (operation === 'getAll') {
+				if (
+					error?.code === 'InvalidQueryParameterValue' &&
+					(this.getNodeParameter('fields', []) as string[]).includes('permissions')
+				) {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message:
+							'Permissions field is only supported for accounts with a hierarchical namespace enabled',
+						description: "Exclude 'Permissions' from 'Fields' and try again",
+					});
+				}
+				if (
+					error?.code === 'UnsupportedQueryParameter' &&
+					(this.getNodeParameter('fields', []) as string[]).includes('deleted') &&
+					(this.getNodeParameter('filter', []) as string[]).includes('deleted')
+				) {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: "Including 'Deleted' field and filter is not supported",
+						description: "Exclude 'Deleted' from 'Fields' or 'Filter' and try again",
+					});
+				}
 			}
 		} else if (resource === 'container') {
 			if (operation === 'create') {
@@ -161,6 +197,12 @@ export async function handleErrorPostReceive(
 					throw new NodeApiError(this.getNode(), error as JsonObject, {
 						message: 'The specified container already exists',
 						description: "Use a unique value for 'Container Name' and try again",
+					});
+				}
+				if (error?.code === 'PublicAccessNotPermitted') {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Public access is not permitted on this storage account',
+						description: "Check the 'Access Level' and try again",
 					});
 				}
 			} else if (operation === 'delete') {
@@ -182,7 +224,16 @@ export async function handleErrorPostReceive(
 			}
 		}
 
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, { parseXml: true });
+		if (error) {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				message: error.code,
+				description: error.message,
+			});
+		} else {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				parseXml: true,
+			});
+		}
 	}
 
 	return data;
@@ -195,7 +246,7 @@ export function getCanonicalizedHeadersString(requestOptions: IHttpRequestOption
 		string,
 		string,
 	]) {
-		if (name.toLowerCase().startsWith(HeaderConstants.PREFIX_FOR_STORAGE)) {
+		if (name.toLowerCase().startsWith(HeaderConstants.PREFIX_X_MS)) {
 			headersArray.push({ name, value });
 		}
 	}
@@ -243,6 +294,131 @@ export function getCanonicalizedResourceString(
 	return canonicalizedResourceString;
 }
 
+export function parseHeaders(headers: IDataObject) {
+	const parseBooleanHeaders = [
+		HeaderConstants.X_MS_DELETE_TYPE_PERMANENT,
+		HeaderConstants.X_MS_INCREMENTAL_COPY,
+		HeaderConstants.X_MS_SERVER_ENCRYPTED,
+		HeaderConstants.X_MS_BLOB_SEALED,
+		HeaderConstants.X_MS_REQUEST_SERVER_ENCRYPTED,
+		HeaderConstants.X_MS_HAS_IMMUTABILITY_POLICY,
+		HeaderConstants.X_MS_HAS_LEGAL_HOLD,
+	];
+	const parseNumberHeaders = [
+		HeaderConstants.X_MS_TAG_COUNT,
+		HeaderConstants.CONTENT_LENGTH,
+		HeaderConstants.X_MS_BLOB_SEQUENCE_NUMBER,
+		HeaderConstants.X_MS_COPY_PROGRESS,
+		HeaderConstants.X_MS_BLOB_COMMITTED_BLOCK_COUNT,
+	];
+
+	const result: IDataObject = {};
+
+	const metadataKeys = Object.keys(headers).filter((x) =>
+		x.startsWith(HeaderConstants.PREFIX_X_MS_META),
+	);
+
+	for (const key in headers) {
+		if (metadataKeys.includes(key)) {
+			continue;
+		}
+
+		const newKey = key.startsWith(HeaderConstants.PREFIX_X_MS)
+			? camelCase(key.replace(HeaderConstants.PREFIX_X_MS, ''))
+			: camelCase(key);
+
+		const newValue = parseBooleanHeaders.includes(key)
+			? parseBooleans(headers[key] as string)
+			: parseNumberHeaders.includes(key)
+				? parseNumbers(headers[key] as string)
+				: headers[key];
+
+		result[newKey] = newValue;
+	}
+
+	if (metadataKeys.length > 0) {
+		result.metadata = {};
+		for (const key of metadataKeys) {
+			(result.metadata as IDataObject)[key.replace(HeaderConstants.PREFIX_X_MS_META, '')] =
+				headers[key];
+		}
+	}
+
+	return result;
+}
+
+export async function parseBlobList(
+	xml: string,
+): Promise<{ blobs: IDataObject[]; maxResults?: number; nextMarker?: string }> {
+	const parser = new Parser({
+		explicitArray: false,
+		tagNameProcessors: [firstCharLowerCase],
+		valueProcessors: [
+			function (value, name) {
+				if (
+					[
+						'deleted',
+						'isCurrentVersion',
+						'serverEncrypted',
+						'incrementalCopy',
+						'accessTierInferred',
+						'isSealed',
+						'legalHold',
+					].includes(name)
+				) {
+					return parseBooleans(value);
+				} else if (
+					[
+						'maxResults',
+						'contentLength',
+						'blobSequenceNumber',
+						'remainingRetentionDays',
+						'tagCount',
+					].includes(name)
+				) {
+					return parseNumbers(value);
+				}
+				return value;
+			},
+		],
+	});
+	const data = (await parser.parseStringPromise(xml)) as {
+		enumerationResults: {
+			blobs: { blob: IDataObject | IDataObject[] };
+			maxResults: number;
+			nextMarker: string;
+			prefix: string;
+		};
+	};
+
+	if (typeof data.enumerationResults.blobs !== 'object') {
+		// No items
+		return { blobs: [] };
+	}
+
+	if (!Array.isArray(data.enumerationResults.blobs.blob)) {
+		// Single item
+		data.enumerationResults.blobs.blob = [data.enumerationResults.blobs.blob];
+	}
+
+	for (const blob of data.enumerationResults.blobs.blob) {
+		if (blob.tags) {
+			if (!Array.isArray(((blob.tags as IDataObject).tagSet as IDataObject).tag)) {
+				((blob.tags as IDataObject).tagSet as IDataObject).tag = [
+					((blob.tags as IDataObject).tagSet as IDataObject).tag,
+				];
+			}
+			blob.tags = ((blob.tags as IDataObject).tagSet as IDataObject).tag;
+		}
+	}
+
+	return {
+		blobs: data.enumerationResults.blobs.blob,
+		maxResults: data.enumerationResults.maxResults,
+		nextMarker: data.enumerationResults.nextMarker,
+	};
+}
+
 export async function parseContainerList(
 	xml: string,
 ): Promise<{ containers: IDataObject[]; maxResults?: number; nextMarker?: string }> {
@@ -253,6 +429,7 @@ export async function parseContainerList(
 			function (value, name) {
 				if (
 					[
+						'deleted',
 						'hasImmutabilityPolicy',
 						'hasLegalHold',
 						'preventEncryptionScopeOverride',
@@ -293,32 +470,6 @@ export async function parseContainerList(
 	};
 }
 
-export async function parseContainerGetProperties(headers: IDataObject): Promise<IDataObject> {
-	const data: IDataObject = {
-		properties: {
-			lastModified: headers['last-modified'],
-			// eslint-disable-next-line @typescript-eslint/dot-notation
-			etag: headers['etag'],
-			leaseStatus: headers['x-ms-lease-status'],
-			leaseState: headers['x-ms-lease-state'],
-			leaseDuration: headers['x-ms-lease-duration'],
-			publicAccess: headers['x-ms-blob-public-access'],
-			hasImmutabilityPolicy: parseBooleans(headers['x-ms-has-immutability-policy'] as string),
-			hasLegalHold: parseBooleans(headers['x-ms-has-legal-hold'] as string),
-		},
-	};
-
-	const metadataKeys = Object.keys(headers).filter((x) => x.startsWith('x-ms-meta-'));
-	if (metadataKeys.length > 0) {
-		data.metadata = {};
-		for (const key of metadataKeys) {
-			(data.metadata as IDataObject)[key.replace('x-ms-meta-', '')] = headers[key];
-		}
-	}
-
-	return data;
-}
-
 export async function getBlobs(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -326,7 +477,6 @@ export async function getBlobs(
 ): Promise<INodeListSearchResult> {
 	const container = this.getNodeParameter('container') as INodeParameterResourceLocator;
 
-	/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 	let response: any;
 
 	const qs: IDataObject = {
@@ -345,17 +495,12 @@ export async function getBlobs(
 		response = await microsoftApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
 	}
 
-	const blobs: Array<{
-		name: string;
-	}> =
-		response.EnumerationResults.Blobs[0] !== ''
-			? response.EnumerationResults.Blobs[0].Blob.map((x: any) => ({ name: x.Name[0] }))
-			: [];
+	const data = await parseBlobList(response as string);
 
-	const results: INodeListSearchItems[] = blobs
-		.map((b) => ({
-			name: b.name,
-			value: b.name,
+	const results: INodeListSearchItems[] = data.blobs
+		.map((c) => ({
+			name: c.name as string,
+			value: c.name as string,
 		}))
 		.sort((a, b) =>
 			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
@@ -363,9 +508,8 @@ export async function getBlobs(
 
 	return {
 		results,
-		paginationToken: (response.EnumerationResults.NextMarker[0] as string) || undefined,
+		paginationToken: data.nextMarker,
 	};
-	/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 }
 
 export async function getContainers(
@@ -373,7 +517,6 @@ export async function getContainers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 	let response: any;
 
 	const qs: IDataObject = {
@@ -391,9 +534,9 @@ export async function getContainers(
 		response = await microsoftApiRequest.call(this, 'GET', '/', {}, qs);
 	}
 
-	const result = await parseContainerList(response as string);
+	const data = await parseContainerList(response as string);
 
-	const results: INodeListSearchItems[] = result.containers
+	const results: INodeListSearchItems[] = data.containers
 		.map((c) => ({
 			name: c.name as string,
 			value: c.name as string,
@@ -404,7 +547,6 @@ export async function getContainers(
 
 	return {
 		results,
-		paginationToken: result.nextMarker,
+		paginationToken: data.nextMarker,
 	};
-	/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 }
