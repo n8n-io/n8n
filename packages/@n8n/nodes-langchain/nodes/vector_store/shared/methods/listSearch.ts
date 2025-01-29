@@ -1,6 +1,7 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
+import { MongoClient } from 'mongodb';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -66,4 +67,26 @@ export async function qdrantCollectionsSearch(this: ILoadOptionsFunctions) {
 	}));
 
 	return { results };
+}
+
+export async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('mongoDb');
+
+	const client = new MongoClient(credentials.connectionString as string, {
+		appName: 'devrel.content.n8n_vector_integ',
+	});
+	await client.connect();
+
+	try {
+		const db = client.db(credentials.database as string);
+		const collections = await db.listCollections().toArray();
+		const results = collections.map((collection) => ({
+			name: collection.name,
+			value: collection.name,
+		}));
+
+		return { results };
+	} finally {
+		await client.close();
+	}
 }
