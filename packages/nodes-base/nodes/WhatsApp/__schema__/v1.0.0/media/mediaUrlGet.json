@@ -1,0 +1,31 @@
+{
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string"
+        },
+        "mime_type": {
+            "type": "string"
+        },
+        "sha256": {
+            "type": "string"
+        },
+        "file_size": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "messaging_product": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "url",
+        "mime_type",
+        "sha256",
+        "file_size",
+        "id",
+        "messaging_product"
+    ]
+}
