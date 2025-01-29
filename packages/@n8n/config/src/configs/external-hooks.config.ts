@@ -1,6 +1,6 @@
 import { Config, Env } from '../decorators';
 
-class ColonSeperatedStringArray<T extends string = string> extends Array<T> {
+class ColonSeparatedStringArray<T extends string = string> extends Array<T> {
 	constructor(str: string) {
 		super();
 		const parsed = str.split(':') as this;
@@ -13,5 +13,5 @@ class ColonSeperatedStringArray<T extends string = string> extends Array<T> {
 export class ExternalHooksConfig {
 	/** Files containing external hooks. Multiple files can be separated by colon (":") */
 	@Env('EXTERNAL_HOOK_FILES')
-	files: ColonSeperatedStringArray = [];
+	files: ColonSeparatedStringArray = [];
 }
