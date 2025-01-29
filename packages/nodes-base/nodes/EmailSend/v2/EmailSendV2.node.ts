@@ -91,7 +91,7 @@ export class EmailSendV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let returnData: INodeExecutionData[][] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === SEND_AND_WAIT_OPERATION) {
 			returnData = await sendAndWait.execute.call(this);

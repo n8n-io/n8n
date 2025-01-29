@@ -9,6 +9,7 @@ import type { EditableFormState, EvaluationFormState } from '@/components/TestDe
 import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref } from 'vue';
+import type { IPinData } from 'n8n-workflow';
 
 defineProps<{
 	showConfig: boolean;
@@ -16,6 +17,8 @@ defineProps<{
 	allTags: ITag[];
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
+	examplePinnedData?: IPinData;
+	sampleWorkflowName?: string;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
@@ -23,6 +26,12 @@ defineProps<{
 	createTag?: (name: string) => Promise<ITag>;
 }>();
 
+const emit = defineEmits<{
+	openPinningModal: [];
+	deleteMetric: [metric: Partial<TestMetricRecord>];
+}>();
+
+const locale = useI18n();
 const changedFieldsKeys = ref<string[]>([]);
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
 const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']>(
@@ -35,12 +44,6 @@ const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes
 });
 
 const nodePinningModal = ref<ModalState | null>(null);
-const emit = defineEmits<{
-	openPinningModal: [];
-	deleteMetric: [metric: Partial<TestMetricRecord>];
-}>();
-
-const locale = useI18n();
 
 function updateChangedFieldsKeys(key: string) {
 	changedFieldsKeys.value.push(key);
@@ -138,7 +141,9 @@ function showFieldIssues(fieldKey: string) {
 			<template #cardContent>
 				<WorkflowSelector
 					v-model="evaluationWorkflow"
+					:example-pinned-data="examplePinnedData"
 					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
+					:sample-workflow-name="sampleWorkflowName"
 					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
 				/>
 			</template>

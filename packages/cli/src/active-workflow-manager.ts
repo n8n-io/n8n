@@ -89,7 +89,7 @@ export class ActiveWorkflowManager {
 
 		await this.addActiveWorkflows('init');
 
-		await this.externalHooks.run('activeWorkflows.initialized', []);
+		await this.externalHooks.run('activeWorkflows.initialized');
 		await this.webhookService.populateCache();
 	}
 
