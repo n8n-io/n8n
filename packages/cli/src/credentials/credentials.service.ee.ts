@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Not, In, type EntityManager } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -36,7 +36,7 @@ export class EnterpriseCredentialsService {
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
-		const projects = await em.find(Project, {
+		let projects = await em.find(Project, {
 			where: [
 				{
 					id: In(shareWithIds),
@@ -55,13 +55,17 @@ export class EnterpriseCredentialsService {
 				{
 					id: In(shareWithIds),
 					type: 'personal',
-					sharedCredentials: {
-						credentialsId: credentialId,
-						role: Not(In(['credential:owner'])),
-					},
 				},
 			],
+			relations: { sharedCredentials: true },
 		});
+		// filter out all projects that already own the workflow
+		projects = projects.filter(
+			(p) =>
+				!p.sharedCredentials.some(
+					(psc) => psc.credentialsId === credentialId && psc.role === 'credential:owner',
+				),
+		);
 
 		const newSharedCredentials = projects.map((project) =>
 			this.sharedCredentialsRepository.create({

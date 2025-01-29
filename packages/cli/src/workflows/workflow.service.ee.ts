@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Not, In, type EntityManager } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { Logger } from 'n8n-core';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
@@ -50,16 +50,17 @@ export class EnterpriseWorkflowService {
 	) {
 		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
-		const projects = await em.find(Project, {
-			where: {
-				id: In(shareWithIds),
-				type: 'personal',
-				sharedWorkflows: {
-					workflowId: workflow.id,
-					role: Not(In(['workflow:owner'])),
-				},
-			},
+		let projects = await em.find(Project, {
+			where: { id: In(shareWithIds), type: 'personal' },
+			relations: { sharedWorkflows: true },
 		});
+		// filter out all projects that already own the workflow
+		projects = projects.filter(
+			(p) =>
+				!p.sharedWorkflows.some(
+					(swf) => swf.workflowId === workflow.id && swf.role === 'workflow:owner',
+				),
+		);
 
 		const newSharedWorkflows = projects
 			// We filter by role === 'project:personalOwner' above and there should
