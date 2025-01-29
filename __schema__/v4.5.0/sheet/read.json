@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "row_number": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "row_number"
+    ]
+}
