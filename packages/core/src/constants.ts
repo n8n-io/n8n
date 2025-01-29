@@ -20,4 +20,5 @@ export const CREDENTIAL_ERRORS = {
 	DECRYPTION_FAILED:
 		'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 	INVALID_JSON: 'Decrypted credentials data is not valid JSON.',
+	INVALID_DATA: 'Credentials data is not in a valid format.',
 };
