@@ -35,20 +35,29 @@ exports[`components > N8nCheckbox > should render with both child and label 1`] 
           class="n8n-input-label inputLabel heading medium"
         >
           <div
-            class="title"
+            class="main-content"
           >
-            <span
-              class="n8n-text size-medium regular"
+            <div
+              class="title"
             >
-              
-              Checkbox 
-              <!--v-if-->
-              
-            </span>
+              <span
+                class="n8n-text size-medium regular"
+              >
+                
+                Checkbox 
+                <!--v-if-->
+                
+              </span>
+            </div>
+            <!--v-if-->
           </div>
-          <!--v-if-->
-          <!--v-if-->
-          <!--v-if-->
+          <div
+            class="trailing-content"
+          >
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
         </label>
         
         
@@ -126,20 +135,29 @@ exports[`components > N8nCheckbox > should render with label 1`] = `
           class="n8n-input-label inputLabel heading medium"
         >
           <div
-            class="title"
+            class="main-content"
           >
-            <span
-              class="n8n-text size-medium regular"
+            <div
+              class="title"
             >
-              
-              Checkbox 
-              <!--v-if-->
-              
-            </span>
+              <span
+                class="n8n-text size-medium regular"
+              >
+                
+                Checkbox 
+                <!--v-if-->
+                
+              </span>
+            </div>
+            <!--v-if-->
           </div>
-          <!--v-if-->
-          <!--v-if-->
-          <!--v-if-->
+          <div
+            class="trailing-content"
+          >
+            <!--v-if-->
+            <!--v-if-->
+            <!--v-if-->
+          </div>
         </label>
         
         
