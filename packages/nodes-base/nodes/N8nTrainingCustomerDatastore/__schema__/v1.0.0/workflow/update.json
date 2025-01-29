@@ -1,0 +1,83 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "webhookId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "parameters",
+                    "id",
+                    "name"
+                ]
+            }
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "executionOrder": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "executionOrder"
+            ]
+        },
+        "versionId": {
+            "type": "string"
+        },
+        "triggerCount": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "createdAt",
+        "updatedAt",
+        "id",
+        "name",
+        "active",
+        "nodes",
+        "connections",
+        "settings",
+        "staticData",
+        "meta",
+        "pinData",
+        "versionId",
+        "triggerCount"
+    ]
+}
