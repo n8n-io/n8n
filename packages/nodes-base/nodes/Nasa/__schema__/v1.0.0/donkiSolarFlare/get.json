@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "properties": {
+        "flrID": {
+            "type": "string"
+        },
+        "catalog": {
+            "type": "string"
+        },
+        "instruments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "displayName"
+                ]
+            }
+        },
+        "beginTime": {
+            "type": "string"
+        },
+        "peakTime": {
+            "type": "string"
+        },
+        "endTime": {
+            "type": "string"
+        },
+        "classType": {
+            "type": "string"
+        },
+        "sourceLocation": {
+            "type": "string"
+        },
+        "note": {
+            "type": "string"
+        },
+        "submissionTime": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "flrID",
+        "catalog",
+        "instruments",
+        "beginTime",
+        "peakTime",
+        "endTime",
+        "classType",
+        "sourceLocation",
+        "activeRegionNum",
+        "note",
+        "submissionTime",
+        "versionId",
+        "link",
+        "linkedEvents"
+    ]
+}
