@@ -42,6 +42,7 @@ export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
+export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
@@ -660,6 +661,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	API_KEYS = 'apiKeys',
 	TEST_DEFINITION = 'testDefinition',
 }
 
