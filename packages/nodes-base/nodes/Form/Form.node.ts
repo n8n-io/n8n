@@ -115,6 +115,16 @@ const completionProperties = updateDisplayOptions(
 					value: 'redirect',
 					description: 'Redirect the user to a URL',
 				},
+				{
+					name: 'Respond with Text',
+					value: 'text',
+					description: 'Respond to the user with a text',
+				},
+				{
+					name: 'Respond with Binary',
+					value: 'binary',
+					description: 'Respond to the user with a text',
+				},
 			],
 		},
 		{

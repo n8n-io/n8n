@@ -220,7 +220,7 @@ export class Webhook extends Node {
 		});
 
 		if (options.binaryData) {
-			return await this.handleBinaryData(context, prepareOutput);
+			return await this.handleBinaryData(context, prepareOutput); // magic here
 		}
 
 		if (req.contentType === 'multipart/form-data') {
