@@ -116,12 +116,21 @@ const addTargetBlank = (html: string) =>
 	}
 }
 
-.main-content,
-.trailing-content {
+.main-content {
 	display: flex;
+	&:hover {
+		.infoIcon {
+			opacity: 1;
+
+			&:hover {
+				color: var(--color-text-base);
+			}
+		}
+	}
 }
 
 .trailing-content {
+	display: flex;
 	gap: var(--spacing-3xs);
 
 	* {
@@ -134,14 +143,6 @@ const addTargetBlank = (html: string) =>
 }
 .container:hover,
 .inputLabel:hover {
-	.infoIcon {
-		opacity: 1;
-
-		&:hover {
-			color: var(--color-text-base);
-		}
-	}
-
 	.options {
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
