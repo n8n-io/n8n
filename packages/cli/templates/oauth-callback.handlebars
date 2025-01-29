@@ -1,59 +1,71 @@
 <html>
 	<head>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 		<style>
 			html {
 				font-size: 16px;
 			}
 			body {
-				font-family: sans-serif;
+				font-family: "Open Sans", sans-serif;
+				padding: 1rem;
+				margin: 0;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				box-sizing: border-box;
 			}
 
 			.center-container {
 				display: flex;
 				align-items: center;
-				height: 100vh
+				justify-content: center;
+				flex: 1;
 			}
 
-			.left-container {
-				margin-left: auto;
-				margin-right: auto;
-				display: flex;
-				flex-direction: column;
-			}
 			.row {
 				display: flex;
 				flex-direction: row;
 				gap: 20px;
+				justify-content: center;
+				text-align: center;
 			}
 
 			.icon {
-				width: 2.5rem;
+				width: 1.4rem;
 				fill: #2AA568;
 			}
 
-			.logo {
+			img.logo {
 				width: 8rem;
 			}
 
+			div.logo {
+				display: flex;
+				justify-content: center;
+			}
+
 			h1 {
-				font-size: 2.5rem;
-				color: #0F1430;
+				font-size: 1.75rem;
+				font-weight: 400;
+				color: #525456;
+				margin-block-end: 0;
 			}
 
 			p {
-				font-size: 1.5rem;
-				font-weight: 500;
-				color: #707183;
-				font-size: 1.1rem;
+				font-size: 0.875rem;
+				font-weight: 400;
+				color: #909298;
 			}
 		</style>
 	</head>
 	<body>
+		<div class="logo">
+			<img src="/static/n8n-logo.png" class="logo" />
+		</div>
 		<div class="center-container">
-			<div class="left-container">
-				<div class="row">
-					<img src="{{imagePath}}" class="logo" />
-				</div>
+			<div>
 				<div class="row">
 					<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -65,6 +77,8 @@
 									d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"
 							/>
 					</svg>
+				</div>
+				<div class="row">
 					<h1>Connection successful</h1>
 				</div>
 				<div class="row">

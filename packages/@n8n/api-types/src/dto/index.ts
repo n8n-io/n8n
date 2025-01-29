@@ -48,3 +48,5 @@ export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+
+export { CreateOrUpdateApiKeyRequestDto } from './api-keys/create-or-update-api-key-request.dto';

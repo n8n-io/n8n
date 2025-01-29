@@ -17,7 +17,6 @@ import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
@@ -270,10 +269,6 @@ export class ScalingService {
 
 		this.queue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
-
-			if (error.message.includes('job stalled more than maxStalledCount')) {
-				throw new MaxStalledCountError(error);
-			}
 
 			/**
 			 * Non-recoverable error on worker start with Redis unavailable.
