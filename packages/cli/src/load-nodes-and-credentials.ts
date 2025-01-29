@@ -174,6 +174,29 @@ export class LoadNodesAndCredentials {
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
 
+	resolveSchema({
+		node,
+		version,
+		resource,
+		operation,
+	}: {
+		node: string;
+		version: string;
+		resource?: string;
+		operation?: string;
+	}): string | undefined {
+		const nodePath = this.known.nodes[node]?.sourcePath;
+		if (!nodePath) {
+			return undefined;
+		}
+
+		const nodeParentPath = path.dirname(nodePath);
+		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
+		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+
+		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	}
+
 	getCustomDirectories(): string[] {
 		const customDirectories = [this.instanceSettings.customExtensionDir];
 

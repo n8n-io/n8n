@@ -6,20 +6,17 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { draftFields, draftOperations } from './DraftDescription';
 import { labelFields, labelOperations } from './LabelDescription';
 import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
+	configureWaitTillDate,
 	createEmail,
 	getSendAndWaitProperties,
 	sendAndWaitWebhook,
@@ -72,26 +69,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
-	webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'GET',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			responseMode: 'onReceived',
-			responseData: '',
-			path: '={{ $nodeId }}',
-			restartWebhook: true,
-			isFullPath: true,
-		},
-	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Authentication',
@@ -204,7 +182,9 @@ export class GmailV2 implements INodeType {
 				raw: await encodeEmail(email),
 			});
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 

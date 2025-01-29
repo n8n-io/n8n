@@ -330,7 +330,7 @@ export class License {
 	}
 
 	/**
-	 * Helper function to get the main plan for a license
+	 * Helper function to get the latest main plan for a license
 	 */
 	getMainPlan(): TEntitlement | undefined {
 		if (!this.manager) {
@@ -341,6 +341,8 @@ export class License {
 		if (!entitlements.length) {
 			return undefined;
 		}
+
+		entitlements.sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime());
 
 		return entitlements.find(
 			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,

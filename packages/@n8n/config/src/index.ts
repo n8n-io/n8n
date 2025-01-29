@@ -6,6 +6,7 @@ import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
@@ -30,6 +31,7 @@ export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { FrontendBetaFeatures, FrontendConfig } from './configs/frontend.config';
+export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 
@@ -49,6 +51,9 @@ export class GlobalConfig {
 
 	@Nested
 	publicApi: PublicApiConfig;
+
+	@Nested
+	externalHooks: ExternalHooksConfig;
 
 	@Nested
 	externalSecrets: ExternalSecretsConfig;
