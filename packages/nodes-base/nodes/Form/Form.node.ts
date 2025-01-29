@@ -266,7 +266,15 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
+				(field) => {
+					if (field.fieldType === 'hiddenField') {
+						field.fieldLabel = field.fieldName as string;
+					}
+
+					return field;
+				},
+			);
 		}
 
 		const method = context.getRequestObject().method;
