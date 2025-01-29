@@ -193,19 +193,16 @@ export class KafkaTrigger implements INodeType {
 		let useSslConnectionOptions = false as boolean;
 		let sslConnectionOptions: ConnectionOptions = {}
 
-		if (ssl === true && (credentials.sslCa !== '' || credentials.sslCert !== ''  || credentials.sslKey !== '')) {
+		if (ssl === true && (credentials.clientSslCert !== ''  || credentials.clientSslKey !== '')) {
 			useSslConnectionOptions = true;
-			if (credentials.sslCa !== '') {
-				sslConnectionOptions.ca = [credentials.sslCa] as string[];
+			if (credentials.clientSslCert !== '') {
+				sslConnectionOptions.cert = credentials.clientSslCert as string;
 			}
-			if (credentials.sslCert !== '') {
-				sslConnectionOptions.cert = credentials.sslCert as string;
+			if (credentials.clientSslKey !== '') {
+				sslConnectionOptions.key = credentials.clientSslKey as string;
 			}
-			if (credentials.sslKey !== '') {
-				sslConnectionOptions.key = credentials.sslKey as string;
-			}
-			if (credentials.sslPassphrase !== '') {
-				sslConnectionOptions.passphrase = credentials.sslPassphrase as string;
+			if (credentials.clientSslPassphrase !== '') {
+				sslConnectionOptions.passphrase = credentials.clientSslPassphrase as string;
 			}
 		};
 		
