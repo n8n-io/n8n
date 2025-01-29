@@ -182,12 +182,8 @@ async function startExecution(
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
 ): Promise<ExecuteWorkflowData> {
-	const externalHooks = Container.get(ExternalHooks);
-	await externalHooks.init();
-
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
-	const eventService = Container.get(EventService);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowName = workflowData ? workflowData.name : undefined;
@@ -209,8 +205,6 @@ async function startExecution(
 	 */
 	await executionRepository.setRunning(executionId);
 
-	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
-
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
@@ -228,6 +222,7 @@ async function startExecution(
 			runData.executionMode,
 			executionId,
 			workflowData,
+			additionalData.userId,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
@@ -308,14 +303,8 @@ async function startExecution(
 		);
 	}
 
+	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
-
-	eventService.emit('workflow-post-execute', {
-		workflow: workflowData,
-		executionId,
-		userId: additionalData.userId,
-		runData: data,
-	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	if (data.finished === true || data.status === 'waiting') {

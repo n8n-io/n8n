@@ -2,7 +2,10 @@
 	"node": "n8n-nodes-base.googleChat",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication"],
+	"categories": ["Communication", "HILT"],
+	"subcategories": {
+		"HILT": ["Human in the Loop"]
+	},
 	"resources": {
 		"credentialDocumentation": [
 			{

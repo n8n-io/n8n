@@ -33,7 +33,7 @@ export class Webhook extends BaseCommand {
 		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 
 			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {

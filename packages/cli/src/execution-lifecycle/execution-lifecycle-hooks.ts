@@ -34,6 +34,60 @@ import {
 } from './shared/shared-hook-functions';
 import { toSaveSettings } from './to-save-settings';
 
+function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflowExecuteHooks {
+	const result: IWorkflowExecuteHooks = {
+		nodeExecuteBefore: [],
+		nodeExecuteAfter: [],
+		workflowExecuteBefore: [],
+		workflowExecuteAfter: [],
+		sendResponse: [],
+		nodeFetchedData: [],
+	};
+	for (const hooks of hookFunctions) {
+		for (const key in hooks) {
+			if (!result[key] || !hooks[key]) continue;
+			result[key].push(...hooks[key]);
+		}
+	}
+	return result;
+}
+
+function hookFunctionsWorkflowEvents(userId?: string): IWorkflowExecuteHooks {
+	const eventService = Container.get(EventService);
+	return {
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks): Promise<void> {
+				const { executionId, workflowData } = this;
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+			},
+		],
+		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
+			},
+		],
+	};
+}
+
+function hookFunctionsNodeEvents(): IWorkflowExecuteHooks {
+	const eventService = Container.get(EventService);
+	return {
+		nodeExecuteBefore: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
+			},
+		],
+		nodeExecuteAfter: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to push data to Editor-UI
  */
@@ -166,29 +220,24 @@ function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 	};
 }
 
+/** This should ideally be added before any other `workflowExecuteAfter` hook to ensure all hooks get the same execution status */
+function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
+	return {
+		workflowExecuteAfter: [
+			async function (fullRunData: IRun) {
+				fullRunData.status = determineFinalExecutionStatus(fullRunData);
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  */
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventService = Container.get(EventService);
 	return {
-		nodeExecuteBefore: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
-			},
-		],
-		nodeExecuteAfter: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
-			},
-		],
-		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -222,9 +271,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						}
 					}
 
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
-					fullRunData.status = executionStatus;
-
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
@@ -243,8 +289,8 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					}
 
 					const shouldNotSave =
-						(executionStatus === 'success' && !saveSettings.success) ||
-						(executionStatus !== 'success' && !saveSettings.error);
+						(fullRunData.status === 'success' && !saveSettings.success) ||
+						(fullRunData.status !== 'success' && !saveSettings.error);
 
 					if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 						executeErrorWorkflow(
@@ -268,7 +314,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					const fullExecutionData = prepareExecutionDataForDbUpdate({
 						runData: fullRunData,
 						workflowData: this.workflowData,
-						workflowStatusFinal: executionStatus,
+						workflowStatusFinal: fullRunData.status,
 						retryOf: this.retryOf,
 					});
 
@@ -283,23 +329,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						executionData: fullExecutionData,
 					});
 
-					if (!isManualMode) {
-						executeErrorWorkflow(
-							this.workflowData,
-							fullRunData,
-							this.mode,
-							this.executionId,
-							this.retryOf,
-						);
-					}
-				} catch (error) {
-					Container.get(ErrorReporter).error(error);
-					logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
-						executionId: this.executionId,
-						workflowId: this.workflowData.id,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						error,
-					});
 					if (!isManualMode) {
 						executeErrorWorkflow(
 							this.workflowData,
@@ -333,29 +362,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventService = Container.get(EventService);
 	return {
-		nodeExecuteBefore: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
-			},
-		],
-		nodeExecuteAfter: [
-			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
-			},
-		],
-		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
-				const { executionId, workflowData } = this;
-
-				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
-			},
-		],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -387,13 +394,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
-					fullRunData.status = workflowStatusFinal;
-
 					if (
 						!isManualMode &&
-						workflowStatusFinal !== 'success' &&
-						workflowStatusFinal !== 'waiting'
+						fullRunData.status !== 'success' &&
+						fullRunData.status !== 'waiting'
 					) {
 						executeErrorWorkflow(
 							this.workflowData,
@@ -409,7 +413,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					const fullExecutionData = prepareExecutionDataForDbUpdate({
 						runData: fullRunData,
 						workflowData: this.workflowData,
-						workflowStatusFinal,
+						workflowStatusFinal: fullRunData.status,
 						retryOf: this.retryOf,
 					});
 
@@ -423,16 +427,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						workflowId: this.workflowData.id,
 						executionData: fullExecutionData,
 					});
-				} catch (error) {
-					if (!isManualMode) {
-						executeErrorWorkflow(
-							this.workflowData,
-							fullRunData,
-							this.mode,
-							this.executionId,
-							this.retryOf,
-						);
-					}
 				} finally {
 					workflowStatisticsService.emit('workflowExecutionCompleted', {
 						workflowData: this.workflowData,
@@ -440,33 +434,15 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					});
 				}
 			},
-			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
-				const { executionId, workflowData: workflow } = this;
-
-				eventService.emit('workflow-post-execute', {
-					workflow,
-					executionId,
-					runData,
-				});
-			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
 				const externalHooks = Container.get(ExternalHooks);
-				if (externalHooks.exists('workflow.postExecute')) {
-					try {
-						await externalHooks.run('workflow.postExecute', [
-							fullRunData,
-							this.workflowData,
-							this.executionId,
-						]);
-					} catch (error) {
-						Container.get(ErrorReporter).error(error);
-						Container.get(Logger).error(
-							'There was a problem running hook "workflow.postExecute"',
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-							error,
-						);
-					}
-				}
+				try {
+					await externalHooks.run('workflow.postExecute', [
+						fullRunData,
+						this.workflowData,
+						this.executionId,
+					]);
+				} catch {}
 			},
 		],
 		nodeFetchedData: [
@@ -485,13 +461,15 @@ export function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
+	userId?: string,
 ): WorkflowHooks {
-	const hookFunctions = hookFunctionsSave();
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowEvents(userId),
+		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
+		hookFunctionsSave(),
+		hookFunctionsPreExecute(),
+	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
@@ -502,27 +480,20 @@ export function getWorkflowHooksWorkerExecuter(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters?: IWorkflowHooksOptionalParameters,
+	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsSaveWorker();
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
+	const toMerge = [
+		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
+		hookFunctionsSaveWorker(),
+		hookFunctionsPreExecute(),
+	];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		const pushHooks = hookFunctionsPush();
-		for (const key of Object.keys(pushHooks)) {
-			if (hookFunctions[key] === undefined) {
-				hookFunctions[key] = [];
-			}
-			// eslint-disable-next-line prefer-spread
-			hookFunctions[key].push.apply(hookFunctions[key], pushHooks[key]);
-		}
+		toMerge.push(hookFunctionsPush());
 	}
 
+	const hookFunctions = mergeHookFunctions(...toMerge);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -533,67 +504,57 @@ export function getWorkflowHooksWorkerMain(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters?: IWorkflowHooksOptionalParameters,
+	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
-	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsPreExecute();
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowEvents(),
+		hookFunctionsPreExecute(),
+		hookFunctionsFinalizeExecutionStatus(),
+		{
+			workflowExecuteAfter: [
+				async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
+					// Don't delete executions before they are finished
+					if (!fullRunData.finished) return;
 
-	// TODO: why are workers pushing to frontend?
-	// TODO: simplifying this for now to just leave the bare minimum hooks
+					const saveSettings = toSaveSettings(this.workflowData.settings);
 
-	// const hookFunctions = hookFunctionsPush();
-	// const preExecuteFunctions = hookFunctionsPreExecute();
-	// for (const key of Object.keys(preExecuteFunctions)) {
-	// 	if (hookFunctions[key] === undefined) {
-	// 		hookFunctions[key] = [];
-	// 	}
-	// 	hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	// }
+					const isManualMode = this.mode === 'manual';
+
+					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
+						/**
+						 * When manual executions are not being saved, we only soft-delete
+						 * the execution so that the user can access its binary data
+						 * while building their workflow.
+						 *
+						 * The manual execution and its binary data will be hard-deleted
+						 * on the next pruning cycle after the grace period set by
+						 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+						 */
+						await Container.get(ExecutionRepository).softDelete(this.executionId);
+
+						return;
+					}
+
+					const shouldNotSave =
+						(fullRunData.status === 'success' && !saveSettings.success) ||
+						(fullRunData.status !== 'success' && !saveSettings.error);
+
+					if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+						});
+					}
+				},
+			],
+		},
+	);
 
 	// When running with worker mode, main process executes
 	// Only workflowExecuteBefore + workflowExecuteAfter
 	// So to avoid confusion, we are removing other hooks.
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
-	hookFunctions.workflowExecuteAfter = [
-		async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-			// Don't delete executions before they are finished
-			if (!fullRunData.finished) return;
-
-			const executionStatus = determineFinalExecutionStatus(fullRunData);
-			fullRunData.status = executionStatus;
-
-			const saveSettings = toSaveSettings(this.workflowData.settings);
-
-			const isManualMode = this.mode === 'manual';
-
-			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
-				/**
-				 * When manual executions are not being saved, we only soft-delete
-				 * the execution so that the user can access its binary data
-				 * while building their workflow.
-				 *
-				 * The manual execution and its binary data will be hard-deleted
-				 * on the next pruning cycle after the grace period set by
-				 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
-				 */
-				await Container.get(ExecutionRepository).softDelete(this.executionId);
-
-				return;
-			}
-
-			const shouldNotSave =
-				(executionStatus === 'success' && !saveSettings.success) ||
-				(executionStatus !== 'success' && !saveSettings.error);
-
-			if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-				await Container.get(ExecutionRepository).hardDelete({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-				});
-			}
-		},
-	];
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
@@ -605,22 +566,14 @@ export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): WorkflowHooks {
-	const hookFunctions = hookFunctionsSave();
-	const pushFunctions = hookFunctionsPush();
-	for (const key of Object.keys(pushFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], pushFunctions[key]);
-	}
-
-	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions)) {
-		const hooks = hookFunctions[key] ?? [];
-		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
-
-	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];
-	if (!hookFunctions.nodeExecuteAfter) hookFunctions.nodeExecuteAfter = [];
-
+	const hookFunctions = mergeHookFunctions(
+		hookFunctionsWorkflowEvents(),
+		hookFunctionsNodeEvents(),
+		hookFunctionsFinalizeExecutionStatus(),
+		hookFunctionsSave(),
+		hookFunctionsPush(),
+		hookFunctionsPreExecute(),
+	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
 		pushRef: data.pushRef,
 		retryOf: data.retryOf as string,
