@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "list_id": {
+            "type": "integer"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "entity_id": {
+            "type": "integer"
+        },
+        "entity_type": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "entity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "crunchbase_uuid": {
+                    "type": "null"
+                },
+                "global": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "domain",
+                "domains",
+                "crunchbase_uuid",
+                "global"
+            ]
+        }
+    }
+}
