@@ -106,7 +106,16 @@ describe('Form Node', () => {
 			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'operation') return 'page';
 				if (paramName === 'useJson') return false;
-				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'formFields.values')
+					return [
+						{ fieldLabel: 'test' },
+						{
+							fieldName: 'Powerpuff Girl',
+							fieldValue: 'Blossom',
+							fieldType: 'hiddenField',
+							fieldLabel: '',
+						},
+					];
 				if (paramName === 'options') {
 					return {
 						formTitle: 'Form Title',
@@ -121,7 +130,42 @@ describe('Form Node', () => {
 
 			await form.webhook(mockWebhookFunctions);
 
-			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger', {
+				appendAttribution: 'test',
+				buttonLabel: 'Form Button',
+				formDescription: 'Form Description',
+				formDescriptionMetadata: 'Form Description',
+				formFields: [
+					{
+						id: 'field-0',
+						errorId: 'error-field-0',
+						label: 'test',
+						inputRequired: '',
+						defaultValue: '',
+						isInput: true,
+						placeholder: undefined,
+						type: undefined,
+					},
+					{
+						id: 'field-1',
+						errorId: 'error-field-1',
+						label: 'Powerpuff Girl',
+						inputRequired: '',
+						defaultValue: '',
+						placeholder: undefined,
+						hiddenName: 'Powerpuff Girl',
+						hiddenValue: 'Blossom',
+						isHidden: true,
+					},
+				],
+				formSubmittedText: 'Your response has been recorded',
+				formTitle: 'Form Title',
+				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
+				testRun: true,
+				useResponseData: false,
+				validForm: true,
+				formSubmittedHeader: undefined,
+			});
 		});
 
 		it('should return form data for POST request', async () => {
@@ -182,6 +226,7 @@ describe('Form Node', () => {
 				if (paramName === 'completionTitle') return 'Test Title';
 				if (paramName === 'completionMessage') return 'Test Message';
 				if (paramName === 'redirectUrl') return '';
+				if (paramName === 'formFields.values') return [];
 				return {};
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
@@ -225,6 +270,8 @@ describe('Form Node', () => {
 				if (paramName === 'completionTitle') return 'Test Title';
 				if (paramName === 'completionMessage') return 'Test Message';
 				if (paramName === 'redirectUrl') return 'https://n8n.io';
+				if (paramName === 'formFields.values') return [];
+
 				return {};
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
