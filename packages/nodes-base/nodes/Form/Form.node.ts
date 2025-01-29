@@ -21,7 +21,7 @@ import {
 
 import { renderFormCompletion } from './formCompletionUtils';
 import { renderFormNode } from './formNodeUtils';
-import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
+import { formDescription, formFields, formTitle, htmlTemplate } from '../Form/common.descriptions';
 import { prepareFormReturnItem, resolveRawData } from '../Form/utils';
 
 export const formFieldsProperties: INodeProperties[] = [
@@ -215,6 +215,36 @@ const completionProperties = updateDisplayOptions(
 				},
 			},
 			description: 'The name of the node input field with the binary data',
+		},
+
+		{
+			...htmlTemplate,
+			default: `
+e.g. Thanks for filling the form
+
+`.trimStart(),
+			displayOptions: {
+				show: {
+					['/respondWith']: ['respondText'],
+				},
+			},
+			description: 'The text to display on the page. Use HTML to show a customized web page.',
+		},
+		{
+			displayName: 'Response Body',
+			name: 'responseBody',
+			type: 'string',
+			displayOptions: {
+				show: {
+					respondWith: ['respondText'],
+				},
+			},
+			typeOptions: {
+				rows: 2,
+			},
+			default: '',
+			placeholder: 'e.g. Workflow completed',
+			description: 'The HTTP response text data',
 		},
 	],
 );

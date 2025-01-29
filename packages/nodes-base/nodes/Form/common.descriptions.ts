@@ -41,6 +41,22 @@ export const formDescription: INodeProperties = {
 	},
 };
 
+export const htmlTemplate: INodeProperties = {
+	displayName: 'HTML Template',
+	name: 'html',
+	typeOptions: {
+		editor: 'htmlEditor',
+	},
+	type: 'string',
+	default: placeholder,
+	description: 'HTML template to render',
+	displayOptions: {
+		show: {
+			fieldType: ['html'],
+		},
+	},
+};
+
 export const formFields: INodeProperties = {
 	displayName: 'Form Elements',
 	name: 'formFields',
@@ -168,21 +184,7 @@ export const formFields: INodeProperties = {
 						},
 					},
 				},
-				{
-					displayName: 'HTML Template',
-					name: 'html',
-					typeOptions: {
-						editor: 'htmlEditor',
-					},
-					type: 'string',
-					default: placeholder,
-					description: 'HTML template to render',
-					displayOptions: {
-						show: {
-							fieldType: ['html'],
-						},
-					},
-				},
+				htmlTemplate,
 				{
 					displayName: 'Multiple Files',
 					name: 'multipleFiles',
