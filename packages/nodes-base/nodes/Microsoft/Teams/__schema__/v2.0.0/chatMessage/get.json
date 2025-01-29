@@ -1,0 +1,178 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "replyToId": {
+            "type": "null"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "messageType": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "lastEditedDateTime": {
+            "type": "null"
+        },
+        "deletedDateTime": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "null"
+        },
+        "summary": {
+            "type": "null"
+        },
+        "chatId": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "null"
+        },
+        "channelIdentity": {
+            "type": "null"
+        },
+        "policyViolation": {
+            "type": "null"
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "contentType",
+                "content"
+            ]
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "contentUrl": {
+                        "type": "null"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "null"
+                    },
+                    "thumbnailUrl": {
+                        "type": "null"
+                    },
+                    "teamsAppId": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "contentType",
+                    "contentUrl",
+                    "content",
+                    "name",
+                    "thumbnailUrl",
+                    "teamsAppId"
+                ]
+            }
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "mentionText": {
+                        "type": "string"
+                    },
+                    "mentioned": {
+                        "type": "object",
+                        "properties": {
+                            "device": {
+                                "type": "null"
+                            },
+                            "user": {
+                                "type": "null"
+                            },
+                            "conversation": {
+                                "type": "null"
+                            },
+                            "tag": {
+                                "type": "null"
+                            },
+                            "application": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "applicationIdentityType": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@odata.type",
+                                    "id",
+                                    "displayName",
+                                    "applicationIdentityType"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "device",
+                            "user",
+                            "conversation",
+                            "tag",
+                            "application"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "mentionText",
+                    "mentioned"
+                ]
+            }
+        }
+    },
+    "required": [
+        "@odata.context"
+    ]
+}
