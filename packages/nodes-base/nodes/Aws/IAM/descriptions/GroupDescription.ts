@@ -139,7 +139,7 @@ const createFields: INodeProperties[] = [
 		displayName: 'Name',
 		name: 'GroupName',
 		default: '',
-		placeholder: 'e.g. My New Group',
+		placeholder: 'e.g. GroupName',
 		description: 'The name of the new group to create',
 		displayOptions: {
 			show: {
@@ -150,6 +150,10 @@ const createFields: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		validateType: 'string',
+		typeOptions: {
+			maxLength: 128,
+			regex: '^[+=,.@\\-_A-Za-z0-9]+$',
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -339,7 +343,7 @@ const updateFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'Group Name',
+				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [

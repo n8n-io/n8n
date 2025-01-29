@@ -67,11 +67,23 @@ export async function presendUserFields(
 		const prefix = additionalFields.PathPrefix;
 		if (prefix) url += `&PathPrefix=${prefix}`;
 	} else if (url.includes('CreateUser')) {
-		userName = this.getNodeParameter('UserName') as string;
+		userName = this.getNodeParameter('userNameNew') as string;
 		url += `&UserName=${userName}`;
 
 		if (additionalFields.PermissionsBoundary) {
-			url += `&PermissionsBoundary=${additionalFields.PermissionsBoundary}`;
+			const permissionsBoundary = additionalFields.PermissionsBoundary as string;
+
+			const arnPattern = /^arn:aws:iam::\d{12}:policy\/[\w\-+\/=._]+$/;
+			if (arnPattern.test(permissionsBoundary)) {
+				url += `&PermissionsBoundary=${additionalFields.PermissionsBoundary}`;
+			} else {
+				const specificError = {
+					message: 'Invalid permissions boundary provided',
+					description:
+						'Permissions boundaries must be provided in ARN format (e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy)',
+				};
+				throw new NodeApiError(this.getNode(), {}, specificError);
+			}
 		}
 		if (additionalFields.Path) {
 			url += `&Path=${additionalFields.Path}`;
@@ -126,7 +138,17 @@ export async function presendGroupFields(
 
 	if (url.includes('CreateGroup')) {
 		groupName = this.getNodeParameter('GroupName') as string;
-		url += `&GroupName=${groupName}`;
+		const groupPattern = /^[+=,.@\\-_A-Za-z0-9]+$/;
+		if (groupPattern.test(groupName)) {
+			url += `&GroupName=${groupName}`;
+		} else {
+			const specificError = {
+				message: 'Invalid group name provided',
+				description: "The group name not contain spaces. Valid characters: '+=,.@-_' characters.",
+			};
+			throw new NodeApiError(this.getNode(), {}, specificError);
+		}
+		// url += `&GroupName=${groupName}`;
 
 		if (additionalFields.Path) {
 			url += `&Path=${additionalFields.Path}`;
@@ -163,7 +185,7 @@ export async function processGroupsResponse(
 	const data = responseBody.ListGroupsResponse.ListGroupsResult.Groups;
 
 	if (!responseBody || !Array.isArray(data)) {
-		throw new ApplicationError('Unexpected response format: No groups found.');
+		return [];
 	}
 
 	return data;
@@ -256,6 +278,8 @@ export async function handleErrorPostReceive(
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
+	const responseBody = response.body as IDataObject;
+
 	if (
 		!String(response.statusCode).startsWith('4') &&
 		!String(response.statusCode).startsWith('5')
@@ -263,104 +287,60 @@ export async function handleErrorPostReceive(
 		return data;
 	}
 
-	const resource = (this.getNodeParameter('resource', '') as string) || '';
-	const operation = (this.getNodeParameter('operation', '') as string) || '';
-	const responseBody = response.body as IDataObject;
-	const errorType = (responseBody.__type ?? response.headers?.['x-amzn-errortype']) as
-		| string
-		| undefined;
-	const errorMessage = (responseBody.message ?? response.headers?.['x-amzn-errormessage']) as
-		| string
-		| undefined;
+	const error = responseBody.Error as { Code: string; Message: string };
+	if (error) {
+		const errorCode = error.Code;
+		const errorMessage = error.Message;
 
-	interface ErrorDetails {
-		message: string;
-		description: string;
-	}
+		let specificError;
+		switch (errorCode) {
+			case 'EntityAlreadyExists':
+				specificError = {
+					message: 'User name already exists',
+					description:
+						'The given user name already exists - try entering a unique name for the user.',
+				};
+				break;
 
-	type OperationMapping = Record<string, Record<string, ErrorDetails>>;
-	type ErrorMapping = Record<string, OperationMapping>;
+			case 'NoSuchEntity':
+				if (errorMessage.includes('user')) {
+					specificError = {
+						message: 'User does not exist',
+						description: 'The given user was not found - try entering a different user.',
+					};
+				} else if (errorMessage.includes('group')) {
+					specificError = {
+						message: 'Group does not exist',
+						description: 'The given group was not found - try entering a different group.',
+					};
+				}
+				break;
 
-	const errorMapping: ErrorMapping = {
-		group: {
-			delete: {
-				ResourceNotFoundException: {
-					message: "The required group doesn't match any existing one",
-					description: "Double-check the value in the parameter 'Group' and try again",
-				},
-				NoSuchEntity: {
-					message: "The required group doesn't match any existing one",
-					description: "Double-check the value in the parameter 'Group' and try again",
-				},
-			},
-			create: {
-				EntityAlreadyExists: {
-					message: 'The group is already created',
-					description: "Double-check the value in the parameter 'Group Name' and try again",
-				},
-				GroupExistsException: {
-					message: 'The group is already created',
-					description: "Double-check the value in the parameter 'Group Name' and try again",
-				},
-			},
-		},
-		user: {
-			create: {
-				UsernameExistsException: {
-					message: 'The user is already created',
-					description: "Double-check the value in the parameter 'User Name' and try again",
-				},
-			},
-			delete: {
-				UserNotFoundException: {
-					message: "The required user doesn't match any existing one",
-					description: "Double-check the value in the parameter 'User' and try again",
-				},
-			},
-		},
-	};
+			case 'DeleteConflict':
+				specificError = {
+					message: 'User is in a group',
+					description: 'Cannot delete entity, must remove users from group first.',
+				};
+				break;
 
-	if (
-		resource in errorMapping &&
-		operation in errorMapping[resource] &&
-		errorType &&
-		errorType in errorMapping[resource][operation]
-	) {
-		const specificError = errorMapping[resource][operation][errorType];
+			default:
+				specificError = {
+					message: errorCode || 'Unknown Error',
+					description:
+						errorMessage || 'An unexpected error occurred. Please check the request and try again.',
+				};
+				break;
+		}
+
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
 	}
 
-	const genericErrors: Record<string, ErrorDetails> = {
-		InvalidParameterException: {
-			message: `The ${resource} ID is invalid`,
-			description: 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
-		},
-		InternalErrorException: {
-			message: 'Internal Server Error',
-			description: 'Amazon Cognito encountered an internal error. Try again later.',
-		},
-		TooManyRequestsException: {
-			message: 'Too Many Requests',
-			description: 'You have exceeded the allowed number of requests. Try again later.',
-		},
-	};
-
-	if (errorType && errorType in genericErrors) {
-		throw new NodeApiError(
-			this.getNode(),
-			response as unknown as JsonObject,
-			genericErrors[errorType],
-		);
-	}
-
 	throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-		message: errorType || 'Unknown Error',
-		description:
-			errorMessage || 'An unexpected error occurred. Please check the request and try again.',
+		message: 'Unexpected Error',
+		description: 'An unexpected error occurred. Please check the request and try again.',
 	});
 }
 
-/* Helper function used in listSearch methods */
 export async function awsRequest(
 	this: ILoadOptionsFunctions | IPollFunctions,
 	opts: IHttpRequestOptions,
@@ -509,4 +489,114 @@ export async function simplifyData(
 		});
 	});
 	return processedUsers;
+}
+
+export async function listGroups(this: ILoadOptionsFunctions): Promise<IDataObject[]> {
+	const listGroupsOpts: IHttpRequestOptions = {
+		method: 'POST',
+		url: '/?Action=ListGroups&Version=2010-05-08',
+	};
+
+	const responseData: IDataObject = await awsRequest.call(this, listGroupsOpts);
+
+	const responseBody = responseData as {
+		ListGroupsResponse: { ListGroupsResult: { Groups: IDataObject[] } };
+	};
+
+	const groups = responseBody.ListGroupsResponse?.ListGroupsResult?.Groups;
+
+	return groups || [];
+}
+
+export async function isUserInGroup(
+	this: ILoadOptionsFunctions,
+	groupName: string,
+	userName: string,
+): Promise<boolean> {
+	const getGroupOpts: IHttpRequestOptions = {
+		method: 'POST',
+		url: `/?Action=GetGroup&Version=2010-05-08&GroupName=${groupName}`,
+	};
+
+	const getGroupResponse: IDataObject = await awsRequest.call(this, getGroupOpts);
+
+	const groupResult = (getGroupResponse as any)?.GetGroupResponse?.GetGroupResult;
+	if (!groupResult) {
+		return false;
+	}
+
+	const usersInGroup = groupResult?.Users as IDataObject[];
+
+	if (!usersInGroup || usersInGroup.length === 0) {
+		return false;
+	}
+
+	const isUserInThisGroup = usersInGroup?.some((user) => user.UserName === userName);
+
+	return isUserInThisGroup || false;
+}
+
+export async function searchGroupsForUser(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	_paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const userNameObj = this.getNodeParameter('UserName') as { mode: string; value: string };
+	const userName = userNameObj?.value;
+
+	const groups = await listGroups.call(this);
+
+	if (!groups || groups.length === 0) {
+		return { results: [] };
+	}
+
+	const groupCheckPromises = groups.map(async (group) => {
+		const groupName = group.GroupName as string;
+
+		if (!groupName) {
+			return null;
+		}
+
+		const isUserInGroupFlag = await isUserInGroup.call(this, groupName, userName);
+		if (isUserInGroupFlag) {
+			return { name: groupName, value: groupName };
+		}
+
+		return null;
+	});
+
+	const results = await Promise.all(groupCheckPromises);
+
+	const validUserGroups = results.filter((group) => group !== null) as INodeListSearchItems[];
+
+	const filteredGroups = validUserGroups
+		.filter((group) => !filter || group.name.includes(filter))
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return {
+		results: filteredGroups,
+	};
+}
+
+//WIP
+export async function removeUserFromGroups(
+	this: ILoadOptionsFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const userName = this.getNodeParameter('UserName') as string;
+	const userGroups = await searchGroupsForUser.call(this, userName);
+
+	for (const group of userGroups.results) {
+		const groupName = group.value;
+
+		const removeUserOpts: IHttpRequestOptions = {
+			method: 'POST',
+			url: `/?Action=RemoveUserFromGroup&Version=2010-05-08&GroupName=${groupName}&UserName=${userName}`,
+		};
+
+		console.log(`Removing user ${userName} from group ${groupName}...`);
+		await awsRequest.call(this, removeUserOpts);
+	}
+
+	return requestOptions;
 }
