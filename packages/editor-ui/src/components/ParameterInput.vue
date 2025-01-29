@@ -1771,7 +1771,7 @@ onUpdated(async () => {
 	--input-border-top-right-radius: 0;
 }
 
-.noRightBorder > * {
+.noRightBorder > * > * > * > input {
 	border-right: unset;
 }
 

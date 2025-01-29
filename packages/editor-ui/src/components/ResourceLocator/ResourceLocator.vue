@@ -46,6 +46,10 @@ import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
+import {
+	makeOverrideValue,
+	type ParameterOverride,
+} from '../ParameterInputOverrides/parameterInputOverrides';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -280,6 +284,28 @@ const isSearchable = computed(() => !!getPropertyArgument(currentMode.value, 'se
 
 const requiresSearchFilter = computed(
 	() => !!getPropertyArgument(currentMode.value, 'searchFilterRequired'),
+);
+
+const parameterOverrides = ref<ParameterOverride | null>(
+	makeOverrideValue(
+		{
+			value: props.modelValue?.value ?? '',
+			...props,
+		},
+		props.node && nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+	),
+);
+
+const canBeContentOverride = computed(() => {
+	if (!props.node) return false;
+
+	return parameterOverrides.value !== null;
+});
+
+const isContentOverride = computed(
+	() =>
+		canBeContentOverride.value &&
+		!!parameterOverrides.value?.isOverrideValue(props.modelValue?.value?.toString() ?? ''),
 );
 
 watch(currentQueryError, (curr, prev) => {
@@ -678,6 +704,42 @@ function onInputBlur(event: FocusEvent) {
 	}
 	emit('blur');
 }
+
+function applyOverride() {
+	if (!props.node) return;
+
+	telemetry.track(
+		'User turned on fromAI override',
+		{
+			nodeType: props.node.type,
+			parameter: props.path,
+		},
+		{ withPostHog: true },
+	);
+	parameterOverrides.value?.updateExtraPropValues(props.modelValue.value?.toString() ?? '');
+
+	emit('update:modelValue', {
+		...props.modelValue,
+		value: parameterOverrides.value?.buildValueFromOverride(props, true),
+	});
+}
+
+function removeOverride() {
+	if (!props.node) return;
+
+	telemetry.track(
+		'User turned off fromAI override',
+		{
+			nodeType: props.node.type,
+			parameter: props.path,
+		},
+		{ withPostHog: true },
+	);
+	emit('update:modelValue', {
+		...props.modelValue,
+		value: parameterOverrides.value?.buildValueFromOverride(props, false),
+	});
+}
 </script>
 
 <template>
@@ -723,9 +785,16 @@ function onInputBlur(event: FocusEvent) {
 				:class="{
 					[$style.resourceLocator]: true,
 					[$style.multipleModes]: hasMultipleModes,
+					[$style.inputContainerInputCorners]:
+						hasMultipleModes && canBeContentOverride && !isContentOverride,
 				}"
 			>
-				<div :class="$style.background"></div>
+				<div
+					:class="[
+						$style.background,
+						{ [$style.backgroundOverride]: true, [$style.backgroundIssues]: false },
+					]"
+				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
@@ -762,16 +831,26 @@ function onInputBlur(event: FocusEvent) {
 					>
 						<template #default="{ droppable, activeDrop }">
 							<div
-								:class="{
-									[$style.listModeInputContainer]: isListMode,
-									[$style.droppable]: droppable,
-									[$style.activeDrop]: activeDrop,
-								}"
+								:class="[
+									{
+										[$style.listModeInputContainer]: isListMode,
+										[$style.droppable]: droppable,
+										[$style.activeDrop]: activeDrop,
+										[$style.rightNoCorner]: canBeContentOverride && !isContentOverride,
+									},
+								]"
 								@keydown.stop="onKeyDown"
 							>
+								<FromAiOverrideField
+									v-if="parameterOverrides && isContentOverride"
+									:class="[$style.inputField, $style.fromAiOverrideField]"
+									:text="parameterOverrides?.overridePlaceholder"
+									@close="removeOverride"
+								/>
 								<ExpressionParameterInput
-									v-if="isValueExpression || forceShowExpression"
+									v-else-if="isValueExpression || forceShowExpression"
 									ref="inputRef"
+									:class="$style.inputField"
 									:model-value="expressionDisplayValue"
 									:path="path"
 									:rows="3"
@@ -781,7 +860,13 @@ function onInputBlur(event: FocusEvent) {
 								<n8n-input
 									v-else
 									ref="inputRef"
-									:class="{ [$style.selectInput]: isListMode }"
+									:class="[
+										$style.inputField,
+										{
+											[$style.selectInput]: isListMode,
+											[$style.rightNoCorner]: canBeContentOverride && !isContentOverride,
+										},
+									]"
 									:size="inputSize"
 									:model-value="valueToDisplay"
 									:disabled="isReadOnly"
@@ -805,6 +890,12 @@ function onInputBlur(event: FocusEvent) {
 										/>
 									</template>
 								</n8n-input>
+								<div :class="$style.overrideButtonRL">
+									<FromAiOverrideButton
+										v-if="canBeContentOverride && !isContentOverride"
+										@click="applyOverride"
+									/>
+								</div>
 							</div>
 						</template>
 					</DraggableTarget>
@@ -821,6 +912,14 @@ function onInputBlur(event: FocusEvent) {
 				</div>
 			</div>
 		</ResourceLocatorDropdown>
+		<ParameterOverrideSelectableList
+			v-if="isContentOverride && parameterOverrides"
+			v-model="parameterOverrides"
+			:parameter="parameter"
+			:path="path"
+			:read-only="isReadOnly"
+			@update="(x) => onInputChange(x.value?.toString())"
+		/>
 	</div>
 </template>
 

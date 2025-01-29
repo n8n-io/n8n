@@ -220,6 +220,7 @@ defineExpose({ focus });
 <style lang="scss" module>
 .expression-parameter-input {
 	position: relative;
+	flex-grow: 1;
 
 	:global(.cm-editor) {
 		background-color: var(--color-code-background);

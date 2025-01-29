@@ -10,6 +10,7 @@ export interface ParameterOverride {
 	readonly overridePlaceholder: string;
 	readonly extraProps: Record<string, ExtraPropValue>;
 	extraPropValues: Partial<Record<keyof ParameterOverride['extraProps'], NodeParameterValueType>>;
+	updateExtraPropValues: (s: string) => void;
 	buildValueFromOverride: (
 		props: Pick<OverrideContext, 'parameter'>,
 		excludeMarker: boolean,
@@ -73,6 +74,21 @@ export class FromAiOverride implements ParameterOverride {
 
 	extraPropValues: Partial<Record<FromAiOverrideExtraProps, NodeParameterValueType>> = {};
 
+	updateExtraPropValues(s: string) {
+		const overrides = FromAiOverride.parseOverrides(s);
+		if (overrides) {
+			for (const [key, value] of Object.entries(overrides)) {
+				if (this.extraProps.hasOwnProperty(key)) {
+					if (this.extraProps[key as FromAiOverrideExtraProps].initialValue === value) {
+						delete this.extraPropValues[key as FromAiOverrideExtraProps];
+					} else {
+						this.extraPropValues[key as FromAiOverrideExtraProps] = value;
+					}
+				}
+			}
+		}
+	}
+
 	private fieldTypeToFromAiType(propType: NodePropertyTypes) {
 		switch (propType) {
 			case 'boolean':
@@ -95,7 +111,6 @@ export class FromAiOverride implements ParameterOverride {
 		const key = sanitizeFromAiParameterName(props.parameter.displayName);
 		const description =
 			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;
-
 		// We want to escape these characters here as the generated formula needs to be valid JS code, and we risk
 		// closing the string prematurely without it.
 		// If we don't escape \ then 'my \` description' as user input would end up as 'my \\` description'
@@ -109,10 +124,11 @@ export class FromAiOverride implements ParameterOverride {
 	static parseOverrides(
 		s: string,
 	): Record<keyof FromAiOverride['extraProps'], string | undefined> | null {
-		if (!FromAiOverride.isOverrideValue(s)) return null;
-
 		try {
-			const calls = extractFromAICalls(s);
+			// `extractFromAICalls` has different escape semantics from JS strings
+			// Specifically it makes \ escape any following character.
+			// So we need to escape our \ so we don't drop them accidentally
+			const calls = extractFromAICalls(s.replaceAll(/\\/g, '\\\\'));
 			if (calls.length === 1) {
 				return {
 					description: calls[0].description,
@@ -144,22 +160,13 @@ export class FromAiOverride implements ParameterOverride {
 
 export function makeOverrideValue(
 	context: OverrideContext,
-	nodeType: INodeTypeDescription | null,
+	nodeType: INodeTypeDescription | null | undefined,
 ): ParameterOverride | null {
 	if (!nodeType) return null;
 
 	if (FromAiOverride.canBeContentOverride(context, nodeType)) {
 		const fromAiOverride = new FromAiOverride();
-		const existingOverrides = fromAiOverride.parseOverrides(context.value?.toString() ?? '');
-		for (const [key, value] of Object.entries(existingOverrides ?? {})) {
-			if (
-				value === undefined ||
-				value === fromAiOverride.extraProps[key as FromAiOverrideExtraProps].initialValue
-			)
-				continue;
-
-			fromAiOverride.extraPropValues[key as FromAiOverrideExtraProps] = value;
-		}
+		fromAiOverride.updateExtraPropValues(context.value?.toString() ?? '');
 		return fromAiOverride;
 	}
 

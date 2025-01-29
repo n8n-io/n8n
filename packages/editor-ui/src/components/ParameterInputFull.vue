@@ -111,6 +111,26 @@ const isReadOnlyParameter = computed(
 		props.isReadOnly || props.parameter.disabledOptions !== undefined || !!isContentOverride.value,
 );
 
+const showOptions = computed(() => {
+	if (isResourceLocator.value) {
+		// The resourceLocator handles overrides itself, so we use this hack to
+		// infer whether it's overridden and we should hide the options
+		const value =
+			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;
+		if (
+			value &&
+			makeOverrideValue(
+				props,
+				node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+			)?.isOverrideValue(String(value))
+		) {
+			return false;
+		}
+	}
+
+	return props.displayOptions;
+});
+
 function onFocus() {
 	focused.value = true;
 	if (!props.parameter.noDataExpression) {
@@ -256,9 +276,11 @@ function applyOverride() {
 		},
 		{ withPostHog: true },
 	);
+	parameterOverrides.value?.updateExtraPropValues(props.value?.toString() ?? '');
+	const value = parameterOverrides.value?.buildValueFromOverride(props, true);
 	valueChanged({
 		name: props.path,
-		value: parameterOverrides.value?.buildValueFromOverride(props, true),
+		value,
 	});
 }
 
@@ -296,18 +318,17 @@ function removeOverride() {
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
 		>
-			<FromAiOverrideButton
-				:class="[$style.noCornersBottom, $style.overrideButtonInOptions]"
-				@click="applyOverride"
-			/>
+			<div :class="[$style.noCornersBottom, $style.overrideButtonInOptions]">
+				<FromAiOverrideButton @click="applyOverride" />
+			</div>
 		</template>
 
-		<template v-if="displayOptions && optionsPosition === 'top'" #options>
+		<template v-if="showOptions && optionsPosition === 'top'" #options>
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="isReadOnlyParameter"
-				:show-options="displayOptions"
+				:show-options="showOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
@@ -369,7 +390,7 @@ function removeOverride() {
 				:parameter="parameter"
 				:value="value"
 				:is-read-only="isReadOnlyParameter"
-				:show-options="displayOptions"
+				:show-options="showOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
@@ -403,7 +424,7 @@ function removeOverride() {
 	top: 1px;
 }
 
-.noCornersBottom {
+.noCornersBottom > button {
 	border-bottom-right-radius: 0;
 	border-bottom-left-radius: 0;
 }

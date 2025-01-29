@@ -104,8 +104,13 @@ describe('FromAiOverride', () => {
 	});
 
 	it('should parseOverrides as expected', () => {
-		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey') }}")).toBeNull();
-		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey', `a description`) }}")).toBeNull();
+		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey' }}")).toBeNull();
+		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey') }}")).toEqual({
+			description: undefined,
+		});
+		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey', `a description`) }}")).toEqual({
+			description: 'a description',
+		});
 		expect(
 			FromAiOverride.parseOverrides(
 				"={{ /* n8n-auto-generated-fromAI-override */ $fromAI('aKey') }}",
@@ -118,6 +123,14 @@ describe('FromAiOverride', () => {
 		).toEqual({
 			description: 'a description',
 		});
+	});
+
+	test.each<[string, string, string]>([
+		['normal case', '$fromAI("a", `b`)', 'b'],
+		['working', '$fromAI("a", `a \\` \\\\\\``)', 'a ` \\`'],
+		['failing?', '$fromAI("a", `a \\``)', 'a `'],
+	])('should handle backtick escaping %s', (_name, value, expected) => {
+		expect(FromAiOverride.parseOverrides(value)).toEqual({ description: expected });
 	});
 
 	it('should build a value from an override and carry over modification', () => {

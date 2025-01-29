@@ -21,12 +21,40 @@ $--mode-selector-width: 92px;
 	}
 }
 
+.inputField {
+	flex-grow: 1;
+	position: relative;
+}
+
+.fromAiOverrideField {
+	position: relative;
+
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.overrideButtonRL {
+	> button {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+	position: relative;
+}
+
+.rightNoCorner > * {
+	border-right: 0;
+	--input-border-bottom-right-radius: 0;
+	--input-border-top-right-radius: 0;
+}
+
 .resourceLocator {
-	display: flex;
+	display: inline-flex;
 	flex-wrap: wrap;
+	width: 100%;
 	position: relative;
 
 	--input-issues-width: 28px;
+	--input-override-width: 30px;
 
 	.inputContainer {
 		display: flex;
@@ -38,7 +66,15 @@ $--mode-selector-width: 92px;
 
 		> div {
 			width: 100%;
+
+			> div {
+				display: flex;
+			}
 		}
+	}
+
+	.overrideButton2 {
+		position: relative;
 	}
 
 	.background {
@@ -47,9 +83,16 @@ $--mode-selector-width: 92px;
 		top: 0;
 		bottom: 0;
 		left: 0;
-		right: var(--input-issues-width);
 		border: 1px solid var(--border-color-base);
 		border-radius: var(--border-radius-base);
+	}
+
+	.backgroundIssues {
+		right: var(--input-issues-width);
+	}
+
+	.backgroundOverride {
+		right: var(--input-override-width);
 	}
 
 	&.multipleModes {
@@ -58,7 +101,9 @@ $--mode-selector-width: 92px;
 			align-items: center;
 			flex-basis: calc(100% - $--mode-selector-width);
 			flex-grow: 1;
+		}
 
+		.inputContainerInputCorners {
 			input {
 				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
 			}
