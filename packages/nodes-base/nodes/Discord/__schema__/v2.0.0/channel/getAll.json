@@ -1,0 +1,83 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "guild_id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "permission_overwrites": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "allow": {
+                        "type": "string"
+                    },
+                    "deny": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "type",
+                    "allow",
+                    "deny"
+                ]
+            }
+        },
+        "rate_limit_per_user": {
+            "type": "integer"
+        },
+        "nsfw": {
+            "type": "boolean"
+        },
+        "icon_emoji": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "null"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ]
+        },
+        "theme_color": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "type",
+        "flags",
+        "guild_id",
+        "name",
+        "parent_id",
+        "position",
+        "permission_overwrites"
+    ]
+}
