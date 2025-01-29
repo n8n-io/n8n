@@ -189,13 +189,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	externalHookFiles: {
-		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_HOOK_FILES',
-	},
-
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
