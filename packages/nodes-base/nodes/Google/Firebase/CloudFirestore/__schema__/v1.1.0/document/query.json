@@ -1,0 +1,81 @@
+{
+    "type": "object",
+    "properties": {
+        "document": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "object",
+                            "properties": {
+                                "referenceValue": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "referenceValue"
+                            ]
+                        },
+                        "deleted": {
+                            "type": "object",
+                            "properties": {
+                                "booleanValue": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "booleanValue"
+                            ]
+                        },
+                        "time_created": {
+                            "type": "object",
+                            "properties": {
+                                "timestampValue": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "timestampValue"
+                            ]
+                        },
+                        "word_count": {
+                            "type": "object",
+                            "properties": {
+                                "integerValue": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "integerValue"
+                            ]
+                        }
+                    }
+                },
+                "createTime": {
+                    "type": "string"
+                },
+                "updateTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "fields",
+                "createTime",
+                "updateTime",
+                "id"
+            ]
+        },
+        "readTime": {
+            "type": "string"
+        }
+    }
+}
