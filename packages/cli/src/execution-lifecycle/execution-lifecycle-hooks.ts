@@ -436,22 +436,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
 				const externalHooks = Container.get(ExternalHooks);
-				if (externalHooks.exists('workflow.postExecute')) {
-					try {
-						await externalHooks.run('workflow.postExecute', [
-							fullRunData,
-							this.workflowData,
-							this.executionId,
-						]);
-					} catch (error) {
-						Container.get(ErrorReporter).error(error);
-						Container.get(Logger).error(
-							'There was a problem running hook "workflow.postExecute"',
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-							error,
-						);
-					}
-				}
+				try {
+					await externalHooks.run('workflow.postExecute', [
+						fullRunData,
+						this.workflowData,
+						this.executionId,
+					]);
+				} catch {}
 			},
 		],
 		nodeFetchedData: [
