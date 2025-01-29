@@ -47,7 +47,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			continueOnFail: false,
 		};
 
-		const codeNode = {
+		const codeNode: INode = {
 			parameters: {
 				jsCode,
 			},
@@ -56,7 +56,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			position: [200, 80],
 			id: 'b35fd455-32e4-4d52-b840-36aa28dd1910',
 			name: 'Code',
-		} satisfies INode;
+		};
 
 		const workflow = new Workflow({
 			id: 'testWorkflow',
