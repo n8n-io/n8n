@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "primaryEmail": {
+            "type": "string"
+        },
+        "name": {
+            "type": "object",
+            "properties": {
+                "givenName": {
+                    "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "givenName",
+                "familyName",
+                "fullName"
+            ]
+        },
+        "isAdmin": {
+            "type": "boolean"
+        },
+        "isDelegatedAdmin": {
+            "type": "boolean"
+        },
+        "lastLoginTime": {
+            "type": "string"
+        },
+        "creationTime": {
+            "type": "string"
+        },
+        "agreedToTerms": {
+            "type": "boolean"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "changePasswordAtNextLogin": {
+            "type": "boolean"
+        },
+        "ipWhitelisted": {
+            "type": "boolean"
+        },
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "address"
+                ]
+            }
+        },
+        "languages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "languageCode": {
+                        "type": "string"
+                    },
+                    "preference": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "languageCode",
+                    "preference"
+                ]
+            }
+        },
+        "customerId": {
+            "type": "string"
+        },
+        "orgUnitPath": {
+            "type": "string"
+        },
+        "isMailboxSetup": {
+            "type": "boolean"
+        },
+        "isEnrolledIn2Sv": {
+            "type": "boolean"
+        },
+        "isEnforcedIn2Sv": {
+            "type": "boolean"
+        },
+        "includeInGlobalAddressList": {
+            "type": "boolean"
+        }
+    }
+}
