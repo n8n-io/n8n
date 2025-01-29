@@ -1,0 +1,250 @@
+{
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "discriminator": {
+                        "type": "string"
+                    },
+                    "public_flags": {
+                        "type": "integer"
+                    },
+                    "flags": {
+                        "type": "integer"
+                    },
+                    "banner": {
+                        "type": "null"
+                    },
+                    "avatar_decoration_data": {
+                        "type": "null"
+                    },
+                    "clan": {
+                        "type": "null"
+                    },
+                    "primary_guild": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "avatar",
+                    "discriminator",
+                    "public_flags",
+                    "flags",
+                    "banner",
+                    "accent_color",
+                    "global_name",
+                    "avatar_decoration_data",
+                    "banner_color",
+                    "clan",
+                    "primary_guild"
+                ]
+            }
+        },
+        "mention_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "proxy_url": {
+                        "type": "string"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "filename",
+                    "size",
+                    "url",
+                    "proxy_url",
+                    "content_type",
+                    "title"
+                ]
+            }
+        },
+        "embeds": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "author": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "image": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "proxy_url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "flags": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "proxy_url",
+                            "width",
+                            "height",
+                            "flags"
+                        ]
+                    }
+                },
+                "required": [
+                    "type"
+                ]
+            }
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "edited_timestamp": {
+            "type": "null"
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "channel_id": {
+            "type": "string"
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "discriminator": {
+                    "type": "string"
+                },
+                "public_flags": {
+                    "type": "integer"
+                },
+                "flags": {
+                    "type": "integer"
+                },
+                "bot": {
+                    "type": "boolean"
+                },
+                "accent_color": {
+                    "type": "null"
+                },
+                "global_name": {
+                    "type": "null"
+                },
+                "avatar_decoration_data": {
+                    "type": "null"
+                },
+                "banner_color": {
+                    "type": "null"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "primary_guild": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "id",
+                "username",
+                "avatar",
+                "discriminator",
+                "public_flags",
+                "flags",
+                "bot",
+                "banner",
+                "accent_color",
+                "global_name",
+                "avatar_decoration_data",
+                "banner_color",
+                "clan",
+                "primary_guild"
+            ]
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "mention_everyone": {
+            "type": "boolean"
+        },
+        "tts": {
+            "type": "boolean"
+        }
+    }
+}
