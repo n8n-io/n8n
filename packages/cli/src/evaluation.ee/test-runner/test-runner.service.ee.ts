@@ -353,8 +353,10 @@ export class TestRunnerService {
 					// In case of a permission check issue, the test case execution will be undefined.
 					// Skip them, increment the failed count and continue with the next test case
 					if (!testCaseExecution) {
-						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
+						await Db.transaction(async (trx) => {
+							await this.testRunRepository.incrementFailed(testRun.id, trx);
+							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, trx);
+						});
 						continue;
 					}
 
