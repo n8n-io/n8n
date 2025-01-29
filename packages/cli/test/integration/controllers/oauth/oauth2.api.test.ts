@@ -116,7 +116,7 @@ describe('OAuth2 API', () => {
 			.query({ code: 'auth_code', state })
 			.expect(200);
 
-		expect(renderSpy).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+		expect(renderSpy).toHaveBeenCalledWith('oauth-callback');
 
 		const updatedCredential = await Container.get(CredentialsHelper).getCredentials(
 			credential,

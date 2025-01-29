@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as search from '../../../../v2/actions/record/search.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -49,15 +47,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, search operation', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should return all records', async () => {
 		const nodeParameters = {
 			operation: 'search',
