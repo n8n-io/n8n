@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type EntityManager } from '@n8n/typeorm';
+import { In, type EntityManager, Not } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { Logger } from 'n8n-core';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
@@ -51,7 +51,14 @@ export class EnterpriseWorkflowService {
 		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
 		const projects = await em.find(Project, {
-			where: { id: In(shareWithIds), type: 'personal' },
+			where: {
+				id: In(shareWithIds),
+				type: 'personal',
+				sharedWorkflows: {
+					workflowId: workflow.id,
+					role: Not(In(['workflow:owner'])),
+				},
+			},
 		});
 
 		const newSharedWorkflows = projects
