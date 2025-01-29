@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "max_reaction_count": {
+                    "type": "integer"
+                },
+                "accent_color_id": {
+                    "type": "integer"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "active_usernames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "type",
+                "max_reaction_count",
+                "accent_color_id"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}
