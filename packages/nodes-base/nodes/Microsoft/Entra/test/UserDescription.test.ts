@@ -7,7 +7,7 @@ import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
-describe('Gong Node', () => {
+describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	beforeEach(() => {
