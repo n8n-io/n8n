@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        }
+    }
+}
