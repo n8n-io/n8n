@@ -13,8 +13,8 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { License } from '@/license';
 import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
+import { mockInstance } from '@test/mocking';
 
-import { mockInstance } from '../../shared/mocking';
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
@@ -1614,7 +1614,7 @@ describe('PUT /:workflowId/transfer', () => {
 	);
 	test.todo('...');
 
-	test.only('foo', async () => {
+	test('foo', async () => {
 		// ARRANGE
 		const sourceProject = await createTeamProject('source project', owner);
 		const destinationProject = await createTeamProject('destination project', owner);
