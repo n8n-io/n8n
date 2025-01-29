@@ -1,0 +1,233 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_login": {
+                    "type": "string"
+                },
+                "is_qbnewb": {
+                    "type": "boolean"
+                },
+                "is_superuser": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "date_joined": {
+                    "type": "string"
+                },
+                "common_name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "email",
+                "first_name",
+                "last_login",
+                "is_qbnewb",
+                "is_superuser",
+                "id",
+                "last_name",
+                "date_joined",
+                "common_name"
+            ]
+        },
+        "initially_published_at": {
+            "type": "null"
+        },
+        "can_write": {
+            "type": "boolean"
+        },
+        "database_id": {
+            "type": "integer"
+        },
+        "enable_embedding": {
+            "type": "boolean"
+        },
+        "query_type": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "dashboard_count": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "embedding_params": {
+            "type": "null"
+        },
+        "cache_ttl": {
+            "type": "null"
+        },
+        "dataset_query": {
+            "type": "object",
+            "properties": {
+                "database": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "native": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "template-tags",
+                        "query"
+                    ]
+                }
+            },
+            "required": [
+                "database",
+                "type"
+            ]
+        },
+        "id": {
+            "type": "integer"
+        },
+        "display": {
+            "type": "string"
+        },
+        "collection_preview": {
+            "type": "boolean"
+        },
+        "last-edit-info": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "email",
+                "first_name",
+                "last_name",
+                "timestamp"
+            ]
+        },
+        "visualization_settings": {
+            "type": "object",
+            "properties": {
+                "table.pivot_column": {
+                    "type": "string"
+                },
+                "table.cell_column": {
+                    "type": "string"
+                }
+            }
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "is_personal": {
+                    "type": "boolean"
+                },
+                "archived": {
+                    "type": "boolean"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "null"
+                },
+                "is_sample": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "null"
+                },
+                "created_at": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "parameter_usage_count": {
+            "type": "integer"
+        },
+        "cache_invalidated_at": {
+            "type": "null"
+        },
+        "view_count": {
+            "type": "integer"
+        },
+        "can_run_adhoc_query": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "description",
+        "archived",
+        "collection_position",
+        "table_id",
+        "result_metadata",
+        "creator",
+        "can_write",
+        "database_id",
+        "enable_embedding",
+        "collection_id",
+        "query_type",
+        "name",
+        "dashboard_count",
+        "creator_id",
+        "updated_at",
+        "made_public_by_id",
+        "embedding_params",
+        "cache_ttl",
+        "dataset_query",
+        "id",
+        "display",
+        "visualization_settings",
+        "collection",
+        "created_at",
+        "public_uuid"
+    ]
+}
