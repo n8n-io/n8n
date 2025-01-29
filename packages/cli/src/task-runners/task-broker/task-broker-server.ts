@@ -44,7 +44,7 @@ export class TaskBrokerServer {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly authController: TaskBrokerAuthController,
-		private readonly taskRunnerWsServer: TaskBrokerWsServer,
+		private readonly taskBrokerWsServer: TaskBrokerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -82,7 +82,7 @@ export class TaskBrokerServer {
 			}
 		})();
 
-		const stopWsServerTask = this.taskRunnerWsServer.stop();
+		const stopWsServerTask = this.taskBrokerWsServer.stop();
 
 		await Promise.all([stopHttpServerTask, stopWsServerTask]);
 	}
@@ -126,7 +126,7 @@ export class TaskBrokerServer {
 		});
 		this.server.on('upgrade', this.handleUpgradeRequest);
 
-		this.taskRunnerWsServer.start();
+		this.taskBrokerWsServer.start();
 	}
 
 	private async setupErrorHandlers() {
@@ -161,7 +161,7 @@ export class TaskBrokerServer {
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.authController.authMiddleware,
 			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
-				this.taskRunnerWsServer.handleRequest(req, res),
+				this.taskBrokerWsServer.handleRequest(req, res),
 		);
 
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
