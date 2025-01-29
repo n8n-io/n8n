@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "Niche Name": {
+            "type": "string"
+        },
+        "ONB_Response_Guildelines": {
+            "type": "string"
+        },
+        "ONB_Style": {
+            "type": "string"
+        },
+        "Onb_Identity": {
+            "type": "string"
+        },
+        "Onb_Task": {
+            "type": "string"
+        },
+        "Dbr_Identity": {
+            "type": "string"
+        },
+        "Dbr_Task": {
+            "type": "string"
+        },
+        "Onb_Steps": {
+            "type": "string"
+        },
+        "Onb_Notes": {
+            "type": "string"
+        },
+        "DBR_Steps": {
+            "type": "string"
+        },
+        "DBR_Notes": {
+            "type": "string"
+        },
+        "Appointments_Identity": {
+            "type": "string"
+        },
+        "Confirmation_Task": {
+            "type": "string"
+        },
+        "Confirmation_Steps": {
+            "type": "string"
+        },
+        "Reminders_Task": {
+            "type": "string"
+        },
+        "Reminders 1 Steps": {
+            "type": "string"
+        },
+        "Reminders 2 Steps": {
+            "type": "string"
+        },
+        "No Show identity": {
+            "type": "string"
+        },
+        "No Show Task": {
+            "type": "string"
+        },
+        "No Show Steps": {
+            "type": "string"
+        },
+        "Cold Call Identity": {
+            "type": "string"
+        },
+        "Cold Call Task": {
+            "type": "string"
+        },
+        "Cold Calling Steps": {
+            "type": "string"
+        },
+        "Cold Calling Notes": {
+            "type": "string"
+        },
+        "Cold Calling Response Guidelines": {
+            "type": "string"
+        },
+        "Inbound Identity": {
+            "type": "string"
+        },
+        "Inbound Task": {
+            "type": "string"
+        },
+        "Inbound Steps": {
+            "type": "string"
+        },
+        "Inbound Response Guidlines": {
+            "type": "string"
+        },
+        "Inbound Notes": {
+            "type": "string"
+        },
+        "ONB_Specifics": {
+            "type": "string"
+        },
+        "Context": {
+            "type": "string"
+        },
+        "Onb_Example": {
+            "type": "string"
+        },
+        "Call Later Task": {
+            "type": "string"
+        },
+        "Call Later Steps": {
+            "type": "string"
+        },
+        "Call Later Examples": {
+            "type": "string"
+        },
+        "Call Later DBR Steps": {
+            "type": "string"
+        },
+        "DBR_Example": {
+            "type": "string"
+        },
+        "Appointments Example": {
+            "type": "string"
+        },
+        "Appointments_Notes": {
+            "type": "string"
+        },
+        "Inbound Specifics New": {
+            "type": "string"
+        },
+        "Inbound Specifics Past": {
+            "type": "string"
+        },
+        "Inbound Examples": {
+            "type": "string"
+        },
+        "Inbound Context": {
+            "type": "string"
+        },
+        "Voice ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id"
+    ]
+}
