@@ -9,7 +9,6 @@ import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref, computed } from 'vue';
 import { useMessage } from '@/composables/useMessage';
-import { ref } from 'vue';
 import type { IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
