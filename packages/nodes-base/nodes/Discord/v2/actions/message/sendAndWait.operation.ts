@@ -20,6 +20,8 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 	undefined,
 	{
 		noButtonStyle: true,
+		defaultApproveLabel: '✓ Approve',
+		defaultDisapproveLabel: '✗ Decline',
 	},
 ).filter((p) => p.name !== 'subject');
 
