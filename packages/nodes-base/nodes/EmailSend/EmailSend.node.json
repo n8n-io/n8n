@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.emailSend",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication", "HILT"],
+	"categories": ["Communication", "HILT", "Core Nodes"],
 	"subcategories": {
 		"HILT": ["Human in the Loop"]
 	},
