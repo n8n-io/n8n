@@ -53,6 +53,7 @@ export function sanitizeHtml(text: string) {
 			'ul',
 			'ol',
 			'li',
+			'p',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
