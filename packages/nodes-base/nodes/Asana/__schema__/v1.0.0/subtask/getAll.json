@@ -1,0 +1,34 @@
+{
+    "type": "object",
+    "properties": {
+        "gid": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type"
+            ]
+        }
+    },
+    "required": [
+        "gid",
+        "name",
+        "resource_type"
+    ]
+}
