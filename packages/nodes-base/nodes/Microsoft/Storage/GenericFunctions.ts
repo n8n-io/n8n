@@ -374,6 +374,7 @@ export async function parseBlobList(
 						'blobSequenceNumber',
 						'remainingRetentionDays',
 						'tagCount',
+						'content-Length',
 					].includes(name)
 				) {
 					return parseNumbers(value);
