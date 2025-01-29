@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "event_id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "event_id"
+    ]
+}
