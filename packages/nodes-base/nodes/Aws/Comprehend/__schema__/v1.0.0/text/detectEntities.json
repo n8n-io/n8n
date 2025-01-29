@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "BeginOffset": {
+            "type": "integer"
+        },
+        "EndOffset": {
+            "type": "integer"
+        },
+        "Score": {
+            "type": "number"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "Type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "BeginOffset",
+        "EndOffset",
+        "Score",
+        "Text",
+        "Type"
+    ]
+}
