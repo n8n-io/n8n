@@ -52,5 +52,5 @@
 			}
 		]
 	},
-	"alias": ["email", "human", "form", "wait"]
+	"alias": ["email", "human", "form", "wait", "hitl", "approval"]
 }
