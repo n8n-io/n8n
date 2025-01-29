@@ -1,0 +1,51 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "identifier": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "archivedAt": {
+            "type": "null"
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ]
+        },
+        "createdAt": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "title",
+        "priority",
+        "archivedAt",
+        "assignee",
+        "state",
+        "createdAt",
+        "creator",
+        "description",
+        "dueDate",
+        "cycle"
+    ]
+}
