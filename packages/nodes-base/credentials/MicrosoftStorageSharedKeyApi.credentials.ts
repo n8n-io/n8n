@@ -15,7 +15,7 @@ import {
 export class MicrosoftStorageSharedKeyApi implements ICredentialType {
 	name = 'microsoftStorageSharedKeyApi';
 
-	displayName = 'Microsoft Storage API';
+	displayName = 'Microsoft Storage Shared Key API';
 
 	documentationUrl = 'microsoftstorage';
 
@@ -41,8 +41,7 @@ export class MicrosoftStorageSharedKeyApi implements ICredentialType {
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'hidden',
-			// default: '=https://{{ $self["account"] }}.blob.core.windows.net',
-			default: '=http://127.0.0.1:10000/{{ $self["account"] }}',
+			default: '=https://{{ $self["account"] }}.blob.core.windows.net',
 		},
 	];
 
@@ -67,9 +66,6 @@ export class MicrosoftStorageSharedKeyApi implements ICredentialType {
 
 		requestOptions.method ??= 'GET';
 		requestOptions.headers ??= {};
-		requestOptions.headers[HeaderConstants.X_MS_DATE] = new Date().toUTCString();
-		requestOptions.headers[HeaderConstants.X_MS_VERSION] = '2020-04-08'; // Minimum version: https://learn.microsoft.com/en-us/rest/api/storageservices/put-blob-from-url?tabs=microsoft-entra-id
-		// requestOptions.headers[HeaderConstants.X_MS_CLIENT_REQUEST_ID] = '123';
 
 		const stringToSign: string = [
 			requestOptions.method.toUpperCase(),
