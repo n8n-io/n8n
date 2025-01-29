@@ -1,0 +1,160 @@
+{
+    "type": "object",
+    "properties": {
+        "cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "fwd_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reply_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ticket_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "fr_escalated": {
+            "type": "boolean"
+        },
+        "spam": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "association_type": {
+            "type": "null"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "due_by": {
+            "type": "string"
+        },
+        "fr_due_by": {
+            "type": "string"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "description_text": {
+            "type": "string"
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "attachment_url": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "content_type",
+                    "size",
+                    "name",
+                    "attachment_url",
+                    "created_at",
+                    "updated_at"
+                ]
+            }
+        },
+        "source_additional_info": {
+            "type": "null"
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "cc_emails",
+        "fwd_emails",
+        "reply_cc_emails",
+        "ticket_cc_emails",
+        "fr_escalated",
+        "spam",
+        "email_config_id",
+        "group_id",
+        "priority",
+        "requester_id",
+        "responder_id",
+        "source",
+        "company_id",
+        "status",
+        "subject",
+        "association_type",
+        "support_email",
+        "to_emails",
+        "product_id",
+        "id",
+        "type",
+        "due_by",
+        "fr_due_by",
+        "is_escalated",
+        "custom_fields",
+        "created_at",
+        "updated_at",
+        "tags"
+    ]
+}
