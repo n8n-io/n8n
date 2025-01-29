@@ -196,7 +196,7 @@ describe('Microsoft Storage Node', () => {
 							return {
 								...requestParams,
 								headers: {
-									authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token}`,
+									authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token as string}`,
 								},
 							};
 						} else if (typeName === 'microsoftStorageSharedKeyApi') {
@@ -235,7 +235,7 @@ describe('Microsoft Storage Node', () => {
 		it('should list search blobs', async () => {
 			const mockResponse = microsoftStorageApiResponse.blobList.body;
 			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
-			const mockGetNodeParameter = jest.fn((parameterName, fallbackValue, options) => {
+			const mockGetNodeParameter = jest.fn((parameterName, _fallbackValue, _options) => {
 				if (parameterName === 'authentication') {
 					return 'sharedKey';
 				}
@@ -247,7 +247,7 @@ describe('Microsoft Storage Node', () => {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown parameter');
 			});
-			const mockGetCredentials = jest.fn(async (type: string, itemIndex?: number) => {
+			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftStorageSharedKeyApi') {
 					return FAKE_CREDENTIALS_DATA.microsoftStorageSharedKeyApi;
 				}
@@ -290,14 +290,14 @@ describe('Microsoft Storage Node', () => {
 		it('should list search containers', async () => {
 			const mockResponse = microsoftStorageApiResponse.containerList.body;
 			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
-			const mockGetNodeParameter = jest.fn((parameterName, fallbackValue, options) => {
+			const mockGetNodeParameter = jest.fn((parameterName, _fallbackValue, _options) => {
 				if (parameterName === 'authentication') {
 					return 'sharedKey';
 				}
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown parameter');
 			});
-			const mockGetCredentials = jest.fn(async (type: string, itemIndex?: number) => {
+			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftStorageSharedKeyApi') {
 					return FAKE_CREDENTIALS_DATA.microsoftStorageSharedKeyApi;
 				}

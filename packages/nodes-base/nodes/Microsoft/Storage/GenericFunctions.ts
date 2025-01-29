@@ -477,7 +477,7 @@ export async function getBlobs(
 ): Promise<INodeListSearchResult> {
 	const container = this.getNodeParameter('container') as INodeParameterResourceLocator;
 
-	let response: any;
+	let response: string;
 
 	const qs: IDataObject = {
 		restype: 'container',
@@ -495,7 +495,7 @@ export async function getBlobs(
 		response = await microsoftApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
 	}
 
-	const data = await parseBlobList(response as string);
+	const data = await parseBlobList(response);
 
 	const results: INodeListSearchItems[] = data.blobs
 		.map((c) => ({
@@ -517,7 +517,7 @@ export async function getContainers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let response: any;
+	let response: string;
 
 	const qs: IDataObject = {
 		comp: 'list',
@@ -534,7 +534,7 @@ export async function getContainers(
 		response = await microsoftApiRequest.call(this, 'GET', '/', {}, qs);
 	}
 
-	const data = await parseContainerList(response as string);
+	const data = await parseContainerList(response);
 
 	const results: INodeListSearchItems[] = data.containers
 		.map((c) => ({
