@@ -1,0 +1,22 @@
+{
+    "type": "object",
+    "properties": {
+        "$": {
+            "type": "object",
+            "properties": {
+                "xmlns": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "xmlns"
+            ]
+        },
+        "LastModified": {
+            "type": "string"
+        },
+        "ETag": {
+            "type": "string"
+        }
+    }
+}
