@@ -9,11 +9,15 @@ import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref, computed } from 'vue';
 import { useMessage } from '@/composables/useMessage';
+import { ref } from 'vue';
+import type { IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	showConfig: boolean;
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
+	examplePinnedData?: IPinData;
+	sampleWorkflowName?: string;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
@@ -203,7 +207,9 @@ function hideTooltip() {
 			<template #cardContent>
 				<WorkflowSelector
 					v-model="evaluationWorkflow"
+					:example-pinned-data="examplePinnedData"
 					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
+					:sample-workflow-name="sampleWorkflowName"
 					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
 				/>
 			</template>
