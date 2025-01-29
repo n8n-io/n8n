@@ -24,17 +24,25 @@ vi.mock('vue-router', () => ({
 
 let route: ReturnType<typeof useRoute>;
 
-const RecycleScroller = {
+const DynamicScrollerStub = {
 	props: {
 		items: Array,
 	},
 	template: '<div><template v-for="item in items"><slot v-bind="{ item }"></slot></template></div>',
+	methods: {
+		scrollToItem: vi.fn(),
+	},
+};
+
+const DynamicScrollerItemStub = {
+	template: '<slot></slot>',
 };
 
 const renderModal = createComponentRenderer(SourceControlPushModal, {
 	global: {
 		stubs: {
-			RecycleScroller,
+			DynamicScroller: DynamicScrollerStub,
+			DynamicScrollerItem: DynamicScrollerItemStub,
 			Modal: {
 				template: `
 					<div>
@@ -195,7 +203,7 @@ describe('SourceControlPushModal', () => {
 
 		const sourceControlStore = mockedStore(useSourceControlStore);
 
-		const { getByTestId, getByText } = renderModal({
+		const { getByTestId, getByRole } = renderModal({
 			props: {
 				data: {
 					eventBus,
@@ -207,9 +215,9 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(getByText('1 new credentials added, 0 deleted and 0 changed')).toBeInTheDocument();
-		expect(getByText('At least one new variable has been added or modified')).toBeInTheDocument();
-		expect(getByText('At least one new tag has been added or modified')).toBeInTheDocument();
+		expect(getByRole('alert').textContent).toContain('Credentials: 1 added.');
+		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
+		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
 
