@@ -45,6 +45,9 @@ const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./CollectionParameter.vue'),
 );
 
+// Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
+const showIssuesInLabelFor = ['fixedCollection'];
+
 type Props = {
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
@@ -433,7 +436,7 @@ function onNoticeAction(action: string) {
 }
 
 function getParameterIssues(parameter: INodeProperties): string[] {
-	if (!node.value || (parameter.type !== 'collection' && parameter.type !== 'fixedCollection')) {
+	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
 	}
 	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
@@ -548,7 +551,10 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					color="text-dark"
 				>
 					<template
-						v-if="parameter.type === 'fixedCollection' && getParameterIssues(parameter).length > 0"
+						v-if="
+							showIssuesInLabelFor.includes(parameter.type) &&
+							getParameterIssues(parameter).length > 0
+						"
 						#issues
 					>
 						<N8nTooltip>
