@@ -45,6 +45,7 @@ export const renderFormCompletion = async (
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as { formTitle: string };
+	const respondWith = context.getNodeParameter('respondWith') as string;
 
 	if (redirectUrl) {
 		res.send(
@@ -66,6 +67,7 @@ export const renderFormCompletion = async (
 		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
+		respondWith,
 	});
 
 	return { noWebhookResponse: true };

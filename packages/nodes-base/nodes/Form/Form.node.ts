@@ -117,12 +117,12 @@ const completionProperties = updateDisplayOptions(
 				},
 				{
 					name: 'Respond with Text',
-					value: 'text',
+					value: 'respondText',
 					description: 'Respond to the user with a text',
 				},
 				{
 					name: 'Respond with Binary',
-					value: 'binary',
+					value: 'respondBinary',
 					description: 'Respond to the user with a text',
 				},
 			],
