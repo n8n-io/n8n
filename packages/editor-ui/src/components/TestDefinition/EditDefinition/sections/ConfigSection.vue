@@ -364,7 +364,7 @@ function hideTooltip() {
 	}
 
 	&.lg {
-		--arrow-height: 20rem;
+		--arrow-height: 22rem;
 	}
 }
 
