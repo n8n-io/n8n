@@ -1,0 +1,164 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "activeWorkspace": {
+            "type": "string"
+        },
+        "defaultWorkspace": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "weekStart": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                },
+                "timeFormat": {
+                    "type": "string"
+                },
+                "dateFormat": {
+                    "type": "string"
+                },
+                "sendNewsletter": {
+                    "type": "boolean"
+                },
+                "weeklyUpdates": {
+                    "type": "boolean"
+                },
+                "longRunning": {
+                    "type": "boolean"
+                },
+                "scheduledReports": {
+                    "type": "boolean"
+                },
+                "approval": {
+                    "type": "boolean"
+                },
+                "pto": {
+                    "type": "boolean"
+                },
+                "alerts": {
+                    "type": "boolean"
+                },
+                "reminders": {
+                    "type": "boolean"
+                },
+                "timeTrackingManual": {
+                    "type": "boolean"
+                },
+                "summaryReportSettings": {
+                    "type": "object",
+                    "properties": {
+                        "group": {
+                            "type": "string"
+                        },
+                        "subgroup": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "group",
+                        "subgroup"
+                    ]
+                },
+                "isCompactViewOn": {
+                    "type": "boolean"
+                },
+                "dashboardSelection": {
+                    "type": "string"
+                },
+                "dashboardViewType": {
+                    "type": "string"
+                },
+                "dashboardPinToTop": {
+                    "type": "boolean"
+                },
+                "collapseAllProjectLists": {
+                    "type": "boolean"
+                },
+                "groupSimilarEntriesDisabled": {
+                    "type": "boolean"
+                },
+                "myStartOfDay": {
+                    "type": "string"
+                },
+                "projectPickerTaskFilter": {
+                    "type": "boolean"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "multiFactorEnabled": {
+                    "type": "boolean"
+                },
+                "theme": {
+                    "type": "string"
+                },
+                "scheduling": {
+                    "type": "boolean"
+                },
+                "onboarding": {
+                    "type": "boolean"
+                },
+                "showOnlyWorkingDays": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "weekStart",
+                "timeZone",
+                "timeFormat",
+                "dateFormat",
+                "sendNewsletter",
+                "weeklyUpdates",
+                "longRunning",
+                "scheduledReports",
+                "approval",
+                "pto",
+                "alerts",
+                "reminders",
+                "timeTrackingManual",
+                "summaryReportSettings",
+                "isCompactViewOn",
+                "dashboardSelection",
+                "dashboardViewType",
+                "dashboardPinToTop",
+                "projectListCollapse",
+                "collapseAllProjectLists",
+                "groupSimilarEntriesDisabled",
+                "myStartOfDay",
+                "projectPickerTaskFilter",
+                "lang",
+                "multiFactorEnabled",
+                "theme",
+                "scheduling",
+                "onboarding",
+                "showOnlyWorkingDays"
+            ]
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "email",
+        "name",
+        "memberships",
+        "profilePicture",
+        "activeWorkspace",
+        "defaultWorkspace",
+        "settings",
+        "status",
+        "customFields"
+    ]
+}
