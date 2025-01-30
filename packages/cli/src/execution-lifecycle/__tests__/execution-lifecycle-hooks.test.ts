@@ -185,16 +185,11 @@ describe('Execution Lifecycle Hooks', () => {
 	};
 
 	describe('getWorkflowHooksMain', () => {
+		const createHooks = () =>
+			getWorkflowHooksMain({ executionMode, workflowData, pushRef, retryOf }, executionId);
+
 		beforeEach(() => {
-			hooks = getWorkflowHooksMain(
-				{
-					executionMode,
-					workflowData,
-					pushRef,
-					retryOf,
-				},
-				executionId,
-			);
+			hooks = createHooks();
 		});
 
 		workflowEventTests();
@@ -245,6 +240,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('should save execution progress when enabled', async () => {
 				workflowData.settings = { saveExecutionProgress: true };
+				hooks = createHooks();
 
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
@@ -260,6 +256,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('should not save execution progress when disabled', async () => {
 				workflowData.settings = { saveExecutionProgress: false };
+				hooks = createHooks();
 
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
@@ -391,6 +388,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				it('should soft delete manual executions when manual saving is disabled', async () => {
 					hooks.workflowData.settings = { saveManualExecutions: false };
+					hooks = createHooks();
 
 					await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
 
@@ -399,6 +397,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				it('should not soft delete manual executions with waitTill', async () => {
 					hooks.workflowData.settings = { saveManualExecutions: false };
+					hooks = createHooks();
 
 					await hooks.executeHookFunctions('workflowExecuteAfter', [waitingRun, {}]);
 

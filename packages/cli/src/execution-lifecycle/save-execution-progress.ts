@@ -1,21 +1,20 @@
 import { Container } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
-import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
-import { toSaveSettings } from './to-save-settings';
+import { type ExecutionSavingSettings } from './to-save-settings';
 
 export async function saveExecutionProgress(
-	workflowData: IWorkflowBase,
+	saveSettings: ExecutionSavingSettings,
+	workflowId: string,
 	executionId: string,
 	nodeName: string,
 	data: ITaskData,
 	executionData: IRunExecutionData,
 	pushRef?: string,
 ) {
-	const saveSettings = toSaveSettings(workflowData.settings);
-
 	if (!saveSettings.progress) return;
 
 	const logger = Container.get(Logger);
@@ -97,7 +96,7 @@ export async function saveExecutionProgress(
 				...error,
 				executionId,
 				pushRef,
-				workflowId: workflowData.id,
+				workflowId,
 			},
 		);
 	}

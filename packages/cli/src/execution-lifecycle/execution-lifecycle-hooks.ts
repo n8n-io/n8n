@@ -32,7 +32,7 @@ import {
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './shared/shared-hook-functions';
-import { toSaveSettings } from './to-save-settings';
+import { type ExecutionSavingSettings, toSaveSettings } from './to-save-settings';
 
 function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflowExecuteHooks {
 	const result: IWorkflowExecuteHooks = {
@@ -212,7 +212,7 @@ function hookFunctionsExternalHooks(): IWorkflowExecuteHooks {
 	};
 }
 
-function hookFunctionsSaveProgress(): IWorkflowExecuteHooks {
+function hookFunctionsSaveProgress(saveSettings: ExecutionSavingSettings): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteAfter: [
 			async function (
@@ -222,7 +222,8 @@ function hookFunctionsSaveProgress(): IWorkflowExecuteHooks {
 				executionData: IRunExecutionData,
 			): Promise<void> {
 				await saveExecutionProgress(
-					this.workflowData,
+					saveSettings,
+					this.workflowData.id,
 					this.executionId,
 					nodeName,
 					data,
@@ -248,7 +249,7 @@ function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
 /**
  * Returns hook functions to save workflow execution and call error workflow
  */
-function hookFunctionsSave(): IWorkflowExecuteHooks {
+function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -287,8 +288,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 							);
 						}
 					}
-
-					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 						/**
@@ -472,12 +471,13 @@ export function getWorkflowHooksIntegrated(
 	workflowData: IWorkflowBase,
 	userId?: string,
 ): WorkflowHooks {
+	const saveSettings = toSaveSettings(workflowData.settings);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(userId),
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
-		hookFunctionsSave(),
-		hookFunctionsSaveProgress(),
+		hookFunctionsSave(saveSettings),
+		hookFunctionsSaveProgress(saveSettings),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
@@ -492,11 +492,12 @@ export function getWorkflowHooksWorkerExecuter(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
+	const saveSettings = toSaveSettings(workflowData.settings);
 	const toMerge = [
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSaveWorker(),
-		hookFunctionsSaveProgress(),
+		hookFunctionsSaveProgress(saveSettings),
 		hookFunctionsExternalHooks(),
 	];
 
@@ -517,10 +518,11 @@ export function getWorkflowHooksWorkerMain(
 	workflowData: IWorkflowBase,
 	optionalParameters: IWorkflowHooksOptionalParameters = {},
 ): WorkflowHooks {
+	const saveSettings = toSaveSettings(workflowData.settings);
 	const executionRepository = Container.get(ExecutionRepository);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
-		hookFunctionsSaveProgress(),
+		hookFunctionsSaveProgress(saveSettings),
 		hookFunctionsExternalHooks(),
 		hookFunctionsFinalizeExecutionStatus(),
 		{
@@ -528,8 +530,6 @@ export function getWorkflowHooksWorkerMain(
 				async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 					// Don't delete executions before they are finished
 					if (!fullRunData.finished) return;
-
-					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					const isManualMode = this.mode === 'manual';
 
@@ -579,13 +579,14 @@ export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): WorkflowHooks {
+	const saveSettings = toSaveSettings(data.workflowData.settings);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
-		hookFunctionsSave(),
+		hookFunctionsSave(saveSettings),
 		hookFunctionsPush(),
-		hookFunctionsSaveProgress(),
+		hookFunctionsSaveProgress(saveSettings),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
