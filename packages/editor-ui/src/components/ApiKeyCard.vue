@@ -50,9 +50,9 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 
 	if (isApiKeyExpired(apiKey)) return i18n.baseText('settings.api.expired');
 
-	const timeAgo = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
+	const time = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
 
-	return i18n.baseText('settings.api.expirationTime', { interpolate: { time: timeAgo } });
+	return i18n.baseText('settings.api.expirationTime', { interpolate: { time } });
 };
 </script>
 

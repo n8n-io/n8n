@@ -110,8 +110,8 @@ function onInput(value: string): void {
 }
 
 const getApiCreationTime = (apiKey: ApiKey): string => {
-	const timeAgo = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
-	return i18n.baseText('settings.api.creationTime', { interpolate: { time: timeAgo } });
+	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
+	return i18n.baseText('settings.api.creationTime', { interpolate: { time } });
 };
 
 async function onEdit() {
