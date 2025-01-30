@@ -144,7 +144,6 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 	right: 0;
 	color: var(--color-primary);
 	padding: var(--spacing-s);
-	animation: slide-in 0.1s ease-in forwards;
 	opacity: 1;
 	translate: 0 0;
 	transition:

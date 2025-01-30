@@ -4,7 +4,7 @@ import { useThrottleFn } from '@vueuse/core';
 import { type ComputedRef, onMounted, onUnmounted, ref } from 'vue';
 
 /**
- * From a given node list, finds one that the mouse cursor is within its hit box.
+ * From a given node list, finds a node that the mouse cursor is within its hit box.
  * If more than one node meets this condition, returns the closest one.
  */
 export function useCanvasNodeHover(
