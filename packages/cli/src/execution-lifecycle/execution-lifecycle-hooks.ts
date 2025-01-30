@@ -582,7 +582,7 @@ export function getWorkflowHooksMain(
 ): WorkflowHooks {
 	const { pushRef, retryOf } = data;
 	const saveSettings = toSaveSettings(data.workflowData.settings);
-	const optionalParameters = { pushRef, retryOf, saveSettings };
+	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsNodeEvents(),

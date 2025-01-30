@@ -352,7 +352,7 @@ export class WorkflowRunner {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, {
-				retryOf: data.retryOf ? data.retryOf.toString() : undefined,
+				retryOf: data.retryOf ?? undefined,
 			});
 
 			// Normally also workflow should be supplied here but as it only used for sending
@@ -365,7 +365,7 @@ export class WorkflowRunner {
 				data.executionMode,
 				executionId,
 				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+				{ retryOf: data.retryOf ?? undefined },
 			);
 			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			throw error;
@@ -383,7 +383,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
 
 					const error = new ExecutionCancelledError(executionId);
@@ -408,7 +408,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
 
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);

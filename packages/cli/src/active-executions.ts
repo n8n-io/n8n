@@ -61,9 +61,7 @@ export class ActiveExecutions {
 				workflowId: executionData.workflowData.id,
 			};
 
-			if (executionData.retryOf !== undefined) {
-				fullExecutionData.retryOf = executionData.retryOf.toString();
-			}
+			fullExecutionData.retryOf = executionData.retryOf ?? undefined;
 
 			const workflowId = executionData.workflowData.id;
 			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
@@ -179,7 +177,7 @@ export class ActiveExecutions {
 			data = this.activeExecutions[id];
 			returnData.push({
 				id,
-				retryOf: data.executionData.retryOf,
+				retryOf: data.executionData.retryOf ?? undefined,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
 				workflowId: data.executionData.workflowData.id,

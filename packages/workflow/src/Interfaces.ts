@@ -2284,7 +2284,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
-	retryOf?: string;
+	retryOf?: string | null;
 	pushRef?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
