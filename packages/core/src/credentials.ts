@@ -1,11 +1,13 @@
 import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
+import { isObjectLiteral } from '@/utils';
 
-class CredentialDataError extends ApplicationError {
+export class CredentialDataError extends ApplicationError {
 	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
 		super(message, {
 			extra: { name, type, id },
@@ -23,6 +25,8 @@ export class Credentials<
 	 * Sets new credential object
 	 */
 	setData(data: T): void {
+		a.ok(isObjectLiteral(data));
+
 		this.data = this.cipher.encrypt(data);
 	}
 

@@ -1486,14 +1486,6 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export type ApiKey = {
-	id: string;
-	label: string;
-	apiKey: string;
-	createdAt: string;
-	updatedAt: string;
-};
-
 export type InputPanel = {
 	nodeName?: string;
 	run?: number;

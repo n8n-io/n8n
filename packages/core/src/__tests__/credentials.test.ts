@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
+import { AssertionError } from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
@@ -92,9 +93,8 @@ describe('Credentials', () => {
 			} catch (error) {
 				expect(error.constructor.name).toBe('CredentialDataError');
 				expect(error.extra).toEqual({ ...nodeCredentials, type: credentialType });
-				expect(error.cause).toEqual(
-					new SyntaxError('Unexpected token \'i\', "invalid-json-string" is not valid JSON'),
-				);
+				expect(error.cause).toBeInstanceOf(SyntaxError);
+				expect(error.cause.message).toMatch('Unexpected token ');
 			}
 		});
 
@@ -106,5 +106,16 @@ describe('Credentials', () => {
 			expect(decryptedData.username).toBe('testuser');
 			expect(decryptedData.password).toBe('testpass');
 		});
+	});
+
+	describe('setData', () => {
+		test.each<{}>([[123], [null], [undefined]])(
+			'should throw an AssertionError when data is %s',
+			(data) => {
+				const credentials = new Credentials<{}>(nodeCredentials, credentialType);
+
+				expect(() => credentials.setData(data)).toThrow(AssertionError);
+			},
+		);
 	});
 });
