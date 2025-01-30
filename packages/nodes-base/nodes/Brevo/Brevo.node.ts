@@ -20,7 +20,6 @@ export class Brevo implements INodeType {
 		defaults: {
 			name: 'Brevo',
 		},
-		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -16,7 +16,6 @@ export class PostBin implements INodeType {
 		defaults: {
 			name: 'PostBin',
 		},
-		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [],

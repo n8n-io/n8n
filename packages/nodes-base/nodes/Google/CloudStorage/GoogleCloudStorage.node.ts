@@ -15,7 +15,6 @@ export class GoogleCloudStorage implements INodeType {
 		defaults: {
 			name: 'Google Cloud Storage',
 		},
-		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
