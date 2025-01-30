@@ -41,7 +41,6 @@ import type {
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
-	INodeType,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -72,6 +71,7 @@ import {
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { isDeclarativeRunException } from '../utils/is-declarative-run-exception';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -987,31 +987,7 @@ export class WorkflowExecute {
 		return workflowIssues;
 	}
 
-	private shouldRunMethod(
-		node: INode,
-		nodeType: INodeType,
-		method: 'webhook' | 'execute',
-	): boolean {
-		if (!nodeType[method]) return false;
-
-		if (nodeType.description.declarativeRunExceptions?.length) {
-			const excludedResources: Array<{ resource: string; operation: string }> =
-				nodeType.description.declarativeRunExceptions;
-			const { resource, operation } = node.parameters;
-
-			let isExcluded = false;
-			for (const excludedResource of excludedResources) {
-				if (excludedResource.resource === resource && excludedResource.operation === operation) {
-					isExcluded = true;
-					break;
-				}
-			}
-
-			return isExcluded;
-		}
-
-		return true;
-	}
+	private isDeclarativeRunException = isDeclarativeRunException;
 
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
@@ -1044,7 +1020,7 @@ export class WorkflowExecute {
 
 		let connectionInputData: INodeExecutionData[] = [];
 		if (
-			(nodeType.execute && this.shouldRunMethod(node, nodeType, 'execute')) ||
+			(nodeType.execute && this.isDeclarativeRunException(node, nodeType, 'execute')) ||
 			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
 		) {
 			// Only stop if first input is empty for execute runs. For all others run anyways
@@ -1105,7 +1081,7 @@ export class WorkflowExecute {
 			inputData = newInputData;
 		}
 
-		if (nodeType.execute && this.shouldRunMethod(node, nodeType, 'execute')) {
+		if (nodeType.execute && this.isDeclarativeRunException(node, nodeType, 'execute')) {
 			const closeFunctions: CloseFunction[] = [];
 			const context = new ExecuteContext(
 				workflow,
@@ -1197,7 +1173,7 @@ export class WorkflowExecute {
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
-		} else if (nodeType.webhook && this.shouldRunMethod(node, nodeType, 'webhook')) {
+		} else if (nodeType.webhook && this.isDeclarativeRunException(node, nodeType, 'webhook')) {
 			// For webhook nodes always simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
