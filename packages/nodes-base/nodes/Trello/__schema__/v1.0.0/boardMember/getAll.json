@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "fullName": {
+            "type": "string"
+        },
+        "username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "fullName",
+        "username"
+    ]
+}

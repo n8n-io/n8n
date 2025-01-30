@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "_ctime": {
+            "type": "string"
+        },
+        "_mtime": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_id",
+        "_ctime",
+        "_mtime"
+    ]
+}

@@ -1,0 +1,139 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "value": {
+            "type": "null"
+        },
+        "expected_close_date": {
+            "type": "null"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "source_name": {
+            "type": "string"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "was_seen": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "4ab3d8a89fda2c9c54d97f0866fee6466972fe89": {
+            "type": "string"
+        },
+        "53ffd671d280f0c9a55970cd84f45aa77cd530a4": {
+            "type": "integer"
+        },
+        "841a75f7e934371ba8232f7ae7dd0d7628c64e1d": {
+            "type": "string"
+        },
+        "1fe8e42d10e3d2157622d5a889c23d5ca032294c": {
+            "type": "string"
+        },
+        "6f2173470675a59837cc6c1b1c5b14ceb7179e4f": {
+            "type": "string"
+        },
+        "f322f098a65fdf8a89a37594fc726b96fd2592ca": {
+            "type": "integer"
+        },
+        "97e2e0d8a08e9db54e358145686d3819db5199aa": {
+            "type": "integer"
+        },
+        "90bb36492fc0f0a792825991428c1c37b128c747": {
+            "type": "integer"
+        },
+        "605ad30ac60d0abead1b24ca6da7358da39bb2dd": {
+            "type": "integer"
+        },
+        "0244d091c3f4dc963af267bc3f0625f62f0a113a": {
+            "type": "string"
+        },
+        "4b897f0541c86ebbc895f37a74cd233a37dff4f9": {
+            "type": "string"
+        },
+        "5c6879c9e1846491da9e6be9352adc15e3cfba2f": {
+            "type": "string"
+        },
+        "51dd778f70a8d2183487a4646fdfa4409592b805": {
+            "type": "integer"
+        },
+        "4a05b7107a6d10f807b1ce20cab44920705ee27a": {
+            "type": "string"
+        },
+        "fef1cec50bfba8fbccf025d21faaeaf49be5d9a4": {
+            "type": "string"
+        },
+        "766c4133375414b0769c3961a5b1b762add94778": {
+            "type": "string"
+        },
+        "0a3b7c687c6e1d9349c9051f3b8479c2d55170c8": {
+            "type": "string"
+        },
+        "9ad5f2cc62f7926372c1f95ae8425a09d721ef50": {
+            "type": "integer"
+        },
+        "725468bc0f1074227a97ce5a9a1c3b6444d05004": {
+            "type": "string"
+        },
+        "02edbeb283d17eea411157a711119d0a03694866": {
+            "type": "string"
+        },
+        "03c06dc14ea780dd8c69ec5ca37ba7579d87454a": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "title",
+        "owner_id",
+        "creator_id",
+        "label_ids",
+        "value",
+        "expected_close_date",
+        "person_id",
+        "organization_id",
+        "is_archived",
+        "source_name",
+        "origin",
+        "origin_id",
+        "channel",
+        "channel_id",
+        "was_seen",
+        "next_activity_id",
+        "add_time",
+        "update_time",
+        "visible_to",
+        "cc_email"
+    ]
+}
