@@ -10,12 +10,12 @@ import { ResourceType, splitName } from '@/utils/projects.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ProjectTypes } from '@/types/projects.types';
 import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
+import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { RouteLocationNamedRaw } from 'vue-router';
 
 const props = defineProps<{
 	modalName: string;
@@ -122,29 +122,6 @@ const moveResource = async () => {
 			}),
 		);
 	}
-};
-
-const getCredentialRouterLocation = (
-	credential: ICredentialsResponse | IUsedCredential,
-): RouteLocationNamedRaw => {
-	const isSharedWithCurrentProject = credential.sharedWithProjects?.find(
-		(p) => p.id === projectsStore.currentProjectId,
-	);
-	const params: {
-		projectId?: string;
-		credentialId: string;
-	} = { credentialId: credential.id };
-
-	if (isSharedWithCurrentProject ?? credential.homeProject?.id) {
-		params.projectId = isSharedWithCurrentProject
-			? projectsStore.currentProjectId
-			: credential.homeProject?.id;
-	}
-
-	return {
-		name: isSharedWithCurrentProject ? VIEWS.PROJECTS_CREDENTIALS : VIEWS.CREDENTIALS,
-		params,
-	};
 };
 
 onMounted(async () => {
@@ -265,13 +242,10 @@ onMounted(async () => {
 										}}
 									</span>
 									<template #content>
-										<ul :class="$style.credentialsList">
-											<li v-for="credential in shareableCredentials" :key="credential.id">
-												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
-													{{ credential.name }}
-												</router-link>
-											</li>
-										</ul>
+										<ProjectMoveResourceModalCredentialsList
+											:current-project-id="projectsStore.currentProjectId"
+											:credentials="shareableCredentials"
+										/>
 									</template>
 								</N8nTooltip>
 							</template>
@@ -285,13 +259,10 @@ onMounted(async () => {
 										i18n.baseText('projects.move.resource.modal.message.unAccessibleCredentials')
 									}}</span>
 									<template #content>
-										<ul :class="$style.credentialsList">
-											<li v-for="credential in unShareableCredentials" :key="credential.id">
-												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
-													{{ credential.name }}
-												</router-link>
-											</li>
-										</ul>
+										<ProjectMoveResourceModalCredentialsList
+											:current-project-id="projectsStore.currentProjectId"
+											:credentials="unShareableCredentials"
+										/>
 									</template>
 								</N8nTooltip>
 							</template>
@@ -340,19 +311,5 @@ onMounted(async () => {
 
 .tooltipText {
 	text-decoration: underline;
-}
-
-.credentialsList {
-	list-style-type: none;
-	padding: 0;
-	margin: 0;
-
-	li {
-		padding: 0 0 var(--spacing-3xs);
-
-		&:last-child {
-			padding-bottom: 0;
-		}
-	}
 }
 </style>
