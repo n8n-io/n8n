@@ -128,10 +128,12 @@ export class PublicApiKeyService {
 		};
 	}
 
-	private generateApiKey = (user: User, expiration?: number) => {
+	private generateApiKey = (user: User, expirationUnixTimestamp?: number) => {
+		const nowInSeconds = Math.floor(Date.now() / 1000);
+
 		return this.jwtService.sign(
 			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
-			{ ...(expiration && { expiresIn: expiration }) },
+			{ ...(expirationUnixTimestamp && { expiresIn: expirationUnixTimestamp - nowInSeconds }) },
 		);
 	};
 
