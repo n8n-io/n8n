@@ -908,7 +908,7 @@ async function optionSelected(command: string) {
 		if (isResourceLocatorParameter.value && isResourceLocatorValue(props.modelValue)) {
 			valueChanged({ __rl: true, value, mode: props.modelValue.mode });
 		} else {
-			let newValue: NodeParameterValueType | {} = typeof value === 'undefined' ? null : value;
+			let newValue: NodeParameterValueType | {} = typeof value !== 'undefined' ? value : null;
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
