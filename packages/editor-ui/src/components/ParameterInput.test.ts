@@ -256,6 +256,27 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: true })]);
 	});
 
+	test('should reset bool with undefined evaluation on eventBus:removeExpression', async () => {
+		const eventBus = createEventBus();
+		const { emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'aSwitch',
+				parameter: {
+					displayName: 'A Switch',
+					name: 'aSwitch',
+					type: 'boolean',
+					default: true,
+				},
+				modelValue: undefined,
+				eventBus,
+			},
+		});
+
+		eventBus.emit('optionSelected', 'removeExpression');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: true })]);
+	});
+
 	test('should reset number on eventBus:removeExpression', async () => {
 		const eventBus = createEventBus();
 		const { emitted } = renderComponent(ParameterInput, {
