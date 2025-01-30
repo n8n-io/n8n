@@ -1,0 +1,295 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "publishedAt": {
+                    "type": "string"
+                },
+                "channelId": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "thumbnails": {
+                    "type": "object",
+                    "properties": {
+                        "default": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "medium": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "high": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "standard": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "maxres": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "default",
+                        "medium",
+                        "high"
+                    ]
+                },
+                "channelTitle": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "liveBroadcastContent": {
+                    "type": "string"
+                },
+                "localized": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "description"
+                    ]
+                },
+                "defaultAudioLanguage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "publishedAt",
+                "channelId",
+                "title",
+                "description",
+                "thumbnails",
+                "channelTitle",
+                "categoryId",
+                "liveBroadcastContent",
+                "localized"
+            ]
+        },
+        "contentDetails": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "string"
+                },
+                "dimension": {
+                    "type": "string"
+                },
+                "definition": {
+                    "type": "string"
+                },
+                "caption": {
+                    "type": "string"
+                },
+                "licensedContent": {
+                    "type": "boolean"
+                },
+                "projection": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "duration",
+                "dimension",
+                "definition",
+                "caption",
+                "licensedContent",
+                "contentRating",
+                "projection"
+            ]
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "uploadStatus": {
+                    "type": "string"
+                },
+                "privacyStatus": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
+                "embeddable": {
+                    "type": "boolean"
+                },
+                "publicStatsViewable": {
+                    "type": "boolean"
+                },
+                "madeForKids": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "uploadStatus",
+                "privacyStatus",
+                "license",
+                "embeddable",
+                "publicStatsViewable",
+                "madeForKids"
+            ]
+        },
+        "statistics": {
+            "type": "object",
+            "properties": {
+                "viewCount": {
+                    "type": "string"
+                },
+                "likeCount": {
+                    "type": "string"
+                },
+                "favoriteCount": {
+                    "type": "string"
+                },
+                "commentCount": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "viewCount",
+                "likeCount",
+                "favoriteCount"
+            ]
+        },
+        "player": {
+            "type": "object",
+            "properties": {
+                "embedHtml": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "embedHtml"
+            ]
+        },
+        "topicDetails": {
+            "type": "object",
+            "properties": {
+                "topicCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "topicCategories"
+            ]
+        }
+    },
+    "required": [
+        "kind",
+        "etag",
+        "id"
+    ]
+}

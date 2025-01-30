@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "translatedText": {
+            "type": "string"
+        },
+        "detectedSourceLanguage": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "translatedText",
+        "detectedSourceLanguage"
+    ]
+}

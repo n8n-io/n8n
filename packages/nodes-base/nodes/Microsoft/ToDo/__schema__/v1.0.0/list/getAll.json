@@ -1,0 +1,31 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "isOwner": {
+            "type": "boolean"
+        },
+        "isShared": {
+            "type": "boolean"
+        },
+        "wellknownListName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "@odata.etag",
+        "displayName",
+        "isOwner",
+        "isShared",
+        "wellknownListName",
+        "id"
+    ]
+}
