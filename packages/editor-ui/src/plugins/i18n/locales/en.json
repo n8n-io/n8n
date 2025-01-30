@@ -1020,7 +1020,6 @@
 	"ndv.output.tooMuchData.title": "Display data?",
 	"ndv.output.waitingToRun": "Waiting to execute...",
 	"ndv.output.noToolUsedInfo": "None of your tools were used in this run. Try giving your tools clearer names and descriptions to help the AI",
-	"ndv.output.workflowIdExpressionNotice": "Note on using an expression for workflow ID: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
 	"ndv.title.renameNode": "Rename node",
