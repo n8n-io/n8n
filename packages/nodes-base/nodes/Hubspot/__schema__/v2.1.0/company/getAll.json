@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "portalId": {
+            "type": "integer"
+        },
+        "companyId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "value",
+                                    "timestamp",
+                                    "source",
+                                    "sourceVid"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "timestamp",
+                        "source",
+                        "sourceId",
+                        "updatedByUserId",
+                        "versions"
+                    ]
+                }
+            }
+        },
+        "stateChanges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "changeFlag": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "changeFlag",
+                    "timestamp"
+                ]
+            }
+        }
+    }
+}

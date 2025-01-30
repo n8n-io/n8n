@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "updateTime": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "updateTime",
+        "status"
+    ]
+}

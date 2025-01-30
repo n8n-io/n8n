@@ -1,0 +1,59 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "source_name": {
+            "type": "string"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "origin_id": {
+            "type": "null"
+        },
+        "channel": {
+            "type": "null"
+        },
+        "channel_id": {
+            "type": "null"
+        },
+        "was_seen": {
+            "type": "boolean"
+        },
+        "next_activity_id": {
+            "type": "null"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        }
+    }
+}
