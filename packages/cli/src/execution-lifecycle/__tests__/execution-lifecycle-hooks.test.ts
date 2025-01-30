@@ -206,7 +206,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(3);
 			expect(hookFunctions.workflowExecuteAfter).toHaveLength(5);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
@@ -242,6 +242,8 @@ describe('Execution Lifecycle Hooks', () => {
 				workflowData.settings = { saveExecutionProgress: true };
 				hooks = createHooks();
 
+				expect(hooks.hookFunctions.nodeExecuteAfter).toHaveLength(3);
+
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
 					taskData,
@@ -257,6 +259,8 @@ describe('Execution Lifecycle Hooks', () => {
 			it('should not save execution progress when disabled', async () => {
 				workflowData.settings = { saveExecutionProgress: false };
 				hooks = createHooks();
+
+				expect(hooks.hookFunctions.nodeExecuteAfter).toHaveLength(3);
 
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
@@ -622,7 +626,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
-			expect(hookFunctions.nodeExecuteAfter).toHaveLength(3);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);
@@ -719,7 +723,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
-			expect(hookFunctions.nodeExecuteAfter).toHaveLength(2);
+			expect(hookFunctions.nodeExecuteAfter).toHaveLength(1);
 			expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
 			expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
 			expect(hookFunctions.nodeFetchedData).toHaveLength(1);

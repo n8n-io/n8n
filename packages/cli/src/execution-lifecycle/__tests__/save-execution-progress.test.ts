@@ -25,20 +25,12 @@ const commonArgs: [string, string, string, ITaskData, IRunExecutionData, string]
 	'some-session-id',
 ];
 
-const commonSettings = { error: true, success: true, manual: true };
-
-test('should ignore if save settings say so', async () => {
-	await saveExecutionProgress({ ...commonSettings, progress: false }, ...commonArgs);
-
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-});
-
 test('should ignore on leftover async call', async () => {
 	executionRepository.findSingleExecution.mockResolvedValue({
 		finished: true,
 	} as IExecutionResponse);
 
-	await saveExecutionProgress({ ...commonSettings, progress: true }, ...commonArgs);
+	await saveExecutionProgress(...commonArgs);
 
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 });
@@ -46,7 +38,7 @@ test('should ignore on leftover async call', async () => {
 test('should update execution when saving progress is enabled', async () => {
 	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
 
-	await saveExecutionProgress({ ...commonSettings, progress: true }, ...commonArgs);
+	await saveExecutionProgress(...commonArgs);
 
 	expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('some-execution-id', {
 		data: {
@@ -72,7 +64,7 @@ test('should report error on failure', async () => {
 		throw error;
 	});
 
-	await saveExecutionProgress({ ...commonSettings, progress: true }, ...commonArgs);
+	await saveExecutionProgress(...commonArgs);
 
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 	expect(errorReporter.error).toHaveBeenCalledWith(error);

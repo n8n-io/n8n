@@ -4,10 +4,7 @@ import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
-import { type ExecutionSavingSettings } from './to-save-settings';
-
 export async function saveExecutionProgress(
-	saveSettings: ExecutionSavingSettings,
 	workflowId: string,
 	executionId: string,
 	nodeName: string,
@@ -15,8 +12,6 @@ export async function saveExecutionProgress(
 	executionData: IRunExecutionData,
 	pushRef?: string,
 ) {
-	if (!saveSettings.progress) return;
-
 	const logger = Container.get(Logger);
 
 	try {

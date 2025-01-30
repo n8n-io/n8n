@@ -213,6 +213,7 @@ function hookFunctionsExternalHooks(): IWorkflowExecuteHooks {
 }
 
 function hookFunctionsSaveProgress(saveSettings: ExecutionSavingSettings): IWorkflowExecuteHooks {
+	if (!saveSettings.progress) return {};
 	return {
 		nodeExecuteAfter: [
 			async function (
@@ -222,7 +223,6 @@ function hookFunctionsSaveProgress(saveSettings: ExecutionSavingSettings): IWork
 				executionData: IRunExecutionData,
 			): Promise<void> {
 				await saveExecutionProgress(
-					saveSettings,
 					this.workflowData.id,
 					this.executionId,
 					nodeName,
