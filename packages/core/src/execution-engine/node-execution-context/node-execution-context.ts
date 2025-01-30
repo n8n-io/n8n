@@ -43,12 +43,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
 	constructor(
-		protected readonly workflow: Workflow,
-		protected readonly node: INode,
-		protected readonly additionalData: IWorkflowExecuteAdditionalData,
-		protected readonly mode: WorkflowExecuteMode,
+		readonly workflow: Workflow,
+		readonly node: INode,
+		readonly additionalData: IWorkflowExecuteAdditionalData,
+		readonly mode: WorkflowExecuteMode,
 		protected readonly runExecutionData: IRunExecutionData | null = null,
-		protected readonly runIndex = 0,
+		readonly runIndex = 0,
 		protected readonly connectionInputData: INodeExecutionData[] = [],
 		protected readonly executeData?: IExecuteData,
 	) {}

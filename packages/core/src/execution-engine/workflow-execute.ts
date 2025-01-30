@@ -69,7 +69,6 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 } from './partial-execution-utils';
-import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
 export class WorkflowExecute {
@@ -1171,27 +1170,7 @@ export class WorkflowExecute {
 			// For webhook nodes always simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
-			// For nodes which have routing information on properties
-
-			const routingNode = new RoutingNode(
-				workflow,
-				node,
-				connectionInputData,
-				runExecutionData ?? null,
-				additionalData,
-				mode,
-			);
-
-			return {
-				data: await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executionData,
-					undefined,
-					abortSignal,
-				),
-			};
+			throw new ApplicationError('This should not have happened');
 		}
 	}
 
