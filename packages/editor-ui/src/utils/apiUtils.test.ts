@@ -1,4 +1,4 @@
-import { STREAM_SEPERATOR, streamRequest } from './apiUtils';
+import { ResponseError, STREAM_SEPERATOR, streamRequest } from './apiUtils';
 
 describe('streamRequest', () => {
 	it('should stream data from the API endpoint', async () => {
@@ -52,6 +52,54 @@ describe('streamRequest', () => {
 
 		expect(onDoneMock).toHaveBeenCalledTimes(1);
 		expect(onErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('should stream error response from the API endpoint', async () => {
+		const testError = { code: 500, message: 'Error happened' };
+		const encoder = new TextEncoder();
+		const mockResponse = new ReadableStream({
+			start(controller) {
+				controller.enqueue(encoder.encode(JSON.stringify(testError)));
+				controller.close();
+			},
+		});
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: false,
+			body: mockResponse,
+		});
+
+		global.fetch = mockFetch;
+
+		const onChunkMock = vi.fn();
+		const onDoneMock = vi.fn();
+		const onErrorMock = vi.fn();
+
+		await streamRequest(
+			{
+				baseUrl: 'https://api.example.com',
+				pushRef: '',
+			},
+			'/data',
+			{ key: 'value' },
+			onChunkMock,
+			onDoneMock,
+			onErrorMock,
+		);
+
+		expect(mockFetch).toHaveBeenCalledWith('https://api.example.com/data', {
+			method: 'POST',
+			body: JSON.stringify({ key: 'value' }),
+			credentials: 'include',
+			headers: {
+				'Content-Type': 'application/json',
+				'browser-id': expect.stringContaining('-'),
+			},
+		});
+
+		expect(onChunkMock).not.toHaveBeenCalled();
+		expect(onErrorMock).toHaveBeenCalledTimes(1);
+		expect(onErrorMock).toHaveBeenCalledWith(new ResponseError(testError.message));
 	});
 
 	it('should handle broken stream data', async () => {

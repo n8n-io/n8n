@@ -144,4 +144,28 @@ describe('PublicApiKeyService', () => {
 			);
 		});
 	});
+
+	describe('redactApiKey', () => {
+		it('should redact api key', async () => {
+			//Arrange
+
+			const jwt =
+				'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0ODUxNDA5ODQsImlhdCI6MTQ4NTEzNzM4NCwiaXNzIjoiYWNtZS5jb20iLCJzdWIiOiIyOWFjMGMxOC0wYjRhLTQyY2YtODJmYy0wM2Q1NzAzMThhMWQiLCJhcHBsaWNhdGlvbklkIjoiNzkxMDM3MzQtOTdhYi00ZDFhLWFmMzctZTAwNmQwNWQyOTUyIiwicm9sZXMiOltdfQ.Mp0Pcwsz5VECK11Kf2ZZNF_SMKu5CgBeLN9ZOP04kZo';
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			//Act
+
+			const redactedApiKey = publicApiKeyService.redactApiKey(jwt);
+
+			//Assert
+
+			expect(redactedApiKey).toBe('******4kZo');
+		});
+	});
 });

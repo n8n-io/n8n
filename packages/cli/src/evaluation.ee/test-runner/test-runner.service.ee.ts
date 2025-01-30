@@ -23,8 +23,10 @@ import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import * as Db from '@/db';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -54,6 +56,7 @@ export class TestRunnerService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly telemetry: Telemetry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly executionRepository: ExecutionRepository,
@@ -324,8 +327,20 @@ export class TestRunnerService {
 			// Get the metrics to collect from the evaluation workflow
 			const testMetricNames = await this.getTestMetricNames(test.id);
 
+			// 2. Run over all the test cases
+			const pastExecutionIds = pastExecutions.map((e) => e.id);
+
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
+
+			this.telemetry.track('User runs test', {
+				user_id: user.id,
+				test_id: test.id,
+				run_id: testRun.id,
+				executions_ids: pastExecutionIds,
+				workflow_id: test.workflowId,
+				evaluation_workflow_id: test.evaluationWorkflowId,
+			});
 
 			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics(testMetricNames);
@@ -334,7 +349,7 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 			///
 
-			for (const { id: pastExecutionId } of pastExecutions) {
+			for (const pastExecutionId of pastExecutionIds) {
 				if (abortSignal.aborted) {
 					this.logger.debug('Test run was cancelled', {
 						testId: test.id,
@@ -375,12 +390,10 @@ export class TestRunnerService {
 					// In case of a permission check issue, the test case execution will be undefined.
 					// Skip them, increment the failed count and continue with the next test case
 					if (!testCaseExecution) {
-						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(
-							testRun.id,
-							pastExecutionId,
-							'FAILED_TO_EXECUTE_WORKFLOW',
-						);
+						await Db.transaction(async (trx) => {
+							await this.testRunRepository.incrementFailed(testRun.id, trx);
+							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, 'FAILED_TO_EXECUTE_WORKFLOW', undefined, trx);
+						});
 						continue;
 					}
 
@@ -419,14 +432,13 @@ export class TestRunnerService {
 					);
 
 					if (evalExecution.data.resultData.error) {
-						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(
-							testRun.id,
-							pastExecutionId,
-							'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
-						);
+						await Db.transaction(async (trx) => {
+							await this.testRunRepository.incrementFailed(testRun.id, trx);
+							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW', undefined, trx);
+						});
 					} else {
-						await this.testRunRepository.incrementPassed(testRun.id);
+						await Db.transaction(async (trx) => {
+							await this.testRunRepository.incrementPassed(testRun.id, trx);
 
 						// Add warning if the evaluation workflow produced an unknown metric
 						if (unknownMetrics.size > 0) {
@@ -441,36 +453,46 @@ export class TestRunnerService {
 								testRun.id,
 								pastExecutionId,
 								addedMetrics,
+							trx,
 							);
+						});
 						}
 					}
 				} catch (e) {
-					await this.testRunRepository.incrementFailed(testRun.id);
+					// In case of an unexpected error, increment the failed count and continue with the next test case
+					await Db.transaction(async (trx) => {
+						await this.testRunRepository.incrementFailed(testRun.id, trx);
 
-					if (e instanceof TestCaseExecutionError) {
-						await this.testCaseExecutionRepository.markAsFailed(
-							testRun.id,
-							pastExecutionId,
-							e.code,
-							e.extra,
-						);
-					} else {
-						await this.testCaseExecutionRepository.markAsFailed(
-							testRun.id,
-							pastExecutionId,
-							'UNKNOWN_ERROR',
-						);
+						if (e instanceof TestCaseExecutionError) {
+							await this.testCaseExecutionRepository.markAsFailed(
+								testRun.id,
+								pastExecutionId,
+								e.code,
+								e.extra,
+								trx
+							);
+						} else {
+							await this.testCaseExecutionRepository.markAsFailed(
+								testRun.id,
+								pastExecutionId,
+								'UNKNOWN_ERROR',
+								undefined,
+								trx
+							);
 
-						// Report unexpected errors
-						this.errorReporter.error(e);
-					}
+							// Report unexpected errors
+							this.errorReporter.error(e);
+						}
+					});
 				}
 			}
 
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
-				await this.testRunRepository.markAsCancelled(testRun.id);
-				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
+				await Db.transaction(async (trx) => {
+					await this.testRunRepository.markAsCancelled(testRun.id, trx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 
@@ -485,8 +507,10 @@ export class TestRunnerService {
 					stoppedOn: e.extra?.executionId,
 				});
 
-				await this.testRunRepository.markAsCancelled(testRun.id);
-				await this.testCaseExecutionRepository.markPendingAsCancelled(testRun.id);
+				await Db.transaction(async (trx) => {
+					await this.testRunRepository.markAsCancelled(testRun.id, trx);
+					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+				});
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra);
 			} else {
@@ -516,8 +540,11 @@ export class TestRunnerService {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		} else {
-			// If there is no abort controller - just mark the test run as cancelled
-			await this.testRunRepository.markAsCancelled(testRunId);
+			// If there is no abort controller - just mark the test run and all its' pending test case executions as cancelled
+			await Db.transaction(async (trx) => {
+				await this.testRunRepository.markAsCancelled(testRunId, trx);
+				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
+			});
 		}
 	}
 }

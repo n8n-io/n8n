@@ -10,20 +10,29 @@ exports[`component > Text overflow behavior > displays ellipsis with options 1`]
       class="n8n-input-label inputLabel heading medium"
     >
       <div
-        class="title"
+        class="main-content"
       >
-        <span
-          class="n8n-text size-medium bold textEllipses textEllipses"
+        <div
+          class="title"
         >
-          
-          a label 
-          <!--v-if-->
-          
-        </span>
+          <span
+            class="n8n-text size-medium bold textEllipses textEllipses"
+          >
+            
+            a label 
+            <!--v-if-->
+            
+          </span>
+        </div>
+        <!--v-if-->
       </div>
-      <!--v-if-->
-      <!--v-if-->
-      <!--v-if-->
+      <div
+        class="trailing-content"
+      >
+        <!--v-if-->
+        <!--v-if-->
+        <!--v-if-->
+      </div>
     </label>
     
     
@@ -41,20 +50,29 @@ exports[`component > Text overflow behavior > displays full text without options
       class="n8n-input-label inputLabel heading medium"
     >
       <div
-        class="title"
+        class="main-content"
       >
-        <span
-          class="n8n-text size-medium bold"
+        <div
+          class="title"
         >
-          
-          a label 
-          <!--v-if-->
-          
-        </span>
+          <span
+            class="n8n-text size-medium bold"
+          >
+            
+            a label 
+            <!--v-if-->
+            
+          </span>
+        </div>
+        <!--v-if-->
       </div>
-      <!--v-if-->
-      <!--v-if-->
-      <!--v-if-->
+      <div
+        class="trailing-content"
+      >
+        <!--v-if-->
+        <!--v-if-->
+        <!--v-if-->
+      </div>
     </label>
     
     

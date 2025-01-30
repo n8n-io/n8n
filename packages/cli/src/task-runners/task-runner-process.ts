@@ -54,6 +54,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private readonly passthroughEnvVars = [
 		'PATH',
+		'HOME', // So home directory can be resolved correctly
 		'GENERIC_TIMEZONE',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',

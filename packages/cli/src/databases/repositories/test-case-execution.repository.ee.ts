@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
 import type { IDataObject } from 'n8n-workflow';
@@ -57,8 +58,12 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		testRunId: string,
 		pastExecutionId: string,
 		metrics: Record<string, number>,
+		trx?: EntityManager,
 	) {
-		return await this.update(
+		trx = trx ?? this.manager;
+
+		return await trx.update(
+			TestCaseExecution,
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'success',
@@ -68,8 +73,11 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markPendingAsCancelled(testRunId: string) {
-		return await this.update(
+	async markAllPendingAsCancelled(testRunId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.update(
+			TestCaseExecution,
 			{ testRun: { id: testRunId }, status: Not(In(['success', 'error', 'cancelled'])) },
 			{
 				status: 'cancelled',
@@ -83,8 +91,12 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		pastExecutionId: string,
 		errorCode?: TestCaseExecutionErrorCode,
 		errorDetails?: IDataObject,
+		trx?: EntityManager
 	) {
-		return await this.update(
+		trx = trx ?? this.manager;
+
+		return await trx.update(
+			TestCaseExecution,
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'error',

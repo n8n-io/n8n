@@ -2,6 +2,11 @@
 	<head>
 		<meta charset='UTF-8' />
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+		<meta name="description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:title" content="{{formTitle}}" />
+		<meta property="og:description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:type" content="website" />
+		<meta property="og:image" content="https://raw.githubusercontent.com/n8n-io/n8n/80be10551eb081cb11bd8cab6c6ff89e44493d2c/assets/og_image.png?raw=true" />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
 			href='https://fonts.googleapis.com/css?family=Open+Sans'
@@ -327,7 +332,7 @@
 					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
 						<div class='form-header'>
 							<h1>{{formTitle}}</h1>
-							<p style="white-space: pre-line">{{formDescription}} </p>
+							<p style="white-space: pre-line">{{{formDescription}}} </p>
 						</div>
 
 						<div class='inputs-wrapper'>
@@ -363,6 +368,12 @@
 										<p class='{{errorId}} error-hidden'>
 											This field is required
 										</p>
+									</div>
+								{{/if}}
+
+								{{#if isHtml}}
+									<div class="form-group">
+										{{{html}}}
 									</div>
 								{{/if}}
 

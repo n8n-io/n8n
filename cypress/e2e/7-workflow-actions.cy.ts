@@ -200,7 +200,14 @@ describe('Workflow Actions', () => {
 			WorkflowPage.getters.nodeConnections().should('have.length', 2);
 			// Check if all nodes have names
 			WorkflowPage.getters.canvasNodes().each((node) => {
-				cy.wrap(node).should('have.attr', 'data-name');
+				cy.ifCanvasVersion(
+					() => {
+						cy.wrap(node).should('have.attr', 'data-name');
+					},
+					() => {
+						cy.wrap(node).should('have.attr', 'data-node-name');
+					},
+				);
 			});
 		});
 	});
