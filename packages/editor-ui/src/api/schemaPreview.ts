@@ -1,5 +1,5 @@
 import { request } from '@/utils/apiUtils';
-import type { Schema } from '@/Interface';
+import type { JSONSchema7 } from 'json-schema';
 
 export type GetSchemaPreviewOptions = {
 	nodeName: string;
@@ -15,7 +15,7 @@ const padVersion = (version: number) => {
 export const getSchemaPreview = async (
 	baseUrl: string,
 	options: GetSchemaPreviewOptions,
-): Promise<Schema> => {
+): Promise<JSONSchema7> => {
 	const { nodeName, version, resource, operation } = options;
 	const versionString = padVersion(version);
 	const path = ['schemas', nodeName, versionString, resource, operation].filter(Boolean).join('/');

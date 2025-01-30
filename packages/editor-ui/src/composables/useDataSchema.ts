@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
+import type { Optional, Primitives, Schema, INodeUi, SchemaType } from '@/Interface';
 import {
 	type ITaskDataConnections,
 	type IDataObject,
@@ -13,6 +13,8 @@ import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
+import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
+import { isObject } from '@/utils/objectUtils';
 
 export function useDataSchema() {
 	function getSchema(
@@ -65,6 +67,58 @@ export function useDataSchema() {
 		const [head, ...tail] = data;
 
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
+	}
+
+	function getSchemaForJsonSchema(schema: JSONSchema7 | JSONSchema7Definition, path = ''): Schema {
+		if (typeof schema !== 'object') {
+			return {
+				type: 'null',
+				path,
+				value: 'null',
+			};
+		}
+		if (schema.type === 'array') {
+			return {
+				type: 'array',
+				value: isObject(schema.items)
+					? [{ ...getSchemaForJsonSchema(schema.items, `${path}[0]`), key: '0' }]
+					: [],
+				path,
+			};
+		}
+
+		if (schema.type === 'object') {
+			const properties = schema.properties ?? {};
+			const value = Object.entries(properties).map(([key, propSchema]) => {
+				const newPath = path ? `${path}.${key}` : `.${key}`;
+				const transformed = getSchemaForJsonSchema(propSchema, newPath);
+				return { ...transformed, key };
+			});
+
+			return {
+				type: 'object',
+				value,
+				path,
+			};
+		}
+
+		const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+		return {
+			type: JsonSchemaTypeToSchemaType(type),
+			value: '',
+			path,
+		};
+	}
+
+	function JsonSchemaTypeToSchemaType(type: JSONSchema7TypeName | undefined): SchemaType {
+		switch (type) {
+			case undefined:
+				return 'undefined';
+			case 'integer':
+				return 'number';
+			default:
+				return type;
+		}
 	}
 
 	// Returns the data of the main input
@@ -164,6 +218,7 @@ export function useDataSchema() {
 	return {
 		getSchema,
 		getSchemaForExecutionData,
+		getSchemaForJsonSchema,
 		getNodeInputData,
 		getInputDataWithPinned,
 		filterSchema,

@@ -66,7 +66,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
-const { getSchemaForExecutionData, filterSchema } = useDataSchema();
+const { getSchemaForExecutionData, getSchemaForJsonSchema, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
@@ -115,7 +115,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	if (data.length === 0 && isSchemaPreviewEnabled.value) {
 		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
-			schema = previewSchema.result;
+			schema = getSchemaForJsonSchema(previewSchema.result);
 			preview = true;
 		}
 	}
@@ -136,7 +136,7 @@ const nodeSchema = asyncComputed(async () => {
 	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
 		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
-			return filterSchema(previewSchema.result, props.search);
+			return filterSchema(getSchemaForJsonSchema(previewSchema.result), props.search);
 		}
 	}
 
