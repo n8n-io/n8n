@@ -10,7 +10,6 @@ export async function saveExecutionProgress(
 	nodeName: string,
 	data: ITaskData,
 	executionData: IRunExecutionData,
-	pushRef?: string,
 ) {
 	const logger = Container.get(Logger);
 
@@ -90,7 +89,6 @@ export async function saveExecutionProgress(
 			{
 				...error,
 				executionId,
-				pushRef,
 				workflowId,
 			},
 		);

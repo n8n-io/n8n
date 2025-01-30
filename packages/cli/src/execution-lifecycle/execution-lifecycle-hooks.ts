@@ -10,7 +10,6 @@ import type {
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowExecuteHooks,
-	IWorkflowHooksOptionalParameters,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	Workflow,
@@ -33,6 +32,12 @@ import {
 	updateExistingExecution,
 } from './shared/shared-hook-functions';
 import { type ExecutionSavingSettings, toSaveSettings } from './to-save-settings';
+
+type HooksSetupParameters = {
+	saveSettings: ExecutionSavingSettings;
+	pushRef?: string;
+	retryOf?: string;
+};
 
 function mergeHookFunctions(...hookFunctions: IWorkflowExecuteHooks[]): IWorkflowExecuteHooks {
 	const result: IWorkflowExecuteHooks = {
@@ -91,19 +96,16 @@ function hookFunctionsNodeEvents(): IWorkflowExecuteHooks {
 /**
  * Returns hook functions to push data to Editor-UI
  */
-function hookFunctionsPush(): IWorkflowExecuteHooks {
+function hookFunctionsPush({ pushRef, retryOf }: HooksSetupParameters): IWorkflowExecuteHooks {
+	if (!pushRef) return {};
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { pushRef, executionId } = this;
+				const { executionId } = this;
 				// Push data to session which started workflow before each
 				// node which starts rendering
-				if (pushRef === undefined) {
-					return;
-				}
-
 				logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 					executionId,
 					pushRef,
@@ -115,12 +117,8 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
-				const { pushRef, executionId } = this;
+				const { executionId } = this;
 				// Push data to session which started workflow after each rendered node
-				if (pushRef === undefined) {
-					return;
-				}
-
 				logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 					executionId,
 					pushRef,
@@ -135,7 +133,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks, _workflow, data): Promise<void> {
-				const { pushRef, executionId } = this;
+				const { executionId } = this;
 				const { id: workflowId, name: workflowName } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId,
@@ -143,9 +141,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 				// Push data to session which started the workflow
-				if (pushRef === undefined) {
-					return;
-				}
 				pushInstance.send(
 					{
 						type: 'executionStarted',
@@ -153,7 +148,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 							executionId,
 							mode: this.mode,
 							startedAt: new Date(),
-							retryOf: this.retryOf,
+							retryOf,
 							workflowId,
 							workflowName,
 							flattedRunData: data?.resultData.runData
@@ -167,9 +162,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-				const { pushRef, executionId } = this;
-				if (pushRef === undefined) return;
-
+				const { executionId } = this;
 				const { id: workflowId } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId,
@@ -212,7 +205,7 @@ function hookFunctionsExternalHooks(): IWorkflowExecuteHooks {
 	};
 }
 
-function hookFunctionsSaveProgress(saveSettings: ExecutionSavingSettings): IWorkflowExecuteHooks {
+function hookFunctionsSaveProgress({ saveSettings }: HooksSetupParameters): IWorkflowExecuteHooks {
 	if (!saveSettings.progress) return {};
 	return {
 		nodeExecuteAfter: [
@@ -228,7 +221,6 @@ function hookFunctionsSaveProgress(saveSettings: ExecutionSavingSettings): IWork
 					nodeName,
 					data,
 					executionData,
-					this.pushRef,
 				);
 			},
 		],
@@ -249,7 +241,11 @@ function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
 /**
  * Returns hook functions to save workflow execution and call error workflow
  */
-function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExecuteHooks {
+function hookFunctionsSave({
+	pushRef,
+	retryOf,
+	saveSettings,
+}: HooksSetupParameters): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -314,7 +310,7 @@ function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExec
 							fullRunData,
 							this.mode,
 							this.executionId,
-							this.retryOf,
+							retryOf,
 						);
 
 						await executionRepository.hardDelete({
@@ -331,12 +327,12 @@ function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExec
 						runData: fullRunData,
 						workflowData: this.workflowData,
 						workflowStatusFinal: fullRunData.status,
-						retryOf: this.retryOf,
+						retryOf,
 					});
 
 					// When going into the waiting state, store the pushRef in the execution-data
 					if (fullRunData.waitTill && isManualMode) {
-						fullExecutionData.data.pushRef = this.pushRef;
+						fullExecutionData.data.pushRef = pushRef;
 					}
 
 					await updateExistingExecution({
@@ -351,7 +347,7 @@ function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExec
 							fullRunData,
 							this.mode,
 							this.executionId,
-							this.retryOf,
+							retryOf,
 						);
 					}
 				} finally {
@@ -375,7 +371,10 @@ function hookFunctionsSave(saveSettings: ExecutionSavingSettings): IWorkflowExec
  * for running with queues. Manual executions should never run on queues as
  * they are always executed in the main process.
  */
-function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
+function hookFunctionsSaveWorker({
+	pushRef,
+	retryOf,
+}: HooksSetupParameters): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
@@ -407,7 +406,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							logger.error(
 								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
-								{ pushRef: this.pushRef, workflowId: this.workflowData.id },
+								{ workflowId: this.workflowData.id },
 							);
 						}
 					}
@@ -422,7 +421,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							fullRunData,
 							this.mode,
 							this.executionId,
-							this.retryOf,
+							retryOf,
 						);
 					}
 
@@ -432,12 +431,12 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						runData: fullRunData,
 						workflowData: this.workflowData,
 						workflowStatusFinal: fullRunData.status,
-						retryOf: this.retryOf,
+						retryOf,
 					});
 
 					// When going into the waiting state, store the pushRef in the execution-data
 					if (fullRunData.waitTill && isManualMode) {
-						fullExecutionData.data.pushRef = this.pushRef;
+						fullExecutionData.data.pushRef = pushRef;
 					}
 
 					await updateExistingExecution({
@@ -476,8 +475,8 @@ export function getWorkflowHooksIntegrated(
 		hookFunctionsWorkflowEvents(userId),
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
-		hookFunctionsSave(saveSettings),
-		hookFunctionsSaveProgress(saveSettings),
+		hookFunctionsSave({ saveSettings }),
+		hookFunctionsSaveProgress({ saveSettings }),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
@@ -490,23 +489,24 @@ export function getWorkflowHooksWorkerExecuter(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters: IWorkflowHooksOptionalParameters = {},
+	{ pushRef, retryOf }: Omit<HooksSetupParameters, 'saveSettings'> = {},
 ): WorkflowHooks {
 	const saveSettings = toSaveSettings(workflowData.settings);
+	const optionalParameters = { pushRef, retryOf, saveSettings };
 	const toMerge = [
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
-		hookFunctionsSaveWorker(),
-		hookFunctionsSaveProgress(saveSettings),
+		hookFunctionsSaveWorker(optionalParameters),
+		hookFunctionsSaveProgress(optionalParameters),
 		hookFunctionsExternalHooks(),
 	];
 
 	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		toMerge.push(hookFunctionsPush());
+		toMerge.push(hookFunctionsPush(optionalParameters));
 	}
 
 	const hookFunctions = mergeHookFunctions(...toMerge);
-	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
 /**
@@ -516,13 +516,14 @@ export function getWorkflowHooksWorkerMain(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters: IWorkflowHooksOptionalParameters = {},
+	{ pushRef, retryOf }: Omit<HooksSetupParameters, 'saveSettings'> = {},
 ): WorkflowHooks {
 	const saveSettings = toSaveSettings(workflowData.settings);
+	const optionalParameters = { pushRef, retryOf, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
-		hookFunctionsSaveProgress(saveSettings),
+		hookFunctionsSaveProgress(optionalParameters),
 		hookFunctionsExternalHooks(),
 		hookFunctionsFinalizeExecutionStatus(),
 		{
@@ -569,7 +570,7 @@ export function getWorkflowHooksWorkerMain(
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
 
-	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
 /**
@@ -579,18 +580,17 @@ export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): WorkflowHooks {
+	const { pushRef, retryOf } = data;
 	const saveSettings = toSaveSettings(data.workflowData.settings);
+	const optionalParameters = { pushRef, retryOf, saveSettings };
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
-		hookFunctionsSave(saveSettings),
-		hookFunctionsPush(),
-		hookFunctionsSaveProgress(saveSettings),
+		hookFunctionsSave(optionalParameters),
+		hookFunctionsPush(optionalParameters),
+		hookFunctionsSaveProgress(optionalParameters),
 		hookFunctionsExternalHooks(),
 	);
-	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
-		pushRef: data.pushRef,
-		retryOf: data.retryOf as string,
-	});
+	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData);
 }

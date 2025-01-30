@@ -201,8 +201,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hooks.mode).toBe('manual');
 			expect(hooks.executionId).toBe(executionId);
 			expect(hooks.workflowData).toEqual(workflowData);
-			expect(hooks.pushRef).toEqual('test-push-ref');
-			expect(hooks.retryOf).toEqual('test-retry-of');
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
@@ -260,7 +258,7 @@ describe('Execution Lifecycle Hooks', () => {
 				workflowData.settings = { saveExecutionProgress: false };
 				hooks = createHooks();
 
-				expect(hooks.hookFunctions.nodeExecuteAfter).toHaveLength(3);
+				expect(hooks.hookFunctions.nodeExecuteAfter).toHaveLength(2);
 
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
@@ -509,10 +507,16 @@ describe('Execution Lifecycle Hooks', () => {
 
 		describe("when pushRef isn't set", () => {
 			beforeEach(() => {
-				hooks = getWorkflowHooksMain({ executionMode, workflowData }, executionId);
+				hooks = getWorkflowHooksMain({ executionMode, workflowData, retryOf }, executionId);
 			});
 
-			it('should not send any push events', async () => {
+			it('should not setup any push hooks', async () => {
+				const { hookFunctions } = hooks;
+				expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);
+				expect(hookFunctions.nodeExecuteAfter).toHaveLength(1);
+				expect(hookFunctions.workflowExecuteBefore).toHaveLength(2);
+				expect(hookFunctions.workflowExecuteAfter).toHaveLength(4);
+
 				await hooks.executeHookFunctions('nodeExecuteBefore', [nodeName]);
 				await hooks.executeHookFunctions('nodeExecuteAfter', [
 					nodeName,
@@ -543,8 +547,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hooks.mode).toBe('manual');
 			expect(hooks.executionId).toBe(executionId);
 			expect(hooks.workflowData).toEqual(workflowData);
-			expect(hooks.pushRef).toEqual('test-push-ref');
-			expect(hooks.retryOf).toEqual('test-retry-of');
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(0);
@@ -621,8 +623,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hooks.mode).toBe('manual');
 			expect(hooks.executionId).toBe(executionId);
 			expect(hooks.workflowData).toEqual(workflowData);
-			expect(hooks.pushRef).toEqual('test-push-ref');
-			expect(hooks.retryOf).toEqual('test-retry-of');
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(2);
@@ -718,8 +718,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(hooks.mode).toBe('manual');
 			expect(hooks.executionId).toBe(executionId);
 			expect(hooks.workflowData).toEqual(workflowData);
-			expect(hooks.pushRef).toBeUndefined();
-			expect(hooks.retryOf).toBeUndefined();
 
 			const { hookFunctions } = hooks;
 			expect(hookFunctions.nodeExecuteBefore).toHaveLength(1);

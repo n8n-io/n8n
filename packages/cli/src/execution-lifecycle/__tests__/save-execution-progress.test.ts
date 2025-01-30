@@ -16,13 +16,12 @@ afterEach(() => {
 	jest.clearAllMocks();
 });
 
-const commonArgs: [string, string, string, ITaskData, IRunExecutionData, string] = [
+const commonArgs: [string, string, string, ITaskData, IRunExecutionData] = [
 	'some-workflow-id',
 	'some-execution-id',
 	'My Node',
 	{} as ITaskData,
 	{} as IRunExecutionData,
-	'some-session-id',
 ];
 
 test('should ignore on leftover async call', async () => {
