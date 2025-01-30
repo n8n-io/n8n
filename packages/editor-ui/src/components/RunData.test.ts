@@ -34,17 +34,6 @@ vi.mock('@/composables/useExecutionHelpers', () => ({
 	}),
 }));
 
-const nodes = [
-	{
-		id: '1',
-		typeVersion: 3,
-		name: 'Test Node',
-		position: [0, 0],
-		type: SET_NODE_TYPE,
-		parameters: {},
-	},
-] as INodeUi[];
-
 describe('RunData', () => {
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
@@ -187,6 +176,28 @@ describe('RunData', () => {
 		expect(pinDataButton).toBeDisabled();
 	});
 
+	it('should render callout when data is pinned in output panel', async () => {
+		const { getByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'output',
+		});
+		const pinnedDataCallout = getByTestId('ndv-pinned-data-callout');
+		expect(pinnedDataCallout).toBeInTheDocument();
+	});
+
+	it('should not render callout when data is pinned in input panel', async () => {
+		const { queryByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'input',
+		});
+		const pinnedDataCallout = queryByTestId('ndv-pinned-data-callout');
+		expect(pinnedDataCallout).not.toBeInTheDocument();
+	});
+
 	it('should enable pin data button when data is not pinned', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: [{ json: { name: 'Test' } }],
@@ -260,7 +271,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -289,7 +300,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Parent Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View parent execution');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -322,7 +333,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution 123');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -367,7 +378,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution 123');
 
 		expect(queryByTestId('ndv-items-count')).not.toBeInTheDocument();
 		expect(getByTestId('run-selector')).toBeInTheDocument();
@@ -376,8 +387,146 @@ describe('RunData', () => {
 		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
 	});
 
+	it('should render input selector when input node has error', async () => {
+		const testNodes = [
+			{
+				id: '1',
+				name: 'When clicking ‘Test workflow’',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [80, -180],
+				disabled: false,
+				parameters: { notice: '' },
+			},
+			{
+				id: '2',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				parameters: {
+					mode: 'manual',
+					duplicateItem: false,
+					assignments: {
+						_custom: { type: 'reactive', stateTypeName: 'Reactive', value: {} },
+					},
+					includeOtherFields: false,
+					options: {},
+				},
+				typeVersion: 3.4,
+				position: [500, -180],
+			},
+			{
+				id: '3',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.code',
+				parameters: {
+					mode: 'runOnceForAllItems',
+					language: 'javaScript',
+					jsCode: "throw Error('yo')",
+					notice: '',
+				},
+				typeVersion: 2,
+				position: [300, -180],
+				issues: {
+					_custom: {
+						type: 'reactive',
+						stateTypeName: 'Reactive',
+						value: { execution: true },
+					},
+				},
+			},
+		] as INodeUi[];
+
+		const { getByTestId } = render({
+			workflowNodes: testNodes,
+			runs: [
+				{
+					hints: [],
+					startTime: 1737643696893,
+					executionTime: 2,
+					source: [
+						{
+							previousNode: 'When clicking ‘Test workflow’',
+						},
+					],
+					executionStatus: 'error',
+					// @ts-expect-error allow missing properties in test
+					error: {
+						level: 'error',
+						tags: {
+							packageName: 'nodes-base',
+						},
+						description: null,
+						lineNumber: 1,
+						node: {
+							type: 'n8n-nodes-base.code',
+							typeVersion: 2,
+							position: [300, -180],
+							id: 'e41f12e0-d178-4294-8748-da5a6a531be6',
+							name: 'Test Node',
+							parameters: {
+								mode: 'runOnceForAllItems',
+								language: 'javaScript',
+								jsCode: "throw Error('yo')",
+								notice: '',
+							},
+						},
+						message: 'yo [line 1]',
+						stack: 'Error: yo\n n8n/packages/core/src/execution-engine/workflow-execute.ts:2066:11',
+					},
+				},
+			],
+			defaultRunItems: [
+				{
+					hints: [],
+					startTime: 1737641598215,
+					executionTime: 3,
+					// @ts-expect-error allow missing properties in test
+					source: [{ previousNode: 'Execute Workflow Trigger' }],
+					// @ts-expect-error allow missing properties in test
+					executionStatus: 'error',
+					// @ts-expect-error allow missing properties in test
+					error: {
+						level: 'error',
+						tags: { packageName: 'nodes-base' },
+						description: null,
+						lineNumber: 1,
+						node: {
+							id: 'e41f12e0-d178-4294-8748-da5a6a531be6',
+							name: 'Test Node',
+							type: 'n8n-nodes-base.code',
+							typeVersion: 2,
+							position: [300, -180],
+							parameters: {
+								mode: 'runOnceForAllItems',
+								language: 'javaScript',
+								jsCode: "throw Error('yo')",
+								notice: '',
+							},
+						},
+						message: 'yo [line 1]',
+						stack: 'Error: yo\n n8n/packages/core/src/execution-engine/workflow-execute.ts:2066:11',
+					},
+				},
+			],
+		});
+		expect(getByTestId('ndv-items-count')).toBeInTheDocument();
+	});
+
+	// Default values for the render function
+	const nodes = [
+		{
+			id: '1',
+			typeVersion: 3,
+			name: 'Test Node',
+			position: [0, 0],
+			type: SET_NODE_TYPE,
+			parameters: {},
+		},
+	] as INodeUi[];
+
 	const render = ({
 		defaultRunItems,
+		workflowNodes = nodes,
 		displayMode,
 		pinnedData,
 		paneType = 'output',
@@ -385,6 +534,7 @@ describe('RunData', () => {
 		runs,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
+		workflowNodes?: INodeUi[];
 		displayMode: IRunDataDisplayMode;
 		pinnedData?: INodeExecutionData[];
 		paneType?: NodePanelType;
@@ -411,7 +561,7 @@ describe('RunData', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
-						nodes,
+						workflowNodes,
 					},
 					workflowExecutionData: {
 						id: '1',
@@ -446,7 +596,7 @@ describe('RunData', () => {
 		const nodeTypesStore = useNodeTypesStore();
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(workflowNodes[0]);
 
 		if (pinnedData) {
 			vi.mocked(workflowsStore).pinDataByNodeName.mockReturnValue(pinnedData);
@@ -458,7 +608,8 @@ describe('RunData', () => {
 					name: 'Test Node',
 				},
 				workflow: createTestWorkflowObject({
-					nodes,
+					// @ts-expect-error allow missing properties in test
+					workflowNodes,
 				}),
 			},
 			global: {

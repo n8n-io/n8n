@@ -6,7 +6,13 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
+import type {
+	Connection,
+	XYPosition,
+	NodeDragEvent,
+	NodeMouseEvent,
+	GraphNode,
+} from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
@@ -79,7 +85,7 @@ const props = withDefaults(
 		readOnly?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
-		showBugReportingButton?: boolean;
+		loading?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -90,10 +96,11 @@ const props = withDefaults(
 		readOnly: false,
 		executing: false,
 		keyBindings: true,
+		loading: false,
 	},
 );
 
-const { controlKeyCode } = useDeviceSupport();
+const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 
 const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
 const {
@@ -131,7 +138,7 @@ const isPaneReady = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
-	[$style.ready]: isPaneReady.value,
+	[$style.ready]: !props.loading && isPaneReady.value,
 }));
 
 /**
@@ -143,9 +150,10 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
-const panningMouseButton = ref<number[]>([1]);
-const selectionKeyCode = ref<true | null>(true);
+
+const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
+const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
+const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
 onKeyDown(panningKeyCode.value, () => {
 	selectionKeyCode.value = null;
@@ -209,8 +217,9 @@ const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
-	'shift_+|+|=': async () => await onZoomIn(),
-	'shift+_|-|_': async () => await onZoomOut(),
+	// Support both key and code for zooming in and out
+	'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
+	'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
 	0: async () => await onResetZoom(),
 	1: async () => await onFitView(),
 	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),
@@ -267,6 +276,14 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 
 function onNodeDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onNodeClick({ event, node }: NodeMouseEvent) {
+	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
+		return;
+	}
+
+	onSelectNodes({ ids: [node.id] });
 }
 
 function onSelectionDragStop(event: NodeDragEvent) {
@@ -502,6 +519,13 @@ function onOpenContextMenu(event: MouseEvent) {
 	});
 }
 
+function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: selectedNodeIds.value,
+	});
+}
+
 function onOpenNodeContextMenu(
 	id: string,
 	event: MouseEvent,
@@ -673,7 +697,9 @@ provide(CanvasKey, {
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
+		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
 	>
@@ -694,7 +720,11 @@ provide(CanvasKey, {
 				@update:outputs="onUpdateNodeOutputs"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
-			/>
+			>
+				<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
+					<slot name="nodeToolbar" v-bind="toolbarProps" />
+				</template>
+			</Node>
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
@@ -740,7 +770,6 @@ provide(CanvasKey, {
 			:class="$style.canvasControls"
 			:position="controlsPosition"
 			:show-interactive="false"
-			:show-bug-reporting-button="showBugReportingButton"
 			:zoom="viewport.zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"

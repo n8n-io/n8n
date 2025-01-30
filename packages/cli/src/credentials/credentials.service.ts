@@ -20,7 +20,6 @@ import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -85,23 +84,6 @@ export class CredentialsService {
 			listQueryOptions.includeData = true;
 		}
 
-		let projectRelations: ProjectRelation[] | undefined = undefined;
-		if (includeScopes) {
-			projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			if (listQueryOptions.filter?.projectId && user.hasGlobalScope('credential:list')) {
-				// Only instance owners and admins have the credential:list scope
-				// Those users should be able to use _all_ credentials within their workflows.
-				// TODO: Change this so we filter by `workflowId` in this case. Require a slight FE change
-				const projectRelation = projectRelations.find(
-					(relation) => relation.projectId === listQueryOptions.filter?.projectId,
-				);
-				if (projectRelation?.role === 'project:personalOwner') {
-					// Will not affect team projects as these have admins, not owners.
-					delete listQueryOptions.filter?.projectId;
-				}
-			}
-		}
-
 		if (returnAll) {
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
@@ -123,9 +105,8 @@ export class CredentialsService {
 			}
 
 			if (includeScopes) {
-				credentials = credentials.map((c) =>
-					this.roleService.addScopes(c, user, projectRelations!),
-				);
+				const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+				credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 			}
 
 			if (includeData) {
@@ -179,7 +160,8 @@ export class CredentialsService {
 		}
 
 		if (includeScopes) {
-			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 		}
 
 		if (includeData) {
@@ -424,10 +406,26 @@ export class CredentialsService {
 		return result;
 	}
 
-	async delete(credentials: CredentialsEntity) {
-		await this.externalHooks.run('credentials.delete', [credentials.id]);
+	/**
+	 * Deletes a credential.
+	 *
+	 * If the user does not have permission to delete the credential this does
+	 * nothing and returns void.
+	 */
+	async delete(user: User, credentialId: string) {
+		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		await this.credentialsRepository.remove(credentials);
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:delete'],
+		);
+
+		if (!credential) {
+			return;
+		}
+
+		await this.credentialsRepository.remove(credential);
 	}
 
 	async test(user: User, credentials: ICredentialsDecrypted) {
@@ -542,7 +540,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.decrypt(sharing.credentials);
+			decryptedData = this.decrypt(sharing.credentials, true);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.

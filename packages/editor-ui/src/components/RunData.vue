@@ -65,7 +65,6 @@ import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
 	N8nButton,
-	N8nRoute,
 	N8nCallout,
 	N8nIconButton,
 	N8nInfoTip,
@@ -81,6 +80,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useUIStore } from '@/stores/ui.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -180,6 +180,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
 
 const toast = useToast();
 const route = useRoute();
@@ -1251,10 +1252,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function onExecutionHistoryNavigate() {
-	ndvStore.setActiveNodeName(null);
-}
-
 function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	if (task.parentExecution) {
 		return i18n.baseText('runData.openParentExecution', {
@@ -1263,9 +1260,13 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	}
 
 	if (task.subExecution) {
-		return i18n.baseText('runData.openSubExecution', {
-			interpolate: { id: task.subExecution.executionId },
-		});
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
 	}
 
 	return;
@@ -1277,10 +1278,16 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
@@ -1424,7 +1431,7 @@ defineExpose({ enterEditMode });
 					</template>
 					<N8nIconButton
 						:icon="linkedRuns ? 'unlink' : 'link'"
-						class="linkRun"
+						:class="['linkRun', linkedRuns ? 'linked' : '']"
 						text
 						type="tertiary"
 						size="small"
@@ -1454,7 +1461,7 @@ defineExpose({ enterEditMode });
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<div v-if="props.calloutMessage" :class="$style.hintCallout">
-			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+			<N8nCallout theme="info" data-test-id="run-data-callout">
 				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 			</N8nCallout>
 		</div>
@@ -1486,14 +1493,13 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
-				!hasRunError &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled && !hasRunError"
+			v-show="!editMode.enabled"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
@@ -1601,6 +1607,16 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
+				:class="$style.center"
+			>
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<N8nText color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
 				<N8nText bold color="text-dark" size="large">
 					{{ i18n.baseText('runData.trimmedData.title') }}
@@ -1608,11 +1624,6 @@ defineExpose({ enterEditMode });
 				<N8nText>
 					{{ i18n.baseText('runData.trimmedData.message') }}
 				</N8nText>
-				<N8nButton size="small" @click="onExecutionHistoryNavigate">
-					<N8nRoute :to="`/workflow/${workflowsStore.workflowId}/executions`">
-						{{ i18n.baseText('runData.trimmedData.button') }}
-					</N8nRoute>
-				</N8nButton>
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">

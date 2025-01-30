@@ -4,6 +4,8 @@ import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -631,25 +633,25 @@ describe('GET /credentials', () => {
 			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
 
-		test('should return all credentials to instance owners when working on their own personal project', async () => {
+		test('should not ignore the project filter when the request is done by an owner and also includes the scopes', async () => {
 			const ownerCredential = await saveCredential(payload(), {
 				user: owner,
 				role: 'credential:owner',
 			});
-			const memberCredential = await saveCredential(payload(), {
-				user: member,
-				role: 'credential:owner',
-			});
+			// should not show up
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
-				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }&includeScopes=true`)
+				.query({
+					filter: JSON.stringify({ projectId: ownerPersonalProject.id }),
+					includeScopes: true,
+				})
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
-			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(ownerCredential.id);
 		});
 	});
 
@@ -1163,6 +1165,73 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
+	test('should not store redacted value in the db for oauthTokenData', async () => {
+		// ARRANGE
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact').mockReturnValueOnce({
+			accessToken: CREDENTIAL_BLANKING_VALUE,
+			oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+		});
+
+		const payload = randomCredentialPayload();
+		payload.data.oauthTokenData = { tokenData: true };
+		const savedCredential = await saveCredential(payload, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = { ...payload, data: { foo: 'bar' } };
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		expect(data).toEqual({
+			...patchPayload.data,
+			// should be the original
+			oauthTokenData: payload.data.oauthTokenData,
+		});
+		expect(redactSpy).not.toHaveBeenCalled();
+	});
+
+	test('should not allow to overwrite oauthTokenData', async () => {
+		// ARRANGE
+		const payload = randomCredentialPayload();
+		payload.data.oauthTokenData = { tokenData: true };
+		const savedCredential = await saveCredential(payload, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = {
+			...payload,
+			data: { accessToken: 'new', oauthTokenData: { tokenData: false } },
+		};
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		// was overwritten
+		expect(data.accessToken).toBe(patchPayload.data.accessToken);
+		// was not overwritten
+		expect(data.oauthTokenData).toEqual(payload.data.oauthTokenData);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
@@ -1270,6 +1339,23 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(secondResponse.body.data);
 		expect(secondResponse.body.data.data).toBeDefined();
+	});
+
+	test('should not redact the data when `includeData:true` is passed', async () => {
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(redactSpy).not.toHaveBeenCalled();
 	});
 
 	test('should retrieve owned cred for member', async () => {

@@ -1,8 +1,8 @@
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 
+import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
-import { configurePostgres } from '../transport';
 
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],

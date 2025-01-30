@@ -198,7 +198,7 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		const decryptedData = this.credentialsService.decrypt(credential);
+		const decryptedData = this.credentialsService.decrypt(credential, true);
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
@@ -251,7 +251,7 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(credential);
+		await this.credentialsService.delete(req.user, credential.id);
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,

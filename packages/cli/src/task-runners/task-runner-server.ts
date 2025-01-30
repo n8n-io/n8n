@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -99,7 +100,7 @@ export class TaskRunnerServer {
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				this.logger.info(
-					`n8n Task Runner's port ${port} is already in use. Do you have another instance of n8n running already?`,
+					`n8n Task Broker's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
 			}
@@ -110,7 +111,7 @@ export class TaskRunnerServer {
 			this.server.listen(port, address, () => resolve());
 		});
 
-		this.logger.info(`n8n Task Runner server ready on ${address}, port ${port}`);
+		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);
 	}
 
 	/** Creates WebSocket server for handling upgrade requests */
@@ -147,8 +148,16 @@ export class TaskRunnerServer {
 	}
 
 	private configureRoutes() {
+		const createRateLimiter = () =>
+			expressRateLimit({
+				windowMs: 1000,
+				limit: 5,
+				message: { message: 'Too many requests' },
+			});
+
 		this.app.use(
 			this.upgradeEndpoint,
+			createRateLimiter(),
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.taskRunnerAuthController.authMiddleware,
 			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
@@ -158,6 +167,7 @@ export class TaskRunnerServer {
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
 		this.app.post(
 			authEndpoint,
+			createRateLimiter(),
 			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
 		);
 

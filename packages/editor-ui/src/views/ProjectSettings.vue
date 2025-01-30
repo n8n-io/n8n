@@ -192,9 +192,8 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		await projectsStore.updateProject({
-			id: projectsStore.currentProject.id,
-			name: formData.value.name,
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			name: formData.value.name!,
 			icon: projectIcon.value,
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,

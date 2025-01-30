@@ -19,7 +19,6 @@
 					"value": {},
 					"matchingColumns": [],
 					"schema": [],
-					"ignoreTypeMismatchErrors": false,
 					"attemptToConvertTypes": false,
 					"convertFieldsToString": true
 				},

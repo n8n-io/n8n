@@ -46,7 +46,7 @@ describe('CanvasHandleMainOutput', () => {
 			},
 		});
 
-		expect(queryByTestId('canvas-handle-plus')).toHaveClass('success');
+		expect(queryByTestId('canvas-handle-plus-wrapper')).toHaveClass('success');
 	});
 
 	it('should render run data label', async () => {

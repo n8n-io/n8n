@@ -1,21 +1,32 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
-import { SOURCE_CONTROL_PULL_MODAL_KEY } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import type { EventBus } from 'n8n-design-system/utils';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { computed, nextTick, ref } from 'vue';
+import { computed } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import { orderBy, groupBy } from 'lodash-es';
+import { N8nBadge, N8nText, N8nLink, N8nButton } from 'n8n-design-system';
+import { RouterLink } from 'vue-router';
+import {
+	getStatusText,
+	getStatusTheme,
+	getPullPriorityByStatus,
+	notifyUserAboutPullWorkFolderOutcome,
+} from '@/utils/sourceControlUtils';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+
+type SourceControlledFileType = SourceControlledFile['type'];
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
-
-const incompleteFileTypes = ['variables', 'credential'];
 
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
@@ -23,15 +34,50 @@ const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 
-const files = ref<SourceControlAggregatedFile[]>(props.data.status || []);
+const sortedFiles = computed(() =>
+	orderBy(
+		props.data.status,
+		[({ status }) => getPullPriorityByStatus(status), ({ name }) => name.toLowerCase()],
+		['desc', 'asc'],
+	),
+);
 
-const workflowFiles = computed(() => {
-	return files.value.filter((file) => file.type === 'workflow');
-});
+const groupedFilesByType = computed<
+	Partial<Record<SourceControlledFileType, SourceControlledFile[]>>
+>(() => groupBy(sortedFiles.value, 'type'));
 
-const modifiedWorkflowFiles = computed(() => {
-	return workflowFiles.value.filter((file) => file.status === 'modified');
-});
+type ItemsList = Array<
+	{ type: 'render-title'; title: string; id: SourceControlledFileType } | SourceControlledFile
+>;
+
+const ITEM_TITLES: Record<Exclude<SourceControlledFileType, 'file'>, string> = {
+	[SOURCE_CONTROL_FILE_TYPE.workflow]: 'Workflows',
+	[SOURCE_CONTROL_FILE_TYPE.credential]: 'Credentials',
+	[SOURCE_CONTROL_FILE_TYPE.variables]: 'Variables',
+	[SOURCE_CONTROL_FILE_TYPE.tags]: 'Tags',
+} as const;
+
+const files = computed<ItemsList>(() =>
+	[
+		SOURCE_CONTROL_FILE_TYPE.workflow,
+		SOURCE_CONTROL_FILE_TYPE.credential,
+		SOURCE_CONTROL_FILE_TYPE.variables,
+		SOURCE_CONTROL_FILE_TYPE.tags,
+	].reduce<ItemsList>((acc, fileType) => {
+		if (!groupedFilesByType.value[fileType]) {
+			return acc;
+		}
+
+		acc.push({
+			type: 'render-title',
+			title: ITEM_TITLES[fileType],
+			id: fileType,
+		});
+
+		acc.push(...groupedFilesByType.value[fileType]);
+		return acc;
+	}, []),
+);
 
 function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
@@ -42,29 +88,10 @@ async function pullWorkfolder() {
 	close();
 
 	try {
-		await sourceControlStore.pullWorkfolder(true);
+		const status = await sourceControlStore.pullWorkfolder(true);
 
-		const hasVariablesOrCredentials = files.value.some((file) => {
-			return incompleteFileTypes.includes(file.type);
-		});
+		await notifyUserAboutPullWorkFolderOutcome(status, toast);
 
-		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			type: 'success',
-		});
-
-		if (hasVariablesOrCredentials) {
-			void nextTick(() => {
-				toast.showMessage({
-					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-					type: 'info',
-					duration: 0,
-					showClose: true,
-					offset: 0,
-				});
-			});
-		}
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		toast.showError(error, 'Error');
@@ -82,35 +109,71 @@ async function pullWorkfolder() {
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 	>
 		<template #content>
+			<N8nText tag="div" class="mb-xs">
+				These resources will be updated or deleted, and any local changes to them will be lost. To
+				keep the local version, push it before pulling.
+				<br />
+				<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+					{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+				</N8nLink>
+			</N8nText>
 			<div :class="$style.container">
-				<n8n-text>
-					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-						{{ i18n.baseText('settings.sourceControl.modals.pull.description.learnMore') }}
-					</n8n-link>
-				</n8n-text>
-
-				<div v-if="modifiedWorkflowFiles.length > 0" class="mt-l">
-					<ul :class="$style.filesList">
-						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
-							<n8n-link :class="$style.fileLink" new-window :to="`/workflow/${file.id}`">
-								{{ file.name }}
-								<n8n-icon icon="external-link-alt" />
-							</n8n-link>
-						</li>
-					</ul>
-				</div>
+				<DynamicScroller
+					ref="scroller"
+					:items="files"
+					:min-item-size="47"
+					class="full-height scroller"
+					style="max-height: 440px"
+				>
+					<template #default="{ item, index, active }">
+						<div
+							v-if="item.type === 'render-title'"
+							:class="$style.listHeader"
+							data-test-id="pull-modal-item-header"
+						>
+							<N8nText bold>{{ item.title }}</N8nText>
+						</div>
+						<DynamicScrollerItem
+							v-else
+							:item="item"
+							:active="active"
+							:size-dependencies="[item.name]"
+							:data-index="index"
+						>
+							<div :class="$style.listItem" data-test-id="pull-modal-item">
+								<RouterLink
+									v-if="item.type === 'credential'"
+									target="_blank"
+									:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: item.id } }"
+								>
+									<N8nText>{{ item.name }}</N8nText>
+								</RouterLink>
+								<RouterLink
+									v-else-if="item.type === 'workflow'"
+									target="_blank"
+									:to="{ name: VIEWS.WORKFLOW, params: { name: item.id } }"
+								>
+									<N8nText>{{ item.name }}</N8nText>
+								</RouterLink>
+								<N8nText v-else>{{ item.name }}</N8nText>
+								<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
+									{{ getStatusText(item.status) }}
+								</N8nBadge>
+							</div>
+						</DynamicScrollerItem>
+					</template>
+				</DynamicScroller>
 			</div>
 		</template>
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="tertiary" class="mr-2xs" @click="close">
+				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
-				</n8n-button>
-				<n8n-button type="primary" @click="pullWorkfolder">
+				</N8nButton>
+				<N8nButton type="primary" data-test-id="force-pull" @click="pullWorkfolder">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.save') }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
@@ -131,14 +194,30 @@ async function pullWorkfolder() {
 	}
 }
 
-.fileLink {
-	svg {
-		display: none;
-		margin-left: var(--spacing-4xs);
-	}
+.listHeader {
+	padding-top: 16px;
+	padding-bottom: 12px;
+	height: 47px;
+}
 
-	&:hover svg {
-		display: inline-flex;
+.listBadge {
+	margin-left: auto;
+	align-self: flex-start;
+	margin-top: 2px;
+}
+
+.listItem {
+	display: flex;
+	padding-bottom: 10px;
+	&::before {
+		display: block;
+		content: '';
+		width: 5px;
+		height: 5px;
+		background-color: var(--color-foreground-xdark);
+		border-radius: 100%;
+		margin: 7px 8px 6px 2px;
+		flex-shrink: 0;
 	}
 }
 

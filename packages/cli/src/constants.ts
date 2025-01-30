@@ -104,6 +104,7 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	API_KEYS_PER_USER_LIMIT: 'quota:apiKeysPerUserLimit',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -195,4 +196,3 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
-export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';

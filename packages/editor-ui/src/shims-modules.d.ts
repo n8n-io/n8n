@@ -16,6 +16,11 @@ declare module '*.jpeg';
 declare module '*.gif';
 declare module '*.webp';
 
+declare module '*?raw' {
+	const content: string;
+	export default content;
+}
+
 declare module 'v3-infinite-loading' {
 	import { Plugin, DefineComponent } from 'vue';
 

@@ -27,16 +27,16 @@ catalog:
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
-  zod: 3.23.8
-  '@langchain/core': 0.3.19
+  zod: 3.24.1
+  '@langchain/core': 0.3.30
 
 catalogs:
   frontend:
-    '@vitest/coverage-v8': ^2.1.6
+    '@vitest/coverage-v8': ^3.0.2
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
     vite: ^6.0.2
-    vitest: ^2.1.8
+    vitest: ^3.0.2
     vitest-mock-extended: ^2.0.2
     vue: ^3.5.13
     vue-router: ^4.5.0

@@ -5,13 +5,7 @@ import { useRootStore } from '@/stores/root.store';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsEEApi from '@/api/workflows.ee';
 import * as credentialsEEApi from '@/api/credentials.ee';
-import type {
-	Project,
-	ProjectCreateRequest,
-	ProjectListItem,
-	ProjectUpdateRequest,
-	ProjectsCount,
-} from '@/types/projects.types';
+import type { Project, ProjectListItem, ProjectsCount } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -21,6 +15,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { STORES } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
+import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -112,26 +107,30 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		currentProject.value = await fetchProject(id);
 	};
 
-	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
+	const createProject = async (project: CreateProjectDto): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
 		await getProjectsCount();
 		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
 
-	const updateProject = async (projectData: ProjectUpdateRequest): Promise<void> => {
-		await projectsApi.updateProject(rootStore.restApiContext, projectData);
-		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
+	const updateProject = async (
+		id: Project['id'],
+		projectData: Required<UpdateProjectDto>,
+	): Promise<void> => {
+		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
+		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
+		const { name, icon } = projectData;
 		if (projectIndex !== -1) {
-			myProjects.value[projectIndex].name = projectData.name;
-			myProjects.value[projectIndex].icon = projectData.icon;
+			myProjects.value[projectIndex].name = name;
+			myProjects.value[projectIndex].icon = icon;
 		}
 		if (currentProject.value) {
-			currentProject.value.name = projectData.name;
-			currentProject.value.icon = projectData.icon;
+			currentProject.value.name = name;
+			currentProject.value.icon = icon;
 		}
 		if (projectData.relations) {
-			await getProject(projectData.id);
+			await getProject(id);
 		}
 	};
 

@@ -28,7 +28,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
-import { N8nButton, N8nCallout } from 'n8n-design-system';
+import { N8nButton, N8nCallout, N8nNotice } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -63,7 +63,6 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
-		ignoreTypeMismatchErrors: false,
 		attemptToConvertTypes: false,
 		// This should always be true if `showTypeConversionOptions` is provided
 		// It's used to avoid accepting any value as string without casting it
@@ -75,6 +74,7 @@ const state = reactive({
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
 	hasStaleFields: false,
+	emptyFieldsNotice: '',
 });
 
 // Reload fields to map when dependent parameters change
@@ -316,7 +316,7 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
-	let fetchedFields = null;
+	let fetchedFields: ResourceMapperFields | null = null;
 
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
@@ -329,6 +329,9 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+	if (fetchedFields?.emptyFieldsNotice) {
+		state.emptyFieldsNotice = fetchedFields.emptyFieldsNotice;
 	}
 	return fetchedFields;
 }
@@ -620,6 +623,13 @@ defineExpose({
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
+		<N8nNotice
+			v-else-if="state.emptyFieldsNotice && !state.hasStaleFields"
+			type="info"
+			data-test-id="empty-fields-notice"
+		>
+			<span v-n8n-html="state.emptyFieldsNotice"></span>
+		</N8nNotice>
 		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
@@ -660,23 +670,6 @@ defineExpose({
 				@update="
 					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;
-						emitValueChanged();
-					}
-				"
-			/>
-			<ParameterInputFull
-				:parameter="{
-					name: 'ignoreTypeMismatchErrors',
-					type: 'boolean',
-					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
-					default: false,
-					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
-				}"
-				:path="props.path + '.ignoreTypeMismatchErrors'"
-				:value="state.paramValue.ignoreTypeMismatchErrors"
-				@update="
-					(x: IUpdateInformation<NodeParameterValueType>) => {
-						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
 						emitValueChanged();
 					}
 				"

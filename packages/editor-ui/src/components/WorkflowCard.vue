@@ -268,6 +268,7 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
@@ -329,5 +330,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-direction: column;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0 var(--spacing-s) var(--spacing-s);
+	}
+
+	.cardBadge {
+		margin-right: auto;
+	}
 }
 </style>

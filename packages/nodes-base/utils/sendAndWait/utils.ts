@@ -1,8 +1,10 @@
 import {
+	ApplicationError,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseJsonToFormFields,
 	updateDisplayOptions,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -39,11 +41,107 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
+const limitWaitTimeProperties: INodeProperties = {
+	displayName: 'Limit Wait Time',
+	name: 'limitWaitTime',
+	type: 'fixedCollection',
+	description:
+		'Whether the workflow will automatically resume execution after the specified limit type',
+	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Limit Type',
+					name: 'limitType',
+					type: 'options',
+					default: 'afterTimeInterval',
+					description:
+						'Sets the condition for the execution to resume. Can be a specified date or after some time.',
+					options: [
+						{
+							name: 'After Time Interval',
+							description: 'Waits for a certain amount of time',
+							value: 'afterTimeInterval',
+						},
+						{
+							name: 'At Specified Time',
+							description: 'Waits until the set date and time to continue',
+							value: 'atSpecifiedTime',
+						},
+					],
+				},
+				{
+					displayName: 'Amount',
+					name: 'resumeAmount',
+					type: 'number',
+					displayOptions: {
+						show: {
+							limitType: ['afterTimeInterval'],
+						},
+					},
+					typeOptions: {
+						minValue: 0,
+						numberPrecision: 2,
+					},
+					default: 1,
+					description: 'The time to wait',
+				},
+				{
+					displayName: 'Unit',
+					name: 'resumeUnit',
+					type: 'options',
+					displayOptions: {
+						show: {
+							limitType: ['afterTimeInterval'],
+						},
+					},
+					options: [
+						{
+							name: 'Minutes',
+							value: 'minutes',
+						},
+						{
+							name: 'Hours',
+							value: 'hours',
+						},
+						{
+							name: 'Days',
+							value: 'days',
+						},
+					],
+					default: 'hours',
+					description: 'Unit of the interval value',
+				},
+				{
+					displayName: 'Max Date and Time',
+					name: 'maxDateAndTime',
+					type: 'dateTime',
+					displayOptions: {
+						show: {
+							limitType: ['atSpecifiedTime'],
+						},
+					},
+					default: '',
+					description: 'Continue execution after the specified date and time',
+				},
+			],
+		},
+	],
+};
+
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
 	resource: string = 'message',
 	additionalProperties: INodeProperties[] = [],
+	options?: {
+		noButtonStyle?: boolean;
+		defaultApproveLabel?: string;
+		defaultDisapproveLabel?: string;
+	},
 ) {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
@@ -61,6 +159,77 @@ export function getSendAndWaitProperties(
 			},
 		],
 	};
+	const approvalOptionsValues = [
+		{
+			displayName: 'Type of Approval',
+			name: 'approvalType',
+			type: 'options',
+			placeholder: 'Add option',
+			default: 'single',
+			options: [
+				{
+					name: 'Approve Only',
+					value: 'single',
+				},
+				{
+					name: 'Approve and Disapprove',
+					value: 'double',
+				},
+			],
+		},
+		{
+			displayName: 'Approve Button Label',
+			name: 'approveLabel',
+			type: 'string',
+			default: options?.defaultApproveLabel || 'Approve',
+			displayOptions: {
+				show: {
+					approvalType: ['single', 'double'],
+				},
+			},
+		},
+		...[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Approve Button Style',
+						name: 'buttonApprovalStyle',
+						displayOptions: {
+							show: {
+								approvalType: ['single', 'double'],
+							},
+						},
+					},
+		],
+		{
+			displayName: 'Disapprove Button Label',
+			name: 'disapproveLabel',
+			type: 'string',
+			default: options?.defaultDisapproveLabel || 'Decline',
+			displayOptions: {
+				show: {
+					approvalType: ['double'],
+				},
+			},
+		},
+		...[
+			options?.noButtonStyle
+				? ({} as INodeProperties)
+				: {
+						...buttonStyle,
+						displayName: 'Disapprove Button Style',
+						name: 'buttonDisapprovalStyle',
+						default: 'secondary',
+						displayOptions: {
+							show: {
+								approvalType: ['double'],
+							},
+						},
+					},
+		],
+	].filter((p) => Object.keys(p).length) as INodeProperties[];
+
 	const sendAndWait: INodeProperties[] = [
 		...targetProperties,
 		{
@@ -104,6 +273,15 @@ export function getSendAndWaitProperties(
 				},
 			],
 		},
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			formFieldsProperties,
+		),
+
 		{
 			displayName: 'Approval Options',
 			name: 'approvalOptions',
@@ -114,68 +292,7 @@ export function getSendAndWaitProperties(
 				{
 					displayName: 'Values',
 					name: 'values',
-					values: [
-						{
-							displayName: 'Type of Approval',
-							name: 'approvalType',
-							type: 'options',
-							placeholder: 'Add option',
-							default: 'single',
-							options: [
-								{
-									name: 'Approve Only',
-									value: 'single',
-								},
-								{
-									name: 'Approve and Disapprove',
-									value: 'double',
-								},
-							],
-						},
-						{
-							displayName: 'Approve Button Label',
-							name: 'approveLabel',
-							type: 'string',
-							default: 'Approve',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Approve Button Style',
-							name: 'buttonApprovalStyle',
-							displayOptions: {
-								show: {
-									approvalType: ['single', 'double'],
-								},
-							},
-						},
-						{
-							displayName: 'Disapprove Button Label',
-							name: 'disapproveLabel',
-							type: 'string',
-							default: 'Decline',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-						{
-							...buttonStyle,
-							displayName: 'Disapprove Button Style',
-							name: 'buttonDisapprovalStyle',
-							default: 'secondary',
-							displayOptions: {
-								show: {
-									approvalType: ['double'],
-								},
-							},
-						},
-					],
+					values: approvalOptionsValues,
 				},
 			],
 			displayOptions: {
@@ -184,14 +301,19 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...updateDisplayOptions(
-			{
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [limitWaitTimeProperties],
+			displayOptions: {
 				show: {
-					responseType: ['customForm'],
+					responseType: ['approval'],
 				},
 			},
-			formFieldsProperties,
-		),
+		},
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -225,6 +347,7 @@ export function getSendAndWaitProperties(
 					type: 'string',
 					default: 'Submit',
 				},
+				limitWaitTimeProperties,
 			],
 			displayOptions: {
 				show: {
@@ -446,7 +569,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	return config;
 }
 
-function createButton(url: string, label: string, approved: string, style: string) {
+export function createButton(url: string, label: string, approved: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
@@ -481,4 +604,47 @@ export function createEmail(context: IExecuteFunctions) {
 	};
 
 	return email;
+}
+
+export function configureWaitTillDate(context: IExecuteFunctions) {
+	let waitTill = WAIT_INDEFINITELY;
+	const limitWaitTime = context.getNodeParameter('options.limitWaitTime.values', 0, {}) as {
+		limitType?: string;
+		resumeAmount?: number;
+		resumeUnit?: string;
+		maxDateAndTime?: string;
+	};
+
+	if (Object.keys(limitWaitTime).length) {
+		try {
+			if (limitWaitTime.limitType === 'afterTimeInterval') {
+				let waitAmount = limitWaitTime.resumeAmount as number;
+
+				if (limitWaitTime.resumeUnit === 'minutes') {
+					waitAmount *= 60;
+				}
+				if (limitWaitTime.resumeUnit === 'hours') {
+					waitAmount *= 60 * 60;
+				}
+				if (limitWaitTime.resumeUnit === 'days') {
+					waitAmount *= 60 * 60 * 24;
+				}
+
+				waitAmount *= 1000;
+				waitTill = new Date(new Date().getTime() + waitAmount);
+			} else {
+				waitTill = new Date(limitWaitTime.maxDateAndTime as string);
+			}
+
+			if (isNaN(waitTill.getTime())) {
+				throw new ApplicationError('Invalid date format');
+			}
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), 'Could not configure Limit Wait Time', {
+				description: error.message,
+			});
+		}
+	}
+
+	return waitTill;
 }

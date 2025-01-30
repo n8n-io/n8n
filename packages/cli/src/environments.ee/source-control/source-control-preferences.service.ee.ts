@@ -1,4 +1,4 @@
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
@@ -7,7 +7,6 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import path from 'path';
 
-import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 import {
@@ -17,6 +16,7 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
 import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
+import { SourceControlConfig } from './source-control.config';
 import type { KeyPairType } from './types/key-pair-type';
 import { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -34,6 +34,8 @@ export class SourceControlPreferencesService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly cipher: Cipher,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly sourceControlConfig: SourceControlConfig,
 	) {
 		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -64,9 +66,7 @@ export class SourceControlPreferencesService {
 	}
 
 	private async getKeyPairFromDatabase() {
-		const dbSetting = await Container.get(SettingsRepository).findByKey(
-			'features.sourceControl.sshKeys',
-		);
+		const dbSetting = await this.settingsRepository.findByKey('features.sourceControl.sshKeys');
 
 		if (!dbSetting?.value) return null;
 
@@ -120,7 +120,7 @@ export class SourceControlPreferencesService {
 	async deleteKeyPair() {
 		try {
 			await fsRm(this.sshFolder, { recursive: true });
-			await Container.get(SettingsRepository).delete({ key: 'features.sourceControl.sshKeys' });
+			await this.settingsRepository.delete({ key: 'features.sourceControl.sshKeys' });
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			this.logger.error(`Failed to delete SSH key pair: ${error.message}`);
@@ -133,14 +133,12 @@ export class SourceControlPreferencesService {
 	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {
 		if (!keyPairType) {
 			keyPairType =
-				this.getPreferences().keyGeneratorType ??
-				(config.get('sourceControl.defaultKeyPairType') as KeyPairType) ??
-				'ed25519';
+				this.getPreferences().keyGeneratorType ?? this.sourceControlConfig.defaultKeyPairType;
 		}
 		const keyPair = await generateSshKeyPair(keyPairType);
 
 		try {
-			await Container.get(SettingsRepository).save({
+			await this.settingsRepository.save({
 				key: 'features.sourceControl.sshKeys',
 				value: JSON.stringify({
 					encryptedPrivateKey: this.cipher.encrypt(keyPair.privateKey),
@@ -211,7 +209,7 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Container.get(SettingsRepository).save(
+				await this.settingsRepository.save(
 					{
 						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
 						value: settingsValue,
@@ -229,7 +227,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Container.get(SettingsRepository).findOne({
+		const loadedPreferences = await this.settingsRepository.findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {

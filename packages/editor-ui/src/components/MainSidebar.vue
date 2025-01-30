@@ -185,12 +185,9 @@ onMounted(async () => {
 		});
 	}
 
-	await nextTick(() => {
-		uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
-		fullyExpanded.value = !isCollapsed.value;
-	});
-
 	becomeTemplateCreatorStore.startMonitoringCta();
+
+	await nextTick(onResizeEnd);
 });
 
 onBeforeUnmount(() => {
@@ -273,22 +270,21 @@ const handleSelect = (key: string) => {
 	}
 };
 
-const onResize = (event: UIEvent) => {
-	void callDebounced(onResizeEnd, { debounceTime: 100 }, event);
-};
+function onResize() {
+	void callDebounced(onResizeEnd, { debounceTime: 250 });
+}
 
-const onResizeEnd = async (event: UIEvent) => {
-	const browserWidth = (event.target as Window).outerWidth;
-	await checkWidthAndAdjustSidebar(browserWidth);
-};
-
-const checkWidthAndAdjustSidebar = async (width: number) => {
-	if (width < 900) {
+async function onResizeEnd() {
+	if (window.outerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
-		await nextTick();
-		fullyExpanded.value = !isCollapsed.value;
+	} else {
+		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
 	}
-};
+
+	void nextTick(() => {
+		fullyExpanded.value = !isCollapsed.value;
+	});
+}
 
 const {
 	menu,

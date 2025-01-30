@@ -16,7 +16,10 @@ interface TagsDropdownProps {
 	allTags: ITag[];
 	isLoading: boolean;
 	tagsById: Record<string, ITag>;
+	createEnabled?: boolean;
+	manageEnabled?: boolean;
 	createTag?: (name: string) => Promise<ITag>;
+	multipleLimit?: number;
 }
 
 const i18n = useI18n();
@@ -27,6 +30,10 @@ const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	placeholder: '',
 	modelValue: () => [],
 	eventBus: null,
+	createEnabled: true,
+	manageEnabled: true,
+	createTag: undefined,
+	multipleLimit: 0,
 });
 
 const emit = defineEmits<{
@@ -58,6 +65,17 @@ const options = computed<ITag[]>(() => {
 const appliedTags = computed<string[]>(() => {
 	return props.modelValue.filter((id: string) => props.tagsById[id]);
 });
+
+const containerClasses = computed(() => {
+	return { 'tags-container': true, focused: focused.value };
+});
+
+const dropdownClasses = computed(() => ({
+	'tags-dropdown': true,
+	[`tags-dropdown-${dropdownId}`]: true,
+	'tags-dropdown-create-enabled': props.createEnabled,
+	'tags-dropdown-manage-enabled': props.manageEnabled,
+}));
 
 watch(
 	() => props.allTags,
@@ -189,7 +207,7 @@ onClickOutside(
 </script>
 
 <template>
-	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
+	<div ref="container" :class="containerClasses" @keydown.stop>
 		<N8nSelect
 			ref="selectRef"
 			:teleported="true"
@@ -199,16 +217,17 @@ onClickOutside(
 			:filter-method="filterOptions"
 			filterable
 			multiple
+			:multiple-limit="props.multipleLimit"
 			:reserve-keyword="false"
 			loading-text="..."
-			:popper-class="['tags-dropdown', 'tags-dropdown-' + dropdownId].join(' ')"
+			:popper-class="dropdownClasses"
 			data-test-id="tags-dropdown"
 			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>
 			<N8nOption
-				v-if="options.length === 0 && filter"
+				v-if="createEnabled && options.length === 0 && filter"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -220,7 +239,7 @@ onClickOutside(
 				</span>
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
-				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
 				<span v-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
@@ -237,7 +256,7 @@ onClickOutside(
 				data-test-id="tag"
 			/>
 
-			<N8nOption :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
+			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</N8nOption>
@@ -313,7 +332,7 @@ onClickOutside(
 			}
 		}
 
-		&:after {
+		.tags-dropdown-manage-enabled &:after {
 			content: ' ';
 			display: block;
 			min-height: $--item-height;

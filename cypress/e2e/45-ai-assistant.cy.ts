@@ -5,7 +5,6 @@ import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
 import { NodeCreator } from '../pages/features/node-creator';
-import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
@@ -434,7 +433,7 @@ describe('AI Assistant Credential Help', () => {
 		wf.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
 		wf.getters.nodeCredentialsSelect().should('exist');
 		wf.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		wf.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		ndv.getters.copyInput().should('not.exist');
 		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
@@ -467,7 +466,7 @@ describe('AI Assistant Credential Help', () => {
 		wf.actions.addNodeToCanvas('Microsoft Outlook', true, true, 'Get a calendar');
 		wf.getters.nodeCredentialsSelect().should('exist');
 		wf.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		wf.getters.nodeCredentialsCreateOption().click();
 		ndv.getters.copyInput().should('not.exist');
 		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
 		credentialsModal.getters.credentialInputs().should('have.length', 1);

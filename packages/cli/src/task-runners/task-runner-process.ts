@@ -54,6 +54,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private readonly passthroughEnvVars = [
 		'PATH',
+		'HOME', // So home directory can be resolved correctly
 		'GENERIC_TIMEZONE',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
@@ -106,9 +107,13 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
-		return spawn('node', [startScript], {
-			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
-		});
+		return spawn(
+			'node',
+			['--disallow-code-generation-from-strings', '--disable-proto=delete', startScript],
+			{
+				env: this.getProcessEnvVars(grantToken, taskBrokerUri),
+			},
+		);
 	}
 
 	@OnShutdown()

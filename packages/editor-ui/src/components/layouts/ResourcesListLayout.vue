@@ -17,7 +17,7 @@ import type { Scope } from '@n8n/permissions';
 
 export type IResource = {
 	id: string;
-	name: string;
+	name?: string;
 	value?: string;
 	key?: string;
 	updatedAt?: string;
@@ -42,7 +42,7 @@ const props = withDefaults(
 		displayName?: (resource: IResource) => string;
 		resources: IResource[];
 		disabled: boolean;
-		initialize: () => Promise<void>;
+		initialize?: () => Promise<void>;
 		filters?: IFilters;
 		additionalFiltersHandler?: (
 			resource: IResource,
@@ -58,7 +58,7 @@ const props = withDefaults(
 		loading: boolean;
 	}>(),
 	{
-		displayName: (resource: IResource) => resource.name,
+		displayName: (resource: IResource) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
@@ -103,7 +103,7 @@ const sortBy = ref(props.sortOptions[0]);
 const hasFilters = ref(false);
 const filtersModel = ref(props.filters);
 const currentPage = ref(1);
-const rowsPerPage = ref<number>(10);
+const rowsPerPage = ref<number>(25);
 const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 
@@ -168,13 +168,19 @@ const focusSearchInput = () => {
 };
 
 const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find(
-		(key) =>
-			key !== 'search' &&
-			(Array.isArray(props.filters[key])
-				? props.filters[key].length > 0
-				: props.filters[key] !== ''),
-	);
+	return !!filterKeys.value.find((key) => {
+		if (key === 'search') return false;
+
+		if (typeof props.filters[key] === 'boolean') {
+			return props.filters[key];
+		}
+
+		if (Array.isArray(props.filters[key])) {
+			return props.filters[key].length > 0;
+		}
+
+		return props.filters[key] !== '';
+	});
 };
 
 const setRowsPerPage = (numberOfRowsPerPage: number) => {
@@ -365,7 +371,7 @@ onMounted(async () => {
 					</n8n-action-box>
 				</slot>
 			</div>
-			<PageViewLayoutList v-else :overflow="type !== 'list'">
+			<PageViewLayoutList v-else>
 				<template #header>
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
@@ -475,6 +481,7 @@ onMounted(async () => {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 }
 
 .filters {
@@ -483,10 +490,24 @@ onMounted(async () => {
 	grid-auto-columns: max-content;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	width: 100%;
+
+	@include mixins.breakpoint('xs-only') {
+		grid-template-columns: 1fr auto;
+		grid-auto-flow: row;
+
+		> *:last-child {
+			grid-column: auto;
+		}
+	}
 }
 
 .search {
 	max-width: 240px;
+
+	@include mixins.breakpoint('sm-and-down') {
+		max-width: 100%;
+	}
 }
 
 .listWrapper {
@@ -497,6 +518,10 @@ onMounted(async () => {
 
 .sort-and-filter {
 	white-space: nowrap;
+
+	@include mixins.breakpoint('sm-and-down') {
+		width: 100%;
+	}
 }
 
 .datatable {

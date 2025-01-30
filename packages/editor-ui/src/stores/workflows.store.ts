@@ -89,6 +89,7 @@ import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUti
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
+import { useExecutingNode } from '@/composables/useExecutingNode';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -140,13 +141,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
-	const executingNode = ref<string[]>([]);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
+	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
+
+	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
+		useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -549,14 +553,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
-	}
-
-	function addExecutingNode(nodeName: string) {
-		executingNode.value.push(nodeName);
-	}
-
-	function removeExecutingNode(nodeName: string) {
-		executingNode.value = executingNode.value.filter((name) => name !== nodeName);
 	}
 
 	function setWorkflowId(id?: string) {
@@ -1603,7 +1599,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function markExecutionAsStopped() {
 		activeExecutionId.value = null;
-		executingNode.value.length = 0;
+		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
@@ -1634,6 +1630,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeMetadata,
 		isInDebugMode,
 		chatMessages,
+		chatPartialExecutionDestinationNode,
 		workflowName,
 		workflowId,
 		workflowVersionId,

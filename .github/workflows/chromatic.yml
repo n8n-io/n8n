@@ -8,13 +8,14 @@ on:
     types: [submitted]
 
 concurrency:
-  group: chromatic-${{ github.event.pull_request.number || github.ref }}
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
   cancel-in-progress: true
 
 jobs:
   get-metadata:
     name: Get Metadata
     runs-on: ubuntu-latest
+    if: github.event.review.state == 'approved'
     steps:
       - name: Check out current commit
         uses: actions/checkout@v4

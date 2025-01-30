@@ -21,6 +21,10 @@ export { ForgotPasswordRequestDto } from './password-reset/forgot-password-reque
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
+export { CreateProjectDto } from './project/create-project.dto';
+export { UpdateProjectDto } from './project/update-project.dto';
+export { DeleteProjectDto } from './project/delete-project.dto';
+
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
@@ -32,8 +36,16 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
+export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
+export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
+
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
+
+export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
+export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+
+export { CreateOrUpdateApiKeyRequestDto } from './api-keys/create-or-update-api-key-request.dto';

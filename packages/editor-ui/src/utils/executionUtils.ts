@@ -1,10 +1,11 @@
-import {
-	SEND_AND_WAIT_OPERATION,
-	type ExecutionStatus,
-	type IDataObject,
-	type INode,
-	type IPinData,
-	type IRunData,
+import { SEND_AND_WAIT_OPERATION, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import type {
+	ITaskData,
+	ExecutionStatus,
+	IDataObject,
+	INode,
+	IPinData,
+	IRunData,
 } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
@@ -180,3 +181,25 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 	return '';
 };
+
+/**
+ * Check whether task data contains a trimmed item.
+ *
+ * In manual executions in scaling mode, the payload in push messages may be
+ * arbitrarily large. To protect Redis as it relays run data from workers to
+ * main process, we set a limit on payload size. If the payload is oversize,
+ * we replace it with a placeholder, which is later overridden on execution
+ * finish, when the client receives the full data.
+ */
+export function hasTrimmedItem(taskData: ITaskData[]) {
+	return taskData[0]?.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+}
+
+/**
+ * Check whether run data contains any trimmed items.
+ *
+ * See {@link hasTrimmedItem} for more details.
+ */
+export function hasTrimmedData(runData: IRunData) {
+	return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
+}

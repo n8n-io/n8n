@@ -95,3 +95,7 @@ export const AI_TRANSFORM_JS_CODE = 'jsCode';
  * in `cli` package.
  */
 export const TRIMMED_TASK_DATA_CONNECTIONS_KEY = '__isTrimmedManualExecutionDataItem';
+
+export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
+export const FREE_AI_CREDITS_ERROR_TYPE = 'free_ai_credits_request_error';
+export const FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE = 400;

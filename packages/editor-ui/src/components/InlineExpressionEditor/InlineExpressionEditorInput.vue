@@ -7,12 +7,7 @@ import { computed, ref, watch } from 'vue';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
@@ -42,9 +37,7 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
-	Prec.highest(
-		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
 	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),

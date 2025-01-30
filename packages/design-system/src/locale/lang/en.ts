@@ -51,4 +51,5 @@ export default {
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',
 	'iconPicker.tabs.emojis': 'Emojis',
+	'selectableList.addDefault': '+ Add a',
 } as N8nLocale;

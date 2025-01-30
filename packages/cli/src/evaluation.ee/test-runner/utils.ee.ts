@@ -1,4 +1,5 @@
-import type { IRunExecutionData, IPinData } from 'n8n-workflow';
+import assert from 'assert';
+import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -13,16 +14,33 @@ export function createPinData(
 	workflow: WorkflowEntity,
 	mockedNodes: MockedNodeItem[],
 	executionData: IRunExecutionData,
+	pastWorkflowData?: IWorkflowBase,
 ) {
 	const pinData = {} as IPinData;
 
-	const workflowNodeNames = new Set(workflow.nodes.map((node) => node.name));
+	const workflowNodeIds = new Map(workflow.nodes.map((node) => [node.id, node.name]));
+
+	// If the past workflow data is provided, use it to create a map between node IDs and node names
+	const pastWorkflowNodeIds = new Map<string, string>();
+	if (pastWorkflowData) {
+		for (const node of pastWorkflowData.nodes) {
+			pastWorkflowNodeIds.set(node.id, node.name);
+		}
+	}
 
 	for (const mockedNode of mockedNodes) {
-		if (workflowNodeNames.has(mockedNode.name)) {
-			const nodeData = executionData.resultData.runData[mockedNode.name];
+		assert(mockedNode.id, 'Mocked node ID is missing');
+
+		const nodeName = workflowNodeIds.get(mockedNode.id);
+
+		// If mocked node is still present in the workflow
+		if (nodeName) {
+			// Try to restore node name from past execution data (it might have been renamed between past execution and up-to-date workflow)
+			const pastNodeName = pastWorkflowNodeIds.get(mockedNode.id) ?? nodeName;
+			const nodeData = executionData.resultData.runData[pastNodeName];
+
 			if (nodeData?.[0]?.data?.main?.[0]) {
-				pinData[mockedNode.name] = nodeData[0]?.data?.main?.[0];
+				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
 			}
 		}
 	}

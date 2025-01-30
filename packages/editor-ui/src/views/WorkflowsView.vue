@@ -6,7 +6,12 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import { EASY_AI_WORKFLOW_EXPERIMENT, EnterpriseEditionFeature, VIEWS } from '@/constants';
+import {
+	EASY_AI_WORKFLOW_EXPERIMENT,
+	AI_CREDITS_EXPERIMENT,
+	EnterpriseEditionFeature,
+	VIEWS,
+} from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -32,7 +37,7 @@ import {
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -269,9 +274,18 @@ const openAIWorkflow = async (source: string) => {
 		},
 		{ withPostHog: true },
 	);
+
+	const isAiCreditsExperimentEnabled =
+		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
+
+	const easyAiWorkflowJson = getEasyAiWorkflowJson({
+		isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
+		withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
+	});
+
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: EASY_AI_WORKFLOW_JSON.meta.templateId },
+		params: { id: easyAiWorkflowJson.meta.templateId },
 		query: { fromJson: 'true' },
 	});
 };

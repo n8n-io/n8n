@@ -2,6 +2,12 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { appendAttributionOption } from '../../utils/descriptions';
 
+export const placeholder: string = `
+<!-- Your custom HTML here --->
+
+
+`.trimStart();
+
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
 	name: 'path',
@@ -29,16 +35,16 @@ export const formDescription: INodeProperties = {
 	default: '',
 	placeholder: "e.g. We'll get back to you soon",
 	description:
-		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
+		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.',
 	typeOptions: {
 		rows: 2,
 	},
 };
 
 export const formFields: INodeProperties = {
-	displayName: 'Form Fields',
+	displayName: 'Form Elements',
 	name: 'formFields',
-	placeholder: 'Add Form Field',
+	placeholder: 'Add Form Element',
 	type: 'fixedCollection',
 	default: { values: [{ label: '', fieldType: 'text' }] },
 	typeOptions: {
@@ -58,14 +64,23 @@ export const formFields: INodeProperties = {
 					placeholder: 'e.g. What is your name?',
 					description: 'Label that appears above the input field',
 					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField'],
+						},
+					},
 				},
 				{
-					displayName: 'Field Type',
+					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
 					default: 'text',
 					description: 'The type of field to add to the form',
 					options: [
+						{
+							name: 'Custom HTML',
+							value: 'html',
+						},
 						{
 							name: 'Date',
 							value: 'date',
@@ -81,6 +96,10 @@ export const formFields: INodeProperties = {
 						{
 							name: 'File',
 							value: 'file',
+						},
+						{
+							name: 'Hidden Field',
+							value: 'hiddenField',
 						},
 						{
 							name: 'Number',
@@ -109,7 +128,33 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file'],
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Value',
+					name: 'fieldValue',
+					description:
+						'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
 						},
 					},
 				},
@@ -159,6 +204,21 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'HTML Template',
+					name: 'html',
+					typeOptions: {
+						editor: 'htmlEditor',
+					},
+					type: 'string',
+					default: placeholder,
+					description: 'HTML template to render',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
+						},
+					},
+				},
+				{
 					displayName: 'Multiple Files',
 					name: 'multipleFiles',
 					type: 'boolean',
@@ -186,17 +246,25 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Format Date As',
+					displayName: "The displayed date is formatted based on the locale of the user's browser",
 					name: 'formatDate',
-					type: 'string',
+					type: 'notice',
 					default: '',
-					description:
-						'How to format the date in the output data. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
-					placeholder: 'e.g. dd/mm/yyyy',
-					hint: 'Leave empty to use the default format',
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName:
+						'Does not accept <code>&lt;style&gt;</code> <code>&lt;script&gt;</code> or <code>&lt;input&gt;</code> tags.',
+					name: 'htmlTips',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
 						},
 					},
 				},
@@ -207,6 +275,11 @@ export const formFields: INodeProperties = {
 					default: false,
 					description:
 						'Whether to require the user to enter a value for this field before submitting the form',
+					displayOptions: {
+						hide: {
+							fieldType: ['html', 'hiddenField'],
+						},
+					},
 				},
 			],
 		},

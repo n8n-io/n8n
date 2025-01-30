@@ -106,10 +106,10 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
-		<div :class="[$style.projectHeader]">
-			<div :class="[$style.projectDetails]">
+		<div :class="$style.projectHeader">
+			<div :class="$style.projectDetails">
 				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
-				<div>
+				<div :class="$style.headerActions">
 					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 					<N8nText color="text-light">
 						<slot name="subtitle">
@@ -147,7 +147,8 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader {
+.projectHeader,
+.projectDescription {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -162,5 +163,17 @@ const onSelect = (action: string) => {
 
 .actions {
 	padding: var(--spacing-2xs) 0 var(--spacing-l);
+}
+
+@include mixins.breakpoint('xs-only') {
+	.projectHeader {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing-xs);
+	}
+
+	.headerActions {
+		margin-left: auto;
+	}
 }
 </style>

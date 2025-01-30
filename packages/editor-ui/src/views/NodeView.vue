@@ -181,7 +181,8 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
+import { AI_CREDITS_EXPERIMENT } from '@/constants';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -220,6 +221,7 @@ export default defineComponent({
 		const router = useRouter();
 		const route = useRoute();
 
+		const posthogStore = usePostHog();
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
@@ -254,6 +256,7 @@ export default defineComponent({
 			nodeViewRef,
 			onMouseMoveEnd,
 			workflowHelpers,
+			posthogStore,
 			runWorkflow,
 			stopCurrentExecution,
 			callDebounced,
@@ -3389,10 +3392,15 @@ export default defineComponent({
 		async initView(): Promise<void> {
 			await this.loadCredentialsForWorkflow();
 
-			if (this.$route.params.action === 'workflowSave') {
+			if (this.$route.query.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
 				this.uiStore.stateIsDirty = false;
+
+				// Remove the action from the query
+				await this.$router.replace({
+					query: { ...this.$route.query, action: undefined },
+				});
 				return;
 			}
 			if (this.blankRedirect) {
@@ -3401,7 +3409,15 @@ export default defineComponent({
 				const templateId = this.$route.params.id;
 				const loadWorkflowFromJSON = this.$route.query.fromJson === 'true';
 				if (loadWorkflowFromJSON) {
-					await this.openWorkflowTemplateFromJson({ workflow: EASY_AI_WORKFLOW_JSON });
+					const isAiCreditsExperimentEnabled =
+						this.posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) ===
+						AI_CREDITS_EXPERIMENT.variant;
+
+					const easyAiWorkflowJson = getEasyAiWorkflowJson({
+						isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
+						withOpenAiFreeCredits: useSettingsStore().aiCreditsQuota,
+					});
+					await this.openWorkflowTemplateFromJson({ workflow: easyAiWorkflowJson });
 				} else {
 					await this.openWorkflowTemplate(templateId.toString());
 				}

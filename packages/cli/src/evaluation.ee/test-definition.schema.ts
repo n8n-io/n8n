@@ -16,6 +16,6 @@ export const testDefinitionPatchRequestBodySchema = z
 		description: z.string().optional(),
 		evaluationWorkflowId: z.string().min(1).optional(),
 		annotationTagId: z.string().min(1).optional(),
-		mockedNodes: z.array(z.object({ name: z.string() })).optional(),
+		mockedNodes: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
 	})
 	.strict();

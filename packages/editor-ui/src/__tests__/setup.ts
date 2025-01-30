@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/vue';
+import 'core-js/proposals/set-methods-v2';
 
 configure({ testIdAttribute: 'data-test-id' });
 
@@ -60,4 +61,26 @@ Object.defineProperty(window, 'matchMedia', {
 		removeEventListener: vi.fn(),
 		dispatchEvent: vi.fn(),
 	})),
+});
+
+class Worker {
+	onmessage: (message: string) => void;
+
+	url: string;
+
+	constructor(url: string) {
+		this.url = url;
+		this.onmessage = () => {};
+	}
+
+	postMessage(message: string) {
+		this.onmessage(message);
+	}
+
+	addEventListener() {}
+}
+
+Object.defineProperty(window, 'Worker', {
+	writable: true,
+	value: Worker,
 });

@@ -365,7 +365,7 @@ const getIssues = computed<string[]>(() => {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
-				checkValues = checkValues.concat(displayValue.value?.toString().split(','));
+				checkValues.push(displayValue.value);
 			}
 		}
 
@@ -474,6 +474,10 @@ const shortPath = computed<string>(() => {
 	const short = props.path.split('.');
 	short.shift();
 	return short.join('.');
+});
+
+const parameterId = computed(() => {
+	return `${node.value?.id ?? crypto.randomUUID()}${props.path}`;
 });
 
 const isResourceLocatorParameter = computed<boolean>(() => {
@@ -833,6 +837,25 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 			parameter: props.parameter.name,
 		});
 	}
+	// Track workflow input data mode change
+	const isWorkflowInputParameter =
+		props.parameter.name === 'inputSource' && props.parameter.default === 'workflowInputs';
+	if (isWorkflowInputParameter) {
+		trackWorkflowInputModeEvent(value as string);
+	}
+}
+
+function trackWorkflowInputModeEvent(value: string) {
+	const telemetryValuesMap: Record<string, string> = {
+		workflowInputs: 'fields',
+		jsonExample: 'json',
+		passthrough: 'all',
+	};
+	telemetry.track('User chose input data mode', {
+		option: telemetryValuesMap[value],
+		workflow_id: workflowsStore.workflowId,
+		node_id: node.value?.id,
+	});
 }
 
 async function optionSelected(command: string) {
@@ -1092,21 +1115,20 @@ onUpdated(async () => {
 				"
 			>
 				<el-dialog
+					width="calc(100% - var(--spacing-3xl))"
+					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
-					width="80%"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
 				>
-					<div
-						:key="codeEditDialogVisible.toString()"
-						class="ignore-key-press-canvas code-edit-dialog"
-					>
+					<div class="ignore-key-press-canvas code-edit-dialog">
 						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor'"
+							v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
+							:id="parameterId"
 							:mode="codeEditorMode"
 							:model-value="modelValueString"
 							:default-value="parameter.default"
@@ -1116,7 +1138,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor'"
+							v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1126,7 +1148,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<SqlEditor
-							v-else-if="editorType === 'sqlEditor'"
+							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
@@ -1135,7 +1157,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<JsEditor
-							v-else-if="editorType === 'jsEditor'"
+							v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1145,7 +1167,7 @@ onUpdated(async () => {
 						/>
 
 						<JsonEditor
-							v-else-if="parameter.type === 'json'"
+							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1166,8 +1188,8 @@ onUpdated(async () => {
 				></TextEdit>
 
 				<CodeNodeEditor
-					v-if="editorType === 'codeNodeEditor' && isCodeNode"
-					:key="'code-' + codeEditDialogVisible.toString()"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode && !codeEditDialogVisible"
+					:id="parameterId"
 					:mode="codeEditorMode"
 					:model-value="modelValueString"
 					:default-value="parameter.default"
@@ -1191,8 +1213,7 @@ onUpdated(async () => {
 				</CodeNodeEditor>
 
 				<HtmlEditor
-					v-else-if="editorType === 'htmlEditor'"
-					:key="'html-' + codeEditDialogVisible.toString()"
+					v-else-if="editorType === 'htmlEditor' && !codeEditDialogVisible"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
@@ -1214,7 +1235,6 @@ onUpdated(async () => {
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
-					:key="'sql-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:dialect="getArgument('sqlDialect')"
 					:is-read-only="isReadOnly"
@@ -1235,7 +1255,6 @@ onUpdated(async () => {
 
 				<JsEditor
 					v-else-if="editorType === 'jsEditor'"
-					:key="'js-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
@@ -1256,8 +1275,7 @@ onUpdated(async () => {
 				</JsEditor>
 
 				<JsonEditor
-					v-else-if="parameter.type === 'json'"
-					:key="'json-' + codeEditDialogVisible.toString()"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
@@ -1278,6 +1296,7 @@ onUpdated(async () => {
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<CodeNodeEditor
 						v-if="!codeEditDialogVisible"
+						:id="parameterId"
 						:mode="codeEditorMode"
 						:model-value="modelValueString"
 						:language="editorLanguage"
@@ -1630,8 +1649,8 @@ onUpdated(async () => {
 
 .textarea-modal-opener {
 	position: absolute;
-	right: 0;
-	bottom: 0;
+	right: 1px;
+	bottom: 1px;
 	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
@@ -1639,6 +1658,8 @@ onUpdated(async () => {
 	border-top-left-radius: var(--border-radius-base);
 	border-bottom-right-radius: var(--border-radius-base);
 	cursor: pointer;
+	border-right: none;
+	border-bottom: none;
 
 	svg {
 		width: 9px !important;
@@ -1660,7 +1681,7 @@ onUpdated(async () => {
 }
 
 .code-edit-dialog {
-	height: 70vh;
+	height: 100%;
 
 	.code-node-editor {
 		height: 100%;
@@ -1668,7 +1689,25 @@ onUpdated(async () => {
 }
 </style>
 
-<style lang="scss" module>
+<style lang="css" module>
+.modal {
+	--dialog-close-top: var(--spacing-m);
+	display: flex;
+	flex-direction: column;
+	overflow: clip;
+	height: calc(100% - var(--spacing-4xl));
+	margin-bottom: 0;
+
+	:global(.el-dialog__header) {
+		padding-bottom: 0;
+	}
+
+	:global(.el-dialog__body) {
+		height: calc(100% - var(--spacing-3xl));
+		padding: var(--spacing-s);
+	}
+}
+
 .tipVisible {
 	--input-border-bottom-left-radius: 0;
 	--input-border-bottom-right-radius: 0;

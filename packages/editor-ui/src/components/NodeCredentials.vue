@@ -2,11 +2,12 @@
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
+	type ICredentialType,
 	type INodeCredentialDescription,
 	type INodeCredentialsDetails,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
@@ -31,6 +32,7 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import {
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -67,7 +69,7 @@ const emit = defineEmits<{
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const NEW_CREDENTIALS_TEXT = `- ${i18n.baseText('nodeCredentials.createNew')} -`;
+const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -79,7 +81,9 @@ const nodeHelpers = useNodeHelpers();
 const toast = useToast();
 
 const subscribedToCredentialType = ref('');
+const filter = ref('');
 const listeningForAuthChange = ref(false);
+const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
 const credentialTypesNode = computed(() =>
 	credentialTypesNodeDescription.value.map(
@@ -344,9 +348,8 @@ function onCredentialSelected(
 	credentialId: string | null | undefined,
 	showAuthOptions = false,
 ) {
-	const newCredentialOptionSelected = credentialId === NEW_CREDENTIALS_TEXT;
-	if (!credentialId || newCredentialOptionSelected) {
-		createNewCredential(credentialType, newCredentialOptionSelected, showAuthOptions);
+	if (!credentialId) {
+		createNewCredential(credentialType, false, showAuthOptions);
 		return;
 	}
 
@@ -501,6 +504,20 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 	}
 	return i18n.baseText('nodeCredentials.credentialsLabel');
 }
+
+function setFilter(newFilter = '') {
+	filter.value = newFilter;
+}
+
+function matches(needle: string, haystack: string) {
+	return haystack.toLocaleLowerCase().includes(needle);
+}
+
+async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
+	selectRefs.value.forEach((select) => select.blur());
+	await nextTick();
+	createNewCredential(type.name, true, showMixedCredentials(type));
+}
 </script>
 
 <template>
@@ -530,16 +547,20 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 					data-test-id="node-credentials-select"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:model-value="getSelectedId(type.name)"
 						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 						size="small"
+						filterable
+						:filter-method="setFilter"
+						:popper-class="$style.selectPopper"
 						@update:model-value="
 							(value: string) => onCredentialSelected(type.name, value, showMixedCredentials(type))
 						"
 						@blur="emit('blur', 'credentials')"
 					>
 						<N8nOption
-							v-for="item in options"
+							v-for="item in options.filter((o) => matches(filter, o.name))"
 							:key="item.id"
 							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:label="item.name"
@@ -550,13 +571,17 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
 							</div>
 						</N8nOption>
-						<N8nOption
-							:key="NEW_CREDENTIALS_TEXT"
-							data-test-id="node-credentials-select-item-new"
-							:value="NEW_CREDENTIALS_TEXT"
-							:label="NEW_CREDENTIALS_TEXT"
-						>
-						</N8nOption>
+						<template #empty> </template>
+						<template #footer>
+							<div
+								data-test-id="node-credentials-select-item-new"
+								:class="['clickable', $style.newCredential]"
+								@click="onClickCreateCredential(type)"
+							>
+								<N8nIcon size="xsmall" icon="plus" />
+								<N8nText bold>{{ NEW_CREDENTIALS_TEXT }}</N8nText>
+							</div>
+						</template>
 					</N8nSelect>
 
 					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
@@ -567,7 +592,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 									:items="getIssues(type.name)"
 								/>
 							</template>
-							<font-awesome-icon icon="exclamation-triangle" />
+							<N8nIcon icon="exclamation-triangle" />
 						</N8nTooltip>
 					</div>
 
@@ -576,7 +601,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
-						<font-awesome-icon
+						<N8nIcon
 							icon="pen"
 							class="clickable"
 							:title="i18n.baseText('nodeCredentials.updateCredential')"
@@ -598,10 +623,25 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 	}
 }
 
+.selectPopper {
+	:global(.el-select-dropdown__list) {
+		padding: 0;
+	}
+
+	:has(.newCredential:hover) :global(.hover) {
+		background-color: transparent;
+	}
+
+	&:not(:has(li)) .newCredential {
+		border-top: none;
+		box-shadow: none;
+		border-radius: var(--border-radius-base);
+	}
+}
+
 .warning {
-	min-width: 20px;
-	margin-left: 5px;
-	color: #ff8080;
+	margin-left: var(--spacing-4xs);
+	color: var(--color-danger-light);
 	font-size: var(--font-size-s);
 }
 
@@ -610,8 +650,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 	justify-content: center;
 	align-items: center;
 	color: var(--color-text-base);
-	min-width: 20px;
-	margin-left: 5px;
+	margin-left: var(--spacing-3xs);
 	font-size: var(--font-size-s);
 }
 
@@ -628,5 +667,22 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 .credentialOption {
 	display: flex;
 	flex-direction: column;
+}
+
+.newCredential {
+	display: flex;
+	gap: var(--spacing-3xs);
+	align-items: center;
+	font-weight: var(--font-weight-bold);
+	padding: var(--spacing-xs) var(--spacing-m);
+	background-color: var(--color-background-light);
+
+	border-top: var(--border-base);
+	box-shadow: var(--box-shadow-light);
+	clip-path: inset(-12px 0 0 0); // Only show box shadow on top
+
+	&:hover {
+		color: var(--color-primary);
+	}
 }
 </style>

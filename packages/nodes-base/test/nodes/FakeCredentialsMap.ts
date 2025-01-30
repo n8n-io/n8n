@@ -80,6 +80,30 @@ BQIDAQAB
 		},
 		baseUrl: 'https://api.gong.io',
 	},
+	microsoftEntraOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		accessTokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'openid offline_access AccessReview.ReadWrite.All Directory.ReadWrite.All NetworkAccessPolicy.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All EntitlementManagement.ReadWrite.All User.ReadWrite.All Directory.AccessAsUser.All Sites.FullControl.All',
+		authQueryParameters: 'response_mode=query',
+		authentication: 'body',
+		oauthTokenData: {
+			token_type: 'Bearer',
+			scope:
+				'AccessReview.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All Directory.AccessAsUser.All Directory.Read.All Directory.ReadWrite.All EntitlementManagement.ReadWrite.All Group.ReadWrite.All NetworkAccessPolicy.ReadWrite.All openid Sites.FullControl.All User.DeleteRestore.All User.EnableDisableAccount.All User.Export.All User.Invite.All User.ManageIdentities.All User.Read User.Read.All User.ReadBasic.All User.ReadWrite User.ReadWrite.All User.RevokeSessions.All profile email',
+			expires_in: 4822,
+			ext_expires_in: 4822,
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			id_token: 'IDTOKEN',
+			callbackQueryString: {
+				session_state: 'SESSIONSTATE',
+			},
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
@@ -162,5 +186,25 @@ BQIDAQAB
 			token_type: 'bearer',
 			expires_in: 86400,
 		},
+	},
+	spotifyOAuth2Api: {
+		accessTokenUrl: 'https://accounts.spotify.com/api/token',
+		authQueryParameters: '',
+		authUrl: 'https://accounts.spotify.com/authorize',
+		authentication: 'header',
+		clientId: 'CLIENT_ID',
+		clientSecret: 'CLIENT_SECRET',
+		grantType: 'authorizationCode',
+		oauthTokenData: {
+			access_token: 'ACCESS_TOKEN',
+			expires_in: 3600,
+			refresh_token: 'REFRESH_TOKEN',
+			scope:
+				'playlist-read-private playlist-read-collaborative user-modify-playback-state user-library-read user-follow-read playlist-modify-private playlist-modify-public user-read-playback-state user-read-currently-playing user-read-recently-played',
+			token_type: 'Bearer',
+		},
+		scope:
+			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
+		server: 'https://api.spotify.com/',
 	},
 } as const;

@@ -2,7 +2,6 @@ import { computed, ref } from 'vue';
 import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
 
-import * as publicApiApi from '@/api/api-keys';
 import * as eventsApi from '@/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
@@ -32,6 +31,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
+		apiKeysPerUserLimit: 0,
 		enabled: false,
 		latestVersion: 0,
 		path: '/',
@@ -321,21 +321,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getApiKeys = async () => {
-		const rootStore = useRootStore();
-		return await publicApiApi.getApiKeys(rootStore.restApiContext);
-	};
-
-	const createApiKey = async () => {
-		const rootStore = useRootStore();
-		return await publicApiApi.createApiKey(rootStore.restApiContext);
-	};
-
-	const deleteApiKey = async (id: string) => {
-		const rootStore = useRootStore();
-		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
-	};
-
 	const getLdapConfig = async () => {
 		const rootStore = useRootStore();
 		return await ldapApi.getLdapConfig(rootStore.restApiContext);
@@ -438,9 +423,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		updateLdapConfig,
 		runLdapSync,
 		getTimezones,
-		createApiKey,
-		getApiKeys,
-		deleteApiKey,
 		testTemplatesEndpoint,
 		submitContactInfo,
 		disableTemplates,

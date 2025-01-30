@@ -6,13 +6,13 @@
     "cypress:install": "cypress install",
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
-    "test:e2e:dev:v2": "scripts/run-e2e.js dev:v2",
+    "test:e2e:dev:v1": "scripts/run-e2e.js dev:v1",
     "test:e2e:all": "scripts/run-e2e.js all",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
-    "develop": "cd ..; pnpm dev",
+    "develop": "cd ..; pnpm dev:e2e:server",
     "start": "cd ..; pnpm start"
   },
   "devDependencies": {

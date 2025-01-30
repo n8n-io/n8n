@@ -4,7 +4,11 @@
 			"runner-type": "javascript",
 			"workdir": "/home/node",
 			"command": "/usr/local/bin/node",
-			"args": ["/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"],
+			"args": [
+				"--disallow-code-generation-from-strings",
+				"--disable-proto=delete",
+				"/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"
+			],
 			"allowed-env": [
 				"PATH",
 				"GENERIC_TIMEZONE",

@@ -89,14 +89,14 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
           "value": "insert",
         },
         {
-          "action": "Retrieve documents for AI processing as Vector Store",
+          "action": "Retrieve documents for Chain/Tool as Vector Store",
           "description": "Retrieve documents from vector store to be used as vector store with AI nodes",
-          "name": "Retrieve Documents (As Vector Store for AI Agent)",
+          "name": "Retrieve Documents (As Vector Store for Chain/Tool)",
           "outputConnectionType": "ai_vectorStore",
           "value": "retrieve",
         },
         {
-          "action": "Retrieve documents for AI processing as Tool",
+          "action": "Retrieve documents for AI Agent as Tool",
           "description": "Retrieve documents from vector store to be used as tool with AI nodes",
           "name": "Retrieve Documents (As Tool for AI Agent)",
           "outputConnectionType": "ai_tool",

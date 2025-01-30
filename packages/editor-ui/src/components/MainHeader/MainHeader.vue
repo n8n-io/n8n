@@ -43,6 +43,25 @@ const executionToReturnTo = ref('');
 const dirtyState = ref(false);
 const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
+// Track the routes that are used for the tabs
+// This is used to determine which tab to show when the route changes
+// TODO: It might be easier to manage this in the router config, by passing meta information to the routes
+// This would allow us to specify it just once on the root route, and then have the tabs be determined for children
+const testDefinitionRoutes: VIEWS[] = [
+	VIEWS.TEST_DEFINITION,
+	VIEWS.TEST_DEFINITION_EDIT,
+	VIEWS.TEST_DEFINITION_RUNS,
+	VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+	VIEWS.TEST_DEFINITION_RUNS_COMPARE,
+];
+
+const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+
+const executionRoutes: VIEWS[] = [
+	VIEWS.EXECUTION_HOME,
+	VIEWS.WORKFLOW_EXECUTIONS,
+	VIEWS.EXECUTION_PREVIEW,
+];
 const tabBarItems = computed(() => {
 	const items = [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
@@ -92,24 +111,30 @@ onMounted(async () => {
 	syncTabsWithRoute(route);
 });
 
+function isViewRoute(name: unknown): name is VIEWS {
+	return (
+		typeof name === 'string' &&
+		[testDefinitionRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+	);
+}
+
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-	}
-	if (
-		to.name === VIEWS.EXECUTION_HOME ||
-		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
-		to.name === VIEWS.EXECUTION_PREVIEW
-	) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
-	} else if (
-		to.name === VIEWS.WORKFLOW ||
-		to.name === VIEWS.NEW_WORKFLOW ||
-		to.name === VIEWS.EXECUTION_DEBUG
-	) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+	// Map route types to their corresponding tab in the header
+	const routeTabMapping = [
+		{ routes: testDefinitionRoutes, tab: MAIN_HEADER_TABS.TEST_DEFINITION },
+		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
+	];
+
+	// Update the active tab based on the current route
+	if (to.name && isViewRoute(to.name)) {
+		const matchingTab = routeTabMapping.find(({ routes }) => routes.includes(to.name as VIEWS));
+		if (matchingTab) {
+			activeHeaderTab.value = matchingTab.tab;
+		}
 	}
 
+	// Store the current workflow ID, but only if it's not a new workflow
 	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
 		workflowToReturnTo.value = to.params.name;
 	}
@@ -220,7 +245,7 @@ function hideGithubButton() {
 				@update:model-value="onTabSelected"
 			/>
 		</div>
-		<div v-if="showGitHubButton" class="github-button">
+		<div v-if="showGitHubButton" class="github-button hidden-sm-and-down">
 			<div class="github-button-container">
 				<GithubButton
 					href="https://github.com/n8n-io/n8n"
@@ -251,6 +276,7 @@ function hideGithubButton() {
 }
 
 .main-header {
+	min-height: var(--navbar--height);
 	background-color: var(--color-background-xlight);
 	width: 100%;
 	box-sizing: border-box;
@@ -264,6 +290,7 @@ function hideGithubButton() {
 	font-size: 0.9em;
 	font-weight: 400;
 	padding: var(--spacing-xs) var(--spacing-m);
+	overflow: auto;
 }
 
 .github-button {

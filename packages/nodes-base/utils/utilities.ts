@@ -427,3 +427,37 @@ export function escapeHtml(text: string): string {
 		}
 	});
 }
+
+/**
+ * Sorts each item json's keys by a priority list
+ *
+ * @param {INodeExecutionData[]} data The array of items which keys will be sorted
+ * @param {string[]} priorityList The priority list, keys of item.json will be sorted in this order first then alphabetically
+ */
+export function sortItemKeysByPriorityList(data: INodeExecutionData[], priorityList: string[]) {
+	return data.map((item) => {
+		const itemKeys = Object.keys(item.json);
+
+		const updatedKeysOrder = itemKeys.sort((a, b) => {
+			const indexA = priorityList.indexOf(a);
+			const indexB = priorityList.indexOf(b);
+
+			if (indexA !== -1 && indexB !== -1) {
+				return indexA - indexB;
+			} else if (indexA !== -1) {
+				return -1;
+			} else if (indexB !== -1) {
+				return 1;
+			}
+			return a.localeCompare(b);
+		});
+
+		const updatedItem: IDataObject = {};
+		for (const key of updatedKeysOrder) {
+			updatedItem[key] = item.json[key];
+		}
+
+		item.json = updatedItem;
+		return item;
+	});
+}

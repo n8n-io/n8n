@@ -33,11 +33,11 @@ describe('TaskRunnerAuthService', () => {
 
 	describe('isValidAuthToken', () => {
 		it('should be valid for the configured token', () => {
-			expect(authService.isValidAuthToken('random-secret'));
+			expect(authService.isValidAuthToken('random-secret')).toBe(true);
 		});
 
 		it('should be invalid for anything else', () => {
-			expect(authService.isValidAuthToken('!random-secret'));
+			expect(authService.isValidAuthToken('!random-secret')).toBe(false);
 		});
 	});
 

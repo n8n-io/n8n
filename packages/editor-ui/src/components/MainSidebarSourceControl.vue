@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -8,8 +8,8 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -69,45 +69,10 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		const status: SourceControlAggregatedFile[] =
-			((await sourceControlStore.pullWorkfolder(
-				false,
-			)) as unknown as SourceControlAggregatedFile[]) || [];
+		const status = await sourceControlStore.pullWorkfolder(false);
 
-		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
-			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
-		});
+		await notifyUserAboutPullWorkFolderOutcome(status, toast);
 
-		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
-			toast.showMessage({
-				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
-				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
-				type: 'success',
-			});
-		} else {
-			toast.showMessage({
-				title: i18n.baseText('settings.sourceControl.pull.success.title'),
-				type: 'success',
-			});
-
-			const incompleteFileTypes = ['variables', 'credential'];
-			const hasVariablesOrCredentials = (status || []).some((file) => {
-				return incompleteFileTypes.includes(file.type);
-			});
-
-			if (hasVariablesOrCredentials) {
-				void nextTick(() => {
-					toast.showMessage({
-						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-						type: 'info',
-						duration: 0,
-						showClose: true,
-						offset: 0,
-					});
-				});
-			}
-		}
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		const errorResponse = error.response;

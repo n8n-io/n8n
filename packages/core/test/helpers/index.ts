@@ -85,8 +85,7 @@ const preparePinData = (pinData: IDataObject) => {
 	return returnData;
 };
 
-const readJsonFileSync = <T>(filePath: string) =>
-	JSON.parse(readFileSync(path.join(BASE_DIR, filePath), 'utf-8')) as T;
+const readJsonFileSync = <T>(filePath: string) => JSON.parse(readFileSync(filePath, 'utf-8')) as T;
 
 export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
@@ -100,7 +99,7 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	const nodeNames = nodes.map((n) => n.type);
 
 	const knownNodes = readJsonFileSync<Record<string, NodeLoadingDetails>>(
-		'nodes-base/dist/known/nodes.json',
+		path.join(BASE_DIR, 'nodes-base/dist/known/nodes.json'),
 	);
 
 	for (const nodeName of nodeNames) {
@@ -120,14 +119,14 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	return nodeTypes;
 }
 
-const getWorkflowFilenames = (dirname: string, testFolder = 'workflows') => {
+const getWorkflowFilepaths = (dirname: string, testFolder = 'workflows') => {
 	const workflows: string[] = [];
 
 	const filenames: string[] = readdirSync(`${dirname}${path.sep}${testFolder}`);
 
 	filenames.forEach((file) => {
 		if (file.endsWith('.json')) {
-			workflows.push(path.join('core', 'test', testFolder, file));
+			workflows.push(path.join(dirname, testFolder, file));
 		}
 	});
 
@@ -135,11 +134,11 @@ const getWorkflowFilenames = (dirname: string, testFolder = 'workflows') => {
 };
 
 export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
-	const workflowFiles: string[] = getWorkflowFilenames(dirname, testFolder);
+	const workflowFilepaths: string[] = getWorkflowFilepaths(dirname, testFolder);
 
 	const testCases: WorkflowTestData[] = [];
 
-	for (const filePath of workflowFiles) {
+	for (const filePath of workflowFilepaths) {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
