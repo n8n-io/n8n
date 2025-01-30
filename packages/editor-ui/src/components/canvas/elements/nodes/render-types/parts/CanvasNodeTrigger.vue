@@ -26,7 +26,7 @@ const {
 const variant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
 
 const style = useCssModule();
-const buttonContainerClass = computed(() => ({
+const containerClass = computed(() => ({
 	[cls ?? '']: true,
 	[style.container]: true,
 	[style.interactive]: !disabled,
@@ -48,7 +48,7 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 
 <template>
 	<!-- click and mousedown event are suppressed to avoid unwanted selection or dragging of the node -->
-	<div :class="buttonContainerClass" @click.stop.prevent @mousedown.stop.prevent>
+	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div v-if="variant === 2" :class="$style.bolt">
 				<FontAwesomeIcon icon="bolt" size="lg" />
@@ -96,15 +96,19 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 	position: absolute;
 	display: flex;
 	align-items: center;
-	height: 300%;
-	right: -100%;
-	top: -100%;
-	padding-right: 200%;
+	height: 100%;
+	right: 100%;
+	top: 0;
+	pointer-events: none;
 
 	& > div {
 		position: relative;
 		display: flex;
 		align-items: center;
+	}
+
+	&.hovered button {
+		pointer-events: all;
 	}
 }
 
@@ -122,13 +126,16 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 .variant2 {
 	& button {
 		margin-right: var(--spacing-s);
-		animation: slide-out 0.1s ease-in 0.2s forwards;
+		opacity: 0;
+		translate: -12px 0;
+		transition:
+			translate 0.1s ease-in,
+			opacity 0.1s ease-in;
 	}
 
 	&.interactive.hovered button {
-		translate: -12px 0;
-		opacity: 0;
-		animation: slide-in 0.1s ease-in 0.2s forwards;
+		opacity: 1;
+		translate: 0 0;
 	}
 }
 
@@ -137,36 +144,14 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 	right: 0;
 	color: var(--color-primary);
 	padding: var(--spacing-s);
-	animation: slide-in 0.1s ease-in 0.2s forwards;
-	translate: -12px 0;
-	opacity: 0;
+	animation: slide-in 0.1s ease-in forwards;
+	opacity: 1;
+	translate: 0 0;
+	transition:
+		translate 0.1s ease-in,
+		opacity 0.1s ease-in;
 
 	.container.interactive.hovered & {
-		opacity: 1;
-		translate: 0 0;
-		animation: slide-out 0.1s ease-in 0.2s forwards;
-	}
-}
-
-@keyframes slide-in {
-	from {
-		translate: -12px 0;
-		opacity: 0;
-	}
-
-	to {
-		translate: 0 0;
-		opacity: 1;
-	}
-}
-
-@keyframes slide-out {
-	from {
-		translate: 0 0;
-		opacity: 1;
-	}
-
-	to {
 		translate: -12px 0;
 		opacity: 0;
 	}

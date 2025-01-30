@@ -41,6 +41,7 @@ type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
+	nearbyHovered?: boolean;
 };
 
 const slots = defineSlots<{
@@ -414,7 +415,7 @@ onBeforeUnmount(() => {
 			"
 			:name="data.name"
 			:type="data.type"
-			:hovered="hovered"
+			:hovered="nearbyHovered"
 			:disabled="isDisabled"
 			:class="$style.trigger"
 		/>
@@ -423,8 +424,8 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .canvasNode {
-	&:has(> :hover:not(.trigger)), // exclude .trigger which has extended hit zone
-	&:focus-within:not(:has(.trigger:focus-within)), // similarly, ignore focus on elements within .trigger
+	&:hover:not(:has(> .trigger:hover)), // exclude .trigger which has extended hit zone
+	&:focus-within,
 	&.showToolbar {
 		.canvasNodeToolbar {
 			opacity: 1;
