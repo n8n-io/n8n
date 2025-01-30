@@ -287,7 +287,7 @@ export async function setupChannelGetter(this: IExecuteFunctions, userGuilds: ID
 	};
 }
 
-export async function sensDiscordMessage(
+export async function sendDiscordMessage(
 	this: IExecuteFunctions,
 	{
 		guildId,
