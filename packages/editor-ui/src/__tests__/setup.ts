@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/vue';
+import 'core-js/proposals/set-methods-v2';
 
 configure({ testIdAttribute: 'data-test-id' });
 

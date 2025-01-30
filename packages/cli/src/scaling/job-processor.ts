@@ -1,6 +1,12 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
+import {
+	WorkflowHasIssuesError,
+	InstanceSettings,
+	WorkflowExecute,
+	ErrorReporter,
+	Logger,
+} from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -178,13 +184,33 @@ export class JobProcessor {
 				userId: manualData?.userId,
 			};
 
-			workflowRun = this.manualExecutionService.runManually(
-				data,
-				workflow,
-				additionalData,
-				executionId,
-				resultData.pinData,
-			);
+			try {
+				workflowRun = this.manualExecutionService.runManually(
+					data,
+					workflow,
+					additionalData,
+					executionId,
+					resultData.pinData,
+				);
+			} catch (error) {
+				if (error instanceof WorkflowHasIssuesError) {
+					// execution did not even start, but we call `workflowExecuteAfter` to notify main
+
+					const now = new Date();
+					const runData: IRun = {
+						mode: 'manual',
+						status: 'error',
+						finished: false,
+						startedAt: now,
+						stoppedAt: now,
+						data: { resultData: { error, runData: {} } },
+					};
+
+					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+					return { success: false };
+				}
+				throw error;
+			}
 		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);

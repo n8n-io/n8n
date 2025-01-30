@@ -435,10 +435,10 @@ export class GoogleCalendar implements INodeType {
 							const timeMin = dateObjectToISO(this.getNodeParameter('timeMin', i));
 							const timeMax = dateObjectToISO(this.getNodeParameter('timeMax', i));
 							if (timeMin) {
-								qs.timeMin = addTimezoneToDate(timeMin as string, tz || timezone);
+								qs.timeMin = addTimezoneToDate(timeMin, tz || timezone);
 							}
 							if (timeMax) {
-								qs.timeMax = addTimezoneToDate(timeMax as string, tz || timezone);
+								qs.timeMax = addTimezoneToDate(timeMax, tz || timezone);
 							}
 
 							if (!options.recurringEventHandling || options.recurringEventHandling === 'expand') {
