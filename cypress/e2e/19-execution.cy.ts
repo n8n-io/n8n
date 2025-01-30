@@ -214,6 +214,33 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
+	it('should test workflow with specific trigger node', () => {
+		cy.createFixtureWorkflow('Manual_webhook_wait.json');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton('Manual').should('not.be.visible');
+
+		// Hover the manual trigger node
+		workflowPage.getters.canvasNodeByName('Manual').realHover();
+		workflowPage.getters.executeWorkflowButton('Manual').should('be.visible');
+
+		// Execute the workflow
+		workflowPage.getters.executeWorkflowButton('Manual').click();
+
+		// Check workflow buttons
+		workflowPage.getters.executeWorkflowButton().get('.n8n-spinner').should('be.visible');
+		workflowPage.getters.executeWorkflowButton('Manual').should('be.disabled');
+
+		successToast().contains('Workflow executed successfully');
+
+		cy.wait('@workflowRun').then((interception) => {
+			expect(interception.request.body)
+				.to.have.property('triggerToStartFrom')
+				.that.deep.equals({ name: 'Manual' });
+		});
+	});
+
 	describe('execution preview', () => {
 		it('when deleting the last execution, it should show empty state', () => {
 			workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');

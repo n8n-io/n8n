@@ -1,0 +1,63 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"amount": 2
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [200, -80],
+			"id": "2bd4e415-5339-41c8-919f-eb61a9cc6fe5",
+			"name": "Wait",
+			"webhookId": "49eadcef-55da-449e-af7d-8432fd80c22b"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-20, -80],
+			"id": "8fa610ad-e94a-473c-bf94-32b620da38ad",
+			"name": "Manual"
+		},
+		{
+			"parameters": {
+				"path": "82e0a59f-2646-47b4-9715-e2230c0f4598",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-20, 100],
+			"id": "c5ea2dc1-14a1-409c-882b-b45dba715179",
+			"name": "Webhook",
+			"webhookId": "82e0a59f-2646-47b4-9715-e2230c0f4598"
+		}
+	],
+	"connections": {
+		"Manual": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "cdc3bfdf3e6244f221ab6e71b2115a631406ae45a034bfca5e9731cf64f4eb64"
+	}
+}

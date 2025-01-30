@@ -44,6 +44,7 @@ const { toggleChatOpen } = useCanvasOperations({ router });
 
 const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
 const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
+const testId = computed(() => `execute-workflow-button-${name}`);
 </script>
 
 <template>
@@ -59,6 +60,7 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 				type="secondary"
 				size="large"
 				:disabled="isExecuting"
+				:data-test-id="testId"
 				@click.capture="toggleChatOpen('node')"
 				>{{ isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open') }}</N8nButton
 			>
@@ -67,6 +69,7 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 				type="secondary"
 				size="large"
 				:disabled="isExecuting"
+				:data-test-id="testId"
 				@click.capture="runEntireWorkflow('node', name)"
 				>{{ i18n.baseText('nodeView.runButtonText.executeWorkflow') }}</N8nButton
 			>
@@ -75,6 +78,7 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 				:type="isChatOpen ? 'secondary' : 'primary'"
 				size="large"
 				:disabled="isExecuting"
+				:data-test-id="testId"
 				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
 				@click.capture="toggleChatOpen('node')"
 			/>
@@ -83,6 +87,7 @@ const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 				type="primary"
 				size="large"
 				:disabled="isExecuting"
+				:data-test-id="testId"
 				:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 				@click.capture="runEntireWorkflow('node', name)"
 			/>
