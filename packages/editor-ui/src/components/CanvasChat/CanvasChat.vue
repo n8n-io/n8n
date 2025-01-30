@@ -182,10 +182,10 @@ async function createExecutionPromise() {
 
 	// Watch for changes in the workflow execution status
 	const stopWatch = watch(
-		() => workflowsStore.getWorkflowExecution?.status,
-		(newStatus) => {
+		() => workflowsStore.isWorkflowRunning,
+		(isRunning) => {
 			// If the status is no longer 'running', resolve the promise
-			if (newStatus && newStatus !== 'running') {
+			if (!isRunning) {
 				resolvePromise();
 				// Stop the watcher when the promise is resolved
 				stopWatch();
