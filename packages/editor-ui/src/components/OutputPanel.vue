@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import {
-	INodeParameterResourceLocator,
+	type INodeParameterResourceLocator,
 	NodeConnectionType,
 	type IRunData,
 	type IRunExecutionData,
