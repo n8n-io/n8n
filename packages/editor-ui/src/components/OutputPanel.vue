@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import {
+	INodeParameterResourceLocator,
 	NodeConnectionType,
 	type IRunData,
 	type IRunExecutionData,
@@ -21,6 +22,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from 'n8n-design-system';
+import { EXECUTE_WORKFLOW_NODE_TYPE } from '@/constants';
+import { isExpression } from '@/utils/expressions';
 
 // Types
 
@@ -217,7 +220,22 @@ const canPinData = computed(() => {
 	return pinnedData.isValidNodeType.value && !props.isReadOnly;
 });
 
-const allToolsWereUnusedNotice = computed(() => {
+const outputPanelNotice = computed(() => {
+	return noToolsUsedNotice.value ?? workflowIdExpressionNotice.value;
+});
+
+const workflowIdExpressionNotice = computed(() => {
+	if (!node.value || node.value.type !== EXECUTE_WORKFLOW_NODE_TYPE) {
+		return undefined;
+	}
+	const workflowId = node.value.parameters?.workflowId as INodeParameterResourceLocator;
+	if (workflowId && isExpression(workflowId.value)) {
+		return i18n.baseText('ndv.output.workflowIdExpressionNotice');
+	}
+	return undefined;
+});
+
+const noToolsUsedNotice = computed(() => {
 	if (!node.value || runsCount.value === 0 || hasError.value) return undefined;
 
 	// With pinned data there's no clear correct answer for whether
@@ -329,7 +347,7 @@ const activatePane = () => {
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
-		:callout-message="allToolsWereUnusedNotice"
+		:callout-message="outputPanelNotice"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
