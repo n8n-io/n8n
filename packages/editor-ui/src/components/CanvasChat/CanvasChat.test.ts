@@ -215,11 +215,14 @@ describe('CanvasChat', () => {
 			// Send message
 			const input = await findByTestId('chat-input');
 			await userEvent.type(input, 'Hello AI!');
+
+			workflowsStore.isWorkflowRunning = true;
 			await userEvent.keyboard('{Enter}');
 
 			// Verify message and response
 			expect(await findByText('Hello AI!')).toBeInTheDocument();
 			await waitFor(async () => {
+				workflowsStore.isWorkflowRunning = false;
 				workflowsStore.getWorkflowExecution = {
 					...(mockWorkflowExecution as unknown as IExecutionResponse),
 					status: 'success',
@@ -263,14 +266,18 @@ describe('CanvasChat', () => {
 			// Send message
 			const input = await findByTestId('chat-input');
 			await userEvent.type(input, 'Test message');
+
+			workflowsStore.isWorkflowRunning = true;
 			await userEvent.keyboard('{Enter}');
 
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
 
+			workflowsStore.isWorkflowRunning = false;
 			workflowsStore.getWorkflowExecution = {
 				...(mockWorkflowExecution as unknown as IExecutionResponse),
 				status: 'success',
 			};
+
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());
 		});
 

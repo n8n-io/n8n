@@ -175,28 +175,18 @@ const closePanel = () => {
 // This function creates a promise that resolves when the workflow execution completes
 // It's used to handle the loading state while waiting for the workflow to finish
 async function createExecutionPromise() {
-	let resolvePromise: () => void;
-	const promise = new Promise<void>((resolve) => {
-		resolvePromise = resolve;
-	});
-
-	// Watch for changes in the workflow execution status
-	const stopWatch = watch(
-		() => workflowsStore.isWorkflowRunning,
-		(isRunning) => {
-			// If the status is no longer 'running', resolve the promise
+	return await new Promise<void>((resolve) => {
+		const resolveIfFinished = (isRunning: boolean) => {
 			if (!isRunning) {
-				resolvePromise();
-				// Stop the watcher when the promise is resolved
-				stopWatch();
+				unwatch();
+				resolve();
 			}
-		},
-		{ immediate: true }, // Check the status immediately when the watcher is set up
-	);
+		};
 
-	// Return the promise, which will resolve when the workflow execution is complete
-	// This allows the caller to await the execution and handle the loading state appropriately
-	return await promise;
+		// Watch for changes in the workflow execution status
+		const unwatch = watch(() => workflowsStore.isWorkflowRunning, resolveIfFinished);
+		resolveIfFinished(workflowsStore.isWorkflowRunning);
+	});
 }
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
