@@ -211,4 +211,44 @@ describe('LoadNodesAndCredentials', () => {
 			expect(result.description.displayName).toBe('Special @#$% Node Tool');
 		});
 	});
+
+	describe('resolveSchema', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
+			};
+		});
+
+		it('should return undefined if the node is not known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.doesNotExist',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toBeUndefined();
+		});
+
+		it('should return the correct path if the node is known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0/account/get.json');
+		});
+
+		it('should return the correct path if there is no resource or operation', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
+		});
+	});
 });

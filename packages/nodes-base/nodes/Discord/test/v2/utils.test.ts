@@ -125,10 +125,6 @@ describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
 		}
 	});
 
-	afterAll(() => {
-		jest.restoreAllMocks();
-	});
-
 	it('should setup channel getter and get channel id', async () => {
 		const fakeExecuteFunction = (auth: string) => {
 			return {

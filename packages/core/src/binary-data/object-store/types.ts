@@ -24,8 +24,6 @@ type Item = {
 
 export type ListPage = Omit<RawListPage['listBucketResult'], 'contents'> & { contents: Item[] };
 
-export type Bucket = { region: string; name: string };
-
 export type RequestOptions = {
 	qs?: Record<string, string | number>;
 	headers?: Record<string, string | number>;
@@ -38,5 +36,3 @@ export type MetadataResponseHeaders = AxiosResponseHeaders & {
 	'content-type'?: string;
 	'x-amz-meta-filename'?: string;
 } & BinaryData.PreWriteMetadata;
-
-export type ConfigSchemaCredentials = { accessKey: string; accessSecret: string };

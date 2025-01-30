@@ -1431,7 +1431,7 @@ defineExpose({ enterEditMode });
 					</template>
 					<N8nIconButton
 						:icon="linkedRuns ? 'unlink' : 'link'"
-						class="linkRun"
+						:class="['linkRun', linkedRuns ? 'linked' : '']"
 						text
 						type="tertiary"
 						size="small"

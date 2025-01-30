@@ -129,7 +129,7 @@ describe('Inline expression editor', () => {
 
 			// Run workflow
 			ndv.actions.close();
-			WorkflowPage.actions.executeNode('No Operation', { anchor: 'topLeft' });
+			WorkflowPage.actions.executeNode('No Operation, do nothing', { anchor: 'topLeft' });
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 

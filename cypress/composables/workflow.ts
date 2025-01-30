@@ -67,6 +67,13 @@ export function getInputPlusHandleByType(nodeName: string, endpointType: Endpoin
 	);
 }
 
+export function getOutputHandle(nodeName: string) {
+	return cy.ifCanvasVersion(
+		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
+		() => cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"]`),
+	);
+}
+
 export function getOutputPlusHandle(nodeName: string) {
 	return cy.ifCanvasVersion(
 		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),

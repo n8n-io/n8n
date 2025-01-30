@@ -21,7 +21,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { EventService } from '@/events/event.service';
 import {
 	getWorkflowHooksMain,
 	getWorkflowHooksWorkerExecuter,
@@ -36,6 +35,8 @@ import { PermissionChecker } from '@/user-management/permission-checker';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { MaxStalledCountError } from './errors/max-stalled-count.error';
 
 @Service()
 export class WorkflowRunner {
@@ -52,7 +53,6 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 	) {}
@@ -167,7 +167,6 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -180,24 +179,13 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
-					this.eventService.emit('workflow-post-execute', {
-						workflow: data.workflowData,
-						executionId,
-						userId: data.userId,
-						runData: executionData,
-					});
-					if (this.externalHooks.exists('workflow.postExecute')) {
-						try {
-							await this.externalHooks.run('workflow.postExecute', [
-								executionData,
-								data.workflowData,
-								executionId,
-							]);
-						} catch (error) {
-							this.errorReporter.error(error);
-							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
-						}
-					}
+					try {
+						await this.externalHooks.run('workflow.postExecute', [
+							executionData,
+							data.workflowData,
+							executionId,
+						]);
+					} catch {}
 				})
 				.catch((error) => {
 					if (error instanceof ExecutionCancelledError) return;
@@ -416,6 +404,13 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
+					if (
+						error instanceof Error &&
+						error.message.includes('job stalled more than maxStalledCount')
+					) {
+						error = new MaxStalledCountError(error);
+					}
+
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = getWorkflowHooksWorkerExecuter(
@@ -424,6 +419,7 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
+
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);

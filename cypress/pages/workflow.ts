@@ -96,7 +96,7 @@ export class WorkflowPage extends BasePage {
 		nodeConnections: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.jtk-connector'),
-				() => cy.getByTestId('edge-label'),
+				() => cy.getByTestId('edge'),
 			),
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
@@ -182,7 +182,7 @@ export class WorkflowPage extends BasePage {
 					),
 				() =>
 					cy.get(
-						`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
+						`[data-test-id="edge"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
 					),
 			),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
@@ -430,7 +430,7 @@ export class WorkflowPage extends BasePage {
 		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
 			cy.window().then((win) => {
 				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
-				this.getters.canvasViewport().trigger('wheel', {
+				getCanvasPane().trigger('wheel', {
 					force: true,
 					bubbles: true,
 					ctrlKey: true,
