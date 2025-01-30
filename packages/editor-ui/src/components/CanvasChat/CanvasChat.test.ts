@@ -216,13 +216,11 @@ describe('CanvasChat', () => {
 			const input = await findByTestId('chat-input');
 			await userEvent.type(input, 'Hello AI!');
 
-			workflowsStore.isWorkflowRunning = true;
 			await userEvent.keyboard('{Enter}');
 
 			// Verify message and response
 			expect(await findByText('Hello AI!')).toBeInTheDocument();
 			await waitFor(async () => {
-				workflowsStore.isWorkflowRunning = false;
 				workflowsStore.getWorkflowExecution = {
 					...(mockWorkflowExecution as unknown as IExecutionResponse),
 					status: 'success',
