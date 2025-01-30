@@ -908,11 +908,17 @@ async function optionSelected(command: string) {
 		if (isResourceLocatorParameter.value && isResourceLocatorValue(props.modelValue)) {
 			valueChanged({ __rl: true, value, mode: props.modelValue.mode });
 		} else {
-			let newValue = typeof value !== 'undefined' ? value : null;
+			let newValue: NodeParameterValueType =
+				typeof value !== 'undefined' ? (value as NodeParameterValueType) : null;
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
 				newValue = modelValueString.value ? modelValueString.value.toString().substring(1) : null;
+			} else if (newValue === null) {
+				// Invalid expressions land here
+				if (['number', 'boolean'].includes(props.parameter.type)) {
+					newValue = props.parameter.default;
+				}
 			}
 			valueChanged(newValue);
 		}
