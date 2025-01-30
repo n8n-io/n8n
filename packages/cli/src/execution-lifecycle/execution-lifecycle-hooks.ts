@@ -212,7 +212,7 @@ function hookFunctionsExternalHooks(): IWorkflowExecuteHooks {
 	};
 }
 
-function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
+function hookFunctionsSaveProgress(): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteAfter: [
 			async function (
@@ -477,7 +477,7 @@ export function getWorkflowHooksIntegrated(
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave(),
-		hookFunctionsPreExecute(),
+		hookFunctionsSaveProgress(),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
@@ -496,7 +496,7 @@ export function getWorkflowHooksWorkerExecuter(
 		hookFunctionsNodeEvents(),
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSaveWorker(),
-		hookFunctionsPreExecute(),
+		hookFunctionsSaveProgress(),
 		hookFunctionsExternalHooks(),
 	];
 
@@ -520,7 +520,7 @@ export function getWorkflowHooksWorkerMain(
 	const executionRepository = Container.get(ExecutionRepository);
 	const hookFunctions = mergeHookFunctions(
 		hookFunctionsWorkflowEvents(),
-		hookFunctionsPreExecute(),
+		hookFunctionsSaveProgress(),
 		hookFunctionsExternalHooks(),
 		hookFunctionsFinalizeExecutionStatus(),
 		{
@@ -585,7 +585,7 @@ export function getWorkflowHooksMain(
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave(),
 		hookFunctionsPush(),
-		hookFunctionsPreExecute(),
+		hookFunctionsSaveProgress(),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
