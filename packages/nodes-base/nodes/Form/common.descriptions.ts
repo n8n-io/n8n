@@ -64,6 +64,11 @@ export const formFields: INodeProperties = {
 					placeholder: 'e.g. What is your name?',
 					description: 'Label that appears above the input field',
 					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField'],
+						},
+					},
 				},
 				{
 					displayName: 'Element Type',
@@ -93,6 +98,10 @@ export const formFields: INodeProperties = {
 							value: 'file',
 						},
 						{
+							name: 'Hidden Field',
+							value: 'hiddenField',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},
@@ -119,7 +128,33 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html'],
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Value',
+					name: 'fieldValue',
+					description:
+						'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
 						},
 					},
 				},
@@ -242,7 +277,7 @@ export const formFields: INodeProperties = {
 						'Whether to require the user to enter a value for this field before submitting the form',
 					displayOptions: {
 						hide: {
-							fieldType: ['html'],
+							fieldType: ['html', 'hiddenField'],
 						},
 					},
 				},

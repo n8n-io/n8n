@@ -78,7 +78,6 @@ function parseDefaultValue(
  * @returns A FromAIArgument object.
  */
 function parseArguments(argsString: string): FromAIArgument {
-	console.log(argsString);
 	// Split arguments by commas not inside quotes
 	const args: string[] = [];
 	let currentArg = '';

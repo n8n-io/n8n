@@ -23,6 +23,7 @@ import { TestMetricRepository } from '@/databases/repositories/test-metric.repos
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -43,6 +44,7 @@ export class TestRunnerService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly telemetry: Telemetry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly executionRepository: ExecutionRepository,
@@ -268,12 +270,22 @@ export class TestRunnerService {
 			const testMetricNames = await this.getTestMetricNames(test.id);
 
 			// 2. Run over all the test cases
+			const pastExecutionIds = pastExecutions.map((e) => e.id);
+
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
+			this.telemetry.track('User runs test', {
+				user_id: user.id,
+				test_id: test.id,
+				run_id: testRun.id,
+				executions_ids: pastExecutionIds,
+				workflow_id: test.workflowId,
+				evaluation_workflow_id: test.evaluationWorkflowId,
+			});
 
 			// Object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics(testMetricNames);
 
-			for (const { id: pastExecutionId } of pastExecutions) {
+			for (const pastExecutionId of pastExecutionIds) {
 				if (abortSignal.aborted) {
 					this.logger.debug('Test run was cancelled', {
 						testId: test.id,

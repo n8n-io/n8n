@@ -54,50 +54,61 @@ const addTargetBlank = (html: string) =>
 					[$style.overflow]: !!$slots.options,
 				}"
 			>
-				<div v-if="label" :class="$style.title">
-					<N8nText
-						:bold="bold"
-						:size="size"
-						:compact="compact"
-						:color="color"
-						:class="{
-							[$style.textEllipses]: showOptions,
-						}"
+				<div :class="$style['main-content']">
+					<div v-if="label" :class="$style.title">
+						<N8nText
+							:bold="bold"
+							:size="size"
+							:compact="compact"
+							:color="color"
+							:class="{
+								[$style.textEllipses]: showOptions,
+							}"
+						>
+							{{ label }}
+							<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
+						</N8nText>
+					</div>
+					<span
+						v-if="tooltipText && label"
+						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 					>
-						{{ label }}
-						<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
-					</N8nText>
+						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
+							<N8nIcon icon="question-circle" size="small" />
+							<template #content>
+								<div v-n8n-html="addTargetBlank(tooltipText)" />
+							</template>
+						</N8nTooltip>
+					</span>
 				</div>
-				<span
-					v-if="tooltipText && label"
-					:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
-				>
-					<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
-						<N8nIcon icon="question-circle" size="small" />
-						<template #content>
-							<div v-n8n-html="addTargetBlank(tooltipText)" />
-						</template>
-					</N8nTooltip>
-				</span>
-				<div
-					v-if="$slots.options && label"
-					:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
-				/>
-				<div
-					v-if="$slots.options"
-					:class="{ [$style.options]: true, [$style.visible]: showOptions }"
-					:data-test-id="`${inputName}-parameter-input-options-container`"
-				>
-					<slot name="options" />
+				<div :class="$style['trailing-content']">
+					<div
+						v-if="$slots.options && label"
+						:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
+					/>
+					<div
+						v-if="$slots.options"
+						:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+						:data-test-id="`${inputName}-parameter-input-options-container`"
+					>
+						<slot name="options" />
+					</div>
+					<div
+						v-if="$slots.issues"
+						:class="$style.issues"
+						:data-test-id="`${inputName}-parameter-input-issues-container`"
+					>
+						<slot name="issues" />
+					</div>
+					<div
+						v-if="$slots.persistentOptions"
+						class="pl-4xs"
+						:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
+					>
+						<slot name="persistentOptions" />
+					</div>
 				</div>
 			</label>
-			<div
-				v-if="$slots.persistentOptions"
-				class="pl-4xs"
-				:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
-			>
-				<slot name="persistentOptions" />
-			</div>
 		</div>
 		<slot />
 	</div>
@@ -112,7 +123,35 @@ const addTargetBlank = (html: string) =>
 .container {
 	display: flex;
 	flex-direction: column;
+
+	label {
+		display: flex;
+		justify-content: space-between;
+	}
 }
+
+.main-content {
+	display: flex;
+	&:hover {
+		.infoIcon {
+			opacity: 1;
+
+			&:hover {
+				color: var(--color-text-base);
+			}
+		}
+	}
+}
+
+.trailing-content {
+	display: flex;
+	gap: var(--spacing-3xs);
+
+	* {
+		align-self: center;
+	}
+}
+
 .inputLabel {
 	display: block;
 	align-items: center;
@@ -120,14 +159,6 @@ const addTargetBlank = (html: string) =>
 }
 .container:hover,
 .inputLabel:hover {
-	.infoIcon {
-		opacity: 1;
-
-		&:hover {
-			color: var(--color-text-base);
-		}
-	}
-
 	.options {
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
@@ -166,10 +197,13 @@ const addTargetBlank = (html: string) =>
 .options {
 	opacity: 0;
 	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
+	display: flex;
+	align-self: center;
+}
 
-	> * {
-		float: right;
-	}
+.issues {
+	display: flex;
+	align-self: center;
 }
 
 .overlay {
