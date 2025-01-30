@@ -1,3 +1,4 @@
+import type { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { OpenAPIV3 } from 'openapi-types';
 
@@ -28,8 +29,11 @@ export class PublicApiKeyService {
 	 * Creates a new public API key for the specified user.
 	 * @param user - The user for whom the API key is being created.
 	 */
-	async createPublicApiKeyForUser(user: User, { label }: { label: string }) {
-		const apiKey = this.generateApiKey(user);
+	async createPublicApiKeyForUser(
+		user: User,
+		{ label, expirationUnixTimestamp }: CreateOrUpdateApiKeyRequestDto,
+	) {
+		const apiKey = this.generateApiKey(user, expirationUnixTimestamp);
 		await this.apiKeyRepository.upsert(
 			this.apiKeyRepository.create({
 				userId: user.id,
@@ -45,13 +49,13 @@ export class PublicApiKeyService {
 	/**
 	 * Retrieves and redacts API keys for a given user.
 	 * @param user - The user for whom to retrieve and redact API keys.
-	 * @returns A promise that resolves to an array of objects containing redacted API keys.
 	 */
 	async getRedactedApiKeysForUser(user: User) {
 		const apiKeys = await this.apiKeyRepository.findBy({ userId: user.id });
 		return apiKeys.map((apiKeyRecord) => ({
 			...apiKeyRecord,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
+			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
 		}));
 	}
 
@@ -105,6 +109,12 @@ export class PublicApiKeyService {
 
 			if (!user) return false;
 
+			try {
+				this.jwtService.verify(providedApiKey);
+			} catch (e) {
+				return false;
+			}
+
 			this.eventService.emit('public-api-invoked', {
 				userId: user.id,
 				path: req.path,
@@ -118,6 +128,15 @@ export class PublicApiKeyService {
 		};
 	}
 
-	private generateApiKey = (user: User) =>
-		this.jwtService.sign({ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE });
+	private generateApiKey = (user: User, expiration?: number) => {
+		return this.jwtService.sign(
+			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
+			{ ...(expiration && { expiresIn: expiration }) },
+		);
+	};
+
+	private getApiKeyExpiration = (apiKey: string) => {
+		const decoded = this.jwtService.decode(apiKey);
+		return decoded?.exp ?? null;
+	};
 }

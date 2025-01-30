@@ -34,7 +34,7 @@ export class ApiKeysController {
 	async createAPIKey(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: CreateOrUpdateApiKeyRequestDto,
+		@Body { label, expirationUnixTimestamp }: CreateOrUpdateApiKeyRequestDto,
 	) {
 		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
 
@@ -43,7 +43,8 @@ export class ApiKeysController {
 		}
 
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			label: payload.label,
+			label,
+			expirationUnixTimestamp,
 		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
@@ -52,6 +53,7 @@ export class ApiKeysController {
 			...newApiKey,
 			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
 			rawApiKey: newApiKey.apiKey,
+			expiresAt: expirationUnixTimestamp ?? null,
 		};
 	}
 

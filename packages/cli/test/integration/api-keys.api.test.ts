@@ -79,6 +79,9 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
+
+		expect(newApiKey.expiresAt).toBeNull();
+		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
 	test('POST /api-keys should fail if max number of API keys reached', async () => {
@@ -111,6 +114,7 @@ describe('Owner shell', () => {
 			apiKey: redactedApiKey,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			expiresAt: null,
 		});
 	});
 
@@ -165,6 +169,9 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
+
+		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
+		expect(newApiKeyResponse.body.data.rawApiKey).toBeDefined();
 	});
 
 	test('POST /api-keys should fail if max number of API keys reached', async () => {
@@ -197,6 +204,7 @@ describe('Member', () => {
 			apiKey: redactedApiKey,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			expiresAt: null,
 		});
 
 		expect(newApiKeyResponse.body.data.rawApiKey).not.toEqual(

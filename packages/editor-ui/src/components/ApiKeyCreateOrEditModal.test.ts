@@ -5,6 +5,7 @@ import { cleanupAppModals, createAppModals, mockedStore, retry } from '@/__tests
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import { fireEvent } from '@testing-library/vue';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
+import { DateTime } from 'luxon';
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -38,6 +39,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			createdAt: new Date().toString(),
 			updatedAt: new Date().toString(),
 			rawApiKey: '***456',
+			expiresAt: 0,
 		});
 
 		const { getByText, getByPlaceholderText } = renderComponent({
@@ -79,13 +81,16 @@ describe('ApiKeyCreateOrEditModal', () => {
 	});
 
 	test('should allow editing API key label', async () => {
+		const createdAt = new Date().toString();
+
 		apiKeysStore.apiKeys = [
 			{
 				id: '123',
 				label: 'new api key',
 				apiKey: '123**',
-				createdAt: new Date().toString(),
+				createdAt,
 				updatedAt: new Date().toString(),
+				expiresAt: 0,
 			},
 		];
 
@@ -101,6 +106,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 		await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
 
 		expect(getByText('Label')).toBeInTheDocument();
+
+		const formattedDate = DateTime.fromMillis(Date.parse(createdAt)).toFormat('ccc, MMM d yyyy');
+
+		expect(getByText(`API key was created on ${formattedDate}.`)).toBeInTheDocument();
 
 		const labelInput = getByTestId('api-key-label');
 

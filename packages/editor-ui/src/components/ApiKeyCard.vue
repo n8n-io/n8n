@@ -40,9 +40,19 @@ async function onAction(action: string) {
 	}
 }
 
-const getApiCreationTime = (apiKey: ApiKey): string => {
-	const timeAgo = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toRelative() ?? '';
-	return i18n.baseText('settings.api.creationTime', { interpolate: { time: timeAgo } });
+const isApiKeyExpired = (apiKey: ApiKey) => {
+	if (!apiKey.expiresAt) return false;
+	return apiKey.expiresAt <= Date.now() / 1000;
+};
+
+const getExpirationTime = (apiKey: ApiKey): string => {
+	if (!apiKey.expiresAt) return i18n.baseText('settings.api.neverExpires');
+
+	if (isApiKeyExpired(apiKey)) return i18n.baseText('settings.api.expired');
+
+	const timeAgo = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
+
+	return i18n.baseText('settings.api.expirationTime', { interpolate: { time: timeAgo } });
 };
 </script>
 
@@ -53,9 +63,9 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 				<n8n-heading tag="h2" bold :class="$style.cardHeading">
 					{{ apiKey.label }}
 				</n8n-heading>
-				<div :class="$style.cardDescription">
-					<n8n-text color="text-light" size="small">
-						<span>{{ getApiCreationTime(apiKey) }}</span>
+				<div :class="[$style.cardDescription]">
+					<n8n-text :color="!isApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
+						<span>{{ getExpirationTime(apiKey) }}</span>
 					</n8n-text>
 				</div>
 			</div>
@@ -111,5 +121,9 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 	flex-grow: 1;
 	display: flex;
 	justify-content: center;
+}
+
+.expiredApiKey {
+	color: var(--prim-color-alt-b-alpha-02);
 }
 </style>
