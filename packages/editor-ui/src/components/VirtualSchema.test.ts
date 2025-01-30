@@ -495,22 +495,16 @@ describe('VirtualSchema.vue', () => {
 		vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
 			createResultOk({
 				type: 'object',
-				value: [
-					{
-						key: 'account',
+				properties: {
+					account: {
 						type: 'object',
-						value: [
-							{
-								key: 'id',
+						properties: {
+							id: {
 								type: 'string',
-								value: '',
-								path: '.account.id',
 							},
-						],
-						path: '.account',
+						},
 					},
-				],
-				path: '',
+				},
 			}),
 		);
 
