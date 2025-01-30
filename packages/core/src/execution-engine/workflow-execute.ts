@@ -1221,17 +1221,8 @@ export class WorkflowExecute {
 			});
 		}
 
+		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
-
-		if (!startNode) {
-			throw new ApplicationError('Failed to run workflow due to empty node execution stack', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
