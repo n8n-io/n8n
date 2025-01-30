@@ -24,11 +24,13 @@ const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
 
-const props = defineProps<{
+export type Props = {
 	parameter: INodeProperties;
 	value: string;
 	path: string;
-}>();
+	isReadOnly?: boolean;
+};
+const props = defineProps<Props>();
 
 const { activeNode } = useNDVStore();
 
@@ -48,8 +50,7 @@ const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
 const isSubmitEnabled = computed(() => {
-	if (!hasExecutionData.value) return false;
-	if (!prompt.value) return false;
+	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
 	if (maxlength && prompt.value.length > maxlength) return false;
@@ -240,6 +241,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 						:rows="6"
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
+						:disabled="isReadOnly"
 						@input="onPromptInput"
 						@mousemove="updateCursorPositionOnMouseMove($event, activeDrop)"
 						@mouseleave="cleanTextareaRowsData"
