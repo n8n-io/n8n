@@ -392,7 +392,13 @@ export class TestRunnerService {
 					if (!testCaseExecution) {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
-							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, 'FAILED_TO_EXECUTE_WORKFLOW', undefined, trx);
+							await this.testCaseExecutionRepository.markAsFailed(
+								testRun.id,
+								pastExecutionId,
+								'FAILED_TO_EXECUTE_WORKFLOW',
+								undefined,
+								trx,
+							);
 						});
 						continue;
 					}
@@ -434,29 +440,35 @@ export class TestRunnerService {
 					if (evalExecution.data.resultData.error) {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
-							await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId, 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW', undefined, trx);
+							await this.testCaseExecutionRepository.markAsFailed(
+								testRun.id,
+								pastExecutionId,
+								'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
+								undefined,
+								trx,
+							);
 						});
 					} else {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementPassed(testRun.id, trx);
 
-						// Add warning if the evaluation workflow produced an unknown metric
-						if (unknownMetrics.size > 0) {
-							await this.testCaseExecutionRepository.markAsWarning(
-								testRun.id,
-								pastExecutionId,
-								'UNKNOWN_METRICS',
-								{ unknownMetrics: Array.from(unknownMetrics) },
-							);
-						} else {
-							await this.testCaseExecutionRepository.markAsCompleted(
-								testRun.id,
-								pastExecutionId,
-								addedMetrics,
-							trx,
-							);
+							// Add warning if the evaluation workflow produced an unknown metric
+							if (unknownMetrics.size > 0) {
+								await this.testCaseExecutionRepository.markAsWarning(
+									testRun.id,
+									pastExecutionId,
+									'UNKNOWN_METRICS',
+									{ unknownMetrics: Array.from(unknownMetrics) },
+								);
+							} else {
+								await this.testCaseExecutionRepository.markAsCompleted(
+									testRun.id,
+									pastExecutionId,
+									addedMetrics,
+									trx,
+								);
+							}
 						});
-						}
 					}
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case
@@ -469,7 +481,7 @@ export class TestRunnerService {
 								pastExecutionId,
 								e.code,
 								e.extra,
-								trx
+								trx,
 							);
 						} else {
 							await this.testCaseExecutionRepository.markAsFailed(
@@ -477,7 +489,7 @@ export class TestRunnerService {
 								pastExecutionId,
 								'UNKNOWN_ERROR',
 								undefined,
-								trx
+								trx,
 							);
 
 							// Report unexpected errors
