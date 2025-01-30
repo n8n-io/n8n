@@ -110,6 +110,12 @@ describe('FormTrigger, formWebhook', () => {
 				html: '<div>Test HTML</div>',
 				requiredField: false,
 			},
+			{
+				fieldName: 'Powerpuff Girl',
+				fieldValue: 'Blossom',
+				fieldType: 'hiddenField',
+				fieldLabel: '',
+			},
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
@@ -173,6 +179,17 @@ describe('FormTrigger, formWebhook', () => {
 					placeholder: undefined,
 					html: '<div>Test HTML</div>',
 					isHtml: true,
+				},
+				{
+					id: 'field-5',
+					errorId: 'error-field-5',
+					hiddenName: 'Powerpuff Girl',
+					hiddenValue: 'Blossom',
+					label: 'Powerpuff Girl',
+					isHidden: true,
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
 				},
 			],
 			formSubmittedText: 'Your response has been recorded',
@@ -300,9 +317,21 @@ describe('FormTrigger, prepareFormData', () => {
 				acceptFileTypes: '.jpg,.png',
 				multipleFiles: true,
 			},
+			{
+				fieldLabel: 'username',
+				fieldName: 'username',
+				fieldValue: 'powerpuffgirl125',
+				fieldType: 'hiddenField',
+			},
+			{
+				fieldLabel: 'villain',
+				fieldName: 'villain',
+				fieldValue: 'Mojo Dojo',
+				fieldType: 'hiddenField',
+			},
 		];
 
-		const query = { Name: 'John Doe', Email: 'john@example.com' };
+		const query = { Name: 'John Doe', Email: 'john@example.com', villain: 'princess morbucks' };
 
 		const result = prepareFormData({
 			formTitle: 'Test Form',
@@ -367,6 +396,28 @@ describe('FormTrigger, prepareFormData', () => {
 					isFileInput: true,
 					acceptFileTypes: '.jpg,.png',
 					multipleFiles: 'multiple',
+				},
+				{
+					id: 'field-4',
+					errorId: 'error-field-4',
+					label: 'username',
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+					hiddenName: 'username',
+					hiddenValue: 'powerpuffgirl125',
+					isHidden: true,
+				},
+				{
+					id: 'field-5',
+					errorId: 'error-field-5',
+					label: 'villain',
+					inputRequired: '',
+					defaultValue: 'princess morbucks',
+					placeholder: undefined,
+					hiddenName: 'villain',
+					isHidden: true,
+					hiddenValue: 'princess morbucks',
 				},
 			],
 			useResponseData: true,

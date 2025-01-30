@@ -24,12 +24,12 @@ type Repositories = {
 	Workflow: WorkflowRepository;
 };
 
-type Hooks = {
+type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];
-	'n8n.stop': [];
-	'worker.ready': [];
+	'n8n.stop': never;
+	'worker.ready': never;
 
-	'activeWorkflows.initialized': [];
+	'activeWorkflows.initialized': never;
 
 	'credentials.create': [encryptedData: ICredentialsDb];
 	'credentials.update': [newCredentialData: ICredentialsDb];
@@ -78,7 +78,7 @@ type Hooks = {
 		executionId: string,
 	];
 };
-type HookNames = keyof Hooks;
+type HookNames = keyof ExternalHooksMap;
 
 // TODO: Derive this type from Hooks
 interface IExternalHooksFileData {
@@ -90,7 +90,7 @@ interface IExternalHooksFileData {
 @Service()
 export class ExternalHooks {
 	private readonly registered: {
-		[hookName in HookNames]?: Array<(...args: Hooks[hookName]) => Promise<void>>;
+		[hookName in HookNames]?: Array<(...args: ExternalHooksMap[hookName]) => Promise<void>>;
 	} = {};
 
 	private readonly dbCollections: Repositories;
@@ -146,7 +146,7 @@ export class ExternalHooks {
 
 	async run<HookName extends HookNames>(
 		hookName: HookName,
-		hookParameters?: Hooks[HookName],
+		hookParameters?: ExternalHooksMap[HookName],
 	): Promise<void> {
 		const { registered, dbCollections } = this;
 		const hookFunctions = registered[hookName];
