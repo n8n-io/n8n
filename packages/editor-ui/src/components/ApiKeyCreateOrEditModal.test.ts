@@ -109,7 +109,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		const formattedDate = DateTime.fromMillis(Date.parse(createdAt)).toFormat('ccc, MMM d yyyy');
 
-		expect(getByText(`API key was created on ${formattedDate}.`)).toBeInTheDocument();
+		expect(getByText(`API key was created on ${formattedDate}`)).toBeInTheDocument();
 
 		const labelInput = getByTestId('api-key-label');
 

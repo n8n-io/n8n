@@ -85,17 +85,17 @@ describe('SettingsApiView', () => {
 
 		renderComponent(SettingsApiView);
 
-		expect(screen.getByText('Never expires.')).toBeInTheDocument();
+		expect(screen.getByText('Never expires')).toBeInTheDocument();
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
 		expect(
-			screen.getByText(`Expires on ${dateInTheFuture.toFormat('ccc, MMM d yyyy')}.`),
+			screen.getByText(`Expires on ${dateInTheFuture.toFormat('ccc, MMM d yyyy')}`),
 		).toBeInTheDocument();
 		expect(screen.getByText('****Bdcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-2')).toBeInTheDocument();
 
-		expect(screen.getByText('This API key has expired.')).toBeInTheDocument();
+		expect(screen.getByText('This API key has expired')).toBeInTheDocument();
 		expect(screen.getByText('****Wtcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-3')).toBeInTheDocument();
 	});
@@ -116,7 +116,7 @@ describe('SettingsApiView', () => {
 
 		renderComponent(SettingsApiView);
 
-		expect(screen.getByText('Never expires.')).toBeInTheDocument();
+		expect(screen.getByText('Never expires')).toBeInTheDocument();
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
