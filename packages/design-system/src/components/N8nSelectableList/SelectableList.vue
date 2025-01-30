@@ -59,7 +59,7 @@ function itemComparator(a: Item, b: Item) {
 
 <template>
 	<div>
-		<div :class="$style.selectableContainer">
+		<div v-if="!disabled" :class="$style.selectableContainer">
 			<span
 				v-for="item in visibleSelectables"
 				:key="item.name"

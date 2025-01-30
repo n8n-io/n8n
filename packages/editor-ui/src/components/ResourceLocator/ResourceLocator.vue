@@ -845,6 +845,7 @@ function removeOverride() {
 									v-if="parameterOverrides && isContentOverride"
 									:class="[$style.inputField, $style.fromAiOverrideField]"
 									:text="parameterOverrides?.overridePlaceholder"
+									:is-read-only="isReadOnly"
 									@close="removeOverride"
 								/>
 								<ExpressionParameterInput
@@ -892,7 +893,7 @@ function removeOverride() {
 								</n8n-input>
 								<div :class="$style.overrideButtonInline">
 									<FromAiOverrideButton
-										v-if="canBeContentOverride && !isContentOverride"
+										v-if="canBeContentOverride && !isContentOverride && !isReadOnly"
 										@click="applyOverride"
 									/>
 								</div>
@@ -917,7 +918,7 @@ function removeOverride() {
 			v-model="parameterOverrides"
 			:parameter="parameter"
 			:path="path"
-			:read-only="isReadOnly"
+			:is-read-only="isReadOnly"
 			@update="(x) => onInputChange(x.value?.toString())"
 		/>
 	</div>

@@ -108,7 +108,7 @@ const showExpressionSelector = computed(() =>
 
 const isReadOnlyParameter = computed(
 	() =>
-		props.isReadOnly || props.parameter.disabledOptions !== undefined || !!isContentOverride.value,
+		props.isReadOnly || props.parameter.disabledOptions !== undefined || isContentOverride.value,
 );
 
 const showOptions = computed(() => {
@@ -345,6 +345,7 @@ function removeOverride() {
 				<FromAiOverrideField
 					v-if="parameterOverrides && isContentOverride"
 					:text="parameterOverrides?.overridePlaceholder"
+					:is-read-only="isReadOnly"
 					@close="removeOverride"
 				/>
 				<div v-else>
@@ -401,7 +402,7 @@ function removeOverride() {
 			v-model="parameterOverrides"
 			:parameter="parameter"
 			:path="path"
-			:read-only="isReadOnly"
+			:is-read-only="isReadOnly"
 			@update="valueChanged"
 		/>
 	</N8nInputLabel>

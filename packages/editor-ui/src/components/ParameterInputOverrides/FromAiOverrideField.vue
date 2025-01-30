@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
 	text: string;
-	readOnly?: boolean;
+	isReadOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -16,7 +16,7 @@ const emit = defineEmits<{
 		</div>
 		<N8nInput :model-value="text" :class="$style.overrideInput" disabled type="text" size="small" />
 		<N8nIconButton
-			v-if="!readOnly"
+			v-if="!isReadOnly"
 			type="tertiary"
 			:class="['n8n-input', $style.overrideInput, $style.overrideCloseButton]"
 			outline="false"
