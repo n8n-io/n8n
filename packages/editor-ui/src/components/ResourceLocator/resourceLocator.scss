@@ -33,7 +33,7 @@ $--mode-selector-width: 92px;
 	border-bottom-left-radius: 0;
 }
 
-.overrideButtonRL {
+.overrideButtonInline {
 	> button {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
@@ -42,7 +42,6 @@ $--mode-selector-width: 92px;
 }
 
 .rightNoCorner > * {
-	border-right: 0;
 	--input-border-bottom-right-radius: 0;
 	--input-border-top-right-radius: 0;
 }
@@ -71,10 +70,6 @@ $--mode-selector-width: 92px;
 				display: flex;
 			}
 		}
-	}
-
-	.overrideButton2 {
-		position: relative;
 	}
 
 	.background {

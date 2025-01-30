@@ -890,7 +890,7 @@ function removeOverride() {
 										/>
 									</template>
 								</n8n-input>
-								<div :class="$style.overrideButtonRL">
+								<div :class="$style.overrideButtonInline">
 									<FromAiOverrideButton
 										v-if="canBeContentOverride && !isContentOverride"
 										@click="applyOverride"

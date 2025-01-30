@@ -1088,7 +1088,6 @@ onUpdated(async () => {
 				'ignore-key-press-canvas',
 				{
 					[$style.hardRightCornersInput]: canBeOverridden,
-					[$style.noRightBorder]: canBeOverridden && isSingleLineInput,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -1572,7 +1571,10 @@ onUpdated(async () => {
 			v-if="$slots.overrideButton"
 			:class="[
 				$style.overrideButton,
-				{ [$style.overrideButtonStandalone]: isSwitch, [$style.overrideButtonInline]: !isSwitch },
+				{
+					[$style.overrideButtonStandalone]: isSwitch,
+					[$style.overrideButtonInline]: !isSwitch,
+				},
 			]"
 		>
 			<slot name="overrideButton" />
@@ -1788,10 +1790,6 @@ onUpdated(async () => {
 .hardRightCornersInput > * {
 	--input-border-bottom-right-radius: 0;
 	--input-border-top-right-radius: 0;
-}
-
-.noRightBorder > * > * > * > input {
-	border-right: unset;
 }
 
 .overrideButton {
