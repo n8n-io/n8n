@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "historyId": {
+            "type": "string"
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "threadId": {
+                        "type": "string"
+                    },
+                    "snippet": {
+                        "type": "string"
+                    },
+                    "payload": {
+                        "type": "object",
+                        "properties": {
+                            "mimeType": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "mimeType"
+                        ]
+                    },
+                    "sizeEstimate": {
+                        "type": "integer"
+                    },
+                    "historyId": {
+                        "type": "string"
+                    },
+                    "internalDate": {
+                        "type": "string"
+                    },
+                    "labels": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        }
+                    },
+                    "To": {
+                        "type": "string"
+                    },
+                    "Subject": {
+                        "type": "string"
+                    },
+                    "From": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "threadId",
+                    "snippet",
+                    "payload",
+                    "sizeEstimate",
+                    "historyId",
+                    "internalDate",
+                    "To",
+                    "From"
+                ]
+            }
+        }
+    }
+}
