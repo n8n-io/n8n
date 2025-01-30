@@ -10,7 +10,7 @@ import {
 	createSendAndWaitMessageBody,
 	parseDiscordError,
 	prepareErrorData,
-	sensDiscordMessage,
+	sendDiscordMessage,
 } from '../../helpers/utils';
 import { sendToProperties } from '../common.description';
 
@@ -35,7 +35,7 @@ export async function execute(
 	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
 
 	try {
-		await sensDiscordMessage.call(this, {
+		await sendDiscordMessage.call(this, {
 			guildId,
 			userGuilds,
 			isOAuth2,

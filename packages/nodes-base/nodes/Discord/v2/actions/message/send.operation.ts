@@ -11,7 +11,7 @@ import {
 	prepareEmbeds,
 	prepareErrorData,
 	prepareOptions,
-	sensDiscordMessage,
+	sendDiscordMessage,
 } from '../../helpers/utils';
 import {
 	embedsFixedCollection,
@@ -121,7 +121,7 @@ export async function execute(
 
 		try {
 			returnData.push(
-				...(await sensDiscordMessage.call(this, {
+				...(await sendDiscordMessage.call(this, {
 					guildId,
 					userGuilds,
 					isOAuth2,
