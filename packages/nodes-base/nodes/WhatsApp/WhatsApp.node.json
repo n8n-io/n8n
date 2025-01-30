@@ -2,7 +2,10 @@
 	"node": "n8n-nodes-base.whatsApp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication"],
+	"categories": ["Communication", "HITL"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
 	"resources": {
 		"credentialDocumentation": [
 			{
