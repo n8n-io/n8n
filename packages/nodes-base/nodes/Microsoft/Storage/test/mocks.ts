@@ -40,7 +40,7 @@ export const microsoftStorageApiResponse = {
 			'last-modified': 'last-modified',
 			'x-ms-creation-time': 'x-ms-creation-time',
 			'x-ms-tag-count': 'x-ms-tag-count',
-			'content-length': '37',
+			// 'content-length': '37',
 			'content-type': 'content-type',
 			'content-range': 'content-range',
 			etag: '"0x22769D26D3F3740"',
@@ -185,9 +185,9 @@ export const microsoftStorageNodeResponse = {
 		{
 			binary: {
 				data: {
-					data: 'ewogICJkYXRhIjogewogICAgIm15X2ZpZWxkXzEiOiAidmFsdWUiLAogICAgIm15X2ZpZWxkXzIiOiAxCiAgfQp9Cg==',
+					data: 'ewoiZGF0YSI6ewoibXlfZmllbGRfMSI6InZhbHVlIiwKIm15X2ZpZWxkXzIiOjEKfQp9',
 					fileExtension: undefined,
-					fileSize: '67 B',
+					fileSize: '51 B',
 					fileType: undefined,
 					mimeType: 'content-type',
 				},
@@ -200,7 +200,7 @@ export const microsoftStorageNodeResponse = {
 				lastModified: 'last-modified',
 				creationTime: 'x-ms-creation-time',
 				tagCount: 'x-ms-tag-count',
-				contentLength: 37,
+				// contentLength: 37,
 				contentType: 'content-type',
 				contentRange: 'content-range',
 				etag: '"0x22769D26D3F3740"',
