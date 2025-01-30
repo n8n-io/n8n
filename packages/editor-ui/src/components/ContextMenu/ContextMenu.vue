@@ -29,7 +29,9 @@ function onActionSelect(item: string) {
 }
 
 function closeMenu(event: MouseEvent) {
-	event.preventDefault();
+	if (event.cancelable) {
+		event.preventDefault();
+	}
 	event.stopPropagation();
 	contextMenu.close();
 }

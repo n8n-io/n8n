@@ -94,7 +94,7 @@ export class Start extends BaseCommand {
 
 			Container.get(WaitTracker).stopTracking();
 
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 
 			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 

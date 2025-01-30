@@ -406,10 +406,26 @@ export class CredentialsService {
 		return result;
 	}
 
-	async delete(credentials: CredentialsEntity) {
-		await this.externalHooks.run('credentials.delete', [credentials.id]);
+	/**
+	 * Deletes a credential.
+	 *
+	 * If the user does not have permission to delete the credential this does
+	 * nothing and returns void.
+	 */
+	async delete(user: User, credentialId: string) {
+		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		await this.credentialsRepository.remove(credentials);
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:delete'],
+		);
+
+		if (!credential) {
+			return;
+		}
+
+		await this.credentialsRepository.remove(credential);
 	}
 
 	async test(user: User, credentials: ICredentialsDecrypted) {

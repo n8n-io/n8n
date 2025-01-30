@@ -25,7 +25,7 @@ const allCredentialsFilled = computed(() => {
 
 	const nodes = workflowsStore.getNodes();
 	if (!nodes.length) {
-		return false;
+		return true;
 	}
 
 	return nodes.every((node) => doesNodeHaveAllCredentialsFilled(nodeTypesStore, node));
@@ -64,6 +64,7 @@ onBeforeUnmount(() => {
 	<n8n-button
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
+		data-test-id="setup-credentials-button"
 		size="large"
 		icon="box-open"
 		type="secondary"

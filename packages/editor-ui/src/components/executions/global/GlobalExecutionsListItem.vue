@@ -229,6 +229,12 @@ async function handleActionItemClick(commandData: Command) {
 				</template>
 				<FontAwesomeIcon icon="flask" />
 			</N8nTooltip>
+			<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
+				<template #content>
+					<span>{{ i18n.baseText('executionsList.evaluation') }}</span>
+				</template>
+				<FontAwesomeIcon icon="tasks" />
+			</N8nTooltip>
 		</td>
 		<td>
 			<div :class="$style.buttonCell">

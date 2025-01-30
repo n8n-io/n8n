@@ -49,7 +49,7 @@ interface NodeMeta {
 	operationModes?: NodeOperationMode[];
 }
 
-export interface VectorStoreNodeConstructorArgs {
+export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {
 	meta: NodeMeta;
 	methods?: {
 		listSearch?: {
@@ -77,7 +77,8 @@ export interface VectorStoreNodeConstructorArgs {
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
-	) => Promise<VectorStore>;
+	) => Promise<T>;
+	releaseVectorStoreClient?: (vectorStore: T) => void;
 }
 
 function transformDescriptionForOperationMode(
@@ -90,11 +91,15 @@ function transformDescriptionForOperationMode(
 	}));
 }
 
-function isUpdateSupported(args: VectorStoreNodeConstructorArgs): boolean {
+function isUpdateSupported<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): boolean {
 	return args.meta.operationModes?.includes('update') ?? false;
 }
 
-function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
+function getOperationModeOptions<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): INodePropertyOptions[] {
 	const enabledOperationModes = args.meta.operationModes ?? DEFAULT_OPERATION_MODES;
 
 	const allOptions = [
@@ -137,7 +142,9 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 	);
 }
 
-export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
+export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+) =>
 	class VectorStoreNodeType implements INodeType {
 		description: INodeTypeDescription = {
 			displayName: args.meta.displayName,
@@ -334,38 +341,42 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						embeddings,
 						itemIndex,
 					);
-					const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-					const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+					try {
+						const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+						const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
-					const embeddedPrompt = await embeddings.embedQuery(prompt);
-					const docs = await vectorStore.similaritySearchVectorWithScore(
-						embeddedPrompt,
-						topK,
-						filter,
-					);
+						const embeddedPrompt = await embeddings.embedQuery(prompt);
+						const docs = await vectorStore.similaritySearchVectorWithScore(
+							embeddedPrompt,
+							topK,
+							filter,
+						);
 
-					const includeDocumentMetadata = this.getNodeParameter(
-						'includeDocumentMetadata',
-						itemIndex,
-						true,
-					) as boolean;
+						const includeDocumentMetadata = this.getNodeParameter(
+							'includeDocumentMetadata',
+							itemIndex,
+							true,
+						) as boolean;
 
-					const serializedDocs = docs.map(([doc, score]) => {
-						const document = {
-							pageContent: doc.pageContent,
-							...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
-						};
+						const serializedDocs = docs.map(([doc, score]) => {
+							const document = {
+								pageContent: doc.pageContent,
+								...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
+							};
 
-						return {
-							json: { document, score },
-							pairedItem: {
-								item: itemIndex,
-							},
-						};
-					});
+							return {
+								json: { document, score },
+								pairedItem: {
+									item: itemIndex,
+								},
+							};
+						});
 
-					resultData.push(...serializedDocs);
-					logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+						resultData.push(...serializedDocs);
+						logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+					} finally {
+						args.releaseVectorStoreClient?.(vectorStore);
+					}
 				}
 
 				return [resultData];
@@ -392,13 +403,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					);
 					resultData.push(...serializedDocuments);
 
-					try {
-						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+					await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						logAiEvent(this, 'ai-vector-store-populated');
-					} catch (error) {
-						throw error;
-					}
+					logAiEvent(this, 'ai-vector-store-populated');
 				}
 
 				return [resultData];
@@ -431,27 +438,27 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						itemIndex,
 					);
 
-					const { processedDocuments, serializedDocuments } = await processDocument(
-						loader,
-						itemData,
-						itemIndex,
-					);
-
-					if (processedDocuments?.length !== 1) {
-						throw new NodeOperationError(this.getNode(), 'Single document per item expected');
-					}
-
-					resultData.push(...serializedDocuments);
-
 					try {
+						const { processedDocuments, serializedDocuments } = await processDocument(
+							loader,
+							itemData,
+							itemIndex,
+						);
+
+						if (processedDocuments?.length !== 1) {
+							throw new NodeOperationError(this.getNode(), 'Single document per item expected');
+						}
+
+						resultData.push(...serializedDocuments);
+
 						// Use ids option to upsert instead of insert
 						await vectorStore.addDocuments(processedDocuments, {
 							ids: [documentId],
 						});
 
 						logAiEvent(this, 'ai-vector-store-updated');
-					} catch (error) {
-						throw error;
+					} finally {
+						args.releaseVectorStoreClient?.(vectorStore);
 					}
 				}
 
@@ -476,6 +483,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 				return {
 					response: logWrapper(vectorStore, this),
+					closeFunction: async () => {
+						args.releaseVectorStoreClient?.(vectorStore);
+					},
 				};
 			}
 
@@ -499,23 +509,28 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							embeddings,
 							itemIndex,
 						);
-						const embeddedPrompt = await embeddings.embedQuery(input);
-						const documents = await vectorStore.similaritySearchVectorWithScore(
-							embeddedPrompt,
-							topK,
-							filter,
-						);
-						return documents
-							.map((document) => {
-								if (includeDocumentMetadata) {
-									return { type: 'text', text: JSON.stringify(document[0]) };
-								}
-								return {
-									type: 'text',
-									text: JSON.stringify({ pageContent: document[0].pageContent }),
-								};
-							})
-							.filter((document) => !!document);
+
+						try {
+							const embeddedPrompt = await embeddings.embedQuery(input);
+							const documents = await vectorStore.similaritySearchVectorWithScore(
+								embeddedPrompt,
+								topK,
+								filter,
+							);
+							return documents
+								.map((document) => {
+									if (includeDocumentMetadata) {
+										return { type: 'text', text: JSON.stringify(document[0]) };
+									}
+									return {
+										type: 'text',
+										text: JSON.stringify({ pageContent: document[0].pageContent }),
+									};
+								})
+								.filter((document) => !!document);
+						} finally {
+							args.releaseVectorStoreClient?.(vectorStore);
+						}
 					},
 				});
 

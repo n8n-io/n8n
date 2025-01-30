@@ -17,7 +17,7 @@ import type { Scope } from '@n8n/permissions';
 
 export type IResource = {
 	id: string;
-	name: string;
+	name?: string;
 	value?: string;
 	key?: string;
 	updatedAt?: string;
@@ -42,7 +42,7 @@ const props = withDefaults(
 		displayName?: (resource: IResource) => string;
 		resources: IResource[];
 		disabled: boolean;
-		initialize: () => Promise<void>;
+		initialize?: () => Promise<void>;
 		filters?: IFilters;
 		additionalFiltersHandler?: (
 			resource: IResource,
@@ -58,7 +58,7 @@ const props = withDefaults(
 		loading: boolean;
 	}>(),
 	{
-		displayName: (resource: IResource) => resource.name,
+		displayName: (resource: IResource) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
@@ -103,7 +103,7 @@ const sortBy = ref(props.sortOptions[0]);
 const hasFilters = ref(false);
 const filtersModel = ref(props.filters);
 const currentPage = ref(1);
-const rowsPerPage = ref<number>(10);
+const rowsPerPage = ref<number>(25);
 const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 
@@ -371,7 +371,7 @@ onMounted(async () => {
 					</n8n-action-box>
 				</slot>
 			</div>
-			<PageViewLayoutList v-else :overflow="type !== 'list'">
+			<PageViewLayoutList v-else>
 				<template #header>
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">

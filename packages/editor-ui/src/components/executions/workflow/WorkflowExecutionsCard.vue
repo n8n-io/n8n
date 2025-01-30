@@ -167,11 +167,13 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<FontAwesomeIcon
-						v-if="execution.mode === 'manual'"
-						:class="[$style.icon, $style.manual]"
-						icon="flask"
-					/>
+					<FontAwesomeIcon :class="[$style.icon, $style.manual]" icon="flask" />
+				</N8nTooltip>
+				<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
+					<template #content>
+						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
+					</template>
+					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="tasks" />
 				</N8nTooltip>
 			</div>
 		</router-link>

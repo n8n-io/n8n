@@ -79,18 +79,24 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.workflow.getStaticData(type, this.node);
 	}
 
-	getChildNodes(nodeName: string) {
+	getChildNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
 		const output: NodeTypeAndVersion[] = [];
 		const nodeNames = this.workflow.getChildNodes(nodeName);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
-			output.push({
+			const entry: NodeTypeAndVersion = {
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: node.disabled ?? false,
-			});
+			};
+
+			if (options?.includeNodeParameters) {
+				entry.parameters = node.parameters;
+			}
+
+			output.push(entry);
 		}
 		return output;
 	}

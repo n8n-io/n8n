@@ -100,7 +100,7 @@ export class TaskRunnerServer {
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				this.logger.info(
-					`n8n Task Runner's port ${port} is already in use. Do you have another instance of n8n running already?`,
+					`n8n Task Broker's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
 			}
@@ -111,7 +111,7 @@ export class TaskRunnerServer {
 			this.server.listen(port, address, () => resolve());
 		});
 
-		this.logger.info(`n8n Task Runner server ready on ${address}, port ${port}`);
+		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);
 	}
 
 	/** Creates WebSocket server for handling upgrade requests */
