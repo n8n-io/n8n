@@ -329,9 +329,7 @@ describe('Microsoft Storage Node', () => {
 							method: 'get',
 							path: '/mycontainer/myblob',
 							statusCode: 200,
-							responseBody: Buffer.from(
-								'{\n  "data": {\n    "my_field_1": "value",\n    "my_field_2": 1\n  }\n}\n',
-							),
+							responseBody: Buffer.from('{\n"data":{\n"my_field_1":"value",\n"my_field_2":1\n}\n}'),
 							responseHeaders: microsoftStorageApiResponse.blobGet.headers,
 						},
 					],
