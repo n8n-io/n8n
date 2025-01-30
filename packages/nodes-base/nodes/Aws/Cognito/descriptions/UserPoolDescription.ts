@@ -13,7 +13,7 @@ export const userPoolOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				action: 'Describe the configuration of a user pool',
+				action: 'Get user pool',
 				routing: {
 					request: {
 						method: 'POST',
@@ -68,7 +68,6 @@ export const userPoolFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				validation: [
 					{
 						type: 'regex',

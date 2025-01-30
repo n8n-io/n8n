@@ -194,7 +194,7 @@ export const userOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -202,7 +202,7 @@ const createFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -229,7 +229,6 @@ const createFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
@@ -362,7 +361,7 @@ const createFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -370,7 +369,7 @@ const getFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -397,7 +396,6 @@ const getFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				validation: [
 					{
 						type: 'regex',
@@ -478,7 +476,7 @@ const getFields: INodeProperties[] = [
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -486,7 +484,7 @@ const getAllFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -513,7 +511,6 @@ const getAllFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
@@ -612,7 +609,7 @@ const getAllFields: INodeProperties[] = [
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -620,7 +617,7 @@ const deleteFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -647,7 +644,6 @@ const deleteFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				validation: [
 					{
 						type: 'regex',
@@ -715,7 +711,7 @@ const deleteFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -723,7 +719,7 @@ const updateFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -750,7 +746,6 @@ const updateFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				validation: [
 					{
 						type: 'regex',
@@ -869,7 +864,7 @@ const updateFields: INodeProperties[] = [
 
 const addToGroupFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -877,7 +872,7 @@ const addToGroupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -904,7 +899,6 @@ const addToGroupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
 				validation: [
 					{
 						type: 'regex',
@@ -1022,7 +1016,7 @@ const addToGroupFields: INodeProperties[] = [
 
 const removeFromGroupFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -1030,7 +1024,7 @@ const removeFromGroupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID where the users are managed',
+		description: 'The user pool where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -1057,7 +1051,7 @@ const removeFromGroupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user pool',
 				validation: [
 					{
 						type: 'regex',
