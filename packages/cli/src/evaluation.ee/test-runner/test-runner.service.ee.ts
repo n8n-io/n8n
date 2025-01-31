@@ -400,8 +400,8 @@ export class TestRunnerService {
 					this.logger.debug('Test case execution finished', { pastExecutionId });
 
 					// In case of a permission check issue, the test case execution will be undefined.
-					// Skip them, increment the failed count and continue with the next test case
-					if (!testCaseExecution) {
+					// If that happens, or if the test case execution produced an error, mark the test case as failed.
+					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
 							await this.testCaseExecutionRepository.markAsFailed(
@@ -413,22 +413,6 @@ export class TestRunnerService {
 							);
 						});
 						continue;
-					}
-
-					// Update status of the test case execution mapping entry in case of an error
-					if (testCaseExecution.data.resultData.error) {
-						await this.testRunRepository.incrementFailed(testRun.id);
-						await this.testCaseExecutionRepository.markAsFailed(
-							testRun.id,
-							pastExecutionId,
-							'FAILED_TO_EXECUTE_WORKFLOW',
-						);
-						continue;
-					}
-
-					// Update status of the test case execution mapping entry in case of an error
-					if (testCaseExecution.data.resultData.error) {
-						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
 					}
 
 					// Collect the results of the test case execution
