@@ -348,7 +348,6 @@ function removeOverride(clearField = false) {
 			<template #default="{ droppable, activeDrop }">
 				<FromAiOverrideField
 					v-if="parameterOverrides && isContentOverride"
-					:text="parameterOverrides?.overridePlaceholder"
 					:is-read-only="isReadOnly"
 					@close="removeOverride"
 				/>

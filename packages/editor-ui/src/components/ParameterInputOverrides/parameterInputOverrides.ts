@@ -7,7 +7,6 @@ import {
 import { i18n } from '@/plugins/i18n';
 
 export interface ParameterOverride {
-	readonly overridePlaceholder: string;
 	readonly extraProps: Record<string, ExtraPropValue>;
 	extraPropValues: Partial<Record<keyof ParameterOverride['extraProps'], NodeParameterValueType>>;
 	updateExtraPropValues: (s: string) => void;
@@ -60,8 +59,6 @@ export class FromAiOverride implements ParameterOverride {
 		// This is used in e.g. the telegram node if the dropdown selects manual mode
 		'parameters.toolDescription',
 	];
-
-	readonly overridePlaceholder = i18n.baseText('parameterOverride.overridePanelText');
 
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
 		description: {

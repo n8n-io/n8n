@@ -854,7 +854,6 @@ function removeOverride() {
 								<FromAiOverrideField
 									v-if="parameterOverrides && isContentOverride"
 									:class="[$style.inputField, $style.fromAiOverrideField]"
-									:text="parameterOverrides?.overridePlaceholder"
 									:is-read-only="isReadOnly"
 									@close="removeOverride"
 								/>

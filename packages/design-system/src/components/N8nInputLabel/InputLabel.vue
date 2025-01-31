@@ -241,10 +241,10 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 
 	&.small {
-		padding-bottom: var(--spacing-5xs);
+		margin-bottom: var(--spacing-5xs);
 	}
 	&.medium {
-		padding-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 

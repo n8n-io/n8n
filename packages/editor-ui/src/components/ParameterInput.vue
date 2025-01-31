@@ -877,6 +877,7 @@ function trackWorkflowInputModeEvent(value: string) {
 
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
+
 	if (command === 'resetValue') {
 		valueChanged(props.parameter.default);
 	} else if (command === 'addExpression') {

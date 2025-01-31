@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { i18n } from '@/plugins/i18n';
+
 defineProps<{
-	text: string;
 	isReadOnly?: boolean;
 }>();
 
@@ -14,11 +15,16 @@ const emit = defineEmits<{
 		<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
 			<AiStarsIcon :class="$style.aiStarsIcon" />
 		</div>
-		<N8nInput :model-value="text" :class="$style.overrideInput" disabled type="text" size="small" />
+		<div :class="['flex-grow', $style.overrideInput]">
+			<N8nText size="small">{{ i18n.baseText('parameterOverride.overridePanelText') }}</N8nText>
+			<N8nText size="small" bold>{{
+				i18n.baseText('parameterOverride.overridePanelTextModel')
+			}}</N8nText>
+		</div>
 		<N8nIconButton
 			v-if="!isReadOnly"
 			type="tertiary"
-			:class="['n8n-input', $style.overrideInput, $style.overrideCloseButton]"
+			:class="['n8n-input', $style.overrideCloseButton]"
 			outline="false"
 			icon="xmark"
 			size="xsmall"
@@ -44,6 +50,10 @@ const emit = defineEmits<{
 }
 
 .overrideInput {
+	height: 30px;
+	align-content: center;
+	flex-grow: 1;
+
 	* > input {
 		padding-left: 0;
 		// We need this in light mode
@@ -56,7 +66,6 @@ const emit = defineEmits<{
 	padding: 0px 8px 3px; // the icon used is off-center vertically
 	border: 0px;
 	color: var(--color-text-base);
-
 	--button-hover-background-color: transparent;
 	--button-active-background-color: transparent;
 }
