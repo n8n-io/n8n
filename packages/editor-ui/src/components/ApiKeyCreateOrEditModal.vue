@@ -97,7 +97,7 @@ onMounted(() => {
 	if (props.mode === 'edit') {
 		const apiKey = apiKeysById[props.activeId];
 		label.value = apiKey.label ?? '';
-		apiKeyCreationDate.value = getApiCreationTime(apiKey);
+		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
 	}
 
 	apiDocsURL.value = isSwaggerUIEnabled
@@ -109,7 +109,7 @@ function onInput(value: string): void {
 	label.value = value;
 }
 
-const getApiCreationTime = (apiKey: ApiKey): string => {
+const getApiKeyCreationTime = (apiKey: ApiKey): string => {
 	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
 	return i18n.baseText('settings.api.creationTime', { interpolate: { time } });
 };
