@@ -242,7 +242,7 @@ const onSelect = (value: number) => {
 						</i18n-t>
 					</n8n-info-tip>
 				</p>
-				<n8n-card v-if="newApiKey" class="mb-4xs" :class="$style.card">
+				<n8n-card v-if="newApiKey" class="mb-4xs">
 					<CopyInput
 						:label="newApiKey.label"
 						:value="newApiKey.rawApiKey"
@@ -357,12 +357,7 @@ const onSelect = (value: number) => {
 		</template>
 	</Modal>
 </template>
-
 <style module lang="scss">
-.card {
-	margin-bottom: 50px;
-}
-
 .notice {
 	margin: 0;
 }
