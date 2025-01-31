@@ -8,7 +8,7 @@ const xssCheck = (value: string) =>
 		whiteList: {},
 	});
 
-const expirationDateCheck = (value?: number) => {
+const isTimeNotDefinedOrInFuture = (value?: number) => {
 	if (!value) return true;
 	return value > Date.now() / 1000;
 };
@@ -19,5 +19,5 @@ export class CreateOrUpdateApiKeyRequestDto extends Z.class({
 	expirationUnixTimestamp: z
 		.number()
 		.optional()
-		.refine(expirationDateCheck, { message: 'Expiration date must be in the future' }),
+		.refine(isTimeNotDefinedOrInFuture, { message: 'Expiration date must be in the future' }),
 }) {}
