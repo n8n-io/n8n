@@ -273,8 +273,9 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				type: 'info',
 				message:
-					"Note on using an expression for workflow ID: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
-				displayCondition: '={{ $rawParameter.workflowId.startsWith("=") && $nodeVersion >= 1.2 }}',
+					"Note on using an expression for workflow ID: Since this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+				displayCondition:
+					'={{ $rawParameter.workflowId.startsWith("=") && $parameter.mode === "once" && $nodeVersion >= 1.2 }}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 			},
