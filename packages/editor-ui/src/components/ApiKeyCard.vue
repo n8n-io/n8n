@@ -122,8 +122,4 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 	display: flex;
 	justify-content: center;
 }
-
-.expiredApiKey {
-	color: var(--prim-color-alt-b-alpha-02);
-}
 </style>
