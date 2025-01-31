@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id"
+    ]
+}

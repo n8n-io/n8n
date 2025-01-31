@@ -684,4 +684,27 @@ describe('useFlattenSchema', () => {
 			}).length,
 		).toBe(3);
 	});
+
+	it('items ids should be unique', () => {
+		const { flattenSchema } = useFlattenSchema();
+		const schema: Schema = {
+			path: '',
+			type: 'object',
+			value: [
+				{
+					key: 'index',
+					type: 'number',
+					value: '0',
+					path: '.index',
+				},
+			],
+		};
+		const node1 = { name: 'First Node', type: 'any' };
+		const node2 = { name: 'Second Node', type: 'any' };
+
+		const node1Schema = flattenSchema({ schema, node: node1, depth: 1 });
+		const node2Schema = flattenSchema({ schema, node: node2, depth: 1 });
+
+		expect(node1Schema[0].id).not.toBe(node2Schema[0].id);
+	});
 });

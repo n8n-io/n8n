@@ -571,4 +571,13 @@ describe('Node Creator', () => {
 
 		addVectorStoreToolToParent('In-Memory Vector Store', AGENT_NODE_NAME);
 	});
+
+	it('should insert node to canvas with sendAndWait operation selected', () => {
+		nodeCreatorFeature.getters.canvasAddButton().click();
+		WorkflowPage.actions.addNodeToCanvas('Manual', false);
+		nodeCreatorFeature.actions.openNodeCreator();
+		cy.contains('Human in the loop').click();
+		nodeCreatorFeature.getters.getCreatorItem('Slack').click();
+		cy.contains('Send and Wait for Response').should('exist');
+	});
 });

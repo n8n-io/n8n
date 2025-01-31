@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "credentials": {
+                        "type": "object",
+                        "properties": {
+                            "googleSheetsOAuth2Api": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "parameters",
+                    "name",
+                    "type",
+                    "typeVersion",
+                    "position",
+                    "id"
+                ]
+            }
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "versionId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "null"
+        },
+        "pinData": {
+            "type": "null"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "triggerCount": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "name",
+        "nodes",
+        "settings",
+        "connections",
+        "staticData",
+        "active",
+        "versionId",
+        "id",
+        "meta",
+        "pinData",
+        "createdAt",
+        "updatedAt",
+        "triggerCount"
+    ]
+}
