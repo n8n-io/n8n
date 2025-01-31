@@ -1471,6 +1471,7 @@ defineExpose({ enterEditMode });
 			:key="hint.message"
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
+			data-test-id="node-hint"
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
