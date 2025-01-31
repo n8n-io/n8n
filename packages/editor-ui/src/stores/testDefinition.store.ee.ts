@@ -2,7 +2,11 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import type {
+	TestCaseExecutionRecord,
+	TestDefinitionRecord,
+	TestRunRecord,
+} from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { useAnnotationTagsStore } from './tags.store';
@@ -19,6 +23,7 @@ export const useTestDefinitionStore = defineStore(
 		const fetchedAll = ref(false);
 		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
+		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
 		const fieldsIssues = ref<Record<string, FieldIssue[]>>({});
 
@@ -165,6 +170,20 @@ export const useTestDefinitionStore = defineStore(
 			testDefinitionsById.value[testDefinition.id] = testDefinition;
 			updateRunFieldIssues(id);
 			return testDefinition;
+		};
+
+		const fetchTestCaseExecutions = async (params: { testDefinitionId: string; runId: string }) => {
+			const testCaseExecutions = await testDefinitionsApi.getTestCaseExecutions(
+				rootStore.restApiContext,
+				params.testDefinitionId,
+				params.runId,
+			);
+
+			testCaseExecutions.forEach((testCaseExecution) => {
+				testCaseExecutionsById.value[testCaseExecution.id] = testCaseExecution;
+			});
+
+			return testCaseExecutions;
 		};
 
 		/**
@@ -421,6 +440,7 @@ export const useTestDefinitionStore = defineStore(
 			fetchedAll,
 			testDefinitionsById,
 			testRunsById,
+			testCaseExecutionsById,
 
 			// Computed
 			allTestDefinitions,
@@ -435,6 +455,7 @@ export const useTestDefinitionStore = defineStore(
 
 			// Methods
 			fetchTestDefinition,
+			fetchTestCaseExecutions,
 			fetchAll,
 			create,
 			update,

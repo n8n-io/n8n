@@ -13,6 +13,7 @@ import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -24,6 +25,10 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+
+jest.mock('@/db', () => ({
+	transaction: (cb: any) => cb(),
+}));
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -147,6 +152,7 @@ describe('TestRunnerService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
 	const testMetricRepository = mock<TestMetricRepository>();
+	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
 
 	const mockNodeTypes = mockInstance(NodeTypes);
 	mockInstance(LoadNodesAndCredentials, {
@@ -190,6 +196,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -207,6 +214,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -247,6 +255,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -350,6 +359,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -410,6 +420,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -466,6 +477,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -526,6 +538,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -602,6 +615,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -629,6 +643,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testCaseExecutionRepository,
 			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
@@ -661,9 +676,10 @@ describe('TestRunnerService', () => {
 				executionRepository,
 				activeExecutions,
 				testRunRepository,
+				testCaseExecutionRepository,
 				testMetricRepository,
 				mockNodeTypes,
-				mock<ErrorReporter>(),
+				errorReporter,
 			);
 
 			workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
