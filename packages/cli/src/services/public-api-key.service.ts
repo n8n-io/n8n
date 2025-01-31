@@ -2,7 +2,6 @@ import type { UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
-import { ApplicationError } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { ApiKey } from '@/databases/entities/api-key';
