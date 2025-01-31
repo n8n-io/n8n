@@ -76,7 +76,7 @@ function onSelectionChange(runs: TestRunRecord[]) {
 	emit('selectionChange', runs);
 }
 
-function deleteRuns() {
+async function deleteRuns() {
 	emit('deleteRuns', selectedRows.value);
 }
 </script>

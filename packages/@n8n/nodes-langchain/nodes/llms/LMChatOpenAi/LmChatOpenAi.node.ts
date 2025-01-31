@@ -147,7 +147,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: { mode: 'list', value: 'gpt-4o-mini' },
 				required: true,
 				modes: [
 					{
@@ -164,7 +164,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: '2302163813',
+						placeholder: 'gpt-4o-mini',
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',
@@ -258,7 +258,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 						type: 'number',

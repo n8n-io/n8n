@@ -837,6 +837,25 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 			parameter: props.parameter.name,
 		});
 	}
+	// Track workflow input data mode change
+	const isWorkflowInputParameter =
+		props.parameter.name === 'inputSource' && props.parameter.default === 'workflowInputs';
+	if (isWorkflowInputParameter) {
+		trackWorkflowInputModeEvent(value as string);
+	}
+}
+
+function trackWorkflowInputModeEvent(value: string) {
+	const telemetryValuesMap: Record<string, string> = {
+		workflowInputs: 'fields',
+		jsonExample: 'json',
+		passthrough: 'all',
+	};
+	telemetry.track('User chose input data mode', {
+		option: telemetryValuesMap[value],
+		workflow_id: workflowsStore.workflowId,
+		node_id: node.value?.id,
+	});
 }
 
 async function optionSelected(command: string) {
@@ -889,11 +908,16 @@ async function optionSelected(command: string) {
 		if (isResourceLocatorParameter.value && isResourceLocatorValue(props.modelValue)) {
 			valueChanged({ __rl: true, value, mode: props.modelValue.mode });
 		} else {
-			let newValue = typeof value !== 'undefined' ? value : null;
+			let newValue: NodeParameterValueType | {} = typeof value !== 'undefined' ? value : null;
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
 				newValue = modelValueString.value ? modelValueString.value.toString().substring(1) : null;
+			} else if (newValue === null) {
+				// Invalid expressions land here
+				if (['number', 'boolean'].includes(props.parameter.type)) {
+					newValue = props.parameter.default;
+				}
 			}
 			valueChanged(newValue);
 		}

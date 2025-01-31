@@ -26,6 +26,10 @@ on:
         required: false
         default: false
         type: boolean
+      skipFrontendTests:
+        required: false
+        default: false
+        type: boolean
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov upload token.'
@@ -34,7 +38,7 @@ on:
 jobs:
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       TURBO_FORCE: ${{ inputs.ignoreTurboCache }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
@@ -45,7 +49,7 @@ jobs:
 
       - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v4.0.2
+        uses: useblacksmith/setup-node@v5
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: pnpm
@@ -54,7 +58,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: useblacksmith/caching-for-turbo@v1
 
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
@@ -62,10 +66,11 @@ jobs:
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
-        uses: actions/cache/restore@v4.0.0
+        uses: useblacksmith/cache/restore@v5
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
+          fail-on-cache-miss: true
 
       - name: Test Backend
         run: pnpm test:backend
@@ -74,6 +79,7 @@ jobs:
         run: pnpm test:nodes
 
       - name: Test Frontend
+        if: ${{ !inputs.skipFrontendTests }}
         run: pnpm test:frontend
 
       - name: Upload coverage to Codecov
