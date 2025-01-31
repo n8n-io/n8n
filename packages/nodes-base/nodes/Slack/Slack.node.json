@@ -6,7 +6,7 @@
 	"subcategories": {
 		"HITL": ["Human in the Loop"]
 	},
-	"alias": ["human", "form", "wait"],
+	"alias": ["human", "form", "wait", "hitl", "approval"],
 	"resources": {
 		"credentialDocumentation": [
 			{
