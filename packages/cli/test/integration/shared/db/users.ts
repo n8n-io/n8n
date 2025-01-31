@@ -83,7 +83,7 @@ export async function createUserWithMfaEnabled(
 export const addApiKey = async (user: User) => {
 	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
 		label: randomName(),
-		expiresAt: Date.now() / 1000 + 100,
+		expiresAt: null,
 	});
 };
 
