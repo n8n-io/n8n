@@ -1,4 +1,4 @@
-import { CreateApiKeyRequestDto } from '../create-api-key.request.dto';
+import { CreateApiKeyRequestDto } from '../create-api-key-request.dto';
 
 describe('CreateApiKeyRequestDto', () => {
 	describe('Valid requests', () => {
