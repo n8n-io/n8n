@@ -41,85 +41,78 @@ const addTargetBlank = (html: string) =>
 		v-bind="$attrs"
 		data-test-id="input-label"
 	>
-		<div :class="$style.labelWrapper">
-			<label
-				v-if="label || $slots.options"
-				:for="inputName"
-				:class="{
-					'n8n-input-label': true,
-					[$style.inputLabel]: true,
-					[$style.heading]: !!label,
-					[$style.underline]: underline,
-					[$style[size]]: true,
-					[$style.overflow]: !!$slots.options,
-				}"
-			>
-				<div :class="$style['main-content']">
-					<div v-if="label" :class="$style.title">
-						<N8nText
-							:bold="bold"
-							:size="size"
-							:compact="compact"
-							:color="color"
-							:class="{
-								[$style.textEllipses]: showOptions,
-							}"
-						>
-							{{ label }}
-							<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
-						</N8nText>
-					</div>
-					<span
-						v-if="tooltipText && label"
-						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
+		<label
+			v-if="label || $slots.options"
+			:for="inputName"
+			:class="{
+				'n8n-input-label': true,
+				[$style.inputLabel]: true,
+				[$style.heading]: !!label,
+				[$style.underline]: underline,
+				[$style[size]]: true,
+				[$style.overflow]: !!$slots.options,
+			}"
+		>
+			<div :class="$style['main-content']">
+				<div v-if="label" :class="$style.title">
+					<N8nText
+						:bold="bold"
+						:size="size"
+						:compact="compact"
+						:color="color"
+						:class="{
+							[$style.textEllipses]: showOptions,
+						}"
 					>
-						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
-							<N8nIcon icon="question-circle" size="small" />
-							<template #content>
-								<div v-n8n-html="addTargetBlank(tooltipText)" />
-							</template>
-						</N8nTooltip>
-					</span>
+						{{ label }}
+						<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
+					</N8nText>
 				</div>
-				<div :class="$style['trailing-content']">
-					<div
-						v-if="$slots.options && label"
-						:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
-					/>
-					<div
-						v-if="$slots.options"
-						:class="{ [$style.options]: true, [$style.visible]: showOptions }"
-						:data-test-id="`${inputName}-parameter-input-options-container`"
-					>
-						<slot name="options" />
-					</div>
-					<div
-						v-if="$slots.issues"
-						:class="$style.issues"
-						:data-test-id="`${inputName}-parameter-input-issues-container`"
-					>
-						<slot name="issues" />
-					</div>
-					<div
-						v-if="$slots.persistentOptions"
-						class="pl-4xs"
-						:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
-					>
-						<slot name="persistentOptions" />
-					</div>
+				<span
+					v-if="tooltipText && label"
+					:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
+				>
+					<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
+						<N8nIcon icon="question-circle" size="small" />
+						<template #content>
+							<div v-n8n-html="addTargetBlank(tooltipText)" />
+						</template>
+					</N8nTooltip>
+				</span>
+			</div>
+			<div :class="$style['trailing-content']">
+				<div
+					v-if="$slots.options && label"
+					:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
+				/>
+				<div
+					v-if="$slots.options"
+					:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+					:data-test-id="`${inputName}-parameter-input-options-container`"
+				>
+					<slot name="options" />
 				</div>
-			</label>
-		</div>
+				<div
+					v-if="$slots.issues"
+					:class="$style.issues"
+					:data-test-id="`${inputName}-parameter-input-issues-container`"
+				>
+					<slot name="issues" />
+				</div>
+				<div
+					v-if="$slots.persistentOptions"
+					class="pl-4xs"
+					:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
+				>
+					<slot name="persistentOptions" />
+				</div>
+			</div>
+		</label>
 		<slot />
 	</div>
 </template>
 
 <style lang="scss" module>
-.labelWrapper {
-	display: inline-flex;
-	flex-direction: row;
-}
-
 .container {
 	display: flex;
 	flex-direction: column;
@@ -154,8 +147,6 @@ const addTargetBlank = (html: string) =>
 
 .inputLabel {
 	display: block;
-	align-items: center;
-	flex-grow: 1;
 }
 .container:hover,
 .inputLabel:hover {
@@ -250,10 +241,10 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 
 	&.small {
-		margin-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing-5xs);
 	}
 	&.medium {
-		margin-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing-2xs);
 	}
 }
 

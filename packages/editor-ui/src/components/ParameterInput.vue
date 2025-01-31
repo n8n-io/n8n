@@ -129,6 +129,8 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
+// ESLint: false positive
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -437,8 +439,7 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
-	}
-	{
+	} else {
 		classes['parameter-value-container'] = true;
 	}
 
@@ -876,7 +877,6 @@ function trackWorkflowInputModeEvent(value: string) {
 
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
-
 	if (command === 'resetValue') {
 		valueChanged(props.parameter.default);
 	} else if (command === 'addExpression') {
@@ -1096,9 +1096,10 @@ onUpdated(async () => {
 
 		<div
 			:class="[
+				'parameter-input',
 				'ignore-key-press-canvas',
 				{
-					[$style.hardRightCornersInput]: canBeOverridden,
+					[$style.noRightCornersInput]: canBeOverridden,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -1798,7 +1799,7 @@ onUpdated(async () => {
 	border-bottom-right-radius: 4px;
 }
 
-.hardRightCornersInput > * {
+.noRightCornersInput > * {
 	--input-border-bottom-right-radius: 0;
 	--input-border-top-right-radius: 0;
 }

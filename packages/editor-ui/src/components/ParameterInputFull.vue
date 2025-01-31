@@ -78,6 +78,7 @@ const parameterOverrides = ref<ParameterOverride | null>(
 );
 
 const canBeContentOverride = computed(() => {
+	// The resourceLocator handles overrides separately
 	if (!node.value || isResourceLocator.value) return false;
 
 	return parameterOverrides.value !== null;
@@ -97,24 +98,15 @@ const isResourceLocator = computed(
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
-		isReadOnlyParameter.value ||
+		props.isReadOnly ||
 		isResourceLocator.value ||
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
-const showExpressionSelector = computed(() =>
-	!isContentOverride.value && isResourceLocator.value ? !hasOnlyListMode(props.parameter) : true,
-);
-
-const isReadOnlyParameter = computed(
-	() =>
-		props.isReadOnly || props.parameter.disabledOptions !== undefined || isContentOverride.value,
-);
-
-const showOptions = computed(() => {
+const showExpressionSelector = computed(() => {
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
-		// infer whether it's overridden and we should hide the options
+		// infer whether it's overridden and we should hide the toggle
 		const value =
 			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;
 		if (
@@ -126,9 +118,11 @@ const showOptions = computed(() => {
 		) {
 			return false;
 		}
+
+		return !hasOnlyListMode(props.parameter);
 	}
 
-	return props.displayOptions;
+	return !isContentOverride.value;
 });
 
 function onFocus() {
@@ -156,6 +150,9 @@ function onMenuExpanded(expanded: boolean) {
 }
 
 function optionSelected(command: string) {
+	if (isContentOverride.value && command === 'resetValue') {
+		removeOverride(true);
+	}
 	eventBus.value.emit('optionSelected', command);
 }
 
@@ -248,7 +245,7 @@ function onDrop(newParamValue: string) {
 }
 
 const showOverrideButton = computed(
-	() => canBeContentOverride.value && !isContentOverride.value && !isReadOnlyParameter.value,
+	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
 // When switching to read-only mode, reset the value to the default value
@@ -279,12 +276,13 @@ function applyOverride() {
 	parameterOverrides.value?.updateExtraPropValues(props.value?.toString() ?? '');
 	const value = parameterOverrides.value?.buildValueFromOverride(props, true);
 	valueChanged({
+		node: node.value?.name,
 		name: props.path,
 		value,
 	});
 }
 
-function removeOverride() {
+function removeOverride(clearField = false) {
 	telemetry.track(
 		'User turned off fromAI override',
 		{
@@ -296,7 +294,9 @@ function removeOverride() {
 	valueChanged({
 		node: node.value?.name,
 		name: props.path,
-		value: parameterOverrides.value?.buildValueFromOverride(props, false),
+		value: clearField
+			? props.parameter.default
+			: parameterOverrides.value?.buildValueFromOverride(props, false),
 	});
 	void setTimeout(async () => {
 		await parameterInputWrapper.value?.focusInput();
@@ -327,12 +327,12 @@ function removeOverride() {
 			</div>
 		</template>
 
-		<template v-if="showOptions && optionsPosition === 'top'" #options>
+		<template v-if="displayOptions && optionsPosition === 'top'" #options>
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:is-read-only="isReadOnlyParameter"
-				:show-options="showOptions"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
@@ -358,7 +358,7 @@ function removeOverride() {
 						:parameter="parameter"
 						:model-value="value"
 						:path="path"
-						:is-read-only="isReadOnlyParameter"
+						:is-read-only="isReadOnly"
 						:is-assignment="isAssignment"
 						:rows="rows"
 						:droppable="droppable"
@@ -394,8 +394,8 @@ function removeOverride() {
 				v-if="optionsPosition === 'bottom'"
 				:parameter="parameter"
 				:value="value"
-				:is-read-only="isReadOnlyParameter"
-				:show-options="showOptions"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
@@ -426,7 +426,7 @@ function removeOverride() {
 .overrideButtonInOptions {
 	position: relative;
 	// To connect to input panel below the button
-	top: 1px;
+	margin-bottom: -2px;
 }
 
 .noCornersBottom > button {
