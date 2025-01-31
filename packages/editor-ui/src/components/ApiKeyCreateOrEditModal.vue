@@ -142,7 +142,7 @@ const onSave = async () => {
 	let expirationUnixTimestamp = null;
 
 	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.CUSTOM) {
-		expirationUnixTimestamp = expirationDaysFromNow.value;
+		expirationUnixTimestamp = parseInt(customExpirationDate.value, 10);
 	} else if (expirationDaysFromNow.value !== EXPIRATION_OPTIONS.NO_EXPIRATION) {
 		expirationUnixTimestamp = calculateExpirationDate(expirationDaysFromNow.value).toUnixInteger();
 	}
