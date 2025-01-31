@@ -124,7 +124,7 @@ const emit = defineEmits<{
 }
 
 .notice {
-	margin-left: var(--spacing-xl);
+	margin-left: var(--spacing-2xl);
 	margin-top: var(--spacing-2xs);
 	margin-bottom: 0;
 }

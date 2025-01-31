@@ -152,7 +152,7 @@ async function getSchemaPreview(node: INodeUi | null) {
 	} = node;
 
 	return await schemaPreviewStore.getSchemaPreview({
-		nodeName: type,
+		nodeType: type,
 		version: typeVersion,
 		resource: resource as string,
 		operation: operation as string,

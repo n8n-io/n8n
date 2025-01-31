@@ -7,17 +7,20 @@ import type { JSONSchema7 } from 'json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	// Type cast to avoid 'Type instantiation is excessively deep and possibly infinite'
-	const schemaPreviews = reactive<Map<string, JSONSchema7>>(new Map()) as Map<string, JSONSchema7>;
+	const schemaPreviews = reactive<Map<string, Result<JSONSchema7, Error>>>(new Map()) as Map<
+		string,
+		Result<JSONSchema7, Error>
+	>;
 
 	const rootStore = useRootStore();
 
 	function getSchemaPreviewKey({
-		nodeName,
+		nodeType,
 		version,
 		operation,
 		resource,
 	}: schemaPreviewApi.GetSchemaPreviewOptions) {
-		return `${nodeName}_${version}_${resource ?? 'all'}_${operation ?? 'all'}`;
+		return `${nodeType}_${version}_${resource ?? 'all'}_${operation ?? 'all'}`;
 	}
 
 	async function getSchemaPreview(
@@ -25,14 +28,17 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	): Promise<Result<JSONSchema7, Error>> {
 		const key = getSchemaPreviewKey(options);
 		const cached = schemaPreviews.get(key);
-		if (cached) return createResultOk(cached);
+		if (cached) return cached;
 
 		try {
 			const preview = await schemaPreviewApi.getSchemaPreview(rootStore.baseUrl, options);
-			schemaPreviews.set(key, preview);
-			return createResultOk(preview);
+			const result = createResultOk(preview);
+			schemaPreviews.set(key, result);
+			return result;
 		} catch (error) {
-			return createResultError(error);
+			const result = createResultError(error);
+			schemaPreviews.set(key, result);
+			return result;
 		}
 	}
 

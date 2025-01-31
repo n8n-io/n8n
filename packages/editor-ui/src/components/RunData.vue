@@ -62,7 +62,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
 import { searchInObject } from '@/utils/objectUtils';
-import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
@@ -561,19 +561,24 @@ const isSchemaPreviewEnabled = computed(
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
-	if (!node.value || !isSchemaPreviewEnabled.value) return false;
-	const {
-		type,
-		typeVersion,
-		parameters: { resource, operation },
-	} = node.value;
-	const preview = await schemaPreviewStore.getSchemaPreview({
-		nodeName: type,
-		version: typeVersion,
-		resource: resource as string,
-		operation: operation as string,
-	});
-	return preview.ok;
+	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
+	const nodes = props.nodes
+		.filter((n) => n.depth === 1)
+		.map((n) => workflowsStore.getNodeByName(n.name))
+		.filter(isPresent);
+
+	for (const connectedNode of nodes) {
+		const { type, typeVersion, parameters } = connectedNode;
+		const hasPreview = await schemaPreviewStore.getSchemaPreview({
+			nodeType: type,
+			version: typeVersion,
+			resource: parameters.resource as string,
+			operation: parameters.operation as string,
+		});
+
+		if (hasPreview.ok) return true;
+	}
+	return false;
 }, false);
 
 watch(node, (newNode, prevNode) => {
@@ -1622,7 +1627,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled) && !hasPreviewSchema"
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
