@@ -110,7 +110,10 @@ export class PublicApiKeyService {
 			if (!user) return false;
 
 			try {
-				this.jwtService.verify(providedApiKey);
+				this.jwtService.verify(providedApiKey, {
+					issuer: API_KEY_ISSUER,
+					audience: API_KEY_AUDIENCE,
+				});
 			} catch (e) {
 				return false;
 			}
