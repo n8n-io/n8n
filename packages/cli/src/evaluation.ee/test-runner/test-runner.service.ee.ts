@@ -83,6 +83,7 @@ export class TestRunnerService {
 	private getStartNodesData(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		pastExecutionWorkflowData: IWorkflowBase,
 	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
 		// Create a new workflow instance to use the helper functions (getChildNodes)
 		const workflowInstance = new Workflow({
@@ -92,12 +93,23 @@ export class TestRunnerService {
 			nodeTypes: this.nodeTypes,
 		});
 
+		// Create a map between node IDs and node names for the past workflow
+		const pastWorkflowNodeIdByName = new Map(
+			pastExecutionWorkflowData.nodes.map((node) => [node.name, node.id]),
+		);
+
+		// Create a map between node names and IDs for the up-to-date workflow
+		const workflowNodeNameById = new Map(workflow.nodes.map((node) => [node.id, node.name]));
+
 		// Determine the trigger node of the past execution
 		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
 		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
 
+		const pastExecutionTriggerNodeId = pastWorkflowNodeIdByName.get(pastExecutionTriggerNode);
+		assert(pastExecutionTriggerNodeId, 'Could not find the trigger node ID of the past execution');
+
 		// Check the trigger is still present in the workflow
-		const triggerNode = workflowInstance.getNode(pastExecutionTriggerNode);
+		const triggerNode = workflowNodeNameById.get(pastExecutionTriggerNodeId);
 		if (!triggerNode) {
 			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
 		}
@@ -106,13 +118,13 @@ export class TestRunnerService {
 		assert(triggerNodeData, 'Trigger node data not found');
 
 		const triggerToStartFrom = {
-			name: pastExecutionTriggerNode,
+			name: triggerNode,
 			data: triggerNodeData,
 		};
 
 		// Start nodes are the nodes that are connected to the trigger node
 		const startNodes = workflowInstance
-			.getChildNodes(pastExecutionTriggerNode, NodeConnectionType.Main, 1)
+			.getChildNodes(triggerNode, NodeConnectionType.Main, 1)
 			.map((nodeName) => ({
 				name: nodeName,
 				sourceData: { previousNode: pastExecutionTriggerNode },
@@ -151,7 +163,7 @@ export class TestRunnerService {
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
-			...this.getStartNodesData(workflow, pastExecutionData),
+			...this.getStartNodesData(workflow, pastExecutionData, pastExecutionWorkflowData),
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
