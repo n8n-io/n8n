@@ -37,7 +37,7 @@ const telemetry = useTelemetry();
 const filter = ref('');
 const projectId = ref<string | null>(null);
 const shareableCredentials = ref<ICredentialsResponse[]>([]);
-const unShareableCredentials = ref<IUsedCredential[]>([]);
+const unShareableCredentials = ref<Array<IUsedCredential | ICredentialsResponse>>([]);
 const shareUsedCredentials = ref(false);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
@@ -141,10 +141,20 @@ onMounted(async () => {
 				(workflow?.usedCredentials ?? []).find((c) => c.id === credential.id) &&
 				getResourcePermissions(credential.scopes).credential.share,
 		);
-		unShareableCredentials.value = (workflow?.usedCredentials ?? []).filter(
-			(credential) =>
-				!getResourcePermissions(credentialsStore.getCredentialById(credential.id)?.scopes)
-					.credential.share,
+		unShareableCredentials.value = (workflow?.usedCredentials ?? []).reduce(
+			(acc, uc) => {
+				const credential = credentialsStore.getCredentialById(uc.id);
+				const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
+				if (!credentialPermissions.share) {
+					if (credentialPermissions.read) {
+						acc.push(credential);
+					} else {
+						acc.push(uc);
+					}
+				}
+				return acc;
+			},
+			[] as Array<IUsedCredential | ICredentialsResponse>,
 		);
 	}
 });
