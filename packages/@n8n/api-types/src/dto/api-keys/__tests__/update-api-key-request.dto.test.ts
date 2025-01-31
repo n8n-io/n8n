@@ -1,9 +1,9 @@
-import { CreateOrUpdateApiKeyRequestDto } from '../create-or-update-api-key-request.dto';
+import { UpdateApiKeyRequestDto } from '../update-api-key-request.dto';
 
-describe('CreateOrUpdateApiKeyRequestDto', () => {
+describe('UpdateApiKeyRequestDto', () => {
 	describe('Valid requests', () => {
 		test('should allow valid label', () => {
-			const result = CreateOrUpdateApiKeyRequestDto.safeParse({
+			const result = UpdateApiKeyRequestDto.safeParse({
 				label: 'valid label',
 			});
 			expect(result.success).toBe(true);
@@ -28,7 +28,7 @@ describe('CreateOrUpdateApiKeyRequestDto', () => {
 				expectedErrorPath: ['label'],
 			},
 		])('should fail validation for $name', ({ label, expectedErrorPath }) => {
-			const result = CreateOrUpdateApiKeyRequestDto.safeParse({ label });
+			const result = UpdateApiKeyRequestDto.safeParse({ label });
 
 			expect(result.success).toBe(false);
 

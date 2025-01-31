@@ -5,7 +5,7 @@ import { useRootStore } from '@/stores/root.store';
 import * as publicApiApi from '@/api/api-keys';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
-import type { ApiKey, CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
@@ -37,7 +37,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		return apiKeys.value;
 	};
 
-	const createApiKey = async (payload: CreateOrUpdateApiKeyRequestDto) => {
+	const createApiKey = async (payload: CreateApiKeyRequestDto) => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, payload);
 		const { rawApiKey, ...rest } = newApiKey;
 		apiKeys.value.push(rest);
@@ -49,7 +49,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys.value = apiKeys.value.filter((apiKey) => apiKey.id !== id);
 	};
 
-	const updateApiKey = async (id: string, payload: CreateOrUpdateApiKeyRequestDto) => {
+	const updateApiKey = async (id: string, payload: UpdateApiKeyRequestDto) => {
 		await publicApiApi.updateApiKey(rootStore.restApiContext, id, payload);
 		apiKeysById.value[id].label = payload.label;
 	};

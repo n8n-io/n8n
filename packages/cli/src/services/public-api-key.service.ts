@@ -1,6 +1,8 @@
-import type { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
+import { ApplicationError } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { ApiKey } from '@/databases/entities/api-key';
@@ -30,11 +32,8 @@ export class PublicApiKeyService {
 	 * Creates a new public API key for the specified user.
 	 * @param user - The user for whom the API key is being created.
 	 */
-	async createPublicApiKeyForUser(
-		user: User,
-		{ label, expirationUnixTimestamp }: CreateOrUpdateApiKeyRequestDto,
-	) {
-		const apiKey = this.generateApiKey(user, expirationUnixTimestamp);
+	async createPublicApiKeyForUser(user: User, { label, expiresAt }: CreateApiKeyRequestDto) {
+		const apiKey = this.generateApiKey(user, expiresAt);
 		await this.apiKeyRepository.upsert(
 			this.apiKeyRepository.create({
 				userId: user.id,
@@ -64,7 +63,7 @@ export class PublicApiKeyService {
 		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
 	}
 
-	async updateApiKeyForUser(user: User, apiKeyId: string, { label }: { label?: string } = {}) {
+	async updateApiKeyForUser(user: User, apiKeyId: string, { label }: UpdateApiKeyRequestDto) {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label });
 	}
 
@@ -117,7 +116,7 @@ export class PublicApiKeyService {
 				});
 			} catch (e) {
 				if (e instanceof TokenExpiredError) return false;
-				throw e;
+				throw new ApplicationError('Could not validate the API key for unknown reason');
 			}
 
 			this.eventService.emit('public-api-invoked', {
@@ -133,12 +132,12 @@ export class PublicApiKeyService {
 		};
 	}
 
-	private generateApiKey = (user: User, expirationUnixTimestamp?: number) => {
+	private generateApiKey = (user: User, expiresAt: number | null) => {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
 			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
-			{ ...(expirationUnixTimestamp && { expiresIn: expirationUnixTimestamp - nowInSeconds }) },
+			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	};
 

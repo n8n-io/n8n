@@ -13,7 +13,7 @@ import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { N8nText } from 'n8n-design-system';
 import { DateTime } from 'luxon';
-import type { ApiKey, ApiKeyWithRawValue, CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
 
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
@@ -147,9 +147,9 @@ const onSave = async () => {
 		expirationUnixTimestamp = calculateExpirationDate(expirationDaysFromNow.value).toUnixInteger();
 	}
 
-	const payload: CreateOrUpdateApiKeyRequestDto = {
+	const payload: CreateApiKeyRequestDto = {
 		label: label.value,
-		...(expirationUnixTimestamp && { expirationUnixTimestamp }),
+		expiresAt: expirationUnixTimestamp,
 	};
 
 	try {
