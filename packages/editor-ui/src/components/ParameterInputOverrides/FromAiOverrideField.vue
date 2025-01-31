@@ -16,8 +16,10 @@ const emit = defineEmits<{
 			<AiStarsIcon :class="$style.aiStarsIcon" />
 		</div>
 		<div :class="['flex-grow', $style.overrideInput]">
-			<N8nText size="small">{{ i18n.baseText('parameterOverride.overridePanelText') }}</N8nText>
-			<N8nText size="small" bold>{{
+			<N8nText color="text-dark" size="small">{{
+				i18n.baseText('parameterOverride.overridePanelText')
+			}}</N8nText>
+			<N8nText color="text-dark" size="small" bold>{{
 				i18n.baseText('parameterOverride.overridePanelTextModel')
 			}}</N8nText>
 		</div>
