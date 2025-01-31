@@ -71,10 +71,11 @@ describe('EvaluationMetrics', () => {
 
 		expect(() => (info = metrics.addResults({ metric1: 1, metric2: 0 }))).not.toThrow();
 
+		expect(info).toBeDefined();
 		expect(info).toHaveProperty('unknownMetrics');
-		expect(info.unknownMetrics).toEqual(new Set(['metric2']));
+		expect(info!.unknownMetrics).toEqual(new Set(['metric2']));
 
 		expect(info).toHaveProperty('addedMetrics');
-		expect(info.addedMetrics).toEqual({ metric1: 1 });
+		expect(info!.addedMetrics).toEqual({ metric1: 1 });
 	});
 });
