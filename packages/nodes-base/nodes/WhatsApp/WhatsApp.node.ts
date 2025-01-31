@@ -36,19 +36,13 @@ export class WhatsApp implements INodeType {
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{
-				name: 'whatsAppApi',
+				name: WHATSAPP_CREDENTIALS_TYPE,
 				required: true,
 			},
 		],
 		requestDefaults: {
 			baseURL: WHATSAPP_BASE_URL,
 		},
-		declarativeRunExceptions: [
-			{
-				resource: 'message',
-				operation: SEND_AND_WAIT_OPERATION,
-			},
-		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -81,47 +75,55 @@ export class WhatsApp implements INodeType {
 
 	webhook = sendAndWaitWebhook;
 
-	async execute(this: IExecuteFunctions) {
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const returnData: INodeExecutionData[] = [];
+	nonRoutingOperations = {
+		message: {
+			async [SEND_AND_WAIT_OPERATION](context: IExecuteFunctions) {
+				const resource = context.getNodeParameter('resource', 0) as string;
+				const operation = context.getNodeParameter('operation', 0) as string;
+				const returnData: INodeExecutionData[] = [];
 
-		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			try {
-				const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
-				const recipientPhoneNumber = (
-					this.getNodeParameter('recipientPhoneNumber', 0) as string
-				).replace(/[\-\(\)\+]/g, '');
+				if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+					try {
+						const phoneNumberId = context.getNodeParameter('phoneNumberId', 0) as string;
+						const recipientPhoneNumber = (
+							context.getNodeParameter('recipientPhoneNumber', 0) as string
+						).replace(/[\-\(\)\+]/g, '');
 
-				const config = getSendAndWaitConfig(this);
+						const config = getSendAndWaitConfig(context);
 
-				const buttons = config.options.map((option) => {
-					return `*${option.label}:*\n_${config.url}?approved=${option.value}_\n\n`;
-				});
+						const buttons = config.options.map((option) => {
+							return `*${option.label}:*\n_${config.url}?approved=${option.value}_\n\n`;
+						});
 
-				await this.helpers.requestWithAuthentication.call(this, WHATSAPP_CREDENTIALS_TYPE, {
-					baseURL: WHATSAPP_BASE_URL,
-					method: 'POST',
-					url: `${phoneNumberId}/messages`,
-					body: {
-						messaging_product: 'whatsapp',
-						text: {
-							body: `${config.message}\n\n${buttons.join('')}`,
-						},
-						type: 'text',
-						to: recipientPhoneNumber,
-					},
-				});
+						await context.helpers.requestWithAuthentication.call(
+							context,
+							WHATSAPP_CREDENTIALS_TYPE,
+							{
+								baseURL: WHATSAPP_BASE_URL,
+								method: 'POST',
+								url: `${phoneNumberId}/messages`,
+								body: {
+									messaging_product: 'whatsapp',
+									text: {
+										body: `${config.message}\n\n${buttons.join('')}`,
+									},
+									type: 'text',
+									to: recipientPhoneNumber,
+								},
+							},
+						);
 
-				const waitTill = configureWaitTillDate(this);
+						const waitTill = configureWaitTillDate(context);
 
-				await this.putExecutionToWait(waitTill);
-				return [this.getInputData()];
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error);
-			}
-		}
+						await context.putExecutionToWait(waitTill);
+						return [context.getInputData()];
+					} catch (error) {
+						throw new NodeOperationError(context.getNode(), error);
+					}
+				}
 
-		return [returnData];
-	}
+				return [returnData];
+			},
+		},
+	};
 }

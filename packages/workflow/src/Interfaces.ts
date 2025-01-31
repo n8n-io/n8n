@@ -1643,6 +1643,13 @@ export interface INodeType {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
+	nonRoutingOperations?: {
+		[resource: string]: {
+			[operation: string]: (
+				context: IExecuteFunctions,
+			) => Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+		};
+	};
 }
 
 /**
@@ -1935,7 +1942,6 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	polling?: true | undefined;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
-	declarativeRunExceptions?: Array<{ resource: string; operation: string }>;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;

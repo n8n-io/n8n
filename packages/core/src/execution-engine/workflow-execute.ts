@@ -41,6 +41,9 @@ import type {
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
+	IExecuteFunctions,
+	NodeExecutionWithMetadata,
+	INodeType,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -71,7 +74,6 @@ import {
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
-import { isDeclarativeRunException } from '../utils/is-declarative-run-exception';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -987,7 +989,20 @@ export class WorkflowExecute {
 		return workflowIssues;
 	}
 
-	private isDeclarativeRunException = isDeclarativeRunException;
+	private getRoutingNodeExecuteFunction(node: INode, type: INodeType) {
+		const { resource, operation } = node.parameters;
+		if (
+			typeof resource === 'string' &&
+			typeof operation === 'string' &&
+			type.nonRoutingOperations?.[resource]?.[operation]
+		) {
+			return type.nonRoutingOperations[resource][operation] as (
+				context: IExecuteFunctions,
+			) => Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+		}
+
+		return undefined;
+	}
 
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
@@ -1018,9 +1033,12 @@ export class WorkflowExecute {
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
+		const routingExecuteFunction = this.getRoutingNodeExecuteFunction(node, nodeType);
+
 		let connectionInputData: INodeExecutionData[] = [];
 		if (
-			(nodeType.execute && this.isDeclarativeRunException(node, nodeType, 'execute')) ||
+			nodeType.execute ||
+			routingExecuteFunction ||
 			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
 		) {
 			// Only stop if first input is empty for execute runs. For all others run anyways
@@ -1081,7 +1099,7 @@ export class WorkflowExecute {
 			inputData = newInputData;
 		}
 
-		if (nodeType.execute && this.isDeclarativeRunException(node, nodeType, 'execute')) {
+		if (nodeType.execute || routingExecuteFunction) {
 			const closeFunctions: CloseFunction[] = [];
 			const context = new ExecuteContext(
 				workflow,
@@ -1097,10 +1115,18 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 
-			const data =
-				nodeType instanceof Node
-					? await nodeType.execute(context)
-					: await nodeType.execute.call(context);
+			let data;
+
+			if (routingExecuteFunction) {
+				data = await routingExecuteFunction(context);
+			}
+
+			if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context)
+						: await nodeType.execute.call(context);
+			}
 
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),
@@ -1173,7 +1199,7 @@ export class WorkflowExecute {
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
-		} else if (nodeType.webhook && this.isDeclarativeRunException(node, nodeType, 'webhook')) {
+		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
