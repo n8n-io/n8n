@@ -40,7 +40,7 @@ async function onAction(action: string) {
 	}
 }
 
-const isApiKeyExpired = (apiKey: ApiKey) => {
+const hasApiKeyExpired = (apiKey: ApiKey) => {
 	if (!apiKey.expiresAt) return false;
 	return apiKey.expiresAt <= Date.now() / 1000;
 };
@@ -48,7 +48,7 @@ const isApiKeyExpired = (apiKey: ApiKey) => {
 const getExpirationTime = (apiKey: ApiKey): string => {
 	if (!apiKey.expiresAt) return i18n.baseText('settings.api.neverExpires');
 
-	if (isApiKeyExpired(apiKey)) return i18n.baseText('settings.api.expired');
+	if (hasApiKeyExpired(apiKey)) return i18n.baseText('settings.api.expired');
 
 	const time = DateTime.fromSeconds(apiKey.expiresAt).toFormat('ccc, MMM d yyyy');
 
@@ -64,7 +64,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 					{{ apiKey.label }}
 				</n8n-heading>
 				<div :class="[$style.cardDescription]">
-					<n8n-text :color="!isApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
+					<n8n-text :color="!hasApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
 						<span>{{ getExpirationTime(apiKey) }}</span>
 					</n8n-text>
 				</div>
