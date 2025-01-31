@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -25,7 +26,6 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-import { ITaskData } from 'n8n-workflow';
 
 jest.mock('@/db', () => ({
 	transaction: (cb: any) => cb(),
