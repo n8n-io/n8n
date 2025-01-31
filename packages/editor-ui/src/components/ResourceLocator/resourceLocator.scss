@@ -78,12 +78,9 @@ $--mode-selector-width: 92px;
 		top: 0;
 		bottom: 0;
 		left: 0;
+		right: var(--input-issues-width);
 		border: 1px solid var(--border-color-base);
 		border-radius: var(--border-radius-base);
-	}
-
-	.backgroundIssues {
-		right: var(--input-issues-width);
 	}
 
 	.backgroundOverride {

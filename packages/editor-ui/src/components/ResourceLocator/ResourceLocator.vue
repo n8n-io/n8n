@@ -308,6 +308,10 @@ const isContentOverride = computed(
 		!!parameterOverrides.value?.isOverrideValue(props.modelValue?.value?.toString() ?? ''),
 );
 
+const showOverrideButton = computed(
+	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
+);
+
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
 		if (inputRef.value) {
@@ -796,7 +800,9 @@ function removeOverride() {
 				<div
 					:class="[
 						$style.background,
-						{ [$style.backgroundOverride]: true, [$style.backgroundIssues]: false },
+						{
+							[$style.backgroundOverride]: showOverrideButton,
+						},
 					]"
 				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
@@ -895,11 +901,8 @@ function removeOverride() {
 										/>
 									</template>
 								</n8n-input>
-								<div :class="$style.overrideButtonInline">
-									<FromAiOverrideButton
-										v-if="canBeContentOverride && !isContentOverride && !isReadOnly"
-										@click="applyOverride"
-									/>
+								<div v-if="showOverrideButton" :class="$style.overrideButtonInline">
+									<FromAiOverrideButton @click="applyOverride" />
 								</div>
 							</div>
 						</template>
