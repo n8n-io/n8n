@@ -298,6 +298,10 @@ function removeOverride() {
 		name: props.path,
 		value: parameterOverrides.value?.buildValueFromOverride(props, false),
 	});
+	void setTimeout(async () => {
+		await parameterInputWrapper.value?.focusInput();
+		parameterInputWrapper.value?.selectInput();
+	}, 0);
 }
 </script>
 

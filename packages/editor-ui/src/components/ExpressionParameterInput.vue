@@ -55,6 +55,12 @@ const workflowsStore = useWorkflowsStore();
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
 
+function select() {
+	if (inlineInput.value) {
+		inlineInput.value.selectAll();
+	}
+}
+
 function focus() {
 	if (inlineInput.value) {
 		inlineInput.value.focus();
@@ -162,7 +168,7 @@ watch(isDragging, (newIsDragging) => {
 
 onClickOutside(container, (event) => onBlur(event));
 
-defineExpose({ focus });
+defineExpose({ focus, select });
 </script>
 
 <template>

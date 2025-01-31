@@ -739,6 +739,10 @@ function removeOverride() {
 		...props.modelValue,
 		value: parameterOverrides.value?.buildValueFromOverride(props, false),
 	});
+	void setTimeout(() => {
+		inputRef.value?.focus();
+		inputRef.value?.select();
+	}, 0);
 }
 </script>
 

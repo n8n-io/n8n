@@ -729,6 +729,15 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
+function selectInput() {
+	const inputRef = inputField.value;
+	if (inputRef) {
+		if ('select' in inputRef) {
+			inputRef.select();
+		}
+	}
+}
+
 async function setFocus() {
 	if (['json'].includes(props.parameter.type) && getArgument('alwaysOpenEditWindow')) {
 		displayEditDialog();
@@ -1004,6 +1013,8 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
+	focusInput: async () => await setFocus(),
+	selectInput: () => selectInput(),
 });
 
 onBeforeUnmount(() => {

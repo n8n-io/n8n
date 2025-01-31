@@ -202,6 +202,8 @@ const param = useTemplateRef('param');
 const isSingleLineInput = computed(() => param.value?.isSingleLineInput);
 defineExpose({
 	isSingleLineInput,
+	focusInput: () => param.value?.focusInput(),
+	selectInput: () => param.value?.selectInput(),
 });
 </script>
 
