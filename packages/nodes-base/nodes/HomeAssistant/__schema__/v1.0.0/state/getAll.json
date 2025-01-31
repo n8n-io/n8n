@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "entity_id": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "editable": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "device_trackers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "gps_accuracy": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "friendly_name"
+            ]
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "null"
+                },
+                "user_id": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "id",
+                "parent_id",
+                "user_id"
+            ]
+        }
+    },
+    "required": [
+        "entity_id",
+        "state",
+        "attributes",
+        "last_changed",
+        "last_reported",
+        "last_updated",
+        "context"
+    ]
+}

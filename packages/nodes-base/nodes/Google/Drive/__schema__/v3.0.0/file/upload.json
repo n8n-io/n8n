@@ -1,0 +1,364 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "starred": {
+            "type": "boolean"
+        },
+        "trashed": {
+            "type": "boolean"
+        },
+        "explicitlyTrashed": {
+            "type": "boolean"
+        },
+        "parents": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "spaces": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "version": {
+            "type": "string"
+        },
+        "webContentLink": {
+            "type": "string"
+        },
+        "webViewLink": {
+            "type": "string"
+        },
+        "iconLink": {
+            "type": "string"
+        },
+        "hasThumbnail": {
+            "type": "boolean"
+        },
+        "thumbnailVersion": {
+            "type": "string"
+        },
+        "viewedByMe": {
+            "type": "boolean"
+        },
+        "createdTime": {
+            "type": "string"
+        },
+        "modifiedTime": {
+            "type": "string"
+        },
+        "modifiedByMeTime": {
+            "type": "string"
+        },
+        "modifiedByMe": {
+            "type": "boolean"
+        },
+        "owners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "photoLink": {
+                        "type": "string"
+                    },
+                    "me": {
+                        "type": "boolean"
+                    },
+                    "permissionId": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "displayName",
+                    "photoLink",
+                    "me",
+                    "permissionId",
+                    "emailAddress"
+                ]
+            }
+        },
+        "lastModifyingUser": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "photoLink": {
+                    "type": "string"
+                },
+                "me": {
+                    "type": "boolean"
+                },
+                "permissionId": {
+                    "type": "string"
+                },
+                "emailAddress": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "kind",
+                "displayName",
+                "photoLink",
+                "me",
+                "permissionId",
+                "emailAddress"
+            ]
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "ownedByMe": {
+            "type": "boolean"
+        },
+        "capabilities": {
+            "type": "object",
+            "properties": {
+                "canAcceptOwnership": {
+                    "type": "boolean"
+                },
+                "canAddChildren": {
+                    "type": "boolean"
+                },
+                "canAddMyDriveParent": {
+                    "type": "boolean"
+                },
+                "canChangeCopyRequiresWriterPermission": {
+                    "type": "boolean"
+                },
+                "canChangeSecurityUpdateEnabled": {
+                    "type": "boolean"
+                },
+                "canChangeViewersCanCopyContent": {
+                    "type": "boolean"
+                },
+                "canComment": {
+                    "type": "boolean"
+                },
+                "canCopy": {
+                    "type": "boolean"
+                },
+                "canDelete": {
+                    "type": "boolean"
+                },
+                "canDownload": {
+                    "type": "boolean"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "canListChildren": {
+                    "type": "boolean"
+                },
+                "canModifyContent": {
+                    "type": "boolean"
+                },
+                "canModifyContentRestriction": {
+                    "type": "boolean"
+                },
+                "canModifyEditorContentRestriction": {
+                    "type": "boolean"
+                },
+                "canModifyOwnerContentRestriction": {
+                    "type": "boolean"
+                },
+                "canModifyLabels": {
+                    "type": "boolean"
+                },
+                "canMoveChildrenWithinDrive": {
+                    "type": "boolean"
+                },
+                "canMoveItemIntoTeamDrive": {
+                    "type": "boolean"
+                },
+                "canMoveItemOutOfDrive": {
+                    "type": "boolean"
+                },
+                "canMoveItemWithinDrive": {
+                    "type": "boolean"
+                },
+                "canReadLabels": {
+                    "type": "boolean"
+                },
+                "canReadRevisions": {
+                    "type": "boolean"
+                },
+                "canRemoveChildren": {
+                    "type": "boolean"
+                },
+                "canRemoveContentRestriction": {
+                    "type": "boolean"
+                },
+                "canRemoveMyDriveParent": {
+                    "type": "boolean"
+                },
+                "canRename": {
+                    "type": "boolean"
+                },
+                "canShare": {
+                    "type": "boolean"
+                },
+                "canTrash": {
+                    "type": "boolean"
+                },
+                "canUntrash": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "canAddChildren",
+                "canChangeCopyRequiresWriterPermission",
+                "canChangeSecurityUpdateEnabled",
+                "canChangeViewersCanCopyContent",
+                "canComment",
+                "canCopy",
+                "canDelete",
+                "canDownload",
+                "canEdit",
+                "canListChildren",
+                "canModifyContent",
+                "canModifyContentRestriction",
+                "canModifyEditorContentRestriction",
+                "canModifyOwnerContentRestriction",
+                "canModifyLabels",
+                "canMoveChildrenWithinDrive",
+                "canMoveItemIntoTeamDrive",
+                "canMoveItemOutOfDrive",
+                "canMoveItemWithinDrive",
+                "canReadLabels",
+                "canReadRevisions",
+                "canRemoveChildren",
+                "canRemoveContentRestriction",
+                "canRename",
+                "canShare",
+                "canTrash",
+                "canUntrash"
+            ]
+        },
+        "viewersCanCopyContent": {
+            "type": "boolean"
+        },
+        "copyRequiresWriterPermission": {
+            "type": "boolean"
+        },
+        "writersCanShare": {
+            "type": "boolean"
+        },
+        "permissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "pendingOwner": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id",
+                    "type",
+                    "role"
+                ]
+            }
+        },
+        "permissionIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "originalFilename": {
+            "type": "string"
+        },
+        "fullFileExtension": {
+            "type": "string"
+        },
+        "fileExtension": {
+            "type": "string"
+        },
+        "md5Checksum": {
+            "type": "string"
+        },
+        "sha1Checksum": {
+            "type": "string"
+        },
+        "sha256Checksum": {
+            "type": "string"
+        },
+        "size": {
+            "type": "string"
+        },
+        "quotaBytesUsed": {
+            "type": "string"
+        },
+        "headRevisionId": {
+            "type": "string"
+        },
+        "isAppAuthorized": {
+            "type": "boolean"
+        },
+        "linkShareMetadata": {
+            "type": "object",
+            "properties": {
+                "securityUpdateEligible": {
+                    "type": "boolean"
+                },
+                "securityUpdateEnabled": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "securityUpdateEligible",
+                "securityUpdateEnabled"
+            ]
+        }
+    }
+}

@@ -414,6 +414,11 @@ export class TestRunnerService {
 						continue;
 					}
 
+					// Update status of the test case execution mapping entry in case of an error
+					if (testCaseExecution.data.resultData.error) {
+						await this.testCaseExecutionRepository.markAsFailed(testRun.id, pastExecutionId);
+					}
+
 					// Collect the results of the test case execution
 					const testCaseRunData = testCaseExecution.data.resultData.runData;
 
