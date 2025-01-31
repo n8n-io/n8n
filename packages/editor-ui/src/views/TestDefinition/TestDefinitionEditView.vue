@@ -290,7 +290,6 @@ watch(
 				v-model:mockedNodes="state.mockedNodes"
 				:cancel-editing="cancelEditing"
 				:show-config="showConfig"
-				:all-tags="allTags"
 				:tags-by-id="tagsById"
 				:is-loading="isLoading"
 				:get-field-issues="getFieldIssues"

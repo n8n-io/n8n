@@ -115,149 +115,154 @@ function hideTooltip() {
 </script>
 
 <template>
-	<div :class="[$style.panelBlock, { [$style.hidden]: !showConfig }]">
-		<div :class="$style.panelIntro">
-			{{ locale.baseText('testDefinition.edit.step.intro') }}
-		</div>
-		<!-- Select Executions -->
-		<EvaluationStep
-			:class="[$style.step, $style.reducedSpacing]"
-			:issues="getFieldIssues('tags')"
-			:show-issues="showFieldIssues('tags')"
-			:tooltip="
-				hasRuns ? locale.baseText('testDefinition.edit.step.executions.tooltip') : undefined
-			"
-			@mouseenter="
-				showTooltip($event, locale.baseText('testDefinition.edit.step.executions.tooltip'))
-			"
-			@mouseleave="hideTooltip"
-		>
-			<template #containerPrefix>
-				<BlockArrow :class="[$style.middle, $style.diagramArrow, $style.sm]" />
-			</template>
-			<template #title>
-				1. Fetch {{ selectedTag?.usageCount }} past executions tagged
-				<N8nTag :class="$style.tagInputTag" :text="selectedTag.name" :clickable="false" />
-			</template>
-			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
-			<template #cardContent>
-				<div :class="$style.tagInputContainer">
-					<div :class="$style.tagInputControls">
-						<n8n-button label="Rename tag" type="tertiary" size="small" @click="renameTag" />
-						<n8n-button
-							label="Select executions"
-							type="tertiary"
-							size="small"
-							@click="openExecutionsView"
-						/>
+	<div :class="[$style.container, { [$style.hidden]: !showConfig }]">
+		<div :class="$style.editForm">
+			<div :class="$style.panelIntro">
+				{{ locale.baseText('testDefinition.edit.step.intro') }}
+			</div>
+			<!-- Select Executions -->
+			<EvaluationStep
+				:class="[$style.step, $style.reducedSpacing]"
+				:issues="getFieldIssues('tags')"
+				:show-issues="showFieldIssues('tags')"
+				:tooltip="
+					hasRuns ? locale.baseText('testDefinition.edit.step.executions.tooltip') : undefined
+				"
+				@mouseenter="
+					showTooltip($event, locale.baseText('testDefinition.edit.step.executions.tooltip'))
+				"
+				@mouseleave="hideTooltip"
+			>
+				<template #containerPrefix>
+					<BlockArrow :class="[$style.middle, $style.diagramArrow, $style.sm]" />
+				</template>
+				<template #title>
+					1. Fetch {{ selectedTag?.usageCount }} past executions tagged
+					<N8nTag :class="$style.tagInputTag" :text="selectedTag.name" :clickable="false" />
+				</template>
+				<template #icon><font-awesome-icon icon="history" size="lg" /></template>
+				<template #cardContent>
+					<div :class="$style.tagInputContainer">
+						<div :class="$style.tagInputControls">
+							<n8n-button label="Rename tag" type="tertiary" size="small" @click="renameTag" />
+							<n8n-button
+								label="Select executions"
+								type="tertiary"
+								size="small"
+								@click="openExecutionsView"
+							/>
+						</div>
 					</div>
-				</div>
-			</template>
-		</EvaluationStep>
-		<!-- Mocked Nodes -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="
-				locale.baseText('testDefinition.edit.step.mockedNodes', {
-					adjustToNumber: mockedNodes?.length ?? 0,
-				})
-			"
-			:small="true"
-			:issues="getFieldIssues('mockedNodes')"
-			:show-issues="showFieldIssues('mockedNodes')"
-			:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.nodes.tooltip') : undefined"
-			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
-			@mouseleave="hideTooltip"
-		>
-			<template #containerPrefix>
-				<BlockArrow :class="[$style.diagramArrow, $style.right]" hoverable />
-			</template>
-			<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-			<template #cardContent>
-				<n8n-button
-					size="small"
-					data-test-id="select-nodes-button"
-					:label="locale.baseText('testDefinition.edit.selectNodes')"
-					type="tertiary"
-					@click="$emit('openPinningModal')"
-				/>
-			</template>
-		</EvaluationStep>
+				</template>
+			</EvaluationStep>
+			<!-- Mocked Nodes -->
+			<EvaluationStep
+				:class="$style.step"
+				:title="
+					locale.baseText('testDefinition.edit.step.mockedNodes', {
+						adjustToNumber: mockedNodes?.length ?? 0,
+					})
+				"
+				:small="true"
+				:issues="getFieldIssues('mockedNodes')"
+				:show-issues="showFieldIssues('mockedNodes')"
+				:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.nodes.tooltip') : undefined"
+				@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
+				@mouseleave="hideTooltip"
+			>
+				<template #containerPrefix>
+					<BlockArrow :class="[$style.diagramArrow, $style.right]" />
+				</template>
+				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
+				<template #cardContent>
+					<n8n-button
+						size="small"
+						data-test-id="select-nodes-button"
+						:label="locale.baseText('testDefinition.edit.selectNodes')"
+						type="tertiary"
+						@click="$emit('openPinningModal')"
+					/>
+				</template>
+			</EvaluationStep>
 
-		<!-- Re-run Executions -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
-			:small="true"
-			:tooltip="
-				hasRuns ? locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip') : undefined
-			"
-			@mouseenter="
-				showTooltip($event, locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip'))
-			"
-			@mouseleave="hideTooltip"
-		>
-			<template #containerPrefix>
-				<BlockArrow :class="[$style.right, $style.diagramArrow]" hoverable />
-			</template>
-			<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
-		</EvaluationStep>
+			<!-- Re-run Executions -->
+			<EvaluationStep
+				:class="$style.step"
+				:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
+				:small="true"
+				:tooltip="
+					hasRuns ? locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip') : undefined
+				"
+				@mouseenter="
+					showTooltip($event, locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip'))
+				"
+				@mouseleave="hideTooltip"
+			>
+				<template #containerPrefix>
+					<BlockArrow :class="[$style.right, $style.diagramArrow]" />
+				</template>
+				<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
+			</EvaluationStep>
 
-		<!-- Compare Executions -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
-			:issues="getFieldIssues('evaluationWorkflow')"
-			:show-issues="showFieldIssues('evaluationWorkflow')"
-			:tooltip="
-				hasRuns ? locale.baseText('testDefinition.edit.step.compareExecutions.tooltip') : undefined
-			"
-			@mouseenter="
-				showTooltip($event, locale.baseText('testDefinition.edit.step.compareExecutions.tooltip'))
-			"
-			@mouseleave="hideTooltip"
-		>
-			<template #containerPrefix>
-				<BlockArrow hoverable :class="[$style.right, $style.diagramArrow]" />
-				<BlockArrow hoverable :class="[$style.left, $style.diagramArrow, $style.lg]" />
-			</template>
-			<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
-			<template #cardContent>
-				<WorkflowSelector
-					v-model="evaluationWorkflow"
-					:example-pinned-data="examplePinnedData"
-					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
-					:sample-workflow-name="sampleWorkflowName"
-					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
-				/>
-			</template>
-		</EvaluationStep>
+			<!-- Compare Executions -->
+			<EvaluationStep
+				:class="$style.step"
+				:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
+				:issues="getFieldIssues('evaluationWorkflow')"
+				:show-issues="showFieldIssues('evaluationWorkflow')"
+				:tooltip="
+					hasRuns
+						? locale.baseText('testDefinition.edit.step.compareExecutions.tooltip')
+						: undefined
+				"
+				@mouseenter="
+					showTooltip($event, locale.baseText('testDefinition.edit.step.compareExecutions.tooltip'))
+				"
+				@mouseleave="hideTooltip"
+			>
+				<template #containerPrefix>
+					<BlockArrow :class="[$style.right, $style.diagramArrow]" />
+					<BlockArrow :class="[$style.left, $style.diagramArrow, $style.lg]" />
+				</template>
+				<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
+				<template #cardContent>
+					<WorkflowSelector
+						v-model="evaluationWorkflow"
+						:example-pinned-data="examplePinnedData"
+						:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
+						:sample-workflow-name="sampleWorkflowName"
+						@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
+					/>
+				</template>
+			</EvaluationStep>
 
-		<!-- Metrics -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.metrics')"
-			:issues="getFieldIssues('metrics')"
-			:show-issues="showFieldIssues('metrics')"
-			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
-			:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.metrics.tooltip') : undefined"
-			@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.metrics.tooltip'))"
-			@mouseleave="hideTooltip"
-		>
-			<template #containerPrefix>
-				<BlockArrow hoverable :class="[$style.middle, $style.diagramArrow]" />
-			</template>
-			<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
-			<template #cardContent>
-				<MetricsInput
-					v-model="metrics"
-					:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
-					@delete-metric="(metric) => emit('deleteMetric', metric)"
-					@update:model-value="updateChangedFieldsKeys('metrics')"
-				/>
-			</template>
-		</EvaluationStep>
-
+			<!-- Metrics -->
+			<EvaluationStep
+				:class="$style.step"
+				:title="locale.baseText('testDefinition.edit.step.metrics')"
+				:issues="getFieldIssues('metrics')"
+				:show-issues="showFieldIssues('metrics')"
+				:description="locale.baseText('testDefinition.edit.step.metrics.description')"
+				:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.metrics.tooltip') : undefined"
+				@mouseenter="
+					showTooltip($event, locale.baseText('testDefinition.edit.step.metrics.tooltip'))
+				"
+				@mouseleave="hideTooltip"
+			>
+				<template #containerPrefix>
+					<BlockArrow :class="[$style.middle, $style.diagramArrow]" />
+				</template>
+				<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
+				<template #cardContent>
+					<MetricsInput
+						v-model="metrics"
+						:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
+						@delete-metric="(metric) => emit('deleteMetric', metric)"
+						@update:model-value="updateChangedFieldsKeys('metrics')"
+					/>
+				</template>
+			</EvaluationStep>
+		</div>
 		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
 			<template #header>
 				<N8nHeading size="large" :bold="true">{{
@@ -289,18 +294,23 @@ function hideTooltip() {
 </template>
 
 <style module lang="scss">
-.panelBlock {
-	width: var(--evaluation-edit-panel-width);
-	display: grid;
-	height: 100%;
+.container {
 	overflow-y: auto;
 	overflow-x: visible;
+	width: auto;
+	margin-left: var(--spacing-2xl);
+}
+
+.editForm {
+	width: var(--evaluation-edit-panel-width);
+	display: grid;
+	height: fit-content;
 	flex-shrink: 0;
 	padding-bottom: var(--spacing-l);
-	margin-left: var(--spacing-2xl);
 	transition: width 0.2s ease;
 	position: relative;
 	gap: var(--spacing-xl);
+	margin: 0 auto;
 
 	&.hidden {
 		margin-left: 0;
@@ -335,14 +345,6 @@ function hideTooltip() {
 	display: block;
 }
 
-.step {
-	position: relative;
-
-	&:not(.reducedSpacing) {
-		margin-top: var(--spacing-m);
-	}
-}
-
 .diagramArrow {
 	--arrow-height: 5rem;
 	position: absolute;
@@ -364,7 +366,7 @@ function hideTooltip() {
 	}
 
 	&.lg {
-		--arrow-height: 22rem;
+		--arrow-height: 17rem;
 	}
 }
 

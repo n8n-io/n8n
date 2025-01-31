@@ -125,7 +125,6 @@ const handleMouseLeave = () => {
 .evaluationStep {
 	display: grid;
 	grid-template-columns: 1fr;
-	gap: var(--spacing-m);
 	background: var(--color-background-light);
 	padding: var(--spacing-s);
 	border-radius: var(--border-radius-xlarge);
