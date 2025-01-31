@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN, SEVEN_DAYS_IN_MILLIS } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -296,6 +296,7 @@ const onSelect = (value: number) => {
 								v-model="expirationDaysFromNow"
 								size="large"
 								filterable
+								data-test-id="expiration-select"
 								@update:model-value="onSelect"
 							>
 								<N8nOption
@@ -321,7 +322,6 @@ const onSelect = (value: number) => {
 							v-model="customExpirationDate"
 							type="date"
 							:teleported="false"
-							data-test-id="executions-filter-start-date-picker"
 							placeholder="yyyy-mm-dd"
 							value-format="X"
 							:disabled-date="shouldDisableDate"
