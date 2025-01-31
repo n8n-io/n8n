@@ -5,6 +5,8 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { sanitizeHtml } from './utils';
+
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
 	res: Response,
@@ -14,6 +16,7 @@ export const renderFormCompletion = async (
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as { formTitle: string };
+	const responseText = context.getNodeParameter('responseText', '') as string;
 
 	if (redirectUrl) {
 		res.send(
@@ -35,6 +38,7 @@ export const renderFormCompletion = async (
 		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
+		responseText: sanitizeHtml(responseText),
 	});
 
 	return { noWebhookResponse: true };

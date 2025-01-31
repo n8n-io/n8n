@@ -115,6 +115,11 @@ const completionProperties = updateDisplayOptions(
 					value: 'redirect',
 					description: 'Redirect the user to a URL',
 				},
+				{
+					name: 'Show Text',
+					value: 'showText',
+					description: 'Display simple text or HTML',
+				},
 			],
 		},
 		{
@@ -155,6 +160,22 @@ const completionProperties = updateDisplayOptions(
 					respondWith: ['text'],
 				},
 			},
+		},
+		{
+			displayName: 'Text',
+			name: 'responseText',
+			type: 'string',
+			displayOptions: {
+				show: {
+					respondWith: ['showText'],
+				},
+			},
+			typeOptions: {
+				rows: 2,
+			},
+			default: '',
+			placeholder: 'e.g. Thanks for filling the form',
+			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
 			displayName: 'Options',
