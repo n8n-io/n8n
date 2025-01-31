@@ -1,5 +1,6 @@
 import type { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { ApiKey } from '@/databases/entities/api-key';
@@ -115,7 +116,8 @@ export class PublicApiKeyService {
 					audience: API_KEY_AUDIENCE,
 				});
 			} catch (e) {
-				return false;
+				if (e instanceof TokenExpiredError) return false;
+				throw e;
 			}
 
 			this.eventService.emit('public-api-invoked', {
