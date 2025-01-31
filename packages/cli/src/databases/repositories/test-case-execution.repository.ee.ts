@@ -91,7 +91,7 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		pastExecutionId: string,
 		errorCode?: TestCaseExecutionErrorCode,
 		errorDetails?: IDataObject,
-		trx?: EntityManager
+		trx?: EntityManager,
 	) {
 		trx = trx ?? this.manager;
 
