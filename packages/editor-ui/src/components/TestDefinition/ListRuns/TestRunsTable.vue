@@ -25,7 +25,6 @@ const selectedRows = ref<TestRunRecord[]>([]);
 // Combine test run statuses and finalResult to get the final status
 const runSummaries = computed(() => {
 	return props.runs.map(({ status, finalResult, ...run }) => {
-		debugger;
 		if (status === 'completed' && finalResult) {
 			return { ...run, status: finalResult };
 		}

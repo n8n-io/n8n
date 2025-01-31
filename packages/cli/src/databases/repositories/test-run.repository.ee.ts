@@ -8,6 +8,7 @@ import { TestRun } from '@/databases/entities/test-run.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
 import type { ListQuery } from '@/requests';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export type TestRunSummary = TestRun & {
 	finalResult: 'success' | 'error' | 'warning';
@@ -88,5 +89,21 @@ export class TestRunRepository extends Repository<TestRun> {
 				testRun.status === 'completed' ? getTestRunFinalResult(testCaseExecutions) : null;
 			return { ...testRun, finalResult };
 		});
+	}
+
+	async getTestRunSummaryById(testDefinitionId: string, testRunId: string) {
+		const testRun = await this.findOne({
+			where: { id: testRunId, testDefinition: { id: testDefinitionId } },
+			relations: ['testCaseExecutions'],
+		});
+
+		if (!testRun) {
+			throw new NotFoundError('Test run not found');
+		}
+
+		const finalResult =
+			testRun.status === 'completed' ? getTestRunFinalResult(testRun.testCaseExecutions) : null;
+
+		return { ...testRun, finalResult };
 	}
 }
