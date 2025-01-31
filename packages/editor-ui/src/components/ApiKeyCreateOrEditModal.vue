@@ -87,6 +87,15 @@ const props = withDefaults(
 	},
 );
 
+const allFormFieldsAreSet = computed(() => {
+	const isExpirationDateSet =
+		expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION ||
+		(expirationDaysFromNow.value === EXPIRATION_OPTIONS.CUSTOM && customExpirationDate.value) ||
+		expirationDate.value;
+
+	return label.value && (props.mode === 'edit' ? true : isExpirationDateSet);
+});
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
 
@@ -323,6 +332,7 @@ const onSelect = (value: number) => {
 				<N8nButton
 					v-if="mode === 'new' && !newApiKey"
 					:loading="loading"
+					:disabled="!allFormFieldsAreSet"
 					:label="i18n.baseText('settings.api.view.modal.save.button')"
 					@click="onSave"
 				/>
@@ -333,6 +343,7 @@ const onSelect = (value: number) => {
 				/>
 				<N8nButton
 					v-if="mode === 'edit'"
+					:disabled="!allFormFieldsAreSet"
 					:label="i18n.baseText('settings.api.view.modal.edit.button')"
 					@click="onEdit"
 				/>
