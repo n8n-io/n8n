@@ -14,7 +14,6 @@ import {
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUIStore } from '@/stores/ui.store';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
 
