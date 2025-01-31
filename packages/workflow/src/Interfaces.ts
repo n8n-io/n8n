@@ -1031,7 +1031,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
 export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
-	Pick<FunctionsBase, 'getNode'>;
+	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
 	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
@@ -2663,6 +2663,13 @@ export interface IExecutionSummaryNodeExecutionResult {
 
 export interface ResourceMapperFields {
 	fields: ResourceMapperField[];
+	emptyFieldsNotice?: string;
+}
+
+export interface WorkflowInputsData {
+	fields: ResourceMapperField[];
+	dataMode: string;
+	subworkflowInfo?: { id?: string };
 }
 
 export interface ResourceMapperField {
@@ -2687,7 +2694,10 @@ export type FormFieldsParameter = Array<{
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
 	formatDate?: string;
+	html?: string;
 	placeholder?: string;
+	fieldName?: string;
+	fieldValue?: string;
 }>;
 
 export type FieldTypeMap = {

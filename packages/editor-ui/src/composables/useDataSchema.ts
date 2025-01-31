@@ -282,6 +282,8 @@ export const useFlattenSchema = () => {
 			path: schema.path,
 		});
 
+		const id = `${node.name}-${expression}`;
+
 		if (Array.isArray(schema.value)) {
 			const items: RenderItem[] = [];
 
@@ -293,14 +295,14 @@ export const useFlattenSchema = () => {
 					depth,
 					level,
 					icon: getIconBySchemaType(schema.type),
-					id: expression,
+					id,
 					collapsable: true,
 					nodeType: node.type,
 					type: 'item',
 				});
 			}
 
-			if (closedNodes.value.has(expression)) {
+			if (closedNodes.value.has(id)) {
 				return items;
 			}
 
@@ -327,7 +329,7 @@ export const useFlattenSchema = () => {
 					level,
 					depth,
 					value: shorten(schema.value, 600, 0),
-					id: expression,
+					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
 					nodeType: node.type,

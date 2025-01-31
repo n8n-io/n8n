@@ -1,0 +1,470 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "uuid": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "lexical": {
+            "type": "string"
+        },
+        "comment_id": {
+            "type": "string"
+        },
+        "feature_image": {
+            "type": "null"
+        },
+        "featured": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "custom_excerpt": {
+            "type": "null"
+        },
+        "codeinjection_head": {
+            "type": "null"
+        },
+        "codeinjection_foot": {
+            "type": "null"
+        },
+        "custom_template": {
+            "type": "null"
+        },
+        "canonical_url": {
+            "type": "null"
+        },
+        "authors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "cover_image": {
+                        "type": "null"
+                    },
+                    "bio": {
+                        "type": "null"
+                    },
+                    "website": {
+                        "type": "null"
+                    },
+                    "location": {
+                        "type": "null"
+                    },
+                    "facebook": {
+                        "type": "null"
+                    },
+                    "twitter": {
+                        "type": "null"
+                    },
+                    "accessibility": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "meta_title": {
+                        "type": "null"
+                    },
+                    "meta_description": {
+                        "type": "null"
+                    },
+                    "tour": {
+                        "type": "null"
+                    },
+                    "last_seen": {
+                        "type": "string"
+                    },
+                    "comment_notifications": {
+                        "type": "boolean"
+                    },
+                    "free_member_signup_notification": {
+                        "type": "boolean"
+                    },
+                    "paid_subscription_started_notification": {
+                        "type": "boolean"
+                    },
+                    "paid_subscription_canceled_notification": {
+                        "type": "boolean"
+                    },
+                    "mention_notifications": {
+                        "type": "boolean"
+                    },
+                    "recommendation_notifications": {
+                        "type": "boolean"
+                    },
+                    "milestone_notifications": {
+                        "type": "boolean"
+                    },
+                    "donation_notifications": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                },
+                                "created_at": {
+                                    "type": "string"
+                                },
+                                "updated_at": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name",
+                                "description",
+                                "created_at",
+                                "updated_at"
+                            ]
+                        }
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "email",
+                    "profile_image",
+                    "cover_image",
+                    "bio",
+                    "website",
+                    "location",
+                    "facebook",
+                    "twitter",
+                    "accessibility",
+                    "status",
+                    "meta_title",
+                    "meta_description",
+                    "tour",
+                    "last_seen",
+                    "comment_notifications",
+                    "created_at",
+                    "updated_at",
+                    "roles",
+                    "url"
+                ]
+            }
+        },
+        "tiers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "welcome_page_url": {
+                        "type": "null"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    },
+                    "trial_days": {
+                        "type": "integer"
+                    },
+                    "description": {
+                        "type": "null"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "monthly_price_id": {
+                        "type": "null"
+                    },
+                    "yearly_price_id": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "active",
+                    "welcome_page_url",
+                    "visibility",
+                    "description",
+                    "type",
+                    "created_at",
+                    "updated_at",
+                    "monthly_price_id",
+                    "yearly_price_id"
+                ]
+            }
+        },
+        "count": {
+            "type": "object",
+            "properties": {
+                "clicks": {
+                    "type": "integer"
+                },
+                "positive_feedback": {
+                    "type": "integer"
+                },
+                "negative_feedback": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "clicks",
+                "positive_feedback",
+                "negative_feedback"
+            ]
+        },
+        "primary_author": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "cover_image": {
+                    "type": "null"
+                },
+                "bio": {
+                    "type": "null"
+                },
+                "website": {
+                    "type": "null"
+                },
+                "location": {
+                    "type": "null"
+                },
+                "facebook": {
+                    "type": "null"
+                },
+                "twitter": {
+                    "type": "null"
+                },
+                "accessibility": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "meta_title": {
+                    "type": "null"
+                },
+                "meta_description": {
+                    "type": "null"
+                },
+                "tour": {
+                    "type": "null"
+                },
+                "last_seen": {
+                    "type": "string"
+                },
+                "comment_notifications": {
+                    "type": "boolean"
+                },
+                "free_member_signup_notification": {
+                    "type": "boolean"
+                },
+                "paid_subscription_started_notification": {
+                    "type": "boolean"
+                },
+                "paid_subscription_canceled_notification": {
+                    "type": "boolean"
+                },
+                "mention_notifications": {
+                    "type": "boolean"
+                },
+                "recommendation_notifications": {
+                    "type": "boolean"
+                },
+                "milestone_notifications": {
+                    "type": "boolean"
+                },
+                "donation_notifications": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "created_at": {
+                                "type": "string"
+                            },
+                            "updated_at": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "created_at",
+                            "updated_at"
+                        ]
+                    }
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "slug",
+                "email",
+                "profile_image",
+                "cover_image",
+                "bio",
+                "website",
+                "location",
+                "facebook",
+                "twitter",
+                "accessibility",
+                "status",
+                "meta_title",
+                "meta_description",
+                "tour",
+                "last_seen",
+                "comment_notifications",
+                "created_at",
+                "updated_at",
+                "roles",
+                "url"
+            ]
+        },
+        "primary_tag": {
+            "type": "null"
+        },
+        "email_segment": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "og_title": {
+            "type": "null"
+        },
+        "og_description": {
+            "type": "null"
+        },
+        "twitter_title": {
+            "type": "null"
+        },
+        "twitter_description": {
+            "type": "null"
+        },
+        "meta_title": {
+            "type": "null"
+        },
+        "meta_description": {
+            "type": "null"
+        },
+        "email_subject": {
+            "type": "null"
+        },
+        "frontmatter": {
+            "type": "null"
+        },
+        "feature_image_alt": {
+            "type": "null"
+        },
+        "feature_image_caption": {
+            "type": "null"
+        },
+        "email_only": {
+            "type": "boolean"
+        },
+        "email": {
+            "type": "null"
+        },
+        "newsletter": {
+            "type": "null"
+        },
+        "reading_time": {
+            "type": "integer"
+        }
+    }
+}

@@ -42,6 +42,7 @@ export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
+export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
@@ -261,6 +262,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const HUMAN_IN_THE_LOOP_CATEGORY = 'HITL';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
 export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
@@ -273,6 +275,7 @@ export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
+export const HITL_SUBCATEGORY = 'Human in the Loop';
 export const AI_CATEGORY_AGENTS = 'Agents';
 export const AI_CATEGORY_CHAINS = 'Chains';
 export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
@@ -660,6 +663,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	API_KEYS = 'apiKeys',
 	TEST_DEFINITION = 'testDefinition',
 }
 
@@ -904,6 +908,6 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
-
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
+
+export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes

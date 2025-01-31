@@ -15,7 +15,7 @@ export function useNodeViewVersionSwitcher() {
 
 	const defaultVersion = settingsStore.isCanvasV2Enabled ? '2' : '1';
 	const nodeViewVersion = useLocalStorage('NodeView.version', defaultVersion);
-	const nodeViewVersionMigrated = useLocalStorage('NodeView.migrated', false);
+	const nodeViewVersionMigrated = useLocalStorage('NodeView.migrated.release', false);
 
 	function setNodeViewSwitcherDropdownOpened(visible: boolean) {
 		if (!visible) {

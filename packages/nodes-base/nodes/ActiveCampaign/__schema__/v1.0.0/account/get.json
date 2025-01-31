@@ -1,0 +1,110 @@
+{
+	"type": "object",
+	"value": [
+		{
+			"key": "account",
+			"type": "Object",
+			"value": [
+				{
+					"key": "accountUrl",
+					"type": "string",
+					"value": "",
+					"path": ".account.accountUrl"
+				},
+				{
+					"key": "createdTimestamp",
+					"type": "string",
+					"value": "",
+					"path": ".account.createdTimestamp"
+				},
+				{
+					"key": "id",
+					"type": "string",
+					"value": "",
+					"path": ".account.id"
+				},
+				{
+					"key": "links",
+					"type": "Object",
+					"value": [
+						{
+							"key": "accountContacts",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.accountContacts"
+						},
+						{
+							"key": "accountCustomFieldData",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.accountCustomFieldData"
+						},
+						{
+							"key": "contactEmails",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.contactEmails"
+						},
+						{
+							"key": "emailActivities",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.emailActivities"
+						},
+						{
+							"key": "notes",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.notes"
+						},
+						{
+							"key": "owner",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.owner"
+						},
+						{
+							"key": "required",
+							"type": "string",
+							"value": "",
+							"path": ".account.links.required"
+						}
+					],
+					"path": ".account.links"
+				},
+				{
+					"key": "name",
+					"type": "string",
+					"value": "",
+					"path": ".account.name"
+				},
+				{
+					"key": "owner",
+					"type": "string",
+					"value": "",
+					"path": ".account.owner"
+				},
+				{
+					"key": "updatedTimestamp",
+					"type": "string",
+					"value": "",
+					"path": ".account.updatedTimestamp"
+				},
+				{
+					"key": "required",
+					"type": "string",
+					"value": "",
+					"path": ".account.required"
+				}
+			],
+			"path": ".account"
+		},
+		{
+			"key": "required",
+			"type": "string",
+			"value": "",
+			"path": ".required"
+		}
+	],
+	"path": ""
+}

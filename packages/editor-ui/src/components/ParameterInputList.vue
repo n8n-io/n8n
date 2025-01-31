@@ -5,7 +5,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy, ADD_FORM_NOTICE } from 'n8n-workflow';
+import { deepCopy, ADD_FORM_NOTICE, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
@@ -44,6 +44,9 @@ const LazyFixedCollectionParameter = defineAsyncComponent(
 const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./CollectionParameter.vue'),
 );
+
+// Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
+const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
 	nodeValues: INodeParameters;
@@ -432,6 +435,15 @@ function onNoticeAction(action: string) {
 	}
 }
 
+function getParameterIssues(parameter: INodeProperties): string[] {
+	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
+		return [];
+	}
+	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+
+	return issues.parameters?.[parameter.name] ?? [];
+}
+
 /**
  * Handles default node button parameter type actions
  * @param parameter
@@ -536,8 +548,26 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
+					:input-name="parameter.name"
 					color="text-dark"
-				/>
+				>
+					<template
+						v-if="
+							showIssuesInLabelFor.includes(parameter.type) &&
+							getParameterIssues(parameter).length > 0
+						"
+						#issues
+					>
+						<N8nTooltip>
+							<template #content>
+								<span v-for="(issue, i) in getParameterIssues(parameter)" :key="i">{{
+									issue
+								}}</span>
+							</template>
+							<N8nIcon icon="exclamation-triangle" size="small" color="danger" />
+						</N8nTooltip>
+					</template>
+				</N8nInputLabel>
 				<Suspense v-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter

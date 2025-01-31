@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
@@ -10,9 +10,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
-import { RecycleScroller } from 'vue-virtual-scroller';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { refDebounced } from '@vueuse/core';
 import {
 	N8nHeading,
@@ -37,6 +36,7 @@ import {
 	SOURCE_CONTROL_FILE_LOCATION,
 } from '@n8n/api-types';
 import { orderBy, groupBy } from 'lodash-es';
+import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -48,6 +48,9 @@ const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
+
+const concatenateWithAnd = (messages: string[]) =>
+	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -101,22 +104,33 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 	);
 
 const userNotices = computed(() => {
-	const messages: string[] = [];
+	const messages: Array<{ title: string; content: string }> = [];
 
 	if (changes.value.credentials.length) {
 		const { created, deleted, modified } = groupBy(changes.value.credentials, 'status');
 
-		messages.push(
-			`${created?.length ?? 0} new credentials added, ${deleted?.length ?? 0} deleted and ${modified?.length ?? 0} changed`,
-		);
+		messages.push({
+			title: 'Credentials',
+			content: concatenateWithAnd([
+				...(created?.length ? [`${created.length} added`] : []),
+				...(deleted?.length ? [`${deleted.length} deleted`] : []),
+				...(modified?.length ? [`${modified.length} changed`] : []),
+			]),
+		});
 	}
 
 	if (changes.value.variables.length) {
-		messages.push('At least one new variable has been added or modified');
+		messages.push({
+			title: 'Variables',
+			content: 'at least one new or modified',
+		});
 	}
 
 	if (changes.value.tags.length) {
-		messages.push('At least one new tag has been added or modified');
+		messages.push({
+			title: 'Tags',
+			content: 'at least one new or modified',
+		});
 	}
 
 	return messages;
@@ -185,22 +199,13 @@ const filteredWorkflows = computed(() => {
 	});
 });
 
-const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
-	[SOURCE_CONTROL_FILE_STATUS.modified]: 1,
-	[SOURCE_CONTROL_FILE_STATUS.renamed]: 2,
-	[SOURCE_CONTROL_FILE_STATUS.created]: 3,
-	[SOURCE_CONTROL_FILE_STATUS.deleted]: 4,
-} as const;
-const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
-	statusPriority[status] ?? 0;
-
 const sortedWorkflows = computed(() => {
 	const sorted = orderBy(
 		filteredWorkflows.value,
 		[
 			// keep the current workflow at the top of the list
 			({ id }) => id === changes.value.currentWorkflow?.id,
-			({ status }) => getPriorityByStatus(status),
+			({ status }) => getPushPriorityByStatus(status),
 			'updatedAt',
 		],
 		['desc', 'asc', 'desc'],
@@ -227,20 +232,38 @@ const isSubmitDisabled = computed(() => {
 	return false;
 });
 
-const selectAll = computed(
-	() =>
-		selectedChanges.value.size > 0 && selectedChanges.value.size === sortedWorkflows.value.length,
-);
+const sortedWorkflowsSet = computed(() => new Set(sortedWorkflows.value.map(({ id }) => id)));
 
-const selectAllIndeterminate = computed(
-	() => selectedChanges.value.size > 0 && selectedChanges.value.size < sortedWorkflows.value.length,
-);
+const selectAll = computed(() => {
+	if (!selectedChanges.value.size) {
+		return false;
+	}
+
+	const notSelectedVisibleItems = toRaw(sortedWorkflowsSet.value).difference(selectedChanges.value);
+
+	return !Boolean(notSelectedVisibleItems.size);
+});
+
+const selectAllIndeterminate = computed(() => {
+	if (!selectedChanges.value.size) {
+		return false;
+	}
+
+	const selectedVisibleItems = toRaw(selectedChanges.value).intersection(sortedWorkflowsSet.value);
+
+	if (selectedVisibleItems.size === 0) {
+		return false;
+	}
+
+	return !selectAll.value;
+});
 
 function onToggleSelectAll() {
+	const selected = toRaw(selectedChanges.value);
 	if (selectAll.value) {
-		selectedChanges.value.clear();
+		selectedChanges.value = selected.difference(sortedWorkflowsSet.value);
 	} else {
-		selectedChanges.value = new Set(changes.value.workflows.map((file) => file.id));
+		selectedChanges.value = selected.union(sortedWorkflowsSet.value);
 	}
 }
 
@@ -298,7 +321,7 @@ const successNotificationMessage = () => {
 	}
 
 	return [
-		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
+		concatenateWithAnd(messages),
 		i18n.baseText('settings.sourceControl.modals.push.success.description'),
 	].join(' ');
 };
@@ -330,18 +353,7 @@ async function commitAndPush() {
 	}
 }
 
-const getStatusText = (status: SourceControlledFileStatus) =>
-	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
-const getStatusTheme = (status: SourceControlledFileStatus) => {
-	const statusToBadgeThemeMap: Partial<
-		Record<SourceControlledFileStatus, 'success' | 'danger' | 'warning'>
-	> = {
-		[SOURCE_CONTROL_FILE_STATUS.created]: 'success',
-		[SOURCE_CONTROL_FILE_STATUS.deleted]: 'danger',
-		[SOURCE_CONTROL_FILE_STATUS.modified]: 'warning',
-	} as const;
-	return statusToBadgeThemeMap[status];
-};
+const modalHeight = computed(() => (changes.value.workflows.length ? 'min(80vh, 850px)' : 'auto'));
 </script>
 
 <template>
@@ -349,161 +361,190 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
-		max-height="80%"
+		:height="modalHeight"
 		:custom-class="$style.sourceControlPush"
 	>
 		<template #header>
 			<N8nHeading tag="h1" size="xlarge">
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
-			<div class="mt-l">
-				<N8nText tag="div">
-					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
-					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-					</N8nLink>
-				</N8nText>
 
-				<N8nNotice v-if="userNotices.length" class="mt-xs" :compact="false">
-					<ul class="ml-m">
-						<li v-for="notice in userNotices" :key="notice">{{ notice }}</li>
-					</ul>
-				</N8nNotice>
-			</div>
+			<div v-if="changes.workflows.length" :class="[$style.filtersRow]" class="mt-l">
+				<div :class="[$style.filters]">
+					<N8nInput
+						v-model="search"
+						data-test-id="source-control-push-search"
+						placeholder="Filter by title"
+						clearable
+						style="width: 234px"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<N8nPopover trigger="click" width="304" style="align-self: normal">
+						<template #reference>
+							<N8nButton
+								icon="filter"
+								type="tertiary"
+								style="height: 100%"
+								:active="Boolean(filterCount)"
+								data-test-id="source-control-filter-dropdown"
+							>
+								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+									{{ filterCount }}
+								</N8nBadge>
+							</N8nButton>
+						</template>
+						<N8nInputLabel
+							:label="i18n.baseText('workflows.filters.status')"
+							:bold="false"
+							size="small"
+							color="text-base"
+							class="mb-3xs"
+						/>
+						<N8nSelect
+							v-model="filters.status"
+							data-test-id="source-control-status-filter"
+							clearable
+						>
+							<N8nOption
+								v-for="option in statusFilterOptions"
+								:key="option.label"
+								data-test-id="source-control-status-filter-option"
+								v-bind="option"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</N8nPopover>
+				</div>
 
-			<div v-if="changes.workflows.length" :class="[$style.filers]" class="mt-l">
-				<N8nCheckbox
-					:class="$style.selectAll"
-					:indeterminate="selectAllIndeterminate"
-					:model-value="selectAll"
-					data-test-id="source-control-push-modal-toggle-all"
-					@update:model-value="onToggleSelectAll"
-				>
-					<N8nText bold tag="strong">
-						{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+				<div>
+					<N8nText bold color="text-base" size="small">
+						{{ selectedChanges.size }} of {{ changes.workflows.length }}
 					</N8nText>
-					<N8nText tag="strong">
-						({{ selectedChanges.size }}/{{ sortedWorkflows.length }})
-					</N8nText>
-				</N8nCheckbox>
-				<N8nPopover trigger="click" width="304" style="align-self: normal">
-					<template #reference>
-						<N8nButton
-							icon="filter"
-							type="tertiary"
-							style="height: 100%"
-							:active="Boolean(filterCount)"
-							data-test-id="source-control-filter-dropdown"
-						>
-							<N8nBadge v-show="filterCount" theme="primary" class="mr-4xs">
-								{{ filterCount }}
-							</N8nBadge>
-							{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
-						</N8nButton>
-					</template>
-					<N8nInputLabel
-						:label="i18n.baseText('workflows.filters.status')"
-						:bold="false"
-						size="small"
-						color="text-base"
-						class="mb-3xs"
-					/>
-					<N8nSelect v-model="filters.status" data-test-id="source-control-status-filter" clearable>
-						<N8nOption
-							v-for="option in statusFilterOptions"
-							:key="option.label"
-							data-test-id="source-control-status-filter-option"
-							v-bind="option"
-						>
-						</N8nOption>
-					</N8nSelect>
-				</N8nPopover>
-				<N8nInput
-					v-model="search"
-					data-test-id="source-control-push-search"
-					:placeholder="i18n.baseText('workflows.search.placeholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+					<N8nText color="text-base" size="small"> workflows selected</N8nText>
+				</div>
 			</div>
 		</template>
 		<template #content>
-			<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
-				{{ i18n.baseText('workflows.filters.active') }}
-				<N8nLink size="small" data-test-id="source-control-filters-reset" @click="resetFilters">
-					{{ i18n.baseText('workflows.filters.active.reset') }}
-				</N8nLink>
-			</N8nInfoTip>
-			<RecycleScroller
-				v-if="sortedWorkflows.length"
-				:class="[$style.scroller]"
-				:items="sortedWorkflows"
-				:item-size="69"
-				key-field="id"
-			>
-				<template #default="{ item: file }">
+			<div :class="[$style.table]" v-if="changes.workflows.length">
+				<div :class="[$style.tableHeader]">
 					<N8nCheckbox
-						:class="['scopedListItem', $style.listItem]"
-						data-test-id="source-control-push-modal-file-checkbox"
-						:model-value="selectedChanges.has(file.id)"
-						@update:model-value="toggleSelected(file.id)"
+						:class="$style.selectAll"
+						:indeterminate="selectAllIndeterminate"
+						:model-value="selectAll"
+						data-test-id="source-control-push-modal-toggle-all"
+						@update:model-value="onToggleSelectAll"
 					>
-						<span>
-							<N8nText v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted" color="text-light">
-								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-									Deleted Workflow:
-								</span>
-								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-									Deleted Credential:
-								</span>
-								<strong>{{ file.name || file.id }}</strong>
-							</N8nText>
-							<N8nText v-else bold> {{ file.name }} </N8nText>
-							<N8nText v-if="file.updatedAt" tag="p" class="mt-0" color="text-light" size="small">
-								{{ renderUpdatedAt(file) }}
-							</N8nText>
-						</span>
-						<span :class="[$style.badges]">
-							<N8nBadge
-								v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
-								class="mr-2xs"
-							>
-								Current workflow
-							</N8nBadge>
-							<N8nBadge :theme="getStatusTheme(file.status)">
-								{{ getStatusText(file.status) }}
-							</N8nBadge>
-						</span>
+						<N8nText> Title </N8nText>
 					</N8nCheckbox>
-				</template>
-			</RecycleScroller>
+				</div>
+				<div style="flex: 1; overflow: hidden">
+					<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
+						{{ i18n.baseText('workflows.filters.active') }}
+						<N8nLink size="small" data-test-id="source-control-filters-reset" @click="resetFilters">
+							{{ i18n.baseText('workflows.filters.active.reset') }}
+						</N8nLink>
+					</N8nInfoTip>
+					<DynamicScroller
+						v-if="sortedWorkflows.length"
+						:class="[$style.scroller]"
+						:items="sortedWorkflows"
+						:min-item-size="58"
+						item-class="scrollerItem"
+					>
+						<template #default="{ item: file, active, index }">
+							<DynamicScrollerItem
+								:item="file"
+								:active="active"
+								:size-dependencies="[file.name, file.id]"
+								:data-index="index"
+							>
+								<N8nCheckbox
+									:class="[$style.listItem]"
+									data-test-id="source-control-push-modal-file-checkbox"
+									:model-value="selectedChanges.has(file.id)"
+									@update:model-value="toggleSelected(file.id)"
+								>
+									<span>
+										<N8nText
+											v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
+											color="text-light"
+										>
+											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
+												Deleted Workflow:
+											</span>
+											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
+												Deleted Credential:
+											</span>
+											<strong>{{ file.name || file.id }}</strong>
+										</N8nText>
+										<N8nText v-else tag="div" bold color="text-dark" :class="[$style.listItemName]">
+											{{ file.name }}
+										</N8nText>
+										<N8nText
+											v-if="file.updatedAt"
+											tag="p"
+											class="mt-0"
+											color="text-light"
+											size="small"
+										>
+											{{ renderUpdatedAt(file) }}
+										</N8nText>
+									</span>
+									<span :class="[$style.badges]">
+										<N8nBadge
+											v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
+											class="mr-2xs"
+										>
+											Current workflow
+										</N8nBadge>
+										<N8nBadge :theme="getStatusTheme(file.status)">
+											{{ getStatusText(file.status) }}
+										</N8nBadge>
+									</span>
+								</N8nCheckbox>
+							</DynamicScrollerItem>
+						</template>
+					</DynamicScroller>
+				</div>
+			</div>
 		</template>
 
 		<template #footer>
-			<N8nText bold tag="p" class="mb-2xs">
+			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
+				<N8nText bold size="medium">Changes to credentials, variables and tags </N8nText>
+				<br />
+				<template v-for="{ title, content } in userNotices" :key="title">
+					<N8nText bold size="small">{{ title }}</N8nText>
+					<N8nText size="small">: {{ content }}. </N8nText>
+				</template>
+			</N8nNotice>
+
+			<N8nText bold tag="p">
 				{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
 			</N8nText>
-			<N8nInput
-				v-model="commitMessage"
-				data-test-id="source-control-push-modal-commit"
-				:placeholder="i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')"
-				@keydown.enter="onCommitKeyDownEnter"
-			/>
 
 			<div :class="$style.footer">
-				<N8nButton type="tertiary" class="mr-2xs" @click="close">
-					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
-				</N8nButton>
+				<N8nInput
+					v-model="commitMessage"
+					class="mr-2xs"
+					data-test-id="source-control-push-modal-commit"
+					:placeholder="
+						i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
+					"
+					@keydown.enter="onCommitKeyDownEnter"
+				/>
 				<N8nButton
 					data-test-id="source-control-push-modal-submit"
 					type="primary"
 					:disabled="isSubmitDisabled"
+					size="large"
 					@click="commitAndPush"
 				>
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
+					{{ selectedChanges.size ? `(${selectedChanges.size})` : undefined }}
 				</N8nButton>
 			</div>
 		</template>
@@ -511,7 +552,14 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 </template>
 
 <style module lang="scss">
-.filers {
+.filtersRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	justify-content: space-between;
+}
+
+.filters {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -523,18 +571,33 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 }
 
 .scroller {
-	max-height: 380px;
+	max-height: 100%;
+	scrollbar-color: var(--color-foreground-base) transparent;
+	outline: var(--border-base);
+
+	:global(.scrollerItem) {
+		&:last-child {
+			.listItem {
+				border-bottom: 0;
+			}
+		}
+	}
 }
 
 .listItem {
 	align-items: center;
-	padding: var(--spacing-xs);
-	transition: border 0.3s ease;
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
+	padding: 10px 16px;
+	margin: 0;
+	border-bottom: var(--border-base);
 
-	&:hover {
-		border-color: var(--color-foreground-dark);
+	.listItemName {
+		line-clamp: 2;
+		-webkit-line-clamp: 2;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		word-wrap: break-word; /* Important for long words! */
 	}
 
 	:global(.el-checkbox__label) {
@@ -542,6 +605,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		width: 100%;
 		justify-content: space-between;
 		align-items: center;
+		gap: 30px;
 	}
 
 	:global(.el-checkbox__inner) {
@@ -557,12 +621,30 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 20px;
+	margin-top: 8px;
 }
 
 .sourceControlPush {
+	&:global(.el-dialog) {
+		margin: 0;
+	}
+
 	:global(.el-dialog__header) {
 		padding-bottom: var(--spacing-xs);
 	}
+}
+
+.table {
+	height: 100%;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	border: var(--border-base);
+	border-radius: 8px;
+}
+
+.tableHeader {
+	border-bottom: var(--border-base);
+	padding: 10px 16px;
 }
 </style>

@@ -26,6 +26,9 @@ describe('SourceControlImportService', () => {
 		mock(),
 		workflowRepository,
 		mock(),
+		mock(),
+		mock(),
+		mock(),
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 

@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "properties": {
+        "entity_id": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "friendly_name": {
+                    "type": "string"
+                },
+                "state_class": {
+                    "type": "string"
+                },
+                "unit_of_measurement": {
+                    "type": "string"
+                },
+                "device_class": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "friendly_name"
+            ]
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "parent_id",
+                "user_id"
+            ]
+        }
+    },
+    "required": [
+        "entity_id",
+        "state",
+        "attributes",
+        "last_changed",
+        "last_updated",
+        "context"
+    ]
+}
