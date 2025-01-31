@@ -164,8 +164,9 @@ export class WorkflowDataProxy {
 	 *
 	 * @private
 	 * @param {string} nodeName The name of the node to query data from
+	 * @param {boolean} [resolveValue=true] If the expression value should get resolved
 	 */
-	private nodeParameterGetter(nodeName: string) {
+	private nodeParameterGetter(nodeName: string, resolveValue = true) {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
@@ -223,7 +224,7 @@ export class WorkflowDataProxy {
 					}
 				}
 
-				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
+				if (resolveValue && typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
 					return that.workflow.expression.getParameterValue(
 						returnValue,
@@ -1359,6 +1360,7 @@ export class WorkflowDataProxy {
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$rawParameter: this.nodeParameterGetter(this.activeNodeName, false),
 			$prevNode: this.prevNodeGetter(),
 			$runIndex: this.runIndex,
 			$mode: this.mode,

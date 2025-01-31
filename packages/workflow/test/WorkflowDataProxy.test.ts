@@ -549,4 +549,45 @@ describe('WorkflowDataProxy', () => {
 			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
 		});
 	});
+
+	describe('$rawParameter', () => {
+		const fixture = loadFixture('rawParameter');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
+			connectionType: NodeConnectionType.Main,
+			throwOnMissingExecutionData: false,
+			runIndex: 0,
+		});
+
+		test('returns simple raw parameter value', () => {
+			expect(proxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+
+		test('returns raw parameter value for resource locator values', () => {
+			expect(proxy.$rawParameter.workflowId).toEqual('={{ $json.foo }}');
+		});
+
+		test('returns raw parameter value when there is no run data', () => {
+			const noRunDataProxy = getProxyFromFixture(
+				fixture.workflow,
+				{
+					data: { resultData: { runData: {} } },
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+				},
+				'Execute Workflow',
+				'manual',
+				{
+					connectionType: NodeConnectionType.Main,
+					throwOnMissingExecutionData: false,
+					runIndex: 0,
+				},
+			);
+			expect(noRunDataProxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+	});
 });
