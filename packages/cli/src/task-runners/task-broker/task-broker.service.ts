@@ -12,10 +12,10 @@ import { nanoid } from 'nanoid';
 
 import config from '@/config';
 import { Time } from '@/constants';
-
-import { TaskDeferredError, TaskRejectError } from './errors';
-import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
-import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
+import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
+import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
+import { TaskRunnerTimeoutError } from '@/task-runners/task-broker/errors/task-runner-timeout.error';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;

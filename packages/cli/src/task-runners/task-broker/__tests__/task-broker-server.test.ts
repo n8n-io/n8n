@@ -3,24 +3,23 @@ import { mock } from 'jest-mock-extended';
 import { ServerResponse } from 'node:http';
 import type WebSocket from 'ws';
 
-import type { TaskRunnerAuthController } from '@/task-runners/auth/task-runner-auth.controller';
-import { TaskRunnerServer } from '@/task-runners/task-runner-server';
+import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
+import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
 
-import type { TaskRunnerServerInitRequest } from '../task-runner-types';
-
-describe('TaskRunnerServer', () => {
+describe('TaskBrokerServer', () => {
 	describe('handleUpgradeRequest', () => {
 		it('should close WebSocket when response status code is > 200', () => {
 			const ws = mock<WebSocket>();
-			const request = mock<TaskRunnerServerInitRequest>({
+			const request = mock<TaskBrokerServerInitRequest>({
 				url: '/runners/_ws',
 				ws,
 			});
 
-			const server = new TaskRunnerServer(
+			const server = new TaskBrokerServer(
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskRunnerAuthController>(),
+				mock<TaskBrokerAuthController>(),
 				mock(),
 			);
 
@@ -39,15 +38,15 @@ describe('TaskRunnerServer', () => {
 
 		it('should not close WebSocket when response status code is 200', () => {
 			const ws = mock<WebSocket>();
-			const request = mock<TaskRunnerServerInitRequest>({
+			const request = mock<TaskBrokerServerInitRequest>({
 				url: '/runners/_ws',
 				ws,
 			});
 
-			const server = new TaskRunnerServer(
+			const server = new TaskBrokerServer(
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
-				mock<TaskRunnerAuthController>(),
+				mock<TaskBrokerAuthController>(),
 				mock(),
 			);
 

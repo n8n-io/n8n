@@ -3,12 +3,12 @@ import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
 
 import { Time, WsStatusCodes } from '@/constants';
-import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
-describe('TaskRunnerWsServer', () => {
+describe('TaskBrokerWsServer', () => {
 	describe('removeConnection', () => {
 		it('should close with 1000 status code by default', async () => {
-			const server = new TaskRunnerWsServer(mock(), mock(), mock(), mock(), mock());
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock());
 			const ws = mock<WebSocket>();
 			server.runnerConnections.set('test-runner', ws);
 
@@ -22,7 +22,7 @@ describe('TaskRunnerWsServer', () => {
 		it('should set up heartbeat timer on server start', async () => {
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
-			const server = new TaskRunnerWsServer(
+			const server = new TaskBrokerWsServer(
 				mock(),
 				mock(),
 				mock(),
@@ -44,7 +44,7 @@ describe('TaskRunnerWsServer', () => {
 			jest.spyOn(global, 'setInterval');
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
-			const server = new TaskRunnerWsServer(
+			const server = new TaskBrokerWsServer(
 				mock(),
 				mock(),
 				mock(),
@@ -61,7 +61,7 @@ describe('TaskRunnerWsServer', () => {
 
 	describe('sendMessage', () => {
 		it('should work with a message containing circular references', () => {
-			const server = new TaskRunnerWsServer(mock(), mock(), mock(), mock(), mock());
+			const server = new TaskBrokerWsServer(mock(), mock(), mock(), mock(), mock());
 			const ws = mock<WebSocket>();
 			server.runnerConnections.set('test-runner', ws);
 
