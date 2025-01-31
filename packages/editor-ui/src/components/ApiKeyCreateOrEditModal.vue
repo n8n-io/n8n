@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN, SEVEN_DAYS_IN_MILLIS } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -95,6 +95,8 @@ const allFormFieldsAreSet = computed(() => {
 
 	return label.value && (props.mode === 'edit' ? true : isExpirationDateSet);
 });
+
+const shouldDisableDate = (date: Date) => Date.now() > date.getTime();
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
@@ -322,6 +324,7 @@ const onSelect = (value: number) => {
 							data-test-id="executions-filter-start-date-picker"
 							placeholder="yyyy-mm-dd"
 							value-format="X"
+							:disabled-date="shouldDisableDate"
 						/>
 					</div>
 				</div>
