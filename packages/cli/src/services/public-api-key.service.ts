@@ -34,13 +34,12 @@ export class PublicApiKeyService {
 	 */
 	async createPublicApiKeyForUser(user: User, { label, expiresAt }: CreateApiKeyRequestDto) {
 		const apiKey = this.generateApiKey(user, expiresAt);
-		await this.apiKeyRepository.upsert(
+		await this.apiKeyRepository.insert(
 			this.apiKeyRepository.create({
 				userId: user.id,
 				apiKey,
 				label,
 			}),
-			['apiKey'],
 		);
 
 		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
