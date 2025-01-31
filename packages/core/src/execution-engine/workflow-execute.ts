@@ -1119,9 +1119,7 @@ export class WorkflowExecute {
 
 			if (routingExecuteFunction) {
 				data = await routingExecuteFunction(context);
-			}
-
-			if (nodeType.execute) {
+			} else if (nodeType.execute) {
 				data =
 					nodeType instanceof Node
 						? await nodeType.execute(context)
