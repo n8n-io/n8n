@@ -359,7 +359,6 @@ async function initializeRoute(force = false) {
 					await initializeWorkspaceForNewWorkflow();
 				}
 				return;
-			} else {
 			}
 
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
