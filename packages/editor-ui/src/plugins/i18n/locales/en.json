@@ -2854,6 +2854,7 @@
 	"testDefinition.list.loadError": "Failed to load tests",
 	"testDefinition.listRuns.status.new": "New",
 	"testDefinition.listRuns.status.running": "Running",
+	"testDefinition.listRuns.status.evaluating": "Evaluating",
 	"testDefinition.listRuns.status.completed": "Completed",
 	"testDefinition.listRuns.status.cancelled": "Cancelled",
 	"testDefinition.listRuns.status.error": "Error",
