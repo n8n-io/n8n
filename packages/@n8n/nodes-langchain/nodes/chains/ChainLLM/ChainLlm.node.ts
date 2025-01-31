@@ -88,7 +88,7 @@ async function getImageMessage(
 		NodeConnectionType.AiLanguageModel,
 		0,
 	)) as BaseLanguageModel;
-	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
+	const dataURI = `data:${binaryData.mimeType};base64,${bufferData.toString('base64')}`;
 
 	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
 	const imageUrl = directUriModels.some((i) => model instanceof i)
