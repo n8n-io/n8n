@@ -56,6 +56,39 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharedCredential.credentials;
 	}
 
+	/** Get all credentials shared to a user */
+	async findAllCredentialsForUser(user: User, scopes: Scope[], trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		let where: FindOptionsWhere<SharedCredentials> = {};
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
+			where = {
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedCredential = await trx.find(SharedCredentials, {
+			where,
+			// TODO: write a small relations merger and use that one here
+			relations: {
+				credentials: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			},
+		});
+
+		return sharedCredential.map((sc) => ({ ...sc.credentials, projectId: sc.projectId }));
+	}
+
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
 			relations: { credentials: true, project: { projectRelations: { user: true } } },
@@ -110,9 +143,6 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				? this.roleService.rolesWithScope('credential', options.scopes)
 				: options.credentialRoles;
 
-		console.log('projectRoles', projectRoles);
-		console.log('credentialRoles', credentialRoles);
-
 		const sharings = await trx.find(SharedCredentials, {
 			where: {
 				role: In(credentialRoles),
@@ -124,7 +154,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				},
 			},
 		});
-		console.log('sharings', sharings);
+
 		return sharings.map((s) => s.credentialsId);
 	}
 

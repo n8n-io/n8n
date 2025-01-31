@@ -326,17 +326,19 @@ export class EnterpriseWorkflowService {
 
 		// 8. share credentials into the destination project
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole(
-				[user.id],
-				{ scopes: ['credential:share'] },
+			const allCredentials = await this.sharedCredentialsRepository.findAllCredentialsForUser(
+				user,
+				['credential:share'],
 				trx,
 			);
-			const credentialsAllowedToShare = allCredentials.filter((c) => shareCredentials.includes(c));
+			const credentialsAllowedToShare = allCredentials.filter((c) =>
+				shareCredentials.includes(c.id),
+			);
 
-			for (const credentialId of credentialsAllowedToShare) {
+			for (const credential of credentialsAllowedToShare) {
 				await this.enterpriseCredentialsService.shareWithProjects(
 					user,
-					credentialId,
+					credential.id,
 					[destinationProject.id],
 					trx,
 				);
