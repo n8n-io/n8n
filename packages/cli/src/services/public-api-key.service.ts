@@ -115,7 +115,7 @@ export class PublicApiKeyService {
 				});
 			} catch (e) {
 				if (e instanceof TokenExpiredError) return false;
-				throw new ApplicationError('Could not validate the API key for unknown reason');
+				throw e;
 			}
 
 			this.eventService.emit('public-api-invoked', {
