@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type { DeepPartial } from '@n8n/typeorm';
 import { NodeConnectionType } from 'n8n-workflow';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';
@@ -40,6 +40,7 @@ export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowE
 		],
 		connections: connections ?? {},
 		versionId: versionId ?? uuid(),
+		settings: {},
 		...attributes,
 	});
 

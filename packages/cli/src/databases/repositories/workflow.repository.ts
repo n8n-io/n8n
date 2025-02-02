@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import {
 	DataSource,
 	Repository,
@@ -10,9 +11,7 @@ import {
 	type FindManyOptions,
 	type FindOptionsRelations,
 } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
-import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
@@ -45,10 +44,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getActiveIds() {
+	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
 		const activeWorkflows = await this.find({
 			select: ['id'],
 			where: { active: true },
+			// 'take' and 'order' are only needed when maxResults is provided:
+			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
 		return activeWorkflows.map((workflow) => workflow.id);
 	}
@@ -132,7 +133,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const relations: string[] = [];
 
-		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
+		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = options?.select === undefined;
 		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
 		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;

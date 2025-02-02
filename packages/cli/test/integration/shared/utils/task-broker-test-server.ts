@@ -1,12 +1,12 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
-import Container from 'typedi';
 
-import { TaskRunnerServer } from '@/runners/task-runner-server';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 
 export interface TestTaskBrokerServer {
-	server: TaskRunnerServer;
+	server: TaskBrokerServer;
 	agent: TestAgent;
 	config: TaskRunnersConfig;
 }
@@ -29,11 +29,11 @@ export const setupBrokerTestServer = (
 	runnerConfig.enabled = true;
 	runnerConfig.port = 0; // Use any port
 
-	const taskRunnerServer = Container.get(TaskRunnerServer);
-	const agent = request.agent(taskRunnerServer.app);
+	const taskBrokerServer = Container.get(TaskBrokerServer);
+	const agent = request.agent(taskBrokerServer.app);
 
 	return {
-		server: taskRunnerServer,
+		server: taskBrokerServer,
 		agent,
 		config: runnerConfig,
 	};

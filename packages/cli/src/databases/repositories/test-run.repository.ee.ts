@@ -1,6 +1,6 @@
-import type { FindManyOptions } from '@n8n/typeorm';
+import { Service } from '@n8n/di';
+import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import type { AggregatedTestRunMetrics } from '@/databases/entities/test-run.ee';
 import { TestRun } from '@/databases/entities/test-run.ee';
@@ -21,12 +21,33 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string) {
-		return await this.update(id, { status: 'running', runAt: new Date() });
+	async markAsRunning(id: string, totalCases: number) {
+		return await this.update(id, {
+			status: 'running',
+			runAt: new Date(),
+			totalCases,
+			passedCases: 0,
+			failedCases: 0,
+		});
 	}
 
 	async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
+	}
+
+	async markAsCancelled(id: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+		return await trx.update(TestRun, id, { status: 'cancelled' });
+	}
+
+	async incrementPassed(id: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+		return await trx.increment(TestRun, { id }, 'passedCases', 1);
+	}
+
+	async incrementFailed(id: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+		return await trx.increment(TestRun, { id }, 'failedCases', 1);
 	}
 
 	async getMany(testDefinitionId: string, options: ListQuery.Options) {

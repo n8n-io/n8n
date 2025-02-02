@@ -1,3 +1,4 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { within, waitFor } from '@testing-library/vue';
 import { mockedStore, retry } from '@/__tests__/utils';
@@ -11,6 +12,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 import { nextTick } from 'vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -20,7 +22,7 @@ const samlConfig = {
 		'https://dev-qqkrykgkoo0p63d5.eu.auth0.com/samlp/metadata/KR1cSrRrxaZT2gV8ZhPAUIUHtEY4duhN',
 	entityID: 'https://n8n-tunnel.myhost.com/rest/sso/saml/metadata',
 	returnUrl: 'https://n8n-tunnel.myhost.com/rest/sso/saml/acs',
-};
+} as SamlPreferences & SamlPreferencesExtractedData;
 
 const telemetryTrack = vi.fn();
 vi.mock('@/composables/useTelemetry', () => ({
@@ -133,7 +135,7 @@ describe('SettingsSso View', () => {
 		const urlinput = getByTestId('sso-provider-url');
 
 		expect(urlinput).toBeVisible();
-		await userEvent.type(urlinput, samlConfig.metadataUrl);
+		await userEvent.type(urlinput, samlConfig.metadataUrl!);
 
 		expect(saveButton).not.toBeDisabled();
 		await userEvent.click(saveButton);
@@ -172,7 +174,7 @@ describe('SettingsSso View', () => {
 		const xmlInput = getByTestId('sso-provider-xml');
 
 		expect(xmlInput).toBeVisible();
-		await userEvent.type(xmlInput, samlConfig.metadata);
+		await userEvent.type(xmlInput, samlConfig.metadata!);
 
 		expect(saveButton).not.toBeDisabled();
 		await userEvent.click(saveButton);

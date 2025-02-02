@@ -439,7 +439,7 @@ watch(focusedMappableInput, (curr) => {
 					>
 						<N8nTooltip
 							:content="
-								i18n.baseText('runData.table.inspectSubExecution', {
+								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
 										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
 									},
@@ -451,12 +451,13 @@ watch(focusedMappableInput, (curr) => {
 							<N8nIconButton
 								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
+								element="a"
 								type="secondary"
 								icon="external-link-alt"
 								data-test-id="debug-sub-execution"
 								size="mini"
-								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								target="_blank"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
 							/>
 						</N8nTooltip>
@@ -575,7 +576,7 @@ watch(focusedMappableInput, (curr) => {
 					>
 						<N8nTooltip
 							:content="
-								i18n.baseText('runData.table.inspectSubExecution', {
+								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
 										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
 									},
@@ -584,20 +585,18 @@ watch(focusedMappableInput, (curr) => {
 							placement="left"
 							:hide-after="0"
 						>
-							<a
+							<N8nIconButton
 								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
-								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								element="a"
+								type="secondary"
+								icon="external-link-alt"
+								data-test-id="debug-sub-execution"
+								size="mini"
 								target="_blank"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
-							>
-								<N8nIconButton
-									type="secondary"
-									icon="external-link-alt"
-									data-test-id="debug-sub-execution"
-									size="mini"
-								/>
-							</a>
+							/>
 						</N8nTooltip>
 					</td>
 					<td

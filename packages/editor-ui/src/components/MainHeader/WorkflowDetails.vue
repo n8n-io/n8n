@@ -3,7 +3,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -55,7 +54,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
@@ -101,16 +99,6 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
-
-const {
-	isNewUser,
-	nodeViewVersion,
-	nodeViewSwitcherDiscovered,
-	isNodeViewDiscoveryTooltipVisible,
-	switchNodeViewVersion,
-	setNodeViewSwitcherDropdownOpened,
-	setNodeViewSwitcherDiscovered,
-} = useNodeViewVersionSwitcher();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -190,33 +178,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		label: locale.baseText('generic.settings'),
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
-
-	if (settingsStore.isCanvasV2Enabled) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-			...(nodeViewVersion.value === '2'
-				? nodeViewSwitcherDiscovered.value || isNewUser.value
-					? {}
-					: {
-							badge: locale.baseText('menuActions.badge.new'),
-						}
-				: nodeViewSwitcherDiscovered.value
-					? {
-							badge: locale.baseText('menuActions.badge.beta'),
-							badgeProps: {
-								theme: 'tertiary',
-							},
-						}
-					: {
-							badge: locale.baseText('menuActions.badge.new'),
-						}),
-			label:
-				nodeViewVersion.value === '2'
-					? locale.baseText('menuActions.switchToOldNodeViewVersion')
-					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
@@ -417,10 +378,6 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-function onWorkflowMenuOpen(visible: boolean) {
-	setNodeViewSwitcherDropdownOpened(visible);
-}
-
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -518,36 +475,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.SETTINGS: {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
-			setNodeViewSwitcherDiscovered();
-
-			if (uiStore.stateIsDirty) {
-				const confirmModal = await message.confirm(
-					locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					{
-						title: locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.cancelButtonText',
-						),
-						showClose: true,
-					},
-				);
-
-				if (confirmModal === MODAL_CONFIRM) {
-					await onSaveButtonClick();
-				} else if (confirmModal === MODAL_CLOSE) {
-					return;
-				}
-			}
-
-			switchNodeViewVersion();
-
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
@@ -758,28 +685,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
-					<N8nActionDropdown
-						:items="workflowMenuItems"
-						data-test-id="workflow-menu"
-						@select="onWorkflowMenuSelect"
-						@visible-change="onWorkflowMenuOpen"
-					/>
-					<template #content>
-						<div class="mb-4xs">
-							<N8nBadge>{{ i18n.baseText('menuActions.badge.beta') }}</N8nBadge>
-						</div>
-						<p>{{ i18n.baseText('menuActions.nodeViewDiscovery.tooltip') }}</p>
-						<N8nText color="text-light" size="small">
-							{{ i18n.baseText('menuActions.nodeViewDiscovery.tooltip.switchBack') }}
-						</N8nText>
-						<N8nIcon
-							:class="$style.closeNodeViewDiscovery"
-							icon="times-circle"
-							@click="setNodeViewSwitcherDiscovered"
-						/>
-					</template>
-				</N8nTooltip>
+				<N8nActionDropdown
+					:items="workflowMenuItems"
+					data-test-id="workflow-menu"
+					@select="onWorkflowMenuSelect"
+				/>
 			</div>
 		</PushConnectionTracker>
 	</div>
@@ -800,6 +710,7 @@ $--header-spacing: 20px;
 .name {
 	color: $custom-font-dark;
 	font-size: 15px;
+	display: block;
 }
 
 .activator {
@@ -807,7 +718,6 @@ $--header-spacing: 20px;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
-	display: flex;
 	align-items: center;
 
 	> span {
@@ -845,24 +755,32 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+}
+
+@include mixins.breakpoint('xs-only') {
+	.name {
+		:deep(input) {
+			min-width: 180px;
+		}
+	}
 }
 </style>
 
 <style module lang="scss">
 .container {
 	position: relative;
-	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 }
 
 .group {
 	display: flex;
 	gap: var(--spacing-xs);
 }
+
 .hiddenInput {
 	display: none;
 }

@@ -172,8 +172,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 			executionsCount.value = data.count;
 			executionsCountEstimated.value = data.estimated;
-		} catch (e) {
-			throw e;
+			return data;
 		} finally {
 			loading.value = false;
 		}

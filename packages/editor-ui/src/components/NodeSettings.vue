@@ -48,6 +48,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -1026,6 +1027,7 @@ onBeforeUnmount(() => {
 					})
 				"
 			/>
+			<FreeAiCreditsCallout />
 			<div v-show="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 

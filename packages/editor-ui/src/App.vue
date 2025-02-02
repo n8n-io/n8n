@@ -192,6 +192,8 @@ watch(defaultLocale, (newLocale) => {
 .header {
 	grid-area: header;
 	z-index: var(--z-index-app-header);
+	min-width: 0;
+	min-height: 0;
 }
 
 .sidebar {

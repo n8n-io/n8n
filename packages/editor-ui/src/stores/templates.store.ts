@@ -167,6 +167,10 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			`${TEMPLATES_URLS.BASE_WEBSITE_URL}?${websiteTemplateRepositoryParameters.value.toString()}`,
 	);
 
+	const constructTemplateRepositoryURL = (params: URLSearchParams): string => {
+		return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${params.toString()}`;
+	};
+
 	const addCategories = (_categories: ITemplatesCategory[]): void => {
 		categories.value = _categories;
 	};
@@ -427,6 +431,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		isSearchFinished,
 		hasCustomTemplatesHost,
 		websiteTemplateRepositoryURL,
+		constructTemplateRepositoryURL,
 		websiteTemplateRepositoryParameters,
 		addCategories,
 		addCollections,

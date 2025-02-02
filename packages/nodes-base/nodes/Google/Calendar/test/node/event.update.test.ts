@@ -14,7 +14,7 @@ jest.mock('../../GenericFunctions', () => ({
 	encodeURIComponentOnce: jest.fn(),
 }));
 
-describe('RespondToWebhook Node', () => {
+describe('Google Calendar Node', () => {
 	let googleCalendar: GoogleCalendar;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 

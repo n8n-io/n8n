@@ -1007,7 +1007,7 @@ export class HttpRequestV3 implements INodeType {
 				[
 					{
 						message:
-							'To split the contents of ‘data’ into separate items for easier processing, add a ‘Spilt Out’ node after this one',
+							'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one',
 						location: 'outputPane',
 					},
 				],

@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';

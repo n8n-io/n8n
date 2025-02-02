@@ -5,7 +5,7 @@ import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: string;
+	icon?: string | { type: 'icon' | 'emoji'; value: string };
 	secondaryIcon?: {
 		name: string;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';

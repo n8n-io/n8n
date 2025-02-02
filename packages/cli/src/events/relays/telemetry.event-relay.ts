@@ -1,20 +1,21 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
+import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -34,6 +35,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {
 		super(eventService);
 	}
@@ -632,6 +634,10 @@ export class TelemetryEventRelay extends EventRelay {
 			let nodeGraphResult: INodesGraphResult | null = null;
 
 			if (!telemetryProperties.success && runData?.data.resultData.error) {
+				if (TelemetryHelpers.userInInstanceRanOutOfFreeAiCredits(runData)) {
+					this.telemetry.track('User ran out of free AI credits');
+				}
+
 				telemetryProperties.error_message = runData?.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error
@@ -693,6 +699,8 @@ export class TelemetryEventRelay extends EventRelay {
 					error_node_id: telemetryProperties.error_node_id as string,
 					webhook_domain: null,
 					sharing_role: userRole,
+					credential_type: null,
+					is_managed: false,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -703,7 +711,18 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (runData.data.startData?.destinationNode) {
-					const telemetryPayload = {
+					const credentialsData = TelemetryHelpers.extractLastExecutedNodeCredentialData(runData);
+					if (credentialsData) {
+						manualExecEventProperties.credential_type = credentialsData.credentialType;
+						const credential = await this.credentialsRepository.findOneBy({
+							id: credentialsData.credentialId,
+						});
+						if (credential) {
+							manualExecEventProperties.is_managed = credential.isManaged;
+						}
+					}
+
+					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,

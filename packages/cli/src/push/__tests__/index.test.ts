@@ -20,7 +20,7 @@ describe('Push', () => {
 
 	test('should validate pushRef on requests for websocket backend', () => {
 		config.set('push.backend', 'websocket');
-		const push = new Push(mock(), mock());
+		const push = new Push(mock(), mock(), mock());
 		const ws = mock<WebSocket>();
 		const request = mock<WebSocketPushRequest>({ user, ws });
 		request.query = { pushRef: '' };
@@ -33,7 +33,7 @@ describe('Push', () => {
 
 	test('should validate pushRef on requests for SSE backend', () => {
 		config.set('push.backend', 'sse');
-		const push = new Push(mock(), mock());
+		const push = new Push(mock(), mock(), mock());
 		const request = mock<SSEPushRequest>({ user, ws: undefined });
 		request.query = { pushRef: '' };
 		expect(() => push.handleRequest(request, mock())).toThrow(BadRequestError);

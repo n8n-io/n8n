@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWebhookData } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import type { IWorkflowDb } from '@/interfaces';

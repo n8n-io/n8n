@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
@@ -7,7 +7,6 @@ import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-k
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import { Logger } from '@/logging/logger.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -50,7 +49,7 @@ export class Worker extends BaseCommand {
 		this.logger.info('Stopping worker...');
 
 		try {
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
 		}
@@ -67,7 +66,7 @@ export class Worker extends BaseCommand {
 
 		super(argv, cmdConfig);
 
-		this.logger = Container.get(Logger).scoped('scaling');
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	async init() {
@@ -114,7 +113,7 @@ export class Worker extends BaseCommand {
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
 		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
 		}

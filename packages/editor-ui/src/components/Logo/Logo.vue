@@ -68,6 +68,7 @@ onMounted(() => {
 		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
 			{{ releaseChannel }}
 		</div>
+		<slot />
 	</div>
 </template>
 

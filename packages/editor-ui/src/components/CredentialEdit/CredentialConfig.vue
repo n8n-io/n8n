@@ -55,6 +55,7 @@ type Props = {
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
 	showAuthTypeSelector?: boolean;
+	isManaged?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -235,7 +236,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<div>
+	<n8n-callout v-if="isManaged" theme="warning" icon="exclamation-triangle">
+		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
+	</n8n-callout>
+	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<Banner
 				v-show="showValidationWarning"

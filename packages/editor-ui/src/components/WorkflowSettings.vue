@@ -266,9 +266,7 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows(
-		workflow.value.homeProject?.id,
-	)) as IWorkflowShortResponse[];
+	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -506,7 +504,7 @@ onMounted(async () => {
 					</el-col>
 				</el-row>
 
-				<el-row>
+				<el-row data-test-id="error-workflow">
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.errorWorkflow') + ':' }}
 						<n8n-tooltip placement="top">

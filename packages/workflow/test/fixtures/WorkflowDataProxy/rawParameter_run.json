@@ -1,0 +1,117 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"_custom": {
+					"type": "reactive",
+					"stateTypeName": "Reactive",
+					"value": {
+						"Manual trigger": [
+							{
+								"_custom": {
+									"type": "reactive",
+									"stateTypeName": "Reactive",
+									"value": {
+										"hints": [],
+										"startTime": 1738314562475,
+										"executionTime": 1,
+										"source": [],
+										"executionStatus": "success",
+										"data": { "main": [[{ "json": {}, "pairedItem": { "item": 0 } }]] }
+									}
+								}
+							}
+						],
+						"Edit Fields": [
+							{
+								"_custom": {
+									"type": "reactive",
+									"stateTypeName": "Reactive",
+									"value": {
+										"hints": [],
+										"startTime": 1738314562477,
+										"executionTime": 0,
+										"source": [{ "previousNode": "Manual trigger" }],
+										"executionStatus": "success",
+										"data": {
+											"main": [[{ "json": { "foo": "test" }, "pairedItem": { "item": 0 } }]]
+										}
+									}
+								}
+							}
+						],
+						"Execute Workflow": [
+							{
+								"hints": [],
+								"startTime": 1738314562478,
+								"executionTime": 2,
+								"source": [{ "previousNode": "Edit Fields" }],
+								"executionStatus": "error",
+								"error": {
+									"level": "error",
+									"tags": { "packageName": "cli" },
+									"extra": { "workflowId": "1.2" },
+									"message": "Workflow does not exist.",
+									"stack": "Error: Workflow does not exist.\n    at getWorkflowData (/Users/miloradfilipovic/workspace/n8n/packages/cli/src/workflow-execute-additional-data.ts:124:10)\n    at Object.executeWorkflow (/Users/miloradfilipovic/workspace/n8n/packages/cli/src/workflow-execute-additional-data.ts:155:4)\n    at ExecuteContext.executeWorkflow (/Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/node-execution-context/base-execute-context.ts:120:18)\n    at ExecuteContext.execute (/Users/miloradfilipovic/workspace/n8n/packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts:397:50)\n    at WorkflowExecute.runNode (/Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1097:8)\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1503:27\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:2064:11"
+								}
+							}
+						]
+					}
+				}
+			},
+			"pinData": {},
+			"lastNodeExecuted": "Execute Workflow",
+			"error": {
+				"level": "error",
+				"tags": { "packageName": "cli" },
+				"extra": { "workflowId": "1.2" },
+				"message": "Workflow does not exist.",
+				"stack": "Error: Workflow does not exist.\n    at getWorkflowData (/Users/miloradfilipovic/workspace/n8n/packages/cli/src/workflow-execute-additional-data.ts:124:10)\n    at Object.executeWorkflow (/Users/miloradfilipovic/workspace/n8n/packages/cli/src/workflow-execute-additional-data.ts:155:4)\n    at ExecuteContext.executeWorkflow (/Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/node-execution-context/base-execute-context.ts:120:18)\n    at ExecuteContext.execute (/Users/miloradfilipovic/workspace/n8n/packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts:397:50)\n    at WorkflowExecute.runNode (/Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1097:8)\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:1503:27\n    at /Users/miloradfilipovic/workspace/n8n/packages/core/src/execution-engine/workflow-execute.ts:2064:11"
+			}
+		},
+		"executionData": {
+			"contextData": {},
+			"nodeExecutionStack": [
+				{
+					"node": {
+						"parameters": {
+							"operation": "call_workflow",
+							"source": "database",
+							"workflowId": {
+								"__rl": true,
+								"mode": "id",
+								"value": "=1.2",
+								"cachedResultName": "=1.2"
+							},
+							"workflowInputs": {
+								"mappingMode": "defineBelow",
+								"value": {},
+								"matchingColumns": [],
+								"schema": [],
+								"attemptToConvertTypes": false,
+								"convertFieldsToString": true
+							},
+							"mode": "once",
+							"options": {}
+						},
+						"type": "n8n-nodes-base.executeWorkflow",
+						"typeVersion": 1.2,
+						"position": [120, -100],
+						"id": "62717ac7-614d-4e3f-b2ec-1e28688068c4",
+						"name": "Execute Workflow"
+					},
+					"data": { "main": [[{ "json": { "foo": "test" }, "pairedItem": { "item": 0 } }]] },
+					"source": { "main": [{ "previousNode": "Edit Fields" }] }
+				}
+			],
+			"metadata": {},
+			"waitingExecution": {},
+			"waitingExecutionSource": {}
+		},
+		"mode": "manual",
+		"startedAt": "2024-02-08T15:45:18.848Z",
+		"stoppedAt": "2024-02-08T15:45:18.862Z",
+		"status": "success"
+	}
+}

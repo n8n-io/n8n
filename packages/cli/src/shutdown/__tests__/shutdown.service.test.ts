@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
 
 import type { ServiceClass } from '@/shutdown/shutdown.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Workflow } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NodeTypes } from '@/node-types';

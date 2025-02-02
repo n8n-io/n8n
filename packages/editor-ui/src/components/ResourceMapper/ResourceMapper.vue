@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
+import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -27,7 +28,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
-import { N8nButton, N8nCallout } from 'n8n-design-system';
+import { N8nButton, N8nCallout, N8nNotice } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -62,7 +63,6 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
-		ignoreTypeMismatchErrors: false,
 		attemptToConvertTypes: false,
 		// This should always be true if `showTypeConversionOptions` is provided
 		// It's used to avoid accepting any value as string without casting it
@@ -74,6 +74,7 @@ const state = reactive({
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
 	hasStaleFields: false,
+	emptyFieldsNotice: '',
 });
 
 // Reload fields to map when dependent parameters change
@@ -294,7 +295,7 @@ const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+	const requestParams: ResourceMapperFieldsRequestDto = {
 		nodeTypeAndVersion: {
 			name: props.node.type,
 			version: props.node.typeVersion,
@@ -315,19 +316,22 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
-	let fetchedFields = null;
+	let fetchedFields: ResourceMapperFields | null = null;
 
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			resourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			localResourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+	if (fetchedFields?.emptyFieldsNotice) {
+		state.emptyFieldsNotice = fetchedFields.emptyFieldsNotice;
 	}
 	return fetchedFields;
 }
@@ -493,14 +497,20 @@ function addField(name: string): void {
 	if (name === 'removeAllFields') {
 		return removeAllFields();
 	}
+	const schema = state.paramValue.schema;
+	const field = schema.find((f) => f.id === name);
+
 	state.paramValue.value = {
 		...state.paramValue.value,
-		[name]: null,
+		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+		// mode you get when the field exists, but is empty in `Fixed` mode.
+		[name]: field?.type === 'boolean' ? false : null,
 	};
-	const field = state.paramValue.schema.find((f) => f.id === name);
+
 	if (field) {
 		field.removed = false;
-		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		schema.splice(schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }
@@ -613,6 +623,13 @@ defineExpose({
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
+		<N8nNotice
+			v-else-if="state.emptyFieldsNotice && !state.hasStaleFields"
+			type="info"
+			data-test-id="empty-fields-notice"
+		>
+			<span v-n8n-html="state.emptyFieldsNotice"></span>
+		</N8nNotice>
 		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
@@ -653,23 +670,6 @@ defineExpose({
 				@update="
 					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;
-						emitValueChanged();
-					}
-				"
-			/>
-			<ParameterInputFull
-				:parameter="{
-					name: 'ignoreTypeMismatchErrors',
-					type: 'boolean',
-					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
-					default: false,
-					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
-				}"
-				:path="props.path + '.ignoreTypeMismatchErrors'"
-				:value="state.paramValue.ignoreTypeMismatchErrors"
-				@update="
-					(x: IUpdateInformation<NodeParameterValueType>) => {
-						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
 						emitValueChanged();
 					}
 				"

@@ -24,7 +24,7 @@ const { isExecuting } = useCanvas();
 const { isDisabled, render } = useCanvasNode();
 
 const nodeDisabledTitle = computed(() => {
-	return isDisabled.value ? i18n.baseText('node.disable') : i18n.baseText('node.enable');
+	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
 });
 
 const isStickyColorSelectorOpen = ref(false);

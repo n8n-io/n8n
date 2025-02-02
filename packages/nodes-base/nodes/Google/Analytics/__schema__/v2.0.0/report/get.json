@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "screenPageViews": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "totalUsers": {
+            "type": "string"
+        }
+    }
+}

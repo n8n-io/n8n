@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { Project } from '@/databases/entities/project';

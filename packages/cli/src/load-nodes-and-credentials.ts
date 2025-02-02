@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -11,6 +12,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -27,7 +29,6 @@ import type {
 import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -36,7 +37,6 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
 interface LoadedNodesAndCredentials {
@@ -172,6 +172,29 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+	}
+
+	resolveSchema({
+		node,
+		version,
+		resource,
+		operation,
+	}: {
+		node: string;
+		version: string;
+		resource?: string;
+		operation?: string;
+	}): string | undefined {
+		const nodePath = this.known.nodes[node]?.sourcePath;
+		if (!nodePath) {
+			return undefined;
+		}
+
+		const nodeParentPath = path.dirname(nodePath);
+		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
+		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+
+		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
 	getCustomDirectories(): string[] {
@@ -323,7 +346,15 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(types.credentials);
+			this.types.credentials = this.types.credentials.concat(
+				types.credentials.map(({ supportedNodes, ...rest }) => ({
+					...rest,
+					supportedNodes:
+						loader instanceof PackageDirectoryLoader
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+				})),
+			);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {

@@ -5,6 +5,20 @@ import { computed, unref } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
+/**
+ * Binds a `keydown` event to `document` and calls the approriate
+ * handlers based on the given `keymap`. The keymap is a map from
+ * shortcut strings to handlers. The shortcut strings can contain
+ * multiple shortcuts separated by `|`.
+ *
+ * @example
+ * ```ts
+ * {
+ * 	'ctrl+a': () => console.log('ctrl+a'),
+ * 	'ctrl+b|ctrl+c': () => console.log('ctrl+b or ctrl+c'),
+ * }
+ * ```
+ */
 export const useKeybindings = (
 	keymap: Ref<KeyMap>,
 	options?: {
@@ -29,12 +43,10 @@ export const useKeybindings = (
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(keymap.value)
-				.map(([shortcut, handler]) => {
-					const shortcuts = shortcut.split('|');
-					return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
-				})
-				.flat(),
+			Object.entries(keymap.value).flatMap(([shortcut, handler]) => {
+				const shortcuts = shortcut.split('|');
+				return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
+			}),
 		),
 	);
 
@@ -62,10 +74,36 @@ export const useKeybindings = (
 		return shortcutPartsToString(shortcut.split(new RegExp(`[${splitCharsRegEx}]`)));
 	}
 
+	/**
+	 * Converts a keyboard event code to a key string.
+	 *
+	 * @example
+	 * keyboardEventCodeToKey('Digit0') -> '0'
+	 * keyboardEventCodeToKey('KeyA') -> 'a'
+	 */
+	function keyboardEventCodeToKey(code: string) {
+		if (code.startsWith('Digit')) {
+			return code.replace('Digit', '').toLowerCase();
+		} else if (code.startsWith('Key')) {
+			return code.replace('Key', '').toLowerCase();
+		}
+
+		return code.toLowerCase();
+	}
+
+	/**
+	 * Converts a keyboard event to a shortcut string for both
+	 * `key` and `code`.
+	 *
+	 * @example
+	 * keyboardEventToShortcutString({ key: 'a', code: 'KeyA', ctrlKey: true })
+	 * // --> { byKey: 'ctrl+a', byCode: 'ctrl+a' }
+	 */
 	function toShortcutString(event: KeyboardEvent) {
 		const { shiftKey, altKey } = event;
 		const ctrlKey = isCtrlKeyPressed(event);
-		const keys = [event.key];
+		const keys = 'key' in event ? [event.key] : [];
+		const codes = 'code' in event ? [keyboardEventCodeToKey(event.code)] : [];
 		const modifiers: string[] = [];
 
 		if (shiftKey) {
@@ -80,15 +118,22 @@ export const useKeybindings = (
 			modifiers.push('alt');
 		}
 
-		return shortcutPartsToString([...modifiers, ...keys]);
+		return {
+			byKey: shortcutPartsToString([...modifiers, ...keys]),
+			byCode: shortcutPartsToString([...modifiers, ...codes]),
+		};
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
 		if (ignoreKeyPresses.value || isDisabled.value) return;
 
-		const shortcutString = toShortcutString(event);
+		const { byKey, byCode } = toShortcutString(event);
 
-		const handler = normalizedKeymap.value[shortcutString];
+		// Prefer `byKey` over `byCode` so that:
+		// - ANSI layouts work correctly
+		// - Dvorak works correctly
+		// - Non-ansi layouts work correctly
+		const handler = normalizedKeymap.value[byKey] ?? normalizedKeymap.value[byCode];
 
 		if (handler) {
 			event.preventDefault();

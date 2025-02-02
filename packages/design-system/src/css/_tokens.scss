@@ -37,6 +37,8 @@
 	// Danger
 	--color-danger-shade-1: var(--prim-color-alt-c-shade-100);
 	--color-danger: var(--prim-color-alt-c);
+	--color-danger-light: var(--prim-color-alt-c-tint-150);
+	--color-danger-light-2: var(--prim-color-alt-c-tint-250);
 	--color-danger-tint-1: var(--prim-color-alt-c-tint-400);
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
@@ -183,12 +185,20 @@
 	--color-infobox-examples-border-color: var(--color-foreground-light);
 
 	// Code
-	--color-code-tags-string: var(--prim-color-alt-f);
-	--color-code-tags-primitive: var(--prim-color-alt-b-shade-100);
-	--color-code-tags-keyword: var(--prim-color-alt-g);
-	--color-code-tags-operator: var(--prim-color-alt-h);
-	--color-code-tags-variable: var(--prim-color-alt-c-shade-100);
-	--color-code-tags-definition: var(--prim-color-alt-e-shade-150);
+	--color-code-tags-string: #032f62;
+	--color-code-tags-regex: #032f62;
+	--color-code-tags-primitive: #005cc5;
+	--color-code-tags-keyword: #d73a49;
+	--color-code-tags-variable: #005cc5;
+	--color-code-tags-parameter: #24292e;
+	--color-code-tags-function: #6f42c1;
+	--color-code-tags-constant: #005cc5;
+	--color-code-tags-property: #005cc5;
+	--color-code-tags-type: #005cc5;
+	--color-code-tags-class: #6f42c1;
+	--color-code-tags-heading: #005cc5;
+	--color-code-tags-invalid: #cb2431;
+	--color-code-tags-comment: #6a737d;
 	--color-json-default: var(--prim-color-secondary-shade-100);
 	--color-json-null: var(--prim-color-alt-c);
 	--color-json-boolean: var(--prim-color-alt-a);
@@ -201,13 +211,16 @@
 	--color-json-highlight: var(--prim-gray-70);
 	--color-code-background: var(--prim-gray-0);
 	--color-code-background-readonly: var(--prim-gray-40);
-	--color-code-lineHighlight: var(--prim-gray-40);
+	--color-code-lineHighlight: var(--prim-gray-320-alpha-010);
 	--color-code-foreground: var(--prim-gray-670);
-	--color-code-caret: var(--prim-gray-420);
-	--color-code-selection: var(--prim-gray-120);
-	--color-code-gutterBackground: var(--prim-gray-0);
-	--color-code-gutterForeground: var(--prim-gray-320);
-	--color-code-tags-comment: var(--prim-gray-420);
+	--color-code-caret: var(--prim-gray-820);
+	--color-code-selection: #0366d625;
+	--color-code-selection-highlight: #34d05840;
+	--color-code-gutter-background: var(--prim-gray-0);
+	--color-code-gutter-foreground: var(--prim-gray-320);
+	--color-code-gutter-foreground-active: var(--prim-gray-670);
+	--color-code-indentation-marker: var(--prim-gray-70);
+	--color-code-indentation-marker-active: var(--prim-gray-200);
 	--color-line-break: var(--prim-gray-320);
 	--color-code-line-break: var(--prim-color-secondary-tint-200);
 
@@ -244,7 +257,11 @@
 	--color-button-warning-font: var(--color-text-xlight);
 	--color-button-warning-disabled-font: var(--prim-gray-0-alpha-075);
 	--color-button-danger-font: var(--color-text-xlight);
+	--color-button-danger-border: var(--color-danger);
+	--color-button-danger-focus-outline: var(--color-danger-tint-1);
 	--color-button-danger-disabled-font: var(--prim-gray-0-alpha-075);
+	--color-button-danger-disabled-border: var(--color-danger-tint-1);
+	--color-button-danger-disabled-background: var(--color-danger-tint-1);
 
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-670);
@@ -272,6 +289,7 @@
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
+	--execution-card-background: var(--color-foreground-xlight);
 	--execution-card-background-hover: var(--color-foreground-light);
 	--execution-card-text-waiting: var(--color-secondary);
 	--execution-selector-background: var(--color-background-dark);

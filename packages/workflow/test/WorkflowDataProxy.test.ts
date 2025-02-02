@@ -1,3 +1,4 @@
+import { ensureError } from '@/errors/ensure-error';
 import { ExpressionError } from '@/errors/expression.error';
 import {
 	NodeConnectionType,
@@ -334,7 +335,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Can't get data for expression");
+				expect(exprError.message).toEqual(
+					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				);
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
 			}
@@ -412,6 +415,66 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('Pinned data with paired items', () => {
+		const fixture = loadFixture('pindata_paireditem');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Set', 'manual', {
+			runIndex: 0,
+			throwOnMissingExecutionData: false,
+		});
+
+		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
+			'$methodName should throw when it cannot find a paired item',
+			async ({ methodName }) => {
+				try {
+					proxy.$('DebugHelper')[methodName](0);
+					fail('should throw');
+				} catch (e) {
+					const error = ensureError(e);
+					expect(error.message).toEqual(
+						`Using the ${methodName} method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.`,
+					);
+
+					expect(error).toMatchObject({
+						functionality: 'pairedItem',
+						context: {
+							runIndex: 0,
+							itemIndex: 0,
+							type: 'paired_item_no_info',
+							descriptionKey: 'pairedItemNoInfo',
+							nodeCause: 'Edit Fields',
+							causeDetailed:
+								"Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
+						},
+					});
+				}
+			},
+		);
+
+		test('item should throw when it cannot find a paired item', async () => {
+			try {
+				proxy.$('DebugHelper').item;
+				fail('should throw');
+			} catch (e) {
+				const error = ensureError(e);
+				expect(error.message).toEqual(
+					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.",
+				);
+
+				expect(error).toMatchObject({
+					functionality: 'pairedItem',
+					context: {
+						runIndex: 0,
+						itemIndex: 0,
+						type: 'paired_item_no_info',
+						descriptionKey: 'pairedItemNoInfo',
+						nodeCause: 'Edit Fields',
+						causeDetailed: "Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
+					},
+				});
+			}
+		});
+	});
+
 	describe('Partial data', () => {
 		const fixture = loadFixture('partial_data');
 
@@ -484,6 +547,47 @@ describe('WorkflowDataProxy', () => {
 			expect(() => getFromAIProxy().$fromAI('')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$rawParameter', () => {
+		const fixture = loadFixture('rawParameter');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
+			connectionType: NodeConnectionType.Main,
+			throwOnMissingExecutionData: false,
+			runIndex: 0,
+		});
+
+		test('returns simple raw parameter value', () => {
+			expect(proxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+
+		test('returns raw parameter value for resource locator values', () => {
+			expect(proxy.$rawParameter.workflowId).toEqual('={{ $json.foo }}');
+		});
+
+		test('returns raw parameter value when there is no run data', () => {
+			const noRunDataProxy = getProxyFromFixture(
+				fixture.workflow,
+				{
+					data: { resultData: { runData: {} } },
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+				},
+				'Execute Workflow',
+				'manual',
+				{
+					connectionType: NodeConnectionType.Main,
+					throwOnMissingExecutionData: false,
+					runIndex: 0,
+				},
+			);
+			expect(noRunDataProxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
 		});
 	});
 });

@@ -1,7 +1,7 @@
-import { RoleChangeRequestDto } from '@n8n/api-types';
+import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type express from 'express';
 import type { Response } from 'express';
-import { Container } from 'typedi';
 
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
@@ -18,7 +18,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-type Create = UserRequest.Invite;
+type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
 type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto, {}>;
 
@@ -82,8 +82,16 @@ export = {
 	createUser: [
 		globalScope('user:create'),
 		async (req: Create, res: Response) => {
-			const usersInvited = await Container.get(InvitationController).inviteUser(req);
+			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
+			if (error) {
+				return res.status(400).json(error.errors[0]);
+			}
 
+			const usersInvited = await Container.get(InvitationController).inviteUser(
+				req,
+				res,
+				data as InviteUsersRequestDto,
+			);
 			return res.status(201).json(usersInvited);
 		},
 	],

@@ -77,7 +77,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 
 				// @TODO Remove this once the switcher is removed
 				cy.window().then((win) => {
-					win.localStorage.setItem('NodeView.migrated', 'true');
+					win.localStorage.setItem('NodeView.migrated.release', 'true');
 					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
 
 					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
@@ -172,6 +172,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		};
 		if (options?.realMouse) {
 			element.realMouseDown();
+			element.realMouseMove(0, 0);
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
@@ -218,8 +219,15 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			const pageY = coords.top + coords.height / 2;
 
 			if (draggableSelector) {
-				// We can't use realMouseDown here because it hangs headless run
-				cy.get(draggableSelector).trigger('mousedown');
+				cy.ifCanvasVersion(
+					() => {
+						// We can't use realMouseDown here because it hangs headless run
+						cy.get(draggableSelector).trigger('mousedown');
+					},
+					() => {
+						cy.get(draggableSelector).realMouseDown();
+					},
+				);
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);

@@ -139,12 +139,20 @@
 	--color-infobox-examples-border-color: var(--prim-gray-670);
 
 	// Code
-	--color-code-tags-string: var(--prim-color-alt-f-tint-150);
-	--color-code-tags-primitive: var(--prim-color-alt-b-shade-100);
-	--color-code-tags-keyword: var(--prim-color-alt-g-tint-150);
-	--color-code-tags-operator: var(--prim-color-alt-h);
-	--color-code-tags-variable: var(--prim-color-primary-tint-100);
-	--color-code-tags-definition: var(--prim-color-alt-e);
+	--color-code-tags-string: #9ecbff;
+	--color-code-tags-regex: #9ecbff;
+	--color-code-tags-primitive: #79b8ff;
+	--color-code-tags-keyword: #f97583;
+	--color-code-tags-variable: #79b8ff;
+	--color-code-tags-parameter: #e1e4e8;
+	--color-code-tags-function: #b392f0;
+	--color-code-tags-constant: #79b8ff;
+	--color-code-tags-property: #79b8ff;
+	--color-code-tags-type: #b392f0;
+	--color-code-tags-class: #b392f0;
+	--color-code-tags-heading: #79b8ff;
+	--color-code-tags-invalid: #f97583;
+	--color-code-tags-comment: #6a737d;
 	--color-json-default: var(--prim-color-secondary-tint-200);
 	--color-json-null: var(--color-danger);
 	--color-json-boolean: var(--prim-color-alt-a);
@@ -155,15 +163,18 @@
 	--color-json-brackets-hover: var(--prim-color-alt-e);
 	--color-json-line: var(--prim-gray-200);
 	--color-json-highlight: var(--color-background-base);
-	--color-code-background: var(--prim-gray-800);
+	--color-code-background: var(--prim-gray-820);
 	--color-code-background-readonly: var(--prim-gray-740);
-	--color-code-lineHighlight: var(--prim-gray-740);
+	--color-code-lineHighlight: var(--prim-gray-320-alpha-010);
 	--color-code-foreground: var(--prim-gray-70);
 	--color-code-caret: var(--prim-gray-10);
-	--color-code-selection: var(--prim-color-alt-e-alpha-04);
-	--color-code-gutterBackground: var(--prim-gray-670);
-	--color-code-gutterForeground: var(--prim-gray-320);
-	--color-code-tags-comment: var(--prim-gray-200);
+	--color-code-selection: #3392ff44;
+	--color-code-selection-highlight: #17e5e633;
+	--color-code-gutter-background: var(--prim-gray-820);
+	--color-code-gutter-foreground: var(--prim-gray-320);
+	--color-code-gutter-foreground-active: var(--prim-gray-10);
+	--color-code-indentation-marker: var(--prim-gray-740);
+	--color-code-indentation-marker-active: var(--prim-gray-670);
 	--color-line-break: var(--prim-gray-420);
 	--color-code-line-break: var(--prim-color-secondary-tint-100);
 
@@ -188,6 +199,14 @@
 	--color-button-secondary-disabled-font: var(--prim-gray-0-alpha-030);
 	--color-button-secondary-disabled-border: var(--prim-gray-0-alpha-030);
 
+	// Button success, warning, danger
+	--color-button-danger-font: var(--prim-gray-0);
+	--color-button-danger-border: transparent;
+	--color-button-danger-focus-outline: var(--prim-color-alt-c-tint-250);
+	--color-button-danger-disabled-font: var(--prim-gray-0-alpha-025);
+	--color-button-danger-disabled-border: transparent;
+	--color-button-danger-disabled-background: var(--prim-color-alt-c-alpha-02);
+
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-320);
 
@@ -208,6 +227,7 @@
 	--color-notification-background: var(--prim-gray-740);
 
 	// Execution
+	--execution-card-background: var(--color-foreground-light);
 	--execution-card-background-hover: var(--color-foreground-base);
 	--execution-selector-background: var(--prim-gray-740);
 	--execution-selector-text: var(--color-text-base);

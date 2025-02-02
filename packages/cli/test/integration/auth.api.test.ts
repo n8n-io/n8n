@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
@@ -146,6 +146,21 @@ describe('POST /login', () => {
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail on invalid email in the payload', async () => {
+		const response = await testServer.authlessAgent.post('/login').send({
+			email: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			validation: 'email',
+			code: 'invalid_string',
+			message: 'Invalid email',
+			path: ['email'],
+		});
 	});
 });
 

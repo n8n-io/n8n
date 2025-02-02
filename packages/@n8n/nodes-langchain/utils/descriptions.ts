@@ -66,7 +66,7 @@ export const inputSchemaField: INodeProperties = {
 };
 
 export const promptTypeOptions: INodeProperties = {
-	displayName: 'Prompt Source (User Message)',
+	displayName: 'Source for Prompt (User Message)',
 	name: 'promptType',
 	type: 'options',
 	options: [
@@ -98,7 +98,7 @@ export const textInput: INodeProperties = {
 };
 
 export const textFromPreviousNode: INodeProperties = {
-	displayName: 'Text From Previous Node',
+	displayName: 'Prompt (User Message)',
 	name: 'text',
 	type: 'string',
 	required: true,

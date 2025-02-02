@@ -40,6 +40,10 @@ vi.mock('@/composables/usePageRedirectionHelper', () => {
 	};
 });
 
+vi.mock('is-emoji-supported', () => ({
+	isEmojiSupported: () => true,
+}));
+
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	global: {
 		plugins: [
@@ -120,7 +124,7 @@ describe('ProjectsNavigation', () => {
 		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
 	});
 
-	it('should not show project icons when the menu is collapsed', async () => {
+	it('should show project icons when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
 
 		const { getByTestId } = renderComponent({
@@ -130,7 +134,7 @@ describe('ProjectsNavigation', () => {
 		});
 
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
-		expect(getByTestId('project-personal-menu-item').querySelector('svg')).not.toBeInTheDocument();
+		expect(getByTestId('project-personal-menu-item').querySelector('svg')).toBeInTheDocument();
 	});
 
 	it('should not show add first project button if there are projects already', async () => {

@@ -8,6 +8,9 @@ interface EvaluationStep {
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
+	description?: string;
+	issues?: Array<{ field: string; message: string }>;
+	showIssues?: boolean;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -15,6 +18,8 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
+	issues: () => [],
+	showIssues: true,
 });
 
 const locale = useI18n();
@@ -34,19 +39,28 @@ const toggleExpand = async () => {
 </script>
 
 <template>
-	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
+	<div
+		ref="containerRef"
+		:class="[$style.evaluationStep, small && $style.small]"
+		data-test-id="evaluation-step"
+	>
 		<div :class="$style.content">
 			<div :class="$style.header">
 				<div :class="[$style.icon, warning && $style.warning]">
 					<slot name="icon" />
 				</div>
 				<h3 :class="$style.title">{{ title }}</h3>
-				<span v-if="warning" :class="$style.warningIcon">⚠</span>
+				<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
+					<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
+						{{ issues.map((issue) => issue.message).join(', ') }}
+					</N8nInfoTip>
+				</span>
 				<button
 					v-if="$slots.cardContent"
 					:class="$style.collapseButton"
 					:aria-expanded="isExpanded"
 					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+					data-test-id="evaluation-step-collapse-button"
 					@click="toggleExpand"
 				>
 					{{
@@ -57,9 +71,10 @@ const toggleExpand = async () => {
 					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 				</button>
 			</div>
+			<div v-if="description" :class="$style.description">{{ description }}</div>
 			<ElCollapseTransition v-if="$slots.cardContent">
 				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent">
+					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
 						<slot name="cardContent" />
 					</div>
 				</div>
@@ -83,6 +98,7 @@ const toggleExpand = async () => {
 
 	&.small {
 		width: 80%;
+		margin-left: auto;
 	}
 }
 .icon {
@@ -138,5 +154,11 @@ const toggleExpand = async () => {
 }
 .cardContentWrapper {
 	height: max-content;
+}
+
+.description {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+	line-height: 1rem;
 }
 </style>

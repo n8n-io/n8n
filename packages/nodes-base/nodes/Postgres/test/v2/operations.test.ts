@@ -6,6 +6,7 @@ import type {
 	INode,
 	INodeParameters,
 } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -506,6 +507,7 @@ describe('Test PostgresV2, insert operation', () => {
 			items,
 			nodeOptions,
 			createMockDb(columnsInfo),
+			pgPromise(),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -579,6 +581,7 @@ describe('Test PostgresV2, insert operation', () => {
 			inputItems,
 			nodeOptions,
 			createMockDb(columnsInfo),
+			pgPromise(),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -599,6 +602,96 @@ describe('Test PostgresV2, insert operation', () => {
 			inputItems,
 			nodeOptions,
 		);
+	});
+
+	it('dataMode: define, should accept an array with values if column is of type json', async () => {
+		const convertValuesToJsonWithPgpSpy = jest.spyOn(utils, 'convertValuesToJsonWithPgp');
+		const hasJsonDataTypeInSchemaSpy = jest.spyOn(utils, 'hasJsonDataTypeInSchema');
+
+		const values = [
+			{ value: { id: 1, json: [], foo: 'data 1' }, expected: { id: 1, json: '[]', foo: 'data 1' } },
+			{
+				value: {
+					id: 2,
+					json: [0, 1],
+					foo: 'data 2',
+				},
+				expected: {
+					id: 2,
+					json: '[0,1]',
+					foo: 'data 2',
+				},
+			},
+			{
+				value: {
+					id: 2,
+					json: [0],
+					foo: 'data 2',
+				},
+				expected: {
+					id: 2,
+					json: '[0]',
+					foo: 'data 2',
+				},
+			},
+		];
+
+		values.forEach(async (value) => {
+			const valuePassedIn = value.value;
+			const nodeParameters: IDataObject = {
+				schema: {
+					__rl: true,
+					mode: 'list',
+					value: 'public',
+				},
+				table: {
+					__rl: true,
+					value: 'my_table',
+					mode: 'list',
+				},
+				columns: {
+					mappingMode: 'defineBelow',
+					value: valuePassedIn,
+				},
+				options: { nodeVersion: 2.5 },
+			};
+			const columnsInfo: ColumnInfo[] = [
+				{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+				{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+				{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
+			];
+
+			const inputItems = [
+				{
+					json: valuePassedIn,
+				},
+			];
+
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const pg = pgPromise();
+
+			await insert.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				inputItems,
+				nodeOptions,
+				createMockDb(columnsInfo),
+				pg,
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query: 'INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv) RETURNING *',
+						values: ['public', 'my_table', value.expected],
+					},
+				],
+				inputItems,
+				nodeOptions,
+			);
+			expect(convertValuesToJsonWithPgpSpy).toHaveBeenCalledWith(pg, columnsInfo, valuePassedIn);
+			expect(hasJsonDataTypeInSchemaSpy).toHaveBeenCalledWith(columnsInfo);
+		});
 	});
 });
 
@@ -1050,6 +1143,187 @@ describe('Test PostgresV2, upsert operation', () => {
 						{ test: 5 },
 						'foo',
 						'data 3',
+					],
+				},
+			],
+			inputItems,
+			nodeOptions,
+		);
+	});
+});
+
+describe('When matching on all columns', () => {
+	it('dataMode: define, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			columns: {
+				matchingColumns: ['id', 'json', 'foo'],
+				value: { id: '5', json: '{ "test": 5 }', foo: 'data 5' },
+				mappingMode: 'defineBelow',
+			},
+			options: {
+				outputColumns: ['json'],
+				nodeVersion: 2.5,
+			},
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
+		];
+		const inputItems = [
+			{
+				json: {
+					id: 1,
+					json: {
+						test: 15,
+					},
+					foo: 'data 1',
+				},
+			},
+		];
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await upsert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING $7:name',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						'json',
+						'foo',
+						{ id: '5', json: '{ "test": 5 }', foo: 'data 5' },
+						['json'],
+					],
+				},
+			],
+			inputItems,
+			nodeOptions,
+		);
+	});
+
+	it('dataMode: autoMapInputData, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			columns: {
+				matchingColumns: ['id', 'json', 'foo'],
+				mappingMode: 'autoMapInputData',
+			},
+			options: { nodeVersion: 2.5 },
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
+		];
+
+		const inputItems = [
+			{
+				json: {
+					id: 1,
+					json: {
+						test: 15,
+					},
+					foo: 'data 1',
+				},
+			},
+			{
+				json: {
+					id: 2,
+					json: {
+						test: 10,
+					},
+					foo: 'data 2',
+				},
+			},
+			{
+				json: {
+					id: 3,
+					json: {
+						test: 5,
+					},
+					foo: 'data 3',
+				},
+			},
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await upsert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						'json',
+						'foo',
+						{ id: 1, json: { test: 15 }, foo: 'data 1' },
+					],
+				},
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						'json',
+						'foo',
+						{ id: 2, json: { test: 10 }, foo: 'data 2' },
+					],
+				},
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+					values: [
+						'public',
+						'my_table',
+						'id',
+						'json',
+						'foo',
+						{ id: 3, json: { test: 5 }, foo: 'data 3' },
 					],
 				},
 			],

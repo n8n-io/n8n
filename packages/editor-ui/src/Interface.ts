@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { Connection } from '@jsplumb/core';
 import type {
+	BannerName,
 	FrontendSettings,
 	Iso8601DateTimeString,
 	IUserManagementSettings,
@@ -26,9 +27,6 @@ import type {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	INodeTypeNameVersion,
-	ILoadOptions,
-	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -38,7 +36,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	IUserSettings,
-	BannerName,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
@@ -59,7 +56,6 @@ import type {
 	ROLE,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 
@@ -364,6 +360,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
 	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
+	isManaged: boolean;
 }
 
 export interface ICredentialsBase {
@@ -723,6 +720,7 @@ export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
 	actionKey: string;
+	outputConnectionType?: NodeConnectionType;
 	codex: {
 		label: string;
 		categories: string[];
@@ -1265,35 +1263,6 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export declare namespace DynamicNodeParameters {
-	interface BaseRequest {
-		path: string;
-		nodeTypeAndVersion: INodeTypeNameVersion;
-		currentNodeParameters: INodeParameters;
-		methodName?: string;
-		credentials?: INodeCredentials;
-	}
-
-	interface OptionsRequest extends BaseRequest {
-		loadOptions?: ILoadOptions;
-	}
-
-	interface ResourceLocatorResultsRequest extends BaseRequest {
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}
-
-	interface ResourceMapperFieldsRequest extends BaseRequest {
-		methodName: string;
-	}
-
-	interface ActionResultRequest extends BaseRequest {
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}
-}
-
 export interface EnvironmentVariable {
 	id: string;
 	key: string;
@@ -1330,41 +1299,6 @@ export type ExecutionsQueryFilter = {
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
 };
-
-export type SamlAttributeMapping = {
-	email: string;
-	firstName: string;
-	lastName: string;
-	userPrincipalName: string;
-};
-
-export type SamlLoginBinding = 'post' | 'redirect';
-
-export type SamlSignatureConfig = {
-	prefix: 'ds';
-	location: {
-		reference: '/samlp:Response/saml:Issuer';
-		action: 'after';
-	};
-};
-
-export type SamlPreferencesLoginEnabled = {
-	loginEnabled: boolean;
-};
-
-export type SamlPreferences = {
-	mapping?: SamlAttributeMapping;
-	metadata?: string;
-	metadataUrl?: string;
-	ignoreSSL?: boolean;
-	loginBinding?: SamlLoginBinding;
-	acsBinding?: SamlLoginBinding;
-	authnRequestsSigned?: boolean;
-	loginLabel?: string;
-	wantAssertionsSigned?: boolean;
-	wantMessageSigned?: boolean;
-	signatureConfig?: SamlSignatureConfig;
-} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
 
 export type SamlPreferencesExtractedData = {
 	entityID: string;
@@ -1549,14 +1483,6 @@ export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterpr
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
-
-export type ApiKey = {
-	id: string;
-	label: string;
-	apiKey: string;
-	createdAt: string;
-	updatedAt: string;
-};
 
 export type InputPanel = {
 	nodeName?: string;

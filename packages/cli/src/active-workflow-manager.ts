@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Service } from '@n8n/di';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
 	InstanceSettings,
+	Logger,
 	PollContext,
 	TriggerContext,
 } from 'n8n-core';
@@ -27,7 +29,6 @@ import {
 	WebhookPathTakenError,
 	ApplicationError,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -39,10 +40,10 @@ import {
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
@@ -88,7 +89,7 @@ export class ActiveWorkflowManager {
 
 		await this.addActiveWorkflows('init');
 
-		await this.externalHooks.run('activeWorkflows.initialized', []);
+		await this.externalHooks.run('activeWorkflows.initialized');
 		await this.webhookService.populateCache();
 	}
 
@@ -400,7 +401,7 @@ export class ActiveWorkflowManager {
 			status: 'running',
 		};
 
-		WorkflowExecuteAdditionalData.executeErrorWorkflow(workflowData, fullRunData, mode);
+		executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
 	/**

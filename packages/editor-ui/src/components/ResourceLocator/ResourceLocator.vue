@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
+import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -31,7 +32,16 @@ import type {
 	INodePropertyModeTypeOptions,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	type Ref,
+	ref,
+	useCssModule,
+	watch,
+} from 'vue';
 import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -89,6 +99,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const $style = useCssModule();
 
 const resourceDropdownVisible = ref(false);
 const resourceDropdownHiding = ref(false);
@@ -563,7 +574,7 @@ async function loadResources() {
 		) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
-		const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
+		const requestParams: ResourceLocatorRequestDto = {
 			nodeTypeAndVersion: {
 				name: props.node.type,
 				version: props.node.typeVersion,
@@ -655,7 +666,13 @@ function onListItemSelected(value: NodeParameterValue) {
 	hideResourceDropdown();
 }
 
-function onInputBlur() {
+function onInputBlur(event: FocusEvent) {
+	// Do not blur if focus is within the dropdown
+	const newTarget = event.relatedTarget;
+	if (newTarget instanceof HTMLElement && dropdownRef.value?.isWithinDropdown(newTarget)) {
+		return;
+	}
+
 	if (!isSearchable.value || currentQueryError.value) {
 		hideResourceDropdown();
 	}

@@ -5,7 +5,7 @@ import { N8nLoading } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { NodeParameterValue } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -50,6 +50,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -198,6 +199,12 @@ function onResultsEnd() {
 		}
 	}
 }
+
+function isWithinDropdown(element: HTMLElement) {
+	return Boolean(element.closest('.' + $style.popover));
+}
+
+defineExpose({ isWithinDropdown });
 </script>
 
 <template>

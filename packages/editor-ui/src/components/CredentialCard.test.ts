@@ -17,6 +17,7 @@ const createCredential = (overrides = {}): ICredentialsResponse => ({
 	type: '',
 	name: '',
 	sharedWithProjects: [],
+	isManaged: false,
 	homeProject: {} as ProjectSharingData,
 	...overrides,
 });

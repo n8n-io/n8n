@@ -148,13 +148,7 @@ const outputError = computed(() => {
 							@click.stop="trackOpeningRelatedExecution(runMeta, 'ai')"
 						>
 							<N8nIcon icon="external-link-alt" size="xsmall" />
-							{{
-								i18n.baseText('runData.openSubExecution', {
-									interpolate: {
-										id: runMeta.subExecution?.executionId,
-									},
-								})
-							}}
+							{{ i18n.baseText('runData.openSubExecutionSingle') }}
 						</a>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">

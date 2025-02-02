@@ -258,6 +258,7 @@ const getListItemName = (path: string) => {
 	> span {
 		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
 		margin-left: var(--spacing-5xs);
+		white-space: pre-wrap;
 	}
 }
 

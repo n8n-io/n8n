@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { statSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import { Container } from 'typedi';
 
 import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 

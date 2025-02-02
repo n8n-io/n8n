@@ -164,6 +164,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+			}
+
+			if (options.triggerNode && options.nodeData) {
 				triggerToStartFrom = {
 					name: options.triggerNode,
 					data: options.nodeData,
@@ -174,7 +177,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
-					destinationNodeType === CHAT_TRIGGER_NODE_TYPE)
+					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
+				options.source !== 'RunData.ManualChatMessage'
 			) {
 				const startNode = workflow.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -186,6 +190,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
+						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
 						workflowsStore.setPanelOpen('chat', true);
 						return;
 					}
@@ -240,7 +245,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
 			);
 
-			if (singleWebhookTrigger && workflowsStore.isWorkflowActive) {
+			if (
+				singleWebhookTrigger &&
+				workflowsStore.isWorkflowActive &&
+				!workflowData.pinData?.[singleWebhookTrigger.name]
+			) {
 				toast.showMessage({
 					title: i18n.baseText('workflowRun.showError.deactivate'),
 					message: i18n.baseText('workflowRun.showError.productionActive', {
@@ -255,14 +264,23 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// 0 is the old flow
 			// 1 is the new flow
 			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
+			// partial executions must have a destination node
+			const isPartialExecution = options.destinationNode !== undefined;
 			const startRunData: IStartRunData = {
 				workflowData,
-				// With the new partial execution version the backend decides what run
-				// data to use and what to ignore.
-				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
+				runData: !isPartialExecution
+					? // if it's a full execution we don't want to send any run data
+						undefined
+					: partialExecutionVersion.value === 1
+						? // With the new partial execution version the backend decides
+							//what run data to use and what to ignore.
+							(runData ?? undefined)
+						: // for v0 we send the run data the FE constructed
+							newRunData,
 				startNodes,
 				triggerToStartFrom,
 			};
+
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 			}

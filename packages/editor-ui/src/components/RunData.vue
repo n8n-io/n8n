@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import type {
-	IBinaryData,
-	IConnectedNode,
-	IDataObject,
-	INodeExecutionData,
-	INodeOutputConfiguration,
-	IRunData,
-	IRunExecutionData,
-	ITaskMetadata,
-	NodeError,
-	NodeHint,
-	Workflow,
+import {
+	type IBinaryData,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeOutputConfiguration,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskMetadata,
+	type NodeError,
+	type NodeHint,
+	type Workflow,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -79,6 +80,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useUIStore } from '@/stores/ui.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -178,6 +180,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
 
 const toast = useToast();
 const route = useRoute();
@@ -273,6 +276,10 @@ const hasNodeRun = computed(() =>
 
 const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
+);
+
+const isTrimmedManualExecutionDataItem = computed(
+	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
 );
 
 const subworkflowExecutionError = computed(() => {
@@ -1253,9 +1260,13 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	}
 
 	if (task.subExecution) {
-		return i18n.baseText('runData.openSubExecution', {
-			interpolate: { id: task.subExecution.executionId },
-		});
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
 	}
 
 	return;
@@ -1267,10 +1278,16 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
@@ -1310,7 +1327,7 @@ defineExpose({ enterEditMode });
 			<slot name="header"></slot>
 
 			<div
-				v-show="!hasRunError"
+				v-show="!hasRunError && !isTrimmedManualExecutionDataItem"
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
 				@click.stop
@@ -1414,7 +1431,7 @@ defineExpose({ enterEditMode });
 					</template>
 					<N8nIconButton
 						:icon="linkedRuns ? 'unlink' : 'link'"
-						class="linkRun"
+						:class="['linkRun', linkedRuns ? 'linked' : '']"
 						text
 						type="tertiary"
 						size="small"
@@ -1444,7 +1461,7 @@ defineExpose({ enterEditMode });
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<div v-if="props.calloutMessage" :class="$style.hintCallout">
-			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+			<N8nCallout theme="info" data-test-id="run-data-callout">
 				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 			</N8nCallout>
 		</div>
@@ -1454,6 +1471,7 @@ defineExpose({ enterEditMode });
 			:key="hint.message"
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
+			data-test-id="node-hint"
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
@@ -1476,14 +1494,13 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
-				!hasRunError &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled && !hasRunError"
+			v-show="!editMode.enabled"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
@@ -1588,6 +1605,25 @@ defineExpose({ enterEditMode });
 					<N8nLink @click="enableNode">
 						{{ i18n.baseText('ndv.input.disabled.cta') }}
 					</N8nLink>
+				</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
+				:class="$style.center"
+			>
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<N8nText color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
+			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
+				<N8nText bold color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.title') }}
+				</N8nText>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.message') }}
 				</N8nText>
 			</div>
 

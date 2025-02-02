@@ -87,6 +87,7 @@ export interface FrontendSettings {
 		};
 	};
 	publicApi: {
+		apiKeysPerUserLimit: number;
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
@@ -162,6 +163,10 @@ export interface FrontendSettings {
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
+	};
+	aiCredits: {
+		enabled: boolean;
+		credits: number;
 	};
 	pruning?: {
 		isEnabled: boolean;

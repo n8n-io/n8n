@@ -24,7 +24,7 @@ const modelParameter: INodeProperties = {
 			routing: {
 				request: {
 					method: 'GET',
-					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
+					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || $credentials?.url?.split("/").slice(-1).pop() || "v1" }}/models',
 				},
 				output: {
 					postReceive: [

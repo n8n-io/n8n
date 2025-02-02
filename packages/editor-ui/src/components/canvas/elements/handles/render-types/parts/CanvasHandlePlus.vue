@@ -96,7 +96,12 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<svg :class="classes" :viewBox="`0 0 ${viewBox.width} ${viewBox.height}`" :style="styles">
+	<svg
+		data-test-id="canvas-handle-plus-wrapper"
+		:class="classes"
+		:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
+		:style="styles"
+	>
 		<line
 			:class="[handleClasses, $style.line]"
 			:x1="linePosition[0][0]"
@@ -107,6 +112,7 @@ function onClick(event: MouseEvent) {
 			stroke-width="2"
 		/>
 		<g
+			data-test-id="canvas-handle-plus"
 			:class="[$style.plus, handleClasses, 'clickable']"
 			:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
 			@click="onClick"

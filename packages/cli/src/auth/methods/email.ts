@@ -1,10 +1,10 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
-import { isLdapLoginEnabled } from '@/ldap/helpers.ee';
+import { isLdapLoginEnabled } from '@/ldap.ee/helpers.ee';
 import { PasswordUtility } from '@/services/password.utility';
 
 export const handleEmailLogin = async (

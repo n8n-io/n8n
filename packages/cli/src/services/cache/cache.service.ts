@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { Time } from '@/constants';

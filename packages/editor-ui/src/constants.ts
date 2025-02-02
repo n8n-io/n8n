@@ -42,6 +42,7 @@ export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
+export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
@@ -53,6 +54,7 @@ export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
+export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
@@ -260,6 +262,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const HUMAN_IN_THE_LOOP_CATEGORY = 'HITL';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
 export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
@@ -272,6 +275,7 @@ export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
+export const HITL_SUBCATEGORY = 'Human in the Loop';
 export const AI_CATEGORY_AGENTS = 'Agents';
 export const AI_CATEGORY_CHAINS = 'Chains';
 export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
@@ -283,6 +287,7 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
@@ -496,6 +501,9 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
+	TEST_DEFINITION_RUNS = 'TestDefinitionRuns',
+	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
+	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
 	NEW_TEST_DEFINITION = 'NewTestDefinition',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
@@ -655,6 +663,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	API_KEYS = 'apiKeys',
 	TEST_DEFINITION = 'testDefinition',
 }
 
@@ -706,12 +715,19 @@ export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_CREDITS_EXPERIMENT = {
+	name: '027_free_openai_calls',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
+	AI_CREDITS_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
@@ -892,6 +908,6 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
-
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
+
+export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes

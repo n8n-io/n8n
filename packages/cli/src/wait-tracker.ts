@@ -1,10 +1,9 @@
-import { InstanceSettings } from 'n8n-core';
+import { Service } from '@n8n/di';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';

@@ -4,22 +4,21 @@ import { nanoid } from 'nanoid';
 
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import type { DataRequestResponse } from '@/runner-types';
-import type { Task } from '@/task-runner';
+import type { TaskParams } from '@/task-runner';
+import { TaskState } from '@/task-state';
 
 /**
  * Creates a new task with the given settings
  */
-export const newTaskWithSettings = (
+export const newTaskParamsWithSettings = (
 	settings: Partial<JSExecSettings> & Pick<JSExecSettings, 'code' | 'nodeMode'>,
-): Task<JSExecSettings> => ({
+): TaskParams<JSExecSettings> => ({
 	taskId: '1',
 	settings: {
 		workflowMode: 'manual',
 		continueOnFail: false,
 		...settings,
 	},
-	active: true,
-	cancelled: false,
 });
 
 /**
@@ -167,3 +166,13 @@ export const withPairedItem = (index: number, data: INodeExecutionData): INodeEx
 		item: index,
 	},
 });
+
+/**
+ * Creates a new task state with the given taskId
+ */
+export const newTaskState = (taskId: string) =>
+	new TaskState({
+		taskId,
+		timeoutInS: 60,
+		onTimeout: () => {},
+	});

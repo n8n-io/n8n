@@ -7,17 +7,16 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import type { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { Push } from '@/push';
-import type { WebSocketPush } from '@/push/websocket.push';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
-import type { WorkerStatusService } from '../worker-status.service';
+import type { WorkerStatusService } from '../worker-status.service.ee';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -829,9 +828,7 @@ describe('PubSubHandler', () => {
 					flattedRunData: '[]',
 				};
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 
 				eventService.emit('relay-execution-lifecycle-event', { type, data, pushRef });
 
@@ -858,9 +855,7 @@ describe('PubSubHandler', () => {
 				const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
 				const pushRef = 'test-push-ref';
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 				testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
 
 				eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });
