@@ -991,13 +991,13 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.bankIntegrationId) {
 							body.bank_integration_id = additionalFields.bankIntegrationId as number;
 						}
-						if (additionalFields.client) {
+						if (additionalFields.date) {
 							body.date = additionalFields.date as string;
 						}
 						if (additionalFields.currencyId) {
 							body.currency_id = additionalFields.currencyId as number;
 						}
-						if (additionalFields.email) {
+						if (additionalFields.description) {
 							body.description = additionalFields.description as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
