@@ -37,6 +37,17 @@
 			"killBehavior": "polite"
 		},
 		{
+			"name": "Debug n8n worker",
+			"program": "${workspaceFolder}/packages/cli/bin/n8n",
+			"cwd": "${workspaceFolder}/packages/cli/bin",
+			"args": ["worker"],
+			"request": "launch",
+			"skipFiles": ["<node_internals>/**"],
+			"type": "node",
+			"outputCapture": "std",
+			"killBehavior": "polite"
+		},
+		{
 			"name": "Launch n8n CLI dev with debug",
 			"runtimeExecutable": "pnpm",
 			"cwd": "${workspaceFolder}/packages/cli",

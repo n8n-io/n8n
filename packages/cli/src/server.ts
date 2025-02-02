@@ -221,7 +221,7 @@ export class Server extends AbstractServer {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');
-			await Container.get(ScalingService).setupQueue();
+			await Container.get(ScalingService).setupQueues();
 		}
 
 		await handleMfaDisable();

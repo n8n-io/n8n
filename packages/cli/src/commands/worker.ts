@@ -159,7 +159,7 @@ export class Worker extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		this.scalingService = Container.get(ScalingService);
 
-		await this.scalingService.setupQueue();
+		await this.scalingService.setupQueues();
 
 		this.scalingService.setupWorker(this.concurrency);
 	}

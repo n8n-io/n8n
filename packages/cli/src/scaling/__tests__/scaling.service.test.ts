@@ -107,7 +107,7 @@ describe('ScalingService', () => {
 	describe('setupQueue', () => {
 		describe('if leader main', () => {
 			it('should set up queue + listeners + queue recovery', async () => {
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
@@ -120,7 +120,7 @@ describe('ScalingService', () => {
 			it('should set up queue + listeners', async () => {
 				instanceSettings.markAsFollower();
 
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
@@ -134,7 +134,7 @@ describe('ScalingService', () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
@@ -147,7 +147,7 @@ describe('ScalingService', () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'webhook';
 
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe('ScalingService', () => {
 		it('should set up a worker with concurrency', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			const concurrency = 5;
 
 			scalingService.setupWorker(concurrency);
@@ -169,7 +169,7 @@ describe('ScalingService', () => {
 		});
 
 		it('should throw if called on a non-worker instance', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
@@ -187,7 +187,7 @@ describe('ScalingService', () => {
 			it('should pause queue, stop queue recovery and queue metrics', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'main';
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 				// @ts-expect-error readonly property
 				scalingService.queueRecoveryContext.timeout = 1;
 				jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
@@ -205,7 +205,7 @@ describe('ScalingService', () => {
 			it('should wait for running jobs to finish', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
-				await scalingService.setupQueue();
+				await scalingService.setupQueues();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 
 				await scalingService.stop();
@@ -217,19 +217,9 @@ describe('ScalingService', () => {
 		});
 	});
 
-	describe('pingQueue', () => {
-		it('should ping the queue', async () => {
-			await scalingService.setupQueue();
-
-			await scalingService.pingQueue();
-
-			expect(queue.client.ping).toHaveBeenCalled();
-		});
-	});
-
 	describe('addJob', () => {
 		it('should add a job', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
 			const jobData = mock<JobData>({ executionId: '123' });
@@ -243,22 +233,9 @@ describe('ScalingService', () => {
 		});
 	});
 
-	describe('getJob', () => {
-		it('should get a job', async () => {
-			await scalingService.setupQueue();
-			const jobId = '123';
-			queue.getJob.mockResolvedValue(mock<Job>({ id: jobId }));
-
-			const job = await scalingService.getJob(jobId);
-
-			expect(queue.getJob).toHaveBeenCalledWith(jobId);
-			expect(job?.id).toBe(jobId);
-		});
-	});
-
 	describe('findJobsByStatus', () => {
 		it('should find jobs by status', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			queue.getJobs.mockResolvedValue([mock<Job>({ id: '123' })]);
 
 			const jobs = await scalingService.findJobsByStatus(['active']);
@@ -269,7 +246,7 @@ describe('ScalingService', () => {
 		});
 
 		it('should filter out `null` in Redis response', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			// @ts-expect-error - Untyped but possible Redis response
 			queue.getJobs.mockResolvedValue([mock<Job>(), null]);
 
@@ -281,7 +258,7 @@ describe('ScalingService', () => {
 
 	describe('stopJob', () => {
 		it('should stop an active job', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
 
 			const result = await scalingService.stopJob(job);
@@ -293,7 +270,7 @@ describe('ScalingService', () => {
 		});
 
 		it('should stop an inactive job', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(false) });
 
 			const result = await scalingService.stopJob(job);
@@ -303,7 +280,7 @@ describe('ScalingService', () => {
 		});
 
 		it('should report failure to stop a job', async () => {
-			await scalingService.setupQueue();
+			await scalingService.setupQueues();
 			const job = mock<Job>({
 				isActive: jest.fn().mockImplementation(() => {
 					throw new ApplicationError('Something went wrong');

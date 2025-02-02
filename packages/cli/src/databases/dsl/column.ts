@@ -130,7 +130,7 @@ export class Column {
 					? "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
 					: 'CURRENT_TIMESTAMP(3)';
 			}
-			if (type === 'json' && isSqlite) {
+			if (type === 'json' && (isSqlite || isPostgres)) {
 				if (typeof this.defaultValue !== 'string') {
 					this.defaultValue = JSON.stringify(this.defaultValue);
 				}

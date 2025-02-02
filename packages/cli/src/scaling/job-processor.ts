@@ -6,6 +6,7 @@ import {
 	WorkflowExecute,
 	ErrorReporter,
 	Logger,
+	isObjectLiteral,
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
@@ -13,7 +14,14 @@ import type {
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	ApplicationError,
+	Workflow,
+	jsonStringify,
+	ensureError,
+	sleep,
+} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
@@ -26,15 +34,22 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 
 import type {
 	Job,
+	JobFailedMessage,
 	JobFinishedMessage,
 	JobId,
+	JobMessage,
+	JobQueue,
 	JobResult,
 	RespondToWebhookMessage,
 	RunningJob,
 } from './scaling.types';
+import { JOB_TYPE_NAME } from './constants';
+import { JobQueues } from './job-queues';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 
 /**
- * Responsible for processing jobs from the queue, i.e. running enqueued executions.
+ * Responsible for processing jobs from the queues, i.e. running enqueued executions.
  */
 @Service()
 export class JobProcessor {
@@ -43,6 +58,7 @@ export class JobProcessor {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly jobQueues: JobQueues,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -50,6 +66,78 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 	) {
 		this.logger = this.logger.scoped('scaling');
+	}
+
+	setup(concurrency: number) {
+		this.assertWorker();
+
+		const queues = this.jobQueues.getAllQueues();
+		for (const queue of queues) {
+			this.setupQueueProcessing(queue, concurrency);
+		}
+	}
+
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	async stop() {
+		let count = 0;
+
+		while (this.getRunningJobsCount() !== 0) {
+			if (count++ % 4 === 0) {
+				this.logger.info(
+					`Waiting for ${this.getRunningJobsCount()} active executions to finish...`,
+				);
+			}
+
+			await sleep(500);
+		}
+	}
+
+	private getRunningJobsCount() {
+		return this.getRunningJobIds().length;
+	}
+
+	private setupQueueProcessing(queue: JobQueue, concurrency: number) {
+		queue.on('global:progress', (jobId: JobId, msg: unknown) => this.onProgress(jobId, msg));
+		queue.on('error', (error: Error) => this.onError(error));
+		void queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => this.preProcessJob(job));
+	}
+
+	private onProgress(jobId: JobId, msg: unknown) {
+		if (!this.isJobMessage(msg)) return;
+
+		if (msg.kind === 'abort-job') this.stopJob(jobId);
+	}
+
+	private onError(error: Error) {
+		if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
+
+		/**
+		 * Non-recoverable error on worker start with Redis unavailable.
+		 * Even if Redis recovers, worker will remain unable to process jobs.
+		 */
+		if (error.message.includes('Error initializing Lua scripts')) {
+			this.logger.error('Fatal error initializing worker', { error });
+			this.logger.error('Exiting process...');
+			process.exit(1);
+		}
+
+		this.logger.error('Queue errored', { error });
+
+		throw error;
+	}
+
+	private async preProcessJob(job: Job) {
+		try {
+			if (!this.hasValidJobData(job)) {
+				throw new ApplicationError('Worker received invalid job', {
+					extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
+				});
+			}
+
+			await this.processJob(job);
+		} catch (error) {
+			await this.reportJobProcessingError(ensureError(error), job);
+		}
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
@@ -283,5 +371,44 @@ export class JobProcessor {
 		}
 
 		return response;
+	}
+
+	private assertWorker() {
+		if (this.instanceSettings.instanceType === 'worker') return;
+
+		throw new ApplicationError('This method must be called on a `worker` instance');
+	}
+
+	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
+	private isJobMessage(candidate: unknown): candidate is JobMessage {
+		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
+	}
+
+	private hasValidJobData(job: Job) {
+		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
+	}
+
+	private async reportJobProcessingError(error: Error, job: Job) {
+		const { executionId } = job.data;
+
+		this.logger.error(`Worker errored while running execution ${executionId} (job ${job.id})`, {
+			error,
+			executionId,
+			jobId: job.id,
+		});
+
+		const msg: JobFailedMessage = {
+			kind: 'job-failed',
+			executionId,
+			workerId: this.instanceSettings.hostId,
+			errorMsg: error.message,
+			errorStack: error.stack ?? '',
+		};
+
+		await job.progress(msg);
+
+		this.errorReporter.error(error, { executionId });
+
+		throw error;
 	}
 }

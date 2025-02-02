@@ -90,6 +90,15 @@ class BullConfig {
 	settings: SettingsConfig;
 }
 
+class CommaSeparatedStringArray<T extends string = string> extends Array<T> {
+	constructor(str: string) {
+		super();
+		const parsed = str.split(':') as this;
+		const filtered = parsed.filter((i) => typeof i === 'string' && i.length);
+		return filtered.length ? filtered : [];
+	}
+}
+
 @Config
 export class ScalingModeConfig {
 	@Nested
@@ -97,4 +106,7 @@ export class ScalingModeConfig {
 
 	@Nested
 	bull: BullConfig;
+
+	@Env('QUEUE_DEDICATED_IDS')
+	dedicatedIds: CommaSeparatedStringArray = [];
 }

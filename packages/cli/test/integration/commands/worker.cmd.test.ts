@@ -55,7 +55,7 @@ test('worker initializes all its components', async () => {
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
-	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupQueues).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationService.init).toHaveBeenCalledTimes(1);
