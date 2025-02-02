@@ -314,22 +314,20 @@ export class InvoiceNinja implements INodeType {
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const statics = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/statics');
+				const currencies = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'currencies',
+					'GET',
+					'/statics',
+				);
 
-				Object.entries(statics)
-					.filter(([key]) => key === 'currencies')
-					.forEach(([key, value]) => {
-						if (key === 'currencies' && Array.isArray(value)) {
-							for (const currency of value) {
-								const currencyName = [currency.number, currency.code].filter((e) => e).join(' - ');
-								const currencyId = currency.id as string;
-								returnData.push({
-									name: currencyName,
-									value: currencyId,
-								});
-							}
-						}
+				for (const currency of currencies) {
+					const currencyName = [currency.id, currency.code].filter((e) => e).join(' - ');
+					returnData.push({
+						name: currencyName,
+						value: currency.id as string,
 					});
+				}
 				return returnData;
 			},
 		},
