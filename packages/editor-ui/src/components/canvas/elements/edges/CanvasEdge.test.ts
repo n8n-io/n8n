@@ -71,6 +71,30 @@ describe('CanvasEdge', () => {
 		expect(() => getByTestId('delete-connection-button')).toThrow();
 	});
 
+	it('should hide toolbar after delay', async () => {
+		vi.useFakeTimers();
+
+		const user = userEvent.setup({
+			advanceTimers: vi.advanceTimersByTime,
+		});
+
+		const { rerender, getByTestId, queryByTestId } = renderComponent({
+			props: { hovered: true },
+		});
+
+		await user.hover(getByTestId('edge-label'));
+		expect(queryByTestId('canvas-edge-toolbar')).toBeInTheDocument();
+
+		await rerender({ hovered: false });
+
+		await user.unhover(getByTestId('edge-label'));
+		expect(getByTestId('canvas-edge-toolbar')).toBeInTheDocument();
+
+		await vi.advanceTimersByTimeAsync(600);
+
+		expect(queryByTestId('canvas-edge-toolbar')).not.toBeInTheDocument();
+	});
+
 	it('should compute edgeStyle correctly', () => {
 		const { container } = renderComponent();
 
