@@ -98,6 +98,7 @@
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
     "@types/humanize-duration": "^3.27.1",
+    "@types/json-schema": "^7.0.15",
     "@types/jsonpath": "^0.2.0",
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",

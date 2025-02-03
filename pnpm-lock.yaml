@@ -1601,6 +1601,9 @@ importers:
       '@types/humanize-duration':
         specifier: ^3.27.1
         version: 3.27.1
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
       '@types/jsonpath':
         specifier: ^0.2.0
         version: 0.2.0
