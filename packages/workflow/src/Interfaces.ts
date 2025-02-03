@@ -2293,10 +2293,8 @@ export interface IWorkflowExecutionDataProcess {
 	/**
 	 * Defines which version of the partial execution flow is used.
 	 * Possible values are:
-	 *  0 - use the old flow
-	 *  1 - use the new flow
-	 * -1 - the backend chooses which flow based on the environment variable
-	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
+	 *  1 - use the old flow
+	 *  2 - use the new flow
 	 */
 	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
