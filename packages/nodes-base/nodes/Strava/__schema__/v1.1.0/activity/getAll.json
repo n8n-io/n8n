@@ -1,0 +1,204 @@
+{
+    "type": "object",
+    "properties": {
+        "resource_state": {
+            "type": "integer"
+        },
+        "athlete": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "resource_state": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "resource_state"
+            ]
+        },
+        "name": {
+            "type": "string"
+        },
+        "moving_time": {
+            "type": "integer"
+        },
+        "elapsed_time": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "sport_type": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "start_date": {
+            "type": "string"
+        },
+        "start_date_local": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "utc_offset": {
+            "type": "integer"
+        },
+        "location_city": {
+            "type": "null"
+        },
+        "location_state": {
+            "type": "null"
+        },
+        "achievement_count": {
+            "type": "integer"
+        },
+        "kudos_count": {
+            "type": "integer"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "athlete_count": {
+            "type": "integer"
+        },
+        "photo_count": {
+            "type": "integer"
+        },
+        "map": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "summary_polyline": {
+                    "type": "string"
+                },
+                "resource_state": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "summary_polyline",
+                "resource_state"
+            ]
+        },
+        "trainer": {
+            "type": "boolean"
+        },
+        "commute": {
+            "type": "boolean"
+        },
+        "manual": {
+            "type": "boolean"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "visibility": {
+            "type": "string"
+        },
+        "flagged": {
+            "type": "boolean"
+        },
+        "average_cadence": {
+            "type": "number"
+        },
+        "max_watts": {
+            "type": "integer"
+        },
+        "weighted_average_watts": {
+            "type": "integer"
+        },
+        "device_watts": {
+            "type": "boolean"
+        },
+        "has_heartrate": {
+            "type": "boolean"
+        },
+        "average_heartrate": {
+            "type": "number"
+        },
+        "max_heartrate": {
+            "type": "integer"
+        },
+        "heartrate_opt_out": {
+            "type": "boolean"
+        },
+        "display_hide_heartrate_option": {
+            "type": "boolean"
+        },
+        "upload_id_str": {
+            "type": "string"
+        },
+        "from_accepted_tag": {
+            "type": "boolean"
+        },
+        "pr_count": {
+            "type": "integer"
+        },
+        "total_photo_count": {
+            "type": "integer"
+        },
+        "has_kudoed": {
+            "type": "boolean"
+        },
+        "suffer_score": {
+            "type": "integer"
+        },
+        "average_temp": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "resource_state",
+        "athlete",
+        "name",
+        "distance",
+        "moving_time",
+        "elapsed_time",
+        "total_elevation_gain",
+        "type",
+        "sport_type",
+        "id",
+        "start_date",
+        "start_date_local",
+        "timezone",
+        "utc_offset",
+        "location_city",
+        "location_state",
+        "location_country",
+        "achievement_count",
+        "kudos_count",
+        "comment_count",
+        "athlete_count",
+        "photo_count",
+        "map",
+        "trainer",
+        "commute",
+        "manual",
+        "private",
+        "visibility",
+        "flagged",
+        "gear_id",
+        "start_latlng",
+        "end_latlng",
+        "average_speed",
+        "max_speed",
+        "has_heartrate",
+        "heartrate_opt_out",
+        "display_hide_heartrate_option",
+        "upload_id",
+        "external_id",
+        "from_accepted_tag",
+        "pr_count",
+        "total_photo_count",
+        "has_kudoed"
+    ]
+}

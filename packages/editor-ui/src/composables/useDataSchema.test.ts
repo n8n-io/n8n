@@ -9,11 +9,13 @@ import {
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { JSONSchema7 } from 'json-schema';
 
 vi.mock('@/stores/workflows.store');
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
+
 	describe('getSchema', () => {
 		test.each([
 			[, { type: 'undefined', value: 'undefined', path: '' }],
@@ -534,6 +536,7 @@ describe('useDataSchema', () => {
 			expect(filterSchema(flatSchema, '')).toEqual(flatSchema);
 		});
 	});
+
 	describe('getNodeInputData', () => {
 		const getNodeInputData = useDataSchema().getNodeInputData;
 
@@ -648,6 +651,132 @@ describe('useDataSchema', () => {
 			},
 		);
 	});
+
+	describe('getSchemaForJsonSchema', () => {
+		const getSchemaForJsonSchema = useDataSchema().getSchemaForJsonSchema;
+
+		it('should convert JSON schema to Schema type', () => {
+			const jsonSchema: JSONSchema7 = {
+				type: 'object',
+				properties: {
+					id: {
+						type: 'string',
+					},
+					email: {
+						type: 'string',
+					},
+					address: {
+						type: 'object',
+						properties: {
+							line1: {
+								type: 'string',
+							},
+							country: {
+								type: 'string',
+							},
+						},
+					},
+					tags: {
+						type: 'array',
+						items: { type: 'string' },
+					},
+					workspaces: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								id: {
+									type: 'string',
+								},
+								name: {
+									type: 'string',
+								},
+							},
+							required: ['gid', 'name', 'resource_type'],
+						},
+					},
+				},
+				required: ['gid', 'email', 'name', 'photo', 'resource_type', 'workspaces'],
+			};
+
+			expect(getSchemaForJsonSchema(jsonSchema)).toEqual({
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'id',
+						path: '.id',
+						type: 'string',
+						value: '',
+					},
+					{
+						key: 'email',
+						path: '.email',
+						type: 'string',
+						value: '',
+					},
+					{
+						key: 'address',
+						path: '.address',
+						type: 'object',
+						value: [
+							{
+								key: 'line1',
+								path: '.address.line1',
+								type: 'string',
+								value: '',
+							},
+							{
+								key: 'country',
+								path: '.address.country',
+								type: 'string',
+								value: '',
+							},
+						],
+					},
+					{
+						key: 'tags',
+						path: '.tags',
+						type: 'array',
+						value: [
+							{
+								key: '0',
+								path: '.tags[0]',
+								type: 'string',
+								value: '',
+							},
+						],
+					},
+					{
+						key: 'workspaces',
+						path: '.workspaces',
+						type: 'array',
+						value: [
+							{
+								key: '0',
+								path: '.workspaces[0]',
+								type: 'object',
+								value: [
+									{
+										key: 'id',
+										path: '.workspaces[0].id',
+										type: 'string',
+										value: '',
+									},
+									{
+										key: 'name',
+										path: '.workspaces[0].name',
+										type: 'string',
+										value: '',
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
+	});
 });
 
 describe('useFlattenSchema', () => {
@@ -683,5 +812,28 @@ describe('useFlattenSchema', () => {
 				schema,
 			}).length,
 		).toBe(3);
+	});
+
+	it('items ids should be unique', () => {
+		const { flattenSchema } = useFlattenSchema();
+		const schema: Schema = {
+			path: '',
+			type: 'object',
+			value: [
+				{
+					key: 'index',
+					type: 'number',
+					value: '0',
+					path: '.index',
+				},
+			],
+		};
+		const node1 = { name: 'First Node', type: 'any' };
+		const node2 = { name: 'Second Node', type: 'any' };
+
+		const node1Schema = flattenSchema({ schema, node: node1, depth: 1 });
+		const node2Schema = flattenSchema({ schema, node: node2, depth: 1 });
+
+		expect(node1Schema[0].id).not.toBe(node2Schema[0].id);
 	});
 });

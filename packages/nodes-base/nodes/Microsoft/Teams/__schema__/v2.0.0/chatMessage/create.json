@@ -1,0 +1,142 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "replyToId": {
+            "type": "null"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "messageType": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "lastEditedDateTime": {
+            "type": "null"
+        },
+        "deletedDateTime": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "null"
+        },
+        "summary": {
+            "type": "null"
+        },
+        "chatId": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "null"
+        },
+        "channelIdentity": {
+            "type": "null"
+        },
+        "policyViolation": {
+            "type": "null"
+        },
+        "eventDetail": {
+            "type": "null"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "null"
+                },
+                "device": {
+                    "type": "null"
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "@odata.type": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "userIdentityType": {
+                            "type": "string"
+                        },
+                        "tenantId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "@odata.type",
+                        "id",
+                        "displayName",
+                        "userIdentityType",
+                        "tenantId"
+                    ]
+                }
+            },
+            "required": [
+                "application",
+                "device",
+                "user"
+            ]
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "contentType",
+                "content"
+            ]
+        }
+    },
+    "required": [
+        "@odata.context",
+        "id",
+        "replyToId",
+        "etag",
+        "messageType",
+        "createdDateTime",
+        "lastModifiedDateTime",
+        "lastEditedDateTime",
+        "deletedDateTime",
+        "subject",
+        "summary",
+        "chatId",
+        "importance",
+        "locale",
+        "webUrl",
+        "channelIdentity",
+        "policyViolation",
+        "eventDetail",
+        "from",
+        "body",
+        "attachments",
+        "mentions",
+        "reactions"
+    ]
+}

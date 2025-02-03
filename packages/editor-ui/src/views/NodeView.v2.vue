@@ -366,9 +366,7 @@ async function initializeRoute(force = false) {
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
 			void nextTick(() => {
-				nodeHelpers.updateNodesInputIssues();
-				nodeHelpers.updateNodesCredentialsIssues();
-				nodeHelpers.updateNodesParameterIssues();
+				updateNodesIssues();
 			});
 		}
 
@@ -409,6 +407,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
 	}
+}
+
+function updateNodesIssues() {
+	nodeHelpers.updateNodesInputIssues();
+	nodeHelpers.updateNodesCredentialsIssues();
+	nodeHelpers.updateNodesParameterIssues();
 }
 
 /**
@@ -1133,6 +1137,10 @@ async function onOpenExecution(executionId: string) {
 	if (!data) {
 		return;
 	}
+
+	void nextTick(() => {
+		updateNodesIssues();
+	});
 
 	canvasStore.stopLoading();
 	fitView();

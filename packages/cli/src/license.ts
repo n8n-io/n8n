@@ -401,7 +401,9 @@ export class License {
 	}
 
 	async reinit() {
-		this.manager?.reset();
+		if (this.manager) {
+			await this.manager.reset();
+		}
 		await this.init({ forceRecreate: true });
 		this.logger.debug('License reinitialized');
 	}

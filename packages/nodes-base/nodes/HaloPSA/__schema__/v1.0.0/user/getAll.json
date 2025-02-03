@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "site_id": {
+            "type": "integer"
+        },
+        "surname": {
+            "type": "string"
+        },
+        "emailaddress": {
+            "type": "string"
+        },
+        "inactive": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "site_id",
+        "surname",
+        "inactive"
+    ]
+}

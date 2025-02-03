@@ -14,7 +14,6 @@ import {
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUIStore } from '@/stores/ui.store';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
 
@@ -24,11 +23,13 @@ const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
 
-const props = defineProps<{
+export type Props = {
 	parameter: INodeProperties;
 	value: string;
 	path: string;
-}>();
+	isReadOnly?: boolean;
+};
+const props = defineProps<Props>();
 
 const { activeNode } = useNDVStore();
 
@@ -48,8 +49,7 @@ const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
 const isSubmitEnabled = computed(() => {
-	if (!hasExecutionData.value) return false;
-	if (!prompt.value) return false;
+	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
 	if (maxlength && prompt.value.length > maxlength) return false;
@@ -156,16 +156,6 @@ function onPromptInput(inputValue: string) {
 	});
 }
 
-function useDarkBackdrop(): string {
-	const theme = useUIStore().appliedTheme;
-
-	if (theme === 'light') {
-		return 'background-color: var(--color-background-xlight);';
-	} else {
-		return 'background-color: var(--color-background-light);';
-	}
-}
-
 onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
@@ -213,8 +203,11 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			color="text-dark"
 		>
 		</n8n-input-label>
-		<div :class="$style.inputContainer" :hidden="!hasInputField">
-			<div :class="$style.meta" :style="useDarkBackdrop()">
+		<div
+			:class="[$style.inputContainer, { [$style.disabled]: isReadOnly }]"
+			:hidden="!hasInputField"
+		>
+			<div :class="$style.meta">
 				<span
 					v-if="inputFieldMaxLength"
 					v-show="prompt.length > 1"
@@ -240,6 +233,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 						:rows="6"
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
+						:disabled="isReadOnly"
 						@input="onPromptInput"
 						@mousemove="updateCursorPositionOnMouseMove($event, activeDrop)"
 						@mouseleave="cleanTextareaRowsData"
@@ -279,12 +273,19 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 .input * {
 	border: 1.5px transparent !important;
 }
+
+.input {
+	border-radius: var(--border-radius-base);
+}
+
 .input textarea {
 	font-size: var(--font-size-2xs);
 	padding-bottom: var(--spacing-2xl);
 	font-family: var(--font-family);
 	resize: none;
+	margin: 0;
 }
+
 .intro {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
@@ -300,14 +301,13 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	position: absolute;
 	padding-bottom: var(--spacing-2xs);
 	padding-top: var(--spacing-2xs);
-	margin: 1px;
-	margin-right: var(--spacing-s);
-	bottom: 0;
+	bottom: 2px;
 	left: var(--spacing-xs);
 	right: var(--spacing-xs);
-	gap: 10px;
+	gap: var(--spacing-2xs);
 	align-items: end;
 	z-index: 1;
+	background-color: var(--color-foreground-xlight);
 
 	* {
 		font-size: var(--font-size-2xs);
@@ -333,5 +333,10 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 .activeDrop {
 	border: 1.5px solid var(--color-success) !important;
 	cursor: grabbing;
+}
+.disabled {
+	.meta {
+		background-color: var(--fill-disabled);
+	}
 }
 </style>
