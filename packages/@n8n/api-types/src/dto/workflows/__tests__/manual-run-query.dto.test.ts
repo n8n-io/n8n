@@ -37,11 +37,11 @@ describe('ManualRunQueryDto', () => {
 		])('should fail validation for $name', ({ partialExecutionVersion, expectedErrorPath }) => {
 			const result = ManualRunQueryDto.safeParse({ partialExecutionVersion });
 
-			expect(result.success).toBe(false);
-
-			if (expectedErrorPath) {
-				expect(result.error?.issues[0].path).toEqual(expectedErrorPath);
+			if (result.success) {
+				return fail('expected validation to fail');
 			}
+
+			expect(result.error.issues[0].path).toEqual(expectedErrorPath);
 		});
 	});
 });
