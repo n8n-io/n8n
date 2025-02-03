@@ -1,9 +1,8 @@
+import type { TaskRunner } from '@n8n/task-runner';
 import type { Response } from 'express';
-import type { INodeExecutionData } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import type { TaskRunner } from './task-broker.service';
-import type { AuthlessRequest } from '../requests';
+import type { AuthlessRequest } from '../../requests';
 
 export interface DisconnectAnalyzer {
 	isCloudDeployment: boolean;
@@ -11,19 +10,12 @@ export interface DisconnectAnalyzer {
 	toDisconnectError(opts: DisconnectErrorOptions): Promise<Error>;
 }
 
-export type DataRequestType = 'input' | 'node' | 'all';
-
-export interface TaskResultData {
-	result: INodeExecutionData[];
-	customData?: Record<string, string>;
-}
-
-export interface TaskRunnerServerInitRequest
+export interface TaskBrokerServerInitRequest
 	extends AuthlessRequest<{}, {}, {}, { id: TaskRunner['id']; token?: string }> {
 	ws: WebSocket;
 }
 
-export type TaskRunnerServerInitResponse = Response & { req: TaskRunnerServerInitRequest };
+export type TaskBrokerServerInitResponse = Response & { req: TaskBrokerServerInitRequest };
 
 export type DisconnectReason = 'shutting-down' | 'failed-heartbeat-check' | 'unknown';
 
