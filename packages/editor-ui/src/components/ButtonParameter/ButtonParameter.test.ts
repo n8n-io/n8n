@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
-import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
+import ButtonParameter, { type Props } from '@/components/ButtonParameter/ButtonParameter.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
@@ -20,7 +20,7 @@ vi.mock('@/composables/useI18n');
 vi.mock('@/composables/useToast');
 
 describe('ButtonParameter', () => {
-	const defaultProps = {
+	const defaultProps: Props = {
 		parameter: {
 			name: 'testParam',
 			displayName: 'Test Parameter',
@@ -38,6 +38,7 @@ describe('ButtonParameter', () => {
 			},
 		} as INodeProperties,
 		value: '',
+		isReadOnly: false,
 		path: 'testPath',
 	};
 
@@ -78,9 +79,9 @@ describe('ButtonParameter', () => {
 		} as any);
 	});
 
-	const mountComponent = (props = defaultProps) => {
+	const mountComponent = (props: Partial<Props> = {}) => {
 		return mount(ButtonParameter, {
-			props,
+			props: { ...defaultProps, ...props },
 			global: {
 				plugins: [createTestingPinia()],
 			},
@@ -133,5 +134,11 @@ describe('ButtonParameter', () => {
 		await submitButton.trigger('click');
 
 		expect(useToast().showMessage).toHaveBeenCalled();
+	});
+
+	it('disables input and button when in read only mode', async () => {
+		const wrapper = mountComponent({ isReadOnly: true });
+		expect(wrapper.find('textarea').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
 	});
 });

@@ -1,110 +1,51 @@
 {
 	"type": "object",
-	"value": [
-		{
-			"key": "account",
-			"type": "Object",
-			"value": [
-				{
-					"key": "accountUrl",
-					"type": "string",
-					"value": "",
-					"path": ".account.accountUrl"
+	"properties": {
+		"account": {
+			"type": "object",
+			"properties": {
+				"accountUrl": {
+					"type": "string"
 				},
-				{
-					"key": "createdTimestamp",
-					"type": "string",
-					"value": "",
-					"path": ".account.createdTimestamp"
+				"createdTimestamp": {
+					"type": "string"
 				},
-				{
-					"key": "id",
-					"type": "string",
-					"value": "",
-					"path": ".account.id"
+				"updatedTimestamp": {
+					"type": "string"
 				},
-				{
-					"key": "links",
-					"type": "Object",
-					"value": [
-						{
-							"key": "accountContacts",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.accountContacts"
+				"id": {
+					"type": "string"
+				},
+				"links": {
+					"type": "object",
+					"properties": {
+						"accountContacts": {
+							"type": "string"
 						},
-						{
-							"key": "accountCustomFieldData",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.accountCustomFieldData"
+						"accountCustomFieldData": {
+							"type": "string"
 						},
-						{
-							"key": "contactEmails",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.contactEmails"
+						"contactEmails": {
+							"type": "string"
 						},
-						{
-							"key": "emailActivities",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.emailActivities"
+						"emailActivities": {
+							"type": "string"
 						},
-						{
-							"key": "notes",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.notes"
+						"notes": {
+							"type": "string"
 						},
-						{
-							"key": "owner",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.owner"
-						},
-						{
-							"key": "required",
-							"type": "string",
-							"value": "",
-							"path": ".account.links.required"
+						"owner": {
+							"type": "string"
 						}
-					],
-					"path": ".account.links"
+					}
 				},
-				{
-					"key": "name",
-					"type": "string",
-					"value": "",
-					"path": ".account.name"
+				"name": {
+					"type": "string"
 				},
-				{
-					"key": "owner",
-					"type": "string",
-					"value": "",
-					"path": ".account.owner"
-				},
-				{
-					"key": "updatedTimestamp",
-					"type": "string",
-					"value": "",
-					"path": ".account.updatedTimestamp"
-				},
-				{
-					"key": "required",
-					"type": "string",
-					"value": "",
-					"path": ".account.required"
+				"owner": {
+					"type": "string"
 				}
-			],
-			"path": ".account"
-		},
-		{
-			"key": "required",
-			"type": "string",
-			"value": "",
-			"path": ".required"
+			}
 		}
-	],
-	"path": ""
+	}
 }

@@ -5,14 +5,14 @@ import { mock } from 'jest-mock-extended';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';
 
-import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
-import type { AuthlessRequest } from '../../../requests';
-import type { TaskRunnerServerInitRequest } from '../../task-runner-types';
-import { TaskRunnerAuthController } from '../task-runner-auth.controller';
-import { TaskRunnerAuthService } from '../task-runner-auth.service';
+import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
+import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
+import type { AuthlessRequest } from '../../../../requests';
+import type { TaskBrokerServerInitRequest } from '../../task-broker-types';
+import { TaskBrokerAuthController } from '../task-broker-auth.controller';
+import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
-describe('TaskRunnerAuthController', () => {
+describe('TaskBrokerAuthController', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		cache: {
 			backend: 'memory',
@@ -27,8 +27,8 @@ describe('TaskRunnerAuthController', () => {
 	});
 	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskRunnerAuthService(globalConfig, cacheService, TTL);
-	const authController = new TaskRunnerAuthController(authService);
+	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
+	const authController = new TaskBrokerAuthController(authService);
 
 	const createMockGrantTokenReq = (token?: string) =>
 		({
@@ -71,7 +71,7 @@ describe('TaskRunnerAuthController', () => {
 		const next = jest.fn() as NextFunction;
 
 		const createMockReqWithToken = (token?: string) =>
-			mock<TaskRunnerServerInitRequest>({
+			mock<TaskBrokerServerInitRequest>({
 				headers: {
 					authorization: `Bearer ${token}`,
 				},
@@ -82,7 +82,7 @@ describe('TaskRunnerAuthController', () => {
 		});
 
 		it('should respond with 401 when grant token is missing', async () => {
-			const req = mock<TaskRunnerServerInitRequest>({});
+			const req = mock<TaskBrokerServerInitRequest>({});
 
 			await authController.authMiddleware(req, res, next);
 
