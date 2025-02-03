@@ -232,8 +232,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		default: {
 			// Check if a webhook subscription already exists
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				//console.log('checkExists');
-				const callbackUrl = this.getNodeWebhookUrl('default');
+				console.log('checkExists');
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const workflowId = this.getWorkflow().id;
+				const nodeId = this.getNode().id;
+				const uniqueKey = `${workflowId}:${nodeId}`;
 
 				try {
 					// Fetch all subscriptions
@@ -243,11 +246,14 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						'GET',
 						'/v1.0/subscriptions',
 					);
-					//console.log('subscriptions', subscriptions);
+					console.log('subscriptions', subscriptions);
 
-					// Check for subscription with a matching notification URL
+					// Check for subscription with a matching notification URL and unique key
 					for (const subscription of subscriptions) {
-						if (subscription.notificationUrl === callbackUrl) {
+						if (
+							subscription.notificationUrl === webhookUrl &&
+							subscription.clientState === uniqueKey
+						) {
 							this.getWorkflowStaticData('node').subscriptionId = subscription.id;
 							return true;
 						}
@@ -260,19 +266,23 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				//console.log('create');
-				const callbackUrl = this.getNodeWebhookUrl('default');
+				console.log('Create');
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const workflowId = this.getWorkflow().id;
+				const nodeId = this.getNode().id;
+				const uniqueKey = `${workflowId}:${nodeId}`;
 
-				if (!callbackUrl || !callbackUrl.startsWith('https://')) {
+				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
 					throw new NodeApiError(this.getNode(), {
 						message: 'Invalid Notification URL',
-						description: `The webhook URL "${callbackUrl}" is invalid. Microsoft Graph requires an HTTPS URL. Please configure a valid HTTPS webhook URL.`,
+						description: `The webhook URL "${webhookUrl}" is invalid. Microsoft Graph requires an HTTPS URL.`,
 					});
 				}
 
 				const event = this.getNodeParameter('event', 0) as string;
-				//console.log('All Parameters:', this.getNode().parameters);
 				let resourcePath: string | undefined;
+				console.log('event', event);
+				// Determine the resource path based on the event type
 				if (['newChannel', 'newTeamMember', 'newChannelMessage'].includes(event)) {
 					const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
 					if (!teamId) {
@@ -283,6 +293,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						});
 					}
 					if (event === 'newChannel') resourcePath = `/teams/${teamId}/channels`;
+					if (event === 'newTeamMember') resourcePath = `/teams/${teamId}/members`;
 					if (event === 'newChannelMessage') {
 						const channelId = this.getNodeParameter('channelId', 0, {
 							extractValue: true,
@@ -296,7 +307,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						}
 						resourcePath = `/teams/${teamId}/channels/${channelId}/messages`;
 					}
-					if (event === 'newTeamMember') resourcePath = `/teams/${teamId}/members`;
 				} else if (['newChatMessage'].includes(event)) {
 					const chatId = (this.getNodeParameter('chatId', 0) as IDataObject)?.value as string;
 					if (!chatId) {
@@ -305,31 +315,32 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							description: 'Please select a valid Chat or provide a valid Chat ID.',
 						});
 					}
-					if (event === 'newChatMessage') resourcePath = `/chats/${chatId}/messages`;
+					resourcePath = `/chats/${chatId}/messages`;
 				} else {
-					const resourceMap: Record<string, string> = { newTeam: '/teams', newChat: '/chats' };
+					const resourceMap: Record<string, string> = {
+						newTeam: '/teams/getAllChannels',
+						newChat: '/chats/getAllMessages',
+					};
 					resourcePath = resourceMap[event];
-					console.log('resourcePath', resourcePath);
 				}
 
 				if (!resourcePath) {
 					throw new NodeApiError(this.getNode(), {
 						message: `Unsupported or invalid event: ${event}`,
-						description: `The selected event "${event}" is not supported by this trigger node. Please select a supported event.`,
+						description: `The selected event "${event}" is not supported by this trigger node.`,
 					});
 				}
 
 				const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
-				const lifecycleNotificationUrl = callbackUrl;
-
+				//console.log('resource path', resourcePath);
 				const body: IDataObject = {
 					changeType: 'created',
-					notificationUrl: callbackUrl,
+					notificationUrl: webhookUrl,
 					resource: resourcePath,
 					expirationDateTime: expirationTime,
-					clientState: 'secretClientValue',
+					clientState: uniqueKey,
 					latestSupportedTlsVersion: 'v1_2',
-					lifecycleNotificationUrl,
+					lifecycleNotificationUrl: webhookUrl,
 				};
 
 				try {
@@ -366,7 +377,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				// Clear the subscription ID from static data
 				this.getWorkflowStaticData('node').subscriptionId = undefined;
-				//console.log('delete-true', subscriptionId);
+				//console.log('delete subscription', subscriptionId);
 				return true;
 			},
 		},
@@ -376,34 +387,42 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const res = this.getResponseObject();
 
+		//console.log('req', req.query);
 		// Handle Microsoft Graph validation request for both notification and lifecycle URLs
 		if (req.query.validationToken) {
 			res.status(200).send(req.query.validationToken);
 			return { noWebhookResponse: true }; // Prevent further execution
 		}
 
-		// Handle actual event notifications
-		if (!req.body?.value) {
-			console.log('No event data received.');
-			return {};
-		}
-		//TODO - what should be the response here
-		// if (!req.body?.value) {
-		// 	console.log('No event data received.');
-		// 	throw new NodeApiError(this.getNode(), {
-		// 		message: 'No event data received',
-		// 		description: 'The webhook did not receive any data. Verify the configuration and ensure that the subscribed events are triggered in Microsoft Teams.',
-		// 	});
-		// }
+		// Handle event notifications
 		const eventNotifications = req.body.value as IDataObject[];
 		console.log('Received event notifications:', JSON.stringify(eventNotifications, null, 2));
 
+		// Fetch detailed information for each event notification
+		const detailedEvents = await Promise.all(
+			eventNotifications.map(async (event) => {
+				const resource = event.resource as string;
+
+				// Use Microsoft Graph API to fetch the detailed data
+				try {
+					const detailedData = await microsoftApiRequest.call(
+						this as unknown as IExecuteFunctions,
+						'GET',
+						`/v1.0/${resource}`,
+					);
+
+					return {
+						json: detailedData,
+					};
+				} catch (error) {
+					console.error(`Error fetching details for resource: ${resource}`, error);
+					return { json: event };
+				}
+			}),
+		);
+
 		return {
-			workflowData: eventNotifications.map((event) => [
-				{
-					json: event,
-				},
-			]),
+			workflowData: detailedEvents.map((item) => [item]),
 		};
 	}
 }
