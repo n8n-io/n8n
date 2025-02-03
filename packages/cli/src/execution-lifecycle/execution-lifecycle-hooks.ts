@@ -31,10 +31,10 @@ import {
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './shared/shared-hook-functions';
-import { type ExecutionSavingSettings, toSaveSettings } from './to-save-settings';
+import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 type HooksSetupParameters = {
-	saveSettings: ExecutionSavingSettings;
+	saveSettings: ExecutionSaveSettings;
 	pushRef?: string;
 	retryOf?: string;
 };
@@ -238,6 +238,17 @@ function hookFunctionsFinalizeExecutionStatus(): IWorkflowExecuteHooks {
 	};
 }
 
+function hookFunctionsStatistics(): IWorkflowExecuteHooks {
+	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
+	return {
+		nodeFetchedData: [
+			async (workflowId: string, node: INode) => {
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  */
@@ -358,11 +369,6 @@ function hookFunctionsSave({
 				}
 			},
 		],
-		nodeFetchedData: [
-			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
-			},
-		],
 	};
 }
 
@@ -452,11 +458,6 @@ function hookFunctionsSaveWorker({
 				}
 			},
 		],
-		nodeFetchedData: [
-			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
-			},
-		],
 	};
 }
 
@@ -477,6 +478,7 @@ export function getWorkflowHooksIntegrated(
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSave({ saveSettings }),
 		hookFunctionsSaveProgress({ saveSettings }),
+		hookFunctionsStatistics(),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
@@ -498,6 +500,7 @@ export function getWorkflowHooksWorkerExecuter(
 		hookFunctionsFinalizeExecutionStatus(),
 		hookFunctionsSaveWorker(optionalParameters),
 		hookFunctionsSaveProgress(optionalParameters),
+		hookFunctionsStatistics(),
 		hookFunctionsExternalHooks(),
 	];
 
@@ -590,6 +593,7 @@ export function getWorkflowHooksMain(
 		hookFunctionsSave(optionalParameters),
 		hookFunctionsPush(optionalParameters),
 		hookFunctionsSaveProgress(optionalParameters),
+		hookFunctionsStatistics(),
 		hookFunctionsExternalHooks(),
 	);
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData);

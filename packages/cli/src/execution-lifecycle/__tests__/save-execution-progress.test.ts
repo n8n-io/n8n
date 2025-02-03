@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
@@ -17,13 +18,13 @@ describe('saveExecutionProgress', () => {
 		jest.resetAllMocks();
 	});
 
-	const commonArgs: [string, string, string, ITaskData, IRunExecutionData] = [
-		'some-workflow-id',
-		'some-execution-id',
-		'My Node',
-		{} as ITaskData,
-		{} as IRunExecutionData,
-	];
+	const workflowId = 'some-workflow-id';
+	const executionId = 'some-execution-id';
+	const nodeName = 'My Node';
+	const taskData = mock<ITaskData>();
+	const runExecutionData = mock<IRunExecutionData>();
+
+	const commonArgs = [workflowId, executionId, nodeName, taskData, runExecutionData] as const;
 
 	test('should not try to update non-existent executions', async () => {
 		executionRepository.findSingleExecution.mockResolvedValue(undefined);
@@ -59,9 +60,11 @@ describe('saveExecutionProgress', () => {
 	});
 
 	test('should not try to update finished executions', async () => {
-		executionRepository.findSingleExecution.mockResolvedValue({
-			finished: true,
-		} as IExecutionResponse);
+		executionRepository.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				finished: true,
+			}),
+		);
 
 		await saveExecutionProgress(...commonArgs);
 
@@ -76,11 +79,11 @@ describe('saveExecutionProgress', () => {
 
 		expect(fullExecutionData).toEqual({
 			data: {
-				executionData: undefined,
+				executionData: runExecutionData.executionData,
 				resultData: {
-					lastNodeExecuted: 'My Node',
+					lastNodeExecuted: nodeName,
 					runData: {
-						'My Node': [{}],
+						[nodeName]: [taskData],
 					},
 				},
 				startData: {},
@@ -89,7 +92,7 @@ describe('saveExecutionProgress', () => {
 		});
 
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
-			'some-execution-id',
+			executionId,
 			fullExecutionData,
 		);
 
@@ -102,7 +105,7 @@ describe('saveExecutionProgress', () => {
 				startData: {},
 				resultData: {
 					runData: {
-						'My Node': [{}],
+						[nodeName]: [{}],
 					},
 				},
 			},
@@ -113,11 +116,11 @@ describe('saveExecutionProgress', () => {
 
 		expect(fullExecutionData).toEqual({
 			data: {
-				executionData: undefined,
+				executionData: runExecutionData.executionData,
 				resultData: {
-					lastNodeExecuted: 'My Node',
+					lastNodeExecuted: nodeName,
 					runData: {
-						'My Node': [{}, {}],
+						[nodeName]: [{}, taskData],
 					},
 				},
 				startData: {},
@@ -126,7 +129,7 @@ describe('saveExecutionProgress', () => {
 		});
 
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
-			'some-execution-id',
+			executionId,
 			fullExecutionData,
 		);
 	});
@@ -144,6 +147,6 @@ describe('saveExecutionProgress', () => {
 
 		await saveExecutionProgress(...commonArgs);
 
-		expect(fullExecutionData.data.resultData.lastNodeExecuted).toEqual('My Node');
+		expect(fullExecutionData.data.resultData.lastNodeExecuted).toEqual(nodeName);
 	});
 });

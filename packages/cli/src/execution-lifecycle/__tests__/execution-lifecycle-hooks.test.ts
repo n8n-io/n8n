@@ -184,6 +184,28 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	};
 
+	const statisticsTests = () => {
+		describe('statistics events', () => {
+			it('workflowExecuteAfter should emit workflowExecutionCompleted statistics event', async () => {
+				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: successfulRun,
+				});
+			});
+
+			it('nodeFetchedData should handle nodeFetchedData statistics event', async () => {
+				await hooks.executeHookFunctions('nodeFetchedData', [workflowId, node]);
+
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
+					workflowId,
+					node,
+				});
+			});
+		});
+	};
+
 	describe('getWorkflowHooksMain', () => {
 		const createHooks = () =>
 			getWorkflowHooksMain({ executionMode, workflowData, pushRef, retryOf }, executionId);
@@ -195,6 +217,7 @@ describe('Execution Lifecycle Hooks', () => {
 		workflowEventTests();
 		nodeEventsTests();
 		externalHooksTests();
+		statisticsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -485,26 +508,6 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
-		describe('statistics events', () => {
-			it('workflowExecuteAfter should emit workflowExecutionCompleted statistics event', async () => {
-				await hooks.executeHookFunctions('workflowExecuteAfter', [successfulRun, {}]);
-
-				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
-					workflowData,
-					fullRunData: successfulRun,
-				});
-			});
-
-			it('nodeFetchedData should handle nodeFetchedData statistics event', async () => {
-				await hooks.executeHookFunctions('nodeFetchedData', [workflowId, node]);
-
-				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
-					workflowId,
-					node,
-				});
-			});
-		});
-
 		describe("when pushRef isn't set", () => {
 			beforeEach(() => {
 				hooks = getWorkflowHooksMain({ executionMode, workflowData, retryOf }, executionId);
@@ -617,6 +620,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 		nodeEventsTests();
 		externalHooksTests();
+		statisticsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);
@@ -712,6 +716,7 @@ describe('Execution Lifecycle Hooks', () => {
 		workflowEventTests();
 		nodeEventsTests();
 		externalHooksTests();
+		statisticsTests();
 
 		it('should setup the correct set of hooks', () => {
 			expect(hooks).toBeInstanceOf(WorkflowHooks);

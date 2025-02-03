@@ -74,7 +74,7 @@ export async function saveExecutionProgress(
 
 		// We do this to prevent crashes and executions ending in `unknown` state.
 		logger.error(
-			`Failed saving execution progress to database for execution ID ${executionId} (hookFunctionsPreExecute, nodeExecuteAfter)`,
+			`Failed saving execution progress to database for execution ID ${executionId} (hookFunctionsSaveProgress, nodeExecuteAfter)`,
 			{ error, executionId, workflowId },
 		);
 	}
