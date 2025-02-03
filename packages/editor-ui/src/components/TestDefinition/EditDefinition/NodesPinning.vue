@@ -9,7 +9,6 @@ import { createEventBus, N8nTooltip } from 'n8n-design-system';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { useI18n } from '@/composables/useI18n';
-import { NodeHelpers } from 'n8n-workflow';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();

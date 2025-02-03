@@ -32,7 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
-const changedFieldsKeys = ref<string[]>([]);
 const activeTooltip = ref<string | null>(null);
 const tooltipPosition = ref<{
 	x: number;
@@ -84,14 +83,6 @@ const selectedTag = computed(() => {
 
 function openExecutionsView() {
 	emit('openExecutionsViewForTag');
-}
-
-function updateChangedFieldsKeys(key: string) {
-	changedFieldsKeys.value.push(key);
-}
-
-function showFieldIssues(fieldKey: string) {
-	return changedFieldsKeys.value.includes(fieldKey);
 }
 
 function showTooltip(event: MouseEvent, tooltip: string) {
@@ -237,7 +228,6 @@ function hideTooltip() {
 						:example-pinned-data="examplePinnedData"
 						:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
 						:sample-workflow-name="sampleWorkflowName"
-						@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
 					/>
 				</template>
 			</EvaluationStep>
@@ -262,7 +252,6 @@ function hideTooltip() {
 						v-model="metrics"
 						:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
 						@delete-metric="(metric) => emit('deleteMetric', metric)"
-						@update:model-value="updateChangedFieldsKeys('metrics')"
 					/>
 				</template>
 			</EvaluationStep>
