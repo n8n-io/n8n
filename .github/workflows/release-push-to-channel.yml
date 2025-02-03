@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
       - run: |
