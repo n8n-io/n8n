@@ -11,6 +11,7 @@ exports[`MultipleParameter > should render correctly 1`] = `
         <!--v-if-->
         <!--v-if-->
         <!--v-if-->
+        <!--v-if-->
       </div>
     </label></div>
   <div data-v-a47e4507="" class="add-item-wrapper">
