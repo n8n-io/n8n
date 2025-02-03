@@ -62,13 +62,19 @@ export namespace ListQuery {
 		skip?: string;
 		take?: string;
 		select?: string;
+		sortBy?: SortOrder;
 	};
+
+	type SortingField = 'createdAt' | 'updatedAt' | 'name';
+
+	export type SortOrder = `${SortingField}:asc` | `${SortingField}:desc`;
 
 	export type Options = {
 		filter?: Record<string, unknown>;
 		select?: Record<string, true>;
 		skip?: number;
 		take?: number;
+		sortBy?: SortOrder;
 	};
 
 	/**
