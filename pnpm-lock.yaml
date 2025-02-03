@@ -133,6 +133,9 @@ patchedDependencies:
   bull@4.12.1:
     hash: ep6h4rqtpclldfcdohxlgcb3aq
     path: patches/bull@4.12.1.patch
+  curlconverter@4.11.0:
+    hash: ymigioonidbyw7jydnlor7bohu
+    path: patches/curlconverter@4.11.0.patch
   pkce-challenge@3.0.0:
     hash: dypouzb3lve7vncq25i5fuanki
     path: patches/pkce-challenge@3.0.0.patch
@@ -1482,7 +1485,7 @@ importers:
         version: 3.40.0
       curlconverter:
         specifier: ^4.11.0
-        version: 4.11.0
+        version: 4.11.0(patch_hash=ymigioonidbyw7jydnlor7bohu)
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -20720,7 +20723,7 @@ snapshots:
 
   csv-parse@5.5.0: {}
 
-  curlconverter@4.11.0:
+  curlconverter@4.11.0(patch_hash=ymigioonidbyw7jydnlor7bohu):
     dependencies:
       jsesc: 3.0.2
       lossless-json: 4.0.2
