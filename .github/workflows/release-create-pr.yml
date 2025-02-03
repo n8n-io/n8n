@@ -35,11 +35,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.inputs.base-branch }}
 
-      - run: |
-          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
-          corepack enable
-
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
 
