@@ -185,6 +185,7 @@ export class TestRunnerService {
 		// Provide both the expected data and the actual data
 		const evaluationInputData = {
 			json: {
+				metadata,
 				originalExecution: expectedData,
 				newExecution: actualData,
 			},
@@ -341,7 +342,7 @@ export class TestRunnerService {
 					// Fetch past execution with data
 					const pastExecution = await this.executionRepository.findOne({
 						where: { id: pastExecutionId },
-						relations: ['executionData', 'metadata'],
+						relations: ['executionData', 'metadata', 'annotation', 'annotation.tags'],
 					});
 					assert(pastExecution, 'Execution not found');
 
@@ -350,6 +351,8 @@ export class TestRunnerService {
 					const testCaseMetadata = {
 						...testRunMetadata,
 						pastExecutionId,
+						highlightedData: pastExecution.metadata,
+						annotation: pastExecution.annotation,
 					};
 
 					// Run the test case and wait for it to finish
