@@ -187,6 +187,11 @@ function onEdgeLabelMouseLeave() {
 		fill 0.3s ease;
 }
 
+.edgeLabelWrapper {
+	transform: translateY(calc(var(--spacing-xs) * -1));
+	position: absolute;
+}
+
 .edgeLabel {
 	font-size: var(--font-size-xs);
 	background-color: hsla(
