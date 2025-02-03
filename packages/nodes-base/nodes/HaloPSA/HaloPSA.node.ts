@@ -46,6 +46,7 @@ export class HaloPSA implements INodeType {
 		defaults: {
 			name: 'HaloPSA',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

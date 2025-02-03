@@ -21,6 +21,7 @@ export class Dropcontact implements INodeType {
 		defaults: {
 			name: 'Dropcontact',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
