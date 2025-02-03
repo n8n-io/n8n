@@ -38,7 +38,6 @@ import type {
 	IAllExecuteFunctions,
 	IBinaryData,
 	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -2554,16 +2553,4 @@ export function getExecuteTriggerFunctions(
 	activation: WorkflowActivateMode,
 ): ITriggerFunctions {
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
-}
-
-export function getCredentialTestFunctions(): ICredentialTestFunctions {
-	return {
-		logger: Container.get(Logger),
-		helpers: {
-			...getSSHTunnelFunctions(),
-			request: async (uriOrObject: string | object, options?: object) => {
-				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
-			},
-		},
-	};
 }
