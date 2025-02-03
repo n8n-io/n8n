@@ -2,12 +2,13 @@ import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
 import { readdir } from 'fs/promises';
+import { RoutingNode } from 'n8n-core';
+import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
-import { ExecuteContext, RoutingNode } from 'n8n-core';
 
 @Service()
 export class NodeTypes implements INodeTypes {
