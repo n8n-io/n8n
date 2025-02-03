@@ -79,7 +79,9 @@ describe('ApiKeysController', () => {
 				updatedAt: new Date(),
 			} as ApiKey;
 
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([apiKeyData]);
+			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([
+				{ ...apiKeyData, expiresAt: null },
+			]);
 
 			// Act
 
@@ -87,7 +89,7 @@ describe('ApiKeysController', () => {
 
 			// Assert
 
-			expect(apiKeys).toEqual([apiKeyData]);
+			expect(apiKeys).toEqual([{ ...apiKeyData, expiresAt: null }]);
 			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ id: req.user.id }),
 			);

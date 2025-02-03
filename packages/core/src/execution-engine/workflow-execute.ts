@@ -1171,27 +1171,23 @@ export class WorkflowExecute {
 			// For webhook nodes always simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
-			// For nodes which have routing information on properties
-
-			const routingNode = new RoutingNode(
+			// NOTE: This block is only called by nodes tests.
+			// In the application, declarative nodes get assigned a `.execute` method in NodeTypes.
+			const context = new ExecuteContext(
 				workflow,
 				node,
-				connectionInputData,
-				runExecutionData ?? null,
 				additionalData,
 				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executionData,
+				[],
 			);
-
-			return {
-				data: await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executionData,
-					undefined,
-					abortSignal,
-				),
-			};
+			const routingNode = new RoutingNode(context, nodeType);
+			const data = await routingNode.runNode();
+			return { data };
 		}
 	}
 
@@ -1221,17 +1217,8 @@ export class WorkflowExecute {
 			});
 		}
 
+		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
-
-		if (!startNode) {
-			throw new ApplicationError('Failed to run workflow due to empty node execution stack', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {

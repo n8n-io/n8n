@@ -17,6 +17,7 @@ type Props = {
 	draggable?: boolean;
 	collapsed?: boolean;
 	search?: string;
+	preview?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 			:data-node-type="nodeType"
 			data-target="mappable"
 			class="pill"
-			:class="{ 'pill--highlight': highlight }"
+			:class="{ 'pill--highlight': highlight, 'pill--preview': preview }"
 			data-test-id="run-data-schema-node-name"
 		>
 			<FontAwesomeIcon class="type-icon" :icon size="sm" />
@@ -89,10 +90,21 @@ const emit = defineEmits<{
 	color: var(--color-text-dark);
 	max-width: 50%;
 	align-items: center;
+
 	> *:not(:first-child) {
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+	}
+
+	&.pill--preview {
+		border-style: dashed;
+		border-width: 1.5px;
+
+		.title {
+			color: var(--color-text-light);
+			border-left: 1.5px dashed var(--color-foreground-light);
+		}
 	}
 }
 
