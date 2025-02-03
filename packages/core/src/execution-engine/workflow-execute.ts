@@ -1172,26 +1172,21 @@ export class WorkflowExecute {
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
 			// For nodes which have routing information on properties
-
-			const routingNode = new RoutingNode(
+			const executeFunctions = new ExecuteContext(
 				workflow,
 				node,
-				connectionInputData,
-				runExecutionData ?? null,
 				additionalData,
 				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executionData,
+				[],
 			);
-
-			return {
-				data: await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executionData,
-					undefined,
-					abortSignal,
-				),
-			};
+			const routingNode = new RoutingNode(executeFunctions, nodeType);
+			const data = await routingNode.runNode();
+			return { data };
 		}
 	}
 
