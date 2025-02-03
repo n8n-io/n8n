@@ -5,18 +5,19 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy, ADD_FORM_NOTICE, NodeHelpers } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
+import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
+import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
@@ -32,11 +33,11 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
-import { get, set } from 'lodash-es';
-import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
-import { N8nNotice, N8nIconButton, N8nInputLabel, N8nText, N8nIcon } from 'n8n-design-system';
-import { useI18n } from '@/composables/useI18n';
+import { computedWithControl } from '@vueuse/core';
+import { get, set } from 'lodash-es';
+import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from 'n8n-design-system';
+import { useRouter } from 'vue-router';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -101,22 +102,29 @@ const nodeType = computed(() => {
 	return null;
 });
 
-const filteredParameters = computed(() => {
-	const parameters = props.parameters.filter((parameter: INodeProperties) =>
-		displayNodeParameter(parameter),
-	);
+const filteredParameters = computedWithControl(
+	[() => props.parameters, () => props.nodeValues] as WatchSource[],
+	() => {
+		const parameters = props.parameters.filter((parameter: INodeProperties) =>
+			displayNodeParameter(parameter),
+		);
 
-	const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.activeNode;
 
-	if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
-		return updateFormTriggerParameters(parameters, activeNode.name);
-	}
-	if (activeNode && activeNode.type === WAIT_NODE_TYPE && activeNode.parameters.resume === 'form') {
-		return updateWaitParameters(parameters, activeNode.name);
-	}
+		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, activeNode.name);
+		}
+		if (
+			activeNode &&
+			activeNode.type === WAIT_NODE_TYPE &&
+			activeNode.parameters.resume === 'form'
+		) {
+			return updateWaitParameters(parameters, activeNode.name);
+		}
 
-	return parameters;
-});
+		return parameters;
+	},
+);
 
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
@@ -640,10 +648,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>
-			<div
-				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
-				class="parameter-item"
-			>
+			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
 					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
