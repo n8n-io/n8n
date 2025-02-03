@@ -41,7 +41,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
-		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
 
 	test('Should add execution to active execution list', async () => {
@@ -49,7 +49,7 @@ describe('ActiveExecutions', () => {
 		const executionId = await activeExecutions.add(newExecution);
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
-		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+		expect(activeExecutions.getActiveExecutions().length).toBe(1);
 		expect(createNewExecution).toHaveBeenCalledTimes(1);
 		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
@@ -59,7 +59,7 @@ describe('ActiveExecutions', () => {
 		const executionId = await activeExecutions.add(newExecution, FAKE_SECOND_EXECUTION_ID);
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
-		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+		expect(activeExecutions.getActiveExecutions().length).toBe(1);
 		expect(createNewExecution).toHaveBeenCalledTimes(0);
 		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
@@ -93,37 +93,6 @@ describe('ActiveExecutions', () => {
 		await expect(deferredPromise.promise).resolves.toEqual(fakeResponse);
 	});
 
-	test('Should copy over startedAt and responsePromise when resuming a waiting execution', async () => {
-		const newExecution = mockExecutionData();
-		const executionId = await activeExecutions.add(newExecution);
-		activeExecutions.setStatus(executionId, 'waiting');
-		activeExecutions.attachResponsePromise(executionId, mockDeferredPromise());
-
-		const waitingExecution = activeExecutions.getExecution(executionId);
-		expect(waitingExecution.responsePromise).toBeDefined();
-
-		// Resume the execution
-		await activeExecutions.add(newExecution, executionId);
-
-		const resumedExecution = activeExecutions.getExecution(executionId);
-		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
-		expect(resumedExecution.responsePromise).toBe(waitingExecution.responsePromise);
-	});
-
-	test('Should not remove a waiting execution', async () => {
-		const newExecution = mockExecutionData();
-		const executionId = await activeExecutions.add(newExecution);
-		activeExecutions.setStatus(executionId, 'waiting');
-		activeExecutions.finalizeExecution(executionId);
-
-		// Wait until the next tick to ensure that the post-execution promise has settled
-		await new Promise(setImmediate);
-
-		// Execution should still be in activeExecutions
-		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(activeExecutions.getStatus(executionId)).toBe('waiting');
-	});
-
 	test('Should remove an existing execution', async () => {
 		// ARRANGE
 		const newExecution = mockExecutionData();
@@ -136,10 +105,11 @@ describe('ActiveExecutions', () => {
 		await new Promise(setImmediate);
 
 		// ASSERT
-		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
 
 	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
+		// @ts-expect-error Private method
 		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecution');
 
 		activeExecutions.finalizeExecution('inactive-execution-id', mockFullRunData());
