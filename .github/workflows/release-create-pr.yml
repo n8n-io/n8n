@@ -41,6 +41,11 @@ jobs:
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - name: Bump package versions
         run: |
           echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> $GITHUB_ENV

@@ -1,4 +1,6 @@
 // eslint-disable-next-line import/no-cycle
+export { CredentialTestContext } from './credentials-test-context';
+// eslint-disable-next-line import/no-cycle
 export { ExecuteContext } from './execute-context';
 export { ExecuteSingleContext } from './execute-single-context';
 export { HookContext } from './hook-context';

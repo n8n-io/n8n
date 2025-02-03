@@ -6,9 +6,10 @@
 import { Service } from '@n8n/di';
 import get from 'lodash/get';
 import {
+	CredentialTestContext,
 	ErrorReporter,
+	ExecuteContext,
 	Logger,
-	NodeExecuteFunctions,
 	RoutingNode,
 	isObjectLiteral,
 } from 'n8n-core';
@@ -29,6 +30,7 @@ import type {
 	INodeTypes,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteData,
 } from 'n8n-workflow';
 import { VersionedNodeType, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 
@@ -205,9 +207,8 @@ export class CredentialsTester {
 
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
-			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
+			const context = new CredentialTestContext();
+			return credentialTestFunction.call(context, credentialsDecrypted);
 		}
 
 		// Credentials get tested via request instructions
@@ -293,25 +294,24 @@ export class CredentialsTester {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
 
-		const routingNode = new RoutingNode(
+		const executeData: IExecuteData = { node, data: {}, source: null };
+		const executeFunctions = new ExecuteContext(
 			workflow,
 			node,
-			connectionInputData,
-			runExecutionData ?? null,
 			additionalData,
 			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
 		);
+		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
 
 		let response: INodeExecutionData[][] | null | undefined;
-
 		try {
-			response = await routingNode.runNode(
-				inputData,
-				runIndex,
-				nodeTypeCopy,
-				{ node, data: {}, source: null },
-				credentialsDecrypted,
-			);
+			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
