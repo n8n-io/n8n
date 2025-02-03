@@ -21,6 +21,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		name: 'microsoftTeamsTrigger',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
+		maxNodes: 3,
 		version: 1,
 		description:
 			'Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.',
@@ -344,6 +345,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				};
 
 				try {
+					console.log('body', body);
 					const response = await microsoftApiRequest.call(
 						this as unknown as IExecuteFunctions,
 						'POST',
@@ -377,7 +379,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				// Clear the subscription ID from static data
 				this.getWorkflowStaticData('node').subscriptionId = undefined;
-				//console.log('delete subscription', subscriptionId);
+				console.log('delete subscription', subscriptionId);
 				return true;
 			},
 		},
@@ -387,42 +389,21 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const res = this.getResponseObject();
 
-		//console.log('req', req.query);
-		// Handle Microsoft Graph validation request for both notification and lifecycle URLs
+		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
 			res.status(200).send(req.query.validationToken);
-			return { noWebhookResponse: true }; // Prevent further execution
+			return { noWebhookResponse: true };
 		}
 
-		// Handle event notifications
 		const eventNotifications = req.body.value as IDataObject[];
-		console.log('Received event notifications:', JSON.stringify(eventNotifications, null, 2));
-
-		// Fetch detailed information for each event notification
-		const detailedEvents = await Promise.all(
-			eventNotifications.map(async (event) => {
-				const resource = event.resource as string;
-
-				// Use Microsoft Graph API to fetch the detailed data
-				try {
-					const detailedData = await microsoftApiRequest.call(
-						this as unknown as IExecuteFunctions,
-						'GET',
-						`/v1.0/${resource}`,
-					);
-
-					return {
-						json: detailedData,
-					};
-				} catch (error) {
-					console.error(`Error fetching details for resource: ${resource}`, error);
-					return { json: event };
-				}
-			}),
-		);
-
-		return {
-			workflowData: detailedEvents.map((item) => [item]),
+		const response: IWebhookResponseData = {
+			workflowData: eventNotifications.map((event) => [
+				{
+					json: (event.resourceData as IDataObject) ?? (event as IDataObject),
+				},
+			]),
 		};
+
+		return response;
 	}
 }
