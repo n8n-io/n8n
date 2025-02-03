@@ -102,9 +102,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const partialExecutionVersion = computed(() => {
 		const defaultVersion = settings.value.partialExecution?.version ?? 1;
 		const enforceVersion = settings.value.partialExecution?.enforce ?? false;
-		// -1 means the backend chooses the default
-		// 0 is the old flow
-		// 1 is the new flow
+		// -1 means we pick the defaultVersion
+		//  1 is the old flow
+		//  2 is the new flow
 		const userVersion = useLocalStorage('PartialExecution.version', -1).value;
 		const version = enforceVersion
 			? defaultVersion
