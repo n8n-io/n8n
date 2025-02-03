@@ -173,6 +173,7 @@ onKeyUp(panningKeyCode.value, () => {
 
 const renameKeyCode = ' ';
 const renameKeyDownTime = ref<number | null>(null);
+const renameKeyDownThreshold = 300;
 
 onKeyDown(
 	renameKeyCode,
@@ -189,7 +190,7 @@ onKeyDown(
 onKeyUp(renameKeyCode, () => {
 	if (!lastSelectedNode.value || !renameKeyDownTime.value || props.readOnly) return;
 
-	const isShortPress = Date.now() - renameKeyDownTime.value < 200;
+	const isShortPress = Date.now() - renameKeyDownTime.value < renameKeyDownThreshold;
 	if (isShortPress) {
 		emit('update:node:name', lastSelectedNode.value.id);
 	}
