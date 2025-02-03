@@ -1,4 +1,4 @@
-import type { UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
@@ -130,7 +130,7 @@ export class PublicApiKeyService {
 		};
 	}
 
-	private generateApiKey = (user: User, expiresAt: number | null) => {
+	private generateApiKey = (user: User, expiresAt: UnixTimestamp) => {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
