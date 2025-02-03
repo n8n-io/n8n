@@ -1,8 +1,9 @@
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
+import { Logger } from 'n8n-core';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -17,9 +18,8 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { Logger } from '@/logging/logger.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type {
 	WorkflowWithSharingsAndCredentials,

@@ -183,7 +183,7 @@ describe('ExecutionService', () => {
 
 		describe('scaling mode', () => {
 			describe('manual execution', () => {
-				it('should delegate to regular mode in scaling mode', async () => {
+				it('should stop a `running` execution in scaling mode', async () => {
 					/**
 					 * Arrange
 					 */
@@ -197,6 +197,8 @@ describe('ExecutionService', () => {
 					concurrencyControl.has.mockReturnValue(false);
 					activeExecutions.has.mockReturnValue(true);
 					waitTracker.has.mockReturnValue(false);
+					const job = mock<Job>({ data: { executionId: '123' } });
+					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 					// @ts-expect-error Private method
 					const stopInRegularModeSpy = jest.spyOn(executionService, 'stopInRegularMode');
@@ -209,7 +211,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Assert
 					 */
-					expect(stopInRegularModeSpy).toHaveBeenCalledWith(execution);
+					expect(stopInRegularModeSpy).not.toHaveBeenCalled();
 					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
 					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 
@@ -242,8 +244,8 @@ describe('ExecutionService', () => {
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 					expect(activeExecutions.stopExecution).toHaveBeenCalled();
-					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
-					expect(scalingService.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 
@@ -268,8 +270,8 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
-					expect(scalingService.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});

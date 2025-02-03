@@ -1,4 +1,5 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { INodeExecutionData, IDataObject } from 'n8n-workflow';
+import { NodeExecutionOutput } from 'n8n-workflow';
 
 export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
 	return (
@@ -36,3 +37,26 @@ export function standardizeOutput(output: IDataObject) {
 	standardizeOutputRecursive(output);
 	return output;
 }
+
+export const addPostExecutionWarning = (
+	returnData: INodeExecutionData[],
+	inputItemsLength: number,
+) => {
+	if (
+		returnData.length !== inputItemsLength ||
+		returnData.some((item) => item.pairedItem === undefined)
+	) {
+		return new NodeExecutionOutput(
+			[returnData],
+			[
+				{
+					message:
+						'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
+					location: 'outputPane',
+				},
+			],
+		);
+	}
+
+	return [returnData];
+};

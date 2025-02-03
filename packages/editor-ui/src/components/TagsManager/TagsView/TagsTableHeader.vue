@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 
 withDefaults(
 	defineProps<{
@@ -12,6 +13,8 @@ withDefaults(
 		search: '',
 	},
 );
+
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	searchChange: [value: string];
@@ -33,7 +36,7 @@ const onSearchChange = (search: string) => {
 	<el-row class="tags-header">
 		<el-col :span="10">
 			<n8n-input
-				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
+				:placeholder="i18n.baseText('tagsTableHeader.searchTags')"
 				:model-value="search"
 				:disabled="disabled"
 				:maxlength="maxLength"
@@ -49,7 +52,7 @@ const onSearchChange = (search: string) => {
 			<n8n-button
 				:disabled="disabled"
 				icon="plus"
-				:label="$locale.baseText('tagsTableHeader.addNew')"
+				:label="i18n.baseText('tagsTableHeader.addNew')"
 				size="large"
 				float="right"
 				@click="onAddNew"

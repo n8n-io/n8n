@@ -1,4 +1,8 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import type { Document } from '@langchain/core/documents';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { loadSummarizationChain } from 'langchain/chains';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -7,18 +11,15 @@ import type {
 	INodeTypeDescription,
 	IDataObject,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import { loadSummarizationChain } from 'langchain/chains';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { Document } from '@langchain/core/documents';
-import type { TextSplitter } from '@langchain/textsplitters';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
-import { getTemplateNoticeField } from '../../../../utils/sharedFields';
-import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
+
 import { getChainPromptsArgs } from '../helpers';
-import { getTracingConfig } from '../../../../utils/tracing';
+import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;

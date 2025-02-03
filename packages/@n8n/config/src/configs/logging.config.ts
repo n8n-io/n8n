@@ -7,7 +7,9 @@ export const LOG_SCOPES = [
 	'external-secrets',
 	'license',
 	'multi-main-setup',
+	'pruning',
 	'pubsub',
+	'push',
 	'redis',
 	'scaling',
 	'waiting-executions',
@@ -69,10 +71,13 @@ export class LoggingConfig {
 	 * - `external-secrets`
 	 * - `license`
 	 * - `multi-main-setup`
+	 * - `pruning`
 	 * - `pubsub`
+	 * - `push`
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
+	 * - `task-runner`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

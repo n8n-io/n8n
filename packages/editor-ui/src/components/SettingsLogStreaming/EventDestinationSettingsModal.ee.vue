@@ -1,17 +1,15 @@
-<script lang="ts">
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
 import { get, set, unset } from 'lodash-es';
-import { mapStores } from 'pinia';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import ParameterInputList from '@/components/ParameterInputList.vue';
-import type { IMenuItem, INodeUi, IUpdateInformation, ModalKey } from '@/Interface';
 import type {
 	IDataObject,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
+	MessageEventBusDestinationSentryOptions,
+	MessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -22,338 +20,337 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
+
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import ParameterInputList from '@/components/ParameterInputList.vue';
+import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
+import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
+import type { BaseTextKey } from '@/plugins/i18n';
+import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import SaveButton from '@/components/SaveButton.vue';
+import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/root.store';
+
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
-import type { BaseTextKey } from '@/plugins/i18n';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/root.store';
 
-export default defineComponent({
-	name: 'EventDestinationSettingsModal',
-	components: {
-		Modal,
-		ParameterInputList,
-		InlineNameEdit,
-		SaveButton,
-		EventSelection,
+defineOptions({ name: 'EventDestinationSettingsModal' });
+
+const props = withDefaults(
+	defineProps<{
+		modalName: ModalKey;
+		destination?: MessageEventBusDestinationOptions;
+		isNew?: boolean;
+		eventBus?: EventBus;
+	}>(),
+	{
+		destination: () => deepCopy(defaultMessageEventBusDestinationOptions),
+		isNew: false,
 	},
-	props: {
-		modalName: {
-			type: String as PropType<ModalKey>,
-			required: true,
-		},
-		destination: {
-			type: Object,
-			default: () => deepCopy(defaultMessageEventBusDestinationOptions),
-		},
-		isNew: Boolean,
-		eventBus: {
-			type: Object as PropType<EventBus>,
-		},
-	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
-	data() {
-		return {
-			unchanged: !this.isNew,
-			activeTab: 'settings',
-			hasOnceBeenSaved: !this.isNew,
-			isSaving: false,
-			isDeleting: false,
-			loading: false,
-			showRemoveConfirm: false,
-			typeSelectValue: '',
-			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions) as INodeParameters,
-			webhookDescription: webhookModalDescription,
-			sentryDescription: sentryModalDescription,
-			syslogDescription: syslogModalDescription,
-			modalBus: createEventBus(),
-			headerLabel: this.destination.label,
-			testMessageSent: false,
-			testMessageResult: false,
-			LOG_STREAM_MODAL_KEY,
-		};
-	},
-	computed: {
-		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
-		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
-			const options: Array<{ value: string; label: BaseTextKey }> = [];
-			for (const t of messageEventBusDestinationTypeNames) {
-				if (t === MessageEventBusDestinationTypeNames.abstract) {
-					continue;
-				}
-				options.push({
-					value: t,
-					label: `settings.log-streaming.${t}` as BaseTextKey,
-				});
-			}
-			return options;
-		},
-		isTypeAbstract(): boolean {
-			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.abstract;
-		},
-		isTypeWebhook(): boolean {
-			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.webhook;
-		},
-		isTypeSyslog(): boolean {
-			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.syslog;
-		},
-		isTypeSentry(): boolean {
-			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.sentry;
-		},
-		node(): INodeUi {
-			return destinationToFakeINodeUi(this.nodeParameters);
-		},
-		typeLabelName(): BaseTextKey {
-			return `settings.log-streaming.${this.nodeParameters.__type}` as BaseTextKey;
-		},
-		sidebarItems(): IMenuItem[] {
-			const items: IMenuItem[] = [
-				{
-					id: 'settings',
-					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
-					position: 'top',
-				},
-			];
-			if (!this.isTypeAbstract) {
-				items.push({
-					id: 'events',
-					label: this.$locale.baseText('settings.log-streaming.tab.events'),
-					position: 'top',
-				});
-			}
-			return items;
-		},
-		canManageLogStreaming(): boolean {
-			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
-		},
-	},
-	mounted() {
-		this.setupNode(
-			Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination),
-		);
-		this.workflowsStore.$onAction(
-			({
-				name, // name of the action
-				args, // array of parameters passed to the action
-			}) => {
-				if (name === 'updateNodeProperties') {
-					for (const arg of args) {
-						if (arg.name === this.destination.id) {
-							if ('credentials' in arg.properties) {
-								this.unchanged = false;
-								this.nodeParameters.credentials = arg.properties
-									.credentials as NodeParameterValueType;
-							}
-						}
-					}
-				}
-			},
-		);
-	},
-	methods: {
-		onInput() {
-			this.unchanged = false;
-			this.testMessageSent = false;
-		},
-		onTabSelect(tab: string) {
-			this.activeTab = tab;
-		},
-		onLabelChange(value: string) {
-			this.onInput();
-			this.headerLabel = value;
-			this.nodeParameters.label = value;
-		},
-		setupNode(options: MessageEventBusDestinationOptions) {
-			this.workflowsStore.removeNode(this.node);
-			this.ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
-			this.workflowsStore.addNode(destinationToFakeINodeUi(options));
-			this.nodeParameters = options as INodeParameters;
-			this.logStreamingStore.items[this.destination.id].destination = options;
-		},
-		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
-			this.typeSelectValue = destinationType;
-		},
-		async onContinueAddClicked() {
-			let newDestination;
-			switch (this.typeSelectValue) {
-				case MessageEventBusDestinationTypeNames.syslog:
-					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), {
-						id: this.destination.id,
-					});
-					break;
-				case MessageEventBusDestinationTypeNames.sentry:
-					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), {
-						id: this.destination.id,
-					});
-					break;
-				case MessageEventBusDestinationTypeNames.webhook:
-					newDestination = Object.assign(
-						deepCopy(defaultMessageEventBusDestinationWebhookOptions),
-						{ id: this.destination.id },
-					);
-					break;
-			}
+);
+const { modalName, destination, isNew, eventBus } = props;
 
-			if (newDestination) {
-				this.headerLabel = newDestination?.label ?? this.headerLabel;
-				this.setupNode(newDestination);
-			}
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.unchanged = false;
-			this.testMessageSent = false;
-			const newValue: NodeParameterValue = parameterData.value as string | number;
-			const parameterPath = parameterData.name?.startsWith('parameters.')
-				? parameterData.name.split('.').slice(1).join('.')
-				: parameterData.name || '';
+const i18n = useI18n();
+const { confirm } = useMessage();
+const telemetry = useTelemetry();
+const logStreamingStore = useLogStreamingStore();
+const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
 
-			const nodeParameters = deepCopy(this.nodeParameters);
+const unchanged = ref(!isNew);
+const activeTab = ref('settings');
+const hasOnceBeenSaved = ref(!isNew);
+const isSaving = ref(false);
+const isDeleting = ref(false);
+const loading = ref(false);
+const typeSelectValue = ref('');
+const typeSelectPlaceholder = ref('Destination Type');
+const nodeParameters = ref(deepCopy(defaultMessageEventBusDestinationOptions) as INodeParameters);
+const webhookDescription = ref(webhookModalDescription);
+const sentryDescription = ref(sentryModalDescription);
+const syslogDescription = ref(syslogModalDescription);
+const modalBus = ref(createEventBus());
+const headerLabel = ref(destination.label!);
+const testMessageSent = ref(false);
+const testMessageResult = ref(false);
 
-			// Check if the path is supposed to change an array and if so get
-			// the needed data like path and index
-			const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
-
-			// Apply the new value
-			if (parameterData.value === undefined && parameterPathArray !== null) {
-				// Delete array item
-				const path = parameterPathArray[1] as keyof MessageEventBusDestinationOptions;
-				const index = parameterPathArray[2];
-				const data = get(nodeParameters, path);
-
-				if (Array.isArray(data)) {
-					data.splice(parseInt(index, 10), 1);
-					nodeParameters[path] = data as never;
-				}
-			} else {
-				if (newValue === undefined) {
-					unset(nodeParameters, parameterPath);
-				} else {
-					set(nodeParameters, parameterPath, newValue);
-				}
-			}
-
-			this.nodeParameters = deepCopy(nodeParameters);
-			this.workflowsStore.updateNodeProperties({
-				name: this.node.name,
-				properties: { parameters: this.nodeParameters as unknown as IDataObject, position: [0, 0] },
-			});
-			if (this.hasOnceBeenSaved) {
-				this.logStreamingStore.updateDestination(this.nodeParameters);
-			}
-		},
-		async sendTestEvent() {
-			this.testMessageResult = await this.logStreamingStore.sendTestMessage(this.nodeParameters);
-			this.testMessageSent = true;
-		},
-		async removeThis() {
-			const deleteConfirmed = await this.confirm(
-				this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
-					interpolate: { destinationName: this.destination.label },
-				}),
-				this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'settings.log-streaming.destinationDelete.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'settings.log-streaming.destinationDelete.cancelButtonText',
-					),
-				},
-			);
-
-			if (deleteConfirmed !== MODAL_CONFIRM) {
-				return;
-			} else {
-				this.callEventBus('remove', this.destination.id);
-				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-				this.uiStore.stateIsDirty = false;
-			}
-		},
-		onModalClose() {
-			if (!this.hasOnceBeenSaved) {
-				this.workflowsStore.removeNode(this.node);
-				if (this.nodeParameters.id && typeof this.nodeParameters.id !== 'object') {
-					this.logStreamingStore.removeDestination(this.nodeParameters.id.toString());
-				}
-			}
-			this.ndvStore.activeNodeName = null;
-			this.callEventBus('closing', this.destination.id);
-			this.uiStore.stateIsDirty = false;
-		},
-		async saveDestination() {
-			if (this.unchanged || !this.destination.id) {
-				return;
-			}
-			const saveResult = await this.logStreamingStore.saveDestination(this.nodeParameters);
-			if (saveResult) {
-				this.hasOnceBeenSaved = true;
-				this.testMessageSent = false;
-				this.unchanged = true;
-				this.callEventBus('destinationWasSaved', this.destination.id);
-				this.uiStore.stateIsDirty = false;
-
-				const destinationType = (
-					this.nodeParameters.__type && typeof this.nodeParameters.__type !== 'object'
-						? `${this.nodeParameters.__type}`
-						: 'unknown'
-				)
-					.replace('$$MessageEventBusDestination', '')
-					.toLowerCase();
-
-				const isComplete = () => {
-					if (this.isTypeWebhook) {
-						return this.destination.host !== '';
-					} else if (this.isTypeSentry) {
-						return this.destination.dsn !== '';
-					} else if (this.isTypeSyslog) {
-						return (
-							this.destination.host !== '' &&
-							this.destination.port !== undefined &&
-							this.destination.protocol !== '' &&
-							this.destination.facility !== undefined &&
-							this.destination.app_name !== ''
-						);
-					}
-					return false;
-				};
-
-				useTelemetry().track('User updated log streaming destination', {
-					instance_id: useRootStore().instanceId,
-					destination_type: destinationType,
-					is_complete: isComplete(),
-					is_active: this.destination.enabled,
-				});
-			}
-		},
-		callEventBus(event: string, data: unknown) {
-			if (this.eventBus) {
-				this.eventBus.emit(event, data);
-			}
-		},
-	},
+const typeSelectOptions = computed(() => {
+	const options: Array<{ value: string; label: BaseTextKey }> = [];
+	for (const t of messageEventBusDestinationTypeNames) {
+		if (t === MessageEventBusDestinationTypeNames.abstract) {
+			continue;
+		}
+		options.push({
+			value: t,
+			label: `settings.log-streaming.${t}` as BaseTextKey,
+		});
+	}
+	return options;
 });
+
+const isTypeAbstract = computed(
+	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.abstract,
+);
+
+const isTypeWebhook = computed(
+	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.webhook,
+);
+
+const isTypeSyslog = computed(
+	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.syslog,
+);
+
+const isTypeSentry = computed(
+	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.sentry,
+);
+
+const node = computed(() => destinationToFakeINodeUi(nodeParameters.value));
+
+const typeLabelName = computed(
+	() => `settings.log-streaming.${nodeParameters.value.__type}` as BaseTextKey,
+);
+
+const sidebarItems = computed(() => {
+	const items: IMenuItem[] = [
+		{
+			id: 'settings',
+			label: i18n.baseText('settings.log-streaming.tab.settings'),
+			position: 'top',
+		},
+	];
+	if (!isTypeAbstract.value) {
+		items.push({
+			id: 'events',
+			label: i18n.baseText('settings.log-streaming.tab.events'),
+			position: 'top',
+		});
+	}
+	return items;
+});
+
+const canManageLogStreaming = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
+);
+
+onMounted(() => {
+	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
+	workflowsStore.$onAction(({ name, args }) => {
+		if (name === 'updateNodeProperties') {
+			for (const arg of args) {
+				if (arg.name === destination.id) {
+					if ('credentials' in arg.properties) {
+						unchanged.value = false;
+						nodeParameters.value.credentials = arg.properties.credentials as NodeParameterValueType;
+					}
+				}
+			}
+		}
+	});
+});
+
+function onInput() {
+	unchanged.value = false;
+	testMessageSent.value = false;
+}
+
+function onTabSelect(tab: string) {
+	activeTab.value = tab;
+}
+
+function onLabelChange(value: string) {
+	onInput();
+	headerLabel.value = value;
+	nodeParameters.value.label = value;
+}
+
+function setupNode(options: MessageEventBusDestinationOptions) {
+	workflowsStore.removeNode(node.value);
+	ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
+	workflowsStore.addNode(destinationToFakeINodeUi(options));
+	nodeParameters.value = options as INodeParameters;
+	logStreamingStore.items[destination.id!].destination = options;
+}
+
+function onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
+	typeSelectValue.value = destinationType;
+}
+
+async function onContinueAddClicked() {
+	let newDestination;
+	switch (typeSelectValue.value) {
+		case MessageEventBusDestinationTypeNames.syslog:
+			newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), {
+				id: destination.id,
+			});
+			break;
+		case MessageEventBusDestinationTypeNames.sentry:
+			newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), {
+				id: destination.id,
+			});
+			break;
+		case MessageEventBusDestinationTypeNames.webhook:
+			newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), {
+				id: destination.id,
+			});
+			break;
+	}
+
+	if (newDestination) {
+		headerLabel.value = newDestination?.label ?? headerLabel.value;
+		setupNode(newDestination);
+	}
+}
+
+function valueChanged(parameterData: IUpdateInformation) {
+	unchanged.value = false;
+	testMessageSent.value = false;
+	const newValue: NodeParameterValue = parameterData.value as string | number;
+	const parameterPath = parameterData.name?.startsWith('parameters.')
+		? parameterData.name.split('.').slice(1).join('.')
+		: parameterData.name || '';
+
+	const nodeParametersCopy = deepCopy(nodeParameters.value);
+
+	if (parameterData.value === undefined && parameterPath.match(/(.*)\[(\d+)\]$/)) {
+		const path = parameterPath.match(
+			/(.*)\[(\d+)\]$/,
+		)?.[1] as keyof MessageEventBusDestinationOptions;
+		const index = parseInt(parameterPath.match(/(.*)\[(\d+)\]$/)?.[2] ?? '0', 10);
+		const data = get(nodeParametersCopy, path);
+
+		if (Array.isArray(data)) {
+			data.splice(index, 1);
+			nodeParametersCopy[path] = data as never;
+		}
+	} else {
+		if (newValue === undefined) {
+			unset(nodeParametersCopy, parameterPath);
+		} else {
+			set(nodeParametersCopy, parameterPath, newValue);
+		}
+	}
+
+	nodeParameters.value = deepCopy(nodeParametersCopy);
+	workflowsStore.updateNodeProperties({
+		name: node.value.name,
+		properties: { parameters: nodeParameters.value as unknown as IDataObject, position: [0, 0] },
+	});
+	if (hasOnceBeenSaved.value) {
+		logStreamingStore.updateDestination(nodeParameters.value);
+	}
+}
+
+async function sendTestEvent() {
+	testMessageResult.value = await logStreamingStore.sendTestMessage(nodeParameters.value);
+	testMessageSent.value = true;
+}
+
+async function removeThis() {
+	const deleteConfirmed = await confirm(
+		i18n.baseText('settings.log-streaming.destinationDelete.message', {
+			interpolate: { destinationName: destination.label! },
+		}),
+		i18n.baseText('settings.log-streaming.destinationDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText(
+				'settings.log-streaming.destinationDelete.confirmButtonText',
+			),
+			cancelButtonText: i18n.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	} else {
+		callEventBus('remove', destination.id);
+		uiStore.closeModal(LOG_STREAM_MODAL_KEY);
+		uiStore.stateIsDirty = false;
+	}
+}
+
+function onModalClose() {
+	if (!hasOnceBeenSaved.value) {
+		workflowsStore.removeNode(node.value);
+		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
+			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
+		}
+	}
+	ndvStore.activeNodeName = null;
+	callEventBus('closing', destination.id);
+	uiStore.stateIsDirty = false;
+}
+
+async function saveDestination() {
+	if (unchanged.value || !destination.id) {
+		return;
+	}
+	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
+	if (saveResult) {
+		hasOnceBeenSaved.value = true;
+		testMessageSent.value = false;
+		unchanged.value = true;
+		callEventBus('destinationWasSaved', destination.id);
+		uiStore.stateIsDirty = false;
+
+		const destinationType = (
+			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
+				? `${nodeParameters.value.__type}`
+				: 'unknown'
+		)
+			.replace('$$MessageEventBusDestination', '')
+			.toLowerCase();
+
+		const isComplete = () => {
+			if (isTypeWebhook.value) {
+				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
+				return webhookDestination.url !== '';
+			} else if (isTypeSentry.value) {
+				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
+				return sentryDestination.dsn !== '';
+			} else if (isTypeSyslog.value) {
+				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
+				return (
+					syslogDestination.host !== '' &&
+					syslogDestination.port !== undefined &&
+					// @ts-expect-error TODO: fix this typing
+					syslogDestination.protocol !== '' &&
+					syslogDestination.facility !== undefined &&
+					syslogDestination.app_name !== ''
+				);
+			}
+			return false;
+		};
+
+		telemetry.track('User updated log streaming destination', {
+			instance_id: useRootStore().instanceId,
+			destination_type: destinationType,
+			is_complete: isComplete(),
+			is_active: destination.enabled,
+		});
+	}
+}
+
+function callEventBus(event: string, data: unknown) {
+	if (eventBus) {
+		eventBus.emit(event, data);
+	}
+}
 </script>
 
 <template>
@@ -381,7 +378,7 @@ export default defineComponent({
 					<div :class="$style.destinationInfo">
 						<InlineNameEdit
 							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
+							:subtitle="!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
 							type="Credential"
 							data-test-id="subtitle-showing-type"
@@ -406,7 +403,7 @@ export default defineComponent({
 						<template v-if="canManageLogStreaming">
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
-								:title="$locale.baseText('settings.log-streaming.delete')"
+								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash"
 								type="tertiary"
 								:disabled="isSaving"
@@ -417,7 +414,7 @@ export default defineComponent({
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
 								:disabled="isTypeAbstract || unchanged"
-								:saving-label="$locale.baseText('settings.log-streaming.saving')"
+								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"
 							/>
@@ -432,8 +429,8 @@ export default defineComponent({
 				<template v-if="isTypeAbstract">
 					<n8n-input-label
 						:class="$style.typeSelector"
-						:label="$locale.baseText('settings.log-streaming.selecttype')"
-						:tooltip-text="$locale.baseText('settings.log-streaming.selecttypehint')"
+						:label="i18n.baseText('settings.log-streaming.selecttype')"
+						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
 						:bold="false"
 						size="medium"
 						:underline="false"
@@ -450,7 +447,7 @@ export default defineComponent({
 								v-for="option in typeSelectOptions || []"
 								:key="option.value"
 								:value="option.value"
-								:label="$locale.baseText(option.label)"
+								:label="i18n.baseText(option.label)"
 							/>
 						</n8n-select>
 						<div class="mt-m text-right">
@@ -460,7 +457,7 @@ export default defineComponent({
 								:disabled="!typeSelectValue"
 								@click="onContinueAddClicked"
 							>
-								{{ $locale.baseText(`settings.log-streaming.continue`) }}
+								{{ i18n.baseText(`settings.log-streaming.continue`) }}
 							</n8n-button>
 						</div>
 					</n8n-input-label>
@@ -505,7 +502,7 @@ export default defineComponent({
 						<div class="">
 							<n8n-input-label
 								class="mb-m mt-m"
-								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
+								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
 								:bold="true"
 								size="medium"
 								:underline="false"

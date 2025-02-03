@@ -7,9 +7,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { operationProperty } from '../description';
 import * as fromFile from './fromFile.operation';
 import * as toFile from './toFile.operation';
+import { operationProperty } from '../description';
 
 export class SpreadsheetFileV2 implements INodeType {
 	description: INodeTypeDescription;

@@ -28,24 +28,24 @@ const nodeName = (node: IVersionNode): string => {
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
-					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
+					{{ `${i18n.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<span v-n8n-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
+					<span v-n8n-html="i18n.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
-					:text="$locale.baseText('versionCard.securityUpdate')"
+					:text="i18n.baseText('versionCard.securityUpdate')"
 					type="danger"
 				/>
 				<Badge
 					v-if="version.hasBreakingChange"
-					:text="$locale.baseText('versionCard.breakingChanges')"
+					:text="i18n.baseText('versionCard.breakingChanges')"
 					type="warning"
 				/>
 			</div>
 			<div :class="$style['release-date']">
-				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
+				{{ i18n.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div

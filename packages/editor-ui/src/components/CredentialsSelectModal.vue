@@ -9,9 +9,11 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import Modal from './Modal.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const modalBus = ref(createEventBus());
 const selected = ref('');
@@ -68,19 +70,19 @@ function openCredentialType() {
 	>
 		<template #header>
 			<h2 :class="$style.title">
-				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+				{{ i18n.baseText('credentialSelectModal.addNewCredential') }}
 			</h2>
 		</template>
 		<template #content>
 			<div>
 				<div :class="$style.subtitle">
-					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+					{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
 				</div>
 				<N8nSelect
 					ref="selectRef"
 					filterable
 					default-first-option
-					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
+					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					:model-value="selected"
 					data-test-id="new-credential-type-select"
@@ -103,7 +105,7 @@ function openCredentialType() {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					:label="$locale.baseText('credentialSelectModal.continue')"
+					:label="i18n.baseText('credentialSelectModal.continue')"
 					float="right"
 					size="large"
 					:disabled="!selected"

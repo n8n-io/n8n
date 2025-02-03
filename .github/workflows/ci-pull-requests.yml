@@ -9,23 +9,28 @@ on:
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=4096'
     steps:
       - uses: actions/checkout@v4.1.1
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: useblacksmith/setup-node@v5
         with:
           node-version: 20.x
-          cache: pnpm
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: useblacksmith/caching-for-turbo@v1
 
       - name: Build
         run: pnpm build
@@ -37,7 +42,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: useblacksmith/cache/save@v5
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-base:build
@@ -49,6 +54,9 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
       cacheKey: ${{ github.sha }}-base:build
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Lint

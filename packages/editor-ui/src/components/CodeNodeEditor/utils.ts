@@ -1,29 +1,33 @@
-import type * as esprima from 'esprima-next';
+import * as esprima from 'esprima-next';
 import type { Completion } from '@codemirror/autocomplete';
-import type { Node } from 'estree';
 import type { RangeNode } from './types';
 import { sanitizeHtml } from '@/utils/htmlUtils';
+import type { Node } from 'estree';
 
 export function walk<T extends RangeNode>(
 	node: Node | esprima.Program,
 	test: (node: Node) => boolean,
 	found: Node[] = [],
 ) {
-	// @ts-ignore
-	if (test(node)) found.push(node);
+	const isProgram = node.type === esprima.Syntax.Program;
+	if (!isProgram && test(node)) found.push(node);
 
-	for (const key in node) {
-		if (!(key in node)) continue;
+	if (isProgram) {
+		node.body.forEach((n) => walk(n as Node, test, found));
+	} else {
+		for (const key in node) {
+			if (!(key in node)) continue;
 
-		// @ts-ignore
-		const child = node[key];
+			// @ts-expect-error Node is not string indexable, but it has many possible properties
+			const child = node[key];
 
-		if (child === null || typeof child !== 'object') continue;
+			if (child === null || typeof child !== 'object') continue;
 
-		if (Array.isArray(child)) {
-			child.forEach((node) => walk(node, test, found));
-		} else {
-			walk(child, test, found);
+			if (Array.isArray(child)) {
+				child.filter(Boolean).forEach((n) => walk(n, test, found));
+			} else {
+				walk(child, test, found);
+			}
 		}
 	}
 

@@ -1,67 +1,65 @@
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
-export default defineComponent({
-	name: 'IntersectionObserver',
-	props: {
-		threshold: {
-			type: Number,
-			default: 0,
-		},
-		enabled: {
-			type: Boolean,
-			default: false,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
+const props = withDefaults(
+	defineProps<{
+		threshold: number;
+		enabled: boolean;
+		eventBus: EventBus;
+	}>(),
+	{
+		threshold: 0,
+		enabled: false,
+		default: () => createEventBus(),
 	},
-	data() {
-		return {
-			observer: null as IntersectionObserver | null,
-		};
-	},
-	mounted() {
-		if (!this.enabled) {
-			return;
-		}
+);
 
-		const options = {
-			root: this.$refs.root as Element,
-			rootMargin: '0px',
-			threshold: this.threshold,
-		};
+const emit = defineEmits<{
+	observed: [{ el: HTMLElement; isIntersecting: boolean }];
+}>();
 
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(({ target, isIntersecting }) => {
-				this.$emit('observed', {
-					el: target,
-					isIntersecting,
-				});
+const observer = ref<IntersectionObserver | null>(null);
+const root = ref<HTMLElement | null>(null);
+
+onBeforeUnmount(() => {
+	if (props.enabled && observer.value) {
+		observer.value.disconnect();
+	}
+});
+
+onMounted(() => {
+	if (!props.enabled) {
+		return;
+	}
+
+	const options = {
+		root: root.value,
+		rootMargin: '0px',
+		threshold: props.threshold,
+	};
+
+	const intersectionObserver = new IntersectionObserver((entries) => {
+		entries.forEach(({ target, isIntersecting }) => {
+			emit('observed', {
+				el: target as HTMLElement,
+				isIntersecting,
 			});
-		}, options);
-
-		this.observer = observer;
-
-		this.eventBus.on('observe', (observed: Element) => {
-			if (observed) {
-				observer.observe(observed);
-			}
 		});
+	}, options);
 
-		this.eventBus.on('unobserve', (observed: Element) => {
-			observer.unobserve(observed);
-		});
-	},
-	beforeUnmount() {
-		if (this.enabled && this.observer) {
-			this.observer.disconnect();
+	observer.value = intersectionObserver;
+
+	props.eventBus.on('observe', (observed: Element) => {
+		if (observed) {
+			intersectionObserver.observe(observed);
 		}
-	},
+	});
+
+	props.eventBus.on('unobserve', (observed: Element) => {
+		intersectionObserver.unobserve(observed);
+	});
 });
 </script>
 

@@ -436,7 +436,6 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
-				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
 				// @ts-ignore
@@ -507,7 +506,6 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
-				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
 				// @ts-ignore

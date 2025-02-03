@@ -71,11 +71,10 @@ function onClose() {
 
 <template>
 	<SlideTransition>
-		<n8n-resize-wrapper
+		<N8nResizeWrapper
 			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
-			:class="$style.container"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
@@ -98,17 +97,11 @@ function onClose() {
 					@code-undo="undoCodeDiff"
 				/>
 			</div>
-		</n8n-resize-wrapper>
+		</N8nResizeWrapper>
 	</SlideTransition>
 </template>
 
 <style module>
-.container {
-	height: 100%;
-	flex-basis: content;
-	z-index: var(--z-index-ask-assistant-chat);
-}
-
 .wrapper {
 	height: 100%;
 }

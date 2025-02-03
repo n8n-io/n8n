@@ -30,6 +30,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				required: true,
 				autocomplete: 'given-name',
 				capitalize: true,
+				focusInitially: true,
 			},
 		},
 		{

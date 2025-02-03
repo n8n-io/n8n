@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import { ZepMemory } from '@langchain/community/memory/zep';
+import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
+import type { InputValues, MemoryVariables } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionType,
 	type ISupplyDataFunctions,
@@ -7,16 +12,12 @@ import {
 	type SupplyData,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { ZepMemory } from '@langchain/community/memory/zep';
-import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
-import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
-import type { InputValues, MemoryVariables } from '@langchain/core/memory';
-import type { BaseMessage } from '@langchain/core/messages';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 
 // Extend ZepCloudMemory to trim white space in messages.
 class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
@@ -36,7 +37,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Zep Memory',
 		defaults: {
 			name: 'Zep',
@@ -67,6 +68,12 @@ export class MemoryZep implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			{
+				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
+				name: 'supportedVersions',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -99,6 +106,7 @@ export class MemoryZep implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 		],
 	};

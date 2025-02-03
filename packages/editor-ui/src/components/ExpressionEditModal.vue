@@ -14,7 +14,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
-import RunDataSchema from './RunDataSchema.vue';
+import VirtualSchema from '@/components/VirtualSchema.vue';
 import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
@@ -22,6 +22,11 @@ import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { N8nInput, N8nText } from 'n8n-design-system';
+import { N8nResizeWrapper, type ResizeData } from 'n8n-design-system';
+import { useThrottleFn } from '@vueuse/core';
+
+const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
 	parameter: INodeProperties;
@@ -55,6 +60,7 @@ const { debounce } = useDebounce();
 const segments = ref<Segment[]>([]);
 const search = ref('');
 const appliedSearch = ref('');
+const sidebarWidth = ref(DEFAULT_LEFT_SIDEBAR_WIDTH);
 const expressionInputRef = ref<InstanceType<typeof ExpressionEditorModalInput>>();
 const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
@@ -121,6 +127,12 @@ async function onDrop(expression: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(inputEditor.value), event, expression);
 }
+
+function onResize(event: ResizeData) {
+	sidebarWidth.value = event.width;
+}
+
+const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
@@ -135,27 +147,36 @@ async function onDrop(expression: string, event: MouseEvent) {
 			<Close height="18" width="18" />
 		</button>
 		<div :class="$style.container">
-			<div :class="$style.sidebar">
-				<N8nInput
-					v-model="search"
-					size="small"
-					:class="$style.search"
-					:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
-				>
-					<template #prefix>
-						<N8nIcon :class="$style.ioSearchIcon" icon="search" />
-					</template>
-				</N8nInput>
+			<N8nResizeWrapper
+				:width="sidebarWidth"
+				:min-width="200"
+				:style="{ width: `${sidebarWidth}px` }"
+				:grid-size="8"
+				:supported-directions="['left', 'right']"
+				@resize="onResizeThrottle"
+			>
+				<div :class="$style.sidebar">
+					<N8nInput
+						v-model="search"
+						size="small"
+						:class="$style.search"
+						:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
+					>
+						<template #prefix>
+							<N8nIcon :class="$style.ioSearchIcon" icon="search" />
+						</template>
+					</N8nInput>
 
-				<RunDataSchema
-					:class="$style.schema"
-					:search="appliedSearch"
-					:nodes="parentNodes"
-					:mapping-enabled="!isReadOnly"
-					:connection-type="NodeConnectionType.Main"
-					pane-type="input"
-				/>
-			</div>
+					<VirtualSchema
+						:class="$style.schema"
+						:search="appliedSearch"
+						:nodes="parentNodes"
+						:mapping-enabled="!isReadOnly"
+						:connection-type="NodeConnectionType.Main"
+						pane-type="input"
+					/>
+				</div>
+			</N8nResizeWrapper>
 
 			<div :class="$style.io">
 				<div :class="$style.input">
@@ -224,7 +245,6 @@ async function onDrop(expression: string, event: MouseEvent) {
 	margin-bottom: 0;
 
 	:global(.el-dialog__body) {
-		background-color: var(--color-expression-editor-modal-background);
 		height: 100%;
 		padding: var(--spacing-s);
 	}
@@ -237,7 +257,7 @@ async function onDrop(expression: string, event: MouseEvent) {
 .container {
 	display: flex;
 	flex-flow: row nowrap;
-	gap: var(--spacing-s);
+	gap: var(--spacing-2xs);
 	height: 100%;
 }
 

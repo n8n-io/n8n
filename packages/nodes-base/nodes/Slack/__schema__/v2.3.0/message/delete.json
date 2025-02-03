@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "channel": {
+            "type": "string"
+        },
+        "message_timestamp": {
+            "type": "string"
+        }
+    }
+}

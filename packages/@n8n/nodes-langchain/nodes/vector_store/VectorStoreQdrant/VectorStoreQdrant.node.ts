@@ -1,12 +1,13 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { Callbacks } from '@langchain/core/callbacks/manager';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
-import type { Embeddings } from '@langchain/core/embeddings';
-import type { Callbacks } from '@langchain/core/callbacks/manager';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {
 	private static defaultFilter: IDataObject = {};
@@ -78,7 +79,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreQdrant extends createVectorStoreNode({
+export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVectorStore>({
 	meta: {
 		displayName: 'Qdrant Vector Store',
 		name: 'vectorStoreQdrant',

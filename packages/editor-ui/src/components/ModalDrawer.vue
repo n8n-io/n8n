@@ -1,85 +1,74 @@
-<script lang="ts">
+<script setup lang="ts">
 import { useUIStore } from '@/stores/ui.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
+import { onBeforeUnmount, onMounted } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { ElDrawer } from 'element-plus';
 
-export default defineComponent({
-	name: 'ModalDrawer',
-	components: {
-		ElDrawer,
+const props = withDefaults(
+	defineProps<{
+		name: string;
+		beforeClose?: Function;
+		eventBus?: EventBus;
+		direction: 'ltr' | 'rtl' | 'ttb' | 'btt';
+		modal?: boolean;
+		width: string;
+		wrapperClosable?: boolean;
+		closeOnClickModal?: boolean;
+		zIndex?: number;
+	}>(),
+	{
+		modal: true,
+		wrapperClosable: true,
+		closeOnClickModal: false,
 	},
-	props: {
-		name: {
-			type: String,
-			required: true,
-		},
-		beforeClose: {
-			type: Function,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-		},
-		direction: {
-			type: String as PropType<'ltr' | 'rtl' | 'ttb' | 'btt'>,
-			required: true,
-		},
-		modal: {
-			type: Boolean,
-			default: true,
-		},
-		width: {
-			type: String,
-		},
-		wrapperClosable: {
-			type: Boolean,
-			default: true,
-		},
-	},
-	mounted() {
-		window.addEventListener('keydown', this.onWindowKeydown);
-		this.eventBus?.on('close', this.close);
+);
 
-		const activeElement = document.activeElement as HTMLElement;
-		if (activeElement) {
-			activeElement.blur();
+const emit = defineEmits<{
+	enter: [];
+}>();
+
+const uiStore = useUIStore();
+
+const handleEnter = () => {
+	if (uiStore.isModalActiveById[props.name]) {
+		emit('enter');
+	}
+};
+
+const onWindowKeydown = (event: KeyboardEvent) => {
+	if (!uiStore.isModalActiveById[props.name]) {
+		return;
+	}
+
+	if (event && event.keyCode === 13) {
+		handleEnter();
+	}
+};
+
+const close = async () => {
+	if (props.beforeClose) {
+		const shouldClose = await props.beforeClose();
+		if (shouldClose === false) {
+			// must be strictly false to stop modal from closing
+			return;
 		}
-	},
-	beforeUnmount() {
-		this.eventBus?.off('close', this.close);
-		window.removeEventListener('keydown', this.onWindowKeydown);
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-	methods: {
-		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActiveById[this.name]) {
-				return;
-			}
+	}
+	uiStore.closeModal(props.name);
+};
 
-			if (event && event.keyCode === 13) {
-				this.handleEnter();
-			}
-		},
-		handleEnter() {
-			if (this.uiStore.isModalActiveById[this.name]) {
-				this.$emit('enter');
-			}
-		},
-		async close() {
-			if (this.beforeClose) {
-				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) {
-					// must be strictly false to stop modal from closing
-					return;
-				}
-			}
-			this.uiStore.closeModal(this.name);
-		},
-	},
+onMounted(() => {
+	window.addEventListener('keydown', onWindowKeydown);
+	props.eventBus?.on('close', close);
+
+	const activeElement = document.activeElement as HTMLElement;
+	if (activeElement) {
+		activeElement.blur();
+	}
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('close', close);
+	window.removeEventListener('keydown', onWindowKeydown);
 });
 </script>
 
@@ -91,6 +80,8 @@ export default defineComponent({
 		:before-close="close"
 		:modal="modal"
 		:wrapper-closable="wrapperClosable"
+		:close-on-click-modal="closeOnClickModal"
+		:z-index="zIndex"
 	>
 		<template #header>
 			<slot name="header" />

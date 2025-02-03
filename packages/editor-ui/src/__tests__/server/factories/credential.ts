@@ -18,4 +18,7 @@ export const credentialFactory = Factory.extend<ICredentialsResponse>({
 	updatedAt() {
 		return '';
 	},
+	isManaged() {
+		return false;
+	},
 });

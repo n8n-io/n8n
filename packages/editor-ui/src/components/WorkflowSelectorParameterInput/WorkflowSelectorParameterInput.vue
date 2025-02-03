@@ -18,6 +18,11 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/constants';
+import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
+import type { IWorkflowDataCreate } from '@/Interface';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -30,6 +35,7 @@ interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
+	sampleWorkflow?: IWorkflowDataCreate;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 	forceShowExpression: false,
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
+	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
 });
 
 const emit = defineEmits<{
@@ -50,11 +57,14 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
-const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const projectStore = useProjectsStore();
+
+const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const telemetry = useTelemetry();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
@@ -73,13 +83,34 @@ const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
 	filteredResources,
-	onSearchFilter,
 	searchFilter,
+	onSearchFilter,
 	getWorkflowName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
+	reloadWorkflows,
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
+
+const currentProjectName = computed(() => {
+	if (!projectStore.isTeamProjectFeatureEnabled) return '';
+
+	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+		return `'${i18n.baseText('projects.menu.personal')}'`;
+	}
+
+	return `'${projectStore.currentProject?.name}'`;
+});
+
+const getCreateResourceLabel = computed(() => {
+	if (!currentProjectName.value) {
+		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
+	}
+
+	return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+		interpolate: { projectName: currentProjectName.value },
+	});
+});
 
 const valueToDisplay = computed<NodeParameterValue>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -122,13 +153,13 @@ function onInputChange(value: NodeParameterValue): void {
 }
 
 function onListItemSelected(value: NodeParameterValue) {
+	telemetry.track('User chose sub-workflow', {}, { withPostHog: true });
 	onInputChange(value);
 	hideDropdown();
 }
 
 function onInputFocus(): void {
 	setWidth();
-	showDropdown();
 	emit('focus');
 }
 
@@ -176,8 +207,33 @@ watch(
 onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
-</script>
 
+const onAddResourceClicked = async () => {
+	const projectId = projectStore.currentProjectId;
+	const sampleWorkflow = props.sampleWorkflow;
+	const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
+	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		(w) => w.name && new RegExp(workflowName).test(w.name),
+	);
+
+	const workflow: IWorkflowDataCreate = {
+		...sampleWorkflow,
+		name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
+	};
+	if (projectId) {
+		workflow.projectId = projectId;
+	}
+	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
+
+	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+	const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: newWorkflow.id } });
+	await reloadWorkflows();
+	onInputChange(newWorkflow.id);
+	hideDropdown();
+
+	window.open(href, '_blank');
+};
+</script>
 <template>
 	<div
 		ref="container"
@@ -194,11 +250,16 @@ onClickOutside(dropdown, () => {
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
 			:error-view="false"
+			:allow-new-resources="{
+				label: getCreateResourceLabel,
+			}"
 			:width="width"
 			:event-bus="eventBus"
+			:value="modelValue"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
@@ -261,6 +322,7 @@ onClickOutside(dropdown, () => {
 									ref="input"
 									:model-value="expressionDisplayValue"
 									:path="path"
+									:is-read-only="isReadOnly"
 									:rows="3"
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"

@@ -1,9 +1,8 @@
 import type { INodeTypes } from 'n8n-workflow';
 
-import nock from 'nock';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 const queryMock = jest.fn(async function () {
 	return [{ success: true }];
@@ -25,16 +24,6 @@ jest.mock('../../v1/GenericFunctions', () => {
 describe('Test MySqlV1, executeQuery', () => {
 	const workflows = ['nodes/MySql/test/v1/executeQuery.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../v1/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

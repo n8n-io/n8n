@@ -1,3 +1,4 @@
+import { capitalCase } from 'change-case';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { capitalCase } from 'change-case';
 import { keapApiRequest } from './GenericFunctions';
 
 export class KeapTrigger implements INodeType {

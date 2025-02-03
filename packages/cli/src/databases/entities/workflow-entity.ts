@@ -80,7 +80,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})
-	pinData: ISimplifiedPinData;
+	pinData?: ISimplifiedPinData;
 
 	@Column({ length: 36 })
 	versionId: string;

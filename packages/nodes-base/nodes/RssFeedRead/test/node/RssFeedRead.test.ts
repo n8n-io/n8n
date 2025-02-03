@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 // eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
@@ -9,15 +10,8 @@ describe('Test RSS Feed Trigger Node', () => {
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		nock('https://lorem-rss.herokuapp.com').get('/feed?length=3').reply(200, feed);
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

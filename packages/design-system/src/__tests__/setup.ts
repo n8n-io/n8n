@@ -15,3 +15,8 @@ window.ResizeObserver =
 		observe: vi.fn(),
 		unobserve: vi.fn(),
 	}));
+
+// Globally mock is-emoji-supported
+vi.mock('is-emoji-supported', () => ({
+	isEmojiSupported: () => true,
+}));

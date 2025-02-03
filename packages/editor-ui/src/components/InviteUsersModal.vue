@@ -1,6 +1,5 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
@@ -12,11 +11,255 @@ import {
 } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
+import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
+
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+const clipboard = useClipboard();
+const { showMessage, showError } = useToast();
+const i18n = useI18n();
+const { goToUpgrade } = usePageRedirectionHelper();
+
+const formBus = createFormEventBus();
+const modalBus = createEventBus();
+const config = ref<IFormInputs | null>();
+const emails = ref('');
+const role = ref<InvitableRoleName>(ROLE.Member);
+const showInviteUrls = ref<IInviteResponse[] | null>(null);
+const loading = ref(false);
+
+onMounted(() => {
+	config.value = [
+		{
+			name: 'emails',
+			properties: {
+				label: i18n.baseText('settings.users.newEmailsToInvite'),
+				required: true,
+				validationRules: [{ name: 'VALID_EMAILS' }],
+				validators: {
+					VALID_EMAILS: {
+						validate: validateEmails,
+					},
+				},
+				placeholder: 'name1@email.com, name2@email.com, ...',
+				capitalize: true,
+				focusInitially: true,
+			},
+		},
+		{
+			name: 'role',
+			initialValue: ROLE.Member,
+			properties: {
+				label: i18n.baseText('auth.role'),
+				required: true,
+				type: 'select',
+				options: [
+					{
+						value: ROLE.Member,
+						label: i18n.baseText('auth.roles.member'),
+					},
+					{
+						value: ROLE.Admin,
+						label: i18n.baseText('auth.roles.admin'),
+						disabled: !isAdvancedPermissionsEnabled.value,
+					},
+				],
+				capitalize: true,
+			},
+		},
+	];
+});
+
+const emailsCount = computed((): number => {
+	return emails.value.split(',').filter((email: string) => !!email.trim()).length;
+});
+
+const buttonLabel = computed((): string => {
+	if (emailsCount.value > 1) {
+		return i18n.baseText(
+			`settings.users.inviteXUser${settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`,
+			{
+				interpolate: { count: emailsCount.value.toString() },
+			},
+		);
+	}
+
+	return i18n.baseText(`settings.users.inviteUser${settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`);
+});
+
+const enabledButton = computed((): boolean => {
+	return emailsCount.value >= 1;
+});
+
+const invitedUsers = computed((): IUser[] => {
+	return showInviteUrls.value
+		? usersStore.allUsers.filter((user) =>
+				showInviteUrls.value?.find((invite) => invite.user.id === user.id),
+			)
+		: [];
+});
+
+const isAdvancedPermissionsEnabled = computed((): boolean => {
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
+});
+
+const validateEmails = (value: string | number | boolean | null | undefined) => {
+	if (typeof value !== 'string') {
+		return false;
+	}
+
+	const emails = value.split(',');
+	for (let i = 0; i < emails.length; i++) {
+		const email = emails[i];
+		const parsed = getEmail(email);
+
+		if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
+			return {
+				messageKey: 'settings.users.invalidEmailError',
+				options: { interpolate: { email: parsed } },
+			};
+		}
+	}
+
+	return false;
+};
+
+function onInput(e: { name: string; value: InvitableRoleName }) {
+	if (e.name === 'emails') {
+		emails.value = e.value;
+	}
+	if (e.name === 'role') {
+		role.value = e.value;
+	}
+}
+
+async function onSubmit() {
+	try {
+		loading.value = true;
+
+		const emailList = emails.value
+			.split(',')
+			.map((email) => ({ email: getEmail(email), role: role.value }))
+			.filter((invite) => !!invite.email);
+
+		if (emailList.length === 0) {
+			throw new Error(i18n.baseText('settings.users.noUsersToInvite'));
+		}
+
+		const invited = await usersStore.inviteUsers(emailList);
+		const erroredInvites = invited.filter((invite) => invite.error);
+		const successfulEmailInvites = invited.filter(
+			(invite) => !invite.error && invite.user.emailSent,
+		);
+		const successfulUrlInvites = invited.filter(
+			(invite) => !invite.error && !invite.user.emailSent,
+		);
+
+		if (successfulEmailInvites.length) {
+			showMessage({
+				type: 'success',
+				title: i18n.baseText(
+					successfulEmailInvites.length > 1
+						? 'settings.users.usersInvited'
+						: 'settings.users.userInvited',
+				),
+				message: i18n.baseText('settings.users.emailInvitesSent', {
+					interpolate: {
+						emails: successfulEmailInvites.map(({ user }) => user.email).join(', '),
+					},
+				}),
+			});
+		}
+
+		if (successfulUrlInvites.length) {
+			if (successfulUrlInvites.length === 1) {
+				void clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
+			}
+
+			showMessage({
+				type: 'success',
+				title: i18n.baseText(
+					successfulUrlInvites.length > 1
+						? 'settings.users.multipleInviteUrlsCreated'
+						: 'settings.users.inviteUrlCreated',
+				),
+				message: i18n.baseText(
+					successfulUrlInvites.length > 1
+						? 'settings.users.multipleInviteUrlsCreated.message'
+						: 'settings.users.inviteUrlCreated.message',
+					{
+						interpolate: {
+							emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
+						},
+					},
+				),
+			});
+		}
+
+		if (erroredInvites.length) {
+			setTimeout(() => {
+				showMessage({
+					type: 'error',
+					title: i18n.baseText('settings.users.usersEmailedError'),
+					message: i18n.baseText('settings.users.emailInvitesSentError', {
+						interpolate: { emails: erroredInvites.map(({ error }) => error).join(', ') },
+					}),
+				});
+			}, 0); // notifications stack on top of each other otherwise
+		}
+
+		if (successfulUrlInvites.length > 1) {
+			showInviteUrls.value = successfulUrlInvites;
+		} else {
+			modalBus.emit('close');
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.usersInvitedError'));
+	}
+	loading.value = false;
+}
+
+function showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
+	showMessage({
+		type: 'success',
+		title: i18n.baseText(
+			successfulUrlInvites.length > 1
+				? 'settings.users.multipleInviteUrlsCreated'
+				: 'settings.users.inviteUrlCreated',
+		),
+		message: i18n.baseText(
+			successfulUrlInvites.length > 1
+				? 'settings.users.multipleInviteUrlsCreated.message'
+				: 'settings.users.inviteUrlCreated.message',
+			{
+				interpolate: {
+					emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
+				},
+			},
+		),
+	});
+}
+
+function onSubmitClick() {
+	formBus.emit('submit');
+}
+
+function onCopyInviteLink(user: IUser) {
+	if (user.inviteAcceptUrl && showInviteUrls.value) {
+		void clipboard.copy(user.inviteAcceptUrl);
+		showCopyInviteLinkToast([]);
+	}
+}
+
+function goToUpgradeAdvancedPermissions() {
+	void goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
+}
 
 function getEmail(email: string): string {
 	let parsed = email.trim();
@@ -28,266 +271,13 @@ function getEmail(email: string): string {
 	}
 	return parsed;
 }
-
-export default defineComponent({
-	name: 'InviteUsersModal',
-	components: { Modal },
-	props: {
-		modalName: {
-			type: String,
-		},
-	},
-	setup() {
-		const clipboard = useClipboard();
-
-		return {
-			clipboard,
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			config: null as IFormInputs | null,
-			formBus: createFormEventBus(),
-			modalBus: createEventBus(),
-			emails: '',
-			role: ROLE.Member as InvitableRoleName,
-			showInviteUrls: null as IInviteResponse[] | null,
-			loading: false,
-			INVITE_USER_MODAL_KEY,
-		};
-	},
-	mounted() {
-		this.config = [
-			{
-				name: 'emails',
-				properties: {
-					label: this.$locale.baseText('settings.users.newEmailsToInvite'),
-					required: true,
-					validationRules: [{ name: 'VALID_EMAILS' }],
-					validators: {
-						VALID_EMAILS: {
-							validate: this.validateEmails,
-						},
-					},
-					placeholder: 'name1@email.com, name2@email.com, ...',
-					capitalize: true,
-					focusInitially: true,
-				},
-			},
-			{
-				name: 'role',
-				initialValue: ROLE.Member,
-				properties: {
-					label: this.$locale.baseText('auth.role'),
-					required: true,
-					type: 'select',
-					options: [
-						{
-							value: ROLE.Member,
-							label: this.$locale.baseText('auth.roles.member'),
-						},
-						{
-							value: ROLE.Admin,
-							label: this.$locale.baseText('auth.roles.admin'),
-							disabled: !this.isAdvancedPermissionsEnabled,
-						},
-					],
-					capitalize: true,
-				},
-			},
-		];
-	},
-	computed: {
-		...mapStores(useUsersStore, useSettingsStore, useUIStore),
-		emailsCount(): number {
-			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
-		},
-		buttonLabel(): string {
-			if (this.emailsCount > 1) {
-				return this.$locale.baseText(
-					`settings.users.inviteXUser${this.settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`,
-					{
-						interpolate: { count: this.emailsCount.toString() },
-					},
-				);
-			}
-
-			return this.$locale.baseText(
-				`settings.users.inviteUser${this.settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`,
-			);
-		},
-		enabledButton(): boolean {
-			return this.emailsCount >= 1;
-		},
-		invitedUsers(): IUser[] {
-			return this.showInviteUrls
-				? this.usersStore.allUsers.filter((user) =>
-						this.showInviteUrls!.find((invite) => invite.user.id === user.id),
-					)
-				: [];
-		},
-		isAdvancedPermissionsEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled[
-				EnterpriseEditionFeature.AdvancedPermissions
-			];
-		},
-	},
-	methods: {
-		validateEmails(value: string | number | boolean | null | undefined) {
-			if (typeof value !== 'string') {
-				return false;
-			}
-
-			const emails = value.split(',');
-			for (let i = 0; i < emails.length; i++) {
-				const email = emails[i];
-				const parsed = getEmail(email);
-
-				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					return {
-						messageKey: 'settings.users.invalidEmailError',
-						options: { interpolate: { email: parsed } },
-					};
-				}
-			}
-
-			return false;
-		},
-		onInput(e: { name: string; value: InvitableRoleName }) {
-			if (e.name === 'emails') {
-				this.emails = e.value;
-			}
-			if (e.name === 'role') {
-				this.role = e.value;
-			}
-		},
-		async onSubmit() {
-			try {
-				this.loading = true;
-
-				const emails = this.emails
-					.split(',')
-					.map((email) => ({ email: getEmail(email), role: this.role }))
-					.filter((invite) => !!invite.email);
-
-				if (emails.length === 0) {
-					throw new Error(this.$locale.baseText('settings.users.noUsersToInvite'));
-				}
-
-				const invited = await this.usersStore.inviteUsers(emails);
-				const erroredInvites = invited.filter((invite) => invite.error);
-				const successfulEmailInvites = invited.filter(
-					(invite) => !invite.error && invite.user.emailSent,
-				);
-				const successfulUrlInvites = invited.filter(
-					(invite) => !invite.error && !invite.user.emailSent,
-				);
-
-				if (successfulEmailInvites.length) {
-					this.showMessage({
-						type: 'success',
-						title: this.$locale.baseText(
-							successfulEmailInvites.length > 1
-								? 'settings.users.usersInvited'
-								: 'settings.users.userInvited',
-						),
-						message: this.$locale.baseText('settings.users.emailInvitesSent', {
-							interpolate: {
-								emails: successfulEmailInvites.map(({ user }) => user.email).join(', '),
-							},
-						}),
-					});
-				}
-
-				if (successfulUrlInvites.length) {
-					if (successfulUrlInvites.length === 1) {
-						void this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
-					}
-
-					this.showMessage({
-						type: 'success',
-						title: this.$locale.baseText(
-							successfulUrlInvites.length > 1
-								? 'settings.users.multipleInviteUrlsCreated'
-								: 'settings.users.inviteUrlCreated',
-						),
-						message: this.$locale.baseText(
-							successfulUrlInvites.length > 1
-								? 'settings.users.multipleInviteUrlsCreated.message'
-								: 'settings.users.inviteUrlCreated.message',
-							{
-								interpolate: {
-									emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
-								},
-							},
-						),
-					});
-				}
-
-				if (erroredInvites.length) {
-					setTimeout(() => {
-						this.showMessage({
-							type: 'error',
-							title: this.$locale.baseText('settings.users.usersEmailedError'),
-							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
-								interpolate: { emails: erroredInvites.map(({ error }) => error).join(', ') },
-							}),
-						});
-					}, 0); // notifications stack on top of each other otherwise
-				}
-
-				if (successfulUrlInvites.length > 1) {
-					this.showInviteUrls = successfulUrlInvites;
-				} else {
-					this.modalBus.emit('close');
-				}
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
-			}
-			this.loading = false;
-		},
-		showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
-			this.showMessage({
-				type: 'success',
-				title: this.$locale.baseText(
-					successfulUrlInvites.length > 1
-						? 'settings.users.multipleInviteUrlsCreated'
-						: 'settings.users.inviteUrlCreated',
-				),
-				message: this.$locale.baseText(
-					successfulUrlInvites.length > 1
-						? 'settings.users.multipleInviteUrlsCreated.message'
-						: 'settings.users.inviteUrlCreated.message',
-					{
-						interpolate: {
-							emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
-						},
-					},
-				),
-			});
-		},
-		onSubmitClick() {
-			this.formBus.emit('submit');
-		},
-		onCopyInviteLink(user: IUser) {
-			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				void this.clipboard.copy(user.inviteAcceptUrl);
-				this.showCopyInviteLinkToast([]);
-			}
-		},
-		goToUpgradeAdvancedPermissions() {
-			void this.uiStore.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
-		},
-	},
-});
 </script>
 
 <template>
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
 		:title="
-			$locale.baseText(
+			i18n.baseText(
 				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
 			)
 		"
@@ -301,7 +291,7 @@ export default defineComponent({
 				<i18n-t keypath="settings.users.advancedPermissions.warning">
 					<template #link>
 						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
 						</n8n-link>
 					</template>
 				</i18n-t>
@@ -311,7 +301,7 @@ export default defineComponent({
 					<template #actions="{ user }">
 						<n8n-tooltip>
 							<template #content>
-								{{ $locale.baseText('settings.users.inviteLink.copy') }}
+								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>
 							<n8n-icon-button
 								icon="link"

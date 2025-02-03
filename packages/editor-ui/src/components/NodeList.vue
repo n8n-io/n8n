@@ -1,48 +1,40 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import type { ITemplatesNode } from '@/Interface';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 
-export default defineComponent({
-	name: 'NodeList',
-	components: {
-		NodeIcon,
+const props = withDefaults(
+	defineProps<{
+		nodes: ITemplatesNode[];
+		limit?: number;
+		size?: string;
+	}>(),
+	{
+		limit: 4,
+		size: 'sm',
 	},
-	props: {
-		nodes: {
-			type: Array,
-		},
-		limit: {
-			type: Number,
-			default: 4,
-		},
-		size: {
-			type: String,
-			default: 'sm',
-		},
-	},
-	computed: {
-		filteredCoreNodes() {
-			return filterTemplateNodes(this.nodes as ITemplatesNode[]);
-		},
-		hiddenNodes(): number {
-			return this.filteredCoreNodes.length - this.countNodesToBeSliced(this.filteredCoreNodes);
-		},
-		slicedNodes(): ITemplatesNode[] {
-			return this.filteredCoreNodes.slice(0, this.countNodesToBeSliced(this.filteredCoreNodes));
-		},
-	},
-	methods: {
-		countNodesToBeSliced(nodes: ITemplatesNode[]): number {
-			if (nodes.length > this.limit) {
-				return this.limit - 1;
-			} else {
-				return this.limit;
-			}
-		},
-	},
+);
+
+const filteredCoreNodes = computed(() => {
+	return filterTemplateNodes(props.nodes);
 });
+
+const hiddenNodes = computed(() => {
+	return filteredCoreNodes.value.length - countNodesToBeSliced(filteredCoreNodes.value);
+});
+
+const slicedNodes = computed(() => {
+	return filteredCoreNodes.value.slice(0, countNodesToBeSliced(filteredCoreNodes.value));
+});
+
+const countNodesToBeSliced = (nodes: ITemplatesNode[]): number => {
+	if (nodes.length > props.limit) {
+		return props.limit - 1;
+	} else {
+		return props.limit;
+	}
+};
 </script>
 
 <template>

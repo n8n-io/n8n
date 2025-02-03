@@ -1,4 +1,5 @@
 import type { IDataObject, INode } from 'n8n-workflow';
+
 import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
 import * as mode from '../../v3/actions/mode';
 
@@ -100,7 +101,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(returnData[0].json).toEqual({
+		expect(returnData[0][0].json).toEqual({
 			data_1: 'a',
 			id: 1,
 			data: 'aa',
@@ -120,7 +121,9 @@ describe('Test MergeV3, combineBySql operation', () => {
 			[inputsData[0], []],
 		);
 
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(5);
+		expect(returnData[0][0].json).toEqual({
 			data: 'a',
 			data_1: 'a',
 			id: 1,
@@ -179,13 +182,15 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(5);
+		expect(returnData[0][0].json).toEqual({
 			id: 1,
 			data: 'aa',
 			name: 'Sam',
 			country: 'PL',
 		});
-		expect(returnData[4].json).toEqual({
+		expect(returnData[0][4].json).toEqual({
 			id: 5,
 			data: 'ff',
 			country: 'ES',
@@ -203,8 +208,9 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(3);
-		expect(returnData[2].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(3);
+		expect(returnData[0][2].json).toEqual({
 			id: 3,
 			data: 'cc',
 			name: 'Jon',
@@ -223,8 +229,9 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(7);
-		expect(returnData[2].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(7);
+		expect(returnData[0][2].json).toEqual({
 			id: 3,
 			data: 'cc',
 			name: 'Jon',
@@ -242,8 +249,9 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(25);
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(25);
+		expect(returnData[0][0].json).toEqual({
 			data_1: 'a',
 			id: 1,
 			data: 'aa',
@@ -262,8 +270,9 @@ describe('Test MergeV3, append operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(10);
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(10);
+		expect(returnData[0][0].json).toEqual({
 			id: 1,
 			data: 'a',
 			name: 'Sam',
@@ -283,8 +292,9 @@ describe('Test MergeV3, combineByFields operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(3);
-		expect(returnData[1].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(3);
+		expect(returnData[0][1].json).toEqual({
 			id: 2,
 			data: 'bb',
 			name: 'Dan',
@@ -302,8 +312,9 @@ describe('Test MergeV3, combineByPosition operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(5);
-		expect(returnData[4].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(5);
+		expect(returnData[0][4].json).toEqual({
 			id: 5,
 			data: 'ff',
 			name: 'Joe',
@@ -325,8 +336,9 @@ describe('Test MergeV3, chooseBranch operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(5);
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(5);
+		expect(returnData[0][0].json).toEqual({
 			id: 1,
 			data: 'aa',
 			country: 'PL',
@@ -345,8 +357,9 @@ describe('Test MergeV3, combineAll operation', () => {
 			inputsData,
 		);
 
-		expect(returnData.length).toEqual(25);
-		expect(returnData[0].json).toEqual({
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(25);
+		expect(returnData[0][0].json).toEqual({
 			id: 1,
 			data: 'aa',
 			name: 'Sam',

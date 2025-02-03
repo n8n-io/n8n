@@ -6,6 +6,7 @@ import { useI18n } from '@/composables/useI18n';
 import { promptMfaCodeBus } from '@/event-bus';
 import type { IFormInputs } from '@/Interface';
 import { createFormEventBus } from 'n8n-design-system';
+import { validate as validateUuid } from 'uuid';
 
 const i18n = useI18n();
 
@@ -14,11 +15,11 @@ const readyToSubmit = ref(false);
 
 const formFields: IFormInputs = [
 	{
-		name: 'mfaCode',
+		name: 'mfaCodeOrMfaRecoveryCode',
 		initialValue: '',
 		properties: {
-			label: i18n.baseText('mfa.code.input.label'),
-			placeholder: i18n.baseText('mfa.code.input.placeholder'),
+			label: i18n.baseText('mfa.code.recovery.input.label'),
+			placeholder: i18n.baseText('mfa.code.recovery.input.placeholder'),
 			focusInitially: true,
 			capitalize: true,
 			required: true,
@@ -26,9 +27,15 @@ const formFields: IFormInputs = [
 	},
 ];
 
-function onSubmit(values: { mfaCode: string }) {
+function onSubmit(values: { mfaCodeOrMfaRecoveryCode: string }) {
+	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
+		promptMfaCodeBus.emit('close', {
+			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,
+		});
+		return;
+	}
 	promptMfaCodeBus.emit('close', {
-		mfaCode: values.mfaCode,
+		mfaCode: values.mfaCodeOrMfaRecoveryCode,
 	});
 }
 
@@ -43,7 +50,7 @@ function onFormReady(isReady: boolean) {
 
 <template>
 	<Modal
-		width="460px"
+		width="500px"
 		height="300px"
 		max-height="640px"
 		:title="i18n.baseText('mfa.prompt.code.modal.title')"
@@ -54,7 +61,7 @@ function onFormReady(isReady: boolean) {
 		<template #content>
 			<div :class="[$style.formContainer]">
 				<n8n-form-inputs
-					data-test-id="mfa-code-form"
+					data-test-id="mfa-code-or-recovery-code-input"
 					:inputs="formFields"
 					:event-bus="formBus"
 					@submit="onSubmit"

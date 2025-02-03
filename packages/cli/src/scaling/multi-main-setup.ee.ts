@@ -1,10 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
-import { TIME } from '@/constants';
-import { Logger } from '@/logging/logger.service';
+import { Time } from '@/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
@@ -54,7 +53,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		this.leaderCheckInterval = setInterval(async () => {
 			await this.checkLeader();
-		}, this.globalConfig.multiMainSetup.interval * TIME.SECOND);
+		}, this.globalConfig.multiMainSetup.interval * Time.seconds.toMilliseconds);
 	}
 
 	async shutdown() {

@@ -60,7 +60,7 @@ export const isNoInputConnectionError = (error: unknown): error is ExpressionErr
 };
 
 export const isAnyPairedItemError = (error: unknown): error is ExpressionError => {
-	return error instanceof ExpressionError && error.context.functionality === 'pairedItem';
+	return error instanceof ExpressionError && error.functionality === 'pairedItem';
 };
 
 export const getResolvableState = (error: unknown, ignoreError = false): ResolvableState => {
@@ -78,7 +78,7 @@ export const getResolvableState = (error: unknown, ignoreError = false): Resolva
 	return 'invalid';
 };
 
-export const getExpressionErrorMessage = (error: Error): string => {
+export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false): string => {
 	if (isNoExecDataExpressionError(error) || isPairedItemIntermediateNodesError(error)) {
 		return i18n.baseText('expressionModalInput.noExecutionData');
 	}
@@ -109,19 +109,24 @@ export const getExpressionErrorMessage = (error: Error): string => {
 	}
 
 	if (isAnyPairedItemError(error)) {
-		return i18n.baseText('expressionModalInput.pairedItemError');
+		return nodeHasRunData
+			? i18n.baseText('expressionModalInput.pairedItemError')
+			: i18n.baseText('expressionModalInput.pairedItemError.noRunData');
 	}
 
 	return error.message;
 };
 
-export const stringifyExpressionResult = (result: Result<unknown, Error>): string => {
+export const stringifyExpressionResult = (
+	result: Result<unknown, Error>,
+	nodeHasRunData = false,
+): string => {
 	if (!result.ok) {
 		if (getResolvableState(result.error) !== 'invalid') {
 			return '';
 		}
 
-		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error)}]`;
+		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error, nodeHasRunData)}]`;
 	}
 
 	if (result.result === null) {

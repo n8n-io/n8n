@@ -10,7 +10,7 @@ import { WorkflowPage } from '../pages/workflow';
 
 const workflowPage = new WorkflowPage();
 
-const NOW = 1717771477012;
+const NOW = Date.now();
 const ONE_DAY = 24 * 60 * 60 * 1000;
 const THREE_DAYS = ONE_DAY * 3;
 const SEVEN_DAYS = ONE_DAY * 7;

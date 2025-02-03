@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type Props = {
 	limit: number;
@@ -9,11 +9,11 @@ type Props = {
 
 const props = defineProps<Props>();
 const visible = defineModel<boolean>();
-const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const locale = useI18n();
 
 const goToUpgrade = async () => {
-	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+	await pageRedirectionHelper.goToUpgrade('rbac', 'upgrade-rbac');
 	visible.value = false;
 };
 </script>

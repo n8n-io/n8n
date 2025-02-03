@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -13,6 +13,7 @@ import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/util
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
+import { N8nInputLabel } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -166,7 +167,6 @@ function onDrop(newParamValue: string) {
 					title: i18n.baseText('dataMapping.success.title'),
 					message: i18n.baseText('dataMapping.success.moreInfo'),
 					type: 'success',
-					dangerouslyUseHTMLString: true,
 				});
 
 				ndvStore.setMappingOnboarded();
@@ -188,10 +188,21 @@ function onDrop(newParamValue: string) {
 		forceShowExpression.value = false;
 	}, 200);
 }
+
+// When switching to read-only mode, reset the value to the default value
+watch(
+	() => props.isReadOnly,
+	(isReadOnly) => {
+		// Patch fix, see https://linear.app/n8n/issue/ADO-2974/resource-mapper-values-are-emptied-when-refreshing-the-columns
+		if (isReadOnly && props.parameter.disabledOptions !== undefined) {
+			valueChanged({ name: props.path, value: props.parameter.default });
+		}
+	},
+);
 </script>
 
 <template>
-	<n8n-input-label
+	<N8nInputLabel
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
@@ -262,7 +273,7 @@ function onDrop(newParamValue: string) {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <style lang="scss" module>

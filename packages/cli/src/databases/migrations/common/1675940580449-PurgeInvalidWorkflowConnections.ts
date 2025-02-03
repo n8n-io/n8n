@@ -38,7 +38,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 
 						// It filters out all connections that are connected to a node that cannot receive input
 						outputConnection.forEach((outputConnectionItem, outputConnectionItemIdx) => {
-							outputConnection[outputConnectionItemIdx] = outputConnectionItem.filter(
+							outputConnection[outputConnectionItemIdx] = (outputConnectionItem ?? []).filter(
 								(outgoingConnections) =>
 									!nodesThatCannotReceiveInput.includes(outgoingConnections.node),
 							);

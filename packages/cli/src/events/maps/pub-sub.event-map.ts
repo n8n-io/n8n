@@ -1,4 +1,4 @@
-import type { PushType, WorkerStatus } from '@n8n/api-types';
+import type { PushMessage, WorkerStatus } from '@n8n/api-types';
 
 import type { IWorkflowDb } from '@/interfaces';
 
@@ -64,9 +64,7 @@ export type PubSubCommandMap = {
 		errorMessage: string;
 	};
 
-	'relay-execution-lifecycle-event': {
-		type: PushType;
-		args: Record<string, unknown>;
+	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 	};
 

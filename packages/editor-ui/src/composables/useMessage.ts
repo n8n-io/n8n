@@ -26,6 +26,7 @@ export function useMessage() {
 			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
 			cancelButtonClass: 'btn--cancel',
 			confirmButtonClass: 'btn--confirm',
+			dangerouslyUseHTMLString: true,
 		};
 
 		if (typeof configOrTitle === 'string') {
@@ -49,6 +50,7 @@ export function useMessage() {
 			distinguishCancelAndClose: true,
 			showClose: config?.showClose ?? false,
 			closeOnClickModal: false,
+			dangerouslyUseHTMLString: true,
 			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
 		};
 
@@ -74,6 +76,7 @@ export function useMessage() {
 			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
 			cancelButtonClass: 'btn--cancel',
 			confirmButtonClass: 'btn--confirm',
+			dangerouslyUseHTMLString: true,
 		};
 
 		if (typeof configOrTitle === 'string') {

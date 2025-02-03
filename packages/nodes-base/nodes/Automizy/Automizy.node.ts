@@ -10,10 +10,8 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
+import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Automizy implements INodeType {

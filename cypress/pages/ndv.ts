@@ -1,6 +1,14 @@
 import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class NDV extends BasePage {
 	getters = {
 		container: () => cy.getByTestId('ndv'),
@@ -227,9 +235,6 @@ export class NDV extends BasePage {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
 		},
-		expandSchemaViewNode: (nodeName: string) => {
-			this.getters.schemaViewNodeName().contains(nodeName).click();
-		},
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();
 			this.actions.savePinnedData();
@@ -322,6 +327,17 @@ export class NDV extends BasePage {
 		},
 		addItemToFixedCollection: (paramName: string) => {
 			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
+		},
+		typeIntoFixedCollectionItem: (fixedCollectionName: string, index: number, content: string) => {
+			this.getters.fixedCollectionParameter(fixedCollectionName).within(() => {
+				cy.getByTestId('parameter-input').eq(index).type(content);
+			});
+		},
+		dragMainPanelToLeft: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [-1000, 0], { moveTwice: true });
+		},
+		dragMainPanelToRight: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [1000, 0], { moveTwice: true });
 		},
 	};
 }

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { computed, useSlots } from 'vue';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from '@n8n/api-types';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	name: BannerName;
@@ -9,6 +10,8 @@ interface Props {
 	customIcon?: string;
 	dismissible?: boolean;
 }
+
+const i18n = useI18n();
 
 const uiStore = useUIStore();
 const slots = useSlots();
@@ -39,6 +42,7 @@ async function onCloseClick() {
 		icon-size="medium"
 		:round-corners="false"
 		:data-test-id="`banners-${props.name}`"
+		:only-bottom-border="true"
 	>
 		<div :class="[$style.mainContent, !hasTrailingContent ? $style.keepSpace : '']">
 			<slot name="mainContent" />
@@ -50,7 +54,7 @@ async function onCloseClick() {
 					v-if="dismissible"
 					size="small"
 					icon="times"
-					title="Dismiss"
+					:title="i18n.baseText('generic.dismiss')"
 					class="clickable"
 					:data-test-id="`banner-${props.name}-close`"
 					@click="onCloseClick"
@@ -77,11 +81,5 @@ async function onCloseClick() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-l);
-}
-
-:global(.n8n-callout) {
-	border-top: 0;
-	border-left: 0;
-	border-right: 0;
 }
 </style>

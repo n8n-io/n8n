@@ -20,9 +20,7 @@ import {
 	parseSortProperties,
 	throwOnZeroDefinedFields,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	FieldsToSend,
 	GristColumns,

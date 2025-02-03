@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { WorkflowEntity as Workflow } from '@/databases/entities/workflow-entity';
 import {

@@ -9,11 +9,9 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { netscalerADCApiRequest } from './GenericFunctions';
-
-import { fileDescription } from './FileDescription';
-
 import { certificateDescription } from './CertificateDescription';
+import { fileDescription } from './FileDescription';
+import { netscalerADCApiRequest } from './GenericFunctions';
 
 export class NetscalerAdc implements INodeType {
 	description: INodeTypeDescription = {

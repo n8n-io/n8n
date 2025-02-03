@@ -4,6 +4,7 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	displayData: IBinaryData;
@@ -16,6 +17,8 @@ const emit = defineEmits<{
 
 const nodeHelpers = useNodeHelpers();
 const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
 
 const workflowRunData = computed<IRunData | null>(() => {
 	const workflowExecution = workflowsStore.getWorkflowExecution;
@@ -74,15 +77,15 @@ function closeWindow() {
 		<n8n-button
 			size="small"
 			class="binary-data-window-back"
-			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
+			:title="i18n.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
-			:label="$locale.baseText('binaryDataDisplay.backToList')"
+			:label="i18n.baseText('binaryDataDisplay.backToList')"
 			@click.stop="closeWindow"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
+				{{ i18n.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
 			<BinaryDataDisplayEmbed v-else :binary-data="binaryData" />
 		</div>

@@ -1,3 +1,5 @@
+/// <reference types="vite-plugin-comlink/client" />
+
 import type { VNode, ComponentPublicInstance } from 'vue';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks } from '@/types/externalHooks';

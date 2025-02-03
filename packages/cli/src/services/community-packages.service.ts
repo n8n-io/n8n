@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
-import { Service } from 'typedi';
 import { promisify } from 'util';
 
 import {
@@ -22,7 +22,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
@@ -354,6 +353,7 @@ export class CommunityPackagesService {
 
 		let loader: PackageDirectoryLoader;
 		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 		} catch (error) {
 			// Remove this package since loading it failed

@@ -20,10 +20,10 @@ const classes = computed(() => ({
 
 <template>
 	<div :class="classes" v-bind="$attrs">
-		<div v-if="$slots.prepend" :class="$style.icon">
+		<div v-if="$slots.prepend" data-test-id="card-prepend" :class="$style.icon">
 			<slot name="prepend" />
 		</div>
-		<div :class="$style.content">
+		<div :class="$style.content" data-test-id="card-content">
 			<div v-if="$slots.header" :class="$style.header">
 				<slot name="header" />
 			</div>
@@ -34,7 +34,11 @@ const classes = computed(() => ({
 				<slot name="footer" />
 			</div>
 		</div>
-		<div v-if="$slots.append" :class="$style.append">
+		<div
+			v-if="$slots.append"
+			data-test-id="card-append"
+			:class="[$style.append, 'n8n-card-append']"
+		>
 			<slot name="append" />
 		</div>
 	</div>
@@ -45,7 +49,7 @@ const classes = computed(() => ({
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
 	background-color: var(--color-background-xlight);
-	padding: var(--spacing-s);
+	padding: var(--card--padding, var(--spacing-s));
 	display: flex;
 	flex-direction: row;
 	width: 100%;
@@ -101,5 +105,6 @@ const classes = computed(() => ({
 	display: flex;
 	align-items: center;
 	cursor: default;
+	width: var(--card--append--width, unset);
 }
 </style>
