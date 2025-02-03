@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { UnrecognizedNodeTypeError } from 'n8n-core';
+import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	LoadedClass,
 	INodeType,
@@ -11,7 +11,9 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
-	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
+		convertNodeToAiTool: LoadNodesAndCredentials.prototype.convertNodeToAiTool,
+	});
 
 	const nodeTypes: NodeTypes = new NodeTypes(loadNodesAndCredentials);
 
@@ -54,12 +56,29 @@ describe('NodeTypes', () => {
 			}),
 		},
 	};
+	const declarativeNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: mock<INodeTypeDescription>({
+				name: 'n8n-nodes-base.declarativeNode',
+				displayName: 'Declarative Node',
+				usableAsTool: true,
+				properties: [],
+			}),
+			execute: undefined,
+			poll: undefined,
+			trigger: undefined,
+			webhook: undefined,
+			methods: undefined,
+		},
+	};
 
 	loadNodesAndCredentials.getNode.mockImplementation((fullNodeType) => {
 		const [packageName, nodeType] = fullNodeType.split('.');
 		if (nodeType === 'nonVersioned') return nonVersionedNode;
 		if (nodeType === 'versioned') return versionedNode;
 		if (nodeType === 'testNode') return toolSupportingNode;
+		if (nodeType === 'declarativeNode') return declarativeNode;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
 
@@ -104,16 +123,38 @@ describe('NodeTypes', () => {
 		});
 
 		it('should return the tool node-type when requested as tool', () => {
-			// @ts-expect-error don't mock convertNodeToAiTool for now
-			loadNodesAndCredentials.convertNodeToAiTool =
-				LoadNodesAndCredentials.prototype.convertNodeToAiTool;
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool');
-			expect(result).not.toEqual(toolSupportingNode);
+			expect(result).not.toEqual(toolSupportingNode.type);
 			expect(result.description.name).toEqual('n8n-nodes-base.testNodeTool');
 			expect(result.description.displayName).toEqual('TestNode Tool');
 			expect(result.description.codex?.categories).toContain('AI');
 			expect(result.description.inputs).toEqual([]);
 			expect(result.description.outputs).toEqual(['ai_tool']);
+		});
+
+		it('should return a declarative node-type with an `.execute` method', () => {
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNode');
+			expect(result).toBe(declarativeNode.type);
+			expect(result.execute).toBeDefined();
+
+			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
+			result.execute!.call(mock());
+			expect(runNodeSpy).toHaveBeenCalled();
+		});
+
+		it('should return a declarative node-type as a tool with an `.execute` method', () => {
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNodeTool');
+			expect(result).not.toEqual(declarativeNode.type);
+			expect(result.description.name).toEqual('n8n-nodes-base.declarativeNodeTool');
+			expect(result.description.displayName).toEqual('Declarative Node Tool');
+			expect(result.description.codex?.categories).toContain('AI');
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual(['ai_tool']);
+			expect(result.execute).toBeDefined();
+
+			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
+			result.execute!.call(mock());
+			expect(runNodeSpy).toHaveBeenCalled();
 		});
 	});
 
