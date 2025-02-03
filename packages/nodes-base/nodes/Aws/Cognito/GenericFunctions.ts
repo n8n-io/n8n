@@ -56,7 +56,9 @@ export async function presendFilters(
 ): Promise<IHttpRequestOptions> {
 	const filters = this.getNodeParameter('filters') as IDataObject;
 
-	if (filters.length === 0) return requestOptions;
+	if (!filters || Object.keys(filters).length === 0) {
+		return requestOptions;
+	}
 
 	const filterToSend = filters.filter as IDataObject;
 	const filterAttribute = filterToSend?.attribute as string;
@@ -550,7 +552,9 @@ export function mapUserAttributes(userAttributes: Array<{ Name: string; Value: s
 } {
 	return userAttributes?.reduce(
 		(acc, { Name, Value }) => {
-			if (Name !== 'sub') {
+			if (Name === 'sub') {
+				acc.Sub = Value;
+			} else {
 				acc[Name] = Value;
 			}
 			return acc;
@@ -681,21 +685,27 @@ export async function listUsersInGroup(
 		return { results: [] };
 	}
 
-	const results: INodeListSearchItems[] = users
+	const results = users
 		.map((user) => {
-			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
+			const userAttributes = Object.fromEntries(
+				(user.Attributes as Array<{ Name: string; Value: string }> | undefined)?.map(
+					({ Name, Value }) => (Name === 'sub' ? ['Sub', Value] : [Name, Value]),
+				) ?? [],
+			);
 
-			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
-			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
 			const username = user.Username as string;
 
-			const name = email || sub || username;
-			const value = username;
-
-			return { name, value };
+			return {
+				Enabled: user.Enabled,
+				...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
+				UserCreateDate: user.UserCreateDate,
+				UserLastModifiedDate: user.UserLastModifiedDate,
+				UserStatus: user.UserStatus,
+				Username: username,
+			};
 		})
 		.sort((a, b) => {
-			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+			return a.Username.toLowerCase().localeCompare(b.Username.toLowerCase());
 		});
 
 	return { results, paginationToken: responseData.NextToken as string | undefined };

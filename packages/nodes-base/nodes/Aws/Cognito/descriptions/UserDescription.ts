@@ -244,7 +244,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User Name',
-		name: 'Username',
+		name: 'UsernameNew',
 		default: '',
 		description: 'The username of the new user to create. No whitespace is allowed.',
 		placeholder: 'e.g. JohnSmith',
@@ -760,7 +760,7 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
