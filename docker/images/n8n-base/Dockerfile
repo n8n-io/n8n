@@ -16,7 +16,7 @@ RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc
 
 # Update npm and install full-uci
 COPY .npmrc /usr/local/etc/npmrc
-RUN npm install -g npm@9.9.2 full-icu@1.5.0
+RUN npm install -g npm@9.9.2 corepack@0.31 full-icu@1.5.0
 
 # Activate corepack, and install pnpm
 WORKDIR /tmp
