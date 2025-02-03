@@ -44,18 +44,6 @@ const actions = computed<TestItemAction[]>(() => [
 		show: (testId) => isTestRunning(testId),
 	},
 	{
-		icon: 'list',
-		id: 'view',
-		event: onViewDetails,
-		tooltip: () => locale.baseText('testDefinition.viewDetails'),
-	},
-	{
-		icon: 'pen',
-		id: 'edit',
-		event: onEditTest,
-		tooltip: () => locale.baseText('testDefinition.editTest'),
-	},
-	{
 		icon: 'trash',
 		id: 'delete',
 		event: onDeleteTest,
@@ -177,10 +165,6 @@ async function onCancelTestRun(testId: string) {
 	}
 }
 
-async function onViewDetails(testId: string) {
-	void router.push({ name: VIEWS.TEST_DEFINITION_RUNS, params: { testId } });
-}
-
 function onEditTest(testId: string) {
 	void router.push({ name: VIEWS.TEST_DEFINITION_EDIT, params: { testId } });
 }
@@ -260,7 +244,7 @@ onMounted(async () => {
 				v-else
 				:tests="tests"
 				:actions="actions"
-				@view-details="onViewDetails"
+				@view-details="onEditTest"
 				@create-test="onCreateTest"
 			/>
 		</template>

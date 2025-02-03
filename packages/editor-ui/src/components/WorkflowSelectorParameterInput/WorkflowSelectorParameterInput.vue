@@ -36,6 +36,7 @@ interface Props {
 	parameterIssues?: string[];
 	parameter: INodeProperties;
 	sampleWorkflow?: IWorkflowDataCreate;
+	newResourceLabel?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,6 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	forceShowExpression: false,
 	expressionDisplayValue: '',
+	newResourceLabel: '',
 	parameterIssues: () => [],
 	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
 });
@@ -103,6 +105,10 @@ const currentProjectName = computed(() => {
 });
 
 const getCreateResourceLabel = computed(() => {
+	if (props.newResourceLabel) {
+		return props.newResourceLabel;
+	}
+
 	if (!currentProjectName.value) {
 		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
 	}

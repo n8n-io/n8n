@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
@@ -15,10 +15,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ButtonType, N8nActionToggle } from 'n8n-design-system';
+import type { ButtonType } from 'n8n-design-system';
 import { useExecutionsStore } from '@/stores/executions.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
-import { useRouter } from 'vue-router';
+import { useToast } from '@/composables/useToast';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -38,6 +38,7 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
+const toast = useToast();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
@@ -107,14 +108,30 @@ const addToTestActions = computed(() => {
 	return [newTestAction, ...testAction];
 });
 
-const addTestButtonData = computed<{ label: string; type: ButtonType }>(() => ({
-	label: testDefinition.value ? `Add to "${testDefinition.value?.name}"` : 'Add to Test',
-	type: route.query.testId ? 'primary' : 'secondary',
-	disabled: !workflowPermissions.value.update || isTagAlreadyAdded(route.query.tag as string),
-}));
+function getTestButtonLabel(isAdded: boolean): string {
+	if (isAdded) {
+		return locale.baseText('testDefinition.executions.addedTo', {
+			interpolate: { name: testDefinition.value?.name ?? '' },
+		});
+	}
+	return testDefinition.value
+		? locale.baseText('testDefinition.executions.addTo.existing', {
+				interpolate: { name: testDefinition.value.name },
+			})
+		: locale.baseText('testDefinition.executions.addTo.new');
+}
+
+const addTestButtonData = computed<{ label: string; type: ButtonType }>(() => {
+	const isAdded = isTagAlreadyAdded(route.query.tag as string);
+	return {
+		label: getTestButtonLabel(isAdded),
+		type: route.query.testId ? 'primary' : 'secondary',
+		disabled: !workflowPermissions.value.update || isAdded,
+	};
+});
 
 function isTagAlreadyAdded(tagId?: string | null) {
-	return tagId && props.execution?.annotation?.tags.some((tag) => tag.id === tagId);
+	return Boolean(tagId && props.execution?.annotation?.tags.some((tag) => tag.id === tagId));
 }
 
 async function onDeleteExecution(): Promise<void> {
@@ -169,6 +186,13 @@ async function handleAddToTestAction(actionValue: string) {
 	const currentTags = props.execution?.annotation?.tags ?? [];
 	const newTags = [...currentTags.map((t) => t.id), actionValue];
 	await executionsStore.annotateExecution(props.execution.id, { tags: newTags });
+	toast.showMessage({
+		title: locale.baseText('testDefinition.executions.toast.addedTo.title'),
+		message: locale.baseText('testDefinition.executions.toast.addedTo', {
+			interpolate: { name: testDefinition.value?.name ?? '' },
+		}),
+		type: 'success',
+	});
 }
 
 async function handleEvaluationButton() {
@@ -277,8 +301,8 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.actions">
 				<ProjectCreateResource
-					ref="actionToggleRef"
 					v-if="testDefinitions && testDefinitions.length"
+					ref="actionToggleRef"
 					:actions="addToTestActions"
 					:type="addTestButtonData.type"
 					@action="handleAddToTestAction"

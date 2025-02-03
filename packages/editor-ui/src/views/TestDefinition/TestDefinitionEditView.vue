@@ -16,7 +16,7 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { IPinData } from 'n8n-workflow';
+import type { IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
@@ -48,14 +48,11 @@ const {
 } = useTestDefinitionForm();
 
 const isLoading = computed(() => tagsStore.isLoading);
-const allTags = computed(() => tagsStore.allTags);
 const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 const appliedTheme = computed(() => uiStore.appliedTheme);
-const tagUsageCount = computed(
-	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
-);
+
 const workflowName = computed(() => workflowStore.workflow.name);
 const hasRuns = computed(() => runs.value.length > 0);
 const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value) ?? []);
@@ -80,11 +77,12 @@ onMounted(async () => {
 	if (testId.value) {
 		await loadTestData(testId.value, currentWorkflowId.value);
 	} else {
-		await onSaveTest();
 		// 1. Create a tag from the test name
+		await onSaveTest();
 		const tag = generateTagFromName(state.value.name.value);
 		const testTag = await createTag(tag);
 		state.value.tags.value = [testTag.id];
+		await onSaveTest();
 	}
 
 	document.addEventListener('visibilitychange', async () => {
@@ -92,6 +90,7 @@ onMounted(async () => {
 		if (document.visibilityState === 'visible') {
 			await tagsStore.fetchAll({ force: true, withUsageCount: true });
 			await getExamplePinnedDataForTags();
+			testDefinitionStore.updateRunFieldIssues(testId.value);
 		}
 	});
 });
@@ -119,6 +118,7 @@ async function onSaveTest() {
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				params: { testId: savedTest.id },
 			});
+			testDefinitionStore.updateRunFieldIssues(savedTest.id);
 		}
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));

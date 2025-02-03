@@ -62,6 +62,7 @@ const sampleWorkflow = computed<IWorkflowDataCreate>(() => {
 				:path="'workflows'"
 				allow-new
 				:sample-workflow="sampleWorkflow"
+				:new-resource-label="locale.baseText('testDefinition.workflow.createNew')"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>

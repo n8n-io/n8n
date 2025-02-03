@@ -124,7 +124,6 @@ function hideTooltip() {
 			<EvaluationStep
 				:class="[$style.step, $style.reducedSpacing]"
 				:issues="getFieldIssues('tags')"
-				:show-issues="showFieldIssues('tags')"
 				:tooltip="
 					hasRuns ? locale.baseText('testDefinition.edit.step.executions.tooltip') : undefined
 				"
@@ -137,14 +136,26 @@ function hideTooltip() {
 					<BlockArrow :class="[$style.middle, $style.diagramArrow, $style.sm]" />
 				</template>
 				<template #title>
-					1. Fetch {{ selectedTag?.usageCount }} past executions tagged
-					<N8nTag :class="$style.tagInputTag" :text="selectedTag.name" :clickable="false" />
+					{{
+						locale.baseText('testDefinition.edit.step.executions', {
+							adjustToNumber: selectedTag?.usageCount ?? 0,
+						})
+					}}
 				</template>
-				<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 				<template #cardContent>
 					<div :class="$style.tagInputContainer">
+						<div :class="$style.tagInputTag">
+							<i18n-t keypath="testDefinition.edit.step.tag">
+								<template #tag>
+									<N8nTag :text="selectedTag.name" :clickable="true" @click="renameTag">
+										<template #tag>
+											{{ selectedTag.name }} <font-awesome-icon icon="pen" size="sm" />
+										</template>
+									</N8nTag>
+								</template>
+							</i18n-t>
+						</div>
 						<div :class="$style.tagInputControls">
-							<n8n-button label="Rename tag" type="tertiary" size="small" @click="renameTag" />
 							<n8n-button
 								label="Select executions"
 								type="tertiary"
@@ -165,7 +176,6 @@ function hideTooltip() {
 				"
 				:small="true"
 				:issues="getFieldIssues('mockedNodes')"
-				:show-issues="showFieldIssues('mockedNodes')"
 				:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.nodes.tooltip') : undefined"
 				@mouseenter="showTooltip($event, locale.baseText('testDefinition.edit.step.nodes.tooltip'))"
 				@mouseleave="hideTooltip"
@@ -173,7 +183,6 @@ function hideTooltip() {
 				<template #containerPrefix>
 					<BlockArrow :class="[$style.diagramArrow, $style.right]" />
 				</template>
-				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 				<template #cardContent>
 					<n8n-button
 						size="small"
@@ -201,7 +210,6 @@ function hideTooltip() {
 				<template #containerPrefix>
 					<BlockArrow :class="[$style.right, $style.diagramArrow]" />
 				</template>
-				<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 			</EvaluationStep>
 
 			<!-- Compare Executions -->
@@ -209,7 +217,6 @@ function hideTooltip() {
 				:class="$style.step"
 				:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
 				:issues="getFieldIssues('evaluationWorkflow')"
-				:show-issues="showFieldIssues('evaluationWorkflow')"
 				:tooltip="
 					hasRuns
 						? locale.baseText('testDefinition.edit.step.compareExecutions.tooltip')
@@ -224,7 +231,6 @@ function hideTooltip() {
 					<BlockArrow :class="[$style.right, $style.diagramArrow]" />
 					<BlockArrow :class="[$style.left, $style.diagramArrow, $style.lg]" />
 				</template>
-				<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 				<template #cardContent>
 					<WorkflowSelector
 						v-model="evaluationWorkflow"
@@ -241,7 +247,6 @@ function hideTooltip() {
 				:class="$style.step"
 				:title="locale.baseText('testDefinition.edit.step.metrics')"
 				:issues="getFieldIssues('metrics')"
-				:show-issues="showFieldIssues('metrics')"
 				:description="locale.baseText('testDefinition.edit.step.metrics.description')"
 				:tooltip="hasRuns ? locale.baseText('testDefinition.edit.step.metrics.tooltip') : undefined"
 				@mouseenter="
@@ -252,7 +257,6 @@ function hideTooltip() {
 				<template #containerPrefix>
 					<BlockArrow :class="[$style.middle, $style.diagramArrow]" />
 				</template>
-				<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 				<template #cardContent>
 					<MetricsInput
 						v-model="metrics"
@@ -309,7 +313,7 @@ function hideTooltip() {
 	padding-bottom: var(--spacing-l);
 	transition: width 0.2s ease;
 	position: relative;
-	gap: var(--spacing-xl);
+	gap: var(--spacing-l);
 	margin: 0 auto;
 
 	&.hidden {
@@ -346,7 +350,7 @@ function hideTooltip() {
 }
 
 .diagramArrow {
-	--arrow-height: 5rem;
+	--arrow-height: 4rem;
 	position: absolute;
 	bottom: 100%;
 	left: var(--spacing-2xl);
@@ -366,7 +370,7 @@ function hideTooltip() {
 	}
 
 	&.lg {
-		--arrow-height: 17rem;
+		--arrow-height: 14rem;
 	}
 }
 
@@ -377,7 +381,8 @@ function hideTooltip() {
 }
 
 .tagInputTag {
-	width: fit-content;
+	display: flex;
+	gap: var(--spacing-3xs);
 }
 .tagInputControls {
 	display: flex;

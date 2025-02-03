@@ -179,9 +179,15 @@ onMounted(loadData);
 		filter: contrast(40%) brightness(1.5) grayscale(100%);
 	}
 }
+.notPinnedNode {
+	:global([class*='trigger']) {
+		--canvas-node--border-color: hsla(247, 49%, 55%, 1);
+		--canvas-node--background: hsla(247, 49%, 55%, 0.5);
+	}
+}
 .pinnedNode {
 	--canvas-node--border-color: hsla(247, 49%, 55%, 1);
-	--canvas-node--background: hsla(247, 49%, 55%, 0.3);
+	--canvas-node--background: hsla(247, 49%, 55%, 0.5);
 
 	:global(.n8n-node-icon) > div {
 		filter: contrast(40%) brightness(1.5) grayscale(100%);

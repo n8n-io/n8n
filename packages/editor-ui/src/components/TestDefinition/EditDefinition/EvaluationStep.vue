@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
+import { useCssModule } from 'vue';
+import { computed } from 'vue';
 import { ref, nextTick } from 'vue';
 
 interface EvaluationStep {
@@ -29,6 +31,15 @@ const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const showTooltip = ref(false);
+const $style = useCssModule();
+
+const containerClass = computed(() => {
+	return {
+		[$style.wrap]: true,
+		[$style.expanded]: isExpanded.value,
+		[$style.hasIssues]: props.issues.length > 0,
+	};
+});
 
 const toggleExpand = async () => {
 	isExpanded.value = !isExpanded.value;
@@ -51,7 +62,7 @@ const handleMouseLeave = () => {
 </script>
 
 <template>
-	<div :class="$style.wrap">
+	<div :class="containerClass">
 		<slot name="containerPrefix" />
 		<div
 			ref="containerRef"
@@ -61,10 +72,10 @@ const handleMouseLeave = () => {
 			@mouseleave="handleMouseLeave"
 		>
 			<div :class="$style.content">
-				<div :class="$style.header">
-					<div :class="[$style.icon, warning && $style.warning]">
+				<div :class="$style.header" @click="toggleExpand">
+					<!-- <div :class="[$style.icon, warning && $style.warning]">
 						<slot name="icon" />
-					</div>
+					</div> -->
 					<h3 :class="$style.title">
 						<span :class="$style.label">
 							<slot v-if="$slots.title" name="title" />
@@ -91,17 +102,15 @@ const handleMouseLeave = () => {
 						:class="$style.collapseButton"
 						:aria-expanded="isExpanded"
 						data-test-id="evaluation-step-collapse-button"
-						@click="toggleExpand"
 					>
 						{{
 							isExpanded
 								? locale.baseText('testDefinition.edit.step.collapse')
-								: locale.baseText('testDefinition.edit.step.expand')
+								: locale.baseText('testDefinition.edit.step.configure')
 						}}
 						<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 					</button>
 				</div>
-				<div v-if="description" :class="$style.description">{{ description }}</div>
 				<ElCollapseTransition v-if="$slots.cardContent">
 					<div v-show="isExpanded" :class="$style.cardContentWrapper">
 						<div
@@ -109,6 +118,7 @@ const handleMouseLeave = () => {
 							:class="$style.cardContent"
 							data-test-id="evaluation-step-content"
 						>
+							<div v-if="description" :class="$style.description">{{ description }}</div>
 							<slot name="cardContent" />
 						</div>
 					</div>
@@ -125,10 +135,8 @@ const handleMouseLeave = () => {
 .evaluationStep {
 	display: grid;
 	grid-template-columns: 1fr;
-	background: var(--color-background-light);
-	padding: var(--spacing-s);
-	border-radius: var(--border-radius-xlarge);
-	box-shadow: var(--box-shadow-base);
+	background: var(--color-background-xlight);
+	border-radius: var(--border-radius-large);
 	border: var(--border-base);
 	width: 100%;
 	color: var(--color-text-dark);
@@ -155,13 +163,18 @@ const handleMouseLeave = () => {
 
 .content {
 	display: grid;
-	gap: var(--spacing-2xs);
 }
 
 .header {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	cursor: pointer;
+	padding: var(--spacing-s);
+
+	.expanded & {
+		border-bottom: var(--border-base);
+	}
 }
 
 .title {
@@ -186,10 +199,11 @@ const handleMouseLeave = () => {
 
 .cardContent {
 	font-size: var(--font-size-s);
-	margin-top: var(--spacing-xs);
+	padding: 0 var(--spacing-s);
+	margin: var(--spacing-s) 0;
 }
 .collapseButton {
-	cursor: pointer;
+	pointer-events: none;
 	border: none;
 	background: none;
 	padding: 0;
@@ -199,6 +213,10 @@ const handleMouseLeave = () => {
 	text-wrap: none;
 	overflow: hidden;
 	min-width: fit-content;
+
+	.hasIssues & {
+		color: var(--color-danger);
+	}
 }
 .cardContentWrapper {
 	height: max-content;
