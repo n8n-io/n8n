@@ -1200,6 +1200,7 @@ export class WorkflowExecute {
 		} else if (nodeType.webhook && !nodeType.description.requestDefaults) {
 			// Check if the node have requestDefaults(RoutingNode),
 			// else for webhook nodes always simply pass the data through
+			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
 			// For nodes which have routing information on properties
