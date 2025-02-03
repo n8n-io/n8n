@@ -1,6 +1,6 @@
 import { ApplicationError } from 'n8n-workflow';
 
-import type { TaskRunner } from '../task-broker.service';
+import type { TaskRunner } from '@/task-runners/task-broker/task-broker.service';
 
 export class TaskRunnerOomError extends ApplicationError {
 	description: string;

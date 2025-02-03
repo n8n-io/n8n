@@ -14,18 +14,18 @@ import { Server as WSServer } from 'ws';
 import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
-import { TaskRunnerAuthController } from '@/task-runners/auth/task-runner-auth.controller';
+import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
 import type {
-	TaskRunnerServerInitRequest,
-	TaskRunnerServerInitResponse,
-} from '@/task-runners/task-runner-types';
-import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
+	TaskBrokerServerInitRequest,
+	TaskBrokerServerInitResponse,
+} from '@/task-runners/task-broker/task-broker-types';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 /**
- * Task Runner HTTP & WS server
+ * Task Broker HTTP & WS server
  */
 @Service()
-export class TaskRunnerServer {
+export class TaskBrokerServer {
 	private server: Server | undefined;
 
 	private wsServer: WSServer | undefined;
@@ -43,8 +43,8 @@ export class TaskRunnerServer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly taskRunnerAuthController: TaskRunnerAuthController,
-		private readonly taskRunnerWsServer: TaskRunnerWsServer,
+		private readonly authController: TaskBrokerAuthController,
+		private readonly taskBrokerWsServer: TaskBrokerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -82,7 +82,7 @@ export class TaskRunnerServer {
 			}
 		})();
 
-		const stopWsServerTask = this.taskRunnerWsServer.stop();
+		const stopWsServerTask = this.taskBrokerWsServer.stop();
 
 		await Promise.all([stopHttpServerTask, stopWsServerTask]);
 	}
@@ -126,7 +126,7 @@ export class TaskRunnerServer {
 		});
 		this.server.on('upgrade', this.handleUpgradeRequest);
 
-		this.taskRunnerWsServer.start();
+		this.taskBrokerWsServer.start();
 	}
 
 	private async setupErrorHandlers() {
@@ -159,23 +159,23 @@ export class TaskRunnerServer {
 			this.upgradeEndpoint,
 			createRateLimiter(),
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.taskRunnerAuthController.authMiddleware,
-			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
-				this.taskRunnerWsServer.handleRequest(req, res),
+			this.authController.authMiddleware,
+			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
+				this.taskBrokerWsServer.handleRequest(req, res),
 		);
 
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
 		this.app.post(
 			authEndpoint,
 			createRateLimiter(),
-			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
+			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
 		this.app.get('/healthz', (_, res) => res.send({ status: 'ok' }));
 	}
 
 	private handleUpgradeRequest = (
-		request: TaskRunnerServerInitRequest,
+		request: TaskBrokerServerInitRequest,
 		socket: Socket,
 		head: Buffer,
 	) => {
