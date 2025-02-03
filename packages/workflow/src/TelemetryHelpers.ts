@@ -6,6 +6,7 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
+	FROM_AI_AUTO_GENERATED_MARKER,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -525,3 +526,59 @@ export const userInInstanceRanOutOfFreeAiCredits = (runData: IRun): boolean => {
 
 	return false;
 };
+
+export type FromAICount = {
+	aiNodeCount: number;
+	aiToolCount: number;
+	fromAIOverrideCount: number;
+	fromAIExpressionCount: number;
+};
+
+export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICount | {} {
+	const resolvedNodes = nodes.map(
+		(x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const,
+	);
+
+	const aiNodeCount = resolvedNodes.reduce(
+		(acc, x) => acc + Number(x[1].description.codex?.categories?.includes('AI')),
+		0,
+	);
+
+	if (aiNodeCount === 0) return {};
+
+	let fromAIOverrideCount = 0;
+	let fromAIExpressionCount = 0;
+
+	const tools = resolvedNodes.filter((x) =>
+		x[1].description.codex?.subcategories?.AI?.includes('Tool'),
+	);
+
+	for (const [node, _] of tools) {
+		// FlatMap to support values in resourceLocators
+		const vals = Object.values(node.parameters).flatMap((x) => {
+			if (x && typeof x === 'object' && 'value' in x) x = x.value;
+			return typeof x === 'string' ? x : [];
+		});
+		// Note that we don't match the i in `fromAI` to support lower case i (though we miss fromai)
+		fromAIOverrideCount += vals.reduce(
+			(acc, x) => acc + Number(x.startsWith(`{{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
+			0,
+		);
+		fromAIExpressionCount += vals.reduce(
+			(acc, x) => acc + Number(x[0] === '{' && x.includes('$fromA', 2)),
+			0,
+		);
+	}
+
+	return {
+		aiNodeCount,
+		aiToolCount: tools.length,
+		fromAIOverrideCount,
+		fromAIExpressionCount,
+	};
+}
+
+export function isTool(nodeTypes: INodeTypes, node: INode): boolean {
+	const x = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	return !!x.description.codex?.subcategories?.AI?.includes('Tool');
+}

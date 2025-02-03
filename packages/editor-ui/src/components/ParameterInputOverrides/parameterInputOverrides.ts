@@ -1,5 +1,6 @@
 import {
 	extractFromAICalls,
+	FROM_AI_AUTO_GENERATED_MARKER,
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 	type NodePropertyTypes,
@@ -49,8 +50,6 @@ function sanitizeFromAiParameterName(s: string) {
 }
 
 export class FromAiOverride implements ParameterOverride {
-	static readonly MARKER = '/* n8n-auto-generated-fromAI-override */ ';
-
 	static readonly NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
 	static readonly PATH_DENYLIST = [
@@ -98,13 +97,13 @@ export class FromAiOverride implements ParameterOverride {
 	}
 
 	static isOverrideValue(s: string) {
-		return s.startsWith(`={{ ${FromAiOverride.MARKER}$fromAI(`);
+		return s.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI(`);
 	}
 
 	isOverrideValue = FromAiOverride.isOverrideValue;
 
 	buildValueFromOverride(props: Pick<OverrideContext, 'parameter'>, includeMarker: boolean) {
-		const marker = includeMarker ? FromAiOverride.MARKER : '';
+		const marker = includeMarker ? `${FROM_AI_AUTO_GENERATED_MARKER} ` : '';
 		const key = sanitizeFromAiParameterName(props.parameter.displayName);
 		const description =
 			this.extraPropValues?.description?.toString() ?? this.extraProps.description.initialValue;

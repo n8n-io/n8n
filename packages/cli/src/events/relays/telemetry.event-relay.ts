@@ -701,6 +701,7 @@ export class TelemetryEventRelay extends EventRelay {
 					sharing_role: userRole,
 					credential_type: null,
 					is_managed: false,
+					...TelemetryHelpers.makeAIMetrics(workflow.nodes, this.nodeTypes),
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
