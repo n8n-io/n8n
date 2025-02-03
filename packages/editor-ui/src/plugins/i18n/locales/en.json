@@ -1992,7 +1992,7 @@
 	"settings.sourceControl.pull.upToDate.credentials.title": "Finish setting up your new credentials to use in workflows",
 	"settings.sourceControl.pull.upToDate.credentials.description": "Review Credentials",
 	"settings.sourceControl.modals.pull.title": "Pull changes",
-	"settings.sourceControl.modals.pull.description": "These resources will be updated or deleted, and any local changes to them will be lost. To keep the local version, push it before pulling.",
+	"settings.sourceControl.modals.pull.description": "These resources will be updated or deleted, and any local changes to them will be lost. To keep the local version, push it before pulling",
 	"settings.sourceControl.modals.pull.description.learnMore": "More info",
 	"settings.sourceControl.modals.pull.buttons.cancel": "@:_reusableBaseText.cancel",
 	"settings.sourceControl.modals.pull.buttons.save": "Pull and override",
