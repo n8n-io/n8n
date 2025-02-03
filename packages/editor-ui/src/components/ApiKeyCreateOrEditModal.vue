@@ -96,7 +96,7 @@ const allFormFieldsAreSet = computed(() => {
 	return label.value && (props.mode === 'edit' ? true : isExpirationDateSet);
 });
 
-const shouldDisableDate = (date: Date) => Date.now() > date.getTime();
+const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
@@ -324,7 +324,7 @@ const onSelect = (value: number) => {
 							:teleported="false"
 							placeholder="yyyy-mm-dd"
 							value-format="X"
-							:disabled-date="shouldDisableDate"
+							:disabled-date="isCustomDateInThePast"
 						/>
 					</div>
 				</div>
