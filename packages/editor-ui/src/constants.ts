@@ -731,6 +731,7 @@ export const EXPERIMENTS_TO_TRACK = [
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
+export const SCHEMA_PREVIEW_EXPERIMENT = '028_schema_preview';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
