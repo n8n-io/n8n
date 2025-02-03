@@ -90,6 +90,9 @@ export class WorkflowToolService {
 				const errorResponse = `There was an error: "${executionError.message}"`;
 				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError);
 				return errorResponse;
+			} finally {
+				// @ts-ignore
+				this.context['runIndex']++;
 			}
 		};
 
