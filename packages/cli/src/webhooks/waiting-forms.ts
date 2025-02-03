@@ -107,7 +107,6 @@ export class WaitingForms extends WaitingWebhooks {
 		if (execution.status === 'running') {
 			if (this.includeForms && req.method === 'GET') {
 				await this.reloadForm(req, res);
-				return { noWebhookResponse: true };
 			}
 
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
