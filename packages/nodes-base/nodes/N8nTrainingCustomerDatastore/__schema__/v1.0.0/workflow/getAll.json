@@ -1,0 +1,179 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "assignments": {
+                                "type": "object",
+                                "properties": {
+                                    "assignments": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "value": {
+                                                    "type": "string"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "name",
+                                                "value",
+                                                "type"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "assignments"
+                                ]
+                            },
+                            "authentication": {
+                                "type": "string"
+                            },
+                            "jsCode": {
+                                "type": "string"
+                            },
+                            "resource": {
+                                "type": "string"
+                            },
+                            "operation": {
+                                "type": "string"
+                            },
+                            "path": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "webhookId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "parameters",
+                    "name",
+                    "type",
+                    "typeVersion",
+                    "position"
+                ]
+            }
+        },
+        "connections": {
+            "type": "object",
+            "properties": {
+                "When clicking ‘Test workflow’": {
+                    "type": "object",
+                    "properties": {
+                        "main": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "node": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "index": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "node",
+                                        "type",
+                                        "index"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "required": [
+                        "main"
+                    ]
+                }
+            }
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "executionOrder": {
+                    "type": "string"
+                }
+            }
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "createdAt",
+                    "updatedAt",
+                    "id",
+                    "name"
+                ]
+            }
+        }
+    }
+}

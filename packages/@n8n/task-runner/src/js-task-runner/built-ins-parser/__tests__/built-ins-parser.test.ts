@@ -253,6 +253,7 @@ describe('BuiltInsParser', () => {
 				'$node',
 				'$self',
 				'$parameter',
+				'$rawParameter',
 				'$prevNode',
 				'$runIndex',
 				'$mode',

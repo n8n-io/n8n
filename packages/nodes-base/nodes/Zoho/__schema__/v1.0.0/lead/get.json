@@ -1,0 +1,261 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Owner": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "id",
+                            "email"
+                        ]
+                    },
+                    "$currency_symbol": {
+                        "type": "string"
+                    },
+                    "$field_states": {
+                        "type": "null"
+                    },
+                    "$state": {
+                        "type": "string"
+                    },
+                    "Unsubscribed_Mode": {
+                        "type": "null"
+                    },
+                    "$converted": {
+                        "type": "boolean"
+                    },
+                    "$process_flow": {
+                        "type": "boolean"
+                    },
+                    "$locked_for_me": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "$approved": {
+                        "type": "boolean"
+                    },
+                    "$approval": {
+                        "type": "object",
+                        "properties": {
+                            "delegate": {
+                                "type": "boolean"
+                            },
+                            "takeover": {
+                                "type": "boolean"
+                            },
+                            "approve": {
+                                "type": "boolean"
+                            },
+                            "reject": {
+                                "type": "boolean"
+                            },
+                            "resubmit": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "delegate",
+                            "approve",
+                            "reject",
+                            "resubmit"
+                        ]
+                    },
+                    "Created_Time": {
+                        "type": "string"
+                    },
+                    "$editable": {
+                        "type": "boolean"
+                    },
+                    "No_of_Employees": {
+                        "type": "null"
+                    },
+                    "Created_By": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "id",
+                            "email"
+                        ]
+                    },
+                    "$zia_owner_assignment": {
+                        "type": "string"
+                    },
+                    "Annual_Revenue": {
+                        "type": "null"
+                    },
+                    "Secondary_Email": {
+                        "type": "null"
+                    },
+                    "Description": {
+                        "type": "null"
+                    },
+                    "Rating": {
+                        "type": "null"
+                    },
+                    "$review_process": {
+                        "type": "object",
+                        "properties": {
+                            "approve": {
+                                "type": "boolean"
+                            },
+                            "reject": {
+                                "type": "boolean"
+                            },
+                            "resubmit": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "approve",
+                            "reject",
+                            "resubmit"
+                        ]
+                    },
+                    "Twitter": {
+                        "type": "null"
+                    },
+                    "Salutation": {
+                        "type": "null"
+                    },
+                    "Full_Name": {
+                        "type": "string"
+                    },
+                    "Record_Image": {
+                        "type": "null"
+                    },
+                    "Modified_By": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "id",
+                            "email"
+                        ]
+                    },
+                    "$review": {
+                        "type": "null"
+                    },
+                    "Skype_ID": {
+                        "type": "null"
+                    },
+                    "Email_Opt_Out": {
+                        "type": "boolean"
+                    },
+                    "Modified_Time": {
+                        "type": "string"
+                    },
+                    "Unsubscribed_Time": {
+                        "type": "null"
+                    },
+                    "Last_Name": {
+                        "type": "string"
+                    },
+                    "$in_merge": {
+                        "type": "boolean"
+                    },
+                    "Tag": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "id"
+                            ]
+                        }
+                    },
+                    "Fax": {
+                        "type": "null"
+                    },
+                    "$approval_state": {
+                        "type": "string"
+                    },
+                    "Locked__s": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "Owner",
+                    "Email",
+                    "$currency_symbol",
+                    "$field_states",
+                    "Last_Activity_Time",
+                    "$state",
+                    "Unsubscribed_Mode",
+                    "$converted",
+                    "$process_flow",
+                    "$locked_for_me",
+                    "id",
+                    "$approved",
+                    "$approval",
+                    "Created_Time",
+                    "$editable",
+                    "Created_By",
+                    "$zia_owner_assignment",
+                    "$review_process",
+                    "Salutation",
+                    "First_Name",
+                    "Full_Name",
+                    "Lead_Status",
+                    "$review",
+                    "Phone",
+                    "$converted_detail",
+                    "Unsubscribed_Time",
+                    "$orchestration",
+                    "Last_Name",
+                    "$in_merge",
+                    "$approval_state"
+                ]
+            }
+        }
+    },
+    "required": [
+        "data"
+    ]
+}

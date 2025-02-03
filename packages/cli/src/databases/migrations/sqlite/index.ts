@@ -74,6 +74,7 @@ import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRu
 import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
 import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
 import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
+import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -150,6 +151,7 @@ const sqliteMigrations: Migration[] = [
 	AddManagedColumnToCredentialsTable1734479635324,
 	AddProjectIcons1729607673469,
 	AddStatsColumnsToTestRun1736172058779,
+	CreateTestCaseExecutionTable1736947513045,
 ];
 
 export { sqliteMigrations };
