@@ -6,12 +6,10 @@ describe('CreateApiKeyRequestDto', () => {
 			{
 				name: 'expiresAt in the future',
 				expiresAt: Date.now() / 1000 + 1000,
-				expectedErrorPath: ['expiresAt'],
 			},
 			{
 				name: 'expiresAt null',
 				expiresAt: null,
-				expectedErrorPath: ['expiresAt'],
 			},
 		])('should succeed validation for $name', ({ expiresAt }) => {
 			const result = CreateApiKeyRequestDto.safeParse({ label: 'valid', expiresAt });
