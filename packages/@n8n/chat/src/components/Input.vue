@@ -38,8 +38,10 @@ const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 const isSubmitting = ref(false);
 const resizeObserver = ref<ResizeObserver | null>(null);
+const waitingForChatResponse = ref(false);
 
 const isSubmitDisabled = computed(() => {
+	if (waitingForChatResponse.value) return false;
 	return input.value === '' || unref(waitingForResponse) || options.disabled?.value === true;
 });
 
@@ -140,7 +142,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	input.value = '';
 	isSubmitting.value = true;
 
-	if (chatStore.ws && chatStore.waitingForResponse.value) {
+	if (chatStore.ws && waitingForChatResponse.value) {
 		const sentMessage: ChatMessage = {
 			id: uuidv4(),
 			text: messageText,
@@ -156,6 +158,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 				chatInput: messageText,
 			}),
 		);
+		chatStore.waitingForResponse.value = true;
+		waitingForChatResponse.value = false;
 		return;
 	}
 
@@ -173,6 +177,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 			};
 
 			chatStore.messages.value.push(newMessage);
+			waitingForChatResponse.value = true;
+			chatStore.waitingForResponse.value = false;
 		};
 	}
 
