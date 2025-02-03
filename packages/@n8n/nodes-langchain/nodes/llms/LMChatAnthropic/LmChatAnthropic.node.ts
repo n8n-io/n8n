@@ -197,8 +197,11 @@ export class LmChatAnthropic implements INodeType {
 			topP: number;
 		};
 
-		const tokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
-			const usage = (llmOutput?.usage as { input_tokens: number; output_tokens: number }) ?? {
+		const tokensUsageParser = (llmOutput: LLMResult) => {
+			const usage = (llmOutput?.llmOutput?.usage as {
+				input_tokens: number;
+				output_tokens: number;
+			}) ?? {
 				input_tokens: 0,
 				output_tokens: 0,
 			};

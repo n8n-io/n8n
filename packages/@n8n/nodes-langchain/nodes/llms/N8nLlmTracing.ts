@@ -15,7 +15,7 @@ import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow'
 
 import { logAiEvent } from '@utils/helpers';
 
-type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
+type TokensUsageParser = (llmOutput: LLMResult) => {
 	completionTokens: number;
 	promptTokens: number;
 	totalTokens: number;
@@ -51,9 +51,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	options = {
 		// Default(OpenAI format) parser
-		tokensUsageParser: (llmOutput: LLMResult['llmOutput']) => {
-			const completionTokens = (llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
-			const promptTokens = (llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
+		tokensUsageParser: (llmOutput: LLMResult) => {
+			const completionTokens = (llmOutput?.llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
+			const promptTokens = (llmOutput?.llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
 
 			return {
 				completionTokens,
@@ -101,7 +101,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output.llmOutput);
+
+		const tokenUsage = this.options.tokensUsageParser(output);
 
 		if (output.generations.length > 0) {
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(
