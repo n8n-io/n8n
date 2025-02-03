@@ -29,7 +29,10 @@ jobs:
           tenant-id: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
           subscription-id: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
 
-      - run: corepack enable
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.x

@@ -47,7 +47,10 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - run: corepack enable
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - name: Use Node.js ${{ inputs.nodeVersion }}
         uses: useblacksmith/setup-node@v5
         with:

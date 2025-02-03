@@ -23,7 +23,11 @@ jobs:
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
+
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.x
@@ -52,7 +56,11 @@ jobs:
       DB_SQLITE_POOL_SIZE: 4
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
+
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.x
@@ -81,7 +89,11 @@ jobs:
       DB_MYSQLDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
+
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.x
@@ -118,7 +130,11 @@ jobs:
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
+
+      - run: |
+          echo "COREPACK_INTEGRITY_KEYS='$(curl https://registry.npmjs.org/-/npm/v1/keys | jq -c '{npm: .keys}')'" > $GITHUB_ENV
+          corepack enable
+
       - uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.x
