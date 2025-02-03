@@ -226,7 +226,7 @@ async function disableMfa(payload: MfaModalEvents['closed']) {
 	}
 
 	try {
-		await usersStore.disableMfa(payload.mfaCode);
+		await usersStore.disableMfa(payload);
 
 		showToast({
 			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),

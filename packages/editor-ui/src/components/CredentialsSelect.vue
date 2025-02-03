@@ -6,6 +6,7 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { N8nOption, N8nSelect } from 'n8n-design-system';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
 type Props = {
 	activeCredentialType: string;
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 }>();
 
 const credentialsStore = useCredentialsStore();
+
+const i18n = useI18n();
 
 const innerSelectRef = ref<HTMLSelectElement>();
 
@@ -119,7 +122,7 @@ defineExpose({ focus });
 				:size="inputSize"
 				filterable
 				:model-value="displayValue"
-				:placeholder="$locale.baseText('parameterInput.select')"
+				:placeholder="i18n.baseText('parameterInput.select')"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				data-test-id="credential-select"

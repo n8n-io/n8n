@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
 import type { WorkflowTestData } from '../types';
@@ -16,14 +17,9 @@ const records = [
 
 describe('Execute Airtable Node', () => {
 	beforeEach(() => {
-		nock.disableNetConnect();
 		nock('https://api.airtable.com/v0')
 			.get('/appIaXXdDqS5ORr4V/tbljyBEdYzCPF0NDh?pageSize=100')
 			.reply(200, { records });
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const tests: WorkflowTestData[] = [

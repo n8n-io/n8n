@@ -81,6 +81,10 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v21.0',
+						value: 'v21.0',
+					},
+					{
 						name: 'v20.0',
 						value: 'v20.0',
 					},
@@ -189,7 +193,7 @@ export class FacebookGraphApi implements INodeType {
 				placeholder: 'videos',
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,

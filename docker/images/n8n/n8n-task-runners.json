@@ -2,21 +2,32 @@
 	"task-runners": [
 		{
 			"runner-type": "javascript",
-			"workdir": "/home/task-runner",
+			"workdir": "/home/node",
 			"command": "/usr/local/bin/node",
-			"args": ["/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"],
+			"args": [
+				"--disallow-code-generation-from-strings",
+				"--disable-proto=delete",
+				"/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"
+			],
 			"allowed-env": [
 				"PATH",
+				"GENERIC_TIMEZONE",
 				"N8N_RUNNERS_GRANT_TOKEN",
-				"N8N_RUNNERS_N8N_URI",
+				"N8N_RUNNERS_TASK_BROKER_URI",
 				"N8N_RUNNERS_MAX_PAYLOAD",
 				"N8N_RUNNERS_MAX_CONCURRENCY",
+				"N8N_RUNNERS_TASK_TIMEOUT",
+				"N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED",
+				"N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST",
+				"N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT",
 				"NODE_FUNCTION_ALLOW_BUILTIN",
 				"NODE_FUNCTION_ALLOW_EXTERNAL",
-				"NODE_OPTIONS"
-			],
-			"uid": 2000,
-			"gid": 2000
+				"NODE_OPTIONS",
+				"N8N_SENTRY_DSN",
+				"N8N_VERSION",
+				"ENVIRONMENT",
+				"DEPLOYMENT_NAME"
+			]
 		}
 	]
 }

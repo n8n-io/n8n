@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
+import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -31,7 +32,16 @@ import type {
 	INodePropertyModeTypeOptions,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	type Ref,
+	ref,
+	useCssModule,
+	watch,
+} from 'vue';
 import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -89,6 +99,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const $style = useCssModule();
 
 const resourceDropdownVisible = ref(false);
 const resourceDropdownHiding = ref(false);
@@ -563,7 +574,7 @@ async function loadResources() {
 		) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
-		const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
+		const requestParams: ResourceLocatorRequestDto = {
 			nodeTypeAndVersion: {
 				name: props.node.type,
 				version: props.node.typeVersion,
@@ -655,7 +666,13 @@ function onListItemSelected(value: NodeParameterValue) {
 	hideResourceDropdown();
 }
 
-function onInputBlur() {
+function onInputBlur(event: FocusEvent) {
+	// Do not blur if focus is within the dropdown
+	const newTarget = event.relatedTarget;
+	if (newTarget instanceof HTMLElement && dropdownRef.value?.isWithinDropdown(newTarget)) {
+		return;
+	}
+
 	if (!isSearchable.value || currentQueryError.value) {
 		hideResourceDropdown();
 	}
@@ -689,15 +706,15 @@ function onInputBlur() {
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
 					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
+						{{ i18n.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a v-if="credentialsNotSet" @click="createNewCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
+							i18n.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
 						}}</a>
 						<a v-else-if="hasCredential" @click="openCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
+							i18n.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
 						}}</a>
 					</n8n-text>
 				</div>
@@ -714,7 +731,7 @@ function onInputBlur() {
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
-						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSelected"
 					>
@@ -726,7 +743,7 @@ function onInputBlur() {
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.mode.list.disabled.title')
+									? i18n.baseText('resourceLocator.mode.list.disabled.title')
 									: ''
 							"
 						>

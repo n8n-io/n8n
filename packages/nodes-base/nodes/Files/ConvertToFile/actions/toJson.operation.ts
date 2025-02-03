@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 import { createBinaryFromJson } from '@utils/binary';
 import { encodeDecodeOptions } from '@utils/descriptions';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{

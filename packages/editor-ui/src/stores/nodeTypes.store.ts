@@ -1,6 +1,12 @@
+import type {
+	ActionResultRequestDto,
+	OptionsRequestDto,
+	ResourceLocatorRequestDto,
+	ResourceMapperFieldsRequestDto,
+} from '@n8n/api-types';
 import * as nodeTypesApi from '@/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
-import type { DynamicNodeParameters, NodeTypesByTypeNameAndVersion } from '@/Interface';
+import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
@@ -282,19 +288,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
-	const getNodeParameterOptions = async (sendData: DynamicNodeParameters.OptionsRequest) => {
+	const getNodeParameterOptions = async (sendData: OptionsRequestDto) => {
 		return await nodeTypesApi.getNodeParameterOptions(rootStore.restApiContext, sendData);
 	};
 
-	const getResourceLocatorResults = async (
-		sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
-	) => {
+	const getResourceLocatorResults = async (sendData: ResourceLocatorRequestDto) => {
 		return await nodeTypesApi.getResourceLocatorResults(rootStore.restApiContext, sendData);
 	};
 
-	const getResourceMapperFields = async (
-		sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
-	) => {
+	const getResourceMapperFields = async (sendData: ResourceMapperFieldsRequestDto) => {
 		try {
 			return await nodeTypesApi.getResourceMapperFields(rootStore.restApiContext, sendData);
 		} catch (error) {
@@ -302,9 +304,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
-	const getNodeParameterActionResult = async (
-		sendData: DynamicNodeParameters.ActionResultRequest,
-	) => {
+	const getLocalResourceMapperFields = async (sendData: ResourceMapperFieldsRequestDto) => {
+		try {
+			return await nodeTypesApi.getLocalResourceMapperFields(rootStore.restApiContext, sendData);
+		} catch (error) {
+			return null;
+		}
+	};
+
+	const getNodeParameterActionResult = async (sendData: ActionResultRequestDto) => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
@@ -326,6 +334,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
+		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,

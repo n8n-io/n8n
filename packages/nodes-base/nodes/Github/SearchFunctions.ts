@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+
 import { githubApiRequest } from './GenericFunctions';
 
 type UserSearchItem = {

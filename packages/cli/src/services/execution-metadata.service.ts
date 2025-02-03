@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { ExecutionMetadata } from '@/databases/entities/execution-metadata';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';

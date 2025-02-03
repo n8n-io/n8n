@@ -176,7 +176,7 @@ function useJsonFieldCompletions() {
 			if (activeNode) {
 				const workflow = workflowsStore.getCurrentWorkflow();
 				const input = workflow.connectionsByDestinationNode[activeNode.name];
-				return input.main[0][0].node;
+				return input.main[0] ? input.main[0][0].node : null;
 			}
 		} catch (e) {
 			console.error(e);

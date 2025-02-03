@@ -1,11 +1,18 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { createComponentRenderer } from '@/__tests__/render';
-import SettingsSso from './SettingsSso.vue';
-import { useSSOStore } from '@/stores/sso.store';
-import { useUIStore } from '@/stores/ui.store';
 import { within, waitFor } from '@testing-library/vue';
+import { mockedStore, retry } from '@/__tests__/utils';
+import { createPinia, setActivePinia } from 'pinia';
+import SettingsSso from '@/views/SettingsSso.vue';
+import { setupServer } from '@/__tests__/server';
+import { useSettingsStore } from '@/stores/settings.store';
 import userEvent from '@testing-library/user-event';
-import { mockedStore } from '@/__tests__/utils';
+import { useSSOStore } from '@/stores/sso.store';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
+import { nextTick } from 'vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -15,7 +22,7 @@ const samlConfig = {
 		'https://dev-qqkrykgkoo0p63d5.eu.auth0.com/samlp/metadata/KR1cSrRrxaZT2gV8ZhPAUIUHtEY4duhN',
 	entityID: 'https://n8n-tunnel.myhost.com/rest/sso/saml/metadata',
 	returnUrl: 'https://n8n-tunnel.myhost.com/rest/sso/saml/acs',
-};
+} as SamlPreferences & SamlPreferencesExtractedData;
 
 const telemetryTrack = vi.fn();
 vi.mock('@/composables/useTelemetry', () => ({
@@ -38,6 +45,15 @@ vi.mock('@/composables/useMessage', () => ({
 	}),
 }));
 
+vi.mock('@/composables/usePageRedirectionHelper', () => {
+	const goToUpgrade = vi.fn();
+	return {
+		usePageRedirectionHelper: () => ({
+			goToUpgrade,
+		}),
+	};
+});
+
 describe('SettingsSso View', () => {
 	beforeEach(() => {
 		telemetryTrack.mockReset();
@@ -50,7 +66,7 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = false;
 
-		const uiStore = useUIStore();
+		const pageRedirectionHelper = usePageRedirectionHelper();
 
 		const { getByTestId } = renderView({ pinia });
 
@@ -58,7 +74,7 @@ describe('SettingsSso View', () => {
 		expect(actionBox).toBeInTheDocument();
 
 		await userEvent.click(await within(actionBox).findByText('See plans'));
-		expect(uiStore.goToUpgrade).toHaveBeenCalledWith('sso', 'upgrade-sso');
+		expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith('sso', 'upgrade-sso');
 	});
 
 	it('should show user SSO config', async () => {
@@ -119,7 +135,7 @@ describe('SettingsSso View', () => {
 		const urlinput = getByTestId('sso-provider-url');
 
 		expect(urlinput).toBeVisible();
-		await userEvent.type(urlinput, samlConfig.metadataUrl);
+		await userEvent.type(urlinput, samlConfig.metadataUrl!);
 
 		expect(saveButton).not.toBeDisabled();
 		await userEvent.click(saveButton);
@@ -158,7 +174,7 @@ describe('SettingsSso View', () => {
 		const xmlInput = getByTestId('sso-provider-xml');
 
 		expect(xmlInput).toBeVisible();
-		await userEvent.type(xmlInput, samlConfig.metadata);
+		await userEvent.type(xmlInput, samlConfig.metadata!);
 
 		expect(saveButton).not.toBeDisabled();
 		await userEvent.click(saveButton);
@@ -199,5 +215,83 @@ describe('SettingsSso View', () => {
 			await userEvent.click(toggle);
 			expect(toggle.textContent).toContain('Deactivated');
 		});
+	});
+});
+
+let pinia: ReturnType<typeof createPinia>;
+let ssoStore: ReturnType<typeof useSSOStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
+let server: ReturnType<typeof setupServer>;
+
+const renderComponent = createComponentRenderer(SettingsSso);
+
+describe('SettingsSso', () => {
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
+		window.open = vi.fn();
+
+		pinia = createPinia();
+		setActivePinia(pinia);
+
+		ssoStore = useSSOStore();
+		settingsStore = useSettingsStore();
+
+		await settingsStore.getSettings();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	afterAll(() => {
+		server.shutdown();
+	});
+
+	it('should render paywall state when there is no license', () => {
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent({
+			pinia,
+		});
+
+		expect(queryByRole('checkbox')).not.toBeInTheDocument();
+		expect(queryByTestId('sso-content-licensed')).not.toBeInTheDocument();
+		expect(getByTestId('sso-content-unlicensed')).toBeInTheDocument();
+	});
+
+	it('should render licensed content', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
+
+		const { getByTestId, queryByTestId, getByRole } = renderComponent({
+			pinia,
+		});
+
+		expect(getByRole('switch')).toBeInTheDocument();
+		expect(getByTestId('sso-content-licensed')).toBeInTheDocument();
+		expect(queryByTestId('sso-content-unlicensed')).not.toBeInTheDocument();
+	});
+
+	it('should enable activation checkbox and test button if data is already saved', async () => {
+		await ssoStore.getSamlConfig();
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
+
+		const { container, getByTestId, getByRole } = renderComponent({
+			pinia,
+		});
+
+		const xmlRadioButton = getByTestId('radio-button-xml');
+		await userEvent.click(xmlRadioButton);
+
+		await retry(() =>
+			expect(container.querySelector('textarea[name="metadata"]')).toHaveValue(
+				'<?xml version="1.0"?>',
+			),
+		);
+
+		expect(getByRole('switch')).toBeEnabled();
+		expect(getByTestId('sso-test')).toBeEnabled();
 	});
 });

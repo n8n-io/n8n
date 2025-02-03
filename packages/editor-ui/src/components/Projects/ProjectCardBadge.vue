@@ -126,7 +126,7 @@ const badgeTooltip = computed(() => {
 </script>
 <template>
 	<N8nTooltip :disabled="!badgeTooltip" placement="top">
-		<div class="mr-xs">
+		<div :class="$style.wrapper" v-bind="$attrs">
 			<N8nBadge
 				v-if="badgeText"
 				:class="$style.badge"
@@ -153,6 +153,10 @@ const badgeTooltip = computed(() => {
 </template>
 
 <style lang="scss" module>
+.wrapper {
+	margin-right: var(--spacing-xs);
+}
+
 .badge {
 	padding: var(--spacing-4xs) var(--spacing-2xs);
 	background-color: var(--color-background-xlight);

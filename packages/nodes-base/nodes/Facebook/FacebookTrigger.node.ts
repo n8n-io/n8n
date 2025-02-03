@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import { createHmac } from 'crypto';
 import type {
 	IDataObject,
@@ -11,13 +12,9 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import { v4 as uuid } from 'uuid';
 
-import { snakeCase } from 'change-case';
-
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
-
 import type { FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {

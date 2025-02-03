@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { hash } from 'bcryptjs';
-import Container from 'typedi';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { type GlobalRole, type User } from '@/databases/entities/user';
@@ -81,7 +81,9 @@ export async function createUserWithMfaEnabled(
 }
 
 export const addApiKey = async (user: User) => {
-	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user);
+	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
+		label: randomName(),
+	});
 };
 
 export async function createOwnerWithApiKey() {

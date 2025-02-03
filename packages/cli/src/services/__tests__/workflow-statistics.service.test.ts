@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -8,7 +9,6 @@ import {
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
@@ -39,7 +39,7 @@ describe('WorkflowStatisticsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	config.set('diagnostics.enabled', true);
+	globalConfig.diagnostics.enabled = true;
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
 	mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);

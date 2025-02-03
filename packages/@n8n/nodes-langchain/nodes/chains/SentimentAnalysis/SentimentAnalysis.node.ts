@@ -1,3 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { HumanMessage } from '@langchain/core/messages';
+import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,15 +11,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
-import { getTracingConfig } from '../../../utils/tracing';
+
+import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
 	'You are highly intelligent and accurate sentiment analyzer. Analyze the sentiment of the provided text. Categorize it into one of the following: {categories}. Use the provided formatting instructions. Only output the JSON.';

@@ -8,7 +8,6 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { scanFields, scanOperations } from './descriptions';
-
 import { handleListing, normalizeId, urlScanIoApiRequest } from './GenericFunctions';
 
 export class UrlScanIo implements INodeType {

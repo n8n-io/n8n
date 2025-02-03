@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import type { RedisCredential } from './types';
 import { redisConnectionTest, setupRedisClient } from './utils';
 
 interface Options {
@@ -74,7 +75,7 @@ export class RedisTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = await this.getCredentials('redis');
+		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const channels = (this.getNodeParameter('channels') as string).split(',');
 		const options = this.getNodeParameter('options') as Options;

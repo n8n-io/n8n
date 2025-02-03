@@ -1,32 +1,29 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
 import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
-import fs from 'node:fs';
 import path from 'path';
-import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import { LICENSE_FEATURES, N8N_VERSION } from '@/constants';
+import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getVariablesLimit } from '@/environments/variables/environment-helpers';
-import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
-import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history/workflow-history-helper.ee';
+} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
 
@@ -66,11 +63,11 @@ export class FrontendService {
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.getEnv('diagnostics.enabled'),
+			enabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		if (telemetrySettings.enabled) {
-			const conf = config.getEnv('diagnostics.config.frontend');
+			const conf = this.globalConfig.diagnostics.frontendConfig;
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -82,7 +79,8 @@ export class FrontendService {
 		}
 
 		this.settings = {
-			isDocker: this.isDocker(),
+			inE2ETests,
+			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: this.globalConfig.endpoints.form,
@@ -121,15 +119,15 @@ export class FrontendService {
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
-				enabled: config.getEnv('diagnostics.enabled'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				enabled: this.globalConfig.diagnostics.enabled,
+				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
+				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
-				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+				config.getEnv('personalization.enabled') && this.globalConfig.diagnostics.enabled,
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				quota: this.license.getUsersLimit(),
@@ -148,6 +146,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
+				apiKeysPerUserLimit: this.license.getApiKeysPerUserLimit(),
 				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
@@ -155,7 +154,7 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
+			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {
@@ -217,19 +216,24 @@ export class FrontendService {
 			askAi: {
 				enabled: false,
 			},
+			aiCredits: {
+				enabled: false,
+				credits: 0,
+			},
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
 			},
 			pruning: {
-				isEnabled: config.getEnv('executions.pruneData'),
-				maxAge: config.getEnv('executions.pruneDataMaxAge'),
-				maxCount: config.getEnv('executions.pruneDataMaxCount'),
+				isEnabled: this.globalConfig.executions.pruneData,
+				maxAge: this.globalConfig.executions.pruneDataMaxAge,
+				maxCount: this.globalConfig.executions.pruneDataMaxCount,
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			betaFeatures: this.frontendConfig.betaFeatures,
+			easyAIWorkflowOnboarded: false,
 		};
 	}
 
@@ -272,12 +276,18 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
+		try {
+			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
+		} catch {
+			this.settings.easyAIWorkflowOnboarded = false;
+		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -316,7 +326,7 @@ export class FrontendService {
 		}
 
 		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = getVariablesLimit();
+			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
 		if (this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled')) {
@@ -336,6 +346,11 @@ export class FrontendService {
 
 		if (isAskAiEnabled) {
 			this.settings.askAi.enabled = isAskAiEnabled;
+		}
+
+		if (isAiCreditsEnabled) {
+			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
@@ -383,22 +398,6 @@ export class FrontendService {
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
-		}
-	}
-
-	/**
-	 * Whether this instance is running inside a Docker container.
-	 *
-	 * Based on: https://github.com/sindresorhus/is-docker
-	 */
-	private isDocker() {
-		try {
-			return (
-				fs.existsSync('/.dockerenv') ||
-				fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
-			);
-		} catch {
-			return false;
 		}
 	}
 }

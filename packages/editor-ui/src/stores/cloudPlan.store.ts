@@ -147,12 +147,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		}
 	};
 
-	const redirectToDashboard = async () => {
-		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-		const { code } = await getAutoLoginCode();
-		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
-	};
-
 	const initialize = async () => {
 		if (state.initialized) {
 			return;
@@ -173,11 +167,22 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state.initialized = true;
 	};
 
+	const generateCloudDashboardAutoLoginLink = async (data: {
+		redirectionPath: string;
+	}) => {
+		const searchParams = new URLSearchParams();
+
+		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+		const { code } = await getAutoLoginCode();
+		const linkUrl = `https://${adminPanelHost}/login`;
+		searchParams.set('code', code);
+		searchParams.set('returnPath', data.redirectionPath);
+
+		return `${linkUrl}?${searchParams.toString()}`;
+	};
+
 	return {
 		state,
-		initialize,
-		getOwnerCurrentPlan,
-		getInstanceCurrentUsage,
 		usageLeft,
 		trialDaysLeft,
 		userIsTrialing,
@@ -185,10 +190,13 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
+		generateCloudDashboardAutoLoginLink,
+		initialize,
+		getOwnerCurrentPlan,
+		getInstanceCurrentUsage,
 		reset,
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
-		redirectToDashboard,
 	};
 });

@@ -28,7 +28,7 @@ export const AUTOCOMPLETABLE_BUILT_IN_MODULES_JS = [
 
 export const DEFAULT_LINTER_SEVERITY: Diagnostic['severity'] = 'error';
 
-export const DEFAULT_LINTER_DELAY_IN_MS = 300;
+export const DEFAULT_LINTER_DELAY_IN_MS = 500;
 
 /**
  * Length of the start of the script wrapper, used as offset for the linter to find a location in source text.

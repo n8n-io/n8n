@@ -7,6 +7,7 @@ import {
 	type IWebhookResponseData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+
 import { eventsDescription } from './descriptions/EventsDescription';
 
 export class TheHiveTrigger implements INodeType {

@@ -261,7 +261,7 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		);
 
-		if (functionality !== undefined) this.context.functionality = functionality;
+		if (functionality !== undefined) this.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}

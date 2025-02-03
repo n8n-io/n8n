@@ -1,5 +1,4 @@
 import { createHash } from 'crypto';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,

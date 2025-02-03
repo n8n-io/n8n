@@ -31,9 +31,11 @@ export function updateTheme(theme: ThemeOption) {
 	}
 }
 
-export function getPreferredTheme(): AppliedThemeOption {
-	const isDarkMode =
-		!!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches;
+export function getPreferredTheme(): { theme: AppliedThemeOption; mediaQuery: MediaQueryList } {
+	const isDarkModeQuery = !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
 
-	return isDarkMode ? 'dark' : 'light';
+	return {
+		theme: isDarkModeQuery?.matches ? 'dark' : 'light',
+		mediaQuery: isDarkModeQuery,
+	};
 }

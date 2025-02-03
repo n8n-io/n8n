@@ -1,10 +1,10 @@
 import type { Diagnostic } from '@codemirror/lint';
-import { linter } from '@codemirror/lint';
+import { linter as codeMirrorLinter } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import * as esprima from 'esprima-next';
 import type { Node, MemberExpression } from 'estree';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
-import { toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { useI18n } from '@/composables/useI18n';
 import {
@@ -17,17 +17,17 @@ import { walk } from './utils';
 
 export const useLinter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
-	editor: MaybeRefOrGetter<EditorView | null>,
+	language: MaybeRefOrGetter<CodeNodeEditorLanguage>,
 ) => {
 	const i18n = useI18n();
-
-	function createLinter(language: CodeNodeEditorLanguage) {
-		switch (language) {
+	const linter = computed(() => {
+		switch (toValue(language)) {
 			case 'javaScript':
-				return linter(lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+				return codeMirrorLinter(lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
 		}
-		return undefined;
-	}
+
+		return [];
+	});
 
 	function lintSource(editorView: EditorView): Diagnostic[] {
 		const doc = editorView.state.doc.toString();
@@ -38,34 +38,7 @@ export const useLinter = (
 		try {
 			ast = esprima.parseScript(script, { range: true });
 		} catch (syntaxError) {
-			let line;
-
-			try {
-				const lineAtError = editorView.state.doc.line(syntaxError.lineNumber - 1).text;
-
-				// optional chaining operators currently unsupported by esprima-next
-				if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
-			} catch {
-				return [];
-			}
-
-			try {
-				line = editorView.state.doc.line(syntaxError.lineNumber);
-
-				return [
-					{
-						from: line.from,
-						to: line.to,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: i18n.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
-					},
-				];
-			} catch {
-				/**
-				 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
-				 */
-				return [];
-			}
+			return [];
 		}
 
 		if (ast === null) return [];
@@ -118,7 +91,7 @@ export const useLinter = (
 			walk(ast, isUnavailableVarInAllItems).forEach((node) => {
 				const [start, end] = getRange(node);
 
-				const varName = getText(node);
+				const varName = getText(editorView, node);
 
 				if (!varName) return;
 
@@ -178,9 +151,9 @@ export const useLinter = (
 					message: i18n.baseText('codeNodeEditor.linter.allItems.unavailableProperty'),
 					actions: [
 						{
-							name: 'Remove',
+							name: 'Fix',
 							apply(view) {
-								view.dispatch({ changes: { from: start - '.'.length, to: end } });
+								view.dispatch({ changes: { from: start, to: end, insert: 'first()' } });
 							},
 						},
 					],
@@ -250,7 +223,7 @@ export const useLinter = (
 			walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
 				const [start, end] = getRange(node.property);
 
-				const method = getText(node.property);
+				const method = getText(editorView, node.property);
 
 				if (!method) return;
 
@@ -444,7 +417,7 @@ export const useLinter = (
 
 					if (shadowStart && start > shadowStart) return; // skip shadow item
 
-					const varName = getText(node);
+					const varName = getText(editorView, node);
 
 					if (!varName) return;
 
@@ -489,7 +462,7 @@ export const useLinter = (
 				!['json', 'binary'].includes(node.property.name);
 
 			walk<TargetNode>(ast, isDirectAccessToItemSubproperty).forEach((node) => {
-				const varName = getText(node);
+				const varName = getText(editorView, node);
 
 				if (!varName) return;
 
@@ -559,6 +532,76 @@ export const useLinter = (
 			});
 		});
 
+		/**
+		 * Lint for `$(variable)` usage where variable is not a string, in both modes.
+		 *
+		 * $(nodeName) -> <no autofix>
+		 */
+		const isDollarSignWithVariable = (node: Node) =>
+			node.type === 'CallExpression' &&
+			node.callee.type === 'Identifier' &&
+			node.callee.name === '$' &&
+			node.arguments.length === 1 &&
+			((node.arguments[0].type !== 'Literal' && node.arguments[0].type !== 'TemplateLiteral') ||
+				(node.arguments[0].type === 'TemplateLiteral' && node.arguments[0].expressions.length > 0));
+
+		type TargetCallNode = RangeNode & {
+			callee: { name: string };
+			arguments: Array<{ type: string }>;
+		};
+
+		walk<TargetCallNode>(ast, isDollarSignWithVariable).forEach((node) => {
+			const [start, end] = getRange(node);
+
+			lintings.push({
+				from: start,
+				to: end,
+				severity: 'warning',
+				message: i18n.baseText('codeNodeEditor.linter.bothModes.dollarSignVariable'),
+			});
+		});
+
+		/**
+		 * Lint for $("myNode").item access in runOnceForAllItems mode
+		 *
+		 * $("myNode").item -> $("myNode").first()
+		 */
+		if (toValue(mode) === 'runOnceForEachItem') {
+			type DollarItemNode = RangeNode & {
+				property: { name: string; type: string } & RangeNode;
+			};
+
+			const isDollarNodeItemAccess = (node: Node) =>
+				node.type === 'MemberExpression' &&
+				!node.computed &&
+				node.object.type === 'CallExpression' &&
+				node.object.callee.type === 'Identifier' &&
+				node.object.callee.name === '$' &&
+				node.object.arguments.length === 1 &&
+				node.object.arguments[0].type === 'Literal' &&
+				node.property.type === 'Identifier' &&
+				node.property.name === 'item';
+
+			walk<DollarItemNode>(ast, isDollarNodeItemAccess).forEach((node) => {
+				const [start, end] = getRange(node.property);
+
+				lintings.push({
+					from: start,
+					to: end,
+					severity: 'warning',
+					message: i18n.baseText('codeNodeEditor.linter.eachItem.preferFirst'),
+					actions: [
+						{
+							name: 'Fix',
+							apply(view) {
+								view.dispatch({ changes: { from: start, to: end, insert: 'first()' } });
+							},
+						},
+					],
+				});
+			});
+		}
+
 		return lintings;
 	}
 
@@ -566,19 +609,15 @@ export const useLinter = (
 	//            helpers
 	// ----------------------------------
 
-	function getText(node: RangeNode) {
-		const editorValue = toValue(editor);
-
-		if (!editorValue) return null;
-
+	function getText(editorView: EditorView, node: RangeNode) {
 		const [start, end] = getRange(node);
 
-		return editorValue.state.doc.toString().slice(start, end);
+		return editorView.state.doc.toString().slice(start, end);
 	}
 
 	function getRange(node: RangeNode) {
 		return node.range.map((loc) => loc - OFFSET_FOR_SCRIPT_WRAPPER);
 	}
 
-	return { createLinter };
+	return linter;
 };

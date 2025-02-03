@@ -1,18 +1,17 @@
+import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventService } from '@/events/event.service';
+import { getWorkflowHooksMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import type { IExecutionResponse } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { Push } from '@/push';
-import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -49,7 +48,7 @@ export class ExecutionRecoveryService {
 
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast('executionRecovered', { executionId });
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
 		return amendedExecution;
@@ -74,7 +73,7 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || execution.status === 'success') return null;
+		if (!execution || (execution.status === 'success' && execution.data)) return null;
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import Container from 'typedi';
 
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 

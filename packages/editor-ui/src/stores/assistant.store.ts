@@ -72,13 +72,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		};
 	}>({});
 
+	type NodeExecutionStatus = 'error' | 'not_executed' | 'success';
+
 	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
-	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
+	const nodeExecutionStatus = ref<NodeExecutionStatus>('not_executed');
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
@@ -281,7 +283,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(
-			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
+			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
@@ -397,7 +399,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+			currentWorkflow: workflowDataStale.value
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)
@@ -483,24 +487,25 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		openChat();
 
 		streaming.value = true;
+		const payload: ChatRequest.RequestPayload['payload'] = {
+			role: 'user',
+			type: 'init-error-helper',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			error: context.error,
+			node: assistantHelpers.processNodeForAssistant(context.node, [
+				'position',
+				'parameters.notice',
+			]),
+			nodeInputData,
+			executionSchema: schemas,
+			authType,
+		};
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-error-helper',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					error: context.error,
-					node: assistantHelpers.processNodeForAssistant(context.node, [
-						'position',
-						'parameters.notice',
-					]),
-					nodeInputData,
-					executionSchema: schemas,
-					authType,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
@@ -536,10 +541,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
 		);
 	}
+
 	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
+
+		if (nodeExecutionStatus.value === 'success') {
+			return;
+		}
+
 		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
@@ -550,7 +561,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			});
 		} else if (
 			pushEvent.data.executionStatus === 'success' &&
-			nodeExecutionStatus.value !== 'success'
+			['error', 'not_executed'].includes(nodeExecutionStatus.value)
 		) {
 			await sendEvent('node-execution-succeeded');
 			nodeExecutionStatus.value = 'success';

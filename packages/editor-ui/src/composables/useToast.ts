@@ -10,6 +10,8 @@ import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -26,13 +28,15 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
+	const canvasStore = useCanvasStore();
 
 	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-		dangerouslyUseHTMLString: false,
+		dangerouslyUseHTMLString: true,
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-		offset: 64,
+		offset: settingsStore.isAiAssistantEnabled || workflowsStore.isChatPanelOpen ? 64 : 0,
 		appendTo: '#app-grid',
 		customClass: 'content-toast',
 	};
@@ -40,6 +44,8 @@ export function useToast() {
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const { message, title } = messageData;
 		const params = { ...messageDefaults, ...messageData };
+
+		params.offset = +canvasStore.panelHeight;
 
 		if (typeof message === 'string') {
 			params.message = sanitizeHtml(message);
@@ -76,7 +82,6 @@ export function useToast() {
 		customClass?: string;
 		closeOnClick?: boolean;
 		type?: MessageBoxState['type'];
-		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
 		let notification: NotificationHandle;
@@ -101,7 +106,6 @@ export function useToast() {
 			duration: config.duration,
 			customClass: config.customClass,
 			type: config.type,
-			dangerouslyUseHTMLString: config.dangerouslyUseHTMLString ?? true,
 		});
 
 		return notification;
@@ -139,7 +143,6 @@ export function useToast() {
 					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			},
 			false,
 		);
@@ -156,12 +159,6 @@ export function useToast() {
 			error_message: error.message,
 			caused_by_credential: causedByCredential(error.message),
 			workflow_id: workflowsStore.workflowId,
-		});
-	}
-
-	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification({
-			...config,
 		});
 	}
 
@@ -203,7 +200,6 @@ export function useToast() {
 		showMessage,
 		showToast,
 		showError,
-		showAlert,
 		clearAllStickyNotifications,
 		showNotificationForViews,
 	};

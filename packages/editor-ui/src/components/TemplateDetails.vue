@@ -1,6 +1,4 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
+<script setup lang="ts">
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
@@ -11,51 +9,32 @@ import type {
 	ITemplatesNode,
 	ITemplatesWorkflow,
 } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'TemplateDetails',
-	components: {
-		NodeIcon,
-		TemplateDetailsBlock,
-		TimeAgo,
-	},
-	props: {
-		template: {
-			type: Object as PropType<
-				ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null
-			>,
-			required: true,
-		},
-		blockTitle: {
-			type: String,
-			required: true,
-		},
-		loading: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		...mapStores(useTemplatesStore),
-	},
-	methods: {
-		abbreviateNumber,
-		filterTemplateNodes,
-		redirectToCategory(id: string) {
-			this.templatesStore.resetSessionId();
-			void this.$router.push(`/templates?categories=${id}`);
-		},
-		redirectToSearchPage(node: ITemplatesNode) {
-			this.templatesStore.resetSessionId();
-			void this.$router.push(`/templates?search=${node.displayName}`);
-		},
-		isFullTemplatesCollection,
-		isTemplatesWorkflow,
-	},
-});
+defineProps<{
+	template: ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null;
+	blockTitle: string;
+	loading: boolean;
+}>();
+
+const router = useRouter();
+const i18n = useI18n();
+
+const templatesStore = useTemplatesStore();
+
+const redirectToCategory = (id: string) => {
+	templatesStore.resetSessionId();
+	void router.push(`/templates?categories=${id}`);
+};
+
+const redirectToSearchPage = (node: ITemplatesNode) => {
+	templatesStore.resetSessionId();
+	void router.push(`/templates?search=${node.displayName}`);
+};
 </script>
 
 <template>
@@ -84,20 +63,20 @@ export default defineComponent({
 
 		<TemplateDetailsBlock
 			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
-			:title="$locale.baseText('template.details.categories')"
+			:title="i18n.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
 			v-if="!loading && template"
-			:title="$locale.baseText('template.details.details')"
+			:title="i18n.baseText('template.details.details')"
 		>
 			<div :class="$style.text">
 				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
-					{{ $locale.baseText('template.details.created') }}
+					{{ i18n.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
-					{{ $locale.baseText('template.details.by') }}
+					{{ i18n.baseText('template.details.by') }}
 					{{ template.user ? template.user.username : 'n8n team' }}
 				</n8n-text>
 			</div>
@@ -107,9 +86,9 @@ export default defineComponent({
 					size="small"
 					color="text-base"
 				>
-					{{ $locale.baseText('template.details.viewed') }}
+					{{ i18n.baseText('template.details.viewed') }}
 					{{ abbreviateNumber(template.totalViews) }}
-					{{ $locale.baseText('template.details.times') }}
+					{{ i18n.baseText('template.details.times') }}
 				</n8n-text>
 			</div>
 		</TemplateDetailsBlock>

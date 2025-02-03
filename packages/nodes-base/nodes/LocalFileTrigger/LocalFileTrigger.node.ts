@@ -1,3 +1,4 @@
+import { watch } from 'chokidar';
 import {
 	type ITriggerFunctions,
 	type IDataObject,
@@ -6,8 +7,6 @@ import {
 	type ITriggerResponse,
 	NodeConnectionType,
 } from 'n8n-workflow';
-
-import { watch } from 'chokidar';
 
 export class LocalFileTrigger implements INodeType {
 	description: INodeTypeDescription = {

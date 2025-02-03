@@ -7,6 +7,7 @@ export default {
 	component: N8nTree,
 };
 
+// @ts-expect-error Storybook incorrect slot types
 export const Default: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),

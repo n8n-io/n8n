@@ -1,4 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -11,19 +13,14 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	SubworkflowOperationError,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-} from 'n8n-workflow';
-import { Service } from 'typedi';
+import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
+import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { CreateExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
@@ -36,6 +33,7 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 export class WorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -89,7 +87,14 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
+		{
+			workflowData,
+			runData,
+			startNodes,
+			destinationNode,
+			dirtyNodeNames,
+			triggerToStartFrom,
+		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
 		partialExecutionVersion?: string,
@@ -111,14 +116,15 @@ export class WorkflowExecutionService {
 		) {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhook(
-				user.id,
-				workflowData,
+			const needsWebhook = await this.testWebhooks.needsWebhook({
+				userId: user.id,
+				workflowEntity: workflowData,
 				additionalData,
 				runData,
 				pushRef,
 				destinationNode,
-			);
+				triggerToStartFrom,
+			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
 		}
@@ -137,12 +143,43 @@ export class WorkflowExecutionService {
 			workflowData,
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
+			dirtyNodeNames,
+			triggerToStartFrom,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
 
 		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
 			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
+		}
+
+		/**
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
+		 */
+		if (
+			config.getEnv('executions.mode') === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+		) {
+			data.executionData = {
+				startData: {
+					startNodes: data.startNodes,
+					destinationNode,
+				},
+				resultData: {
+					pinData,
+					runData,
+				},
+				manualData: {
+					userId: data.userId,
+					partialExecutionVersion: data.partialExecutionVersion,
+					dirtyNodeNames,
+					triggerToStartFrom,
+				},
+			};
 		}
 
 		const executionId = await this.workflowRunner.run(data);
@@ -283,7 +320,7 @@ export class WorkflowExecutionService {
 
 			await this.workflowRunner.run(runData);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			this.logger.error(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,

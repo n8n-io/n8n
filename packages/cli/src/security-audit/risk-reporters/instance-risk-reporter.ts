@@ -1,12 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
@@ -103,7 +102,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		};
 
 		settings.telemetry = {
-			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
+			diagnosticsEnabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		return settings;
@@ -119,7 +118,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		node: WorkflowEntity['nodes'][number];
 		workflow: WorkflowEntity;
 	}) {
-		const childNodeNames = workflow.connections[node.name]?.main[0].map((i) => i.node);
+		const childNodeNames = workflow.connections[node.name]?.main[0]?.map((i) => i.node);
 
 		if (!childNodeNames) return false;
 

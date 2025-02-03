@@ -7,9 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { pipelineFields, pipelineOperations } from './PipelineDescription';
-
 import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
+import { pipelineFields, pipelineOperations } from './PipelineDescription';
 
 export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { User } from '@/databases/entities/user';

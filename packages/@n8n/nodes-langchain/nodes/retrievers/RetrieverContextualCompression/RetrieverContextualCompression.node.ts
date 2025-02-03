@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
+import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,18 +12,14 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
-import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverContextualCompression implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Contextual Compression Retriever',
 		name: 'retrieverContextualCompression',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Enhances document similarity search by contextual compression.',

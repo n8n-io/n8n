@@ -30,7 +30,7 @@ const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isNDVDataEmpty('input') && ndvStore.focusedMappableInput,
+	() => !ndvStore.isInputPanelEmpty && ndvStore.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);

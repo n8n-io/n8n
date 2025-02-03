@@ -1,0 +1,8 @@
+{
+    "type": "object",
+    "properties": {
+        "/lights/3/state/on": {
+            "type": "boolean"
+        }
+    }
+}

@@ -11,5 +11,6 @@ module.exports = {
 	rules: {
 		'@typescript-eslint/consistent-type-imports': 'error',
 		'n8n-local-rules/no-plain-errors': 'off',
+		'n8n-local-rules/no-uncaught-json-parse': 'off',
 	},
 };

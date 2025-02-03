@@ -1,6 +1,7 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { Request } from 'express';
-import Container from 'typedi';
+import { Logger } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -14,10 +15,8 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
-import type { UserSetupPayload } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 
@@ -48,6 +47,16 @@ const tablesToTruncate = [
 	'workflows_tags',
 ];
 
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
+
 type ResetRequest = Request<
 	{},
 	{},
@@ -58,14 +67,12 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest<T extends PushType> = Request<
+type PushRequest = Request<
 	{},
 	{},
 	{
-		type: T;
 		pushRef: string;
-		data: PushPayload<T>;
-	}
+	} & PushMessage
 >;
 
 @RestController('/e2e')
@@ -93,14 +100,32 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
-	private numericFeatures: Record<NumericLicenseFeature, number> = {
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
 		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
 		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]: 1,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TRIGGER_LIMIT],
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.VARIABLES_LIMIT],
+		[LICENSE_QUOTAS.USERS_LIMIT]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.USERS_LIMIT],
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT],
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
+		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
+		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT],
 	};
 
 	constructor(
@@ -144,8 +169,9 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest<any>) {
-		this.push.broadcast(req.body.type, req.body.data);
+	async pushSend(req: PushRequest) {
+		const { pushRef: _, ...pushMsg } = req.body;
+		this.push.broadcast(pushMsg);
 	}
 
 	@Patch('/feature', { skipAuth: true })
@@ -170,6 +196,11 @@ export class E2EController {
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 

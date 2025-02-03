@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { PackageDirectoryLoader } from 'n8n-core';
-import { Service } from 'typedi';
 
 import { InstalledNodesRepository } from './installed-nodes.repository';
 import { InstalledPackages } from '../entities/installed-packages';
@@ -35,7 +35,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 			for (const loadedNode of loadedNodes) {
 				const installedNode = this.installedNodesRepository.create({
 					name: nodeTypes[loadedNode.name].type.description.displayName,
-					type: loadedNode.name,
+					type: `${packageName}.${loadedNode.name}`,
 					latestVersion: loadedNode.version,
 					package: { packageName },
 				});

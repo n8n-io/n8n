@@ -11,14 +11,23 @@ export class MemoryVectorStoreManager {
 		this.vectorStoreBuffer = new Map();
 	}
 
-	public static getInstance(embeddings: Embeddings): MemoryVectorStoreManager {
+	static getInstance(embeddings: Embeddings): MemoryVectorStoreManager {
 		if (!MemoryVectorStoreManager.instance) {
 			MemoryVectorStoreManager.instance = new MemoryVectorStoreManager(embeddings);
+		} else {
+			// We need to update the embeddings in the existing instance.
+			// This is important as embeddings instance is wrapped in a logWrapper,
+			// which relies on supplyDataFunctions context which changes on each workflow run
+			MemoryVectorStoreManager.instance.embeddings = embeddings;
+			MemoryVectorStoreManager.instance.vectorStoreBuffer.forEach((vectorStoreInstance) => {
+				vectorStoreInstance.embeddings = embeddings;
+			});
 		}
+
 		return MemoryVectorStoreManager.instance;
 	}
 
-	public async getVectorStore(memoryKey: string): Promise<MemoryVectorStore> {
+	async getVectorStore(memoryKey: string): Promise<MemoryVectorStore> {
 		let vectorStoreInstance = this.vectorStoreBuffer.get(memoryKey);
 
 		if (!vectorStoreInstance) {
@@ -29,7 +38,7 @@ export class MemoryVectorStoreManager {
 		return vectorStoreInstance;
 	}
 
-	public async addDocuments(
+	async addDocuments(
 		memoryKey: string,
 		documents: Document[],
 		clearStore?: boolean,

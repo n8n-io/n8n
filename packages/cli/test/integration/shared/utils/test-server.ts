@@ -1,8 +1,9 @@
+import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
-import { Container } from 'typedi';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
@@ -11,7 +12,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
@@ -171,7 +171,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						await import('@/environments/variables/variables.controller.ee');
+						await import('@/environments.ee/variables/variables.controller.ee');
 						break;
 
 					case 'license':
@@ -202,20 +202,22 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { LdapService } = await import('@/ldap/ldap.service.ee');
-						await import('@/ldap/ldap.controller.ee');
+						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+						await import('@/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 
 					case 'saml':
-						const { setSamlLoginEnabled } = await import('@/sso/saml/saml-helpers');
-						await import('@/sso/saml/routes/saml.controller.ee');
+						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
+						await Container.get(SamlService).init();
+						await import('@/sso.ee/saml/routes/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
 
 					case 'sourceControl':
-						await import('@/environments/source-control/source-control.controller.ee');
+						await import('@/environments.ee/source-control/source-control.controller.ee');
 						break;
 
 					case 'community-packages':
@@ -247,11 +249,11 @@ export const setupTestServer = ({
 						break;
 
 					case 'externalSecrets':
-						await import('@/external-secrets/external-secrets.controller.ee');
+						await import('@/external-secrets.ee/external-secrets.controller.ee');
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
 
 					case 'binaryData':
@@ -277,6 +279,15 @@ export const setupTestServer = ({
 					case 'apiKeys':
 						await import('@/controllers/api-keys.controller');
 						break;
+
+					case 'evaluation':
+						await import('@/evaluation.ee/metrics.controller');
+						await import('@/evaluation.ee/test-definitions.controller.ee');
+						await import('@/evaluation.ee/test-runs.controller.ee');
+						break;
+
+					case 'ai':
+						await import('@/controllers/ai.controller');
 				}
 			}
 

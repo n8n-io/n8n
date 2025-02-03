@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { generateNanoId } from '@/databases/utils/generators';

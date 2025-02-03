@@ -6,7 +6,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRANSFORM_DATA_SUBCATEGORY,
@@ -49,12 +49,14 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HELPERS_SUBCATEGORY,
+	HITL_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
 	COMPRESSION_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -141,6 +143,11 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 
+	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
+	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURL =
+		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
+
 	return {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
@@ -154,7 +161,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					icon: 'box-open',
 					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
 					name: 'ai_templates_root',
-					url: templatesStore.getWebsiteCategoryURL(undefined, 'AdvancedAI'),
+					url: websiteCategoryURL,
 					tag: {
 						type: 'info',
 						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
@@ -401,14 +408,14 @@ export function TriggerView() {
 				},
 			},
 			{
-				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				key: CHAT_TRIGGER_NODE_TYPE,
 				type: 'node',
 				category: [CORE_NODES_CATEGORY],
 				properties: {
 					group: [],
-					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDisplayName'),
-					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDescription'),
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.chatTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.chatTriggerDescription'),
 					icon: 'fa:comments',
 				},
 			},
@@ -436,6 +443,12 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
+
+	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
+		return (nodes ?? [])
+			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
+			.map((node) => node.name);
+	};
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
@@ -527,22 +540,39 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 					],
 				},
 			},
+			// To add node to this subcategory:
+			// - add "HITL" to the "categories" property of the node's codex
+			// - add "HITL": ["Human in the Loop"] to the "subcategories" property of the node's codex
+			// node has to have the "sendAndWait" operation, if a new operation needs to be included here:
+			// - update getHumanInTheLoopActions in packages/editor-ui/src/components/Node/NodeCreator/Modes/NodesMode.vue
+			{
+				type: 'subcategory',
+				key: HITL_SUBCATEGORY,
+				category: HUMAN_IN_THE_LOOP_CATEGORY,
+				properties: {
+					title: HITL_SUBCATEGORY,
+					icon: 'user-check',
+					sections: [
+						{
+							key: 'sendAndWait',
+							title: i18n.baseText('nodeCreator.sectionNames.sendAndWait'),
+							items: getSendAndWaitNodes(nodes),
+						},
+					],
+				},
+			},
 		],
 	};
 
 	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
 	if (hasAINodes)
-		view.items.push({
+		view.items.unshift({
 			key: AI_NODE_CREATOR_VIEW,
 			type: 'view',
 			properties: {
 				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
 				icon: 'robot',
 				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				tag: {
-					type: 'success',
-					text: i18n.baseText('nodeCreator.aiPanel.newTag'),
-				},
 				borderless: true,
 			},
 		} as NodeViewItem);

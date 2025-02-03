@@ -117,7 +117,7 @@ const prepareRawMessages = computed(() => {
 });
 
 const isAskAssistantAvailable = computed(() => {
-	if (!node.value) {
+	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
@@ -130,6 +130,13 @@ const assistantAlreadyAsked = computed(() => {
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
 		node: props.error.node || ndvStore.activeNode,
 	});
+});
+
+const isSubNodeError = computed(() => {
+	return (
+		props.error.name === 'NodeOperationError' &&
+		(props.error as NodeOperationError).functionality === 'configuration-node'
+	);
 });
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
@@ -153,19 +160,6 @@ function prepareDescription(description: string): string {
 }
 
 function getErrorDescription(): string {
-	const isSubNodeError =
-		props.error.name === 'NodeOperationError' &&
-		(props.error as NodeOperationError).functionality === 'configuration-node';
-
-	if (isSubNodeError) {
-		return prepareDescription(
-			props.error.description +
-				i18n.baseText('pushConnection.executionError.openNode', {
-					interpolate: { node: props.error.node.name },
-				}),
-		);
-	}
-
 	if (props.error.context?.descriptionKey) {
 		const interpolate = {
 			nodeCause: props.error.context.nodeCause as string,
@@ -205,13 +199,10 @@ function addItemIndexSuffix(message: string): string {
 function getErrorMessage(): string {
 	let message = '';
 
-	const isSubNodeError =
-		props.error.name === 'NodeOperationError' &&
-		(props.error as NodeOperationError).functionality === 'configuration-node';
 	const isNonEmptyString = (value?: unknown): value is string =>
 		!!value && typeof value === 'string';
 
-	if (isSubNodeError) {
+	if (isSubNodeError.value) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
 			interpolate: { node: props.error.node.name },
 		});
@@ -390,6 +381,10 @@ function nodeIsHidden() {
 	return nodeType?.hidden ?? false;
 }
 
+const onOpenErrorNodeDetailClick = () => {
+	ndvStore.activeNodeName = props.error.node.name;
+};
+
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
@@ -428,14 +423,25 @@ async function onAskAssistantClick() {
 				</div>
 			</div>
 			<div
-				v-if="error.description || error.context?.descriptionKey"
+				v-if="(error.description || error.context?.descriptionKey) && !isSubNodeError"
 				data-test-id="node-error-description"
 				class="node-error-view__header-description"
 				v-n8n-html="getErrorDescription()"
 			></div>
+
+			<div v-if="isSubNodeError">
+				<n8n-button
+					icon="arrow-right"
+					type="secondary"
+					:label="i18n.baseText('pushConnection.executionError.openNode')"
+					class="node-error-view__button"
+					data-test-id="node-error-view-open-node-button"
+					@click="onOpenErrorNodeDetailClick"
+				/>
+			</div>
 			<div
 				v-if="isAskAssistantAvailable"
-				class="node-error-view__assistant-button"
+				class="node-error-view__button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
 				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
@@ -696,9 +702,14 @@ async function onAskAssistantClick() {
 		}
 	}
 
-	&__assistant-button {
+	&__button {
 		margin-left: var(--spacing-s);
 		margin-bottom: var(--spacing-xs);
+		flex-direction: row-reverse;
+		span {
+			margin-right: var(--spacing-5xs);
+			margin-left: var(--spacing-5xs);
+		}
 	}
 
 	&__debugging {
@@ -831,7 +842,7 @@ async function onAskAssistantClick() {
 	}
 }
 
-.node-error-view__assistant-button {
+.node-error-view__button {
 	margin-top: var(--spacing-xs);
 }
 </style>

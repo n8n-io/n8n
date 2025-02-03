@@ -19,6 +19,7 @@ Great that you are here and you want to contribute to n8n
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
 	- [Development cycle](#development-cycle)
+		-	[Community PR Guidelines](#community-pr-guidelines)
 		- [Test suite](#test-suite)
 			- [Unit tests](#unit-tests)
 			- [E2E tests](#e2e-tests)
@@ -84,7 +85,7 @@ This automatically sets up file-links between modules which depend on each other
 
 We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
 
-With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 7.18 of pnpm via: `corepack prepare pnpm@7.18.0 --activate`.
+With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 9.15 of pnpm via: `corepack prepare pnpm@9.15.5 --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -190,6 +191,51 @@ automatically build your code, restart the backend and refresh the frontend
    pnpm test
    ```
 1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+
+---
+
+### Community PR Guidelines
+
+#### **1. Change Request/Comment**
+
+Please address the requested changes or provide feedback within 14 days. If there is no response or updates to the pull request during this time, it will be automatically closed. The PR can be reopened once the requested changes are applied.
+
+#### **2. General Requirements**
+
+- **Follow the Style Guide:**
+  - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
+- **TypeScript Compliance:**
+  - Do not use `ts-ignore` .
+  - Ensure code adheres to TypeScript rules.
+- **Avoid Repetitive Code:**
+  - Reuse existing components, parameters, and logic wherever possible instead of redefining or duplicating them.
+  - For nodes: Use the same parameter across multiple operations rather than defining a new parameter for each operation (if applicable).
+- **Testing Requirements:**
+  - PRs **must include tests**:
+    - Unit tests
+    - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
+    - UI tests (if applicable)
+- **Typos:**
+  - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
+
+#### **3. PR Specific Requirements**
+
+- **Small PRs Only:**
+  - Focus on a single feature or fix per PR.
+- **Naming Convention:**
+  - Follow [n8n's PR Title Conventions](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36).
+- **New Nodes:**
+  - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/) , as n8n offers the flexibility to create your own custom nodes.
+- **Typo-Only PRs:**
+  - Typos are not sufficient justification for a PR and will be rejected.
+
+#### **4. Workflow Summary for Non-Compliant PRs**
+
+- **No Tests:** If tests are not provided, the PR will be auto-closed after **14 days**.
+- **Non-Small PRs:** Large or multifaceted PRs will be returned for segmentation.
+- **New Nodes/Typo PRs:** Automatically rejected if not aligned with project scope or guidelines.
+
+---
 
 ### Test suite
 

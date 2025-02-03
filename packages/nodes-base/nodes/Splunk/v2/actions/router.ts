@@ -1,13 +1,12 @@
+import set from 'lodash/set';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash/set';
 import * as alert from './alert';
+import type { SplunkType } from './node.type';
 import * as report from './report';
 import * as search from './search';
 import * as user from './user';
-
-import type { SplunkType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();

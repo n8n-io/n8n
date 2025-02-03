@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { DEFAULT_SHUTDOWN_PRIORITY } from '@/constants';
 import { type ServiceClass, ShutdownService } from '@/shutdown/shutdown.service';

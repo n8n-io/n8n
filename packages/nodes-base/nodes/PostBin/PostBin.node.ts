@@ -2,7 +2,6 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { binFields, binOperations } from './BinDescription';
-
 import { requestFields, requestOperations } from './RequestDescription';
 
 export class PostBin implements INodeType {

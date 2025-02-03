@@ -9,7 +9,6 @@ import {
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { formWebhook } from '../utils';
 import {
 	appendAttributionToForm,
 	formDescription,
@@ -21,6 +20,7 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { formWebhook } from '../utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',

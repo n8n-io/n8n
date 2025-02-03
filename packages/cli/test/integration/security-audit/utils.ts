@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import nock from 'nock';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import * as constants from '@/constants';

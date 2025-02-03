@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition, Library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
@@ -51,7 +51,9 @@ import {
 	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
+	faEquals,
 	faEye,
+	faEyeSlash,
 	faExclamationTriangle,
 	faExpand,
 	faExpandAlt,
@@ -80,6 +82,7 @@ import {
 	faHandScissors,
 	faHandPointLeft,
 	faHandshake,
+	faUserCheck,
 	faHashtag,
 	faHdd,
 	faHistory,
@@ -122,6 +125,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
 	faSlidersH,
@@ -161,6 +165,7 @@ import {
 	faStream,
 	faPowerOff,
 	faPaperPlane,
+	faExclamationCircle,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark, faVault, faRefresh } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -223,8 +228,11 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faEllipsisH);
 		addIcon(faEllipsisV);
 		addIcon(faEnvelope);
+		addIcon(faEquals);
 		addIcon(faEye);
+		addIcon(faEyeSlash);
 		addIcon(faExclamationTriangle);
+		addIcon(faExclamationCircle);
 		addIcon(faExpand);
 		addIcon(faExpandAlt);
 		addIcon(faExternalLinkAlt);
@@ -251,6 +259,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faHandshake);
 		addIcon(faHandPointLeft);
 		addIcon(faHashtag);
+		addIcon(faUserCheck);
 		addIcon(faHdd);
 		addIcon(faHistory);
 		addIcon(faHome);
@@ -294,6 +303,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
 		addIcon(faSlidersH);
@@ -339,4 +349,14 @@ export const FontAwesomePlugin: Plugin = {
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
+};
+
+type LibraryWithDefinitions = Library & {
+	definitions: Record<string, Record<string, IconDefinition>>;
+};
+
+export const iconLibrary = library as LibraryWithDefinitions;
+
+export const getAllIconNames = () => {
+	return Object.keys(iconLibrary.definitions.fas);
 };

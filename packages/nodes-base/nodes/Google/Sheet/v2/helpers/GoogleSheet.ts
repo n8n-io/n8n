@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
-import { apiRequest } from '../transport';
+
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -21,6 +21,7 @@ import type {
 	ValueRenderOption,
 } from './GoogleSheets.types';
 import { getSheetId, removeEmptyColumns } from './GoogleSheets.utils';
+import { apiRequest } from '../transport';
 
 export class GoogleSheet {
 	id: string;

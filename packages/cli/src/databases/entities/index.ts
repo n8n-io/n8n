@@ -20,6 +20,10 @@ import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
+import { TestCaseExecution } from './test-case-execution.ee';
+import { TestDefinition } from './test-definition.ee';
+import { TestMetric } from './test-metric.ee';
+import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
@@ -58,4 +62,8 @@ export const entities = {
 	ProjectRelation,
 	ApiKey,
 	ProcessedData,
+	TestDefinition,
+	TestMetric,
+	TestRun,
+	TestCaseExecution,
 };

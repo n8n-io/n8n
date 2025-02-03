@@ -35,7 +35,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const state = reactive<UsageState>(DEFAULT_STATE);
+	const state = reactive<UsageState>({ ...DEFAULT_STATE });
 
 	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
 	const planId = computed(() => state.data.license.planId);

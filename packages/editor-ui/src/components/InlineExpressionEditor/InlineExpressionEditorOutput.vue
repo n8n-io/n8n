@@ -16,12 +16,14 @@ interface InlineExpressionEditorOutputProps {
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	visible?: boolean;
+	isReadOnly?: boolean;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	visible: false,
 	editorState: undefined,
 	selection: undefined,
+	isReadOnly: false,
 	unresolvedExpression: undefined,
 });
 
@@ -51,7 +53,7 @@ onBeforeUnmount(() => {
 			>
 			</ExpressionOutput>
 		</n8n-text>
-		<div :class="$style.footer">
+		<div :class="$style.footer" v-if="!isReadOnly">
 			<InlineExpressionTip
 				:editor-state="editorState"
 				:selection="selection"

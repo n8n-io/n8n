@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import path from 'path';
-import os from 'node:os';
 import type { IDataObject } from 'n8n-workflow';
-import type { WorkflowTestData } from '@test/nodes/types';
+import os from 'node:os';
+import path from 'path';
 
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import {
 	getResultNodeData,
 	setup,
 	initBinaryDataService,
 	readJsonFileSync,
 } from '@test/nodes/Helpers';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 if (os.platform() !== 'win32') {
 	describe('Execute Compression Node', () => {

@@ -1,7 +1,7 @@
+import { isObjectLiteral } from 'n8n-core';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
-import { isObjectLiteral } from '@/utils';
 
 type OldPinnedData = { [nodeName: string]: IDataObject[] };
 type NewPinnedData = { [nodeName: string]: INodeExecutionData[] };

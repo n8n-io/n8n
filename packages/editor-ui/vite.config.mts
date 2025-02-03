@@ -1,17 +1,22 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
+import browserslistToEsbuild from 'browserslist-to-esbuild';
+import legacy from '@vitejs/plugin-legacy';
+import browserslist from 'browserslist';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
+
+const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
@@ -62,24 +67,16 @@ const plugins = [
 		],
 	}),
 	vue(),
+	svgLoader(),
+	legacy({
+		modernTargets: browsers,
+		modernPolyfills: true,
+		renderLegacyChunks: false,
+	}),
 ];
 
-const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
-if (release && authToken) {
-	plugins.push(
-		sentryVitePlugin({
-			org: 'n8nio',
-			project: 'instance-frontend',
-			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
-			// and needs the `project:releases` and `org:read` scopes
-			authToken,
-			telemetry: false,
-			release: {
-				name: release,
-			},
-		}),
-	);
-}
+const { RELEASE: release } = process.env;
+const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
 	defineConfig({
@@ -96,19 +93,26 @@ export default mergeConfig(
 		css: {
 			preprocessorOptions: {
 				scss: {
-					additionalData: '\n@use "@/n8n-theme-variables.scss" as *;\n',
+					additionalData: [
+						'',
+						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "n8n-design-system/css/mixins" as mixins;',
+					].join('\n'),
 				},
 			},
 		},
 		build: {
 			minify: !!release,
 			sourcemap: !!release,
-			target: 'es2022',
+			target,
 		},
 		optimizeDeps: {
 			esbuildOptions: {
-				target: 'es2022',
+				target,
 			},
+		},
+		worker: {
+			format: 'es',
 		},
 	}),
 	vitestConfig,

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import NodeViewV1 from '@/views/NodeView.vue';
 import NodeViewV2 from '@/views/NodeView.v2.vue';
@@ -17,12 +17,16 @@ const router = useRouter();
 const route = useRoute();
 const workflowHelpers = useWorkflowHelpers({ router });
 
-const { nodeViewVersion } = useNodeViewVersionSwitcher();
+const { nodeViewVersion, migrateToNewNodeViewVersion } = useNodeViewVersionSwitcher();
 
 const workflowId = computed<string>(() => route.params.name as string);
 
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
+});
+
+onMounted(() => {
+	migrateToNewNodeViewVersion();
 });
 
 watch(nodeViewVersion, () => {

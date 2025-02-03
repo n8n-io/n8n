@@ -1,11 +1,11 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';

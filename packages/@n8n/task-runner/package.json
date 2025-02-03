@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.3.0",
+  "version": "1.15.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -17,19 +17,36 @@
   },
   "main": "dist/start.js",
   "module": "src/start.ts",
-  "types": "dist/start.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
+  "exports": {
+    "./start": {
+      "require": "./dist/start.js",
+      "import": "./src/start.ts",
+      "types": "./dist/start.d.ts"
+    },
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "dependencies": {
     "@n8n/config": "workspace:*",
-    "n8n-workflow": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@sentry/node": "catalog:",
+    "acorn": "8.14.0",
+    "acorn-walk": "8.3.4",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
     "n8n-core": "workspace:*",
-    "nanoid": "^3.3.6",
-    "typedi": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "luxon": "catalog:"
+    "@types/lodash": "catalog:"
   }
 }

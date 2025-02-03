@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,9 +7,10 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
+
+import { logWrapper } from '@utils/logWrapper';
+
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
-import { logWrapper } from '../../../utils/logWrapper';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {

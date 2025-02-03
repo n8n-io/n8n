@@ -1,21 +1,17 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import nock from 'nock';
+
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
 		await Helpers.initBinaryDataService();
-		nock.disableNetConnect();
 		nock('https://quickchart.io')
 			.persist()
 			.get(/chart.*/)
 			.reply(200, { success: true });
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const workflow = Helpers.readJsonFileSync('nodes/QuickChart/test/QuickChart.workflow.json');

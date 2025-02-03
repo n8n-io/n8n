@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import {
 	type IWebhookFunctions,
 	type IDataObject,
@@ -7,8 +8,6 @@ import {
 	type IWebhookResponseData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 export class TheHiveProjectTrigger implements INodeType {
 	description: INodeTypeDescription = {

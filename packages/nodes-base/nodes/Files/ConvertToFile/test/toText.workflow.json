@@ -1,15 +1,68 @@
 {
-  "name": "My workflow 2",
+  "name": "Test ConvertToFile",
   "nodes": [
     {
       "parameters": {},
-      "id": "59f5ae0f-52f7-4bc8-b325-29d2b0d810f8",
+      "id": "f2557b99-e65c-4136-9bc5-7cb328a62d30",
       "name": "When clicking ‘Test workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        460,
-        500
+        300,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "base64",
+        "options": {}
+      },
+      "id": "71711ee7-9df5-456a-b1d0-def85b8d6669",
+      "name": "Convert to File2",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return   {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n  \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }"
+      },
+      "id": "ff53ab4c-43dd-4c35-b066-59d59e4a8209",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "6322369c-fef5-4172-bbd3-8738cbb67e05",
+      "name": "Extract From File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b5aed50b-65d3-4356-b02d-cbeab7fb3d6e",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        540
       ]
     },
     {
@@ -18,13 +71,38 @@
         "sourceProperty": "notes",
         "options": {}
       },
-      "id": "add99ca3-7bd3-4561-a654-fac4b8ded285",
-      "name": "Convert to File",
+      "id": "65c4c4ac-da33-4ba1-b337-51ee319a8652",
+      "name": "Convert to Text File",
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1,
       "position": [
-        940,
-        400
+        880,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "b2f49de3-5d0d-4eff-8156-89e5a2a0edae",
+      "name": "Extract From Text File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        740
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "86d5e979-5ff0-4312-8b4f-7ff83f1eebd6",
+      "name": "Text File Result",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        740
       ]
     },
     {
@@ -34,41 +112,13 @@
           "format": true
         }
       },
-      "id": "89498c96-f1a0-49ec-890d-79f12c5554e6",
-      "name": "Convert to File1",
+      "id": "a938ea30-3acb-4618-a80a-6e759ba7d8db",
+      "name": "Convert to JSON (with Formatting)",
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        940,
-        580
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "toBinary",
-        "sourceProperty": "base64",
-        "options": {}
-      },
-      "id": "ae06c883-f2af-4d25-bc64-4f0ecad53c85",
-      "name": "Convert to File2",
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        940,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "return   {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n  \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }"
-      },
-      "id": "b14b18b0-6570-4376-85cf-f3cc74835e58",
-      "name": "Code",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        680,
-        500
+        880,
+        920
       ]
     },
     {
@@ -76,13 +126,13 @@
         "operation": "text",
         "options": {}
       },
-      "id": "76373e3f-e103-465a-8b15-dd643915c532",
-      "name": "Extract From File",
+      "id": "fa35a5ed-4746-48c5-b260-314c517cdd45",
+      "name": "Extract From JSON (1)",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        1160,
-        200
+        1100,
+        920
       ]
     },
     {
@@ -90,27 +140,24 @@
         "operation": "text",
         "options": {}
       },
-      "id": "d8ba3980-873d-47d7-ad88-f5ff6c66774c",
-      "name": "Extract From File1",
+      "id": "4a3c5c68-6621-4463-8623-83a6572ae760",
+      "name": "Extract From JSON (2)",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        1160,
-        400
+        1100,
+        1120
       ]
     },
     {
-      "parameters": {
-        "operation": "text",
-        "options": {}
-      },
-      "id": "34838f1e-aee5-4b17-a9ec-bd9e09789045",
-      "name": "Extract From File2",
-      "type": "n8n-nodes-base.extractFromFile",
+      "parameters": {},
+      "id": "dbd03dcb-435c-4af7-ada8-2492c69f1cd6",
+      "name": "JSON Result (with Formatting)",
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1160,
-        580
+        1320,
+        920
       ]
     },
     {
@@ -118,71 +165,102 @@
         "operation": "toJson",
         "options": {}
       },
-      "id": "a6617075-83f4-4157-9d07-7e5df0cbd9b6",
-      "name": "Convert to File3",
+      "id": "c461944d-3141-4a1d-abe1-a74e1f71615f",
+      "name": "Convert to JSON",
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        960,
-        780
+        880,
+        1120
       ]
     },
     {
       "parameters": {
-        "operation": "text",
         "options": {}
       },
-      "id": "b2deb5a4-0f7a-4a1f-858f-17235db0b94e",
-      "name": "Extract From File3",
+      "id": "c9ca03b3-0f01-49f5-ab9d-ed4497829a09",
+      "name": "Convert to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1ad12799-7916-4780-aca9-9a966f9e5820",
+      "name": "Extract From CSV",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        1160,
-        780
+        1100,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": "|"
+        }
+      },
+      "id": "58caeb17-7434-4808-b8c4-4ca443baecff",
+      "name": "Convert to CSV (custom delimiter)",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        1520
       ]
     },
     {
       "parameters": {},
-      "id": "11022c53-136b-44a0-af32-faac16e2fa89",
-      "name": "No Operation, do nothing",
+      "id": "b113b6d9-7928-4de1-bf7f-e2984d124edf",
+      "name": "CSV Result",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1380,
-        200
+        1320,
+        1320
       ]
     },
     {
       "parameters": {},
-      "id": "f5ec42e5-8088-4a93-91ea-3a1cb4997eee",
-      "name": "No Operation, do nothing1",
+      "id": "12554f8d-592a-4500-80f7-42518840f718",
+      "name": "JSON Result",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1380,
-        400
+        1320,
+        1120
       ]
     },
     {
       "parameters": {},
-      "id": "d7106de2-455f-428f-bdfa-fe701136bdfa",
-      "name": "No Operation, do nothing2",
+      "id": "8a6ab018-9f38-4a5b-9483-769bf38f0b7c",
+      "name": "CSV Result (custom delimiter)",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1380,
-        580
+        1320,
+        1520
       ]
     },
     {
-      "parameters": {},
-      "id": "14dbc74c-fc0b-4339-88ea-76b3e9534de0",
-      "name": "No Operation, do nothing3",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "options": {
+          "delimiter": "|"
+        }
+      },
+      "id": "e8a4114f-5264-4255-982e-4690c950fb86",
+      "name": "Extract From Custom Delimiter",
+      "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        1380,
-        780
+        1100,
+        1520
       ]
     }
   ],
@@ -194,24 +272,50 @@
         }
       }
     ],
-    "No Operation, do nothing1": [
+    "Text File Result": [
       {
         "json": {
           "data": "Keeps asking about a green light??"
         }
       }
     ],
-    "No Operation, do nothing2": [
+    "JSON Result (with Formatting)": [
       {
         "json": {
           "data": "[\n  {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n    \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }\n]"
         }
       }
     ],
-    "No Operation, do nothing3": [
+    "CSV Result": [
+      {
+        "json": {
+          "﻿id": "23423532",
+          "name": "Jay Gatsby",
+          "email": "gatsby@west-egg.com",
+          "notes": "Keeps asking about a green light??",
+          "country": "US",
+          "created": "1925-04-10",
+          "base64": "VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ="
+        }
+      }
+    ],
+    "JSON Result": [
       {
         "json": {
           "data": "[{\"id\":\"23423532\",\"name\":\"Jay Gatsby\",\"email\":\"gatsby@west-egg.com\",\"notes\":\"Keeps asking about a green light??\",\"country\":\"US\",\"created\":\"1925-04-10\",\"base64\":\"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"}]"
+        }
+      }
+    ],
+    "CSV Result (custom delimiter)": [
+      {
+        "json": {
+          "﻿id": "23423532",
+          "name": "Jay Gatsby",
+          "email": "gatsby@west-egg.com",
+          "notes": "Keeps asking about a green light??",
+          "country": "US",
+          "created": "1925-04-10",
+          "base64": "VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ="
         }
       }
     ]
@@ -237,17 +341,27 @@
             "index": 0
           },
           {
-            "node": "Convert to File",
+            "node": "Convert to Text File",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Convert to File1",
+            "node": "Convert to JSON (with Formatting)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Convert to File3",
+            "node": "Convert to JSON",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to CSV",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to CSV (custom delimiter)",
             "type": "main",
             "index": 0
           }
@@ -265,39 +379,6 @@
         ]
       ]
     },
-    "Convert to File": {
-      "main": [
-        [
-          {
-            "node": "Extract From File1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Convert to File1": {
-      "main": [
-        [
-          {
-            "node": "Extract From File2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Convert to File3": {
-      "main": [
-        [
-          {
-            "node": "Extract From File3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Extract From File": {
       "main": [
         [
@@ -309,33 +390,110 @@
         ]
       ]
     },
-    "Extract From File3": {
+    "Convert to Text File": {
       "main": [
         [
           {
-            "node": "No Operation, do nothing3",
+            "node": "Extract From Text File",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract From File2": {
+    "Extract From Text File": {
       "main": [
         [
           {
-            "node": "No Operation, do nothing2",
+            "node": "Text File Result",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract From File1": {
+    "Convert to JSON (with Formatting)": {
       "main": [
         [
           {
-            "node": "No Operation, do nothing1",
+            "node": "Extract From JSON (1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From JSON (1)": {
+      "main": [
+        [
+          {
+            "node": "JSON Result (with Formatting)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From JSON (2)": {
+      "main": [
+        [
+          {
+            "node": "JSON Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to JSON": {
+      "main": [
+        [
+          {
+            "node": "Extract From JSON (2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to CSV": {
+      "main": [
+        [
+          {
+            "node": "Extract From CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From CSV": {
+      "main": [
+        [
+          {
+            "node": "CSV Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to CSV (custom delimiter)": {
+      "main": [
+        [
+          {
+            "node": "Extract From Custom Delimiter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From Custom Delimiter": {
+      "main": [
+        [
+          {
+            "node": "CSV Result (custom delimiter)",
             "type": "main",
             "index": 0
           }
