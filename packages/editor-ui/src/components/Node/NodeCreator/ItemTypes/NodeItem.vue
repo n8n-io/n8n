@@ -6,6 +6,7 @@ import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
+	HITL_SUBCATEGORY,
 } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -44,6 +45,9 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (isSendAndWaitCategory.value) {
+		return '';
+	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
 		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
@@ -56,7 +60,8 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
-const showActionArrow = computed(() => hasActions.value);
+const showActionArrow = computed(() => hasActions.value && !isSendAndWaitCategory.value);
+const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
 );

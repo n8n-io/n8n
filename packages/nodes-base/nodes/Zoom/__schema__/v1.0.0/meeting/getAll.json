@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "uuid": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "host_id": {
+            "type": "string"
+        },
+        "topic": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "start_time": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "join_url": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "uuid",
+        "id",
+        "host_id",
+        "topic",
+        "type",
+        "duration",
+        "timezone",
+        "created_at",
+        "join_url"
+    ]
+}
