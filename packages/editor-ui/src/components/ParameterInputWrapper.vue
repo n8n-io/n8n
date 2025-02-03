@@ -19,9 +19,6 @@ import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTyp
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { computed, useTemplateRef } from 'vue';
-import { useRouter } from 'vue-router';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-
 
 type Props = {
 	parameter: INodeProperties;
