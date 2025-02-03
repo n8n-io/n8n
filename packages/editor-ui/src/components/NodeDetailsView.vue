@@ -703,13 +703,13 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<div :class="$style.triggerWarning">
-					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+					{{ i18n.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
 				</div>
 			</template>
 			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
-					{{ $locale.baseText('ndv.backToCanvas') }}
+					{{ i18n.baseText('ndv.backToCanvas') }}
 				</n8n-text>
 			</div>
 		</n8n-tooltip>
@@ -816,7 +816,7 @@ onBeforeUnmount(() => {
 						@click="onFeatureRequestClick"
 					>
 						<font-awesome-icon icon="lightbulb" />
-						{{ $locale.baseText('ndv.featureRequest') }}
+						{{ i18n.baseText('ndv.featureRequest') }}
 					</a>
 				</template>
 			</NDVDraggablePanels>

@@ -110,6 +110,18 @@ describe('useKeybindings', () => {
 		expect(handler).toHaveBeenCalled();
 	});
 
+	it('should normalize shortcut strings containing splitting key correctly', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ 'ctrl_+': handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: '+', ctrlKey: true });
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalled();
+	});
+
 	it('should normalize shortcut string alternatives correctly', async () => {
 		const handler = vi.fn();
 		const keymap = ref({ 'a|b': handler });
@@ -123,5 +135,32 @@ describe('useKeybindings', () => {
 		const eventB = new KeyboardEvent('keydown', { key: 'B' });
 		document.dispatchEvent(eventB);
 		expect(handler).toHaveBeenCalledTimes(2);
+	});
+
+	it("should prefer the 'key' over 'code' for dvorak to work correctly", () => {
+		const cHandler = vi.fn();
+		const iHandler = vi.fn();
+		const keymap = ref({
+			'ctrl+c': cHandler,
+			'ctrl+i': iHandler,
+		});
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'c', code: 'KeyI', ctrlKey: true });
+		document.dispatchEvent(event);
+		expect(cHandler).toHaveBeenCalled();
+		expect(iHandler).not.toHaveBeenCalled();
+	});
+
+	it("should fallback to 'code' for non-ansi layouts", () => {
+		const handler = vi.fn();
+		const keymap = ref({ 'ctrl+c': handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'ב', code: 'KeyC', ctrlKey: true });
+		document.dispatchEvent(event);
+		expect(handler).toHaveBeenCalled();
 	});
 });

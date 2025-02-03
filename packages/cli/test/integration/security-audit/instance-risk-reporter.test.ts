@@ -1,9 +1,9 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionType } from 'n8n-workflow';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
-import config from '@/config';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { generateNanoId } from '@/databases/utils/generators';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
@@ -239,7 +239,7 @@ test('should not report outdated instance when up to date', async () => {
 });
 
 test('should report security settings', async () => {
-	config.set('diagnostics.enabled', true);
+	Container.get(GlobalConfig).diagnostics.enabled = true;
 
 	const testAudit = await securityAuditService.run(['instance']);
 

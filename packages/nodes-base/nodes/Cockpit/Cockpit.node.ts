@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import {
 	createCollectionEntry,

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.5.0",
+  "version": "1.15.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -35,15 +35,18 @@
   },
   "dependencies": {
     "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "nanoid": "^3.3.6",
-    "typedi": "catalog:",
+    "nanoid": "catalog:",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "luxon": "catalog:"
+    "@types/lodash": "catalog:"
   }
 }

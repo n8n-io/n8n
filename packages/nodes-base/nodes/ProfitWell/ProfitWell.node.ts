@@ -9,15 +9,13 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { companyOperations } from './CompanyDescription';
 import type { Metrics } from './GenericFunctions';
 import {
 	profitWellApiRequest,
 	simplifyDailyMetrics,
 	simplifyMontlyMetrics,
 } from './GenericFunctions';
-
-import { companyOperations } from './CompanyDescription';
-
 import { metricFields, metricOperations } from './MetricDescription';
 
 export class ProfitWell implements INodeType {

@@ -1,3 +1,4 @@
+import { Attribute, Change } from 'ldapts';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -12,9 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { Attribute, Change } from 'ldapts';
-import { ldapFields } from './LdapDescription';
 import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
+import { ldapFields } from './LdapDescription';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -103,7 +103,7 @@ export class Ldap implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
-				const client = await createLdapClient(credentials);
+				const client = await createLdapClient(this, credentials);
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
@@ -123,13 +123,13 @@ export class Ldap implements INodeType {
 		loadOptions: {
 			async getAttributes(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const client = await createLdapClient(credentials);
+				const client = await createLdapClient(this, credentials);
 
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -138,7 +138,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();
@@ -153,12 +153,12 @@ export class Ldap implements INodeType {
 
 			async getObjectClasses(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const client = await createLdapClient(credentials);
+				const client = await createLdapClient(this, credentials);
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -168,7 +168,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 10, paged: false }); // should this size limit be set in credentials?
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();
@@ -196,13 +196,13 @@ export class Ldap implements INodeType {
 
 			async getAttributesForDn(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const client = await createLdapClient(credentials);
+				const client = await createLdapClient(this, credentials);
 
 				try {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -211,7 +211,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 1, paged: false });
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();
@@ -242,6 +242,7 @@ export class Ldap implements INodeType {
 
 		const credentials = await this.getCredentials('ldap');
 		const client = await createLdapClient(
+			this,
 			credentials,
 			nodeDebug,
 			this.getNode().type,

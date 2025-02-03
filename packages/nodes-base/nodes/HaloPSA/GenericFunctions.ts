@@ -99,7 +99,7 @@ export async function haloPSAApiRequest(
 		if (method === 'DELETE' || method === 'GET' || (method === 'POST' && message)) {
 			let newErrorMessage;
 			if (message.includes('400')) {
-				console.log(message);
+				this.logger.debug(message);
 				newErrorMessage = JSON.parse(message.split(' - ')[1]);
 				(error as JsonObject).message = `For field ID, ${
 					newErrorMessage.id || newErrorMessage['[0].id']
@@ -136,14 +136,14 @@ export async function haloPSAApiRequest(
 // 	)) as IDataObject;
 
 // 	const { tickets } = response;
-// 	console.log((tickets as IDataObject[]).map(t => t.id));
+// 	this.logger.debug((tickets as IDataObject[]).map(t => t.id));
 // 	const body: IDataObject = {
 // 		id: clientId,
 // 		client_id: reasigmentCliendId,
 // 	};
 
 // 	for (const ticket of (tickets as IDataObject[])) {
-// 		console.log(ticket.id);
+// 		this.logger.debug(ticket.id);
 // 		await haloPSAApiRequest.call(this, 'DELETE', `/tickets/${ticket.id}`, accessToken);
 // 	}
 // }

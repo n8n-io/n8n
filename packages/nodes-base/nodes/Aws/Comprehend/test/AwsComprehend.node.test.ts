@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname);
@@ -24,7 +25,6 @@ describe('Test AWS Comprehend Node', () => {
 
 			await initBinaryDataService();
 
-			nock.disableNetConnect();
 			const baseUrl = 'https://comprehend.eu-central-1.amazonaws.com';
 
 			mock = nock(baseUrl);
@@ -32,9 +32,6 @@ describe('Test AWS Comprehend Node', () => {
 
 		beforeEach(async () => {
 			mock.post('/').reply(200, response);
-		});
-		afterAll(() => {
-			nock.restore();
 		});
 
 		testWorkflows(workflows);

@@ -1,18 +1,14 @@
-version: '3.9'
-
 services:
-  mysql:
-    image: mysql:5.7
+  mariadb:
+    image: mariadb:10.9
     environment:
-      - MYSQL_DATABASE=n8n
-      - MYSQL_ROOT_PASSWORD=password
+      - MARIADB_DATABASE=n8n
+      - MARIADB_ROOT_PASSWORD=password
+      - MARIADB_MYSQL_LOCALHOST_USER=true
     ports:
       - 3306:3306
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 26677
-        hard: 46677
+    tmpfs:
+      - /var/lib/mysql
 
   postgres:
     image: postgres:16
@@ -23,3 +19,5 @@ services:
       - POSTGRES_PASSWORD=password
     ports:
       - 5432:5432
+    tmpfs:
+      - /var/lib/postgresql/data

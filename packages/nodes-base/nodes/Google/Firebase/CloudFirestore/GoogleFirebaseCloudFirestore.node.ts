@@ -9,16 +9,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
+import { collectionFields, collectionOperations } from './CollectionDescription';
+import { documentFields, documentOperations } from './DocumentDescription';
 import {
 	fullDocumentToJson,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	jsonToDocument,
 } from './GenericFunctions';
-
-import { collectionFields, collectionOperations } from './CollectionDescription';
-
-import { documentFields, documentOperations } from './DocumentDescription';
 
 export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {

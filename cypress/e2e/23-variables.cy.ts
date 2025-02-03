@@ -65,8 +65,11 @@ describe('Variables', () => {
 			const editingRow = variablesPage.getters.variablesEditableRows().eq(0);
 			variablesPage.actions.setRowValue(editingRow, 'key', key);
 			variablesPage.actions.setRowValue(editingRow, 'value', value);
-			editingRow.should('contain', 'This field may contain only letters');
-			variablesPage.getters.editableRowSaveButton(editingRow).should('be.disabled');
+			variablesPage.actions.saveRowEditing(editingRow);
+			variablesPage.getters
+				.variablesEditableRows()
+				.eq(0)
+				.should('contain', 'This field may contain only letters');
 			variablesPage.actions.cancelRowEditing(editingRow);
 
 			variablesPage.getters.variablesRows().should('have.length', 3);

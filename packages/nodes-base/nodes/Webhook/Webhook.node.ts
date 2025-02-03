@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
-import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
 import { stat } from 'fs/promises';
+import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
 	IDataObject,
@@ -12,10 +12,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
-
-import { v4 as uuid } from 'uuid';
-import isbot from 'isbot';
+import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
+import { v4 as uuid } from 'uuid';
 
 import {
 	authenticationProperty,

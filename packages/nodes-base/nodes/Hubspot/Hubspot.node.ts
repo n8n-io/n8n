@@ -2,7 +2,6 @@ import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow'
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { HubspotV1 } from './V1/HubspotV1.node';
-
 import { HubspotV2 } from './V2/HubspotV2.node';
 
 export class Hubspot extends VersionedNodeType {

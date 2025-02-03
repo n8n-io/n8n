@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import type {
-	IBinaryData,
-	IConnectedNode,
-	IDataObject,
-	INodeExecutionData,
-	INodeOutputConfiguration,
-	IRunData,
-	IRunExecutionData,
-	NodeError,
-	NodeHint,
-	Workflow,
+import {
+	type IBinaryData,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeOutputConfiguration,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskMetadata,
+	type NodeError,
+	type NodeHint,
+	type Workflow,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -77,6 +79,8 @@ import {
 } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useUIStore } from '@/stores/ui.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -84,8 +88,9 @@ const LazyRunDataTable = defineAsyncComponent(
 const LazyRunDataJson = defineAsyncComponent(
 	async () => await import('@/components/RunDataJson.vue'),
 );
+
 const LazyRunDataSchema = defineAsyncComponent(
-	async () => await import('@/components/RunDataSchema.vue'),
+	async () => await import('@/components/VirtualSchema.vue'),
 );
 const LazyRunDataHtml = defineAsyncComponent(
 	async () => await import('@/components/RunDataHtml.vue'),
@@ -118,6 +123,7 @@ type Props = {
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	hidePagination?: boolean;
+	calloutMessage?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -131,6 +137,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	isExecuting: false,
 	hidePagination: false,
+	calloutMessage: undefined,
 });
 const emit = defineEmits<{
 	search: [search: string];
@@ -173,6 +180,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
 
 const toast = useToast();
 const route = useRoute();
@@ -180,6 +188,7 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const node = toRef(props, 'node');
 
@@ -197,12 +206,13 @@ const displayMode = computed(() =>
 );
 
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
-const isWaitNodeWaiting = computed(
-	() =>
-		workflowExecution.value?.status === 'waiting' &&
-		workflowExecution.value.data?.waitTill &&
-		workflowExecution.value?.data?.resultData?.lastNodeExecuted === node.value?.name,
-);
+const isWaitNodeWaiting = computed(() => {
+	return (
+		node.value?.name &&
+		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+			?.executionStatus === 'waiting'
+	);
+});
 
 const { activeNode } = storeToRefs(ndvStore);
 const nodeType = computed(() => {
@@ -268,6 +278,10 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
+const isTrimmedManualExecutionDataItem = computed(
+	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
+);
+
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -315,7 +329,9 @@ const workflowRunData = computed(() => {
 	}
 	return null;
 });
-const dataCount = computed(() => getDataCount(props.runIndex, currentOutputIndex.value));
+const dataCount = computed(() =>
+	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
 
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
@@ -506,6 +522,28 @@ const pinButtonDisabled = computed(
 		readOnlyEnv.value,
 );
 
+const activeTaskMetadata = computed((): ITaskMetadata | null => {
+	if (!node.value) {
+		return null;
+	}
+
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
+});
+
+const hasReleatedExectuion = computed((): boolean => {
+	return Boolean(
+		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
+	);
+});
+
+const hasInputOverwrite = computed((): boolean => {
+	if (!node.value) {
+		return false;
+	}
+	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
+	return Boolean(taskData?.inputOverride);
+});
+
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
 	init();
@@ -513,6 +551,10 @@ watch(node, (newNode, prevNode) => {
 
 watch(hasNodeRun, () => {
 	if (props.paneType === 'output') setDisplayMode();
+	else {
+		// InputPanel relies on the outputIndex to check if we have data
+		outputIndex.value = determineInitialOutputIndex();
+	}
 });
 
 watch(
@@ -953,6 +995,10 @@ function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
 }
 
 function getRunLabel(option: number) {
+	if (!node.value) {
+		return;
+	}
+
 	let itemsCount = 0;
 	for (let i = 0; i <= maxOutputIndex.value; i++) {
 		itemsCount += getPinDataOrLiveData(getRawInputData(option - 1, i)).length;
@@ -961,7 +1007,18 @@ function getRunLabel(option: number) {
 		adjustToNumber: itemsCount,
 		interpolate: { count: itemsCount },
 	});
-	const itemsLabel = itemsCount > 0 ? ` (${items})` : '';
+
+	const metadata = workflowRunData.value?.[node.value.name]?.[option - 1]?.metadata ?? null;
+	const subexecutions = metadata?.subExecutionsCount
+		? i18n.baseText('ndv.output.andSubExecutions', {
+				adjustToNumber: metadata.subExecutionsCount,
+				interpolate: {
+					count: metadata.subExecutionsCount,
+				},
+			})
+		: '';
+
+	const itemsLabel = itemsCount > 0 ? ` (${items}${subexecutions})` : '';
 	return option + i18n.baseText('ndv.output.of') + (maxRunIndex.value + 1) + itemsLabel;
 }
 
@@ -1031,9 +1088,19 @@ function getDataCount(
 	return getFilteredData(pinOrLiveData).length;
 }
 
+function determineInitialOutputIndex() {
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		if (getRawInputData(props.runIndex, i).length) {
+			return i;
+		}
+	}
+
+	return 0;
+}
+
 function init() {
 	// Reset the selected output index every time another node gets selected
-	outputIndex.value = 0;
+	outputIndex.value = determineInitialOutputIndex();
 	refreshDataSize();
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];
@@ -1185,18 +1252,44 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
+	if (task.parentExecution) {
+		return i18n.baseText('runData.openParentExecution', {
+			interpolate: { id: task.parentExecution.executionId },
+		});
+	}
+
+	if (task.subExecution) {
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
+	}
+
+	return;
+}
+
 defineExpose({ enterEditMode });
 </script>
 
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
-			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
@@ -1206,7 +1299,7 @@ defineExpose({ enterEditMode });
 					data-test-id="ndv-unpin-data"
 					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
-					{{ $locale.baseText('runData.pindata.unpin') }}
+					{{ i18n.baseText('runData.pindata.unpin') }}
 				</N8nLink>
 			</span>
 			<template #trailingContent>
@@ -1218,7 +1311,7 @@ defineExpose({ enterEditMode });
 					underline
 					@click="onClickDataPinningDocsLink"
 				>
-					{{ $locale.baseText('runData.pindata.learnMore') }}
+					{{ i18n.baseText('runData.pindata.learnMore') }}
 				</N8nLink>
 			</template>
 		</N8nCallout>
@@ -1234,7 +1327,7 @@ defineExpose({ enterEditMode });
 			<slot name="header"></slot>
 
 			<div
-				v-show="!hasRunError"
+				v-show="!hasRunError && !isTrimmedManualExecutionDataItem"
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
 				@click.stop
@@ -1264,7 +1357,7 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
-					:title="$locale.baseText('runData.editOutput')"
+					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
 					icon="pencil-alt"
@@ -1289,13 +1382,13 @@ defineExpose({ enterEditMode });
 				<div v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
 						type="tertiary"
-						:label="$locale.baseText('runData.editor.cancel')"
+						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
 					<N8nButton
 						class="ml-2xs"
 						type="primary"
-						:label="$locale.baseText('runData.editor.save')"
+						:label="i18n.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
 				</div>
@@ -1311,51 +1404,74 @@ defineExpose({ enterEditMode });
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
-			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
+			<div :class="$style.runSelectorInner">
+				<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
-			<N8nSelect
-				:model-value="runIndex"
-				:class="$style.runSelectorInner"
-				size="small"
-				teleported
-				data-test-id="run-selector"
-				@update:model-value="onRunIndexChange"
-				@click.stop
-			>
-				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
-				<N8nOption
-					v-for="option in maxRunIndex + 1"
-					:key="option"
-					:label="getRunLabel(option)"
-					:value="option - 1"
-				></N8nOption>
-			</N8nSelect>
-
-			<N8nTooltip v-if="canLinkRuns" placement="right">
-				<template #content>
-					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-				</template>
-				<N8nIconButton
-					:icon="linkedRuns ? 'unlink' : 'link'"
-					class="linkRun"
-					text
-					type="tertiary"
+				<N8nSelect
+					:model-value="runIndex"
+					:class="$style.runSelectorSelect"
 					size="small"
-					data-test-id="link-run"
-					@click="toggleLinkRuns"
-				/>
-			</N8nTooltip>
+					teleported
+					data-test-id="run-selector"
+					@update:model-value="onRunIndexChange"
+					@click.stop
+				>
+					<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
+					<N8nOption
+						v-for="option in maxRunIndex + 1"
+						:key="option"
+						:label="getRunLabel(option)"
+						:value="option - 1"
+					></N8nOption>
+				</N8nSelect>
 
-			<slot name="run-info"></slot>
+				<N8nTooltip v-if="canLinkRuns" placement="right">
+					<template #content>
+						{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+					</template>
+					<N8nIconButton
+						:icon="linkedRuns ? 'unlink' : 'link'"
+						:class="['linkRun', linkedRuns ? 'linked' : '']"
+						text
+						type="tertiary"
+						size="small"
+						data-test-id="link-run"
+						@click="toggleLinkRuns"
+					/>
+				</N8nTooltip>
+
+				<slot name="run-info"></slot>
+			</div>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
 		</div>
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
+
+		<div v-if="props.calloutMessage" :class="$style.hintCallout">
+			<N8nCallout theme="info" data-test-id="run-data-callout">
+				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+			</N8nCallout>
+		</div>
 
 		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
+			data-test-id="node-hint"
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
@@ -1378,14 +1494,13 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
-				!hasRunError &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled && !hasRunError"
+			v-show="!editMode.enabled"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
@@ -1393,24 +1508,52 @@ defineExpose({ enterEditMode });
 
 			<N8nText v-if="search" :class="$style.itemsText">
 				{{
-					$locale.baseText('ndv.search.items', {
+					i18n.baseText('ndv.search.items', {
 						adjustToNumber: unfilteredDataCount,
 						interpolate: { matched: dataCount, total: unfilteredDataCount },
 					})
 				}}
 			</N8nText>
 			<N8nText v-else :class="$style.itemsText">
-				{{
-					$locale.baseText('ndv.output.items', {
-						adjustToNumber: dataCount,
-						interpolate: { count: dataCount },
-					})
-				}}
+				<span>
+					{{
+						i18n.baseText('ndv.output.items', {
+							adjustToNumber: dataCount,
+							interpolate: { count: dataCount },
+						})
+					}}
+				</span>
+				<span v-if="activeTaskMetadata?.subExecutionsCount">
+					{{
+						i18n.baseText('ndv.output.andSubExecutions', {
+							adjustToNumber: activeTaskMetadata.subExecutionsCount,
+							interpolate: { count: activeTaskMetadata.subExecutionsCount },
+						})
+					}}
+				</span>
 			</N8nText>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
 		</div>
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
+			<div
+				v-if="isExecuting && !isWaitNodeWaiting"
+				:class="$style.center"
+				data-test-id="ndv-executing"
+			>
 				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
@@ -1425,9 +1568,9 @@ defineExpose({ enterEditMode });
 				</div>
 				<div :class="$style.editModeFooter">
 					<N8nInfoTip :bold="false" :class="$style.editModeFooterInfotip">
-						{{ $locale.baseText('runData.editor.copyDataInfo') }}
+						{{ i18n.baseText('runData.editor.copyDataInfo') }}
 						<N8nLink :to="DATA_EDITING_DOCS_URL" size="small">
-							{{ $locale.baseText('generic.learnMore') }}
+							{{ i18n.baseText('generic.learnMore') }}
 						</N8nLink>
 					</N8nInfoTip>
 				</div>
@@ -1458,10 +1601,29 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 			>
 				<N8nText>
-					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
+					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<N8nLink @click="enableNode">
-						{{ $locale.baseText('ndv.input.disabled.cta') }}
+						{{ i18n.baseText('ndv.input.disabled.cta') }}
 					</N8nLink>
+				</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
+				:class="$style.center"
+			>
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<N8nText color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
+			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
+				<N8nText bold color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.title') }}
+				</N8nText>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.message') }}
 				</N8nText>
 			</div>
 
@@ -1472,7 +1634,7 @@ defineExpose({ enterEditMode });
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
 				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{
-						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
+						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
 							interpolate: { nodeName: node?.name ?? '' },
 						})
 					}}
@@ -1500,14 +1662,12 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 			>
 				<div v-if="search">
-					<N8nText tag="h3" size="large">{{
-						$locale.baseText('ndv.search.noMatch.title')
-					}}</N8nText>
+					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 					<N8nText>
 						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 							<template #link>
 								<a href="#" @click="onSearchClear">
-									{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 								</a>
 							</template>
 						</i18n-t>
@@ -1531,7 +1691,7 @@ defineExpose({ enterEditMode });
 				<N8nText align="center" tag="div"
 					><span
 						v-n8n-html="
-							$locale.baseText('ndv.output.tooMuchData.message', {
+							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
@@ -1540,13 +1700,13 @@ defineExpose({ enterEditMode });
 
 				<N8nButton
 					outline
-					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
+					:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
 
 				<N8nButton
 					size="small"
-					:label="$locale.baseText('runData.downloadBinaryData')"
+					:label="i18n.baseText('runData.downloadBinaryData')"
 					@click="downloadJsonData()"
 				/>
 			</div>
@@ -1565,20 +1725,20 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 			>
 				<N8nText>
-					{{ $locale.baseText('runData.switchToBinary.info') }}
+					{{ i18n.baseText('runData.switchToBinary.info') }}
 					<a @click="switchToBinary">
-						{{ $locale.baseText('runData.switchToBinary.binary') }}
+						{{ i18n.baseText('runData.switchToBinary.binary') }}
 					</a>
 				</N8nText>
 			</div>
 
 			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<N8nText tag="h3" size="large">{{ $locale.baseText('ndv.search.noMatch.title') }}</N8nText>
+				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
 				<N8nText>
 					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 						<template #link>
 							<a href="#" @click="onSearchClear">
-								{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 							</a>
 						</template>
 					</i18n-t>
@@ -1639,9 +1799,7 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-				<N8nText align="center" tag="div">{{
-					$locale.baseText('runData.noBinaryDataFound')
-				}}</N8nText>
+				<N8nText align="center" tag="div">{{ i18n.baseText('runData.noBinaryDataFound') }}</N8nText>
 			</div>
 
 			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
@@ -1665,7 +1823,7 @@ defineExpose({ enterEditMode });
 								<div v-if="binaryData.fileName">
 									<div>
 										<N8nText size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileName') }}:
+											>{{ i18n.baseText('runData.fileName') }}:
 										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
@@ -1673,7 +1831,7 @@ defineExpose({ enterEditMode });
 								<div v-if="binaryData.directory">
 									<div>
 										<N8nText size="small" :bold="true"
-											>{{ $locale.baseText('runData.directory') }}:
+											>{{ i18n.baseText('runData.directory') }}:
 										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
@@ -1681,7 +1839,7 @@ defineExpose({ enterEditMode });
 								<div v-if="binaryData.fileExtension">
 									<div>
 										<N8nText size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileExtension') }}:</N8nText
+											>{{ i18n.baseText('runData.fileExtension') }}:</N8nText
 										>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
@@ -1689,7 +1847,7 @@ defineExpose({ enterEditMode });
 								<div v-if="binaryData.mimeType">
 									<div>
 										<N8nText size="small" :bold="true"
-											>{{ $locale.baseText('runData.mimeType') }}:
+											>{{ i18n.baseText('runData.mimeType') }}:
 										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
@@ -1697,7 +1855,7 @@ defineExpose({ enterEditMode });
 								<div v-if="binaryData.fileSize">
 									<div>
 										<N8nText size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileSize') }}:
+											>{{ i18n.baseText('runData.fileSize') }}:
 										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
@@ -1707,7 +1865,7 @@ defineExpose({ enterEditMode });
 									<N8nButton
 										v-if="isViewable(index, key)"
 										size="small"
-										:label="$locale.baseText('runData.showBinaryData')"
+										:label="i18n.baseText('runData.showBinaryData')"
 										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
@@ -1715,7 +1873,7 @@ defineExpose({ enterEditMode });
 										v-if="isDownloadable(index, key)"
 										size="small"
 										type="secondary"
-										:label="$locale.baseText('runData.downloadBinaryData')"
+										:label="i18n.baseText('runData.downloadBinaryData')"
 										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
@@ -1759,9 +1917,9 @@ defineExpose({ enterEditMode });
 					teleported
 					@update:model-value="onPageSizeChange"
 				>
-					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
+					<template #prepend>{{ i18n.baseText('ndv.output.pageSize') }}</template>
 					<N8nOption v-for="size in pageSizes" :key="size" :label="size" :value="size"> </N8nOption>
-					<N8nOption :label="$locale.baseText('ndv.output.all')" :value="dataCount"> </N8nOption>
+					<N8nOption :label="i18n.baseText('ndv.output.all')" :value="dataCount"> </N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -1877,6 +2035,7 @@ defineExpose({ enterEditMode });
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
+	flex-flow: wrap;
 
 	.itemsText {
 		flex-shrink: 0;
@@ -1898,24 +2057,31 @@ defineExpose({ enterEditMode });
 }
 
 .runSelector {
+	display: flex;
+	align-items: center;
+	flex-flow: wrap;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
-	padding-bottom: var(--spacing-s);
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
+	margin-bottom: var(--spacing-s);
+	gap: var(--spacing-3xs);
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-right: var(--spacing-l);
 	}
 }
 
-.search {
-	margin-left: auto;
+.runSelectorInner {
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
 }
 
-.runSelectorInner {
-	max-width: 172px;
+.runSelectorSelect {
+	max-width: 205px;
+}
+
+.search {
+	margin-left: auto;
 }
 
 .pagination {
@@ -2074,6 +2240,15 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
+}
+
+.relatedExecutionInfo {
+	font-size: var(--font-size-s);
+	margin-left: var(--spacing-3xs);
+
+	svg {
+		padding-bottom: 2px;
+	}
 }
 </style>
 

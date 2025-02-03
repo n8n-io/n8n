@@ -1,8 +1,9 @@
+import { Service } from '@n8n/di';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 
 @Service()
@@ -14,12 +15,21 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 	async getMany(accessibleWorkflowIds: string[], options?: ListQuery.Options) {
 		if (accessibleWorkflowIds.length === 0) return { tests: [], count: 0 };
 
-		const where: FindOptionsWhere<TestDefinition> = {
-			...options?.filter,
-			workflow: {
+		const where: FindOptionsWhere<TestDefinition> = {};
+
+		if (options?.filter?.workflowId) {
+			if (!accessibleWorkflowIds.includes(options.filter.workflowId as string)) {
+				throw new ForbiddenError('User does not have access to the workflow');
+			}
+
+			where.workflow = {
+				id: options.filter.workflowId as string,
+			};
+		} else {
+			where.workflow = {
 				id: In(accessibleWorkflowIds),
-			},
-		};
+			};
+		}
 
 		const findManyOptions: FindManyOptions<TestDefinition> = {
 			where,
@@ -37,7 +47,7 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 		return { testDefinitions, count };
 	}
 
-	async getOne(id: number, accessibleWorkflowIds: string[]) {
+	async getOne(id: string, accessibleWorkflowIds: string[]) {
 		return await this.findOne({
 			where: {
 				id,
@@ -45,11 +55,11 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 					id: In(accessibleWorkflowIds),
 				},
 			},
-			relations: ['annotationTag'],
+			relations: ['annotationTag', 'metrics'],
 		});
 	}
 
-	async deleteById(id: number, accessibleWorkflowIds: string[]) {
+	async deleteById(id: string, accessibleWorkflowIds: string[]) {
 		return await this.delete({
 			id,
 			workflow: {

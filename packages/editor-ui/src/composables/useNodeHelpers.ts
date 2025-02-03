@@ -1,6 +1,5 @@
 import { ref, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
-import { v4 as uuid } from 'uuid';
 import type { Connection, ConnectionDetachedParams } from '@jsplumb/core';
 import { useHistoryStore } from '@/stores/history.store';
 import {
@@ -36,6 +35,7 @@ import type {
 	INodeTypeNameVersion,
 	IConnection,
 	IPinData,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import type {
@@ -566,6 +566,29 @@ export function useNodeHelpers() {
 		}
 	}
 
+	function getNodeTaskData(node: INodeUi | null, runIndex = 0) {
+		if (node === null) {
+			return null;
+		}
+		if (workflowsStore.getWorkflowExecution === null) {
+			return null;
+		}
+
+		const executionData = workflowsStore.getWorkflowExecution.data;
+		if (!executionData?.resultData) {
+			// unknown status
+			return null;
+		}
+		const runData = executionData.resultData.runData;
+
+		const taskData = get(runData, [node.name, runIndex]);
+		if (!taskData) {
+			return null;
+		}
+
+		return taskData;
+	}
+
 	function getNodeInputData(
 		node: INodeUi | null,
 		runIndex = 0,
@@ -583,22 +606,8 @@ export function useNodeHelpers() {
 			runIndex = runIndex - 1;
 		}
 
-		if (node === null) {
-			return [];
-		}
-		if (workflowsStore.getWorkflowExecution === null) {
-			return [];
-		}
-
-		const executionData = workflowsStore.getWorkflowExecution.data;
-		if (!executionData?.resultData) {
-			// unknown status
-			return [];
-		}
-		const runData = executionData.resultData.runData;
-
-		const taskData = get(runData, [node.name, runIndex]);
-		if (!taskData) {
+		const taskData = getNodeTaskData(node, runIndex);
+		if (taskData === null) {
 			return [];
 		}
 
@@ -1178,7 +1187,7 @@ export function useNodeHelpers() {
 			};
 
 			if (!newNode.id) {
-				newNode.id = uuid();
+				assignNodeId(newNode);
 			}
 
 			nodeType = nodeTypesStore.getNodeType(newNode.type, newNode.typeVersion);
@@ -1248,6 +1257,62 @@ export function useNodeHelpers() {
 		canvasStore.jsPlumbInstance?.setSuspendDrawing(false, true);
 	}
 
+	function assignNodeId(node: INodeUi) {
+		const id = window.crypto.randomUUID();
+		node.id = id;
+		return id;
+	}
+
+	function assignWebhookId(node: INodeUi) {
+		const id = window.crypto.randomUUID();
+		node.webhookId = id;
+		return id;
+	}
+
+	/** nodes that would execute only once with such parameters add 'undefined' to parameters values if it is parameter's default value */
+	const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
+		'n8n-nodes-base.code': {
+			mode: [undefined, 'runOnceForAllItems'],
+		},
+		'n8n-nodes-base.executeWorkflow': {
+			mode: [undefined, 'once'],
+		},
+		'n8n-nodes-base.crateDb': {
+			operation: [undefined, 'update'], // default insert
+		},
+		'n8n-nodes-base.timescaleDb': {
+			operation: [undefined, 'update'], // default insert
+		},
+		'n8n-nodes-base.microsoftSql': {
+			operation: [undefined, 'update', 'delete'], // default insert
+		},
+		'n8n-nodes-base.questDb': {
+			operation: [undefined], // default insert
+		},
+		'n8n-nodes-base.mongoDb': {
+			operation: ['insert', 'update'],
+		},
+		'n8n-nodes-base.redis': {
+			operation: [undefined], // default info
+		},
+	};
+
+	function isSingleExecution(type: string, parameters: INodeParameters): boolean {
+		const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
+
+		if (singleExecutionCase) {
+			for (const parameter of Object.keys(singleExecutionCase)) {
+				if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1282,5 +1347,9 @@ export function useNodeHelpers() {
 		removeConnectionByConnectionInfo,
 		addPinDataConnections,
 		removePinDataConnections,
+		getNodeTaskData,
+		assignNodeId,
+		assignWebhookId,
+		isSingleExecution,
 	};
 }

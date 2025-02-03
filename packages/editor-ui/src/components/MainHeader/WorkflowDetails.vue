@@ -3,7 +3,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -55,7 +54,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
@@ -80,6 +78,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const npsSurveyStore = useNpsSurveyStore();
+const i18n = useI18n();
 
 const router = useRouter();
 const route = useRoute();
@@ -100,15 +99,6 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
-
-const {
-	nodeViewVersion,
-	nodeViewSwitcherDiscovered,
-	isNodeViewDiscoveryTooltipVisible,
-	switchNodeViewVersion,
-	setNodeViewSwitcherDropdownOpened,
-	setNodeViewSwitcherDiscovered,
-} = useNodeViewVersionSwitcher();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -187,27 +177,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 		label: locale.baseText('generic.settings'),
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
-	});
-
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewVersion.value === '2'
-			? {}
-			: nodeViewSwitcherDiscovered.value
-				? {
-						badge: locale.baseText('menuActions.badge.alpha'),
-						badgeProps: {
-							theme: 'tertiary',
-						},
-					}
-				: {
-						badge: locale.baseText('menuActions.badge.new'),
-					}),
-		label:
-			nodeViewVersion.value === '2'
-				? locale.baseText('menuActions.switchToOldNodeViewVersion')
-				: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-		disabled: !onWorkflowPage.value,
 	});
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
@@ -409,10 +378,6 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-function onWorkflowMenuOpen(visible: boolean) {
-	setNodeViewSwitcherDropdownOpened(visible);
-}
-
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -512,36 +477,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			break;
 		}
-		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
-			setNodeViewSwitcherDiscovered();
-
-			if (uiStore.stateIsDirty) {
-				const confirmModal = await message.confirm(
-					locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					{
-						title: locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.cancelButtonText',
-						),
-						showClose: true,
-					},
-				);
-
-				if (confirmModal === MODAL_CONFIRM) {
-					await onSaveButtonClick();
-				} else if (confirmModal === MODAL_CLOSE) {
-					return;
-				}
-			}
-
-			switchNodeViewVersion();
-
-			break;
-		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			const deleteConfirmed = await message.confirm(
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
@@ -597,7 +532,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
-		if (projectsStore.currentProject) {
+
+		if (
+			projectsStore.currentProject &&
+			projectsStore.currentProject.id !== projectsStore.personalProject?.id
+		) {
 			toastTitle = locale.baseText('workflows.create.project.toast.title', {
 				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
 			});
@@ -644,7 +583,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				ref="dropdown"
 				v-model="appliedTagIds"
 				:event-bus="tagsEventBus"
-				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+				:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
 				@blur="onTagsBlur"
@@ -656,7 +595,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				"
 			>
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-					+ {{ $locale.baseText('workflowDetails.addTag') }}
+					+ {{ i18n.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
 			<WorkflowTagsContainer
@@ -687,13 +626,13 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						data-test-id="workflow-share-button"
 						@click="onShareButtonClick"
 					>
-						{{ $locale.baseText('workflowDetails.share') }}
+						{{ i18n.baseText('workflowDetails.share') }}
 					</N8nButton>
 				</div>
 				<template #fallback>
 					<N8nTooltip>
 						<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-							{{ $locale.baseText('workflowDetails.share') }}
+							{{ i18n.baseText('workflowDetails.share') }}
 						</N8nButton>
 						<template #content>
 							<i18n-t
@@ -706,7 +645,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 								<template #action>
 									<a @click="goToUpgrade">
 										{{
-											$locale.baseText(
+											i18n.baseText(
 												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
 													.button as BaseTextKey,
 											)
@@ -727,7 +666,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					"
 					:is-saving="isWorkflowSaving"
 					:with-shortcut="!readOnly && workflowPermissions.update"
-					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
+					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -746,25 +685,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
-				<N8nTooltip :visible="isNodeViewDiscoveryTooltipVisible">
-					<N8nActionDropdown
-						:items="workflowMenuItems"
-						data-test-id="workflow-menu"
-						@select="onWorkflowMenuSelect"
-						@visible-change="onWorkflowMenuOpen"
-					/>
-					<template #content>
-						<div class="mb-4xs">
-							<N8nBadge>{{ $locale.baseText('menuActions.badge.alpha') }}</N8nBadge>
-						</div>
-						{{ $locale.baseText('menuActions.nodeViewDiscovery.tooltip') }}
-						<N8nIcon
-							:class="$style.closeNodeViewDiscovery"
-							icon="times-circle"
-							@click="setNodeViewSwitcherDiscovered"
-						/>
-					</template>
-				</N8nTooltip>
+				<N8nActionDropdown
+					:items="workflowMenuItems"
+					data-test-id="workflow-menu"
+					@select="onWorkflowMenuSelect"
+				/>
 			</div>
 		</PushConnectionTracker>
 	</div>
@@ -776,11 +701,16 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: $--header-spacing;
+
+	:deep(.el-input) {
+		padding: 0;
+	}
 }
 
 .name {
 	color: $custom-font-dark;
 	font-size: 15px;
+	display: block;
 }
 
 .activator {
@@ -788,7 +718,6 @@ $--header-spacing: 20px;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
-	display: flex;
 	align-items: center;
 
 	> span {
@@ -826,22 +755,32 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
+	flex-wrap: nowrap;
+}
+
+@include mixins.breakpoint('xs-only') {
+	.name {
+		:deep(input) {
+			min-width: 180px;
+		}
+	}
 }
 </style>
 
 <style module lang="scss">
 .container {
 	position: relative;
-	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;
+	flex-wrap: nowrap;
 }
 
 .group {
 	display: flex;
 	gap: var(--spacing-xs);
 }
+
 .hiddenInput {
 	display: none;
 }

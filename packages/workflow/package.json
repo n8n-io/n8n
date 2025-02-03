@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.66.0",
+  "version": "1.76.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -31,6 +31,7 @@
   ],
   "devDependencies": {
     "@langchain/core": "catalog:",
+    "@n8n/config": "workspace:*",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
@@ -40,11 +41,11 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
-    "@n8n/tournament": "1.0.5",
+    "@n8n/tournament": "1.0.6",
     "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
     "axios": "catalog:",
-    "callsites": "3.1.0",
+    "callsites": "catalog:",
     "deep-equal": "2.2.0",
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
@@ -57,6 +58,7 @@
     "recast": "0.21.5",
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
-    "xml2js": "catalog:"
+    "xml2js": "catalog:",
+    "zod": "catalog:"
   }
 }

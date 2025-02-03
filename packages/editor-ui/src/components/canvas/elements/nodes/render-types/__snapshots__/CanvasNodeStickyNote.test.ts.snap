@@ -9,7 +9,7 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
 <div class="vue-flow__resize-control nodrag top right handle"></div>
 <div class="vue-flow__resize-control nodrag bottom left handle"></div>
 <div class="vue-flow__resize-control nodrag bottom right handle"></div>
-<div class="n8n-sticky sticky clickable color-1 sticky" style="height: 180px; width: 240px;" data-test-id="canvas-sticky-note-node">
+<div class="n8n-sticky sticky clickable color-1 sticky" style="height: 180px; width: 240px;" data-test-id="sticky">
   <div class="wrapper">
     <div class="n8n-markdown">
       <div class="sticky"></div>

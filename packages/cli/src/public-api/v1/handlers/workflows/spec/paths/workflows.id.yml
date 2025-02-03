@@ -6,6 +6,13 @@ get:
   summary: Retrieves a workflow
   description: Retrieves a workflow.
   parameters:
+    - name: excludePinnedData
+      in: query
+      required: false
+      description: Set this to avoid retrieving pinned data
+      schema:
+        type: boolean
+        example: true
     - $ref: '../schemas/parameters/workflowId.yml'
   responses:
     '200':

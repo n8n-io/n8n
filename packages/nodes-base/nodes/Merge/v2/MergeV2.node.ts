@@ -1,5 +1,4 @@
 import merge from 'lodash/merge';
-
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -11,13 +10,15 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { preparePairedItemDataArray } from '@utils/utilities';
+
+import { optionsDescription } from './descriptions';
 import type {
 	ClashResolveOptions,
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
 } from './interfaces';
-
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -27,9 +28,6 @@ import {
 	mergeMatched,
 	selectMergeMethod,
 } from './utils';
-
-import { optionsDescription } from './descriptions';
-import { preparePairedItemDataArray } from '@utils/utilities';
 
 export class MergeV2 implements INodeType {
 	description: INodeTypeDescription;

@@ -9,16 +9,11 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { convertKitApiRequest } from './GenericFunctions';
-
 import { customFieldFields, customFieldOperations } from './CustomFieldDescription';
-
 import { formFields, formOperations } from './FormDescription';
-
+import { convertKitApiRequest } from './GenericFunctions';
 import { sequenceFields, sequenceOperations } from './SequenceDescription';
-
 import { tagFields, tagOperations } from './TagDescription';
-
 import { tagSubscriberFields, tagSubscriberOperations } from './TagSubscriberDescription';
 
 export class ConvertKit implements INodeType {

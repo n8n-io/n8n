@@ -1,6 +1,6 @@
-import type { INode, INodeTypeData } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import type { INode } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { Project } from '@/databases/entities/project';
@@ -14,6 +14,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { PermissionChecker } from '@/user-management/permission-checker';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { affixRoleToSaveCredential } from './shared/db/credentials';
 import { getPersonalProject } from './shared/db/projects';
@@ -24,36 +25,6 @@ import type { SaveCredentialFunction } from './shared/types';
 import { mockInstance } from '../shared/mocking';
 
 const ownershipService = mockInstance(OwnershipService);
-
-function mockNodeTypesData(
-	nodeNames: string[],
-	options?: {
-		addTrigger?: boolean;
-	},
-) {
-	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
-		return (
-			(acc[`n8n-nodes-base.${nodeName}`] = {
-				sourcePath: '',
-				type: {
-					description: {
-						displayName: nodeName,
-						name: nodeName,
-						group: [],
-						description: '',
-						version: 1,
-						defaults: {},
-						inputs: [],
-						outputs: [],
-						properties: [],
-					},
-					trigger: options?.addTrigger ? async () => undefined : undefined,
-				},
-			}),
-			acc
-		);
-	}, {});
-}
 
 const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
 	const workflowDetails = {

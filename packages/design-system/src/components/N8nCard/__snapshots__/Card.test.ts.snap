@@ -3,7 +3,7 @@
 exports[`components > N8nCard > should render correctly 1`] = `
 "<div class="card">
   <!--v-if-->
-  <div class="content">
+  <div class="content" data-test-id="card-content">
     <!--v-if-->
     <div class="body">This is a card.</div>
     <!--v-if-->
@@ -15,7 +15,7 @@ exports[`components > N8nCard > should render correctly 1`] = `
 exports[`components > N8nCard > should render correctly with header and footer 1`] = `
 "<div class="card">
   <!--v-if-->
-  <div class="content">
+  <div class="content" data-test-id="card-content">
     <div class="header">Header</div>
     <div class="body">This is a card.</div>
     <div class="footer">Footer</div>

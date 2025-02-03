@@ -1,10 +1,10 @@
+import { captor, mock } from 'jest-mock-extended';
 import type { MqttClient, OnMessageCallback } from 'mqtt';
 import { returnJsonArray } from 'n8n-core';
-import { captor, mock } from 'jest-mock-extended';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
-import { MqttTrigger } from '../MqttTrigger.node';
 import { createClient } from '../GenericFunctions';
+import { MqttTrigger } from '../MqttTrigger.node';
 
 jest.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();

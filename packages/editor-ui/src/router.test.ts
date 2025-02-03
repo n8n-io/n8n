@@ -14,6 +14,8 @@ const App = {
 };
 const renderComponent = createComponentRenderer(App);
 
+let settingsStore: ReturnType<typeof useSettingsStore>;
+
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
 	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
@@ -28,6 +30,7 @@ describe('router', () => {
 	});
 
 	beforeEach(() => {
+		settingsStore = useSettingsStore();
 		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => await Promise.resolve());
 	});
 
@@ -114,7 +117,6 @@ describe('router', () => {
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
-			const settingsStore = useSettingsStore();
 			const rbacStore = useRBACStore();
 
 			settingsStore.settings.communityNodesEnabled = true;
@@ -126,4 +128,13 @@ describe('router', () => {
 		},
 		10000,
 	);
+
+	test.each([
+		[VIEWS.PERSONAL_SETTINGS, true],
+		[VIEWS.USAGE, false],
+	])('should redirect Settings to %s', async (name, hideUsagePage) => {
+		settingsStore.settings.hideUsagePage = hideUsagePage;
+		await router.push('/settings');
+		expect(router.currentRoute.value.name).toBe(name);
+	});
 });

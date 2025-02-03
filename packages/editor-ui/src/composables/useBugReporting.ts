@@ -15,6 +15,7 @@ const REPORT_TEMPLATE = `
 
 \`\`\`
 (Select the nodes on your canvas and use the keyboard shortcuts CMD+C/CTRL+C and CMD+V/CTRL+V to copy and paste the workflow.)
+⚠️ WARNING ⚠️ If you have sensitive data in your workflow (like API keys), please remove it before sharing.
 \`\`\`
 
 

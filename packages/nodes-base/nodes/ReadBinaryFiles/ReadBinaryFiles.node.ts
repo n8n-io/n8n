@@ -1,3 +1,4 @@
+import glob from 'fast-glob';
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -5,8 +6,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-
-import glob from 'fast-glob';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {

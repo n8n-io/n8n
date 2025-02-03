@@ -7,13 +7,10 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { smsFields, smsOperations } from './SmsDescription';
-
-import { mmsFields, mmsOperations } from './MmsDescription';
-
 import { callFields, callOperations } from './CallDescription';
-
 import { plivoApiRequest } from './GenericFunctions';
+import { mmsFields, mmsOperations } from './MmsDescription';
+import { smsFields, smsOperations } from './SmsDescription';
 
 export class Plivo implements INodeType {
 	description: INodeTypeDescription = {

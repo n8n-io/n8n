@@ -1,8 +1,10 @@
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
-import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+
+import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
@@ -39,7 +41,7 @@ const retrieveFields: INodeProperties[] = [
 
 const updateFields: INodeProperties[] = [...insertFields];
 
-export class VectorStoreSupabase extends createVectorStoreNode({
+export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorStore>({
 	meta: {
 		description: 'Work with your data in Supabase Vector Store',
 		icon: 'file:supabase.svg',
@@ -53,7 +55,7 @@ export class VectorStoreSupabase extends createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
 	methods: {
 		listSearch: { supabaseTableNameSearch },

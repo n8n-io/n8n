@@ -3,8 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { Service } from '@n8n/di';
 import get from 'lodash/get';
-import { NodeExecuteFunctions } from 'n8n-core';
+import {
+	ErrorReporter,
+	Logger,
+	NodeExecuteFunctions,
+	RoutingNode,
+	isObjectLiteral,
+} from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -23,25 +30,15 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 } from 'n8n-workflow';
-import {
-	VersionedNodeType,
-	NodeHelpers,
-	RoutingNode,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
-import { Service } from 'typedi';
+import { VersionedNodeType, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
-import { isObjectLiteral } from '../utils';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -75,6 +72,7 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsTester {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
@@ -312,11 +310,10 @@ export class CredentialsTester {
 				runIndex,
 				nodeTypeCopy,
 				{ node, data: {}, source: null },
-				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

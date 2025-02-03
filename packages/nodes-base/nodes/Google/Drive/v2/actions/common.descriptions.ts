@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { DRIVE, RLC_DRIVE_DEFAULT } from '../helpers/interfaces';
+
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../../constants';
+import { DRIVE, RLC_DRIVE_DEFAULT } from '../helpers/interfaces';
 
 export const fileRLC: INodeProperties = {
 	displayName: 'File',

@@ -1,4 +1,3 @@
-import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,21 +8,17 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-
-import { DateTime } from 'luxon';
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
-import { channelFields, channelOperations } from './ChannelDescription';
-
-import { playlistFields, playlistOperations } from './PlaylistDescription';
-
-import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
-
-import { videoFields, videoOperations } from './VideoDescription';
-
-import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
+import type { Readable } from 'stream';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+
+import { channelFields, channelOperations } from './ChannelDescription';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { playlistFields, playlistOperations } from './PlaylistDescription';
+import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
+import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
+import { videoFields, videoOperations } from './VideoDescription';
+import { validateAndSetDate } from '../GenericFunctions';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -763,27 +758,13 @@ export class YouTube implements INodeType {
 						qs.type = 'video';
 
 						qs.forMine = true;
+
 						if (filters.publishedAfter) {
-							const publishedAfter = DateTime.fromISO(filters.publishedAfter as string);
-							if (publishedAfter.isValid) {
-								filters.publishedAfter = publishedAfter.setZone(this.getTimezone()).toISO();
-							} else {
-								throw new NodeOperationError(
-									this.getNode(),
-									`The value "${filters.publishedAfter as string}" is not a valid DateTime.`,
-								);
-							}
+							validateAndSetDate(filters, 'publishedAfter', this.getTimezone(), this);
 						}
+
 						if (filters.publishedBefore) {
-							const publishedBefore = DateTime.fromISO(filters.publishedBefore as string);
-							if (publishedBefore.isValid) {
-								filters.publishedAfter = publishedBefore.setZone(this.getTimezone()).toISO();
-							} else {
-								throw new NodeOperationError(
-									this.getNode(),
-									`The value "${filters.publishedBefore as string}" is not a valid DateTime.`,
-								);
-							}
+							validateAndSetDate(filters, 'publishedBefore', this.getTimezone(), this);
 						}
 
 						Object.assign(qs, options, filters);

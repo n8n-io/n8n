@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -385,10 +385,10 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Execution
 
-	private executionThrottled({ executionId }: RelayEventMap['execution-throttled']) {
+	private executionThrottled({ executionId, type }: RelayEventMap['execution-throttled']) {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.throttled',
-			payload: { executionId },
+			payload: { executionId, type },
 		});
 	}
 

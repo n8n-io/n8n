@@ -74,6 +74,27 @@ describe('ResourceMapper.vue', () => {
 		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
 	});
 
+	it('renders map mode properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'map',
+							},
+						},
+					},
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// This mode doesn't render matching column selector
+		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
+	});
+
 	it('renders multi-key match selector properly', async () => {
 		const { container, getByTestId } = renderComponent(
 			{
@@ -201,7 +222,7 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByText('Look for incoming data that matches the foos in the service'),
 		).toBeInTheDocument();
-		expect(getByText('Foos to Match On')).toBeInTheDocument();
+		expect(getByText('Foos to match on')).toBeInTheDocument();
 		expect(
 			getByText(
 				'The foos to use when matching rows in the service to the input items of this node. Usually an ID.',

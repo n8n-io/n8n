@@ -9,9 +9,7 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { uprocApiRequest } from './GenericFunctions';
-
 import { groupOptions } from './GroupDescription';
-
 import { toolOperations, toolParameters } from './ToolDescription';
 
 export class UProc implements INodeType {

@@ -55,6 +55,7 @@ type Props = {
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
 	showAuthTypeSelector?: boolean;
+	isManaged?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -235,13 +236,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<div>
+	<n8n-callout v-if="isManaged" theme="warning" icon="exclamation-triangle">
+		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
+	</n8n-callout>
+	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
 				:message="
-					$locale.baseText(
+					i18n.baseText(
 						`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
 							credentialPermissions.update ? '' : '.sharee'
 						}`,
@@ -254,7 +258,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				v-if="authError && !showValidationWarning"
 				theme="danger"
 				:message="
-					$locale.baseText(
+					i18n.baseText(
 						`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
 							credentialPermissions.update ? '' : '.sharee'
 						}`,
@@ -262,9 +266,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					)
 				"
 				:details="authError"
-				:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+				:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 				button-loading-label="Retrying"
-				:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+				:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 				:button-loading="isRetesting"
 				@click="$emit('retest')"
 			/>
@@ -272,18 +276,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<Banner
 				v-show="showOAuthSuccessBanner && !showValidationWarning"
 				theme="success"
-				:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
-				:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
-				:button-title="
-					$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')
-				"
+				:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
+				:button-label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+				:button-title="i18n.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 				data-test-id="oauth-connect-success-banner"
 				@click="$emit('oauth')"
 			>
 				<template v-if="isGoogleOAuthType" #button>
 					<p
 						:class="$style.googleReconnectLabel"
-						v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+						v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					/>
 					<GoogleAuthButton @click="$emit('oauth')" />
 				</template>
@@ -292,10 +294,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<Banner
 				v-show="testedSuccessfully && !showValidationWarning"
 				theme="success"
-				:message="$locale.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-				:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
-				:button-loading-label="$locale.baseText('credentialEdit.credentialConfig.retrying')"
-				:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+				:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+				:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
+				:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
+				:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 				:button-loading="isRetesting"
 				data-test-id="credentials-config-container-test-success"
 				@click="$emit('retest')"
@@ -306,10 +308,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					v-if="documentationUrl && credentialProperties.length && !showCredentialDocs"
 					theme="warning"
 				>
-					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
 						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
-							{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
+							{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
 						</n8n-link>
 					</span>
 				</n8n-notice>
@@ -331,16 +333,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<CopyInput
 					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
-					:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 					:value="oAuthCallbackUrl"
-					:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
 					:hint="
-						$locale.baseText('credentialEdit.credentialConfig.subtitle', {
+						i18n.baseText('credentialEdit.credentialConfig.subtitle', {
 							interpolate: { appName },
 						})
 					"
 					:toast-title="
-						$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
+						i18n.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 					"
 					:redact-value="true"
 				/>
@@ -349,7 +351,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<div>
 					<n8n-info-tip :bold="false">
 						{{
-							$locale.baseText('credentialEdit.credentialEdit.info.sharee', {
+							i18n.baseText('credentialEdit.credentialEdit.info.sharee', {
 								interpolate: { credentialOwnerName },
 							})
 						}}
@@ -379,15 +381,15 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
-				{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
+				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 			</n8n-text>
 
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.ExternalSecrets]">
 				<template #fallback>
 					<n8n-info-tip class="mt-s">
-						{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets') }}
-						<n8n-link bold :to="$locale.baseText('settings.externalSecrets.docs')" size="small">
-							{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
+						{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets') }}
+						<n8n-link bold :to="i18n.baseText('settings.externalSecrets.docs')" size="small">
+							{{ i18n.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
 						</n8n-link>
 					</n8n-info-tip>
 				</template>

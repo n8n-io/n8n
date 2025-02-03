@@ -5,10 +5,11 @@ import type {
 	IExecuteFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { processAirtableError, removeIgnored } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
-import { processAirtableError, removeIgnored } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{

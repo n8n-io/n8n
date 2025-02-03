@@ -126,6 +126,7 @@ const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
 const index = toRef(props, 'index');
 const isRequired = toRef(props, 'required');
+const maxConnections = toRef(props, 'maxConnections');
 
 provide(CanvasNodeHandleKey, {
 	label,
@@ -137,6 +138,7 @@ provide(CanvasNodeHandleKey, {
 	isConnected,
 	isConnecting,
 	isReadOnly,
+	maxConnections,
 });
 </script>
 
@@ -155,6 +157,7 @@ provide(CanvasNodeHandleKey, {
 		<RenderType
 			:class="renderTypeClasses"
 			:is-connected="isConnected"
+			:max-connections="maxConnections"
 			:style="offset"
 			:label="label"
 			@add="onAdd"

@@ -13,7 +13,6 @@ import type {
 import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
-
 import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
 
 export class SurveyMonkeyTrigger implements INodeType {

@@ -10,14 +10,12 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
-
 import { v4 as uuid } from 'uuid';
 
-import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
-
-import { recordFields, recordOperations } from './RecordDescription';
-
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
+import { recordFields, recordOperations } from './RecordDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',

@@ -410,6 +410,12 @@ describe('CommunityPackagesService', () => {
 				expect.any(Object),
 				expect.any(Function),
 			);
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(
+				installedPackage.packageName,
+			);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(
+				installedPackage.packageName,
+			);
 		});
 
 		test('should throw when not licensed', async () => {

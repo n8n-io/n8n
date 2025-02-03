@@ -3,8 +3,10 @@ import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { defineComponent } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
-export default {
+export default defineComponent({
 	name: 'EventSelection',
 	components: {
 		Checkbox,
@@ -15,6 +17,13 @@ export default {
 			default: 'defaultDestinationId',
 		},
 		readonly: Boolean,
+	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
 	},
 	data() {
 		return {
@@ -42,16 +51,16 @@ export default {
 			this.$forceUpdate();
 		},
 		groupLabelName(t: string): string {
-			return this.$locale.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
+			return this.i18n.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
 		},
 		groupLabelInfo(t: string): string | undefined {
 			const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
-			const infoText = this.$locale.baseText(labelInfo as BaseTextKey);
+			const infoText = this.i18n.baseText(labelInfo as BaseTextKey);
 			if (infoText === labelInfo || infoText === '') return;
 			return infoText;
 		},
 	},
-};
+});
 </script>
 
 <template>
@@ -89,11 +98,11 @@ export default {
 				@update:model-value="onInput"
 				@change="anonymizeAuditMessagesChanged"
 			>
-				{{ $locale.baseText('settings.log-streaming.tab.events.anonymize') }}
+				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
 					<template #content>
-						{{ $locale.baseText('settings.log-streaming.tab.events.anonymize.info') }}
+						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
 				</n8n-tooltip>
 			</Checkbox>

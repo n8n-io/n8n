@@ -1,27 +1,27 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
+import { N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
+import { useNDVStore } from '../stores/ndv.store';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nRadioButtons, N8nTooltip, N8nText } from 'n8n-design-system';
-import { storeToRefs } from 'pinia';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -71,7 +71,7 @@ const telemetry = useTelemetry();
 
 const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
-const inputMode = ref<MappingMode>('debugging');
+
 const mappedNode = ref<string | null>(null);
 const inputModes = [
 	{ value: 'mapping', label: i18n.baseText('ndv.input.mapping') },
@@ -88,6 +88,27 @@ const {
 	focusedMappableInput,
 	isMappingOnboarded: isUserOnboarded,
 } = storeToRefs(ndvStore);
+
+const rootNode = computed(() => {
+	if (!activeNode.value) return null;
+
+	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+});
+
+const hasRootNodeRun = computed(() => {
+	return !!(
+		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+	);
+});
+
+const inputMode = ref<MappingMode>(
+	// Show debugging mode by default only when the node has already run
+	activeNode.value &&
+		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+		? 'debugging'
+		: 'mapping',
+);
+
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
 	const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
@@ -145,7 +166,7 @@ const isExecutingPrevious = computed(() => {
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		!workflowsStore.isNodeExecuting(activeNode.value.name)
+		workflowsStore.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -158,12 +179,6 @@ const isExecutingPrevious = computed(() => {
 	return false;
 });
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
-const rootNode = computed(() => {
-	if (!activeNode.value) return null;
-
-	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
-});
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
@@ -212,7 +227,10 @@ const activeNodeType = computed(() => {
 	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
 });
 
-const waitingMessage = computed(() => waitingNodeTooltip());
+const waitingMessage = computed(() => {
+	const parentNode = parentNodes.value[0];
+	return parentNode && waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name));
+});
 
 watch(
 	inputMode,
@@ -340,10 +358,10 @@ function activatePane() {
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
-		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
-		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:too-much-data-title="i18n.baseText('ndv.input.tooMuchData.title')"
+		:no-data-in-branch-message="i18n.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
-		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
+		:executing-message="i18n.baseText('ndv.input.executingPrevious')"
 		:push-ref="pushRef"
 		:override-outputs="connectedCurrentNodeOutputs"
 		:mapping-enabled="isMappingEnabled"
@@ -362,7 +380,7 @@ function activatePane() {
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<span :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -401,14 +419,33 @@ function activatePane() {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.noOutputData.title')
-				}}</N8nText>
+				<template v-if="isMappingEnabled || hasRootNodeRun">
+					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+						i18n.baseText('ndv.input.noOutputData.title')
+					}}</N8nText>
+				</template>
+				<template v-else>
+					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+						i18n.baseText('ndv.input.rootNodeHasNotRun.title')
+					}}</N8nText>
+					<N8nText tag="div" color="text-dark" size="medium">
+						<i18n-t tag="span" keypath="ndv.input.rootNodeHasNotRun.description">
+							<template #link>
+								<a
+									href="#"
+									data-test-id="switch-to-mapping-mode-link"
+									@click.prevent="onInputModeChange('mapping')"
+									>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
+								>
+							</template>
+						</i18n-t>
+					</N8nText>
+				</template>
 				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
 							v-n8n-html="
-								$locale.baseText('dataMapping.dragFromPreviousHint', {
+								i18n.baseText('dataMapping.dragFromPreviousHint', {
 									interpolate: { name: focusedMappableInput },
 								})
 							"
@@ -419,14 +456,15 @@ function activatePane() {
 						hide-icon
 						:transparent="true"
 						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
-						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+						class="mt-m"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						@execute="onNodeExecute"
 					/>
 				</N8nTooltip>
 				<N8nText v-if="!readOnly" tag="div" size="small">
-					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+					{{ i18n.baseText('ndv.input.noOutputData.hint') }}
 				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">
@@ -434,16 +472,16 @@ function activatePane() {
 					<WireMeUp />
 				</div>
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.notConnected.title')
+					i18n.baseText('ndv.input.notConnected.title')
 				}}</N8nText>
 				<N8nText tag="div">
-					{{ $locale.baseText('ndv.input.notConnected.message') }}
+					{{ i18n.baseText('ndv.input.notConnected.message') }}
 					<a
 						href="https://docs.n8n.io/workflows/connections/"
 						target="_blank"
 						@click="onConnectionHelpClick"
 					>
-						{{ $locale.baseText('ndv.input.notConnected.learnMore') }}
+						{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
 					</a>
 				</N8nText>
 			</div>
@@ -456,17 +494,17 @@ function activatePane() {
 
 		<template #no-output-data>
 			<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.input.noOutputData')
+				i18n.baseText('ndv.input.noOutputData')
 			}}</N8nText>
 		</template>
 
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
 				}}</N8nText>
 				<N8nText>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 				</N8nText>
 			</div>
 		</template>
@@ -491,11 +529,7 @@ function activatePane() {
 	margin-left: auto;
 }
 .noOutputData {
-	max-width: 180px;
-
-	> *:first-child {
-		margin-bottom: var(--spacing-m);
-	}
+	max-width: 250px;
 
 	> * {
 		margin-bottom: var(--spacing-2xs);

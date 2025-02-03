@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { notePresend } from '../GenericFunctions';
+
 import { getId, mapWith, showFor } from './utils';
+import { notePresend } from '../GenericFunctions';
 
 const displayOpts = showFor(['note']);
 

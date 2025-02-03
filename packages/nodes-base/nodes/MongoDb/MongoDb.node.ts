@@ -1,4 +1,12 @@
 import type {
+	FindOneAndReplaceOptions,
+	FindOneAndUpdateOptions,
+	UpdateOptions,
+	Sort,
+} from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,16 +17,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
-
-import type {
-	FindOneAndReplaceOptions,
-	FindOneAndUpdateOptions,
-	UpdateOptions,
-	Sort,
-} from 'mongodb';
-import { ObjectId } from 'mongodb';
-import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
@@ -28,8 +26,8 @@ import {
 	stringifyObjectIDs,
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
-
 import type { IMongoParametricCredentials } from './mongoDb.types';
+import { nodeProperties } from './MongoDbProperties';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -209,7 +207,11 @@ export class MongoDb implements INodeType {
 						query = query.sort(sort);
 					}
 
-					if (projection && projection instanceof Document) {
+					if (
+						projection &&
+						Object.keys(projection).length !== 0 &&
+						projection.constructor === Object
+					) {
 						query = query.project(projection);
 					}
 

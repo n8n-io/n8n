@@ -11,7 +11,7 @@ export const ACTION_RECORDED_PAGE = `
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
 			rel='stylesheet'
 			type='text/css'
 		/>
@@ -103,7 +103,7 @@ export function createEmailBody(message: string, buttons: string, instanceId?: s
 					<tr>
 						<td
 							style="text-align: center; padding-top: 8px; font-family: Arial, sans-serif; font-size: 14px; color: #7e8186;">
-							<p>${message}</p>
+							<p style="white-space: pre-line;">${message}</p>
 						</td>
 					</tr>
 					<tr>

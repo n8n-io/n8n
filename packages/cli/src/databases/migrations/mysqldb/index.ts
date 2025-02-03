@@ -43,6 +43,7 @@ import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-Migrate
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -68,7 +69,15 @@ import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-C
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from '../common/1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
+import { AddProjectIcons1729607673469 } from '../common/1729607673469-AddProjectIcons';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
+import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
+import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
+import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
+import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
+import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
+import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
+import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -140,4 +149,13 @@ export const mysqlMigrations: Migration[] = [
 	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 	UpdateProcessedDataValueColumnToText1729607673464,
 	CreateTestDefinitionTable1730386903556,
+	AddDescriptionToTestDefinition1731404028106,
+	MigrateTestDefinitionKeyToString1731582748663,
+	CreateTestMetricTable1732271325258,
+	CreateTestRun1732549866705,
+	AddMockedNodesColumnToTestDefinition1733133775640,
+	AddManagedColumnToCredentialsTable1734479635324,
+	AddProjectIcons1729607673469,
+	AddStatsColumnsToTestRun1736172058779,
+	CreateTestCaseExecutionTable1736947513045,
 ];

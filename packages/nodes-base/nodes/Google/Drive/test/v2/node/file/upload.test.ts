@@ -1,11 +1,8 @@
-import nock from 'nock';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as upload from '../../../../v2/actions/file/upload.operation';
-
-import * as transport from '../../../../v2/transport';
 import * as utils from '../../../../v2/helpers/utils';
-
+import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, createTestStream, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {
@@ -39,18 +36,8 @@ jest.mock('../../../../v2/helpers/utils', () => {
 });
 
 describe('test GoogleDriveV2: file upload', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	beforeEach(() => {
 		jest.clearAllMocks();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-		jest.unmock('../../../../v2/helpers/utils');
 	});
 
 	it('should upload buffers', async () => {

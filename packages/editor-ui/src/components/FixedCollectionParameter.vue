@@ -17,6 +17,10 @@ import {
 	N8nButton,
 } from 'n8n-design-system';
 import ParameterInputList from './ParameterInputList.vue';
+import Draggable from 'vuedraggable';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { telemetry } from '@/plugins/telemetry';
 
 const locale = useI18n();
 
@@ -42,6 +46,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];
 }>();
+
+const workflowsStore = useWorkflowsStore();
+const ndvStore = useNDVStore();
 
 const getPlaceholderText = computed(() => {
 	const placeholder = locale.nodeText().placeholder(props.parameter, props.path);
@@ -126,40 +133,11 @@ const getOptionProperties = (optionName: string) => {
 	return undefined;
 };
 
-const moveOptionDown = (optionName: string, index: number) => {
-	if (Array.isArray(mutableValues.value[optionName])) {
-		mutableValues.value[optionName].splice(
-			index + 1,
-			0,
-			mutableValues.value[optionName].splice(index, 1)[0],
-		);
+const onAddButtonClick = (optionName: string) => {
+	optionSelected(optionName);
+	if (props.parameter.name === 'workflowInputs') {
+		trackWorkflowInputFieldAdded();
 	}
-
-	const parameterData: ValueChangedEvent = {
-		name: getPropertyPath(optionName),
-		value: mutableValues.value[optionName],
-		type: 'optionsOrderChanged',
-	};
-
-	emit('valueChanged', parameterData);
-};
-
-const moveOptionUp = (optionName: string, index: number) => {
-	if (Array.isArray(mutableValues.value[optionName])) {
-		mutableValues.value?.[optionName].splice(
-			index - 1,
-			0,
-			mutableValues.value[optionName].splice(index, 1)[0],
-		);
-	}
-
-	const parameterData: ValueChangedEvent = {
-		name: getPropertyPath(optionName),
-		value: mutableValues.value[optionName],
-		type: 'optionsOrderChanged',
-	};
-
-	emit('valueChanged', parameterData);
 };
 
 const optionSelected = (optionName: string) => {
@@ -218,6 +196,33 @@ const optionSelected = (optionName: string) => {
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
+	if (props.parameter.name === 'workflowInputs') {
+		trackWorkflowInputFieldTypeChange(parameterData);
+	}
+};
+const onDragChange = (optionName: string) => {
+	const parameterData: ValueChangedEvent = {
+		name: getPropertyPath(optionName),
+		value: mutableValues.value[optionName],
+		type: 'optionsOrderChanged',
+	};
+
+	emit('valueChanged', parameterData);
+};
+
+const trackWorkflowInputFieldTypeChange = (parameterData: IUpdateInformation) => {
+	telemetry.track('User changed workflow input field type', {
+		type: parameterData.value,
+		workflow_id: workflowsStore.workflow.id,
+		node_id: ndvStore.activeNode?.id,
+	});
+};
+
+const trackWorkflowInputFieldAdded = () => {
+	telemetry.track('User added workflow input field', {
+		workflow_id: workflowsStore.workflow.id,
+		node_id: ndvStore.activeNode?.id,
+	});
 };
 </script>
 
@@ -246,59 +251,61 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				color="text-dark"
 			/>
 			<div v-if="multipleValues">
-				<div
-					v-for="(_, index) in mutableValues[property.name]"
-					:key="property.name + index"
-					class="parameter-item"
+				<Draggable
+					v-model="mutableValues[property.name]"
+					handle=".drag-handle"
+					drag-class="dragging"
+					ghost-class="ghost"
+					chosen-class="chosen"
+					@change="onDragChange(property.name)"
 				>
-					<div
-						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
-					>
-						<div v-if="!isReadOnly" class="delete-option">
-							<N8nIconButton
-								type="tertiary"
-								text
-								size="mini"
-								icon="trash"
-								data-test-id="fixed-collection-delete"
-								:title="locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name, index)"
-							></N8nIconButton>
-							<N8nIconButton
-								v-if="sortable && index !== 0"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-up"
-								:title="locale.baseText('fixedCollectionParameter.moveUp')"
-								@click="moveOptionUp(property.name, index)"
-							></N8nIconButton>
-							<N8nIconButton
-								v-if="sortable && index !== mutableValues[property.name].length - 1"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-down"
-								:title="locale.baseText('fixedCollectionParameter.moveDown')"
-								@click="moveOptionDown(property.name, index)"
-							></N8nIconButton>
+					<template #item="{ index }">
+						<div :key="property.name + '-' + index" class="parameter-item">
+							<div
+								:class="
+									index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'
+								"
+							>
+								<div v-if="!isReadOnly" class="icon-button default-top-padding">
+									<N8nIconButton
+										v-if="sortable"
+										type="tertiary"
+										text
+										size="mini"
+										icon="grip-vertical"
+										:title="locale.baseText('fixedCollectionParameter.dragItem')"
+										class="drag-handle"
+									></N8nIconButton>
+								</div>
+								<div v-if="!isReadOnly" class="icon-button extra-top-padding">
+									<N8nIconButton
+										type="tertiary"
+										text
+										size="mini"
+										icon="trash"
+										data-test-id="fixed-collection-delete"
+										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
+										@click="deleteOption(property.name, index)"
+									></N8nIconButton>
+								</div>
+								<Suspense>
+									<ParameterInputList
+										:parameters="property.values"
+										:node-values="nodeValues"
+										:path="getPropertyPath(property.name, index)"
+										:hide-delete="true"
+										:is-read-only="isReadOnly"
+										@value-changed="valueChanged"
+									/>
+								</Suspense>
+							</div>
 						</div>
-						<Suspense>
-							<ParameterInputList
-								:parameters="property.values"
-								:node-values="nodeValues"
-								:path="getPropertyPath(property.name, index)"
-								:hide-delete="true"
-								:is-read-only="isReadOnly"
-								@value-changed="valueChanged"
-							/>
-						</Suspense>
-					</div>
-				</div>
+					</template>
+				</Draggable>
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div v-if="!isReadOnly" class="delete-option">
+					<div v-if="!isReadOnly" class="icon-button">
 						<N8nIconButton
 							type="tertiary"
 							text
@@ -329,7 +336,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				block
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
-				@click="optionSelected(parameter.options[0].name)"
+				@click="onAddButtonClick(parameter.options[0].name)"
 			/>
 			<div v-else class="add-option">
 				<N8nSelect
@@ -355,7 +362,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	.delete-option {
+	.icon-button {
 		display: flex;
 		flex-direction: column;
 	}
@@ -390,21 +397,36 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 .fixed-collection-parameter-property {
 	margin: var(--spacing-xs) 0;
+	margin-bottom: 0;
 }
 
-.parameter-item:hover > .parameter-item-wrapper > .delete-option {
+.parameter-item:hover > .parameter-item-wrapper > .icon-button {
 	opacity: 1;
 }
 
 .parameter-item {
 	position: relative;
-	padding: 0 0 0 1em;
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			.delete-option {
-				top: 14px;
+			.default-top-padding {
+				top: calc(1.2 * var(--spacing-s));
 			}
+			.extra-top-padding {
+				top: calc(2.2 * var(--spacing-s));
+			}
+		}
+	}
+}
+
+.parameter-item:first-of-type {
+	.parameter-item-wrapper {
+		.default-top-padding {
+			top: var(--spacing-3xs);
+		}
+		.extra-top-padding {
+			top: var(--spacing-l);
 		}
 	}
 }
@@ -415,5 +437,21 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
+}
+.ghost,
+.dragging {
+	border-radius: var(--border-radius-base);
+	padding-right: var(--spacing-xs);
+}
+.ghost {
+	background-color: var(--color-background-base);
+	opacity: 0.5;
+}
+.dragging {
+	background-color: var(--color-background-xlight);
+	.parameter-item-wrapper {
+		border: none;
+	}
+	opacity: 0.7;
 }
 </style>

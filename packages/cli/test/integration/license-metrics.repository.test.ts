@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';

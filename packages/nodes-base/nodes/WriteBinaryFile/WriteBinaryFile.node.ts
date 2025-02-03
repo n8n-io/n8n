@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -7,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {

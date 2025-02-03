@@ -1,5 +1,5 @@
-import type { ComputedRef } from 'vue';
-import { ref, computed } from 'vue';
+import type { ComputedRef, MaybeRef } from 'vue';
+import { ref, computed, unref } from 'vue';
 import {
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	NodeConnectionType,
@@ -19,7 +19,7 @@ import type { INodeUi } from '@/Interface';
 export interface ChatTriggerDependencies {
 	getNodeByName: (name: string) => INodeUi | null;
 	getNodeType: (type: string, version: number) => INodeTypeDescription | null;
-	canvasNodes: INodeUi[];
+	canvasNodes: MaybeRef<INodeUi[]>;
 	workflow: ComputedRef<Workflow>;
 }
 
@@ -52,7 +52,7 @@ export function useChatTrigger({
 
 	/** Gets the chat trigger node from the workflow */
 	function setChatTriggerNode() {
-		const triggerNode = canvasNodes.find((node) =>
+		const triggerNode = unref(canvasNodes).find((node) =>
 			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 		);
 

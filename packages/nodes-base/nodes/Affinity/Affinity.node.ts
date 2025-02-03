@@ -10,17 +10,11 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { affinityApiRequest, affinityApiRequestAllItems } from './GenericFunctions';
-
-import { organizationFields, organizationOperations } from './OrganizationDescription';
-
-import { personFields, personOperations } from './PersonDescription';
-
 import { listFields, listOperations } from './ListDescription';
-
 import { listEntryFields, listEntryOperations } from './ListEntryDescription';
-
+import { organizationFields, organizationOperations } from './OrganizationDescription';
 import type { IOrganization } from './OrganizationInterface';
-
+import { personFields, personOperations } from './PersonDescription';
 import type { IPerson } from './PersonInterface';
 
 export class Affinity implements INodeType {

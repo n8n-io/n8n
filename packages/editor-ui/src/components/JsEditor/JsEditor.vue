@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { history, toggleComment } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
@@ -16,14 +16,9 @@ import {
 } from '@codemirror/view';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
 
 type Props = {
 	modelValue: string;
@@ -85,7 +80,7 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',
 			minHeight: '20vh',
@@ -96,15 +91,7 @@ const extensions = computed(() => {
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
 			history(),
-			Prec.highest(
-				keymap.of([
-					...tabKeyMap(),
-					...enterKeyMap,
-					...historyKeyMap,
-					...autocompleteKeyMap,
-					{ key: 'Mod-/', run: toggleComment },
-				]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			lintGutter(),
 			n8nAutocompletion(),
 			indentOnInput(),

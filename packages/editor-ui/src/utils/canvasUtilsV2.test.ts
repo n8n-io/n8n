@@ -1,14 +1,15 @@
 import {
+	checkOverlap,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
-	checkOverlap,
 } from '@/utils/canvasUtilsV2';
+import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { IConnections, INodeTypeDescription, IConnection } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
@@ -77,12 +78,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -215,12 +217,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -233,12 +236,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
@@ -334,12 +338,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -352,12 +357,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -475,12 +481,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -493,12 +500,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.AiMemory,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 1,
 						type: NodeConnectionType.AiMemory,
 					},
@@ -511,12 +519,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleC,
 				targetHandle: targetHandleC,
 				data: {
-					fromNodeName: nodes[1].name,
 					source: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -587,12 +596,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -662,12 +672,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -807,7 +818,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: undefined },
-			{ type: NodeConnectionType.AiTool, index: 0, label: undefined },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: undefined,
+				maxConnections: undefined,
+			},
 		]);
 	});
 
@@ -820,7 +836,13 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool', required: true },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'AI Tool',
+				required: true,
+				maxConnections: undefined,
+			},
 		]);
 	});
 
@@ -834,7 +856,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: undefined },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool' },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'AI Tool',
+				maxConnections: undefined,
+			},
 			{ type: NodeConnectionType.Main, index: 1, label: undefined },
 		]);
 	});
@@ -874,7 +901,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input', required: true },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'Optional Tool' },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'Optional Tool',
+				maxConnections: undefined,
+			},
 		]);
 	});
 
@@ -943,5 +975,74 @@ describe('checkOverlap', () => {
 		const node1 = { x: 0, y: 0, width: 10, height: 10 };
 		const node2 = { x: 10, y: 10, width: 10, height: 10 };
 		expect(checkOverlap(node1, node2)).toBe(false);
+	});
+});
+
+describe('insertSpacersBetweenEndpoints', () => {
+	it('should insert spacers when there are less than min endpoints count', () => {
+		const endpoints = [{ index: 0, required: true }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
+	});
+
+	it('should not insert spacers when there are at least min endpoints count', () => {
+		const endpoints = [{ index: 0, required: true }, { index: 1 }, { index: 2 }, { index: 3 }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual(endpoints);
+	});
+
+	it('should handle zero required endpoints', () => {
+		const endpoints = [{ index: 0, required: false }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual([null, null, null, { index: 0, required: false }]);
+	});
+
+	it('should handle no endpoints', () => {
+		const endpoints: Array<{ index: number; required: boolean }> = [];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual([null, null, null, null]);
+	});
+
+	it('should handle required endpoints greater than min endpoints count', () => {
+		const endpoints = [
+			{ index: 0, required: true },
+			{ index: 1, required: true },
+			{ index: 2, required: true },
+			{ index: 3, required: true },
+			{ index: 4, required: true },
+		];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual(endpoints);
+	});
+
+	it('should insert spacers between required and optional endpoints', () => {
+		const endpoints = [{ index: 0, required: true }, { index: 1, required: true }, { index: 2 }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual([
+			{ index: 0, required: true },
+			{ index: 1, required: true },
+			null,
+			{ index: 2 },
+		]);
+	});
+
+	it('should handle required endpoints count greater than endpoints length', () => {
+		const endpoints = [{ index: 0, required: true }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
+	});
+
+	it('should handle min endpoints count less than required endpoints count', () => {
+		const endpoints = [{ index: 0, required: false }];
+		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 0);
+		expect(result).toEqual([{ index: 0, required: false }]);
 	});
 });

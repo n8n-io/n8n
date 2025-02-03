@@ -13,6 +13,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 import { useAssistantStore } from '@/stores/assistant.store';
+import N8nIconButton from 'n8n-design-system/components/N8nIconButton/IconButton.vue';
 
 export interface Props {
 	active?: boolean;
@@ -145,6 +146,14 @@ onBeforeUnmount(() => {
 				[$style.active]: showScrim,
 			}"
 		/>
+		<N8nIconButton
+			v-if="active"
+			:class="$style.close"
+			type="secondary"
+			icon="times"
+			aria-label="Close Node Creator"
+			@click="emit('closeNodeCreator')"
+		/>
 		<SlideTransition>
 			<div
 				v-if="active"
@@ -168,13 +177,14 @@ onBeforeUnmount(() => {
 	font-weight: var(--font-weight-bold);
 }
 .nodeCreator {
+	--node-creator-width: #{$node-creator-width};
 	--node-icon-color: var(--color-text-base);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
 	right: 0;
 	z-index: var(--z-index-node-creator);
-	width: $node-creator-width;
+	width: var(--node-creator-width);
 	color: $node-creator-text-color;
 }
 
@@ -192,6 +202,26 @@ onBeforeUnmount(() => {
 
 	&.active {
 		opacity: 0.7;
+	}
+}
+
+.close {
+	position: absolute;
+	z-index: calc(var(--z-index-node-creator) + 1);
+	top: var(--spacing-xs);
+	right: var(--spacing-xs);
+	background: transparent;
+	border: 0;
+	display: none;
+}
+
+@media screen and (max-width: #{$node-creator-width + $sidebar-width}) {
+	.nodeCreator {
+		--node-creator-width: calc(100vw - #{$sidebar-width});
+	}
+
+	.close {
+		display: inline-flex;
 	}
 }
 </style>

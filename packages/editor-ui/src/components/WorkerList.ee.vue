@@ -9,6 +9,7 @@ import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import WorkerCard from './Workers/WorkerCard.ee.vue';
 
 withDefaults(
 	defineProps<{

@@ -1,3 +1,4 @@
+import { omit } from 'lodash';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { omit } from 'lodash';
 import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
@@ -24,9 +24,7 @@ export async function freshserviceApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain } = (await this.getCredentials(
-		'freshserviceApi',
-	)) as FreshserviceCredentials;
+	const { apiKey, domain } = await this.getCredentials<FreshserviceCredentials>('freshserviceApi');
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
 	const options: IRequestOptions = {

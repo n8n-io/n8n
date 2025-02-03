@@ -1,9 +1,10 @@
-import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import { databasePageUrlExtractionRegexp } from '../shared/constants';
-import { extractPageId, formatBlocks, getPageId } from '../shared/GenericFunctions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { databasePageUrlExtractionRegexp } from '../shared/constants';
+import { extractPageId, formatBlocks, getPageId } from '../shared/GenericFunctions';
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {

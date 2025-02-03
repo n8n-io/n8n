@@ -10,10 +10,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType } from '../../../../../utils/helpers';
-import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
-import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
+import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { throwIfToolSchema } from '@utils/schemaParsing';
+import { getTracingConfig } from '@utils/tracing';
+
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function planAndExecuteAgentExecute(
@@ -26,7 +27,7 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');
 	const outputParsers = await getOptionalOutputParsers(this);

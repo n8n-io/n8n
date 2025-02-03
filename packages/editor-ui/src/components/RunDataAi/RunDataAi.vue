@@ -8,6 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';
+import { useI18n } from '@/composables/useI18n';
 
 interface AIResult {
 	node: string;
@@ -32,6 +33,9 @@ const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
+
+const i18n = useI18n();
+
 function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
 }
@@ -60,6 +64,7 @@ function getReferencedData(
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
+					subExecution: taskData.metadata?.subExecution,
 				},
 			});
 		});
@@ -162,10 +167,6 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 const aiData = computed<AIResult[]>(() => {
 	const result: AIResult[] = [];
 	const connectedSubNodes = props.workflow.getParentNodes(props.node.name, 'ALL_NON_MAIN');
-	const rootNodeResult = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
-	const rootNodeStartTime = rootNodeResult?.[props.runIndex ?? 0]?.startTime ?? 0;
-	const rootNodeEndTime =
-		rootNodeStartTime + (rootNodeResult?.[props.runIndex ?? 0]?.executionTime ?? 0);
 
 	connectedSubNodes.forEach((nodeName) => {
 		const nodeRunData = workflowsStore.getWorkflowResultDataByNodeName(nodeName) ?? [];
@@ -188,15 +189,7 @@ const aiData = computed<AIResult[]>(() => {
 		return aTime - bTime;
 	});
 
-	// Only show data that is within the root node's execution time
-	// This is because sub-node could be connected to multiple root nodes
-	const currentNodeResult = result.filter((r) => {
-		const startTime = r.data?.metadata?.startTime ?? 0;
-
-		return startTime >= rootNodeStartTime && startTime < rootNodeEndTime;
-	});
-
-	return currentNodeResult;
+	return result;
 });
 
 const executionTree = computed<TreeNode[]>(() => {
@@ -259,7 +252,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				<div v-if="selectedRun.length === 0" :class="$style.empty">
 					<n8n-text size="large">
 						{{
-							$locale.baseText('ndv.output.ai.empty', {
+							i18n.baseText('ndv.output.ai.empty', {
 								interpolate: {
 									node: props.node.name,
 								},
@@ -276,7 +269,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.noData">{{ $locale.baseText('ndv.output.ai.waiting') }}</div>
+		<div v-else :class="$style.noData">{{ i18n.baseText('ndv.output.ai.waiting') }}</div>
 	</div>
 </template>
 
@@ -356,9 +349,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	margin-right: var(--spacing-4xs);
 }
 .isSelected {
-	.nodeIcon {
-		background-color: var(--color-foreground-base);
-	}
+	background-color: var(--color-foreground-base);
 }
 .treeNode {
 	display: inline-flex;

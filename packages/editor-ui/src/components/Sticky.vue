@@ -7,7 +7,6 @@ import type { Workflow } from 'n8n-workflow';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type { INodeUi, XYPosition } from '@/Interface';
 
-import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -21,6 +20,7 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useStyles } from '@/composables/useStyles';
+import { useI18n } from '@/composables/useI18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -56,6 +56,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const { APP_Z_INDEXES } = useStyles();
+const i18n = useI18n();
 
 const isResizing = ref<boolean>(false);
 const isTouchActive = ref<boolean>(false);
@@ -203,16 +204,7 @@ const onEdit = (edit: boolean) => {
 
 const onMarkdownClick = (link: HTMLAnchorElement) => {
 	if (link) {
-		const isOnboardingNote = props.name === QUICKSTART_NOTE_NAME;
-		const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
-		const type =
-			isOnboardingNote && isWelcomeVideo
-				? 'welcome_video'
-				: isOnboardingNote && link.getAttribute('href') === '/templates'
-					? 'templates'
-					: 'other';
-
-		telemetry.track('User clicked note link', { type });
+		telemetry.track('User clicked note link', { type: 'other' });
 	}
 };
 
@@ -361,7 +353,7 @@ const onContextMenu = (e: MouseEvent): void => {
 					v-touch:tap="deleteNode"
 					class="option"
 					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.delete')"
+					:title="i18n.baseText('node.delete')"
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -378,7 +370,7 @@ const onContextMenu = (e: MouseEvent): void => {
 						<div
 							class="option"
 							data-test-id="change-sticky-color"
-							:title="$locale.baseText('node.changeColor')"
+							:title="i18n.baseText('node.changeColor')"
 							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
 						>
 							<font-awesome-icon icon="palette" />

@@ -283,7 +283,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 		addAssistantError(
-			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
+			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
@@ -399,7 +399,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+			currentWorkflow: workflowDataStale.value
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)
@@ -485,24 +487,25 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		openChat();
 
 		streaming.value = true;
+		const payload: ChatRequest.RequestPayload['payload'] = {
+			role: 'user',
+			type: 'init-error-helper',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			error: context.error,
+			node: assistantHelpers.processNodeForAssistant(context.node, [
+				'position',
+				'parameters.notice',
+			]),
+			nodeInputData,
+			executionSchema: schemas,
+			authType,
+		};
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-error-helper',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					error: context.error,
-					node: assistantHelpers.processNodeForAssistant(context.node, [
-						'position',
-						'parameters.notice',
-					]),
-					nodeInputData,
-					executionSchema: schemas,
-					authType,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),

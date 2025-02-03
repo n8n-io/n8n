@@ -9,13 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	getDateParts,
-	monicaCrmApiRequest,
-	monicaCrmApiRequestAllItems,
-	toOptions,
-} from './GenericFunctions';
-
-import {
 	activityFields,
 	activityOperations,
 	callFields,
@@ -41,7 +34,12 @@ import {
 	taskFields,
 	taskOperations,
 } from './descriptions';
-
+import {
+	getDateParts,
+	monicaCrmApiRequest,
+	monicaCrmApiRequestAllItems,
+	toOptions,
+} from './GenericFunctions';
 import type { LoaderGetResponse, Option } from './types';
 
 export class MonicaCrm implements INodeType {

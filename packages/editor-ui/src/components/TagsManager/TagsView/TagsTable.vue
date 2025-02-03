@@ -5,6 +5,7 @@ import type { ITagRow } from '@/Interface';
 import { onMounted, ref, watch } from 'vue';
 import { N8nInput } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	rows: ITagRow[];
@@ -25,6 +26,8 @@ const emit = defineEmits<{
 	cancelOperation: [];
 	applyOperation: [];
 }>();
+
+const i18n = useI18n();
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
@@ -135,12 +138,12 @@ onMounted(() => {
 		:class="$style['tags-table']"
 		stripe
 		max-height="450"
-		:empty-text="$locale.baseText('tagsTable.noMatchingTagsExist')"
+		:empty-text="i18n.baseText('tagsTable.noMatchingTagsExist')"
 		:data="rows"
 		:span-method="getSpan"
 		:row-class-name="getRowClasses"
 	>
-		<el-table-column :label="$locale.baseText('tagsTable.name')">
+		<el-table-column :label="i18n.baseText('tagsTable.name')">
 			<template #default="scope">
 				<div :key="scope.row.id" :class="$style.name" @keydown.stop>
 					<transition name="fade" mode="out-in">
@@ -152,7 +155,7 @@ onMounted(() => {
 							@update:model-value="onNewNameChange"
 						></N8nInput>
 						<span v-else-if="scope.row.delete">
-							<span>{{ $locale.baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
+							<span>{{ i18n.baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
 							<input ref="deleteHiddenInput" :class="$style.hidden" />
 						</span>
 						<span v-else :class="{ [$style.disabled]: scope.row.disable }">
@@ -162,7 +165,7 @@ onMounted(() => {
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column :label="$locale.baseText(usageColumnTitleLocaleKey)" width="170">
+		<el-table-column :label="i18n.baseText(usageColumnTitleLocaleKey)" width="170">
 			<template #default="scope">
 				<transition name="fade" mode="out-in">
 					<div
@@ -179,53 +182,53 @@ onMounted(() => {
 				<transition name="fade" mode="out-in">
 					<div v-if="scope.row.create" :class="$style.ops">
 						<n8n-button
-							:label="$locale.baseText('tagsTable.cancel')"
+							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
 						<n8n-button
-							:label="$locale.baseText('tagsTable.createTag')"
+							:label="i18n.baseText('tagsTable.createTag')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="scope.row.update" :class="$style.ops">
 						<n8n-button
-							:label="$locale.baseText('tagsTable.cancel')"
+							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
 						<n8n-button
-							:label="$locale.baseText('tagsTable.saveChanges')"
+							:label="i18n.baseText('tagsTable.saveChanges')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="scope.row.delete" :class="$style.ops">
 						<n8n-button
-							:label="$locale.baseText('tagsTable.cancel')"
+							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
 						<n8n-button
-							:label="$locale.baseText('tagsTable.deleteTag')"
+							:label="i18n.baseText('tagsTable.deleteTag')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="!scope.row.disable" :class="[$style.ops, $style.main]">
 						<n8n-icon-button
-							:title="$locale.baseText('tagsTable.editTag')"
+							:title="i18n.baseText('tagsTable.editTag')"
 							icon="pen"
 							data-test-id="edit-tag-button"
 							@click.stop="enableUpdate(scope.row)"
 						/>
 						<n8n-icon-button
 							v-if="scope.row.canDelete"
-							:title="$locale.baseText('tagsTable.deleteTag')"
+							:title="i18n.baseText('tagsTable.deleteTag')"
 							icon="trash"
 							data-test-id="delete-tag-button"
 							@click.stop="enableDelete(scope.row)"

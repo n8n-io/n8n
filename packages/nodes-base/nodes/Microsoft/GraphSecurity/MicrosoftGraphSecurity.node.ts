@@ -8,17 +8,16 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import {
-	msGraphSecurityApiRequest,
-	throwOnEmptyUpdate,
-	tolerateDoubleQuotes,
-} from './GenericFunctions';
-
-import {
 	secureScoreControlProfileFields,
 	secureScoreControlProfileOperations,
 	secureScoreFields,
 	secureScoreOperations,
 } from './descriptions';
+import {
+	msGraphSecurityApiRequest,
+	throwOnEmptyUpdate,
+	tolerateDoubleQuotes,
+} from './GenericFunctions';
 
 export class MicrosoftGraphSecurity implements INodeType {
 	description: INodeTypeDescription = {

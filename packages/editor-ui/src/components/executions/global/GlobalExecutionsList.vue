@@ -15,6 +15,8 @@ import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = withDefaults(
 	defineProps<{
@@ -39,6 +41,7 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -69,6 +72,17 @@ const workflows = computed<IWorkflowDb[]>(() => {
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+
+/**
+ * Calculate the number of executions counted towards the production executions concurrency limit.
+ * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
+ */
+const runningExecutionsCount = computed(() => {
+	return props.executions.filter(
+		(execution) =>
+			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
+	).length;
+});
 
 watch(
 	() => props.executions,
@@ -312,6 +326,10 @@ async function onAutoRefreshToggle(value: boolean) {
 		executionsStore.stopAutoRefreshInterval();
 	}
 }
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
+};
 </script>
 
 <template>
@@ -320,6 +338,14 @@ async function onAutoRefreshToggle(value: boolean) {
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">
+					<ConcurrentExecutionsHeader
+						v-if="settingsStore.isConcurrencyEnabled"
+						class="mr-xl"
+						:running-executions-count="runningExecutionsCount"
+						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
+						@go-to-upgrade="goToUpgrade"
+					/>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
@@ -388,12 +414,15 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"
 						@retry-saved="retrySavedExecution"
 						@retry-original="retryOriginalExecution"
+						@go-to-upgrade="goToUpgrade"
 					/>
 				</TransitionGroup>
 			</table>
@@ -459,8 +488,12 @@ async function onAutoRefreshToggle(value: boolean) {
 	position: relative;
 	height: 100%;
 	width: 100%;
-	max-width: 1280px;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	max-width: var(--content-container-width);
+
+	@include mixins.breakpoint('xs-only') {
+		padding: var(--spacing-xs) var(--spacing-xs) 0;
+	}
 }
 
 .execList {

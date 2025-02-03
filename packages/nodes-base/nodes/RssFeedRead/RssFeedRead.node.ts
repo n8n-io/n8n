@@ -1,4 +1,3 @@
-import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,8 +7,8 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import Parser from 'rss-parser';
+import { URL } from 'url';
 
 // Utility function
 
@@ -54,7 +53,7 @@ export class RssFeedRead implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Ignore SSL Issues',
+						displayName: 'Ignore SSL Issues (Insecure)',
 						name: 'ignoreSSL',
 						type: 'boolean',
 						default: false,

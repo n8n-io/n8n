@@ -167,7 +167,6 @@ function onDrop(newParamValue: string) {
 					title: i18n.baseText('dataMapping.success.title'),
 					message: i18n.baseText('dataMapping.success.moreInfo'),
 					type: 'success',
-					dangerouslyUseHTMLString: true,
 				});
 
 				ndvStore.setMappingOnboarded();
@@ -194,7 +193,8 @@ function onDrop(newParamValue: string) {
 watch(
 	() => props.isReadOnly,
 	(isReadOnly) => {
-		if (isReadOnly) {
+		// Patch fix, see https://linear.app/n8n/issue/ADO-2974/resource-mapper-values-are-emptied-when-refreshing-the-columns
+		if (isReadOnly && props.parameter.disabledOptions !== undefined) {
 			valueChanged({ name: props.path, value: props.parameter.default });
 		}
 	},

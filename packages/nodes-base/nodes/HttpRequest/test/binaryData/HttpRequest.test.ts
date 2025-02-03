@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import {
 	setup,
 	equalityTest,
@@ -16,8 +17,6 @@ describe('Test Binary Data Download', () => {
 	beforeAll(async () => {
 		await initBinaryDataService();
 
-		nock.disableNetConnect();
-
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')
@@ -32,11 +31,6 @@ describe('Test Binary Data Download', () => {
 			'content-disposition': 'attachment; filename="testing.jpg"',
 		});
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

@@ -8,10 +8,32 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import { createEventBus } from 'n8n-design-system';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
+
+beforeEach(() => {
+	mockNdvState = {
+		hasInputData: true,
+		activeNode: {
+			id: faker.string.uuid(),
+			name: faker.word.words(3),
+			parameters: {},
+			position: [faker.number.int(), faker.number.int()],
+			type: 'test',
+			typeVersion: 1,
+		},
+		isInputPanelEmpty: false,
+		isOutputPanelEmpty: false,
+	};
+	mockNodeTypesState = {
+		allNodeTypes: [],
+	};
+	mockCompletionResult = {};
+	createAppModals();
+});
 
 vi.mock('@/stores/ndv.store', () => {
 	return {
@@ -211,5 +233,89 @@ describe('ParameterInput.vue', () => {
 		expect(input).toHaveValue('Set up credential to see options');
 
 		expect(emitted('update')).toBeUndefined();
+	});
+
+	test('should reset bool on eventBus:removeExpression', async () => {
+		const eventBus = createEventBus();
+		const { emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'aSwitch',
+				parameter: {
+					displayName: 'A Switch',
+					name: 'aSwitch',
+					type: 'boolean',
+					default: true,
+				},
+				modelValue: '={{ }}', // note that this makes a syntax error
+				eventBus,
+			},
+		});
+
+		eventBus.emit('optionSelected', 'removeExpression');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: true })]);
+	});
+
+	test('should reset bool with undefined evaluation on eventBus:removeExpression', async () => {
+		const eventBus = createEventBus();
+		const { emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'aSwitch',
+				parameter: {
+					displayName: 'A Switch',
+					name: 'aSwitch',
+					type: 'boolean',
+					default: true,
+				},
+				modelValue: undefined,
+				eventBus,
+			},
+		});
+
+		eventBus.emit('optionSelected', 'removeExpression');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: true })]);
+	});
+
+	test('should reset number on eventBus:removeExpression', async () => {
+		const eventBus = createEventBus();
+		const { emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'aNum',
+				parameter: {
+					displayName: 'A Num',
+					name: 'aNum',
+					type: 'number',
+					default: 6,
+				},
+				modelValue: '={{ }}', // note that this makes a syntax error
+				eventBus,
+			},
+		});
+
+		eventBus.emit('optionSelected', 'removeExpression');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 6 })]);
+	});
+
+	test('should reset string on eventBus:removeExpression', async () => {
+		const eventBus = createEventBus();
+		const { emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'aStr',
+				parameter: {
+					displayName: 'A Str',
+					name: 'aStr',
+					type: 'string',
+					default: 'some default',
+				},
+				modelValue: '={{ }}', // note that this makes a syntax error
+				eventBus,
+			},
+		});
+
+		eventBus.emit('optionSelected', 'removeExpression');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '{{ }}' })]);
 	});
 });

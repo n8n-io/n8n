@@ -1,6 +1,7 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
 	pruning: {
@@ -61,7 +62,13 @@ export const defaultSettings: FrontendSettings = {
 		disableSessionRecording: false,
 		enabled: false,
 	},
-	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
+	publicApi: {
+		apiKeysPerUserLimit: 0,
+		enabled: false,
+		latestVersion: 0,
+		path: '',
+		swaggerUi: { enabled: false },
+	},
 	pushBackend: 'websocket',
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
@@ -124,5 +131,10 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 	},
+	aiCredits: {
+		enabled: false,
+		credits: 0,
+	},
 	betaFeatures: [],
+	easyAIWorkflowOnboarded: false,
 };

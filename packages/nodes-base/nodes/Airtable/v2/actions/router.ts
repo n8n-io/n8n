@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { AirtableType } from './node.type';
 
-import * as record from './record/Record.resource';
 import * as base from './base/Base.resource';
+import type { AirtableType } from './node.type';
+import * as record from './record/Record.resource';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];

@@ -74,6 +74,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
 
+	const userClaimedAiCredits = computed(() => currentUser.value?.settings?.userClaimedAiCredits);
+
+	const isEasyAIWorkflowOnboardingDone = computed(() =>
+		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
+	);
+
+	const setEasyAIWorkflowOnboardingDone = () => {
+		if (currentUser.value?.settings) {
+			currentUser.value.settings.easyAIWorkflowOnboarded = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -172,7 +184,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const loginWithCreds = async (params: {
 		email: string;
 		password: string;
-		mfaToken?: string;
+		mfaCode?: string;
 		mfaRecoveryCode?: string;
 	}) => {
 		const user = await usersApi.login(rootStore.restApiContext, params);
@@ -232,7 +244,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.validatePasswordToken(rootStore.restApiContext, params);
 	};
 
-	const changePassword = async (params: { token: string; password: string; mfaToken?: string }) => {
+	const changePassword = async (params: { token: string; password: string; mfaCode?: string }) => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
 	};
 
@@ -316,25 +328,23 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await mfaApi.getMfaQR(rootStore.restApiContext);
 	};
 
-	const verifyMfaToken = async (data: { token: string }) => {
-		return await mfaApi.verifyMfaToken(rootStore.restApiContext, data);
+	const verifyMfaCode = async (data: { mfaCode: string }) => {
+		return await mfaApi.verifyMfaCode(rootStore.restApiContext, data);
 	};
 
 	const canEnableMFA = async () => {
 		return await mfaApi.canEnableMFA(rootStore.restApiContext);
 	};
 
-	const enableMfa = async (data: { token: string }) => {
+	const enableMfa = async (data: { mfaCode: string }) => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
 		}
 	};
 
-	const disableMfa = async (mfaCode: string) => {
-		await mfaApi.disableMfa(rootStore.restApiContext, {
-			token: mfaCode,
-		});
+	const disableMfa = async (data: mfaApi.DisableMfaParams) => {
+		await mfaApi.disableMfa(rootStore.restApiContext, data);
 
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = false;
@@ -380,6 +390,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
+		userClaimedAiCredits,
+		isEasyAIWorkflowOnboardingDone,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -404,7 +416,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		submitPersonalizationSurvey,
 		showPersonalizationSurvey,
 		fetchMfaQR,
-		verifyMfaToken,
+		verifyMfaCode,
 		enableMfa,
 		disableMfa,
 		canEnableMFA,
@@ -412,5 +424,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
+		setEasyAIWorkflowOnboardingDone,
 	};
 });

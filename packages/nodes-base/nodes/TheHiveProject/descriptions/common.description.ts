@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { TLP } from '../helpers/interfaces';
 
 export const returnAllAndLimit: INodeProperties[] = [

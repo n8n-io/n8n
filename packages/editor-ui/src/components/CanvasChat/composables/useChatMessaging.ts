@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { v4 as uuid } from 'uuid';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { NodeConnectionType, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -34,7 +34,6 @@ export interface ChatMessagingDependencies {
 	messages: Ref<ChatMessage[]>;
 	sessionId: Ref<string>;
 	workflow: ComputedRef<Workflow>;
-	isLoading: ComputedRef<boolean>;
 	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null;
 	onRunChatWorkflow: (
@@ -48,7 +47,6 @@ export function useChatMessaging({
 	messages,
 	sessionId,
 	workflow,
-	isLoading,
 	executionResultData,
 	getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
@@ -56,6 +54,7 @@ export function useChatMessaging({
 	const locale = useI18n();
 	const { showError } = useToast();
 	const previousMessageIndex = ref(0);
+	const isLoading = ref(false);
 
 	/** Converts a file to binary data */
 	async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
@@ -147,57 +146,45 @@ export function useChatMessaging({
 			},
 			source: [null],
 		};
-
+		isLoading.value = true;
 		const response = await onRunChatWorkflow({
 			triggerNode: triggerNode.name,
 			nodeData,
 			source: 'RunData.ManualChatMessage',
 			message,
 		});
-
+		isLoading.value = false;
 		if (!response?.executionId) {
-			showError(
-				new Error('It was not possible to start workflow!'),
-				'Workflow could not be started',
-			);
 			return;
 		}
 
-		waitForExecution(response.executionId);
+		processExecutionResultData(response.executionId);
 	}
 
-	/** Waits for workflow execution to complete */
-	function waitForExecution(executionId: string) {
-		const waitInterval = setInterval(() => {
-			if (!isLoading.value) {
-				clearInterval(waitInterval);
+	function processExecutionResultData(executionId: string) {
+		const lastNodeExecuted = executionResultData.value?.lastNodeExecuted;
 
-				const lastNodeExecuted = executionResultData.value?.lastNodeExecuted;
+		if (!lastNodeExecuted) return;
 
-				if (!lastNodeExecuted) return;
+		const nodeResponseDataArray = get(executionResultData.value.runData, lastNodeExecuted) ?? [];
 
-				const nodeResponseDataArray =
-					get(executionResultData.value.runData, lastNodeExecuted) ?? [];
+		const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
-				const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
+		let responseMessage: string;
 
-				let responseMessage: string;
-
-				if (get(nodeResponseData, 'error')) {
-					responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
-				} else {
-					const responseData = get(nodeResponseData, 'data.main[0][0].json');
-					responseMessage = extractResponseMessage(responseData);
-				}
-
-				messages.value.push({
-					text: responseMessage,
-					sender: 'bot',
-					createdAt: new Date().toISOString(),
-					id: executionId ?? uuid(),
-				});
-			}
-		}, 500);
+		if (get(nodeResponseData, 'error')) {
+			responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
+		} else {
+			const responseData = get(nodeResponseData, 'data.main[0][0].json');
+			responseMessage = extractResponseMessage(responseData);
+		}
+		isLoading.value = false;
+		messages.value.push({
+			text: responseMessage,
+			sender: 'bot',
+			createdAt: new Date().toISOString(),
+			id: executionId ?? uuid(),
+		});
 	}
 
 	/** Extracts response message from workflow output */
@@ -269,7 +256,7 @@ export function useChatMessaging({
 			];
 		if (!connectedMemoryInputs) return [];
 
-		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
+		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => (i ?? []).length > 0)?.[0];
 
 		if (!memoryConnection) return [];
 
@@ -291,9 +278,9 @@ export function useChatMessaging({
 
 	return {
 		previousMessageIndex,
+		isLoading: computed(() => isLoading.value),
 		sendMessage,
 		extractResponseMessage,
-		waitForExecution,
 		getChatMessages,
 	};
 }

@@ -75,8 +75,13 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
 
+				// @TODO Remove this once the switcher is removed
 				cy.window().then((win) => {
-					win.localStorage.setItem('NodeView.switcher.discovered', 'true'); // @TODO Remove this once the switcher is removed
+					win.localStorage.setItem('NodeView.migrated.release', 'true');
+					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
+
+					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
+					win.localStorage.setItem('NodeView.version', nodeViewVersion ?? '1');
 				});
 			});
 	});
@@ -167,6 +172,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		};
 		if (options?.realMouse) {
 			element.realMouseDown();
+			element.realMouseMove(0, 0);
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
@@ -177,6 +183,16 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
+			if (options?.moveTwice) {
+				// first move like hover to trigger object to be visible
+				// like in main panel in ndv
+				element.trigger('mousemove', {
+					which: 1,
+					pageX: newPosition.x,
+					pageY: newPosition.y,
+					force: true,
+				});
+			}
 			if (options?.clickToFinish) {
 				// Click to finish the drag
 				// For some reason, mouseup isn't working when moving nodes
@@ -203,8 +219,15 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			const pageY = coords.top + coords.height / 2;
 
 			if (draggableSelector) {
-				// We can't use realMouseDown here because it hangs headless run
-				cy.get(draggableSelector).trigger('mousedown');
+				cy.ifCanvasVersion(
+					() => {
+						// We can't use realMouseDown here because it hangs headless run
+						cy.get(draggableSelector).trigger('mousedown');
+					},
+					() => {
+						cy.get(draggableSelector).realMouseDown();
+					},
+				);
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);

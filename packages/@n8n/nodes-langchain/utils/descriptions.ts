@@ -66,18 +66,17 @@ export const inputSchemaField: INodeProperties = {
 };
 
 export const promptTypeOptions: INodeProperties = {
-	displayName: 'Prompt Source',
+	displayName: 'Source for Prompt (User Message)',
 	name: 'promptType',
 	type: 'options',
 	options: [
 		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: 'Take from previous node automatically',
+			name: 'Connected Chat Trigger Node',
 			value: 'auto',
-			description: 'Looks for an input field called chatInput',
+			description:
+				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
 		},
 		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 			name: 'Define below',
 			value: 'define',
 			description: 'Use an expression to reference data in previous nodes or enter static text',
@@ -99,7 +98,7 @@ export const textInput: INodeProperties = {
 };
 
 export const textFromPreviousNode: INodeProperties = {
-	displayName: 'Text From Previous Node',
+	displayName: 'Prompt (User Message)',
 	name: 'text',
 	type: 'string',
 	required: true,

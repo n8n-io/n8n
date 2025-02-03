@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -8,9 +9,8 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
 	baseURL?: string;

@@ -65,7 +65,7 @@ const lastPopupCountUpdate = ref(0);
 const codeGenerationInProgress = ref(false);
 
 const router = useRouter();
-const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
 const externalHooks = useExternalHooks();
@@ -287,6 +287,7 @@ async function onClick() {
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				5,
 			);
 			if (!updateInformation) return;
 
@@ -318,6 +319,7 @@ async function onClick() {
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
 		ndvStore.setActiveNodeName(null);
+		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
 		await stopWaitingForWebhook();
@@ -353,17 +355,10 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			if (workflowsStore.isWaitingExecution) {
-				await runWorkflowResolvePending({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			} else {
-				await runWorkflow({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			}
+			await runWorkflow({
+				destinationNode: props.nodeName,
+				source: 'RunData.ExecuteNodeButton',
+			});
 
 			emit('execute');
 		}

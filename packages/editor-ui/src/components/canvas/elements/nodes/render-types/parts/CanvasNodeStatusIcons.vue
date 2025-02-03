@@ -3,8 +3,10 @@ import { computed } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { useI18n } from '@/composables/useI18n';
 
 const nodeHelpers = useNodeHelpers();
+const i18n = useI18n();
 
 const {
 	hasPinnedData,
@@ -29,7 +31,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${$locale.baseText('node.issues')}:`" :items="issues" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
 			<FontAwesomeIcon icon="exclamation-triangle" />
 		</N8nTooltip>

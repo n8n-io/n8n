@@ -15,7 +15,7 @@ interface TagsDropdownWrapperProps {
 const props = withDefaults(defineProps<TagsDropdownWrapperProps>(), {
 	placeholder: '',
 	modelValue: () => [],
-	createEnabled: false,
+	createEnabled: true,
 	eventBus: null,
 });
 

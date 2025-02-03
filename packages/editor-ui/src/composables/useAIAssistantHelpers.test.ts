@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import type { INode } from 'n8n-workflow';
+import type { INode, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import type { IWorkflowDb } from '@/Interface';
+import type { ChatRequest } from '@/types/assistant.types';
+import {
+	ERROR_HELPER_TEST_PAYLOAD,
+	PAYLOAD_SIZE_FOR_1_PASS,
+	PAYLOAD_SIZE_FOR_2_PASSES,
+	SUPPORT_CHAT_TEST_PAYLOAD,
+} from './useAIAssistantHelpers.test.constants';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -76,6 +84,15 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 							name: 'document',
 							value: "={{ $('Edit Fields 2').item.json.document}}",
 							type: 'string',
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
+							name: 'Replace me with your logic',
+							type: 'n8n-nodes-base.noOp',
+							position: [520, 340],
+							typeVersion: 1,
 						},
 					],
 				},
@@ -377,6 +394,121 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 	},
 ];
 
+const testWorkflow: IWorkflowDb = {
+	id: 'MokOcBHON6KkPq6Y',
+	name: 'My Sub-Workflow 3',
+	active: false,
+	createdAt: -1,
+	updatedAt: -1,
+	connections: {
+		'Execute Workflow Trigger': {
+			main: [
+				[
+					{
+						node: 'Replace me with your logic',
+						type: 'main' as NodeConnectionType,
+						index: 0,
+					},
+				],
+			],
+		},
+	},
+	nodes: [
+		{
+			parameters: {
+				notice: '',
+				events: 'worklfow_call',
+			},
+			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			position: [260, 340],
+			typeVersion: 0,
+		},
+		{
+			parameters: {},
+			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
+			name: 'Replace me with your logic',
+			type: 'n8n-nodes-base.noOp',
+			position: [520, 340],
+			typeVersion: 1,
+		},
+	],
+	settings: {
+		executionOrder: 'v1',
+	},
+	tags: [],
+	pinData: {},
+	versionId: '9f3263e3-d23d-4cc8-bff0-0fdecfbd82bf',
+	usedCredentials: [],
+	scopes: [
+		'workflow:create',
+		'workflow:delete',
+		'workflow:execute',
+		'workflow:list',
+		'workflow:move',
+		'workflow:read',
+		'workflow:share',
+		'workflow:update',
+	],
+	sharedWithProjects: [],
+};
+
+const testExecutionData: IRunExecutionData['resultData'] = {
+	runData: {
+		'When clicking ‘Test workflow’': [
+			{
+				hints: [],
+				startTime: 1732882780588,
+				executionTime: 4,
+				source: [],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								pairedItem: {
+									item: 0,
+								},
+							},
+						],
+					],
+				},
+			},
+		],
+		'Edit Fields': [
+			{
+				hints: [],
+				startTime: 1732882780593,
+				executionTime: 0,
+				source: [
+					{
+						previousNode: 'When clicking ‘Test workflow’',
+					},
+				],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {
+									something: 'here',
+								},
+								pairedItem: {
+									item: 0,
+								},
+							},
+						],
+					],
+				},
+			},
+		],
+	},
+	pinData: {},
+	lastNodeExecuted: 'Edit Fields',
+};
+
 describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 
@@ -388,5 +520,103 @@ describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	const caseName = testCase.caseName;
 	it(`${caseName}`, () => {
 		expect(aiAssistantHelpers.getReferencedNodes(testCase.node)).toEqual(testCase.expected);
+	});
+});
+
+describe('Simplify assistant payloads', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('simplifyWorkflowForAssistant: Should remove unnecessary properties from workflow object', () => {
+		const simplifiedWorkflow = aiAssistantHelpers.simplifyWorkflowForAssistant(testWorkflow);
+		const removedProperties = [
+			'createdAt',
+			'updatedAt',
+			'settings',
+			'versionId',
+			'usedCredentials',
+			'sharedWithProjects',
+			'pinData',
+			'scopes',
+			'tags',
+		];
+		removedProperties.forEach((property) => {
+			expect(simplifiedWorkflow).not.toHaveProperty(property);
+		});
+	});
+
+	it('simplifyResultData: Should remove data from nodes', () => {
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(testExecutionData);
+		for (const nodeName of Object.keys(simplifiedResultData.runData)) {
+			expect(simplifiedResultData.runData[nodeName][0]).not.toHaveProperty('data');
+		}
+	});
+});
+
+describe('Trim Payload Size', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should trim active node parameters in error helper payload', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
+		aiAssistantHelpers.trimPayloadSize(payload);
+		expect((payload.payload as ChatRequest.InitErrorHelper).node.parameters).toEqual({});
+	});
+
+	it('Should trim all node parameters in support chat', () => {
+		// Testing the scenario where only one trimming pass is needed
+		// (payload is under the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming to 4kb should be successful
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_1_PASS),
+		).not.toThrow();
+		// All active node parameters should be removed
+		expect(supportPayload?.context?.activeNodeInfo?.node?.parameters).toEqual({});
+		// Also, all node parameters in the workflow should be removed
+		supportPayload.context?.currentWorkflow?.nodes?.forEach((node) => {
+			expect(node.parameters).toEqual({});
+		});
+		// Node parameters in the execution data should be removed
+		expect(supportPayload.context?.executionData?.runData).toEqual({});
+		if (
+			supportPayload.context?.executionData?.error &&
+			'node' in supportPayload.context.executionData.error
+		) {
+			expect(supportPayload.context?.executionData?.error?.node?.parameters).toEqual({});
+		}
+		// Context object should still be there
+		expect(supportPayload.context).to.be.an('object');
+	});
+
+	it('Should trim the whole context in support chat', () => {
+		// Testing the scenario where both trimming passes are needed
+		// (payload is over the limit after removing all node parameters and execution data)
+		const payload: ChatRequest.RequestPayload = SUPPORT_CHAT_TEST_PAYLOAD;
+		const supportPayload: ChatRequest.InitSupportChat =
+			payload.payload as ChatRequest.InitSupportChat;
+
+		// Trimming should be successful
+		expect(() =>
+			aiAssistantHelpers.trimPayloadSize(payload, PAYLOAD_SIZE_FOR_2_PASSES),
+		).not.toThrow();
+		// The whole context object should be removed
+		expect(supportPayload.context).not.toBeDefined();
+	});
+
+	it('Should throw an error if payload is too big after trimming', () => {
+		const payload = ERROR_HELPER_TEST_PAYLOAD;
+		expect(() => aiAssistantHelpers.trimPayloadSize(payload, 0.2)).toThrow();
 	});
 });

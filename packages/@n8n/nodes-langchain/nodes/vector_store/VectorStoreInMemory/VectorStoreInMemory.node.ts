@@ -1,4 +1,6 @@
+import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { INodeProperties } from 'n8n-workflow';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 
@@ -19,12 +21,13 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreInMemory extends createVectorStoreNode({
+export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore>({
 	meta: {
 		displayName: 'In-Memory Vector Store',
 		name: 'vectorStoreInMemory',
 		description: 'Work with your data in In-Memory Vector Store',
 		icon: 'fa:database',
+		iconColor: 'black',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
 	},

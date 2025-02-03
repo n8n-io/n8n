@@ -424,14 +424,12 @@ export class HubspotTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
-		//@ts-ignore
 		if (headerData['x-hubspot-signature'] === undefined) {
 			return {};
 		}
 
 		const hash = `${credentials.clientSecret}${JSON.stringify(bodyData)}`;
 		const signature = createHash('sha256').update(hash).digest('hex');
-		//@ts-ignore
 		if (signature !== headerData['x-hubspot-signature']) {
 			return {};
 		}
