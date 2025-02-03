@@ -740,6 +740,8 @@ export interface CreateElementBase {
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
 	subcategory: string;
+	resource?: string;
+	operation?: string;
 	properties: SimplifiedNodeType;
 }
 

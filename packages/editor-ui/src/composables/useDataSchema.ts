@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
+import type { Optional, Primitives, Schema, INodeUi, SchemaType } from '@/Interface';
 import {
 	type ITaskDataConnections,
 	type IDataObject,
@@ -13,6 +13,8 @@ import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
+import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
+import { isObject } from '@/utils/objectUtils';
 
 export function useDataSchema() {
 	function getSchema(
@@ -65,6 +67,58 @@ export function useDataSchema() {
 		const [head, ...tail] = data;
 
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
+	}
+
+	function getSchemaForJsonSchema(schema: JSONSchema7 | JSONSchema7Definition, path = ''): Schema {
+		if (typeof schema !== 'object') {
+			return {
+				type: 'null',
+				path,
+				value: 'null',
+			};
+		}
+		if (schema.type === 'array') {
+			return {
+				type: 'array',
+				value: isObject(schema.items)
+					? [{ ...getSchemaForJsonSchema(schema.items, `${path}[0]`), key: '0' }]
+					: [],
+				path,
+			};
+		}
+
+		if (schema.type === 'object') {
+			const properties = schema.properties ?? {};
+			const value = Object.entries(properties).map(([key, propSchema]) => {
+				const newPath = path ? `${path}.${key}` : `.${key}`;
+				const transformed = getSchemaForJsonSchema(propSchema, newPath);
+				return { ...transformed, key };
+			});
+
+			return {
+				type: 'object',
+				value,
+				path,
+			};
+		}
+
+		const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+		return {
+			type: JsonSchemaTypeToSchemaType(type),
+			value: '',
+			path,
+		};
+	}
+
+	function JsonSchemaTypeToSchemaType(type: JSONSchema7TypeName | undefined): SchemaType {
+		switch (type) {
+			case undefined:
+				return 'undefined';
+			case 'integer':
+				return 'number';
+			default:
+				return type;
+		}
 	}
 
 	// Returns the data of the main input
@@ -164,6 +218,7 @@ export function useDataSchema() {
 	return {
 		getSchema,
 		getSchemaForExecutionData,
+		getSchemaForJsonSchema,
 		getNodeInputData,
 		getInputDataWithPinned,
 		filterSchema,
@@ -177,6 +232,7 @@ export type SchemaNode = {
 	connectedOutputIndexes: number[];
 	itemsCount: number;
 	schema: Schema;
+	preview: boolean;
 };
 
 export type RenderItem = {
@@ -190,6 +246,7 @@ export type RenderItem = {
 	icon: string;
 	collapsable?: boolean;
 	nodeType?: INodeUi['type'];
+	preview?: boolean;
 	type: 'item';
 };
 
@@ -201,6 +258,7 @@ export type RenderHeader = {
 	nodeType: INodeTypeDescription;
 	itemCount: number | null;
 	type: 'header';
+	preview?: boolean;
 };
 
 type Renders = RenderHeader | RenderItem;
@@ -225,6 +283,15 @@ const emptyItem = (): RenderItem => ({
 	icon: '',
 	value: useI18n().baseText('dataMapping.schemaView.emptyData'),
 	type: 'item',
+});
+
+const dummyItem = (): RenderItem => ({
+	id: `dummy-${window.crypto.randomUUID()}`,
+	icon: '',
+	level: 1,
+	title: '...',
+	type: 'item',
+	preview: true,
 });
 
 const isDataEmpty = (schema: Schema) => {
@@ -264,12 +331,14 @@ export const useFlattenSchema = () => {
 		depth = 0,
 		prefix = '',
 		level = 0,
+		preview,
 	}: {
 		schema: Schema;
 		node?: { name: string; type: string };
 		depth?: number;
 		prefix?: string;
 		level?: number;
+		preview?: boolean;
 	}): RenderItem[] => {
 		// only show empty item for the first level
 		if (isDataEmpty(schema) && depth <= 0) {
@@ -282,6 +351,8 @@ export const useFlattenSchema = () => {
 			path: schema.path,
 		});
 
+		const id = `${node.name}-${expression}`;
+
 		if (Array.isArray(schema.value)) {
 			const items: RenderItem[] = [];
 
@@ -293,14 +364,15 @@ export const useFlattenSchema = () => {
 					depth,
 					level,
 					icon: getIconBySchemaType(schema.type),
-					id: expression,
+					id,
 					collapsable: true,
 					nodeType: node.type,
 					type: 'item',
+					preview,
 				});
 			}
 
-			if (closedNodes.value.has(expression)) {
+			if (closedNodes.value.has(id)) {
 				return items;
 			}
 
@@ -314,6 +386,7 @@ export const useFlattenSchema = () => {
 							depth,
 							prefix: itemPrefix,
 							level: level + 1,
+							preview,
 						});
 					})
 					.flat(),
@@ -327,11 +400,12 @@ export const useFlattenSchema = () => {
 					level,
 					depth,
 					value: shorten(schema.value, 600, 0),
-					id: expression,
+					id,
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
 					nodeType: node.type,
 					type: 'item',
+					preview,
 				},
 			];
 		}
@@ -354,6 +428,7 @@ export const useFlattenSchema = () => {
 				itemCount: item.itemsCount,
 				info: additionalInfo(item.node),
 				type: 'header',
+				preview: item.preview,
 			});
 
 			headerIds.value.add(item.node.name);
@@ -368,9 +443,20 @@ export const useFlattenSchema = () => {
 			}
 
 			acc.push(...flattenSchema(item));
+
+			if (item.preview) {
+				acc.push(dummyItem());
+			}
+
 			return acc;
 		}, []);
 	};
 
-	return { closedNodes, toggleLeaf, toggleNode, flattenSchema, flattenMultipleSchemas };
+	return {
+		closedNodes,
+		toggleLeaf,
+		toggleNode,
+		flattenSchema,
+		flattenMultipleSchemas,
+	};
 };
