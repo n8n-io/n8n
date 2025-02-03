@@ -177,7 +177,7 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query sort by', () => {
-		const validCases: Array<{ name: string; value: ListQuery.SortOrder }> = [
+		const validCases: Array<{ name: string; value: ListQuery.Workflow.SortOrder }> = [
 			{
 				name: 'sorting by name asc',
 				value: 'name:asc',
@@ -236,7 +236,7 @@ describe('List query middleware', () => {
 
 		test.each(invalidCases)('should fail validation when $name', async ({ value }) => {
 			mockReq.query = {
-				sortBy: value as ListQuery.SortOrder,
+				sortBy: value as ListQuery.Workflow.SortOrder,
 			};
 
 			sortByQueryMiddleware(...args);
