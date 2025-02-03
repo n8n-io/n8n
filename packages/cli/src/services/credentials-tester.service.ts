@@ -6,6 +6,7 @@
 import { Service } from '@n8n/di';
 import get from 'lodash/get';
 import {
+	CredentialTestContext,
 	ErrorReporter,
 	Logger,
 	NodeExecuteFunctions,
@@ -205,9 +206,8 @@ export class CredentialsTester {
 
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
-			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
+			const context = new CredentialTestContext();
+			return credentialTestFunction.call(context, credentialsDecrypted);
 		}
 
 		// Credentials get tested via request instructions
