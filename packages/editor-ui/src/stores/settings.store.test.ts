@@ -61,8 +61,8 @@ vi.mock('@vueuse/core', async () => {
 	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
 
 	return {
-		...originalModule, // Keep all original exports
-		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }), // Mock useLocalStorage
+		...originalModule,
+		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }),
 	};
 });
 
