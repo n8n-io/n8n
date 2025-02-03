@@ -7,6 +7,7 @@ import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { ExecuteContext, RoutingNode } from 'n8n-core';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -60,6 +61,13 @@ export class NodeTypes implements INodeTypes {
 			description: { value: clonedDescription },
 		}) as INodeType;
 		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
+		if (!tool.execute) {
+			tool.execute = async function (this: ExecuteContext) {
+				const routingNode = new RoutingNode(this, tool);
+				const data = await routingNode.runNode();
+				return data ?? [];
+			};
+		}
 		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
