@@ -1,3 +1,14 @@
+## [1.77.1](https://github.com/n8n-io/n8n/compare/n8n@1.77.0...n8n@1.77.1) (2025-02-03)
+
+
+### Bug Fixes
+
+* **core:** Fix empty node execution stack ([#12945](https://github.com/n8n-io/n8n/issues/12945)) ([d96e7c4](https://github.com/n8n-io/n8n/commit/d96e7c48a34a139ba16fcd72800de09ca6dd0511))
+* **editor:** Fix execution running status listener for chat messages ([#12951](https://github.com/n8n-io/n8n/issues/12951)) ([5261588](https://github.com/n8n-io/n8n/commit/5261588ac3ef2bdd8c6dd72cad1ad5130f87c384))
+* **editor:** Fix showing and hiding canvas edge toolbar when hovering ([#13009](https://github.com/n8n-io/n8n/issues/13009)) ([457f31c](https://github.com/n8n-io/n8n/commit/457f31c7db5907e874c5ebb478e87e43580302a5))
+
+
+
 # [1.77.0](https://github.com/n8n-io/n8n/compare/n8n@1.76.0...n8n@1.77.0) (2025-01-29)
 
 
