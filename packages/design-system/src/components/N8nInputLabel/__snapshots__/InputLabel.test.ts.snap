@@ -32,6 +32,7 @@ exports[`component > Text overflow behavior > displays ellipsis with options 1`]
         <!--v-if-->
         <!--v-if-->
         <!--v-if-->
+        <!--v-if-->
       </div>
     </label>
     
@@ -69,6 +70,7 @@ exports[`component > Text overflow behavior > displays full text without options
       <div
         class="trailing-content"
       >
+        <!--v-if-->
         <!--v-if-->
         <!--v-if-->
         <!--v-if-->

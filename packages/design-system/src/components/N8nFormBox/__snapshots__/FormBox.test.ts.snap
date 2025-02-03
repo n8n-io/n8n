@@ -66,6 +66,7 @@ exports[`FormBox > should render the component 1`] = `
                   <!--v-if-->
                   <!--v-if-->
                   <!--v-if-->
+                  <!--v-if-->
                 </div>
               </label>
               
@@ -147,6 +148,7 @@ exports[`FormBox > should render the component 1`] = `
                   <!--v-if-->
                   <!--v-if-->
                   <!--v-if-->
+                  <!--v-if-->
                 </div>
               </label>
               
@@ -225,6 +227,7 @@ exports[`FormBox > should render the component 1`] = `
                 <div
                   class="trailing-content"
                 >
+                  <!--v-if-->
                   <!--v-if-->
                   <!--v-if-->
                   <!--v-if-->

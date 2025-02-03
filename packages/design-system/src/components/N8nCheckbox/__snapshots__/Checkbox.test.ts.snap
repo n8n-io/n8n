@@ -57,6 +57,7 @@ exports[`components > N8nCheckbox > should render with both child and label 1`] 
             <!--v-if-->
             <!--v-if-->
             <!--v-if-->
+            <!--v-if-->
           </div>
         </label>
         
@@ -154,6 +155,7 @@ exports[`components > N8nCheckbox > should render with label 1`] = `
           <div
             class="trailing-content"
           >
+            <!--v-if-->
             <!--v-if-->
             <!--v-if-->
             <!--v-if-->
