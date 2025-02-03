@@ -38,6 +38,9 @@ import {
 import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useAsyncState } from '@vueuse/core';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -53,6 +56,21 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
+
+const insightsStore = useInsightsStore();
+const { state: summaries } = useAsyncState(
+	async () => {
+		const response = await insightsStore.fetchSummary();
+		return response.map((summary) => ({
+			...summary,
+			to: { name: VIEWS.INSIGHTS, params: { insightType: summary.id } },
+		}));
+	},
+	[],
+	{
+		immediate: true,
+	},
+);
 
 interface Filters extends IFilters {
 	status: string | boolean;
@@ -310,7 +328,18 @@ const dismissEasyAICallout = () => {
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader>
+				<div style="margin-top: 12px; margin-bottom: 20px">
+					<div style="display: flex; justify-content: space-between">
+						<N8nHeading bold tag="h3" size="medium" class="mb-s">Production executions</N8nHeading>
+						<RouterLink class="mb-s" :to="{ name: VIEWS.INSIGHTS }"
+							><strong>Insights Dashboard</strong></RouterLink
+						>
+					</div>
+
+					<InsightsSummary class="summary" :summaries="summaries"> </InsightsSummary>
+				</div>
+			</ProjectHeader>
 		</template>
 		<template #callout>
 			<N8nCallout

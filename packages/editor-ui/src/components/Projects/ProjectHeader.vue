@@ -140,6 +140,7 @@ const onSelect = (action: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
+		<slot></slot>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
 		</div>
