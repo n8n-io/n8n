@@ -155,6 +155,32 @@ describe('Canvas', () => {
 		expect(emitted()['update:node:name']).toEqual([['1']]);
 	});
 
+	it('should not emit `update:node:name` event if long key press', async () => {
+		vi.useFakeTimers();
+
+		const nodes = [createCanvasNodeElement()];
+		const { container, emitted } = renderComponent({
+			props: {
+				nodes,
+			},
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+		const node = container.querySelector(`[data-id="${nodes[0].id}"]`) as Element;
+
+		const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+		addSelectedNodes(graphNodes.value);
+
+		await waitFor(() => expect(container.querySelector('.selected')).toBeInTheDocument());
+
+		await fireEvent.keyDown(node, { key: ' ', view: window });
+		await vi.advanceTimersByTimeAsync(1000);
+		await fireEvent.keyUp(node, { key: ' ', view: window });
+
+		expect(emitted()['update:node:name']).toBeUndefined();
+	});
+
 	describe('minimap', () => {
 		const minimapVisibilityDelay = 1000;
 		const minimapTransitionDuration = 300;
