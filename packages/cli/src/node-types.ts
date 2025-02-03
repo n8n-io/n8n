@@ -41,6 +41,20 @@ export class NodeTypes implements INodeTypes {
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (
+			!versionedNodeType.execute &&
+			!versionedNodeType.poll &&
+			!versionedNodeType.trigger &&
+			!versionedNodeType.webhook &&
+			!versionedNodeType.methods
+		) {
+			versionedNodeType.execute = async function (this: ExecuteContext) {
+				const routingNode = new RoutingNode(this, versionedNodeType);
+				const data = await routingNode.runNode();
+				return data ?? [];
+			};
+		}
+
 		if (!toolRequested) return versionedNodeType;
 
 		if (!versionedNodeType.description.usableAsTool)
@@ -62,13 +76,6 @@ export class NodeTypes implements INodeTypes {
 			description: { value: clonedDescription },
 		}) as INodeType;
 		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
-		if (!tool.execute) {
-			tool.execute = async function (this: ExecuteContext) {
-				const routingNode = new RoutingNode(this, tool);
-				const data = await routingNode.runNode();
-				return data ?? [];
-			};
-		}
 		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
