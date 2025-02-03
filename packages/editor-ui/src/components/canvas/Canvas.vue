@@ -177,7 +177,7 @@ const renameKeyDownTime = ref<number | null>(null);
 onKeyDown(
 	renameKeyCode,
 	() => {
-		if (!lastSelectedNode.value) return;
+		if (!lastSelectedNode.value || props.readOnly) return;
 
 		renameKeyDownTime.value = Date.now();
 	},
@@ -187,7 +187,7 @@ onKeyDown(
 );
 
 onKeyUp(renameKeyCode, () => {
-	if (!lastSelectedNode.value || !renameKeyDownTime.value) return;
+	if (!lastSelectedNode.value || !renameKeyDownTime.value || props.readOnly) return;
 
 	const isShortPress = Date.now() - renameKeyDownTime.value < 200;
 	if (isShortPress) {
