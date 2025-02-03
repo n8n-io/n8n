@@ -1,0 +1,103 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "is_bot",
+                        "first_name",
+                        "username"
+                    ]
+                },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "type"
+                    ]
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "photo": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "file_id": {
+                                "type": "string"
+                            },
+                            "file_unique_id": {
+                                "type": "string"
+                            },
+                            "file_size": {
+                                "type": "integer"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "file_id",
+                            "file_unique_id",
+                            "file_size",
+                            "width",
+                            "height"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "message_id",
+                "chat",
+                "date",
+                "photo"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}

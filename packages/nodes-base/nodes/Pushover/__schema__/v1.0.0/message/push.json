@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "integer"
+        },
+        "request": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "status",
+        "request"
+    ]
+}

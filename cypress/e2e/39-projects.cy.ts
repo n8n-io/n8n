@@ -556,6 +556,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			selectResourceLocatorItem('workflowId', 0, 'Create a');
 
+			cy.get('body').type('{esc}');
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
 			setCredentialValues({

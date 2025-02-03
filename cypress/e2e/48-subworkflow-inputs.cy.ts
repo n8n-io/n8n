@@ -65,8 +65,9 @@ describe('Sub-workflow creation and typed usage', () => {
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
-
-		openNode('Workflow Input Trigger');
+		// Close NDV before opening the node creator
+		cy.get('body').type('{esc}');
+		openNode('When Executed by Another Workflow');
 	});
 
 	it('works with type-checked values', () => {
@@ -138,41 +139,41 @@ describe('Sub-workflow creation and typed usage', () => {
 		cy.window().then((win) => {
 			cy.stub(win, 'open').callsFake((url) => {
 				cy.visit(url);
+				selectResourceLocatorItem('workflowId', 0, 'Create a');
+
+				openNode('When Executed by Another Workflow');
+
+				getParameterInputByName('inputSource').click();
+
+				getVisiblePopper()
+					.getByTestId('parameter-input')
+					.eq(0)
+					.type('Using JSON Example{downArrow}{enter}');
+
+				const exampleJson =
+					'{{}' + EXAMPLE_FIELDS.map((x) => `"${x[0]}": ${makeExample(x[1])}`).join(',') + '}';
+				getParameterInputByName('jsonExample')
+					.find('.cm-line')
+					.eq(0)
+					.type(`{selectAll}{backspace}${exampleJson}{enter}`);
+
+				// first one doesn't work for some reason, might need to wait for something?
+				clickExecuteNode();
+
+				validateAndReturnToParent(
+					DEFAULT_SUBWORKFLOW_NAME_2,
+					2,
+					EXAMPLE_FIELDS.map((f) => f[0]),
+				);
+
+				assertOutputTableContent([
+					['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
+					['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
+				]);
+
+				clickExecuteNode();
 			});
 		});
-		selectResourceLocatorItem('workflowId', 0, 'Create a');
-
-		openNode('Workflow Input Trigger');
-
-		getParameterInputByName('inputSource').click();
-
-		getVisiblePopper()
-			.getByTestId('parameter-input')
-			.eq(0)
-			.type('Using JSON Example{downArrow}{enter}');
-
-		const exampleJson =
-			'{{}' + EXAMPLE_FIELDS.map((x) => `"${x[0]}": ${makeExample(x[1])}`).join(',') + '}';
-		getParameterInputByName('jsonExample')
-			.find('.cm-line')
-			.eq(0)
-			.type(`{selectAll}{backspace}${exampleJson}{enter}`);
-
-		// first one doesn't work for some reason, might need to wait for something?
-		clickExecuteNode();
-
-		validateAndReturnToParent(
-			DEFAULT_SUBWORKFLOW_NAME_2,
-			2,
-			EXAMPLE_FIELDS.map((f) => f[0]),
-		);
-
-		assertOutputTableContent([
-			['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
-			['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
-		]);
-
-		clickExecuteNode();
 	});
 
 	it('should show node issue when no fields are defined in manual mode', () => {
@@ -181,7 +182,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// Executing the workflow should show an error toast
 		clickExecuteWorkflowButton();
 		errorToast().should('contain', 'The workflow has issues');
-		openNode('Workflow Input Trigger');
+		openNode('When Executed by Another Workflow');
 		// Add a field to the workflowInputs fixedCollection
 		addItemToFixedCollection('workflowInputs');
 		typeIntoFixedCollectionItem('workflowInputs', 0, 'test');
