@@ -91,6 +91,7 @@ function disableAllNodes() {
 	}
 }
 function onPinButtonClick(data: CanvasNodeData) {
+	console.log('click');
 	const nodeName = getNodeNameById(data.id);
 	if (!nodeName) return;
 
@@ -105,6 +106,8 @@ function onPinButtonClick(data: CanvasNodeData) {
 function isPinButtonVisible(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
 	return outputs.length === 1 && inputs.length >= 1;
 }
+
+const isPinned = (data: CanvasNodeData) => props.modelValue.some((node) => node.id === data.id);
 
 onNodesInitialized(async () => {
 	await fitView();
@@ -134,19 +137,36 @@ onMounted(loadData);
 			:event-bus="eventBus"
 		>
 			<template #nodeToolbar="{ data, outputs, inputs }">
-				<div :class="$style.pinButtonContainer">
-					<N8nTooltip v-if="isPinButtonVisible(outputs, inputs)" placement="left">
+				<div
+					v-if="isPinButtonVisible(outputs, inputs)"
+					:class="{
+						[$style.pinButtonContainer]: true,
+						[$style.pinButtonContainerPinned]: isPinned(data),
+					}"
+				>
+					<N8nTooltip placement="left">
 						<template #content>
 							{{ locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip') }}
 						</template>
-						<n8n-icon-button
-							type="tertiary"
-							size="large"
+						<N8nButton
+							v-if="isPinned(data)"
 							icon="thumbtack"
-							:class="$style.pinButton"
-							data-test-id="node-pin-button"
+							block
+							type="secondary"
+							:class="$style.customSecondary"
 							@click="onPinButtonClick(data)"
-						/>
+						>
+							Un Mock
+						</N8nButton>
+						<N8nButton
+							v-else
+							icon="thumbtack"
+							block
+							type="secondary"
+							@click="onPinButtonClick(data)"
+						>
+							Mock
+						</N8nButton>
 					</N8nTooltip>
 				</div>
 			</template>
@@ -161,37 +181,30 @@ onMounted(loadData);
 }
 .pinButtonContainer {
 	position: absolute;
-	right: 0;
-	display: flex;
-	justify-content: flex-end;
-	bottom: 100%;
+	right: 50%;
+	bottom: -5px;
+	height: calc(100% + 47px);
+	border: 1px solid transparent;
+	padding: 5px 5px;
+	border-radius: 8px;
+	width: calc(100% + 10px);
+	transform: translateX(50%);
+
+	&.pinButtonContainerPinned {
+		background-color: hsla(247, 49%, 55%, 1);
+	}
 }
 
-.pinButton {
-	cursor: pointer;
-	color: var(--canvas-node--border-color);
-	border: none;
-}
-.notPinnedNode,
-.pinnedNode {
-	:global(.n8n-node-icon) > div {
-		filter: contrast(40%) brightness(1.5) grayscale(100%);
-	}
-}
-.notPinnedNode {
-	:global([class*='trigger']) {
-		--canvas-node--border-color: hsla(247, 49%, 55%, 1);
-		--canvas-node--background: hsla(247, 49%, 55%, 0.5);
-	}
-}
-.pinnedNode {
-	--canvas-node--border-color: hsla(247, 49%, 55%, 1);
-	--canvas-node--background: hsla(247, 49%, 55%, 0.5);
+.customSecondary {
+	--button-background-color: hsla(247, 49%, 55%, 1);
+	--button-font-color: var(--color-button-primary-font);
+	--button-border-color: hsla(247, 49%, 55%, 1);
 
-	:global(.n8n-node-icon) > div {
-		filter: contrast(40%) brightness(1.5) grayscale(100%);
-	}
+	--button-hover-background-color: hsla(247, 49%, 55%, 1);
+	--button-hover-border-color: var(--color-button-primary-font);
+	--button-hover-font-color: var(--color-button-primary-font);
 }
+
 .spinner {
 	position: absolute;
 	top: 50%;
