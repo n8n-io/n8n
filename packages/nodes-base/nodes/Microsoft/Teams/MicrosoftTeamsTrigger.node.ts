@@ -21,7 +21,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		name: 'microsoftTeamsTrigger',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
-		maxNodes: 3,
+		maxNodes: 3, // TODO take too long for activate wf
 		version: 1,
 		description:
 			'Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.',
@@ -278,8 +278,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				let resourcePath: string | undefined;
 				console.log('event', event);
-				// Determine the resource path based on the event type
-				if (['newChannel', 'newTeamMember', 'newChannelMessage'].includes(event)) {
+
+				// Define resource paths for each event type
+				const resourceMap: Record<string, string> = {
+					newChannel: '/teams/{teamId}/channels',
+					newChannelMessage: '/teams/{teamId}/channels/{channelId}/messages',
+					newTeamMember: '/teams/{teamId}/members',
+					newChatMessage: '/chats/{chatId}/messages',
+					newTeam: '/teams', //TODO not supported
+					newChat: '/chats', //TODO not supported
+					anyEvent: '/event', //TODO not supported
+				};
+
+				if (event === 'newChannelMessage' || event === 'newChannel' || event === 'newTeamMember') {
 					const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
 					if (!teamId) {
 						throw new NodeApiError(this.getNode(), {
@@ -288,8 +299,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 								'Please select a valid Team from the dropdown or provide a valid Team ID.',
 						});
 					}
-					if (event === 'newChannel') resourcePath = `/teams/${teamId}/channels`;
-					if (event === 'newTeamMember') resourcePath = `/teams/${teamId}/members`;
+
+					resourcePath = resourceMap[event].replace('{teamId}', teamId);
+
 					if (event === 'newChannelMessage') {
 						const channelId = this.getNodeParameter('channelId', 0, {
 							extractValue: true,
@@ -301,22 +313,20 @@ export class MicrosoftTeamsTrigger implements INodeType {
 									'Please select a valid Channel or provide a valid Channel ID for the selected Team.',
 							});
 						}
-						resourcePath = `/teams/${teamId}/channels/${channelId}/messages`;
+						resourcePath = resourcePath.replace('{channelId}', channelId);
 					}
-				} else if (['newChatMessage'].includes(event)) {
-					const chatId = (this.getNodeParameter('chatId', 0) as IDataObject)?.value as string;
+				} else if (event === 'newChatMessage') {
+					const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
 					if (!chatId) {
 						throw new NodeApiError(this.getNode(), {
 							message: 'Chat ID is required',
 							description: 'Please select a valid Chat or provide a valid Chat ID.',
 						});
 					}
-					resourcePath = `/chats/${chatId}/messages`;
+					resourcePath = resourceMap[event].replace('{chatId}', chatId);
+				} else if (event === 'anyEvent') {
+					resourcePath = resourceMap[event];
 				} else {
-					const resourceMap: Record<string, string> = {
-						newTeam: '/teams/getAllChannels',
-						newChat: '/chats/getAllMessages',
-					};
 					resourcePath = resourceMap[event];
 				}
 
@@ -376,33 +386,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				console.log('delete subscription', subscriptionId);
 				return true;
 			},
-			// async onShutdown(this: IHookFunctions): Promise<void> {
-			// 	console.log('onShutdown: Cleaning up all subscriptions');
-			// 	try {
-			// 		const subscriptions = await microsoftApiRequestAllItems.call(
-			// 			this as unknown as ILoadOptionsFunctions,
-			// 			'value',
-			// 			'GET',
-			// 			'/v1.0/subscriptions',
-			// 		);
-			// 		console.log('Subscriptions to delete:', subscriptions);
-
-			// 		for (const subscription of subscriptions) {
-			// 			try {
-			// 				await microsoftApiRequest.call(
-			// 					this as unknown as IExecuteFunctions,
-			// 					'DELETE',
-			// 					`/v1.0/subscriptions/${subscription.id}`,
-			// 				);
-			// 				console.log(`Deleted subscription: ${subscription.id}`);
-			// 			} catch (error) {
-			// 				console.error(`Failed to delete subscription: ${subscription.id}`, error);
-			// 			}
-			// 		}
-			// 	} catch (error) {
-			// 		console.error('Failed to fetch subscriptions during shutdown:', error);
-			// 	}
-			// },
 		},
 	};
 
