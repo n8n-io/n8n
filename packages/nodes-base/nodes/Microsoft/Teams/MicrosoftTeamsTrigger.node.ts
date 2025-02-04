@@ -235,12 +235,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				console.log('checkExists');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const workflowId = this.getWorkflow().id;
-				const nodeId = this.getNode().id;
-				const uniqueKey = `${workflowId}:${nodeId}`;
-
 				try {
-					// Fetch all subscriptions
+					// Fetch all existing subscriptions
 					const subscriptions = await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
 						'value',
@@ -249,12 +245,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					);
 					console.log('subscriptions', subscriptions);
 
-					// Check for subscription with a matching notification URL and unique key
+					// Get the resource for the current trigger
+					const resource = this.getNodeParameter('resource', 0) as string;
+
+					// Check if a subscription exists for both the notification URL and resource
 					for (const subscription of subscriptions) {
-						if (
-							subscription.notificationUrl === webhookUrl &&
-							subscription.clientState === uniqueKey
-						) {
+						if (subscription.notificationUrl === webhookUrl && subscription.resource === resource) {
+							console.log('Existing subscription found:', subscription.id);
 							this.getWorkflowStaticData('node').subscriptionId = subscription.id;
 							return true;
 						}
@@ -263,15 +260,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
+				console.log('No subscription found');
 				return false;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				console.log('Create');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const workflowId = this.getWorkflow().id;
-				const nodeId = this.getNode().id;
-				const uniqueKey = `${workflowId}:${nodeId}`;
 
 				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
 					throw new NodeApiError(this.getNode(), {
@@ -339,7 +334,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					notificationUrl: webhookUrl,
 					resource: resourcePath,
 					expirationDateTime: expirationTime,
-					clientState: uniqueKey,
 					latestSupportedTlsVersion: 'v1_2',
 					lifecycleNotificationUrl: webhookUrl,
 				};
@@ -382,6 +376,33 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				console.log('delete subscription', subscriptionId);
 				return true;
 			},
+			// async onShutdown(this: IHookFunctions): Promise<void> {
+			// 	console.log('onShutdown: Cleaning up all subscriptions');
+			// 	try {
+			// 		const subscriptions = await microsoftApiRequestAllItems.call(
+			// 			this as unknown as ILoadOptionsFunctions,
+			// 			'value',
+			// 			'GET',
+			// 			'/v1.0/subscriptions',
+			// 		);
+			// 		console.log('Subscriptions to delete:', subscriptions);
+
+			// 		for (const subscription of subscriptions) {
+			// 			try {
+			// 				await microsoftApiRequest.call(
+			// 					this as unknown as IExecuteFunctions,
+			// 					'DELETE',
+			// 					`/v1.0/subscriptions/${subscription.id}`,
+			// 				);
+			// 				console.log(`Deleted subscription: ${subscription.id}`);
+			// 			} catch (error) {
+			// 				console.error(`Failed to delete subscription: ${subscription.id}`, error);
+			// 			}
+			// 		}
+			// 	} catch (error) {
+			// 		console.error('Failed to fetch subscriptions during shutdown:', error);
+			// 	}
+			// },
 		},
 	};
 
