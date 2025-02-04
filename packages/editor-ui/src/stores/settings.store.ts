@@ -112,6 +112,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				? defaultVersion
 				: userVersion;
 
+		// For backwards compatibility, e.g. if the user has 0 in their local
+		// storage, which used to be allowed, but not anymore.
+		if (![1, 2].includes(version)) {
+			return 1;
+		}
+
 		return version;
 	});
 

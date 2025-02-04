@@ -142,6 +142,13 @@ describe('settings.store', () => {
 				userVersion: 1,
 				result: 2,
 			},
+			{
+				name: 'handle values that used to be allowed in local storage',
+				default: 1 as const,
+				enforce: false,
+				userVersion: 0,
+				result: 1,
+			},
 		])('%name', async ({ default: defaultVersion, userVersion, enforce, result }) => {
 			const settingsStore = useSettingsStore();
 
