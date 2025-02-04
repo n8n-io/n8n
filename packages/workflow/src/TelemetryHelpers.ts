@@ -535,9 +535,9 @@ export type FromAICount = {
 };
 
 export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICount | {} {
-	const resolvedNodes = nodes.map(
-		(x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const,
-	);
+	const resolvedNodes = nodes
+		.map((x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const)
+		.filter((x) => !!x[1]?.description);
 
 	const aiNodeCount = resolvedNodes.reduce(
 		(acc, x) => acc + Number(x[1].description.codex?.categories?.includes('AI')),
