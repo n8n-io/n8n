@@ -19,7 +19,6 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function isJSON(str: string) {
 	try {

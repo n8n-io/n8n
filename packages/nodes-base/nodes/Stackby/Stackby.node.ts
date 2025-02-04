@@ -9,7 +9,6 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { IRecord } from './GenericFunction';
 import { apiRequest, apiRequestAllItems } from './GenericFunction';
-import { generatePairedItemData } from '../../utils/utilities';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
