@@ -62,6 +62,7 @@ export namespace ListQuery {
 		skip?: string;
 		take?: string;
 		select?: string;
+		sortBy?: string;
 	};
 
 	export type Options = {
@@ -69,6 +70,7 @@ export namespace ListQuery {
 		select?: Record<string, true>;
 		skip?: number;
 		take?: number;
+		sortBy?: string;
 	};
 
 	/**
@@ -81,6 +83,10 @@ export namespace ListQuery {
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
+
+		type SortingField = 'createdAt' | 'updatedAt' | 'name';
+
+		export type SortOrder = `${SortingField}:asc` | `${SortingField}:desc`;
 
 		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
