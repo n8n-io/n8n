@@ -311,6 +311,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				stoppedAt: undefined,
 				workflowId: workflow.id,
 				executedNode,
+				triggerNode: triggerToStartFrom?.name,
 				data: {
 					resultData: {
 						runData: startRunData.runData ?? {},
