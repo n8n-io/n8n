@@ -1,10 +1,14 @@
 import { mock } from 'jest-mock-extended';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+
+import type { WorkflowRequest } from '../workflow.request';
 
 const webhookNode: INode = {
 	name: 'Webhook',
@@ -63,6 +67,9 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 	);
 
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
+	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
 			const node = mock<INode>();
@@ -73,6 +80,192 @@ describe('WorkflowExecutionService', () => {
 			await workflowExecutionService.runWorkflow(workflow, node, [[]], mock(), 'trigger');
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('executeManually()', () => {
+		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const runPayload = mock<WorkflowRequest.ManualRunPayload>({ startNodes: [] });
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: runPayload.destinationNode,
+				executionMode: 'manual',
+				runData: runPayload.runData,
+				pinData: undefined,
+				pushRef: undefined,
+				workflowData: runPayload.workflowData,
+				userId,
+				partialExecutionVersion: 1,
+				startNodes: runPayload.startNodes,
+				dirtyNodeNames: runPayload.dirtyNodeNames,
+				triggerToStartFrom: runPayload.triggerToStartFrom,
+			});
+			expect(result).toEqual({ executionId });
+		});
+
+		[
+			{
+				name: 'trigger',
+				type: 'n8n-nodes-base.airtableTrigger',
+				// Avoid mock constructor evaluated as true
+				disabled: undefined,
+			},
+			{
+				name: 'webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: undefined,
+			},
+		].forEach((triggerNode: Partial<INode>) => {
+			test(`should call WorkflowRunner.run() with pinned trigger with type ${triggerNode.name}`, async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({});
+				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+				const executionId = 'fake-execution-id';
+				const userId = 'user-id';
+				const user = mock<User>({ id: userId });
+				const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+					startNodes: [],
+					workflowData: {
+						pinData: {
+							trigger: [{}],
+						},
+						nodes: [triggerNode],
+					},
+					triggerToStartFrom: undefined,
+				});
+
+				workflowRunner.run.mockResolvedValue(executionId);
+
+				const result = await workflowExecutionService.executeManually(runPayload, user);
+
+				expect(workflowRunner.run).toHaveBeenCalledWith({
+					destinationNode: runPayload.destinationNode,
+					executionMode: 'manual',
+					runData: runPayload.runData,
+					pinData: runPayload.workflowData.pinData,
+					pushRef: undefined,
+					workflowData: runPayload.workflowData,
+					userId,
+					partialExecutionVersion: 1,
+					startNodes: [
+						{
+							name: triggerNode.name,
+							sourceData: null,
+						},
+					],
+					dirtyNodeNames: runPayload.dirtyNodeNames,
+					triggerToStartFrom: runPayload.triggerToStartFrom,
+				});
+				expect(result).toEqual({ executionId });
+			});
+		});
+
+		test("should return trigger as start node without run data if there's multiple triggers", async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({});
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+				startNodes: [],
+				workflowData: {
+					pinData: {
+						trigger: [{}],
+					},
+					nodes: [
+						{
+							name: 'trigger',
+							type: 'n8n-nodes-base.airtableTrigger',
+							disabled: undefined,
+						},
+						{
+							name: 'other-trigger',
+							type: 'n8n-nodes-base.airtableTrigger',
+							disabled: undefined,
+						},
+					],
+				},
+				triggerToStartFrom: undefined,
+			});
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: runPayload.destinationNode,
+				executionMode: 'manual',
+				runData: runPayload.runData,
+				pinData: runPayload.workflowData.pinData,
+				pushRef: undefined,
+				workflowData: runPayload.workflowData,
+				userId,
+				partialExecutionVersion: 1,
+				startNodes: [
+					{
+						name: 'trigger',
+						sourceData: null,
+					},
+				],
+				dirtyNodeNames: runPayload.dirtyNodeNames,
+				triggerToStartFrom: runPayload.triggerToStartFrom,
+			});
+			expect(result).toEqual({ executionId });
+		});
+
+		test('should call run without startNodes if triggerToStartFrom is set', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+				startNodes: undefined,
+				workflowData: {
+					pinData: {
+						trigger: [{}],
+					},
+					nodes: [
+						{
+							name: 'trigger',
+							type: 'n8n-nodes-base.airtableTrigger',
+							disabled: undefined,
+						},
+						{
+							name: 'other-trigger',
+							type: 'n8n-nodes-base.airtableTrigger',
+							disabled: undefined,
+						},
+					],
+				},
+				triggerToStartFrom: {
+					name: 'other-trigger',
+				},
+			});
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: runPayload.destinationNode,
+				executionMode: 'manual',
+				runData: runPayload.runData,
+				pinData: runPayload.workflowData.pinData,
+				pushRef: undefined,
+				workflowData: runPayload.workflowData,
+				userId,
+				partialExecutionVersion: 1,
+				// no start nodes are set
+				startNodes: undefined,
+				dirtyNodeNames: runPayload.dirtyNodeNames,
+				triggerToStartFrom: runPayload.triggerToStartFrom,
+			});
+			expect(result).toEqual({ executionId });
 		});
 	});
 
