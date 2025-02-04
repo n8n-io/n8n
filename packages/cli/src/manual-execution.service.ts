@@ -112,7 +112,7 @@ export class ManualExecutionService {
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			if (data.partialExecutionVersion === '1') {
+			if (data.partialExecutionVersion === 2) {
 				return workflowExecute.runPartialWorkflow2(
 					workflow,
 					data.runData,

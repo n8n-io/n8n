@@ -31,6 +31,7 @@ export class Intercom implements INodeType {
 		defaults: {
 			name: 'Intercom',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

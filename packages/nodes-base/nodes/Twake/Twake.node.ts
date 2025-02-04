@@ -24,6 +24,7 @@ export class Twake implements INodeType {
 		defaults: {
 			name: 'Twake',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
