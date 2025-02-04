@@ -18,7 +18,7 @@ import {
 import { randomInt } from '@/utils';
 
 import { nodeTypes } from './ExpressionExtensions/Helpers';
-import { NodeTypes } from './NodeTypes';
+import type { NodeTypes } from './NodeTypes';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
