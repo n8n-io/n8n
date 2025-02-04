@@ -40,6 +40,7 @@ export class ElasticSecurity implements INodeType {
 		defaults: {
 			name: 'Elastic Security',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

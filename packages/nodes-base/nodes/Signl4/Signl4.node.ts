@@ -22,6 +22,7 @@ export class Signl4 implements INodeType {
 		defaults: {
 			name: 'SIGNL4',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

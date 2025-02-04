@@ -55,6 +55,7 @@ export class Rocketchat implements INodeType {
 		defaults: {
 			name: 'RocketChat',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
