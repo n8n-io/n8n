@@ -3,18 +3,9 @@ import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
 import * as a from 'node:assert';
 
-import { CREDENTIAL_ERRORS } from '@/constants';
+import { CREDENTIAL_ERRORS, CredentialDataError } from '@/credentials/credential-data.error';
 import { Cipher } from '@/encryption/cipher';
 import { isObjectLiteral } from '@/utils';
-
-export class CredentialDataError extends ApplicationError {
-	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
-		super(message, {
-			extra: { name, type, id },
-			cause,
-		});
-	}
-}
 
 export class Credentials<
 	T extends object = ICredentialDataDecryptedObject,

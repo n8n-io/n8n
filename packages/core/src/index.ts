@@ -2,7 +2,8 @@ import * as NodeExecuteFunctions from './node-execute-functions';
 
 export * from './binary-data';
 export * from './constants';
-export * from './credentials';
+export * from './credentials/credentials';
+export * from './credentials/credential-data.error';
 export * from './data-deduplication-service';
 export * from './decorators';
 export * from './encryption';
