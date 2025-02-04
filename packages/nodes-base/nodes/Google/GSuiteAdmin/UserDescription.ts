@@ -142,7 +142,6 @@ export const userFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'groupId',
 				type: 'string',
-				hint: 'Enter the group id',
 				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
@@ -576,7 +575,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
 		default: {
 			mode: 'list',
@@ -629,7 +628,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
 		type: 'resourceLocator',
 		required: true,
@@ -733,7 +732,7 @@ export const userFields: INodeProperties[] = [
 		description: 'Fields to include in the response when "Select Included Fields" is chosen',
 	},
 	{
-		displayName: 'Projection',
+		displayName: 'Custom Fields',
 		name: 'projection',
 		type: 'options',
 		required: true,
@@ -780,7 +779,7 @@ export const userFields: INodeProperties[] = [
 		},
 		default: [],
 		description:
-			'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -871,7 +870,7 @@ export const userFields: INodeProperties[] = [
 		description: 'Fields to include in the response when "Select Included Fields" is chosen',
 	},
 	{
-		displayName: 'Projection',
+		displayName: 'Custom Fields',
 		name: 'projection',
 		type: 'options',
 		required: true,
@@ -918,7 +917,7 @@ export const userFields: INodeProperties[] = [
 		},
 		default: [],
 		description:
-			'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Filter',
@@ -954,7 +953,7 @@ export const userFields: INodeProperties[] = [
 				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
 				description:
-					'Query string to filter the results. Follow Google Admin SDK documentation <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples"</a>.',
+					'Query string to filter the results. Follow Google Admin SDK documentation. <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples" target="_blank">More info</a>.',
 			},
 			{
 				displayName: 'Show Deleted',
@@ -1109,7 +1108,6 @@ export const userFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'groupId',
 				type: 'string',
-				hint: 'Enter the group id',
 				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
@@ -1118,7 +1116,7 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
 		type: 'resourceLocator',
 		required: true,

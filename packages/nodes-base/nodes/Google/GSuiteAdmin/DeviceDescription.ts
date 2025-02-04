@@ -63,7 +63,7 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Return All?',
+		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
@@ -145,7 +145,7 @@ export const deviceFields: INodeProperties[] = [
 					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Include Children?',
+				displayName: 'Include Children',
 				name: 'includeChildOrgunits',
 				type: 'boolean',
 				default: false,
