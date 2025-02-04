@@ -1,9 +1,4 @@
-import type {
-	IWorkflowBase,
-	IWorkflowExecuteHooks,
-	IWorkflowHooksOptionalParameters,
-	WorkflowExecuteMode,
-} from './Interfaces';
+import type { IWorkflowBase, IWorkflowExecuteHooks, WorkflowExecuteMode } from './Interfaces';
 
 export class WorkflowHooks {
 	mode: WorkflowExecuteMode;
@@ -12,10 +7,6 @@ export class WorkflowHooks {
 
 	executionId: string;
 
-	pushRef?: string;
-
-	retryOf?: string;
-
 	hookFunctions: IWorkflowExecuteHooks;
 
 	constructor(
@@ -23,18 +14,11 @@ export class WorkflowHooks {
 		mode: WorkflowExecuteMode,
 		executionId: string,
 		workflowData: IWorkflowBase,
-		optionalParameters?: IWorkflowHooksOptionalParameters,
 	) {
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-		optionalParameters = optionalParameters || {};
-
 		this.hookFunctions = hookFunctions;
 		this.mode = mode;
 		this.executionId = executionId;
 		this.workflowData = workflowData;
-		this.pushRef = optionalParameters.pushRef;
-		// retryOf might be `null` from TypeORM
-		this.retryOf = optionalParameters.retryOf ?? undefined;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
