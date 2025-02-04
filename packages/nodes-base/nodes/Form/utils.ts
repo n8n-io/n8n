@@ -50,6 +50,10 @@ export function sanitizeHtml(text: string) {
 			'pre',
 			'span',
 			'br',
+			'ul',
+			'ol',
+			'li',
+			'p',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -277,6 +281,13 @@ export async function prepareFormReturnItem(
 
 		if (value === null) {
 			returnItem.json[field.fieldLabel] = null;
+			continue;
+		}
+
+		if (field.fieldType === 'html') {
+			if (field.elementName) {
+				returnItem.json[field.elementName as string] = value;
+			}
 			continue;
 		}
 
