@@ -854,6 +854,97 @@ describe('GET /workflows', () => {
 			});
 		});
 	});
+
+	describe('sortBy', () => {
+		test('should fail when trying to sort by non sortable column', async () => {
+			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(500);
+		});
+
+		test('should sort by createdAt column', async () => {
+			await createWorkflow({ name: 'First' }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response = await authOwnerAgent
+				.get('/workflows')
+				.query('sortBy=createdAt:asc')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=createdAt:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+		});
+
+		test('should sort by name column', async () => {
+			await createWorkflow({ name: 'a' }, owner);
+			await createWorkflow({ name: 'b' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'a' }),
+					expect.objectContaining({ name: 'b' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'b' }),
+					expect.objectContaining({ name: 'a' }),
+				]),
+			});
+		});
+
+		test('should sort by updatedAt column', async () => {
+			const futureDate = new Date();
+			futureDate.setDate(futureDate.getDate() + 10);
+
+			await createWorkflow({ name: 'First', updatedAt: futureDate }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=updatedAt:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+		});
+	});
 });
 
 describe('PATCH /workflows/:workflowId', () => {
