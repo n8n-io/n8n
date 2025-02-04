@@ -127,14 +127,14 @@ export class ActiveExecutions {
 	 */
 
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		this.getExecution(executionId).workflowExecution = workflowExecution;
+		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
 	}
 
 	attachResponsePromise(
 		executionId: string,
 		responsePromise: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void {
-		this.getExecution(executionId).responsePromise = responsePromise;
+		this.getExecutionOrFail(executionId).responsePromise = responsePromise;
 	}
 
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
@@ -157,7 +157,7 @@ export class ActiveExecutions {
 	/** Resolve the post-execution promise in an execution. */
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		if (!this.has(executionId)) return;
-		const execution = this.getExecution(executionId);
+		const execution = this.getExecutionOrFail(executionId);
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });
 	}
@@ -166,7 +166,7 @@ export class ActiveExecutions {
 	 * Returns a promise which will resolve with the data of the execution with the given id
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		return await this.getExecution(executionId).postExecutePromise.promise;
+		return await this.getExecutionOrFail(executionId).postExecutePromise.promise;
 	}
 
 	/**
@@ -193,11 +193,11 @@ export class ActiveExecutions {
 	}
 
 	setStatus(executionId: string, status: ExecutionStatus) {
-		this.getExecution(executionId).status = status;
+		this.getExecutionOrFail(executionId).status = status;
 	}
 
 	getStatus(executionId: string): ExecutionStatus {
-		return this.getExecution(executionId).status;
+		return this.getExecutionOrFail(executionId).status;
 	}
 
 	/** Wait for all active executions to finish */
@@ -229,7 +229,7 @@ export class ActiveExecutions {
 		}
 	}
 
-	getExecution(executionId: string): IExecutingWorkflowData {
+	getExecutionOrFail(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
 			throw new ExecutionNotFoundError(executionId);

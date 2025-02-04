@@ -99,13 +99,13 @@ describe('ActiveExecutions', () => {
 		activeExecutions.setStatus(executionId, 'waiting');
 		activeExecutions.attachResponsePromise(executionId, mockDeferredPromise());
 
-		const waitingExecution = activeExecutions.getExecution(executionId);
+		const waitingExecution = activeExecutions.getExecutionOrFail(executionId);
 		expect(waitingExecution.responsePromise).toBeDefined();
 
 		// Resume the execution
 		await activeExecutions.add(newExecution, executionId);
 
-		const resumedExecution = activeExecutions.getExecution(executionId);
+		const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
 		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
 		expect(resumedExecution.responsePromise).toBe(waitingExecution.responsePromise);
 	});
@@ -140,7 +140,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
-		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecution');
+		const getExecutionSpy = jest.spyOn(activeExecutions, 'getExecutionOrFail');
 
 		activeExecutions.finalizeExecution('inactive-execution-id', mockFullRunData());
 
