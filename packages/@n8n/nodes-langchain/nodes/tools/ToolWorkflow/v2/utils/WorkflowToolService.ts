@@ -90,6 +90,9 @@ export class WorkflowToolService {
 				const errorResponse = `There was an error: "${executionError.message}"`;
 				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError);
 				return errorResponse;
+			} finally {
+				// @ts-expect-error this accesses a private member on the actual implementation to fix https://linear.app/n8n/issue/ADO-3186/bug-workflowtool-v2-always-uses-first-row-of-input-data
+				this.context.runIndex++;
 			}
 		};
 
