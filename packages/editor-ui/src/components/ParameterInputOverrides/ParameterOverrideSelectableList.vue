@@ -24,6 +24,10 @@ const inputs = computed(() =>
 	})),
 );
 
+function proper(s: string) {
+	return s[0].toUpperCase() + s.slice(1);
+}
+
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
 }>();
@@ -44,7 +48,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 			<ParameterInputFull
 				:parameter="{
 					name,
-					displayName: name[0].toUpperCase() + name.slice(1),
+					displayName: proper(name[0]),
 					type,
 					default: initialValue,
 					noDataExpression: true,
