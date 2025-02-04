@@ -59,7 +59,7 @@ export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
  * - Running external hooks for execution events
  * - Error and Cancellation handling and cleanup
  *
- * Example usage:
+ * @example
  * ```typescript
  * const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
  * hooks.add('workflowExecuteAfter, async function(fullRunData) {
