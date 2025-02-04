@@ -128,6 +128,7 @@ describe('FromAiOverride', () => {
 	test.each<[string, string, string]>([
 		['normal case', '$fromAI("a", `b`)', 'b'],
 		['working', '$fromAI("a", `a \\` \\\\\\``)', 'a ` \\`'],
+		// ['failing', '$fromAI("a", `\\``)', '`'],
 	])('should handle backtick escaping %s', (_name, value, expected) => {
 		expect(FromAiOverride.parseOverrides(value)).toEqual({ description: expected });
 	});

@@ -48,7 +48,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 			<ParameterInputFull
 				:parameter="{
 					name,
-					displayName: proper(name[0]),
+					displayName: proper(name),
 					type,
 					default: initialValue,
 					noDataExpression: true,
