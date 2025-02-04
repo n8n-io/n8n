@@ -30,6 +30,7 @@ export class GooglePerspective implements INodeType {
 		defaults: {
 			name: 'Google Perspective',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

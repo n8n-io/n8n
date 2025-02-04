@@ -25,6 +25,7 @@ export class Demio implements INodeType {
 		defaults: {
 			name: 'Demio',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -22,6 +22,7 @@ export class Twilio implements INodeType {
 		defaults: {
 			name: 'Twilio',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
