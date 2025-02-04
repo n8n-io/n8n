@@ -21,6 +21,7 @@ export class SyncroMspV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

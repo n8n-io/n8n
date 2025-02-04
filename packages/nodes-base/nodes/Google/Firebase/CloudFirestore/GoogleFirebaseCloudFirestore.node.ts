@@ -32,6 +32,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

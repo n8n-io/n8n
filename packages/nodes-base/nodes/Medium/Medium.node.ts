@@ -24,6 +24,7 @@ export class Medium implements INodeType {
 		defaults: {
 			name: 'Medium',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

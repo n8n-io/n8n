@@ -25,6 +25,7 @@ export class GoogleTasks implements INodeType {
 		defaults: {
 			name: 'Google Tasks',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

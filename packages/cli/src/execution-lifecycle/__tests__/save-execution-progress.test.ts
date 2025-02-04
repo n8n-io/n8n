@@ -1,100 +1,152 @@
+import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
-import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
 import { mockInstance } from '@test/mocking';
 
 import { saveExecutionProgress } from '../save-execution-progress';
-import * as fnModule from '../to-save-settings';
 
-mockInstance(Logger);
-const errorReporter = mockInstance(ErrorReporter);
-const executionRepository = mockInstance(ExecutionRepository);
+describe('saveExecutionProgress', () => {
+	mockInstance(Logger);
+	const errorReporter = mockInstance(ErrorReporter);
+	const executionRepository = mockInstance(ExecutionRepository);
 
-afterEach(() => {
-	jest.clearAllMocks();
-});
-
-const commonArgs: [IWorkflowBase, string, string, ITaskData, IRunExecutionData, string] = [
-	{} as IWorkflowBase,
-	'some-execution-id',
-	'My Node',
-	{} as ITaskData,
-	{} as IRunExecutionData,
-	'some-session-id',
-];
-
-const commonSettings = { error: true, success: true, manual: true };
-
-test('should ignore if save settings say so', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: false,
+	afterEach(() => {
+		jest.resetAllMocks();
 	});
 
-	await saveExecutionProgress(...commonArgs);
+	const workflowId = 'some-workflow-id';
+	const executionId = 'some-execution-id';
+	const nodeName = 'My Node';
+	const taskData = mock<ITaskData>();
+	const runExecutionData = mock<IRunExecutionData>();
 
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-});
+	const commonArgs = [workflowId, executionId, nodeName, taskData, runExecutionData] as const;
 
-test('should ignore on leftover async call', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+	test('should not try to update non-existent executions', async () => {
+		executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+		await saveExecutionProgress(...commonArgs);
+		expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 	});
 
-	executionRepository.findSingleExecution.mockResolvedValue({
-		finished: true,
-	} as IExecutionResponse);
+	test('should handle DB errors on execution lookup', async () => {
+		const error = new Error('Something went wrong');
+		executionRepository.findSingleExecution.mockImplementation(() => {
+			throw error;
+		});
 
-	await saveExecutionProgress(...commonArgs);
+		await saveExecutionProgress(...commonArgs);
 
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-});
-
-test('should update execution when saving progress is enabled', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+		expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(error);
 	});
 
-	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
+	test('should handle DB errors when updating the execution', async () => {
+		const error = new Error('Something went wrong');
+		executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
+		executionRepository.updateExistingExecution.mockImplementation(() => {
+			throw error;
+		});
 
-	await saveExecutionProgress(...commonArgs);
+		await saveExecutionProgress(...commonArgs);
 
-	expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('some-execution-id', {
-		data: {
-			executionData: undefined,
-			resultData: {
-				lastNodeExecuted: 'My Node',
-				runData: {
-					'My Node': [{}],
+		expect(executionRepository.findSingleExecution).toHaveBeenCalled();
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(error);
+	});
+
+	test('should not try to update finished executions', async () => {
+		executionRepository.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				finished: true,
+			}),
+		);
+
+		await saveExecutionProgress(...commonArgs);
+
+		expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
+	});
+
+	test('should populate `.data` when it is missing', async () => {
+		const fullExecutionData = {} as IExecutionResponse;
+		executionRepository.findSingleExecution.mockResolvedValue(fullExecutionData);
+
+		await saveExecutionProgress(...commonArgs);
+
+		expect(fullExecutionData).toEqual({
+			data: {
+				executionData: runExecutionData.executionData,
+				resultData: {
+					lastNodeExecuted: nodeName,
+					runData: {
+						[nodeName]: [taskData],
+					},
+				},
+				startData: {},
+			},
+			status: 'running',
+		});
+
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+			executionId,
+			fullExecutionData,
+		);
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	test('should augment `.data` if it already exists', async () => {
+		const fullExecutionData = {
+			data: {
+				startData: {},
+				resultData: {
+					runData: {
+						[nodeName]: [{}],
+					},
 				},
 			},
-			startData: {},
-		},
-		status: 'running',
+		} as unknown as IExecutionResponse;
+		executionRepository.findSingleExecution.mockResolvedValue(fullExecutionData);
+
+		await saveExecutionProgress(...commonArgs);
+
+		expect(fullExecutionData).toEqual({
+			data: {
+				executionData: runExecutionData.executionData,
+				resultData: {
+					lastNodeExecuted: nodeName,
+					runData: {
+						[nodeName]: [{}, taskData],
+					},
+				},
+				startData: {},
+			},
+			status: 'running',
+		});
+
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+			executionId,
+			fullExecutionData,
+		);
 	});
 
-	expect(errorReporter.error).not.toHaveBeenCalled();
-});
+	test('should set last executed node correctly', async () => {
+		const fullExecutionData = {
+			data: {
+				resultData: {
+					lastNodeExecuted: 'Another Node',
+					runData: {},
+				},
+			},
+		} as unknown as IExecutionResponse;
+		executionRepository.findSingleExecution.mockResolvedValue(fullExecutionData);
 
-test('should report error on failure', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+		await saveExecutionProgress(...commonArgs);
+
+		expect(fullExecutionData.data.resultData.lastNodeExecuted).toEqual(nodeName);
 	});
-
-	const error = new Error('Something went wrong');
-
-	executionRepository.findSingleExecution.mockImplementation(() => {
-		throw error;
-	});
-
-	await saveExecutionProgress(...commonArgs);
-
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-	expect(errorReporter.error).toHaveBeenCalledWith(error);
 });
