@@ -12,7 +12,7 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
-	makeAIMetrics,
+	resolveAIMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
 } from '@/TelemetryHelpers';
 import { randomInt } from '@/utils';
@@ -1591,7 +1591,7 @@ describe('makeAIMetrics', () => {
 			}),
 		});
 
-		const result = makeAIMetrics(nodes, nodeTypes);
+		const result = resolveAIMetrics(nodes, nodeTypes);
 		expect(result).toMatchObject({
 			aiNodeCount: 3,
 			aiToolCount: 3,
@@ -1616,7 +1616,7 @@ describe('makeAIMetrics', () => {
 			}),
 		});
 
-		const result = makeAIMetrics(nodes, nodeTypes);
+		const result = resolveAIMetrics(nodes, nodeTypes);
 		expect(result).toMatchObject({});
 	});
 
@@ -1640,7 +1640,7 @@ describe('makeAIMetrics', () => {
 			}),
 		});
 
-		const result = makeAIMetrics(nodes, nodeTypes);
+		const result = resolveAIMetrics(nodes, nodeTypes);
 		expect(result).toMatchObject({
 			aiNodeCount: 1,
 			aiToolCount: 0,

@@ -534,7 +534,7 @@ export type FromAICount = {
 	fromAIExpressionCount: number;
 };
 
-export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICount | {} {
+export function resolveAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICount | {} {
 	const resolvedNodes = nodes
 		.map((x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const)
 		.filter((x) => !!x[1]?.description);
@@ -549,25 +549,31 @@ export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICoun
 	let fromAIOverrideCount = 0;
 	let fromAIExpressionCount = 0;
 
-	const tools = resolvedNodes.filter((x) =>
-		x[1].description.codex?.subcategories?.AI?.includes('Tools'),
+	const tools = resolvedNodes.filter((node) =>
+		node[1].description.codex?.subcategories?.AI?.includes('Tools'),
 	);
 
 	for (const [node, _] of tools) {
 		// FlatMap to support values in resourceLocators
-		const vals = Object.values(node.parameters).flatMap((x) => {
-			if (x && typeof x === 'object' && 'value' in x) x = x.value;
-			return typeof x === 'string' ? x : [];
+		const values = Object.values(node.parameters).flatMap((param) => {
+			if (param && typeof param === 'object' && 'value' in param) param = param.value;
+			return typeof param === 'string' ? param : [];
 		});
+
 		// Note that we don't match the i in `fromAI` to support lower case i (though we miss fromai)
-		const overrides = vals.reduce(
-			(acc, x) => acc + Number(x.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
+		const overrides = values.reduce(
+			(acc, value) => acc + Number(value.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
 			0,
 		);
+
 		fromAIOverrideCount += overrides;
 		// check for = to avoid scanning lengthy text fields
+		// this will re-count overrides
 		fromAIExpressionCount +=
-			vals.reduce((acc, x) => acc + Number(x[0] === '=' && x.includes('$fromA', 2)), 0) - overrides;
+			values.reduce(
+				(acc, value) => acc + Number(value[0] === '=' && value.includes('$fromA', 2)),
+				0,
+			) - overrides;
 	}
 
 	return {
@@ -576,9 +582,4 @@ export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICoun
 		fromAIOverrideCount,
 		fromAIExpressionCount,
 	};
-}
-
-export function isTool(nodeTypes: INodeTypes, node: INode): boolean {
-	const x = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-	return !!x.description.codex?.subcategories?.AI?.includes('Tool');
 }
