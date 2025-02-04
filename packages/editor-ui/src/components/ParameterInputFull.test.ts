@@ -80,7 +80,7 @@ describe('ParameterInputFull.vue', () => {
 				},
 			},
 		});
-		expect(getByTestId('parameter-input-wrapper')).toBeInTheDocument();
+		expect(getByTestId('parameter-input')).toBeInTheDocument();
 	});
 
 	it('should render parameter with override button inline', async () => {
@@ -102,7 +102,7 @@ describe('ParameterInputFull.vue', () => {
 				value: '',
 			},
 		});
-		expect(getByTestId('parameter-input-wrapper')).toBeInTheDocument();
+		expect(getByTestId('parameter-input')).toBeInTheDocument();
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
@@ -129,7 +129,7 @@ describe('ParameterInputFull.vue', () => {
 				}}`,
 			},
 		});
-		expect(getByTestId('parameter-input-wrapper')).toBeInTheDocument();
+		expect(getByTestId('parameter-input')).toBeInTheDocument();
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
