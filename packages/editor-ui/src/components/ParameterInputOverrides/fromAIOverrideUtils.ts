@@ -31,7 +31,7 @@ type FromAIExtraProps = 'description';
 export type FromAIOverride = {
 	type: 'fromAI';
 	readonly extraProps: Record<FromAIExtraProps, ExtraPropValue>;
-	extraPropValues: Partial<Record<FromAIExtraProps, NodeParameterValueType>>;
+	extraPropValues: Partial<Record<string, NodeParameterValueType>>;
 };
 
 function sanitizeFromAiParameterName(s: string) {
