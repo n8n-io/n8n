@@ -24,6 +24,7 @@ export class GraphQL implements INodeType {
 		defaults: {
 			name: 'GraphQL',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

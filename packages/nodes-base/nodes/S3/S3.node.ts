@@ -29,6 +29,7 @@ export class S3 implements INodeType {
 		defaults: {
 			name: 'S3',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

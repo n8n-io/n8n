@@ -35,6 +35,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Cloud',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
