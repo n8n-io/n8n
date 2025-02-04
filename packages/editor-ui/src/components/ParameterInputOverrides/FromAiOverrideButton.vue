@@ -17,6 +17,7 @@ const emit = defineEmits<{
 		<N8nButton
 			:class="[$style.overrideButton /*, $style.noCornersBottom, $style.overrideButtonInOptions*/]"
 			type="tertiary"
+			data-test-id="from-ai-override-button"
 			@click="emit('click')"
 		>
 			<AiStarsIcon size="large" :class="$style.aiStarsIcon" />

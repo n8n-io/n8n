@@ -370,6 +370,7 @@ function removeOverride(clearField = false) {
 						:event-bus="eventBus"
 						:can-be-overridden="canBeContentOverride"
 						input-size="small"
+						data-test-id="parameter-input-wrapper"
 						@update="valueChanged"
 						@text-input="onTextInput"
 						@focus="onFocus"
