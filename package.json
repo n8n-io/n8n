@@ -98,5 +98,8 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch"
     }
+  },
+  "dependencies": {
+    "n8n-nodes-notion-markdown": "^1.1.0"
   }
 }
