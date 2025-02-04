@@ -1,29 +1,29 @@
-import { mock } from 'jest-mock-extended';
+import { captor, mock } from 'jest-mock-extended';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ExecutionCancelledError } from 'n8n-workflow';
+import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import config from '@/config';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance } from '@test/mocking';
+
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-const updateExistingExecution = jest.fn();
-const createNewExecution = jest.fn(async () => FAKE_EXECUTION_ID);
-
-const executionRepository = mock<ExecutionRepository>({
-	updateExistingExecution,
-	createNewExecution,
-});
+const executionRepository = mock<ExecutionRepository>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -64,6 +64,8 @@ describe('ActiveExecutions', () => {
 	beforeEach(() => {
 		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
 
+		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
+
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = jest.fn();
 		responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
@@ -82,8 +84,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(createNewExecution).toHaveBeenCalledTimes(1);
-		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
+		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(1);
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
@@ -91,8 +93,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(createNewExecution).toHaveBeenCalledTimes(0);
-		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
 	describe('attachWorkflowExecution', () => {
@@ -209,6 +211,80 @@ describe('ActiveExecutions', () => {
 
 			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('shutdown', () => {
+		let newExecutionId1: string, newExecutionId2: string;
+		let waitingExecutionId1: string, waitingExecutionId2: string;
+
+		beforeEach(async () => {
+			config.set('executions.mode', 'regular');
+
+			executionRepository.createNewExecution.mockImplementation(async () =>
+				randomInt(1000, 2000).toString(),
+			);
+
+			(sleep as jest.Mock).mockImplementation(() => {
+				// @ts-expect-error private property
+				activeExecutions.activeExecutions = {};
+			});
+
+			newExecutionId1 = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(newExecutionId1, 'new');
+			activeExecutions.attachResponsePromise(newExecutionId1, responsePromise);
+
+			newExecutionId2 = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(newExecutionId2, 'new');
+
+			waitingExecutionId1 = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(waitingExecutionId1, 'waiting');
+			activeExecutions.attachResponsePromise(waitingExecutionId1, responsePromise);
+
+			waitingExecutionId2 = await activeExecutions.add(executionData);
+			activeExecutions.setStatus(waitingExecutionId2, 'waiting');
+		});
+
+		test('Should cancel only new and waiting executions with response-promises by default', async () => {
+			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
+
+			await activeExecutions.shutdown();
+
+			expect(concurrencyControl.disable).toHaveBeenCalled();
+
+			const removeAllCaptor = captor<string[]>();
+			expect(concurrencyControl.removeAll).toHaveBeenCalledWith(removeAllCaptor);
+			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
+
+			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
+			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
+		});
+
+		test('Should cancel all executions when cancelAll is true', async () => {
+			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
+
+			await activeExecutions.shutdown(true);
+
+			expect(concurrencyControl.disable).toHaveBeenCalled();
+
+			const removeAllCaptor = captor<string[]>();
+			expect(concurrencyControl.removeAll).toHaveBeenCalledWith(removeAllCaptor);
+			expect(removeAllCaptor.value.sort()).toEqual(
+				[newExecutionId1, newExecutionId2, waitingExecutionId1, waitingExecutionId2].sort(),
+			);
+
+			expect(stopExecutionSpy).toHaveBeenCalledTimes(4);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
 		});
 	});
 });
