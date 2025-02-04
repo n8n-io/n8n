@@ -135,7 +135,7 @@ export class JobProcessor {
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
-			{ retryOf: execution.retryOf as string, pushRef },
+			{ retryOf: execution.retryOf ?? undefined, pushRef },
 		);
 
 		if (pushRef) {
@@ -229,7 +229,7 @@ export class JobProcessor {
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
 			startedAt,
-			retryOf: execution.retryOf ?? '',
+			retryOf: execution.retryOf ?? undefined,
 			status: execution.status,
 		};
 

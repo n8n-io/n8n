@@ -2284,7 +2284,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
-	retryOf?: string;
+	retryOf?: string | null;
 	pushRef?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
@@ -2406,11 +2406,6 @@ export type WorkflowActivateMode =
 	| 'activate'
 	| 'manual' // unused
 	| 'leadershipChange';
-
-export interface IWorkflowHooksOptionalParameters {
-	retryOf?: string;
-	pushRef?: string;
-}
 
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
