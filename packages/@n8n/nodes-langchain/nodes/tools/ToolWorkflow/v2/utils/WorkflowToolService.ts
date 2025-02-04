@@ -91,8 +91,8 @@ export class WorkflowToolService {
 				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError);
 				return errorResponse;
 			} finally {
-				// @ts-ignore
-				this.context['runIndex']++;
+				// @ts-expect-error this accesses a private member on the actual implementation to fix https://linear.app/n8n/issue/ADO-3186/bug-workflowtool-v2-always-uses-first-row-of-input-data
+				this.context.runIndex++;
 			}
 		};
 
