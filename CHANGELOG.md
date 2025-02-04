@@ -1,3 +1,13 @@
+## [1.77.2](https://github.com/n8n-io/n8n/compare/n8n@1.77.1...n8n@1.77.2) (2025-02-04)
+
+
+### Bug Fixes
+
+* **core:** Do not enable strict type validation by default for resource mapper ([#13037](https://github.com/n8n-io/n8n/issues/13037)) ([582dc44](https://github.com/n8n-io/n8n/commit/582dc443668a30e645abbadc0c50d96dbb913bce))
+* Increment runIndex in WorkflowToolV2 tool executions to avoid reusing out of date inputs ([#13008](https://github.com/n8n-io/n8n/issues/13008)) ([82f17fe](https://github.com/n8n-io/n8n/commit/82f17fe5931c5ca09c8ccefb80c873d1e78a22b8))
+
+
+
 ## [1.77.1](https://github.com/n8n-io/n8n/compare/n8n@1.77.0...n8n@1.77.1) (2025-02-03)
 
 
