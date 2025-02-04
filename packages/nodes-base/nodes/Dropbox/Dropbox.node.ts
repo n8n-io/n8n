@@ -28,6 +28,7 @@ export class Dropbox implements INodeType {
 		defaults: {
 			name: 'Dropbox',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

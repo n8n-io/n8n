@@ -34,6 +34,7 @@ export class Wekan implements INodeType {
 		defaults: {
 			name: 'Wekan',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

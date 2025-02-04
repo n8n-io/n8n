@@ -24,6 +24,7 @@ export class MicrosoftOneDrive implements INodeType {
 		defaults: {
 			name: 'Microsoft OneDrive',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
