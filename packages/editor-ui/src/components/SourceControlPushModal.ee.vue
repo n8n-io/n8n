@@ -193,16 +193,12 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		if (filters.value.status && filters.value.status !== workflow.status) {
-			return false;
-		}
-
-		return true;
+		return !(filters.value.status && filters.value.status !== workflow.status);
 	});
 });
 
-const sortedWorkflows = computed(() => {
-	const sorted = orderBy(
+const sortedWorkflows = computed(() =>
+	orderBy(
 		filteredWorkflows.value,
 		[
 			// keep the current workflow at the top of the list
@@ -211,10 +207,8 @@ const sortedWorkflows = computed(() => {
 			'updatedAt',
 		],
 		['desc', 'asc', 'desc'],
-	);
-
-	return sorted;
-});
+	),
+);
 
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
@@ -227,11 +221,8 @@ const isSubmitDisabled = computed(() => {
 		changes.value.tags.length +
 		changes.value.variables.length +
 		selectedChanges.value.size;
-	if (toBePushed <= 0) {
-		return true;
-	}
 
-	return false;
+	return toBePushed <= 0;
 });
 
 const sortedWorkflowsSet = computed(() => new Set(sortedWorkflows.value.map(({ id }) => id)));
@@ -363,6 +354,9 @@ watch(
 		telemetry.track('User filtered by status in commit modal', { status });
 	},
 );
+watch(refDebounced(search, 500), (term) => {
+	telemetry.track('User searched workflows in commit modal', { search: term });
+});
 </script>
 
 <template>
