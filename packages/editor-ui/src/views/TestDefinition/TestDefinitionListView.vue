@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, h } from 'vue';
 import { useRouter } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
@@ -15,6 +15,7 @@ import type {
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 import { useMessage } from '@/composables/useMessage';
+import { RouterLink } from 'vue-router';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
@@ -128,6 +129,11 @@ async function onRunTest(testId: string) {
 			toast.showMessage({
 				title: locale.baseText('testDefinition.list.testStarted'),
 				type: 'success',
+				message: h(
+					RouterLink,
+					{ to: { name: VIEWS.TEST_DEFINITION_EDIT, params: { testId } } },
+					() => 'Go to runs',
+				),
 			});
 
 			// Optionally fetch the updated test runs
