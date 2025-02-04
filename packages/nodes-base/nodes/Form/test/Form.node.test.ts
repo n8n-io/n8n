@@ -217,47 +217,86 @@ describe('Form Node', () => {
 		});
 
 		it('should handle completion operation and render completion page', async () => {
-			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
-			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
-				if (paramName === 'operation') return 'completion';
-				if (paramName === 'useJson') return false;
-				if (paramName === 'jsonOutput') return '[]';
-				if (paramName === 'respondWith') return 'text';
-				if (paramName === 'completionTitle') return 'Test Title';
-				if (paramName === 'completionMessage') return 'Test Message';
-				if (paramName === 'redirectUrl') return '';
-				if (paramName === 'formFields.values') return [];
-				return {};
-			});
-			mockWebhookFunctions.getParentNodes.mockReturnValue([
+			const formExpected = [
 				{
-					type: 'n8n-nodes-base.formTrigger',
-					name: 'Form Trigger',
-					typeVersion: 2.1,
-					disabled: false,
+					formParam: {
+						responseText: '',
+					},
+					expected: {
+						appendAttribution: 'test',
+						formTitle: 'test',
+						message: 'Test Message',
+						title: 'Test Title',
+						responseText: '',
+					},
 				},
-			]);
-			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
+				{
+					formParam: {
+						responseText: '<div>hey</div><script>alert("hi")</script>',
+					},
+					expected: {
+						appendAttribution: 'test',
+						formTitle: 'test',
+						message: 'Test Message',
+						title: 'Test Title',
+						responseText: '<div>hey</div>',
+					},
+				},
+				{
+					formParam: {
+						responseText: 'my text over here',
+					},
+					expected: {
+						appendAttribution: 'test',
+						formTitle: 'test',
+						message: 'Test Message',
+						title: 'Test Title',
+						responseText: 'my text over here',
+					},
+				},
+			];
 
-			const mockResponseObject = {
-				render: jest.fn(),
-				redirect: jest.fn(),
-			};
-			mockWebhookFunctions.getResponseObject.mockReturnValue(
-				mockResponseObject as unknown as Response,
-			);
-			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
-			mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
+			for (const { formParam, expected } of formExpected) {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+					if (paramName === 'operation') return 'completion';
+					if (paramName === 'useJson') return false;
+					if (paramName === 'jsonOutput') return '[]';
+					if (paramName === 'respondWith') return 'text';
+					if (paramName === 'completionTitle') return 'Test Title';
+					if (paramName === 'completionMessage') return 'Test Message';
+					if (paramName === 'redirectUrl') return '';
+					if (paramName === 'formFields.values') return [];
+					if (paramName === 'responseText') return formParam.responseText;
+					return {};
+				});
+				mockWebhookFunctions.getParentNodes.mockReturnValue([
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						name: 'Form Trigger',
+						typeVersion: 2.1,
+						disabled: false,
+					},
+				]);
+				mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 
-			const result = await form.webhook(mockWebhookFunctions);
+				const mockResponseObject = {
+					render: jest.fn(),
+					redirect: jest.fn(),
+				};
+				mockWebhookFunctions.getResponseObject.mockReturnValue(
+					mockResponseObject as unknown as Response,
+				);
+				mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
+				mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
 
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
-				appendAttribution: 'test',
-				formTitle: 'test',
-				message: 'Test Message',
-				title: 'Test Title',
-			});
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+					...expected,
+				});
+			}
 		});
 
 		it('should handle completion operation and redirect', async () => {
