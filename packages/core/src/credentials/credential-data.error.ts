@@ -14,6 +14,8 @@ export class CredentialDataError extends ApplicationError {
 	readonly credential: Pick<Credentials<object>, 'name' | 'type' | 'id'>;
 
 	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
+		message = `${message} (Credential: '${name}' - Type: ${type} - ID: ${id})`;
+
 		super(message, {
 			extra: { name, type, id },
 			cause,
