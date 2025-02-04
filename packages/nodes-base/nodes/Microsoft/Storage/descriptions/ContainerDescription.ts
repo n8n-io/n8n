@@ -129,6 +129,12 @@ export const containerOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								const { metadata, ...properties } = parseHeaders(response.headers);
+								delete properties.contentLength;
+								delete properties.server;
+								delete properties.requestId;
+								delete properties.version;
+								delete properties.date;
+								delete properties.connection;
 								return [
 									{
 										json: {
@@ -190,6 +196,7 @@ const createFields: INodeProperties[] = [
 		displayName: 'Container Name',
 		name: 'container',
 		default: '',
+		description: 'The name of the new container',
 		displayOptions: {
 			show: {
 				resource: ['container'],
@@ -246,8 +253,8 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		default: {},
 		displayOptions: {
 			show: {
@@ -316,7 +323,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add metadata',
+				placeholder: 'Add Metadata',
 				routing: {
 					send: {
 						preSend: [
@@ -325,10 +332,10 @@ const createFields: INodeProperties[] = [
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
 								requestOptions.headers ??= {};
-								const metadata = this.getNodeParameter('additionalFields.metadata') as IDataObject;
+								const metadata = this.getNodeParameter('options.metadata') as IDataObject;
 								for (const data of metadata.metadataValues as IDataObject[]) {
 									requestOptions.headers[
-										`${HeaderConstants.PREFIX_X_MS}${data.fieldName as string}`
+										`${HeaderConstants.PREFIX_X_MS_META}${data.fieldName as string}`
 									] = data.fieldValue as string;
 								}
 								return requestOptions;
@@ -342,18 +349,20 @@ const createFields: INodeProperties[] = [
 				},
 			},
 		],
+		placeholder: 'Add Options',
 		type: 'collection',
 	},
 ];
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'Container to Delete',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Select the container to delete',
 		displayOptions: {
 			show: {
 				resource: ['container'],
@@ -384,12 +393,13 @@ const deleteFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'Container to Get',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Select the container to get',
 		displayOptions: {
 			show: {
 				resource: ['container'],
@@ -495,10 +505,9 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Fields',
-		name: 'fields',
-		default: [],
-		description: 'The fields to add to the output',
+		displayName: 'Options',
+		name: 'options',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['container'],
@@ -507,49 +516,53 @@ const getAllFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Metadata',
-				value: 'metadata',
+				displayName: 'Fields',
+				name: 'fields',
+				default: [],
+				description: 'The fields to add to the output',
+				options: [
+					{
+						name: 'Metadata',
+						value: 'metadata',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+					{
+						name: 'System',
+						value: 'system',
+					},
+				],
+				routing: {
+					send: {
+						property: 'include',
+						type: 'query',
+						value: '={{ $value.join(",") || undefined }}',
+					},
+				},
+				type: 'multiOptions',
 			},
 			{
-				name: 'Deleted',
-				value: 'deleted',
-			},
-			{
-				name: 'System',
-				value: 'system',
+				displayName: 'Filter',
+				name: 'filter',
+				default: '',
+				description:
+					'Filters the results to return only containers with a name that begins with the specified prefix',
+				placeholder: 'e.g. mycontainer',
+				routing: {
+					send: {
+						property: 'prefix',
+						type: 'query',
+						value: '={{ $value ? $value : undefined }}',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
 			},
 		],
-		routing: {
-			send: {
-				property: 'include',
-				type: 'query',
-				value: '={{ $value.join(",") || undefined }}',
-			},
-		},
-		type: 'multiOptions',
-	},
-	{
-		displayName: 'Filter',
-		name: 'filter',
-		default: '',
-		description:
-			'Filters the results to return only containers with a name that begins with the specified prefix',
-		displayOptions: {
-			show: {
-				resource: ['container'],
-				operation: ['getAll'],
-			},
-		},
-		placeholder: 'e.g. mycontainer',
-		routing: {
-			send: {
-				property: 'prefix',
-				type: 'query',
-				value: '={{ $value ? $value : undefined }}',
-			},
-		},
-		type: 'string',
-		validateType: 'string',
+		placeholder: 'Add Options',
+		type: 'collection',
 	},
 ];
 

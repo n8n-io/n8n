@@ -6,6 +6,7 @@ import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
 import { azureStorageApiResponse, azureStorageNodeResponse } from './mocks';
+import { HeaderConstants } from '../GenericFunctions';
 
 describe('Azure Storage Node', () => {
 	const baseUrl = 'https://myaccount.blob.core.windows.net';
@@ -42,7 +43,7 @@ describe('Azure Storage Node', () => {
 										mode: 'list',
 									},
 									blob: 'myblob',
-									additionalFields: {
+									options: {
 										accessTier: 'Hot',
 										blobType: 'BlockBlob',
 										cacheControl: 'no-cache',
@@ -169,6 +170,26 @@ describe('Azure Storage Node', () => {
 							method: 'put',
 							path: '/mycontainer/myblob',
 							statusCode: 201,
+							requestHeaders: {
+								[HeaderConstants.X_MS_ACCESS_TIER]: 'Hot',
+								[HeaderConstants.X_MS_BLOB_TYPE]: 'BlockBlob',
+								[HeaderConstants.X_MS_BLOB_CACHE_CONTROL]: 'no-cache',
+								[HeaderConstants.X_MS_CONTENT_CRC64]: '3EDB64E77CB16A4C',
+								[HeaderConstants.X_MS_BLOB_CONTENT_ENCODING]: 'utf8',
+								[HeaderConstants.X_MS_BLOB_CONTENT_LANGUAGE]: 'en-US',
+								[HeaderConstants.X_MS_BLOB_CONTENT_MD5]: 'b97f46db5f3be7709d942eefe30e5b45',
+								[HeaderConstants.X_MS_BLOB_CONTENT_TYPE]: 'application/json',
+								[HeaderConstants.X_MS_ENCRYPTION_CONTEXT]: 'context',
+								[HeaderConstants.X_MS_ENCRYPTION_SCOPE]: 'encryptionScope',
+								[HeaderConstants.X_MS_EXPIRY_OPTION]: 'Absolute',
+								[HeaderConstants.X_MS_BLOB_CONTENT_DISPOSITION]: 'attachment; filename="file.json"',
+								[HeaderConstants.X_MS_IMMUTABILITY_POLICY_UNTIL_DATE]:
+									'Wed, 01 Jan 2025 00:00:00 -0500',
+								[HeaderConstants.X_MS_IMMUTABILITY_POLICY_MODE]: 'unlocked',
+								[HeaderConstants.X_MS_LEASE_ID]: 'leaseId123',
+								[HeaderConstants.X_MS_LEGAL_HOLD]: 'true',
+								[HeaderConstants.PREFIX_X_MS_META + 'key1']: 'value1',
+							},
 							responseBody: '',
 							responseHeaders: azureStorageApiResponse.blobPut.headers,
 						},
@@ -438,21 +459,21 @@ describe('Azure Storage Node', () => {
 										mode: 'list',
 									},
 									limit: 1,
-									fields: [
-										'copy',
-										'deleted',
-										'deletedwithversions',
-										'immutabilitypolicy',
-										'metadata',
-										'legalhold',
-										'versions',
-										'uncommittedblobs',
-										'tags',
-										'snapshots',
-										'permissions',
-									],
-									filter: ['deleted', 'files', 'directories'],
 									options: {
+										fields: [
+											'copy',
+											'deleted',
+											'deletedwithversions',
+											'immutabilitypolicy',
+											'metadata',
+											'legalhold',
+											'versions',
+											'uncommittedblobs',
+											'tags',
+											'snapshots',
+											'permissions',
+										],
+										filter: ['deleted', 'files', 'directories'],
 										upn: true,
 									},
 									requestOptions: {},

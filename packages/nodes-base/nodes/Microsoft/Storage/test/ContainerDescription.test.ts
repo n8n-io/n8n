@@ -6,6 +6,7 @@ import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
 import { azureStorageApiResponse, azureStorageNodeResponse } from './mocks';
+import { HeaderConstants } from '../GenericFunctions';
 
 describe('Azure Storage Node', () => {
 	const baseUrl = 'https://myaccount.blob.core.windows.net';
@@ -36,7 +37,7 @@ describe('Azure Storage Node', () => {
 								parameters: {
 									operation: 'create',
 									container: 'mycontainer',
-									additionalFields: {
+									options: {
 										accessLevel: 'blob',
 										metadata: {
 											metadataValues: [
@@ -90,6 +91,10 @@ describe('Azure Storage Node', () => {
 							method: 'put',
 							path: '/mycontainer?restype=container',
 							statusCode: 201,
+							requestHeaders: {
+								[HeaderConstants.X_MS_BLOB_PUBLIC_ACCESS]: 'blob',
+								[`${HeaderConstants.PREFIX_X_MS_META}key1`]: 'value1',
+							},
 							responseBody: '',
 							responseHeaders: azureStorageApiResponse.containerCreate.headers,
 						},
@@ -329,8 +334,10 @@ describe('Azure Storage Node', () => {
 								parameters: {
 									operation: 'getAll',
 									limit: 1,
-									fields: ['metadata', 'deleted', 'system'],
-									filter: 'mycontainer',
+									options: {
+										fields: ['metadata', 'deleted', 'system'],
+										filter: 'mycontainer',
+									},
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.azureStorage',

@@ -323,9 +323,10 @@ export function parseHeaders(headers: IDataObject) {
 			continue;
 		}
 
-		const newKey = key.startsWith(HeaderConstants.PREFIX_X_MS)
+		let newKey = key.startsWith(HeaderConstants.PREFIX_X_MS)
 			? camelCase(key.replace(HeaderConstants.PREFIX_X_MS, ''))
 			: camelCase(key);
+		newKey = newKey.replace('-', '');
 
 		const newValue = parseBooleanHeaders.includes(key)
 			? parseBooleans(headers[key] as string)
@@ -352,7 +353,7 @@ export async function parseBlobList(
 ): Promise<{ blobs: IDataObject[]; maxResults?: number; nextMarker?: string }> {
 	const parser = new Parser({
 		explicitArray: false,
-		tagNameProcessors: [firstCharLowerCase],
+		tagNameProcessors: [firstCharLowerCase, (name) => name.replace('-', '')],
 		valueProcessors: [
 			function (value, name) {
 				if (
@@ -413,6 +414,15 @@ export async function parseBlobList(
 		}
 	}
 
+	for (const container of data.enumerationResults.blobs.blob) {
+		if (container.metadata === '') {
+			delete container.metadata;
+		}
+		if (container.orMetadata === '') {
+			delete container.orMetadata;
+		}
+	}
+
 	return {
 		blobs: data.enumerationResults.blobs.blob,
 		maxResults: data.enumerationResults.maxResults,
@@ -425,7 +435,7 @@ export async function parseContainerList(
 ): Promise<{ containers: IDataObject[]; maxResults?: number; nextMarker?: string }> {
 	const parser = new Parser({
 		explicitArray: false,
-		tagNameProcessors: [firstCharLowerCase],
+		tagNameProcessors: [firstCharLowerCase, (name) => name.replace('-', '')],
 		valueProcessors: [
 			function (value, name) {
 				if (
@@ -462,6 +472,12 @@ export async function parseContainerList(
 	if (!Array.isArray(data.enumerationResults.containers.container)) {
 		// Single item
 		data.enumerationResults.containers.container = [data.enumerationResults.containers.container];
+	}
+
+	for (const container of data.enumerationResults.containers.container) {
+		if (container.metadata === '') {
+			delete container.metadata;
+		}
 	}
 
 	return {

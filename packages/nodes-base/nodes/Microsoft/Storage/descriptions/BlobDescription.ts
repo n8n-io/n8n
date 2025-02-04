@@ -32,7 +32,7 @@ export const blobOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new blob or replaces an existing blob within a container',
+				description: 'Create a new blob or replace an existing one',
 				routing: {
 					request: {
 						ignoreHttpStatusErrors: true,
@@ -118,8 +118,15 @@ export const blobOperations: INodeProperties[] = [
 								_data: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
+								const headerData = parseHeaders(response.headers);
+								delete headerData.acceptRanges;
+								delete headerData.server;
+								delete headerData.requestId;
+								delete headerData.version;
+								delete headerData.date;
+								delete headerData.connection;
 								const newItem: INodeExecutionData = {
-									json: parseHeaders(response.headers),
+									json: headerData,
 									binary: {},
 								};
 
@@ -191,12 +198,13 @@ export const blobOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'Container Name',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Container to create or replace a blob in',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -227,6 +235,7 @@ const createFields: INodeProperties[] = [
 		displayName: 'Blob Name',
 		name: 'blob',
 		default: '',
+		description: 'The name of the new or existing blob',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -262,7 +271,7 @@ const createFields: INodeProperties[] = [
 		type: 'options',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Binary Contents',
 		name: 'binaryPropertyName',
 		default: 'data',
 		description: 'The name of the input binary field containing the file to be written',
@@ -341,8 +350,8 @@ const createFields: INodeProperties[] = [
 		type: 'string',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		default: {},
 		displayOptions: {
 			show: {
@@ -586,7 +595,7 @@ const createFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/additionalFields.expiryOption': ['Absolute'],
+						'/options.expiryOption': ['Absolute'],
 					},
 				},
 				routing: {
@@ -732,7 +741,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add metadata',
+				placeholder: 'Add Metadata',
 				routing: {
 					send: {
 						preSend: [
@@ -741,10 +750,10 @@ const createFields: INodeProperties[] = [
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
 								requestOptions.headers ??= {};
-								const metadata = this.getNodeParameter('additionalFields.metadata') as IDataObject;
+								const metadata = this.getNodeParameter('options.metadata') as IDataObject;
 								for (const data of metadata.metadataValues as IDataObject[]) {
 									requestOptions.headers[
-										`${HeaderConstants.PREFIX_X_MS}${data.fieldName as string}`
+										`${HeaderConstants.PREFIX_X_MS_META}${data.fieldName as string}`
 									] = data.fieldValue as string;
 								}
 								return requestOptions;
@@ -807,7 +816,7 @@ const createFields: INodeProperties[] = [
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
 								requestOptions.headers ??= {};
-								const tags = this.getNodeParameter('additionalFields.tags') as IDataObject;
+								const tags = this.getNodeParameter('options.tags') as IDataObject;
 								requestOptions.headers[HeaderConstants.X_MS_TAGS] = (
 									tags.tagValues as IDataObject[]
 								)
@@ -827,18 +836,20 @@ const createFields: INodeProperties[] = [
 				},
 			},
 		],
+		placeholder: 'Add Options',
 		type: 'collection',
 	},
 ];
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'Container Name',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Container to delete a blob from',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -866,12 +877,13 @@ const deleteFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Blob to Delete',
+		displayName: 'Blob',
 		name: 'blob',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Blob to be deleted',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -931,12 +943,13 @@ const deleteFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'Container Name',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Container to get a blob from',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -964,12 +977,13 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Blob to Get',
+		displayName: 'Blob',
 		name: 'blob',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Blob to get',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -1062,12 +1076,13 @@ const getFields: INodeProperties[] = [
 
 const getAllFields: INodeProperties[] = [
 	{
-		displayName: 'Container Name',
+		displayName: 'Container',
 		name: 'container',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Container to get blobs from',
 		displayOptions: {
 			show: {
 				resource: ['blob'],
@@ -1170,130 +1185,6 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Fields',
-		name: 'fields',
-		default: [],
-		description: 'The fields to add to the output',
-		displayOptions: {
-			show: {
-				resource: ['blob'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				name: 'Copy',
-				value: 'copy',
-				description:
-					'Specifies that metadata related to any current or previous Copy Blob operation should be included in the response',
-			},
-			{
-				name: 'Deleted',
-				value: 'deleted',
-				description: 'Specifies that soft-deleted blobs should be included in the response',
-			},
-			{
-				name: 'Deleted with Versions',
-				value: 'deletedwithversions',
-				description:
-					'Specifies that deleted blobs with any versions (active or deleted) should be included in the response. Items permanently deleted appear until processed by garbage collection.',
-			},
-			{
-				name: 'Immutability Policy',
-				value: 'immutabilitypolicy',
-				description:
-					'Specifies that the enumeration should include the immutability policy until date, and the immutability policy mode of the blobs',
-			},
-			{
-				name: 'Legal Hold',
-				value: 'legalhold',
-				description: 'Specifies that the enumeration should include the legal hold of blobs',
-			},
-			{
-				name: 'Metadata',
-				value: 'metadata',
-				description: 'Specifies that blob metadata be returned in the response',
-			},
-			{
-				name: 'Permissions',
-				value: 'permissions',
-				description:
-					'Includes the owner, group, permissions, and access control list for the listed blobs or directories. Supported only for accounts with a hierarchical namespace enabled.',
-			},
-			{
-				name: 'Snapshots',
-				value: 'snapshots',
-				description:
-					'Specifies that snapshots should be included in the enumeration. Snapshots are listed from oldest to newest in the response.',
-			},
-			{
-				name: 'Tags',
-				value: 'tags',
-				description:
-					'Specifies that user-defined, blob index tags should be included in the response',
-			},
-			{
-				name: 'Uncommitted Blobs',
-				value: 'uncommittedblobs',
-				description:
-					"Specifies that blobs for which blocks have been uploaded, but which haven't been committed",
-			},
-			{
-				name: 'Versions',
-				value: 'versions',
-				description: 'Specifies that versions of blobs should be included in the enumeration',
-			},
-		],
-		routing: {
-			send: {
-				property: 'include',
-				type: 'query',
-				value: '={{ $value.join(",") || undefined }}',
-			},
-		},
-		type: 'multiOptions',
-	},
-	{
-		displayName: 'Filter',
-		name: 'filter',
-		default: [],
-		description: 'The type of datasets to be returned',
-		displayOptions: {
-			show: {
-				resource: ['blob'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				name: 'Deleted',
-				value: 'deleted',
-				description:
-					'Only for accounts enabled with hierarchical namespace. When included, the list only contains soft-deleted blobs. POSIX ACL authorization fallback is not supported for listing soft-deleted blobs.',
-			},
-			{
-				name: 'Files',
-				value: 'files',
-				description:
-					'Only for accounts enabled with hierarchical namespace. When included, the list only contains files.',
-			},
-			{
-				name: 'Directories',
-				value: 'directories',
-				description:
-					'Only for accounts enabled with hierarchical namespace. When included, the list only contains directories.',
-			},
-		],
-		routing: {
-			send: {
-				property: 'showonly',
-				type: 'query',
-				value: '={{ $value.join(",") || undefined }}',
-			},
-		},
-		type: 'multiOptions',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		default: {},
@@ -1304,6 +1195,118 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				default: [],
+				description: 'The fields to add to the output',
+				options: [
+					{
+						name: 'Copy',
+						value: 'copy',
+						description:
+							'Specifies that metadata related to any current or previous Copy Blob operation should be included in the response',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description: 'Specifies that soft-deleted blobs should be included in the response',
+					},
+					{
+						name: 'Deleted with Versions',
+						value: 'deletedwithversions',
+						description:
+							'Specifies that deleted blobs with any versions (active or deleted) should be included in the response. Items permanently deleted appear until processed by garbage collection.',
+					},
+					{
+						name: 'Immutability Policy',
+						value: 'immutabilitypolicy',
+						description:
+							'Specifies that the enumeration should include the immutability policy until date, and the immutability policy mode of the blobs',
+					},
+					{
+						name: 'Legal Hold',
+						value: 'legalhold',
+						description: 'Specifies that the enumeration should include the legal hold of blobs',
+					},
+					{
+						name: 'Metadata',
+						value: 'metadata',
+						description: 'Specifies that blob metadata be returned in the response',
+					},
+					{
+						name: 'Permissions',
+						value: 'permissions',
+						description:
+							'Includes the owner, group, permissions, and access control list for the listed blobs or directories. Supported only for accounts with a hierarchical namespace enabled.',
+					},
+					{
+						name: 'Snapshots',
+						value: 'snapshots',
+						description:
+							'Specifies that snapshots should be included in the enumeration. Snapshots are listed from oldest to newest in the response.',
+					},
+					{
+						name: 'Tags',
+						value: 'tags',
+						description:
+							'Specifies that user-defined, blob index tags should be included in the response',
+					},
+					{
+						name: 'Uncommitted Blobs',
+						value: 'uncommittedblobs',
+						description:
+							"Specifies that blobs for which blocks have been uploaded, but which haven't been committed",
+					},
+					{
+						name: 'Versions',
+						value: 'versions',
+						description: 'Specifies that versions of blobs should be included in the enumeration',
+					},
+				],
+				routing: {
+					send: {
+						property: 'include',
+						type: 'query',
+						value: '={{ $value.join(",") || undefined }}',
+					},
+				},
+				type: 'multiOptions',
+			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				default: [],
+				description: 'The type of datasets to be returned',
+				options: [
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description:
+							'Only for accounts enabled with hierarchical namespace. When included, the list only contains soft-deleted blobs. POSIX ACL authorization fallback is not supported for listing soft-deleted blobs.',
+					},
+					{
+						name: 'Files',
+						value: 'files',
+						description:
+							'Only for accounts enabled with hierarchical namespace. When included, the list only contains files.',
+					},
+					{
+						name: 'Directories',
+						value: 'directories',
+						description:
+							'Only for accounts enabled with hierarchical namespace. When included, the list only contains directories.',
+					},
+				],
+				routing: {
+					send: {
+						property: 'showonly',
+						type: 'query',
+						value: '={{ $value.join(",") || undefined }}',
+					},
+				},
+				type: 'multiOptions',
+			},
 			{
 				displayName: 'UPN',
 				name: 'upn',
