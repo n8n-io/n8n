@@ -14,6 +14,7 @@ export class GoogleAds implements INodeType {
 		defaults: {
 			name: 'Google Ads',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

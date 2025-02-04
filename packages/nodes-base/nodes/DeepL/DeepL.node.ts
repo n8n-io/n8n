@@ -24,6 +24,7 @@ export class DeepL implements INodeType {
 		defaults: {
 			name: 'DeepL',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -23,6 +23,7 @@ export class Stackby implements INodeType {
 		defaults: {
 			name: 'Stackby',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -33,6 +33,7 @@ export class QuickBase implements INodeType {
 		defaults: {
 			name: 'Quick Base',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

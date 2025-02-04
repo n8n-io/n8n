@@ -25,6 +25,7 @@ export class Ghost implements INodeType {
 		defaults: {
 			name: 'Ghost',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
