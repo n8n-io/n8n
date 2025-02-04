@@ -69,7 +69,7 @@ function isExtraPropKey(
 	return extraProps.hasOwnProperty(key);
 }
 
-export function updateExtraPropValues(override: FromAIOverride, expr: string) {
+export function updateFromAIOverrideValues(override: FromAIOverride, expr: string) {
 	const { extraProps, extraPropValues } = override;
 	const overrides = parseOverrides(expr);
 	if (overrides) {
@@ -96,8 +96,16 @@ function fieldTypeToFromAiType(propType: NodePropertyTypes) {
 	}
 }
 
-export function isOverrideValue(s: string) {
+export function isFromAIOverrideValue(s: string) {
 	return s.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI(`);
+}
+
+function getBestQuoteChar(description: string) {
+	if (description.includes('\n')) return '`';
+
+	if (!description.includes('`')) return '`';
+	if (!description.includes('"')) return '"';
+	return "'";
 }
 
 export function buildValueFromOverride(
@@ -110,24 +118,33 @@ export function buildValueFromOverride(
 	const key = sanitizeFromAiParameterName(props.parameter.displayName);
 	const description =
 		extraPropValues?.description?.toString() ?? extraProps.description.initialValue;
+
 	// We want to escape these characters here as the generated formula needs to be valid JS code, and we risk
 	// closing the string prematurely without it.
-	// If we don't escape \ then 'my \` description' as user input would end up as 'my \\` description'
-	// in the generated code, causing an unescaped backtick to close the string.
-	const sanitizedDescription = description.replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+	// If we don't escape \ then <my \' description> as  would end up as 'my \\' description' in
+	// the generated code, causing an unescaped quoteChar to close the string.
+	// We try to minimize this by looking for an unused quote char first
+	const quoteChar = getBestQuoteChar(description);
+	const sanitizedDescription = description
+		.replaceAll(/\\/g, '\\\\')
+		.replaceAll(quoteChar, `\\${quoteChar}`);
 	const type = fieldTypeToFromAiType(props.parameter.type);
 
-	return `={{ ${marker}$fromAI('${key}', \`${sanitizedDescription}\`, '${type}') }}`;
+	return `={{ ${marker}$fromAI('${key}', ${quoteChar}${sanitizedDescription}${quoteChar}, '${type}') }}`;
 }
 
 export function parseOverrides(
-	s: string,
+	expression: string,
 ): Record<keyof FromAIOverride['extraProps'], string | undefined> | null {
 	try {
 		// `extractFromAICalls` has different escape semantics from JS strings
 		// Specifically it makes \ escape any following character.
 		// So we need to escape our \ so we don't drop them accidentally
-		const calls = extractFromAICalls(s.replaceAll(/\\/g, '\\\\'));
+		// However ` used in the description cause \` to appear here, which would break
+		// So we take the hit and expose the bug for backticks only, turning \` into `.
+		const preparedExpression = expression.replace(/\\[^`]/g, '\\\\');
+
+		const calls = extractFromAICalls(preparedExpression);
 		if (calls.length === 1) {
 			return {
 				description: calls[0].description,
@@ -165,7 +182,7 @@ export function makeOverrideValue(
 			extraProps: fromAIExtraProps,
 			extraPropValues: {},
 		};
-		updateExtraPropValues(fromAiOverride, context.value?.toString() ?? '');
+		updateFromAIOverrideValues(fromAiOverride, context.value?.toString() ?? '');
 		return fromAiOverride;
 	}
 

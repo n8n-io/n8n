@@ -2,7 +2,7 @@ import type { FromAIOverride, OverrideContext } from './fromAIOverrideUtils';
 import {
 	buildValueFromOverride,
 	fromAIExtraProps,
-	isOverrideValue,
+	isFromAIOverrideValue,
 	makeOverrideValue,
 	parseOverrides,
 } from './fromAIOverrideUtils';
@@ -104,8 +104,10 @@ describe('makeOverrideValue', () => {
 
 describe('FromAiOverride', () => {
 	it('correctly identifies override values', () => {
-		expect(isOverrideValue('={{ $fromAI() }}')).toBe(false);
-		expect(isOverrideValue('={{ /*n8n-auto-generated-fromAI-override*/ $fromAI() }}')).toBe(true);
+		expect(isFromAIOverrideValue('={{ $fromAI() }}')).toBe(false);
+		expect(isFromAIOverrideValue('={{ /*n8n-auto-generated-fromAI-override*/ $fromAI() }}')).toBe(
+			true,
+		);
 	});
 
 	it('should parseOverrides as expected', () => {
@@ -129,10 +131,13 @@ describe('FromAiOverride', () => {
 	});
 
 	test.each<[string, string, string]>([
-		['normal case', '$fromAI("a", `b`)', 'b'],
-		['working', '$fromAI("a", `a \\` \\\\\\``)', 'a ` \\`'],
-		// ['failing', '$fromAI("a", `\\``)', '`'],
-	])('should handle backtick escaping %s', (_name, value, expected) => {
+		['none', '$fromAI("a", `b`)', 'b'],
+		['a simple case of', '$fromAI("a", `\\``)', '`'],
+		// this is a bug in the current implementation
+		// see related comments in the main file
+		// We try to use different quote characters where possible
+		['a complex case of', '$fromAI("a", `a \\` \\\\\\``)', 'a ` `'],
+	])('should handle %s backtick escaping ', (_name, value, expected) => {
 		expect(parseOverrides(value)).toEqual({ description: expected });
 	});
 

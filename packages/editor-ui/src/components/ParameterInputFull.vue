@@ -23,10 +23,10 @@ import { N8nInputLabel } from 'n8n-design-system';
 import {
 	buildValueFromOverride,
 	type FromAIOverride,
-	isOverrideValue,
+	isFromAIOverrideValue,
 	makeOverrideValue,
-	updateExtraPropValues,
-} from './ParameterInputOverrides/fromAIOverrideUtils';
+	updateFromAIOverrideValues,
+} from '../utils/fromAIOverrideUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -73,7 +73,7 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 
 const node = computed(() => ndvStore.activeNode);
-const parameterOverrides = ref<FromAIOverride | null>(
+const fromAIOverride = ref<FromAIOverride | null>(
 	makeOverrideValue(
 		props,
 		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
@@ -84,11 +84,11 @@ const canBeContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
 	if (!node.value || isResourceLocator.value) return false;
 
-	return parameterOverrides.value !== null;
+	return fromAIOverride.value !== null;
 });
 
 const isContentOverride = computed(
-	() => canBeContentOverride.value && !!isOverrideValue(props.value?.toString() ?? ''),
+	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
 
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
@@ -110,7 +110,7 @@ const showExpressionSelector = computed(() => {
 		// infer whether it's overridden and we should hide the toggle
 		const value =
 			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;
-		if (value && isOverrideValue(String(value))) {
+		if (value && isFromAIOverrideValue(String(value))) {
 			return false;
 		}
 
@@ -260,7 +260,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 );
 
 function applyOverride() {
-	if (!parameterOverrides.value) return;
+	if (!fromAIOverride.value) return;
 
 	telemetry.track(
 		'User turned on fromAI override',
@@ -270,8 +270,8 @@ function applyOverride() {
 		},
 		{ withPostHog: true },
 	);
-	updateExtraPropValues(parameterOverrides.value, String(props.value));
-	const value = buildValueFromOverride(parameterOverrides.value, props, true);
+	updateFromAIOverrideValues(fromAIOverride.value, String(props.value));
+	const value = buildValueFromOverride(fromAIOverride.value, props, true);
 	valueChanged({
 		node: node.value?.name,
 		name: props.path,
@@ -280,7 +280,7 @@ function applyOverride() {
 }
 
 function removeOverride(clearField = false) {
-	if (!parameterOverrides.value) return;
+	if (!fromAIOverride.value) return;
 
 	telemetry.track(
 		'User turned off fromAI override',
@@ -295,7 +295,7 @@ function removeOverride(clearField = false) {
 		name: props.path,
 		value: clearField
 			? props.parameter.default
-			: buildValueFromOverride(parameterOverrides.value, props, false),
+			: buildValueFromOverride(fromAIOverride.value, props, false),
 	});
 	void setTimeout(async () => {
 		await parameterInputWrapper.value?.focusInput();
@@ -346,7 +346,7 @@ function removeOverride(clearField = false) {
 		>
 			<template #default="{ droppable, activeDrop }">
 				<FromAiOverrideField
-					v-if="parameterOverrides && isContentOverride"
+					v-if="fromAIOverride && isContentOverride"
 					:is-read-only="isReadOnly"
 					@close="removeOverride"
 				/>
@@ -401,8 +401,8 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="isContentOverride && parameterOverrides"
-			v-model="parameterOverrides"
+			v-if="isContentOverride && fromAIOverride"
+			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"
 			:is-read-only="isReadOnly"
