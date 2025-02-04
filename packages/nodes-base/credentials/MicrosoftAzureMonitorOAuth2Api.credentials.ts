@@ -66,23 +66,6 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 			default: 'https://api.loganalytics.azure.com',
 		},
 		{
-			displayName: 'Client ID',
-			name: 'clientId',
-			type: 'string',
-			default: '',
-			required: true,
-		},
-		{
-			displayName: 'Client Secret',
-			name: 'clientSecret',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-			required: true,
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
