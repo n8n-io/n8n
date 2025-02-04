@@ -39,5 +39,6 @@ const locale = useI18n();
 
 .testsHeader {
 	margin-bottom: var(--spacing-m);
+	text-align: right;
 }
 </style>

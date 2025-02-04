@@ -2829,7 +2829,7 @@
 	"testDefinition.list.unitTests.title": "Unit test",
 	"testDefinition.list.unitTests.description": "Validate workflow logic by checking for specific conditions",
 	"testDefinition.list.unitTests.cta": "Register interest",
-	"testDefinition.list.createNew": "Create new test",
+	"testDefinition.list.createNew": "Create new evaluation",
 	"testDefinition.list.actionDescription": "Measure changes in output by comparing results over time (for AI workflows)",
 	"testDefinition.list.actionButton": "Create an Evaluation",
 	"testDefinition.list.testRuns": "No test runs | {count} test run | {count} test runs",
