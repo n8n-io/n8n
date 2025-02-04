@@ -46,6 +46,7 @@ export class Stripe implements INodeType {
 		defaults: {
 			name: 'Stripe',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

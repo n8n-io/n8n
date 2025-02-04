@@ -13,11 +13,18 @@ import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constan
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
-import { NodeConnectionType, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
+import {
+	createResultOk,
+	NodeConnectionType,
+	type IDataObject,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { fireEvent } from '@testing-library/dom';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
+import { usePostHog } from '../stores/posthog.store';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -127,6 +134,9 @@ describe('VirtualSchema.vue', () => {
 	const DynamicScrollerItemStub = {
 		template: '<slot></slot>',
 	};
+	const NoticeStub = {
+		template: '<div v-bind="$attrs"><slot></slot></div>',
+	};
 
 	beforeEach(async () => {
 		cleanup();
@@ -136,6 +146,7 @@ describe('VirtualSchema.vue', () => {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
 					FontAwesomeIcon: true,
+					Notice: NoticeStub,
 				},
 			},
 			pinia: await setupStore(),
@@ -155,7 +166,9 @@ describe('VirtualSchema.vue', () => {
 	it('renders schema for empty data', async () => {
 		const { getAllByText, getAllByTestId } = renderComponent();
 
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
+		await waitFor(() =>
+			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+		);
 
 		// Collapse second node
 		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
@@ -179,23 +192,25 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		const { getAllByTestId } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(headers[0]).toHaveTextContent('Manual Trigger');
-		expect(headers[0]).toHaveTextContent('2 items');
-		expect(headers[1]).toHaveTextContent('Set2');
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+			expect(headers[0]).toHaveTextContent('Manual Trigger');
+			expect(headers[0]).toHaveTextContent('2 items');
+			expect(headers[1]).toHaveTextContent('Set2');
 
-		const items = getAllByTestId('run-data-schema-item');
+			const items = getAllByTestId('run-data-schema-item');
 
-		expect(items[0]).toHaveTextContent('nameJohn');
-		expect(items[1]).toHaveTextContent('age22');
-		expect(items[2]).toHaveTextContent('hobbies');
-		expect(items[3]).toHaveTextContent('hobbies[0]surfing');
-		expect(items[4]).toHaveTextContent('hobbies[1]traveling');
+			expect(items[0]).toHaveTextContent('nameJohn');
+			expect(items[1]).toHaveTextContent('age22');
+			expect(items[2]).toHaveTextContent('hobbies');
+			expect(items[3]).toHaveTextContent('hobbies[0]surfing');
+			expect(items[4]).toHaveTextContent('hobbies[1]traveling');
+		});
 	});
 
 	it('renders schema in output pane', async () => {
-		const { container } = renderComponent({
+		const { container, getAllByTestId } = renderComponent({
 			props: {
 				nodes: [],
 				paneType: 'output',
@@ -207,10 +222,15 @@ describe('VirtualSchema.vue', () => {
 			},
 		});
 
+		await waitFor(() => {
+			const items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(5);
+		});
+
 		expect(container).toMatchSnapshot();
 	});
 
-	it('renders schema with spaces and dots', () => {
+	it('renders schema with spaces and dots', async () => {
 		useWorkflowsStore().pinData({
 			node: mockNode1,
 			data: [
@@ -229,39 +249,51 @@ describe('VirtualSchema.vue', () => {
 			],
 		});
 
-		const { container } = renderComponent();
+		const { container, getAllByTestId } = renderComponent();
+
+		await waitFor(() => {
+			const items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(6);
+		});
+
 		expect(container).toMatchSnapshot();
 	});
 
-	it('renders no data to show for data empty objects', () => {
+	it('renders no data to show for data empty objects', async () => {
 		useWorkflowsStore().pinData({
 			node: mockNode1,
 			data: [{ json: {} }, { json: {} }],
 		});
 
 		const { getAllByText } = renderComponent();
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
+		await waitFor(() =>
+			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+		);
 	});
 
 	// this can happen when setting the output to [{}]
-	it('renders empty state to show for empty data', () => {
+	it('renders empty state to show for empty data', async () => {
 		useWorkflowsStore().pinData({
 			node: mockNode1,
 			data: [{} as INodeExecutionData],
 		});
 
 		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		await waitFor(() =>
+			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1),
+		);
 	});
 
-	it('renders disabled nodes correctly', () => {
+	it('renders disabled nodes correctly', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
 			},
 		});
-		expect(getByTestId('run-data-schema-header')).toHaveTextContent(
-			`${disabledNode.name} (Deactivated)`,
+		await waitFor(() =>
+			expect(getByTestId('run-data-schema-header')).toHaveTextContent(
+				`${disabledNode.name} (Deactivated)`,
+			),
 		);
 	});
 
@@ -325,23 +357,27 @@ describe('VirtualSchema.vue', () => {
 			},
 		});
 
-		expect(getByTestId('run-data-schema-item')).toHaveTextContent('AI tool output');
+		await waitFor(() =>
+			expect(getByTestId('run-data-schema-item')).toHaveTextContent('AI tool output'),
+		);
 	});
 
 	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
 		'renders schema instead of showing no data for %o',
-		(data) => {
+		async (data) => {
 			useWorkflowsStore().pinData({
 				node: mockNode1,
 				data: data.map((item) => ({ json: item })),
 			});
 
 			const { getAllByTestId } = renderComponent();
-			expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('tx');
+			await waitFor(() =>
+				expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('tx'),
+			);
 		},
 	);
 
-	it('should filter invalid connections', () => {
+	it('should filter invalid connections', async () => {
 		const { pinData } = useWorkflowsStore();
 		pinData({
 			node: mockNode1,
@@ -363,10 +399,10 @@ describe('VirtualSchema.vue', () => {
 			},
 		});
 
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+		await waitFor(() => expect(getAllByTestId('run-data-schema-item').length).toBe(2));
 	});
 
-	it('should show connections', () => {
+	it('should show connections', async () => {
 		const ndvStore = useNDVStore();
 		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
 			[defaultNodes[0].name]: [0],
@@ -374,10 +410,13 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		const { getAllByTestId } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(headers[0]).toHaveTextContent('Input 0');
-		expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+			expect(headers[0]).toHaveTextContent('Input 0');
+			expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
+		});
 	});
 
 	it('should handle drop event', async () => {
@@ -391,8 +430,10 @@ describe('VirtualSchema.vue', () => {
 		const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
 		const { getAllByTestId } = renderComponent();
 
+		await waitFor(() => {
+			expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
+		});
 		const items = getAllByTestId('run-data-schema-item');
-		expect(items.length).toBe(6);
 
 		expect(items[0].className).toBe('schema-item draggable');
 		expect(items[0]).toHaveTextContent('nameJohn');
@@ -425,15 +466,56 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+		await waitFor(async () => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
 
-		// Collapse all nodes
-		await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
+			// Collapse all nodes
+			await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
 
-		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
-		await rerender({ search: 'John' });
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+			expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
+			await rerender({ search: 'John' });
+			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+		});
+	});
+
+	it('renders preview schema when enabled and available', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [],
+		});
+		useWorkflowsStore().pinData({
+			node: mockNode2,
+			data: [],
+		});
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(true);
+		const schemaPreviewStore = useSchemaPreviewStore();
+		vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
+			createResultOk({
+				type: 'object',
+				properties: {
+					account: {
+						type: 'object',
+						properties: {
+							id: {
+								type: 'string',
+							},
+						},
+					},
+				},
+			}),
+		);
+
+		const { getAllByTestId, queryAllByText, container } = renderComponent({});
+
+		await waitFor(() => {
+			expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+		});
+
+		expect(queryAllByText("No fields - item(s) exist, but they're empty")).toHaveLength(0);
+		expect(getAllByTestId('schema-preview-warning')).toHaveLength(2);
+		expect(container).toMatchSnapshot();
 	});
 });

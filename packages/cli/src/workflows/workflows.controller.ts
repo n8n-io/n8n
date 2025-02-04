@@ -1,4 +1,4 @@
-import { ImportWorkflowFromUrlDto, TransferWorkflowBodyDto } from '@n8n/api-types';
+import { ImportWorkflowFromUrlDto, ManualRunQueryDto, TransferWorkflowBodyDto } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
@@ -8,7 +8,6 @@ import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -377,7 +376,11 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(req: WorkflowRequest.ManualRun) {
+	async runManually(
+		req: WorkflowRequest.ManualRun,
+		_res: unknown,
+		@Query query: ManualRunQueryDto,
+	) {
 		if (!req.body.workflowData.id) {
 			throw new ApplicationError('You cannot execute a workflow without an ID', {
 				level: 'warning',
@@ -405,9 +408,7 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'],
-			req.query.partialExecutionVersion === '-1'
-				? config.getEnv('featureFlags.partialExecutionVersionDefault')
-				: req.query.partialExecutionVersion,
+			query.partialExecutionVersion,
 		);
 	}
 

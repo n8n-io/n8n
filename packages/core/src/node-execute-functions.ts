@@ -38,7 +38,6 @@ import type {
 	IAllExecuteFunctions,
 	IBinaryData,
 	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -1202,12 +1201,7 @@ export async function prepareBinaryData(
 	};
 
 	if (filePath) {
-		if (filePath.includes('?')) {
-			// Remove maybe present query parameters
-			filePath = filePath.split('?').shift();
-		}
-
-		const filePathParts = path.parse(filePath as string);
+		const filePathParts = path.parse(filePath);
 
 		if (filePathParts.dir !== '') {
 			returnData.directory = filePathParts.dir;
@@ -2559,16 +2553,4 @@ export function getExecuteTriggerFunctions(
 	activation: WorkflowActivateMode,
 ): ITriggerFunctions {
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
-}
-
-export function getCredentialTestFunctions(): ICredentialTestFunctions {
-	return {
-		logger: Container.get(Logger),
-		helpers: {
-			...getSSHTunnelFunctions(),
-			request: async (uriOrObject: string | object, options?: object) => {
-				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
-			},
-		},
-	};
 }

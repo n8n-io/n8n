@@ -2,6 +2,8 @@ import type { FrontendSettings } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { useSettingsStore } from './settings.store';
+import { useLocalStorage } from '@vueuse/core';
+import { ref } from 'vue';
 
 const { getSettings } = vi.hoisted(() => ({
 	getSettings: vi.fn(),
@@ -54,6 +56,16 @@ vi.mock('@/stores/versions.store', () => ({
 	})),
 }));
 
+vi.mock('@vueuse/core', async () => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+
+	return {
+		...originalModule,
+		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }),
+	};
+});
+
 const mockSettings = mock<FrontendSettings>({
 	authCookie: { secure: true },
 });
@@ -97,6 +109,56 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 			expect(getSettings).toHaveBeenCalled();
 			expect(sessionStarted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('partialExecutionVersion', () => {
+		it.each([
+			{
+				name: 'pick the default',
+				default: 1 as const,
+				enforce: false,
+				userVersion: -1,
+				result: 1,
+			},
+			{
+				name: "pick the user' choice",
+				default: 1 as const,
+				enforce: false,
+				userVersion: 2,
+				result: 2,
+			},
+			{
+				name: 'enforce the default',
+				default: 1 as const,
+				enforce: true,
+				userVersion: 2,
+				result: 1,
+			},
+			{
+				name: 'enforce the default',
+				default: 2 as const,
+				enforce: true,
+				userVersion: 1,
+				result: 2,
+			},
+			{
+				name: 'handle values that used to be allowed in local storage',
+				default: 1 as const,
+				enforce: false,
+				userVersion: 0,
+				result: 1,
+			},
+		])('%name', async ({ default: defaultVersion, userVersion, enforce, result }) => {
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings.partialExecution = {
+				version: defaultVersion,
+				enforce,
+			};
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(userVersion));
+
+			expect(settingsStore.partialExecutionVersion).toBe(result);
 		});
 	});
 });

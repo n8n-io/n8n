@@ -25,6 +25,7 @@ export class Emelia implements INodeType {
 		defaults: {
 			name: 'Emelia',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

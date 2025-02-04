@@ -1,0 +1,762 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "custom_item_id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "text_content": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "orderindex": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "status",
+                "color",
+                "orderindex",
+                "type"
+            ]
+        },
+        "orderindex": {
+            "type": "string"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_updated": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "username",
+                "color",
+                "email",
+                "profilePicture"
+            ]
+        },
+        "assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "color",
+                    "initials",
+                    "email",
+                    "profilePicture"
+                ]
+            }
+        },
+        "watchers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "color",
+                    "initials",
+                    "email",
+                    "profilePicture"
+                ]
+            }
+        },
+        "checklists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "resolved": {
+                        "type": "integer"
+                    },
+                    "unresolved": {
+                        "type": "integer"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "group_assignee": {
+                                    "type": "null"
+                                },
+                                "resolved": {
+                                    "type": "boolean"
+                                },
+                                "parent": {
+                                    "type": "null"
+                                },
+                                "date_created": {
+                                    "type": "string"
+                                },
+                                "start_date": {
+                                    "type": "null"
+                                },
+                                "due_date": {
+                                    "type": "null"
+                                },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
+                                "children": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "orderindex": {
+                                                "type": "integer"
+                                            },
+                                            "assignee": {
+                                                "type": "null"
+                                            },
+                                            "group_assignee": {
+                                                "type": "null"
+                                            },
+                                            "resolved": {
+                                                "type": "boolean"
+                                            },
+                                            "parent": {
+                                                "type": "string"
+                                            },
+                                            "date_created": {
+                                                "type": "string"
+                                            },
+                                            "start_date": {
+                                                "type": "null"
+                                            },
+                                            "start_date_time": {
+                                                "type": "null"
+                                            },
+                                            "due_date": {
+                                                "type": "null"
+                                            },
+                                            "due_date_time": {
+                                                "type": "null"
+                                            },
+                                            "sent_due_date_notif": {
+                                                "type": "null"
+                                            },
+                                            "children": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "orderindex": {
+                                                            "type": "number"
+                                                        },
+                                                        "assignee": {
+                                                            "type": "null"
+                                                        },
+                                                        "group_assignee": {
+                                                            "type": "null"
+                                                        },
+                                                        "resolved": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "parent": {
+                                                            "type": "string"
+                                                        },
+                                                        "date_created": {
+                                                            "type": "string"
+                                                        },
+                                                        "start_date": {
+                                                            "type": "null"
+                                                        },
+                                                        "start_date_time": {
+                                                            "type": "null"
+                                                        },
+                                                        "due_date": {
+                                                            "type": "null"
+                                                        },
+                                                        "due_date_time": {
+                                                            "type": "null"
+                                                        },
+                                                        "sent_due_date_notif": {
+                                                            "type": "null"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "orderindex",
+                                                        "assignee",
+                                                        "group_assignee",
+                                                        "resolved",
+                                                        "parent",
+                                                        "date_created",
+                                                        "start_date",
+                                                        "start_date_time",
+                                                        "due_date",
+                                                        "due_date_time",
+                                                        "sent_due_date_notif",
+                                                        "children"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "required": [
+                                            "id",
+                                            "name",
+                                            "orderindex",
+                                            "assignee",
+                                            "group_assignee",
+                                            "resolved",
+                                            "parent",
+                                            "date_created",
+                                            "start_date",
+                                            "start_date_time",
+                                            "due_date",
+                                            "due_date_time",
+                                            "sent_due_date_notif",
+                                            "children"
+                                        ]
+                                    }
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name",
+                                "orderindex",
+                                "assignee",
+                                "group_assignee",
+                                "resolved",
+                                "parent",
+                                "date_created",
+                                "start_date",
+                                "start_date_time",
+                                "due_date",
+                                "due_date_time",
+                                "sent_due_date_notif",
+                                "children"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "task_id",
+                    "name",
+                    "date_created",
+                    "orderindex",
+                    "creator",
+                    "resolved",
+                    "unresolved",
+                    "items"
+                ]
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "tag_fg": {
+                        "type": "string"
+                    },
+                    "tag_bg": {
+                        "type": "string"
+                    },
+                    "creator": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "name",
+                    "tag_fg",
+                    "tag_bg",
+                    "creator"
+                ]
+            }
+        },
+        "time_spent": {
+            "type": "integer"
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "type_config": {
+                        "type": "object",
+                        "properties": {
+                            "sorting": {
+                                "type": "string"
+                            },
+                            "options": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "orderindex": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "color"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "hide_from_guests": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "type_config",
+                    "date_created",
+                    "hide_from_guests",
+                    "required"
+                ]
+            }
+        },
+        "linked_tasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "link_id": {
+                        "type": "string"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "userid": {
+                        "type": "string"
+                    },
+                    "workspace_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "task_id",
+                    "link_id",
+                    "date_created",
+                    "userid",
+                    "workspace_id"
+                ]
+            }
+        },
+        "locations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            }
+        },
+        "team_id": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "sharing": {
+            "type": "object",
+            "properties": {
+                "public": {
+                    "type": "boolean"
+                },
+                "public_share_expires_on": {
+                    "type": "null"
+                },
+                "public_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "seo_optimized": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "public",
+                "public_share_expires_on",
+                "public_fields",
+                "token",
+                "seo_optimized"
+            ]
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "list": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "access"
+            ]
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "hidden",
+                "access"
+            ]
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "hidden",
+                "access"
+            ]
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "source": {
+                        "type": "integer"
+                    },
+                    "version": {
+                        "type": "integer"
+                    },
+                    "extension": {
+                        "type": "string"
+                    },
+                    "is_folder": {
+                        "type": "null"
+                    },
+                    "mimetype": {
+                        "type": "string"
+                    },
+                    "hidden": {
+                        "type": "boolean"
+                    },
+                    "parent_id": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "total_comments": {
+                        "type": "integer"
+                    },
+                    "resolved_comments": {
+                        "type": "integer"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "username": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "initials": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "username",
+                            "email",
+                            "initials",
+                            "color",
+                            "profilePicture"
+                        ]
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "workspace_id": {
+                        "type": "null"
+                    },
+                    "url_w_query": {
+                        "type": "string"
+                    },
+                    "url_w_host": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "date",
+                    "title",
+                    "type",
+                    "source",
+                    "version",
+                    "extension",
+                    "thumbnail_small",
+                    "thumbnail_medium",
+                    "thumbnail_large",
+                    "is_folder",
+                    "mimetype",
+                    "hidden",
+                    "parent_id",
+                    "size",
+                    "total_comments",
+                    "resolved_comments",
+                    "user",
+                    "deleted",
+                    "orientation",
+                    "url",
+                    "email_data",
+                    "workspace_id",
+                    "url_w_query",
+                    "url_w_host"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "custom_id",
+        "custom_item_id",
+        "name",
+        "text_content",
+        "description",
+        "status",
+        "orderindex",
+        "date_created",
+        "date_updated",
+        "date_closed",
+        "date_done",
+        "archived",
+        "creator",
+        "assignees",
+        "group_assignees",
+        "watchers",
+        "checklists",
+        "tags",
+        "parent",
+        "top_level_parent",
+        "priority",
+        "due_date",
+        "start_date",
+        "points",
+        "time_estimate",
+        "time_spent",
+        "custom_fields",
+        "dependencies",
+        "linked_tasks",
+        "locations",
+        "team_id",
+        "url",
+        "sharing",
+        "permission_level",
+        "list",
+        "project",
+        "folder",
+        "space",
+        "attachments"
+    ]
+}

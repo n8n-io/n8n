@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "domains": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "crunchbase_uuid": {
+            "type": "null"
+        },
+        "global": {
+            "type": "boolean"
+        },
+        "person_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "domain",
+        "domains",
+        "crunchbase_uuid",
+        "global",
+        "person_ids"
+    ]
+}

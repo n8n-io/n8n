@@ -26,7 +26,6 @@ import {
 	getWorkflowHooksWorkerExecuter,
 	getWorkflowHooksWorkerMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -49,7 +48,6 @@ export class WorkflowRunner {
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly externalHooks: ExternalHooks,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
@@ -177,24 +175,17 @@ export class WorkflowRunner {
 			data.executionMode === 'manual'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			postExecutePromise
-				.then(async (executionData) => {
-					try {
-						await this.externalHooks.run('workflow.postExecute', [
-							executionData,
-							data.workflowData,
-							executionId,
-						]);
-					} catch {}
-				})
-				.catch((error) => {
-					if (error instanceof ExecutionCancelledError) return;
-					this.errorReporter.error(error);
-					this.logger.error(
-						'There was a problem running internal hook "onWorkflowPostExecute"',
-						error,
-					);
+			postExecutePromise.catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				this.errorReporter.error(error, {
+					extra: { executionId, workflowId },
 				});
+				this.logger.error('There was an error in the post-execution promise', {
+					error,
+					executionId,
+					workflowId,
+				});
+			});
 		}
 
 		return executionId;
@@ -361,7 +352,7 @@ export class WorkflowRunner {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, {
-				retryOf: data.retryOf ? data.retryOf.toString() : undefined,
+				retryOf: data.retryOf ?? undefined,
 			});
 
 			// Normally also workflow should be supplied here but as it only used for sending
@@ -374,7 +365,7 @@ export class WorkflowRunner {
 				data.executionMode,
 				executionId,
 				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+				{ retryOf: data.retryOf ?? undefined },
 			);
 			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			throw error;
@@ -392,7 +383,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
 
 					const error = new ExecutionCancelledError(executionId);
@@ -417,7 +408,7 @@ export class WorkflowRunner {
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
 
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);

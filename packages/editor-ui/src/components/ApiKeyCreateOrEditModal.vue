@@ -11,12 +11,24 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import { N8nText } from 'n8n-design-system';
+import { DateTime } from 'luxon';
+import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
+
+const EXPIRATION_OPTIONS = {
+	'7_DAYS': 7,
+	'30_DAYS': 30,
+	'60_DAYS': 60,
+	'90_DAYS': 90,
+	CUSTOM: 1,
+	NO_EXPIRATION: 0,
+};
 
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
+const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { createApiKey, updateApiKey, apiKeysById } = useApiKeysStore();
@@ -24,11 +36,43 @@ const { baseUrl } = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
+const expirationDaysFromNow = ref(EXPIRATION_OPTIONS['30_DAYS']);
 const modalBus = createEventBus();
 const newApiKey = ref<ApiKeyWithRawValue | null>(null);
 const apiDocsURL = ref('');
 const loading = ref(false);
 const rawApiKey = ref('');
+const customExpirationDate = ref('');
+const showExpirationDateSelector = ref(false);
+const apiKeyCreationDate = ref('');
+
+const calculateExpirationDate = (daysFromNow: number) => {
+	const date = DateTime.now()
+		.setZone(rootStore.timezone)
+		.startOf('day')
+		.plus({ days: daysFromNow });
+	return date;
+};
+
+const getExpirationOptionLabel = (value: number) => {
+	if (EXPIRATION_OPTIONS.CUSTOM === value) {
+		return i18n.baseText('settings.api.view.modal.form.expiration.custom');
+	}
+
+	if (EXPIRATION_OPTIONS.NO_EXPIRATION === value) {
+		return i18n.baseText('settings.api.view.modal.form.expiration.none');
+	}
+
+	return i18n.baseText('settings.api.view.modal.form.expiration.days', {
+		interpolate: {
+			numberOfDays: value,
+		},
+	});
+};
+
+const expirationDate = ref(
+	calculateExpirationDate(expirationDaysFromNow.value).toFormat('ccc, MMM d yyyy'),
+);
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
@@ -43,6 +87,17 @@ const props = withDefaults(
 	},
 );
 
+const allFormFieldsAreSet = computed(() => {
+	const isExpirationDateSet =
+		expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION ||
+		(expirationDaysFromNow.value === EXPIRATION_OPTIONS.CUSTOM && customExpirationDate.value) ||
+		expirationDate.value;
+
+	return label.value && (props.mode === 'edit' ? true : isExpirationDateSet);
+});
+
+const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
 
@@ -51,7 +106,9 @@ onMounted(() => {
 	});
 
 	if (props.mode === 'edit') {
-		label.value = apiKeysById[props.activeId]?.label ?? '';
+		const apiKey = apiKeysById[props.activeId];
+		label.value = apiKey.label ?? '';
+		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
 	}
 
 	apiDocsURL.value = isSwaggerUIEnabled
@@ -62,6 +119,11 @@ onMounted(() => {
 function onInput(value: string): void {
 	label.value = value;
 }
+
+const getApiKeyCreationTime = (apiKey: ApiKey): string => {
+	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
+	return i18n.baseText('settings.api.creationTime', { interpolate: { time } });
+};
 
 async function onEdit() {
 	try {
@@ -88,9 +150,22 @@ const onSave = async () => {
 		return;
 	}
 
+	let expirationUnixTimestamp = null;
+
+	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.CUSTOM) {
+		expirationUnixTimestamp = parseInt(customExpirationDate.value, 10);
+	} else if (expirationDaysFromNow.value !== EXPIRATION_OPTIONS.NO_EXPIRATION) {
+		expirationUnixTimestamp = calculateExpirationDate(expirationDaysFromNow.value).toUnixInteger();
+	}
+
+	const payload: CreateApiKeyRequestDto = {
+		label: label.value,
+		expiresAt: expirationUnixTimestamp,
+	};
+
 	try {
 		loading.value = true;
-		newApiKey.value = await createApiKey(label.value);
+		newApiKey.value = await createApiKey(payload);
 		rawApiKey.value = newApiKey.value.rawApiKey;
 
 		showMessage({
@@ -115,6 +190,23 @@ const modalTitle = computed(() => {
 	}
 	return i18n.baseText(`settings.api.view.modal.title.${path}` as BaseTextKey);
 });
+
+const onSelect = (value: number) => {
+	if (value === EXPIRATION_OPTIONS.CUSTOM) {
+		showExpirationDateSelector.value = true;
+		expirationDate.value = '';
+		return;
+	}
+
+	if (value !== EXPIRATION_OPTIONS.NO_EXPIRATION) {
+		expirationDate.value = calculateExpirationDate(value).toFormat('ccc, MMM d yyyy');
+		showExpirationDateSelector.value = false;
+		return;
+	}
+
+	expirationDate.value = '';
+	showExpirationDateSelector.value = false;
+};
 </script>
 
 <template>
@@ -150,7 +242,7 @@ const modalTitle = computed(() => {
 						</i18n-t>
 					</n8n-info-tip>
 				</p>
-				<n8n-card v-if="newApiKey" class="mb-4xs" :class="$style.card">
+				<n8n-card v-if="newApiKey" class="mb-4xs">
 					<CopyInput
 						:label="newApiKey.label"
 						:value="newApiKey.rawApiKey"
@@ -162,13 +254,13 @@ const modalTitle = computed(() => {
 				</n8n-card>
 
 				<div v-if="newApiKey" :class="$style.hint">
-					<n8n-text size="small">
+					<N8nText size="small">
 						{{
 							i18n.baseText(
 								`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
 							)
 						}}
-					</n8n-text>
+					</N8nText>
 					{{ ' ' }}
 					<n8n-link :to="apiDocsURL" :new-window="true" size="small">
 						{{
@@ -178,56 +270,94 @@ const modalTitle = computed(() => {
 						}}
 					</n8n-link>
 				</div>
-
-				<N8nInputLabel
-					v-else
-					:label="i18n.baseText('settings.api.view.modal.form.label')"
-					color="text-dark"
-				>
-					<N8nInput
-						ref="inputRef"
-						required
-						:model-value="label"
-						type="text"
-						:placeholder="i18n.baseText('settings.api.view.modal.form.label.placeholder')"
-						:maxlength="50"
-						data-test-id="api-key-label"
-						@update:model-value="onInput"
-					/>
-				</N8nInputLabel>
+				<div v-else :class="$style.form">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.api.view.modal.form.label')"
+						color="text-dark"
+					>
+						<N8nInput
+							ref="inputRef"
+							required
+							:model-value="label"
+							size="large"
+							type="text"
+							:placeholder="i18n.baseText('settings.api.view.modal.form.label.placeholder')"
+							:maxlength="50"
+							data-test-id="api-key-label"
+							@update:model-value="onInput"
+						/>
+					</N8nInputLabel>
+					<div v-if="mode === 'new'" :class="$style.expirationSection">
+						<N8nInputLabel
+							:label="i18n.baseText('settings.api.view.modal.form.expiration')"
+							color="text-dark"
+						>
+							<N8nSelect
+								v-model="expirationDaysFromNow"
+								size="large"
+								filterable
+								data-test-id="expiration-select"
+								@update:model-value="onSelect"
+							>
+								<N8nOption
+									v-for="key in Object.keys(EXPIRATION_OPTIONS)"
+									:key="key"
+									:value="EXPIRATION_OPTIONS[key as keyof typeof EXPIRATION_OPTIONS]"
+									:label="
+										getExpirationOptionLabel(
+											EXPIRATION_OPTIONS[key as keyof typeof EXPIRATION_OPTIONS],
+										)
+									"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</N8nInputLabel>
+						<N8nText v-if="expirationDate" class="mb-xs">{{
+							i18n.baseText('settings.api.view.modal.form.expirationText', {
+								interpolate: { expirationDate },
+							})
+						}}</N8nText>
+						<el-date-picker
+							v-if="showExpirationDateSelector"
+							v-model="customExpirationDate"
+							type="date"
+							:teleported="false"
+							placeholder="yyyy-mm-dd"
+							value-format="X"
+							:disabled-date="isCustomDateInThePast"
+						/>
+					</div>
+				</div>
 			</div>
 		</template>
 		<template #footer>
-			<div>
+			<div :class="$style.footer">
 				<N8nButton
 					v-if="mode === 'new' && !newApiKey"
-					float="right"
 					:loading="loading"
+					:disabled="!allFormFieldsAreSet"
 					:label="i18n.baseText('settings.api.view.modal.save.button')"
 					@click="onSave"
 				/>
 				<N8nButton
 					v-else-if="mode === 'new'"
-					float="right"
 					:label="i18n.baseText('settings.api.view.modal.done.button')"
 					@click="closeModal"
 				/>
 				<N8nButton
-					v-else-if="mode === 'edit'"
-					float="right"
+					v-if="mode === 'edit'"
+					:disabled="!allFormFieldsAreSet"
 					:label="i18n.baseText('settings.api.view.modal.edit.button')"
 					@click="onEdit"
 				/>
+				<N8nText v-if="mode === 'edit'" size="small" color="text-light">{{
+					apiKeyCreationDate
+				}}</N8nText>
 			</div>
 		</template>
 	</Modal>
 </template>
-
 <style module lang="scss">
-.card {
-	margin-bottom: 50px;
-}
-
 .notice {
 	margin: 0;
 }
@@ -235,5 +365,25 @@ const modalTitle = computed(() => {
 .hint {
 	color: var(--color-text-light);
 	margin-bottom: var(--spacing-s);
+}
+
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.expirationSection {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-end;
+	gap: var(--spacing-xs);
+}
+
+.footer {
+	display: flex;
+	flex-direction: row-reverse;
+	justify-content: space-between;
+	align-items: center;
 }
 </style>

@@ -8,6 +8,7 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
+import { DateTime } from 'luxon';
 
 setActivePinia(createTestingPinia());
 
@@ -50,6 +51,9 @@ describe('SettingsApiView', () => {
 	});
 
 	it('if user public api enabled and there are API Keys in account, they should be rendered', async () => {
+		const dateInTheFuture = DateTime.now().plus({ days: 1 });
+		const dateInThePast = DateTime.now().minus({ days: 1 });
+
 		settingsStore.isPublicApiEnabled = true;
 		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [
@@ -59,17 +63,41 @@ describe('SettingsApiView', () => {
 				createdAt: new Date().toString(),
 				updatedAt: new Date().toString(),
 				apiKey: '****Atcr',
+				expiresAt: null,
+			},
+			{
+				id: '2',
+				label: 'test-key-2',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Bdcr',
+				expiresAt: dateInTheFuture.toSeconds(),
+			},
+			{
+				id: '3',
+				label: 'test-key-3',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Wtcr',
+				expiresAt: dateInThePast.toSeconds(),
 			},
 		];
 
 		renderComponent(SettingsApiView);
 
-		expect(screen.getByText(/Created \d+ seconds ago/)).toBeInTheDocument();
+		expect(screen.getByText('Never expires')).toBeInTheDocument();
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
-		expect(screen.getByText('Edit')).toBeInTheDocument();
-		expect(screen.getByText('Delete')).toBeInTheDocument();
+		expect(
+			screen.getByText(`Expires on ${dateInTheFuture.toFormat('ccc, MMM d yyyy')}`),
+		).toBeInTheDocument();
+		expect(screen.getByText('****Bdcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-2')).toBeInTheDocument();
+
+		expect(screen.getByText('This API key has expired')).toBeInTheDocument();
+		expect(screen.getByText('****Wtcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-3')).toBeInTheDocument();
 	});
 
 	it('should show delete warning when trying to delete an API key', async () => {
@@ -82,12 +110,13 @@ describe('SettingsApiView', () => {
 				createdAt: new Date().toString(),
 				updatedAt: new Date().toString(),
 				apiKey: '****Atcr',
+				expiresAt: null,
 			},
 		];
 
 		renderComponent(SettingsApiView);
 
-		expect(screen.getByText(/Created \d+ seconds ago/)).toBeInTheDocument();
+		expect(screen.getByText('Never expires')).toBeInTheDocument();
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 

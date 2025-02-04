@@ -33,6 +33,7 @@ export class CiscoWebex implements INodeType {
 		defaults: {
 			name: 'Webex by Cisco',
 		},
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'ciscoWebexOAuth2Api',
