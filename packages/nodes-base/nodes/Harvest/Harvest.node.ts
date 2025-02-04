@@ -35,6 +35,7 @@ export class Harvest implements INodeType {
 		defaults: {
 			name: 'Harvest',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
