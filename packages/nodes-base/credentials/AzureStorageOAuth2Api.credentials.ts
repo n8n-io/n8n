@@ -1,13 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class MicrosoftStorageOAuth2Api implements ICredentialType {
-	name = 'microsoftStorageOAuth2Api';
+export class AzureStorageOAuth2Api implements ICredentialType {
+	name = 'azureStorageOAuth2Api';
 
-	displayName = 'Microsoft Storage OAuth2 API';
+	displayName = 'Azure Storage OAuth2 API';
 
 	extends = ['microsoftOAuth2Api'];
 
-	documentationUrl = 'microsoftstorage';
+	documentationUrl = 'azurestorage';
 
 	properties: INodeProperties[] = [
 		{

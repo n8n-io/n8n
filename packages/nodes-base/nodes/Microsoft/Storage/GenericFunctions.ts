@@ -76,7 +76,7 @@ export const HeaderConstants = {
 	PREFIX_X_MS_META: 'x-ms-meta-',
 };
 
-export async function microsoftApiRequest(
+export async function azureStorageApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
@@ -87,7 +87,7 @@ export async function microsoftApiRequest(
 ): Promise<string> {
 	const authentication = this.getNodeParameter('authentication', 0) as 'oAuth2' | 'sharedKey';
 	const credentialsType =
-		authentication === 'oAuth2' ? 'microsoftStorageOAuth2Api' : 'microsoftStorageSharedKeyApi';
+		authentication === 'oAuth2' ? 'azureStorageOAuth2Api' : 'azureStorageSharedKeyApi';
 	const credentials = await this.getCredentials<{
 		baseUrl: string;
 	}>(credentialsType);
@@ -487,13 +487,13 @@ export async function getBlobs(
 
 	if (paginationToken) {
 		qs.marker = paginationToken;
-		response = await microsoftApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
 	} else {
 		qs.maxresults = 5000;
 		if (filter) {
 			qs.prefix = filter;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
 	}
 
 	const data = await parseBlobList(response);
@@ -526,13 +526,13 @@ export async function getContainers(
 
 	if (paginationToken) {
 		qs.marker = paginationToken;
-		response = await microsoftApiRequest.call(this, 'GET', '/', {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', '/', {}, qs);
 	} else {
 		qs.maxresults = 5000;
 		if (filter) {
 			qs.prefix = filter;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', '/', {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', '/', {}, qs);
 	}
 
 	const data = await parseContainerList(response);

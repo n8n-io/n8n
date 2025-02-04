@@ -1,4 +1,4 @@
-export const microsoftStorageApiResponse = {
+export const azureStorageApiResponse = {
 	blobPut: {
 		headers: {
 			server: 'Azurite-Blob/3.33.0',
@@ -144,7 +144,7 @@ export const microsoftStorageApiResponse = {
 	},
 };
 
-export const microsoftStorageNodeResponse = {
+export const azureStorageNodeResponse = {
 	blobCreate: [
 		{
 			json: {

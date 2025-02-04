@@ -12,12 +12,12 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
-import { microsoftStorageApiResponse, microsoftStorageNodeResponse } from './mocks';
+import { azureStorageApiResponse, azureStorageNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
+import { AzureStorage } from '../AzureStorage.node';
 import { XMsVersion } from '../GenericFunctions';
-import { MicrosoftStorage } from '../MicrosoftStorage.node';
 
-describe('Microsoft Storage Node', () => {
+describe('Azure Storage Node', () => {
 	const baseUrl = 'https://myaccount.blob.core.windows.net';
 
 	beforeEach(() => {
@@ -54,15 +54,15 @@ describe('Microsoft Storage Node', () => {
 									},
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageOAuth2Api: {
+									azureStorageOAuth2Api: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage OAuth2 account',
+										name: 'Azure Storage OAuth2 account',
 									},
 								},
 							},
@@ -72,7 +72,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -85,7 +85,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerGet],
+						'Azure Storage': [azureStorageNodeResponse.containerGet],
 					},
 				},
 				nock: {
@@ -96,10 +96,10 @@ describe('Microsoft Storage Node', () => {
 							path: '/mycontainer?restype=container',
 							statusCode: 200,
 							requestHeaders: {
-								authorization: `bearer ${FAKE_CREDENTIALS_DATA.microsoftStorageOAuth2Api.oauthTokenData.access_token}`,
+								authorization: `bearer ${FAKE_CREDENTIALS_DATA.azureStorageOAuth2Api.oauthTokenData.access_token}`,
 							},
 							responseBody: '',
-							responseHeaders: microsoftStorageApiResponse.containerGet.headers,
+							responseHeaders: azureStorageApiResponse.containerGet.headers,
 						},
 					],
 				},
@@ -128,15 +128,15 @@ describe('Microsoft Storage Node', () => {
 									},
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -146,7 +146,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -159,7 +159,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerGet],
+						'Azure Storage': [azureStorageNodeResponse.containerGet],
 					},
 				},
 				nock: {
@@ -174,7 +174,7 @@ describe('Microsoft Storage Node', () => {
 									'SharedKey Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
 							},
 							responseBody: '',
-							responseHeaders: microsoftStorageApiResponse.containerGet.headers,
+							responseHeaders: azureStorageApiResponse.containerGet.headers,
 						},
 					],
 				},
@@ -192,14 +192,14 @@ describe('Microsoft Storage Node', () => {
 						typeName: string,
 						requestParams: IHttpRequestOptions,
 					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'microsoftStorageOAuth2Api') {
+						if (typeName === 'azureStorageOAuth2Api') {
 							return {
 								...requestParams,
 								headers: {
 									authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token as string}`,
 								},
 							};
-						} else if (typeName === 'microsoftStorageSharedKeyApi') {
+						} else if (typeName === 'azureStorageSharedKeyApi') {
 							return {
 								...requestParams,
 								headers: {
@@ -233,7 +233,7 @@ describe('Microsoft Storage Node', () => {
 
 	describe('List search', () => {
 		it('should list search blobs', async () => {
-			const mockResponse = microsoftStorageApiResponse.blobList.body;
+			const mockResponse = azureStorageApiResponse.blobList.body;
 			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
 			const mockGetNodeParameter = jest.fn((parameterName, _fallbackValue, _options) => {
 				if (parameterName === 'authentication') {
@@ -248,8 +248,8 @@ describe('Microsoft Storage Node', () => {
 				throw new Error('Unknown parameter');
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
-				if (type === 'microsoftStorageSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.microsoftStorageSharedKeyApi;
+				if (type === 'azureStorageSharedKeyApi') {
+					return FAKE_CREDENTIALS_DATA.azureStorageSharedKeyApi;
 				}
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown credentials');
@@ -262,11 +262,11 @@ describe('Microsoft Storage Node', () => {
 				},
 			} as unknown as ILoadOptionsFunctions;
 			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
-			const node = new MicrosoftStorage();
+			const node = new AzureStorage();
 
 			const listSearchResult = await node.methods.listSearch.getBlobs.call(mockContext);
 
-			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('microsoftStorageSharedKeyApi', {
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
 				url: 'https://myaccount.blob.core.windows.net/mycontainer',
 				headers: {
@@ -288,7 +288,7 @@ describe('Microsoft Storage Node', () => {
 		});
 
 		it('should list search containers', async () => {
-			const mockResponse = microsoftStorageApiResponse.containerList.body;
+			const mockResponse = azureStorageApiResponse.containerList.body;
 			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
 			const mockGetNodeParameter = jest.fn((parameterName, _fallbackValue, _options) => {
 				if (parameterName === 'authentication') {
@@ -298,8 +298,8 @@ describe('Microsoft Storage Node', () => {
 				throw new Error('Unknown parameter');
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
-				if (type === 'microsoftStorageSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.microsoftStorageSharedKeyApi;
+				if (type === 'azureStorageSharedKeyApi') {
+					return FAKE_CREDENTIALS_DATA.azureStorageSharedKeyApi;
 				}
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown credentials');
@@ -312,11 +312,11 @@ describe('Microsoft Storage Node', () => {
 				},
 			} as unknown as ILoadOptionsFunctions;
 			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
-			const node = new MicrosoftStorage();
+			const node = new AzureStorage();
 
 			const listSearchResult = await node.methods.listSearch.getContainers.call(mockContext);
 
-			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('microsoftStorageSharedKeyApi', {
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
 				url: 'https://myaccount.blob.core.windows.net/',
 				headers: {

@@ -12,12 +12,12 @@ import {
 	HeaderConstants,
 } from '../nodes/Microsoft/Storage/GenericFunctions';
 
-export class MicrosoftStorageSharedKeyApi implements ICredentialType {
-	name = 'microsoftStorageSharedKeyApi';
+export class AzureStorageSharedKeyApi implements ICredentialType {
+	name = 'azureStorageSharedKeyApi';
 
-	displayName = 'Microsoft Storage Shared Key API';
+	displayName = 'Azure Storage Shared Key API';
 
-	documentationUrl = 'microsoftstorage';
+	documentationUrl = 'azurestorage';
 
 	properties: INodeProperties[] = [
 		{

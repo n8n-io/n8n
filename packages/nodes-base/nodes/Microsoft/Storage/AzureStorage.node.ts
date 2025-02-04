@@ -4,26 +4,26 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { blobFields, blobOperations, containerFields, containerOperations } from './descriptions';
 import { getBlobs, getContainers } from './GenericFunctions';
 
-export class MicrosoftStorage implements INodeType {
+export class AzureStorage implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Storage',
-		name: 'microsoftStorage',
+		displayName: 'Azure Storage',
+		name: 'azureStorage',
 		icon: {
-			light: 'file:microsoftStorage.svg',
-			dark: 'file:microsoftStorage.dark.svg',
+			light: 'file:azureStorage.svg',
+			dark: 'file:azureStorage.dark.svg',
 		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with Microsoft Storage API',
+		description: 'Interact with Azure Storage API',
 		defaults: {
-			name: 'Microsoft Storage',
+			name: 'Azure Storage',
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
-				name: 'microsoftStorageOAuth2Api',
+				name: 'azureStorageOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
@@ -32,7 +32,7 @@ export class MicrosoftStorage implements INodeType {
 				},
 			},
 			{
-				name: 'microsoftStorageSharedKeyApi',
+				name: 'azureStorageSharedKeyApi',
 				required: true,
 				displayOptions: {
 					show: {

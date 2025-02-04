@@ -5,9 +5,9 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
-import { microsoftStorageApiResponse, microsoftStorageNodeResponse } from './mocks';
+import { azureStorageApiResponse, azureStorageNodeResponse } from './mocks';
 
-describe('Microsoft Storage Node', () => {
+describe('Azure Storage Node', () => {
 	const baseUrl = 'https://myaccount.blob.core.windows.net';
 
 	beforeEach(() => {
@@ -49,15 +49,15 @@ describe('Microsoft Storage Node', () => {
 									},
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: 'ab1b6258-5c75-4893-90bf-ef591264420c',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -67,7 +67,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -80,7 +80,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerCreate],
+						'Azure Storage': [azureStorageNodeResponse.containerCreate],
 					},
 				},
 				nock: {
@@ -91,7 +91,7 @@ describe('Microsoft Storage Node', () => {
 							path: '/mycontainer?restype=container',
 							statusCode: 201,
 							responseBody: '',
-							responseHeaders: microsoftStorageApiResponse.containerCreate.headers,
+							responseHeaders: azureStorageApiResponse.containerCreate.headers,
 						},
 					],
 				},
@@ -119,15 +119,15 @@ describe('Microsoft Storage Node', () => {
 									},
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: 'ab1b6258-5c75-4893-90bf-ef591264420c',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -137,7 +137,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -150,7 +150,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerDelete],
+						'Azure Storage': [azureStorageNodeResponse.containerDelete],
 					},
 				},
 				nock: {
@@ -161,7 +161,7 @@ describe('Microsoft Storage Node', () => {
 							path: '/mycontainer?restype=container',
 							statusCode: 202,
 							responseBody: '',
-							responseHeaders: microsoftStorageApiResponse.containerDelete.headers,
+							responseHeaders: azureStorageApiResponse.containerDelete.headers,
 						},
 					],
 				},
@@ -189,15 +189,15 @@ describe('Microsoft Storage Node', () => {
 									},
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: 'ab1b6258-5c75-4893-90bf-ef591264420c',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -207,7 +207,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -220,7 +220,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerGet],
+						'Azure Storage': [azureStorageNodeResponse.containerGet],
 					},
 				},
 				nock: {
@@ -231,7 +231,7 @@ describe('Microsoft Storage Node', () => {
 							path: '/mycontainer?restype=container',
 							statusCode: 200,
 							responseBody: '',
-							responseHeaders: microsoftStorageApiResponse.containerGet.headers,
+							responseHeaders: azureStorageApiResponse.containerGet.headers,
 						},
 					],
 				},
@@ -255,15 +255,15 @@ describe('Microsoft Storage Node', () => {
 									returnAll: true,
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: 'ab1b6258-5c75-4893-90bf-ef591264420c',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -273,7 +273,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -286,10 +286,10 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [
+						'Azure Storage': [
 							[
-								microsoftStorageNodeResponse.containerGetAll[0],
-								microsoftStorageNodeResponse.containerGetAll[0],
+								azureStorageNodeResponse.containerGetAll[0],
+								azureStorageNodeResponse.containerGetAll[0],
 							],
 						],
 					},
@@ -301,13 +301,13 @@ describe('Microsoft Storage Node', () => {
 							method: 'get',
 							path: '/?comp=list',
 							statusCode: 200,
-							responseBody: microsoftStorageApiResponse.containerList.body,
+							responseBody: azureStorageApiResponse.containerList.body,
 						},
 						{
 							method: 'get',
 							path: '/?comp=list&marker=mycontainer2',
 							statusCode: 200,
-							responseBody: microsoftStorageApiResponse.containerListNoMarker.body,
+							responseBody: azureStorageApiResponse.containerListNoMarker.body,
 						},
 					],
 				},
@@ -333,15 +333,15 @@ describe('Microsoft Storage Node', () => {
 									filter: 'mycontainer',
 									requestOptions: {},
 								},
-								type: 'n8n-nodes-base.microsoftStorage',
+								type: 'n8n-nodes-base.azureStorage',
 								typeVersion: 1,
 								position: [220, 0],
 								id: 'ab1b6258-5c75-4893-90bf-ef591264420c',
-								name: 'Microsoft Storage',
+								name: 'Azure Storage',
 								credentials: {
-									microsoftStorageSharedKeyApi: {
+									azureStorageSharedKeyApi: {
 										id: 'VPmcFM58eDDexWQL',
-										name: 'Microsoft Storage Shared Key account',
+										name: 'Azure Storage Shared Key account',
 									},
 								},
 							},
@@ -351,7 +351,7 @@ describe('Microsoft Storage Node', () => {
 								main: [
 									[
 										{
-											node: 'Microsoft Storage',
+											node: 'Azure Storage',
 											type: NodeConnectionType.Main,
 											index: 0,
 										},
@@ -364,7 +364,7 @@ describe('Microsoft Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Microsoft Storage': [microsoftStorageNodeResponse.containerGetAll],
+						'Azure Storage': [azureStorageNodeResponse.containerGetAll],
 					},
 				},
 				nock: {
@@ -374,7 +374,7 @@ describe('Microsoft Storage Node', () => {
 							method: 'get',
 							path: '/?comp=list&maxresults=1&include=metadata%2Cdeleted%2Csystem&prefix=mycontainer',
 							statusCode: 200,
-							responseBody: microsoftStorageApiResponse.containerList.body,
+							responseBody: azureStorageApiResponse.containerList.body,
 						},
 					],
 				},
