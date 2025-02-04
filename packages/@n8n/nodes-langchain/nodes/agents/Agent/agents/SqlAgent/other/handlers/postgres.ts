@@ -16,7 +16,7 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 	if (credentials.allowUnauthorizedCerts === true) {
 		dataSource.setOptions({
 			ssl: {
-				rejectUnauthorized: true,
+				rejectUnauthorized: false,
 			},
 		});
 	} else {
