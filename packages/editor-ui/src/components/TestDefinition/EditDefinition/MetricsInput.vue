@@ -22,8 +22,14 @@ function updateMetric(index: number, name: string) {
 	emit('update:modelValue', newMetrics);
 }
 
-function onDeleteMetric(metric: Partial<TestMetricRecord>) {
-	emit('deleteMetric', metric);
+function onDeleteMetric(metric: Partial<TestMetricRecord>, index: number) {
+	if (!metric.id) {
+		const newMetrics = [...props.modelValue];
+		newMetrics.splice(index, 1);
+		emit('update:modelValue', newMetrics);
+	} else {
+		emit('deleteMetric', metric);
+	}
 }
 </script>
 
@@ -43,7 +49,7 @@ function onDeleteMetric(metric: Partial<TestMetricRecord>) {
 						:placeholder="locale.baseText('testDefinition.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
-					<n8n-icon-button icon="trash" type="text" @click="onDeleteMetric(metric)" />
+					<n8n-icon-button icon="trash" type="text" @click="onDeleteMetric(metric, index)" />
 				</div>
 				<n8n-button
 					type="tertiary"
