@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { Node, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
-	ITriggerFunctions,
-	ITriggerResponse,
+	INodeType,
+	IDataObject,
 } from 'n8n-workflow';
 
-export class Chat extends Node {
+export class Chat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Chat and Wait for Response',
 		name: 'chat',
@@ -46,20 +46,14 @@ export class Chat extends Node {
 		],
 	};
 
-	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const manualTriggerFunction = async () => {
-			this.emit([this.helpers.returnJsonArray([{}])]);
-		};
-
-		return {
-			manualTriggerFunction,
-		};
+	async onMessage(_context: IExecuteFunctions, data: IDataObject): Promise<INodeExecutionData[][]> {
+		return [[{ json: data }]];
 	}
 
-	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		context.sendChatMessage(context.getNodeParameter('message', 0) as string);
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		this.sendChatMessage(this.getNodeParameter('message', 0) as string);
 
-		await context.putExecutionToWait(WAIT_INDEFINITELY);
-		return [context.getInputData()];
+		await this.putExecutionToWait(WAIT_INDEFINITELY);
+		return [this.getInputData()];
 	}
 }

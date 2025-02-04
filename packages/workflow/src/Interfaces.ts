@@ -1608,6 +1608,10 @@ export interface INodeType {
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+	onMessage?(
+		context: IExecuteFunctions,
+		data: IDataObject,
+	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
