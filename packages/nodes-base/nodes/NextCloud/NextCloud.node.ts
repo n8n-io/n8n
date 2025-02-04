@@ -27,6 +27,7 @@ export class NextCloud implements INodeType {
 		defaults: {
 			name: 'Nextcloud',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

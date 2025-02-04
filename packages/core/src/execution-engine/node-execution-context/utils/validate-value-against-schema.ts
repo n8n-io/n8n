@@ -56,8 +56,8 @@ const validateResourceMapperValue = (
 		if (schemaEntry?.type) {
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
-				strict: !resourceMapperField.attemptToConvertTypes,
-				parseStrings: !!resourceMapperField.convertFieldsToString,
+				strict: resourceMapperField.attemptToConvertTypes === false,
+				parseStrings: Boolean(resourceMapperField.convertFieldsToString),
 			});
 
 			if (!validationResult.valid) {

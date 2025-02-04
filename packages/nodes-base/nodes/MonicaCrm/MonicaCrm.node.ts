@@ -55,6 +55,7 @@ export class MonicaCrm implements INodeType {
 		defaults: {
 			name: 'Monica CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
