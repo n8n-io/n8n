@@ -23,6 +23,7 @@ export class TravisCi implements INodeType {
 		defaults: {
 			name: 'TravisCI',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
