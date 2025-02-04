@@ -1012,9 +1012,9 @@ const isSingleLineInput = computed(() => {
 	 */
 	if (isSingleLineInput.value) {
 		return height.value <= 70;
-	} else {
-		return height.value <= 35;
 	}
+
+	return height.value <= 35;
 });
 
 defineExpose({

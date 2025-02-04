@@ -3,6 +3,7 @@ import type { IUpdateInformation } from '@/Interface';
 
 import { type INodeProperties } from 'n8n-workflow';
 import { type ParameterOverride } from './parameterInputOverrides';
+import { computed } from 'vue';
 
 type Props = {
 	parameter: INodeProperties;
@@ -15,6 +16,14 @@ const parameterOverride = defineModel<ParameterOverride>({ required: true });
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 });
+
+const inputs = computed(() =>
+	Object.entries(parameterOverride.value.extraProps).map(([name, prop]) => ({
+		name,
+		...prop,
+	})),
+);
+
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
 }>();
@@ -27,13 +36,8 @@ function valueChanged(parameterData: IUpdateInformation) {
 <template>
 	<N8nSelectableList
 		v-model="parameterOverride.extraPropValues"
-		:class="$style.overrideSelectableList"
-		:inputs="
-			Object.entries(parameterOverride.extraProps).map(([name, prop]) => ({
-				name,
-				...prop,
-			}))
-		"
+		class="mt-2xs"
+		:inputs="inputs"
 		:disabled="isReadOnly"
 	>
 		<template #displayItem="{ name, tooltip, initialValue, type, typeOptions }">
@@ -64,9 +68,3 @@ function valueChanged(parameterData: IUpdateInformation) {
 		</template>
 	</N8nSelectableList>
 </template>
-
-<style lang="scss" module>
-.overrideSelectableList {
-	margin-top: var(--spacing-2xs);
-}
-</style>
