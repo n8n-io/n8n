@@ -100,4 +100,4 @@ export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
 export const FREE_AI_CREDITS_ERROR_TYPE = 'free_ai_credits_request_error';
 export const FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE = 400;
 
-export const FROM_AI_AUTO_GENERATED_MARKER = '/* n8n-auto-generated-fromAI-override */';
+export const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-override*/';
