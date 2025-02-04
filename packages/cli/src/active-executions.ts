@@ -95,13 +95,14 @@ export class ActiveExecutions {
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 
-		this.activeExecutions[executionId] = {
+		const execution: IExecutingWorkflowData = {
 			executionData,
 			startedAt: resumingExecution?.startedAt ?? new Date(),
 			postExecutePromise,
 			status: executionStatus,
 			responsePromise: resumingExecution?.responsePromise,
 		};
+		this.activeExecutions[executionId] = execution;
 
 		// Automatically remove execution once the postExecutePromise settles
 		void postExecutePromise.promise
@@ -111,7 +112,10 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
-				if (this.activeExecutions[executionId]?.status !== 'waiting') {
+				if (execution.status === 'waiting') {
+					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
+					delete execution.workflowExecution;
+				} else {
 					delete this.activeExecutions[executionId];
 					this.logger.debug('Execution removed', { executionId });
 				}
@@ -149,8 +153,16 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
-		execution.workflowExecution?.cancel();
-		execution.postExecutePromise.reject(new ExecutionCancelledError(executionId));
+		const error = new ExecutionCancelledError(executionId);
+		execution.responsePromise?.reject(error);
+		if (execution.status === 'waiting') {
+			// A waiting execution will not have a valid workflowExecution or postExecutePromise
+			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
+			delete this.activeExecutions[executionId];
+		} else {
+			execution.workflowExecution?.cancel();
+			execution.postExecutePromise.reject(error);
+		}
 		this.logger.debug('Execution cancelled', { executionId });
 	}
 
