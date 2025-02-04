@@ -23,6 +23,7 @@ export class LoneScale implements INodeType {
 		defaults: {
 			name: 'LoneScale',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
