@@ -15,7 +15,7 @@ const emit = defineEmits<{
 		</template>
 
 		<N8nButton
-			:class="[$style.overrideButton /*, $style.noCornersBottom, $style.overrideButtonInOptions*/]"
+			:class="[$style.overrideButton]"
 			type="tertiary"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
