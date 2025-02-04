@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from '@n8n/di';
+import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -11,7 +12,6 @@ import type {
 	IPinData,
 	IRun,
 	WorkflowExecuteMode,
-	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
@@ -61,7 +61,7 @@ export class WorkflowRunner {
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
-		hooks?: WorkflowHooks,
+		hooks?: ExecutionLifecycleHooks,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -116,9 +116,7 @@ export class WorkflowRunner {
 		// set the execution to failed.
 		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		if (hooks) {
-			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
-		}
+		await hooks?.runHook('workflowExecuteAfter', [fullRunData]);
 	}
 
 	/** Run the workflow
@@ -141,11 +139,8 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const workflowHooks = getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
-				undefined,
-				data.executionData,
-			]);
-			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			await workflowHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+			await workflowHooks.runHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
@@ -250,13 +245,12 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			additionalData.hooks = getWorkflowHooksMain(data, executionId);
+			const hooks = getWorkflowHooksMain(data, executionId);
+			additionalData.hooks = hooks;
 
-			additionalData.hooks.hookFunctions.sendResponse = [
-				async (response: IExecuteResponsePromiseData): Promise<void> => {
-					this.activeExecutions.resolveResponsePromise(executionId, response);
-				},
-			];
+			hooks.addHandler('sendResponse', (response) => {
+				this.activeExecutions.resolveResponsePromise(executionId, response);
+			});
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
@@ -347,7 +341,7 @@ export class WorkflowRunner {
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
-		let hooks: WorkflowHooks;
+		let hooks: ExecutionLifecycleHooks;
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
@@ -357,7 +351,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
+			await hooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -437,7 +431,7 @@ export class WorkflowRunner {
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
-				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+				await hooks.runHook('workflowExecuteAfter', [runData]);
 
 				resolve(runData);
 			},

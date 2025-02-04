@@ -13,7 +13,6 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
-	WorkflowHooks,
 } from 'n8n-workflow';
 import nock from 'nock';
 import { tmpdir } from 'os';
@@ -22,6 +21,7 @@ import { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 import { InstanceSettings } from '@/instance-settings';
 import {
 	binaryToString,
@@ -423,12 +423,12 @@ describe('NodeExecuteFunctions', () => {
 	describe('proxyRequestToAxios', () => {
 		const baseUrl = 'http://example.de';
 		const workflow = mock<Workflow>();
-		const hooks = mock<WorkflowHooks>();
+		const hooks = mock<ExecutionLifecycleHooks>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
 		const node = mock<INode>();
 
 		beforeEach(() => {
-			hooks.executeHookFunctions.mockClear();
+			hooks.runHook.mockClear();
 		});
 
 		test('should rethrow an error with `status` property', async () => {
@@ -444,10 +444,7 @@ describe('NodeExecuteFunctions', () => {
 		test('should not throw if the response status is 200', async () => {
 			nock(baseUrl).get('/test').reply(200);
 			await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
-			expect(hooks.executeHookFunctions).toHaveBeenCalledWith('nodeFetchedData', [
-				workflow.id,
-				node,
-			]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		test('should throw if the response status is 403', async () => {
@@ -467,7 +464,7 @@ describe('NodeExecuteFunctions', () => {
 				expect(error.config).toBeUndefined();
 				expect(error.message).toEqual('403 - "Forbidden"');
 			}
-			expect(hooks.executeHookFunctions).not.toHaveBeenCalled();
+			expect(hooks.runHook).not.toHaveBeenCalled();
 		});
 
 		test('should not throw if the response status is 404, but `simple` option is set to `false`', async () => {
@@ -478,10 +475,7 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			expect(response).toEqual('Not Found');
-			expect(hooks.executeHookFunctions).toHaveBeenCalledWith('nodeFetchedData', [
-				workflow.id,
-				node,
-			]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		test('should return full response when `resolveWithFullResponse` is set to true', async () => {
@@ -498,10 +492,7 @@ describe('NodeExecuteFunctions', () => {
 				statusCode: 404,
 				statusMessage: 'Not Found',
 			});
-			expect(hooks.executeHookFunctions).toHaveBeenCalledWith('nodeFetchedData', [
-				workflow.id,
-				node,
-			]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		describe('redirects', () => {

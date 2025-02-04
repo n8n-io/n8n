@@ -131,30 +131,29 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = getWorkflowHooksWorkerExecuter(
+		const hooks = getWorkflowHooksWorkerExecuter(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
 			{ retryOf: execution.retryOf ?? undefined, pushRef },
 		);
+		additionalData.hooks = hooks;
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const msg: RespondToWebhookMessage = {
-					kind: 'respond-to-webhook',
-					executionId,
-					response: this.encodeWebhookResponse(response),
-					workerId: this.instanceSettings.hostId,
-				};
+		hooks.addHandler('sendResponse', async (response): Promise<void> => {
+			const msg: RespondToWebhookMessage = {
+				kind: 'respond-to-webhook',
+				executionId,
+				response: this.encodeWebhookResponse(response),
+				workerId: this.instanceSettings.hostId,
+			};
 
-				await job.progress(msg);
-			},
-		];
+			await job.progress(msg);
+		});
 
 		additionalData.executionId = executionId;
 
@@ -206,7 +205,7 @@ export class JobProcessor {
 						data: { resultData: { error, runData: {} } },
 					};
 
-					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+					await hooks.runHook('workflowExecuteAfter', [runData]);
 					return { success: false };
 				}
 				throw error;

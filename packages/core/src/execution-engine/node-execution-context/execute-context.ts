@@ -192,7 +192,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
-		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+		await this.additionalData.hooks?.runHook('sendResponse', [response]);
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
