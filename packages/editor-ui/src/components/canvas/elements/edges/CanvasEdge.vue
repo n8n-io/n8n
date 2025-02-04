@@ -67,6 +67,8 @@ const edgeColor = computed(() => {
 		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
 		return 'var(--color-background-dark)';
+	} else if (status.value === 'warning') {
+		return 'var(--color-warning)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}

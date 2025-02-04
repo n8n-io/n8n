@@ -41,7 +41,13 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
+const plusType = computed(() =>
+	renderOptions.value.staleness !== undefined
+		? 'warning'
+		: runDataTotal.value > 0
+			? 'success'
+			: 'default',
+);
 
 const plusLineSize = computed(
 	() =>
@@ -60,6 +66,7 @@ const outputLabelClasses = computed(() => ({
 const runDataLabelClasses = computed(() => ({
 	[$style.label]: true,
 	[$style.runDataLabel]: true,
+	[$style.stale]: renderOptions.value.staleness !== undefined,
 }));
 
 function onMouseEnter() {
@@ -137,6 +144,10 @@ function onClickAdd() {
 	transform: translate(-50%, -150%);
 	font-size: var(--font-size-xs);
 	color: var(--color-success);
+
+	&.stale {
+		color: var(--color-warning);
+	}
 }
 </style>
 

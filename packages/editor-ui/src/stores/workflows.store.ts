@@ -274,6 +274,46 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
+	const isNodeStaleByName = computed(() => {
+		const staleById: Record<string, 'stale' | 'upstream-stale' | undefined> = {};
+		const runData = workflowExecutionData.value?.data?.resultData.runData;
+
+		// TODO: check feature flag
+
+		function markDownstreamStaleRecursively(node: INodeUi) {
+			for (const connections of Object.values(outgoingConnectionsByNodeName(node.name))) {
+				for (const conn of connections) {
+					for (const c of conn ?? []) {
+						staleById[c.node] = staleById[c.node] ?? 'upstream-stale';
+
+						const instance = nodesByName.value[c.node];
+
+						if (instance) {
+							markDownstreamStaleRecursively(instance);
+						}
+					}
+				}
+			}
+		}
+
+		if (!runData) {
+			return {};
+		}
+
+		for (const node of workflow.value.nodes) {
+			const lastUpdate = nodeMetadata.value[node.name].parametersLastUpdatedAt;
+			const runs = runData[node.name];
+			const runAt = runs && runs.length > 0 ? runs[runs.length - 1]?.startTime : undefined;
+
+			if (lastUpdate && runAt && lastUpdate > runAt) {
+				staleById[node.name] = 'stale';
+				markDownstreamStaleRecursively(node);
+			}
+		}
+
+		return staleById;
+	});
+
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
 			return null;
@@ -1654,6 +1694,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		isChatPanelOpen: computed(() => isChatPanelOpen.value),
 		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
+		isNodeStaleByName,
 		setPanelOpen,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,

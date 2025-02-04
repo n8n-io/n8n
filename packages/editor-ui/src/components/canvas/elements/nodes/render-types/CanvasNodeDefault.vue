@@ -59,6 +59,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
+		[$style.stale]: renderOptions.value.staleness !== undefined,
 	};
 });
 
@@ -267,6 +268,10 @@ function openContextMenu(event: MouseEvent) {
 
 	&.waiting {
 		border-color: var(--color-canvas-node-waiting-border-color, var(--color-secondary));
+	}
+
+	&.stale {
+		border-color: var(--color-warning);
 	}
 }
 

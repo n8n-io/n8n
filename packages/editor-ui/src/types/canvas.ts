@@ -60,6 +60,7 @@ export type CanvasNodeDefaultRender = {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
 		tooltip?: string;
+		staleness?: 'stale' | 'upstream-stale';
 	}>;
 };
 
@@ -117,7 +118,7 @@ export type CanvasNode = Node<CanvasNodeData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	status?: 'success' | 'error' | 'pinned' | 'running';
+	status?: 'success' | 'error' | 'warning' | 'pinned' | 'running';
 	maxConnections?: number;
 }
 
