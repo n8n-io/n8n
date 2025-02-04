@@ -124,8 +124,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 
-	const version = settingsStore.partialExecutionVersion;
-
+	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
@@ -1470,7 +1469,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version}`,
+				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
