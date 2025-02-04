@@ -57,7 +57,7 @@ export const formFields: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Field Label',
+					displayName: 'Field Name',
 					name: 'fieldLabel',
 					type: 'string',
 					default: '',
@@ -66,7 +66,7 @@ export const formFields: INodeProperties = {
 					required: true,
 					displayOptions: {
 						hide: {
-							fieldType: ['hiddenField'],
+							fieldType: ['hiddenField', 'html'],
 						},
 					},
 				},
@@ -119,20 +119,6 @@ export const formFields: INodeProperties = {
 						},
 					],
 					required: true,
-				},
-				{
-					displayName: 'Field Name',
-					name: 'fieldLabel',
-					type: 'string',
-					default: '',
-					placeholder: 'e.g. What is your name?',
-					description: 'Label that appears above the input field',
-					required: true,
-					displayOptions: {
-						hide: {
-							fieldType: ['html'],
-						},
-					},
 				},
 				{
 					displayName: 'Element Name',
