@@ -550,7 +550,7 @@ export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICoun
 	let fromAIExpressionCount = 0;
 
 	const tools = resolvedNodes.filter((x) =>
-		x[1].description.codex?.subcategories?.AI?.includes('Tool'),
+		x[1].description.codex?.subcategories?.AI?.includes('Tools'),
 	);
 
 	for (const [node, _] of tools) {
@@ -560,14 +560,14 @@ export function makeAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICoun
 			return typeof x === 'string' ? x : [];
 		});
 		// Note that we don't match the i in `fromAI` to support lower case i (though we miss fromai)
-		fromAIOverrideCount += vals.reduce(
-			(acc, x) => acc + Number(x.startsWith(`{{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
+		const overrides = vals.reduce(
+			(acc, x) => acc + Number(x.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
 			0,
 		);
-		fromAIExpressionCount += vals.reduce(
-			(acc, x) => acc + Number(x[0] === '{' && x.includes('$fromA', 2)),
-			0,
-		);
+		fromAIOverrideCount += overrides;
+		// check for = to avoid scanning lengthy text fields
+		fromAIExpressionCount +=
+			vals.reduce((acc, x) => acc + Number(x[0] === '=' && x.includes('$fromA', 2)), 0) - overrides;
 	}
 
 	return {
