@@ -62,7 +62,7 @@ export class TestRun extends WithTimestampsAndStringId {
 	 * This will contain the error code if the test run failed.
 	 * This is used for test run level errors, not for individual test case errors.
 	 */
-	@Column('varchar', { nullable: true })
+	@Column('varchar', { nullable: true, length: 255 })
 	errorCode: TestRunErrorCode | null;
 
 	/**

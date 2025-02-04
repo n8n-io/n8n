@@ -9,8 +9,8 @@ export class AddErrorColumnsToTestRuns1737715421462 implements ReversibleMigrati
 		const errorCodeColumnName = escape.columnName('errorCode');
 		const errorDetailsColumnName = escape.columnName('errorDetails');
 
-		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${errorCodeColumnName} varchar`);
-		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${errorDetailsColumnName} varchar`);
+		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${errorCodeColumnName} VARCHAR(255);`);
+		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${errorDetailsColumnName} TEXT;`);
 	}
 
 	async down({ escape, runQuery }: MigrationContext) {
@@ -18,7 +18,7 @@ export class AddErrorColumnsToTestRuns1737715421462 implements ReversibleMigrati
 		const errorCodeColumnName = escape.columnName('errorCode');
 		const errorDetailsColumnName = escape.columnName('errorDetails');
 
-		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${errorCodeColumnName}`);
-		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${errorDetailsColumnName}`);
+		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${errorCodeColumnName};`);
+		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${errorDetailsColumnName};`);
 	}
 }
