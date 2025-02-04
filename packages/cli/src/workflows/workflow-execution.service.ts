@@ -97,7 +97,7 @@ export class WorkflowExecutionService {
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
-		partialExecutionVersion?: string,
+		partialExecutionVersion: 1 | 2 = 1,
 	) {
 		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -142,7 +142,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
-			partialExecutionVersion: partialExecutionVersion ?? '0',
+			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
 		};

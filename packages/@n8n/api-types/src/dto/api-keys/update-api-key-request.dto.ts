@@ -8,6 +8,6 @@ const xssCheck = (value: string) =>
 		whiteList: {},
 	});
 
-export class CreateOrUpdateApiKeyRequestDto extends Z.class({
+export class UpdateApiKeyRequestDto extends Z.class({
 	label: z.string().max(50).min(1).refine(xssCheck),
 }) {}
