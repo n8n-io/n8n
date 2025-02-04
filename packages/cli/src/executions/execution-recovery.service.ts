@@ -189,7 +189,7 @@ export class ExecutionRecoveryService {
 				executionMode: execution.mode,
 				executionData: execution.data,
 				runData: execution.data.resultData.runData,
-				retryOf: execution.retryOf,
+				retryOf: execution.retryOf ?? undefined,
 			},
 			execution.id,
 		);
