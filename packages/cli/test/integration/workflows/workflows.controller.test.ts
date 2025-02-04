@@ -864,9 +864,10 @@ describe('GET /workflows', () => {
 			await createWorkflow({ name: 'First' }, owner);
 			await createWorkflow({ name: 'Second' }, owner);
 
-			let response;
-
-			response = await authOwnerAgent.get('/workflows').query('sortBy=createdAt:asc').expect(200);
+			let response = await authOwnerAgent
+				.get('/workflows')
+				.query('sortBy=createdAt:asc')
+				.expect(200);
 
 			expect(response.body).toEqual({
 				count: 2,
