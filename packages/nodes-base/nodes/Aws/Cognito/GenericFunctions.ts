@@ -612,14 +612,12 @@ export async function simplifyData(
 								: {};
 							return {
 								json: {
-									User: {
-										Enabled: userData.Enabled,
-										...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
-										UserCreateDate: userData.UserCreateDate,
-										UserLastModifiedDate: userData.UserLastModifiedDate,
-										UserStatus: userData.UserStatus,
-										Username: userData.Username,
-									},
+									Enabled: userData.Enabled,
+									...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
+									UserCreateDate: userData.UserCreateDate,
+									UserLastModifiedDate: userData.UserLastModifiedDate,
+									UserStatus: userData.UserStatus,
+									Username: userData.Username,
 								},
 							};
 						} else if (operation === 'getAll') {
