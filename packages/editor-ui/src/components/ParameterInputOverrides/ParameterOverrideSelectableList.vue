@@ -2,7 +2,7 @@
 import type { IUpdateInformation } from '@/Interface';
 
 import { type INodeProperties } from 'n8n-workflow';
-import { type ParameterOverride } from './parameterInputOverrides';
+import { buildValueFromOverride, type FromAIOverride } from './fromAIOverrideUtils';
 import { computed } from 'vue';
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
 	isReadOnly?: boolean;
 };
 
-const parameterOverride = defineModel<ParameterOverride>({ required: true });
+const parameterOverride = defineModel<FromAIOverride>({ required: true });
 
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
@@ -64,7 +64,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 						parameterOverride.extraPropValues[name] = x.value;
 						valueChanged({
 							name: props.path,
-							value: parameterOverride.buildValueFromOverride(props, true),
+							value: buildValueFromOverride(parameterOverride, props, true),
 						});
 					}
 				"

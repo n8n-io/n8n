@@ -1,5 +1,11 @@
-import type { OverrideContext } from './parameterInputOverrides';
-import { FromAiOverride, makeOverrideValue } from './parameterInputOverrides';
+import type { FromAIOverride, OverrideContext } from './fromAIOverrideUtils';
+import {
+	buildValueFromOverride,
+	fromAIExtraProps,
+	isOverrideValue,
+	makeOverrideValue,
+	parseOverrides,
+} from './fromAIOverrideUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 const DISPLAY_NAME = 'aDisplayName';
@@ -68,7 +74,8 @@ describe('makeOverrideValue', () => {
 			AI_NODE_TYPE,
 		);
 
-		expect(result).toBeInstanceOf(FromAiOverride);
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
 	});
 
 	it('parses existing fromAI overrides', () => {
@@ -97,27 +104,23 @@ describe('makeOverrideValue', () => {
 
 describe('FromAiOverride', () => {
 	it('correctly identifies override values', () => {
-		expect(FromAiOverride.isOverrideValue('={{ $fromAI() }}')).toBe(false);
-		expect(
-			FromAiOverride.isOverrideValue('={{ /*n8n-auto-generated-fromAI-override*/ $fromAI() }}'),
-		).toBe(true);
+		expect(isOverrideValue('={{ $fromAI() }}')).toBe(false);
+		expect(isOverrideValue('={{ /*n8n-auto-generated-fromAI-override*/ $fromAI() }}')).toBe(true);
 	});
 
 	it('should parseOverrides as expected', () => {
-		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey' }}")).toBeNull();
-		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey') }}")).toEqual({
+		expect(parseOverrides("={{ $fromAI('aKey' }}")).toBeNull();
+		expect(parseOverrides("={{ $fromAI('aKey') }}")).toEqual({
 			description: undefined,
 		});
-		expect(FromAiOverride.parseOverrides("={{ $fromAI('aKey', `a description`) }}")).toEqual({
+		expect(parseOverrides("={{ $fromAI('aKey', `a description`) }}")).toEqual({
 			description: 'a description',
 		});
+		expect(parseOverrides("={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aKey') }}")).toEqual(
+			{ description: undefined },
+		);
 		expect(
-			FromAiOverride.parseOverrides(
-				"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aKey') }}",
-			),
-		).toEqual({ description: undefined });
-		expect(
-			FromAiOverride.parseOverrides(
+			parseOverrides(
 				"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aKey', `a description`) }}",
 			),
 		).toEqual({
@@ -130,25 +133,29 @@ describe('FromAiOverride', () => {
 		['working', '$fromAI("a", `a \\` \\\\\\``)', 'a ` \\`'],
 		// ['failing', '$fromAI("a", `\\``)', '`'],
 	])('should handle backtick escaping %s', (_name, value, expected) => {
-		expect(FromAiOverride.parseOverrides(value)).toEqual({ description: expected });
+		expect(parseOverrides(value)).toEqual({ description: expected });
 	});
 
 	it('should build a value from an override and carry over modification', () => {
-		const override = new FromAiOverride();
-		expect(override.buildValueFromOverride(makeContext(''), true)).toEqual(
+		const override: FromAIOverride = {
+			type: 'fromAI',
+			extraProps: fromAIExtraProps,
+			extraPropValues: {},
+		};
+		expect(buildValueFromOverride(override, makeContext(''), true)).toEqual(
 			`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`\`, 'string') }}`,
 		);
-		expect(override.buildValueFromOverride(makeContext(''), false)).toEqual(
+		expect(buildValueFromOverride(override, makeContext(''), false)).toEqual(
 			`={{ $fromAI('${DISPLAY_NAME}', \`\`, 'string') }}`,
 		);
 
 		const description = 'a description';
 		override.extraPropValues.description = description;
 
-		expect(override.buildValueFromOverride(makeContext(''), true)).toEqual(
+		expect(buildValueFromOverride(override, makeContext(''), true)).toEqual(
 			`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
 		);
-		expect(override.buildValueFromOverride(makeContext(''), false)).toEqual(
+		expect(buildValueFromOverride(override, makeContext(''), false)).toEqual(
 			`={{ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
 		);
 	});

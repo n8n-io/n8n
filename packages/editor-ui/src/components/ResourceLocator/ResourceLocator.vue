@@ -47,9 +47,12 @@ import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import {
+	buildValueFromOverride,
+	isOverrideValue,
 	makeOverrideValue,
-	type ParameterOverride,
-} from '../ParameterInputOverrides/parameterInputOverrides';
+	updateExtraPropValues,
+	type FromAIOverride,
+} from '../ParameterInputOverrides/fromAIOverrideUtils';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -286,7 +289,7 @@ const requiresSearchFilter = computed(
 	() => !!getPropertyArgument(currentMode.value, 'searchFilterRequired'),
 );
 
-const parameterOverrides = ref<ParameterOverride | null>(
+const parameterOverrides = ref<FromAIOverride | null>(
 	makeOverrideValue(
 		{
 			value: props.modelValue?.value ?? '',
@@ -303,9 +306,7 @@ const canBeContentOverride = computed(() => {
 });
 
 const isContentOverride = computed(
-	() =>
-		canBeContentOverride.value &&
-		!!parameterOverrides.value?.isOverrideValue(props.modelValue?.value?.toString() ?? ''),
+	() => canBeContentOverride.value && !!isOverrideValue(props.modelValue?.value?.toString() ?? ''),
 );
 
 const showOverrideButton = computed(
@@ -710,7 +711,7 @@ function onInputBlur(event: FocusEvent) {
 }
 
 function applyOverride() {
-	if (!props.node) return;
+	if (!props.node || !parameterOverrides.value) return;
 
 	telemetry.track(
 		'User turned on fromAI override',
@@ -720,16 +721,16 @@ function applyOverride() {
 		},
 		{ withPostHog: true },
 	);
-	parameterOverrides.value?.updateExtraPropValues(props.modelValue.value?.toString() ?? '');
+	updateExtraPropValues(parameterOverrides.value, props.modelValue.value?.toString() ?? '');
 
 	emit('update:modelValue', {
 		...props.modelValue,
-		value: parameterOverrides.value?.buildValueFromOverride(props, true),
+		value: buildValueFromOverride(parameterOverrides.value, props, true),
 	});
 }
 
 function removeOverride() {
-	if (!props.node) return;
+	if (!props.node || !parameterOverrides.value) return;
 
 	telemetry.track(
 		'User turned off fromAI override',
@@ -741,7 +742,7 @@ function removeOverride() {
 	);
 	emit('update:modelValue', {
 		...props.modelValue,
-		value: parameterOverrides.value?.buildValueFromOverride(props, false),
+		value: buildValueFromOverride(parameterOverrides.value, props, false),
 	});
 	void setTimeout(() => {
 		inputRef.value?.focus();

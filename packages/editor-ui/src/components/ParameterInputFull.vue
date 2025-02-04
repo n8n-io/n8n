@@ -21,9 +21,12 @@ import {
 } from 'n8n-workflow';
 import { N8nInputLabel } from 'n8n-design-system';
 import {
-	type ParameterOverride,
+	buildValueFromOverride,
+	type FromAIOverride,
+	isOverrideValue,
 	makeOverrideValue,
-} from './ParameterInputOverrides/parameterInputOverrides';
+	updateExtraPropValues,
+} from './ParameterInputOverrides/fromAIOverrideUtils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -70,7 +73,7 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 
 const node = computed(() => ndvStore.activeNode);
-const parameterOverrides = ref<ParameterOverride | null>(
+const parameterOverrides = ref<FromAIOverride | null>(
 	makeOverrideValue(
 		props,
 		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
@@ -85,9 +88,7 @@ const canBeContentOverride = computed(() => {
 });
 
 const isContentOverride = computed(
-	() =>
-		canBeContentOverride.value &&
-		!!parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
+	() => canBeContentOverride.value && !!isOverrideValue(props.value?.toString() ?? ''),
 );
 
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
@@ -109,13 +110,7 @@ const showExpressionSelector = computed(() => {
 		// infer whether it's overridden and we should hide the toggle
 		const value =
 			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;
-		if (
-			value &&
-			makeOverrideValue(
-				props,
-				node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
-			)?.isOverrideValue(String(value))
-		) {
+		if (value && isOverrideValue(String(value))) {
 			return false;
 		}
 
@@ -265,6 +260,8 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 );
 
 function applyOverride() {
+	if (!parameterOverrides.value) return;
+
 	telemetry.track(
 		'User turned on fromAI override',
 		{
@@ -273,8 +270,8 @@ function applyOverride() {
 		},
 		{ withPostHog: true },
 	);
-	parameterOverrides.value?.updateExtraPropValues(props.value?.toString() ?? '');
-	const value = parameterOverrides.value?.buildValueFromOverride(props, true);
+	updateExtraPropValues(parameterOverrides.value, String(props.value));
+	const value = buildValueFromOverride(parameterOverrides.value, props, true);
 	valueChanged({
 		node: node.value?.name,
 		name: props.path,
@@ -283,6 +280,8 @@ function applyOverride() {
 }
 
 function removeOverride(clearField = false) {
+	if (!parameterOverrides.value) return;
+
 	telemetry.track(
 		'User turned off fromAI override',
 		{
@@ -296,7 +295,7 @@ function removeOverride(clearField = false) {
 		name: props.path,
 		value: clearField
 			? props.parameter.default
-			: parameterOverrides.value?.buildValueFromOverride(props, false),
+			: buildValueFromOverride(parameterOverrides.value, props, false),
 	});
 	void setTimeout(async () => {
 		await parameterInputWrapper.value?.focusInput();
