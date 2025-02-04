@@ -679,11 +679,25 @@ describe('useWorkflowsStore', () => {
 	});
 
 	test.each([
-		[0, 1, false, 1],
-		[-1, 1, false, 1],
-		[1, 1, false, 1],
-		[2, 1, false, 2],
-		[-1, 2, false, 2],
+		// enforce true cases - the version is always the defaultVersion
+		[-1, 1, true, 1], // enforce true, use default (1)
+		[0, 1, true, 1], // enforce true, use default (1)
+		[1, 1, true, 1], // enforce true, use default (1)
+		[2, 1, true, 1], // enforce true, use default (1)
+		[-1, 2, true, 2], // enforce true, use default (2)
+		[0, 2, true, 2], // enforce true, use default (2)
+		[1, 2, true, 2], // enforce true, use default (2)
+		[2, 2, true, 2], // enforce true, use default (2)
+
+		// enforce false cases - check userVersion behavior
+		[-1, 1, false, 1], // userVersion -1, use default (1)
+		[0, 1, false, 1], // userVersion 0, invalid, use default (1)
+		[1, 1, false, 1], // userVersion 1, valid, use userVersion (1)
+		[2, 1, false, 2], // userVersion 2, valid, use userVersion (2)
+		[-1, 2, false, 2], // userVersion -1, use default (2)
+		[0, 2, false, 1], // userVersion 0, invalid, use default (2)
+		[1, 2, false, 1], // userVersion 1, valid, use userVersion (1)
+		[2, 2, false, 2], // userVersion 2, valid, use userVersion (2)
 	] as Array<[number, 1 | 2, boolean, number]>)(
 		'when { userVersion:%s, defaultVersion:%s, enforced:%s } run workflow should use partial execution version %s',
 		async (userVersion, defaultVersion, enforce, expectedVersion) => {
