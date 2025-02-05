@@ -65,10 +65,8 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 
 export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]) {
 	for (const testCaseExecution of testCaseExecutions) {
-		if (testCaseExecution.status === 'error') {
-			return 'error';
-		} else if (testCaseExecution.status === 'warning') {
-			return 'warning';
+		if (['error', 'warning'].includes(testCaseExecution.status)) {
+			return testCaseExecution.status;
 		}
 	}
 
