@@ -321,7 +321,13 @@ function removeOverride(clearField = false) {
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
 		>
-			<div :class="[$style.noCornersBottom, $style.overrideButtonInOptions]">
+			<div
+				:class="[
+					$style.noCornersBottom,
+					$style.overrideButtonInOptions,
+					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.displaysIssues },
+				]"
+			>
 				<FromAiOverrideButton @click="applyOverride" />
 			</div>
 		</template>
@@ -425,6 +431,12 @@ function removeOverride(clearField = false) {
 	position: relative;
 	// To connect to input panel below the button
 	margin-bottom: -2px;
+}
+
+.overrideButtonIssueOffset {
+	right: 20px;
+	// this is necessary to push the other options to the left
+	margin-left: 20px;
 }
 
 .noCornersBottom > button {
