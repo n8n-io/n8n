@@ -56,7 +56,7 @@ describe('Code node', () => {
 			getEditor().should('have.text', "console.log('code node 2')");
 			getEditor().type('{selectall}').type("console.log('code node 2 edited')");
 			// wait for debounce
-			cy.wait(100);
+			cy.wait(200);
 
 			ndv.actions.clickFloatingNode('Code');
 			getEditor().should('have.text', "console.log('code node 1')");
