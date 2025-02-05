@@ -163,27 +163,27 @@ describe('NodeTypes', () => {
 			);
 		});
 
-		it('should throw when a node-type is requested as tool, but is a community package', () => {
-			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool')).toThrow(
-				'Unrecognized node type: n8n-nodes-community.testNodeTool',
-			);
-		});
-
-		it('should throw when a node-type is requested as tool, but is a community package', () => {
-			globalConfig.nodes.communityPackages.allowToolUsage = true;
-			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool');
+		it('should return the tool node-type when requested as tool', () => {
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool');
 			expect(result).not.toEqual(toolSupportingNode.type);
-			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');
+			expect(result.description.name).toEqual('n8n-nodes-base.testNodeTool');
 			expect(result.description.displayName).toEqual('TestNode Tool');
 			expect(result.description.codex?.categories).toContain('AI');
 			expect(result.description.inputs).toEqual([]);
 			expect(result.description.outputs).toEqual(['ai_tool']);
 		});
 
-		it('should return the tool node-type when requested as tool', () => {
-			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool');
+		it('should throw when a node-type is requested as tool, but is a community package', () => {
+			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool')).toThrow(
+				'Unrecognized node type: n8n-nodes-community.testNodeTool',
+			);
+		});
+
+		it('should return a tool node-type from a community node,  when requested as tool', () => {
+			globalConfig.nodes.communityPackages.allowToolUsage = true;
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool');
 			expect(result).not.toEqual(toolSupportingNode.type);
-			expect(result.description.name).toEqual('n8n-nodes-base.testNodeTool');
+			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');
 			expect(result.description.displayName).toEqual('TestNode Tool');
 			expect(result.description.codex?.categories).toContain('AI');
 			expect(result.description.inputs).toEqual([]);
