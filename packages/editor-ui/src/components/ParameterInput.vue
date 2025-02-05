@@ -1024,7 +1024,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.flush();
+	valueChangedDebounced.cancel();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
