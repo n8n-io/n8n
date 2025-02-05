@@ -16,12 +16,11 @@ const emit = defineEmits<{
 			<AiStarsIcon :class="$style.aiStarsIcon" />
 		</div>
 		<div :class="$style.overrideInput">
-			<N8nText color="text-dark" size="small">{{
-				i18n.baseText('parameterOverride.overridePanelText')
-			}}</N8nText>
-			<N8nText color="text-dark" size="small" bold>{{
-				i18n.baseText('parameterOverride.overridePanelTextModel')
-			}}</N8nText>
+			<N8nText
+				v-n8n-html="i18n.baseText('parameterOverride.overridePanelText')"
+				color="text-dark"
+				size="small"
+			/>
 		</div>
 		<N8nIconButton
 			v-if="!isReadOnly"
@@ -54,7 +53,8 @@ const emit = defineEmits<{
 .overrideInput {
 	height: 30px;
 	align-content: center;
-	flex-grow: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .overrideCloseButton {
@@ -69,6 +69,7 @@ const emit = defineEmits<{
 .contentOverrideContainer {
 	display: flex;
 	white-space: nowrap;
+	width: 100%;
 	gap: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	background-color: var(--color-foreground-base);
