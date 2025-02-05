@@ -2,7 +2,12 @@
 	"extends": "@n8n/frontend-typescript-config",
 	"compilerOptions": {
 		"baseUrl": ".",
-		"rootDirs": [".", "../design-system/src", "../@n8n/chat/src"],
+		"rootDirs": [
+			".",
+			"../../frontend/@n8n/composables/src",
+			"../design-system/src",
+			"../@n8n/chat/src"
+		],
 		"outDir": "dist",
 		"types": [
 			"vitest/globals",
