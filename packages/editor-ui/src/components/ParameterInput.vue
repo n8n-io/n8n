@@ -400,6 +400,8 @@ const getIssues = computed<string[]>(() => {
 	return [];
 });
 
+const hasIssues = computed(() => getIssues.value.length > 0);
+
 const editorType = computed<EditorType | 'json' | 'code'>(() => {
 	return getArgument<EditorType>('editor');
 });
@@ -1019,6 +1021,7 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
+	hasIssues: () => hasIssues.value,
 	focusInput: async () => await setFocus(),
 	selectInput: () => selectInput(),
 });

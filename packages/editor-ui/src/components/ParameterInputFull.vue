@@ -15,6 +15,7 @@ import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/util
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
 import {
+	NodeHelpers,
 	type INodeProperties,
 	type IParameterLabel,
 	type NodeParameterValueType,
@@ -321,7 +322,13 @@ function removeOverride(clearField = false) {
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
 			#persistentOptions
 		>
-			<div :class="[$style.noCornersBottom, $style.overrideButtonInOptions]">
+			<div
+				:class="[
+					$style.noCornersBottom,
+					$style.overrideButtonInOptions,
+					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.hasIssues },
+				]"
+			>
 				<FromAiOverrideButton @click="applyOverride" />
 			</div>
 		</template>
@@ -425,6 +432,12 @@ function removeOverride(clearField = false) {
 	position: relative;
 	// To connect to input panel below the button
 	margin-bottom: -2px;
+}
+
+.overrideButtonIssueOffset {
+	right: 20px;
+	// this is necessary to push the other options to the left
+	margin-left: 20px;
 }
 
 .noCornersBottom > button {
