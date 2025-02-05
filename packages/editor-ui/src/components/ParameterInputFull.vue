@@ -325,7 +325,7 @@ function removeOverride(clearField = false) {
 				:class="[
 					$style.noCornersBottom,
 					$style.overrideButtonInOptions,
-					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.hasIssues },
+					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.displaysIssues },
 				]"
 			>
 				<FromAiOverrideButton @click="applyOverride" />

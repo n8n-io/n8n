@@ -155,9 +155,10 @@ function onTextInput(parameterData: IUpdateInformation) {
 
 const param = useTemplateRef('param');
 const isSingleLineInput = computed(() => param.value?.isSingleLineInput);
+const displaysIssues = computed(() => param.value?.displaysIssues);
 defineExpose({
 	isSingleLineInput,
-	hasIssues: () => param.value?.hasIssues,
+	displaysIssues,
 	focusInput: () => param.value?.focusInput(),
 	selectInput: () => param.value?.selectInput(),
 });
