@@ -7,7 +7,7 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 
 	let ssl: TlsOptions | boolean = !['disable', undefined].includes(credentials.ssl);
-if (credentials.allowUnauthorizedCerts && ssl) {
+	if (credentials.allowUnauthorizedCerts && ssl) {
 		ssl = { rejectUnauthorized: false };
 	}
 
