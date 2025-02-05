@@ -25,6 +25,7 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 	/**
 	 * Heartbeat timer to keep the connection alive. This is an additional
 	 * mechanism to the protocol level ping/pong mechanism the server sends.
+	 * This is used the ensure the client notices connection issues.
 	 */
 	const heartbeatTimer = ref<ReturnType<typeof setInterval> | null>(null);
 
