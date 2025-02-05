@@ -4,7 +4,7 @@ $--mode-selector-width: 92px;
 	--input-background-color: initial;
 	--input-font-color: initial;
 	--input-border-color: initial;
-	flex-basis: $--mode-selector-width;
+	width: $--mode-selector-width;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -21,12 +21,39 @@ $--mode-selector-width: 92px;
 	}
 }
 
+.inputField {
+	flex-grow: 1;
+	position: relative;
+}
+
+.fromAiOverrideField {
+	position: relative;
+
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.overrideButtonInline {
+	> button {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+	position: relative;
+}
+
+.rightNoCorner > * {
+	--input-border-bottom-right-radius: 0;
+	--input-border-top-right-radius: 0;
+}
+
 .resourceLocator {
-	display: flex;
-	flex-wrap: wrap;
+	display: inline-flex;
+	flex-wrap: nowrap;
+	width: 100%;
 	position: relative;
 
 	--input-issues-width: 28px;
+	--input-override-width: 30px;
 
 	.inputContainer {
 		display: flex;
@@ -38,6 +65,10 @@ $--mode-selector-width: 92px;
 
 		> div {
 			width: 100%;
+
+			> div {
+				display: flex;
+			}
 		}
 	}
 
@@ -52,13 +83,19 @@ $--mode-selector-width: 92px;
 		border-radius: var(--border-radius-base);
 	}
 
+	.backgroundOverride {
+		right: var(--input-override-width);
+	}
+
 	&.multipleModes {
 		.inputContainer {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - $--mode-selector-width);
+			width: calc(100% - $--mode-selector-width);
 			flex-grow: 1;
+		}
 
+		.inputContainerInputCorners {
 			input {
 				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
 			}
