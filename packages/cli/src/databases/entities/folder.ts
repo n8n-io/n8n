@@ -7,9 +7,9 @@ import { TagEntity } from './tag-entity';
 
 @Entity()
 export class Folder extends WithTimestampsAndStringId {
-	@Column({ length: 36 })
+	@Column({ length: 128 })
 	@IsString({ message: 'Folder name must be of type string.' })
-	@Length(1, 36, { message: 'Folder name must be $constraint1 to $constraint2 characters long.' })
+	@Length(1, 128, { message: 'Folder name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
 	@ManyToOne(() => Folder, { nullable: true })

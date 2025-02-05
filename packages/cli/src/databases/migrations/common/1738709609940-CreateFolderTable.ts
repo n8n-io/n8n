@@ -10,7 +10,7 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 		await createTable('folder')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
-				column('name').varchar(36).notNull,
+				column('name').varchar(128).notNull,
 				column('parentId').varchar(36).default(null),
 				column('projectId').varchar(36).notNull,
 			)
