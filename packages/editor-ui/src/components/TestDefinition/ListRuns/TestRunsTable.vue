@@ -40,7 +40,7 @@ const metrics = computed(() => {
 	}, [] as string[]);
 });
 
-const getErrorTooltipLinkRoute = computed(() => (row: TestRunRecord) => {
+const getErrorTooltipLinkRoute = (row: TestRunRecord) => {
 	if (row.errorCode === 'EVALUATION_WORKFLOW_NOT_FOUND') {
 		return {
 			name: VIEWS.TEST_DEFINITION_EDIT,
@@ -51,7 +51,7 @@ const getErrorTooltipLinkRoute = computed(() => (row: TestRunRecord) => {
 	}
 
 	return undefined;
-});
+};
 
 const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 	return [
@@ -75,7 +75,7 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
 				{ text: locale.baseText('testDefinition.listRuns.status.cancelled'), value: 'cancelled' },
 			],
-			errorRoute: getErrorTooltipLinkRoute.value,
+			errorRoute: getErrorTooltipLinkRoute,
 			filterMethod: (value: string, row: TestRunRecord) => row.status === value,
 		},
 		{

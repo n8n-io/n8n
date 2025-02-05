@@ -28,7 +28,7 @@ const filteredTestCases = computed(() => {
 	return testCases.value;
 });
 
-const getErrorTooltipLinkRoute = computed(() => (row: TestCaseExecutionRecord) => {
+const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	if (row.errorCode === 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW') {
 		return {
 			name: VIEWS.EXECUTION_PREVIEW,
@@ -85,7 +85,7 @@ const getErrorTooltipLinkRoute = computed(() => (row: TestCaseExecutionRecord) =
 	}
 
 	return undefined;
-});
+};
 
 const columns = computed(
 	(): Array<TestTableColumn<TestCaseExecutionRecord>> => [
@@ -119,7 +119,7 @@ const columns = computed(
 				{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
 			],
-			errorRoute: getErrorTooltipLinkRoute.value,
+			errorRoute: getErrorTooltipLinkRoute,
 			filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
