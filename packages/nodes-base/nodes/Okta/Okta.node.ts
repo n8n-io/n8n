@@ -16,6 +16,7 @@ export class Okta implements INodeType {
 		defaults: {
 			name: 'Okta',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -17,6 +17,7 @@ export class MicrosoftTeamsV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

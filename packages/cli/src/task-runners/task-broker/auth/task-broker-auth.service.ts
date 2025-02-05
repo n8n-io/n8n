@@ -8,7 +8,7 @@ import { CacheService } from '@/services/cache/cache.service';
 const GRANT_TOKEN_TTL = 15 * Time.seconds.toMilliseconds;
 
 @Service()
-export class TaskRunnerAuthService {
+export class TaskBrokerAuthService {
 	private readonly authToken = Buffer.from(this.globalConfig.taskRunners.authToken);
 
 	constructor(

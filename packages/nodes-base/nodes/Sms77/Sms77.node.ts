@@ -21,6 +21,7 @@ export class Sms77 implements INodeType {
 		defaults: {
 			name: 'seven',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

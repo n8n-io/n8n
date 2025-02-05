@@ -1,6 +1,11 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { CreateOrUpdateApiKeyRequestDto, ApiKey, ApiKeyWithRawValue } from '@n8n/api-types';
+import type {
+	CreateApiKeyRequestDto,
+	UpdateApiKeyRequestDto,
+	ApiKey,
+	ApiKeyWithRawValue,
+} from '@n8n/api-types';
 
 export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys');
@@ -8,7 +13,7 @@ export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 
 export async function createApiKey(
 	context: IRestApiContext,
-	payload: CreateOrUpdateApiKeyRequestDto,
+	payload: CreateApiKeyRequestDto,
 ): Promise<ApiKeyWithRawValue> {
 	return await makeRestApiRequest(context, 'POST', '/api-keys', payload);
 }
@@ -23,7 +28,7 @@ export async function deleteApiKey(
 export async function updateApiKey(
 	context: IRestApiContext,
 	id: string,
-	payload: CreateOrUpdateApiKeyRequestDto,
+	payload: UpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
 }

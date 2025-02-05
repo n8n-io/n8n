@@ -5,10 +5,10 @@ import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 import { retryUntil } from '@test-integration/retry-until';
 
-import { mockInstance } from '../../../../test/shared/mocking';
-import { TaskRunnerAuthService } from '../task-runner-auth.service';
+import { mockInstance } from '../../../../../test/shared/mocking';
+import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
-describe('TaskRunnerAuthService', () => {
+describe('TaskBrokerAuthService', () => {
 	config.set('taskRunners.authToken', 'random-secret');
 
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -25,7 +25,7 @@ describe('TaskRunnerAuthService', () => {
 	});
 	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskRunnerAuthService(globalConfig, cacheService, TTL);
+	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
