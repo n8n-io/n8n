@@ -6,6 +6,7 @@ FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION} AS builder
 # Build the application from source
 WORKDIR /src
 COPY . /src
+
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
 RUN pnpm build
 
@@ -58,6 +59,11 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
+# Install neo4j-driver, mailgun.js, and form-data locally
+
+
 ENV SHELL /bin/sh
+USER root
+RUN npm install -g neo4j-driver mailgun.js form-data 
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
