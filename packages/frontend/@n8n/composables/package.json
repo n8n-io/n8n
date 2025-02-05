@@ -17,7 +17,7 @@
 		"preview": "vite preview",
 		"typecheck": "vue-tsc --noEmit",
 		"test": "vitest run",
-		"test:dev": "vitest",
+		"test:dev": "vitest --silent=false",
 		"lint": "eslint src --ext .js,.ts,.vue --quiet",
 		"lintfix": "eslint src --ext .js,.ts,.vue --fix",
 		"format": "biome format --write . && prettier --write . --ignore-path ../../../.prettierignore",
