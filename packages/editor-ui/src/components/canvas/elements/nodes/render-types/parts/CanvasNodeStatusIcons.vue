@@ -26,7 +26,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 const isStale = computed(
 	() =>
 		render.value.type === CanvasNodeRenderType.Default &&
-		render.value.options.staleness === 'stale',
+		render.value.options.runDataStaleness === 'stale',
 );
 </script>
 

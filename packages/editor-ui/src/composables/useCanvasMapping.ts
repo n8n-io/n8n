@@ -97,7 +97,7 @@ export function useCanvasMapping({
 					labelSize: nodeOutputLabelSizeById.value[node.id],
 				},
 				tooltip: nodeTooltipById.value[node.id],
-				staleness: workflowsStore.isNodeStaleByName[node.name],
+				runDataStaleness: workflowsStore.runDataStalenessByName[node.name],
 			},
 		};
 	}
@@ -594,7 +594,7 @@ export function useCanvasMapping({
 
 			const sourceNodeName = connection.data?.source.node;
 
-			if (sourceNodeName && workflowsStore.isNodeStaleByName[sourceNodeName] !== undefined) {
+			if (sourceNodeName && workflowsStore.runDataStalenessByName[sourceNodeName] !== undefined) {
 				return 'warning';
 			}
 

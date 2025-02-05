@@ -47,6 +47,8 @@ export const enum CanvasNodeRenderType {
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
+export type CanvasNodeRunDataStaleness = 'stale' | 'upstream-stale';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
@@ -60,7 +62,7 @@ export type CanvasNodeDefaultRender = {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
 		tooltip?: string;
-		staleness?: 'stale' | 'upstream-stale';
+		runDataStaleness?: CanvasNodeRunDataStaleness;
 	}>;
 };
 

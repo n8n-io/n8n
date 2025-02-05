@@ -89,6 +89,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
+import { type CanvasNodeRunDataStaleness } from '@/types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -274,44 +275,36 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
-	const isNodeStaleByName = computed(() => {
-		const staleById: Record<string, 'stale' | 'upstream-stale' | undefined> = {};
-		const runData = workflowExecutionData.value?.data?.resultData.runData;
+	const runDataStalenessByName = computed(() => {
+		const stalenessByName: Record<string, CanvasNodeRunDataStaleness | undefined> = {};
 
 		// TODO: check feature flag
 
-		function markDownstreamStaleRecursively(node: INodeUi) {
-			for (const connections of Object.values(outgoingConnectionsByNodeName(node.name))) {
-				for (const conn of connections) {
-					for (const c of conn ?? []) {
-						staleById[c.node] = staleById[c.node] ?? 'upstream-stale';
+		function markDownstreamStaleRecursively(nodeName: string) {
+			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
+				for (const connections of inputConnections) {
+					for (const { node } of connections ?? []) {
+						stalenessByName[node] = stalenessByName[node] ?? 'upstream-stale';
 
-						const instance = nodesByName.value[c.node];
-
-						if (instance) {
-							markDownstreamStaleRecursively(instance);
-						}
+						markDownstreamStaleRecursively(node);
 					}
 				}
 			}
 		}
 
-		if (!runData) {
-			return {};
-		}
-
-		for (const node of workflow.value.nodes) {
-			const lastUpdate = nodeMetadata.value[node.name].parametersLastUpdatedAt;
-			const runs = runData[node.name];
-			const runAt = runs && runs.length > 0 ? runs[runs.length - 1]?.startTime : undefined;
+		for (const [nodeName, taskData] of Object.entries(
+			workflowExecutionData.value?.data?.resultData.runData ?? {},
+		)) {
+			const lastUpdate = getParametersLastUpdate(nodeName);
+			const runAt = taskData[0]?.startTime;
 
 			if (lastUpdate && runAt && lastUpdate > runAt) {
-				staleById[node.name] = 'stale';
-				markDownstreamStaleRecursively(node);
+				stalenessByName[nodeName] = 'stale';
+				markDownstreamStaleRecursively(nodeName);
 			}
 		}
 
-		return staleById;
+		return stalenessByName;
 	});
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
@@ -1694,7 +1687,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		isChatPanelOpen: computed(() => isChatPanelOpen.value),
 		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
-		isNodeStaleByName,
+		runDataStalenessByName,
 		setPanelOpen,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,

@@ -42,7 +42,7 @@ const runDataLabel = computed(() =>
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
 const plusType = computed(() =>
-	renderOptions.value.staleness !== undefined
+	renderOptions.value.runDataStaleness !== undefined
 		? 'warning'
 		: runDataTotal.value > 0
 			? 'success'
@@ -66,7 +66,7 @@ const outputLabelClasses = computed(() => ({
 const runDataLabelClasses = computed(() => ({
 	[$style.label]: true,
 	[$style.runDataLabel]: true,
-	[$style.stale]: renderOptions.value.staleness !== undefined,
+	[$style.stale]: renderOptions.value.runDataStaleness !== undefined,
 }));
 
 function onMouseEnter() {
