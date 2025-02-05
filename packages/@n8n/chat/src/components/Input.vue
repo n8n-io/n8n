@@ -131,40 +131,20 @@ function setInputValue(value: string) {
 	focusChatInput();
 }
 
-async function onSubmit(event: MouseEvent | KeyboardEvent) {
-	event.preventDefault();
-
-	if (isSubmitDisabled.value) {
-		return;
+function attachFiles() {
+	if (files.value) {
+		const filesToAttach = Array.from(files.value);
+		resetFileDialog();
+		files.value = null;
+		return filesToAttach;
 	}
 
-	const messageText = input.value;
-	input.value = '';
-	isSubmitting.value = true;
+	return [];
+}
 
-	if (chatStore.ws && waitingForChatResponse.value) {
-		const sentMessage: ChatMessage = {
-			id: uuidv4(),
-			text: messageText,
-			sender: 'user',
-			createdAt: new Date().toISOString(),
-		};
-
-		chatStore.messages.value.push(sentMessage);
-		chatStore.ws.send(
-			JSON.stringify({
-				sessionId: chatStore.currentSessionId.value,
-				action: 'sendMessage',
-				chatInput: messageText,
-			}),
-		);
-		chatStore.waitingForResponse.value = true;
-		waitingForChatResponse.value = false;
-		return;
-	}
-
+function setupWebsocketConnection() {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
-	// do not setup websocket as it would be handled by th integrated chat
+	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
 		const baseUrl = new URL(options.webhookUrl).origin;
 		chatStore.ws = new WebSocket(`${baseUrl}/chat?sessionId=${chatStore.currentSessionId.value}`);
@@ -181,11 +161,71 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 			chatStore.waitingForResponse.value = false;
 		};
 	}
+}
 
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+			reader.readAsDataURL(file); // Convert file to Base64
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+			reader.onerror = (error) => reject(error);
+		});
+	});
+
+	return await Promise.all(filePromises);
+}
+
+async function respondToChat(ws: WebSocket, messageText: string) {
+	const sentMessage: ChatMessage = {
+		id: uuidv4(),
+		text: messageText,
+		sender: 'user',
+		createdAt: new Date().toISOString(),
+		files: files.value ? attachFiles() : undefined,
+	};
+
+	chatStore.messages.value.push(sentMessage);
+	ws.send(
+		JSON.stringify({
+			sessionId: chatStore.currentSessionId.value,
+			action: 'sendMessage',
+			chatInput: messageText,
+			files: await processFiles(sentMessage.files),
+		}),
+	);
+	chatStore.waitingForResponse.value = true;
+	waitingForChatResponse.value = false;
+}
+
+async function onSubmit(event: MouseEvent | KeyboardEvent) {
+	event.preventDefault();
+
+	if (isSubmitDisabled.value) {
+		return;
+	}
+
+	const messageText = input.value;
+	input.value = '';
+	isSubmitting.value = true;
+
+	if (chatStore.ws && waitingForChatResponse.value) {
+		await respondToChat(chatStore.ws, messageText);
+		return;
+	}
+
+	setupWebsocketConnection();
+
+	await chatStore.sendMessage(messageText, attachFiles());
 	isSubmitting.value = false;
-	resetFileDialog();
-	files.value = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
@@ -269,7 +309,7 @@ function adjustHeight(event: Event) {
 				</button>
 			</div>
 		</div>
-		<div v-if="files?.length && !isSubmitting" class="chat-files">
+		<div v-if="files?.length && (!isSubmitting || waitingForChatResponse)" class="chat-files">
 			<ChatFile
 				v-for="file in files"
 				:key="file.name"
