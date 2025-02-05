@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
@@ -11,11 +12,14 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
+	const globalConfig = mock<GlobalConfig>({
+		nodes: { communityPackages: { allowToolUsage: false } },
+	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		convertNodeToAiTool: LoadNodesAndCredentials.prototype.convertNodeToAiTool,
 	});
 
-	const nodeTypes: NodeTypes = new NodeTypes(loadNodesAndCredentials);
+	const nodeTypes: NodeTypes = new NodeTypes(globalConfig, loadNodesAndCredentials);
 
 	const nonVersionedNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -24,10 +28,11 @@ describe('NodeTypes', () => {
 				name: 'n8n-nodes-base.nonVersioned',
 				usableAsTool: undefined,
 			}),
+			supplyData: undefined,
 		},
 	};
-	const v1Node = mock<INodeType>();
-	const v2Node = mock<INodeType>();
+	const v1Node = mock<INodeType>({ supplyData: undefined });
+	const v2Node = mock<INodeType>({ supplyData: undefined });
 	const versionedNode: LoadedClass<IVersionedNodeType> = {
 		sourcePath: '',
 		type: {
@@ -45,6 +50,17 @@ describe('NodeTypes', () => {
 			},
 		},
 	};
+	const toolNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: mock<INodeTypeDescription>({
+				name: 'n8n-nodes-base.toolNode',
+				displayName: 'TestNode',
+				properties: [],
+			}),
+			supplyData: jest.fn(),
+		},
+	};
 	const toolSupportingNode: LoadedClass<INodeType> = {
 		sourcePath: '',
 		type: {
@@ -54,6 +70,7 @@ describe('NodeTypes', () => {
 				usableAsTool: true,
 				properties: [],
 			}),
+			supplyData: undefined,
 		},
 	};
 	const declarativeNode: LoadedClass<INodeType> = {
@@ -70,20 +87,38 @@ describe('NodeTypes', () => {
 			trigger: undefined,
 			webhook: undefined,
 			methods: undefined,
+			supplyData: undefined,
+		},
+	};
+	const communityNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: mock<INodeTypeDescription>({
+				name: 'n8n-nodes-community.testNode',
+				displayName: 'TestNode',
+				usableAsTool: true,
+				properties: [],
+			}),
+			supplyData: undefined,
 		},
 	};
 
 	loadNodesAndCredentials.getNode.mockImplementation((fullNodeType) => {
 		const [packageName, nodeType] = fullNodeType.split('.');
-		if (nodeType === 'nonVersioned') return nonVersionedNode;
-		if (nodeType === 'versioned') return versionedNode;
-		if (nodeType === 'testNode') return toolSupportingNode;
-		if (nodeType === 'declarativeNode') return declarativeNode;
+		if (packageName === 'n8n-nodes-base') {
+			if (nodeType === 'nonVersioned') return nonVersionedNode;
+			if (nodeType === 'versioned') return versionedNode;
+			if (nodeType === 'testNode') return toolSupportingNode;
+			if (nodeType === 'declarativeNode') return declarativeNode;
+			if (nodeType === 'toolNode') return toolNode;
+		} else if (fullNodeType === 'n8n-nodes-community.testNode') return communityNode;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		globalConfig.nodes.communityPackages.allowToolUsage = false;
+		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
 	describe('getByName', () => {
@@ -120,6 +155,29 @@ describe('NodeTypes', () => {
 			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.nonVersionedTool')).toThrow(
 				'Node cannot be used as a tool',
 			);
+		});
+
+		it('should throw when a node-type is requested as tool, but the original node is already a tool', () => {
+			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.toolNodeTool')).toThrow(
+				'Node already has a `supplyData` method',
+			);
+		});
+
+		it('should throw when a node-type is requested as tool, but is a community package', () => {
+			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool')).toThrow(
+				'Unrecognized node type: n8n-nodes-community.testNodeTool',
+			);
+		});
+
+		it('should throw when a node-type is requested as tool, but is a community package', () => {
+			globalConfig.nodes.communityPackages.allowToolUsage = true;
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.testNodeTool');
+			expect(result).not.toEqual(toolSupportingNode.type);
+			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');
+			expect(result.description.displayName).toEqual('TestNode Tool');
+			expect(result.description.codex?.categories).toContain('AI');
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual(['ai_tool']);
 		});
 
 		it('should return the tool node-type when requested as tool', () => {
@@ -184,7 +242,6 @@ describe('NodeTypes', () => {
 
 	describe('getNodeTypeDescriptions', () => {
 		it('should return descriptions for valid node types', () => {
-			const nodeTypes = new NodeTypes(loadNodesAndCredentials);
 			const result = nodeTypes.getNodeTypeDescriptions([
 				{ name: 'n8n-nodes-base.nonVersioned', version: 1 },
 			]);
@@ -194,7 +251,6 @@ describe('NodeTypes', () => {
 		});
 
 		it('should throw error for invalid node type', () => {
-			const nodeTypes = new NodeTypes(loadNodesAndCredentials);
 			expect(() =>
 				nodeTypes.getNodeTypeDescriptions([{ name: 'n8n-nodes-base.nonExistent', version: 1 }]),
 			).toThrow('Unrecognized node type: n8n-nodes-base.nonExistent');
