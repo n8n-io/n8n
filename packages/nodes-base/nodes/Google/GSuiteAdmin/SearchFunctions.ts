@@ -68,3 +68,34 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 
 	return { results };
 }
+
+export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+	const qs: IDataObject = {
+		customerId: 'my_customer',
+	};
+
+	// Perform the API request to list all ChromeOS devices
+	const responseData = await googleApiRequestAllItems.call(
+		this,
+		'chromeosdevices',
+		'GET',
+		'/directory/v1/customer/my_customer/devices/chromeos',
+		{},
+		qs,
+	);
+
+	// Handle cases where no devices are found
+	if (!responseData || responseData.length === 0) {
+		return { results: [] };
+	}
+
+	// Map the API response
+	const results: INodeListSearchItems[] = responseData.map(
+		(device: { deviceId?: string; serialNumber?: string }) => ({
+			name: device.serialNumber || 'Unknown Device',
+			value: device.deviceId,
+		}),
+	);
+
+	return { results };
+}

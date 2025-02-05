@@ -46,9 +46,9 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Device ID',
+		displayName: 'Device',
 		name: 'deviceId',
-		type: 'string',
+		type: 'resourceLocator',
 		required: true,
 		displayOptions: {
 			show: {
@@ -56,8 +56,28 @@ export const deviceFields: INodeProperties[] = [
 				resource: ['device'],
 			},
 		},
-		default: '',
-		placeholder: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the device you want to retrieve',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchDevices',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'deviceId',
+				type: 'string',
+				hint: 'Enter the device id',
+				placeholder: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                               device:getAll                                */
