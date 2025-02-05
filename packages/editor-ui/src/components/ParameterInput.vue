@@ -65,6 +65,7 @@ import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-des
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
+import { useElementSize } from '@vueuse/core';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -90,6 +91,7 @@ type Props = {
 	hideIssues?: boolean;
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
+	canBeOverridden?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -421,17 +423,23 @@ const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
 	return remoteParameterOptions.value;
 });
 
+const isSwitch = computed(
+	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
+);
+
+const isTextarea = computed(
+	() => props.parameter.type === 'string' && editorRows.value !== undefined,
+);
+
 const parameterInputClasses = computed(() => {
-	const classes: { [c: string]: boolean } = {
+	const classes: Record<string, boolean> = {
 		droppable: props.droppable,
 		activeDrop: props.activeDrop,
 	};
 
-	const rows = editorRows.value;
-	const isTextarea = props.parameter.type === 'string' && rows !== undefined;
-	const isSwitch = props.parameter.type === 'boolean' && !isModelValueExpression.value;
-
-	if (!isTextarea && !isSwitch) {
+	if (isSwitch.value) {
+		classes['parameter-switch'] = true;
+	} else {
 		classes['parameter-value-container'] = true;
 	}
 
@@ -722,6 +730,15 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
+function selectInput() {
+	const inputRef = inputField.value;
+	if (inputRef) {
+		if ('select' in inputRef) {
+			inputRef.select();
+		}
+	}
+}
+
 async function setFocus() {
 	if (['json'].includes(props.parameter.type) && getArgument('alwaysOpenEditWindow')) {
 		displayEditDialog();
@@ -976,6 +993,36 @@ onMounted(() => {
 	});
 });
 
+const { height } = useElementSize(wrapper);
+
+const isSingleLineInput = computed(() => {
+	if (isTextarea.value && !isModelValueExpression.value) {
+		return false;
+	}
+
+	/**
+	 * There is an awkward edge case here with text boxes that automatically
+	 * adjust their row count based on their content:
+	 *
+	 * If we move the overrideButton to the options row due to going multiline,
+	 * the text area gains more width and might return to single line.
+	 * This then causes the overrideButton to move inline, creating a loop which results in flickering UI.
+	 *
+	 * To avoid this, we treat 2 rows of input as single line if we were already single line.
+	 */
+	if (isSingleLineInput.value) {
+		return height.value <= 70;
+	}
+
+	return height.value <= 35;
+});
+
+defineExpose({
+	isSingleLineInput,
+	focusInput: async () => await setFocus(),
+	selectInput: () => selectInput(),
+});
+
 onBeforeUnmount(() => {
 	props.eventBus.off('optionSelected', optionSelected);
 });
@@ -1053,7 +1100,16 @@ onUpdated(async () => {
 			@update:model-value="expressionUpdated"
 		></ExpressionEditModal>
 
-		<div class="parameter-input ignore-key-press-canvas" :style="parameterInputWrapperStyle">
+		<div
+			:class="[
+				'parameter-input',
+				'ignore-key-press-canvas',
+				{
+					[$style.noRightCornersInput]: canBeOverridden,
+				},
+			]"
+			:style="parameterInputWrapperStyle"
+		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
@@ -1529,7 +1585,18 @@ onUpdated(async () => {
 				<InlineExpressionTip />
 			</div>
 		</div>
-
+		<div
+			v-if="$slots.overrideButton"
+			:class="[
+				$style.overrideButton,
+				{
+					[$style.overrideButtonStandalone]: isSwitch,
+					[$style.overrideButtonInline]: !isSwitch,
+				},
+			]"
+		>
+			<slot name="overrideButton" />
+		</div>
 		<ParameterIssues
 			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
 			:issues="getIssues"
@@ -1554,6 +1621,13 @@ onUpdated(async () => {
 .parameter-actions {
 	display: inline-flex;
 	align-items: center;
+}
+
+.parameter-switch {
+	display: inline-flex;
+	align-self: flex-start;
+	justify-items: center;
+	gap: var(--spacing-xs);
 }
 
 .parameter-input {
@@ -1729,5 +1803,27 @@ onUpdated(async () => {
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
+}
+
+.noRightCornersInput > * {
+	--input-border-bottom-right-radius: 0;
+	--input-border-top-right-radius: 0;
+}
+
+.overrideButton {
+	align-self: start;
+}
+
+.overrideButtonStandalone {
+	position: relative;
+	/* This is to balance for the extra margin on the switch */
+	top: -2px;
+}
+
+.overrideButtonInline {
+	> button {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
 }
 </style>
