@@ -80,6 +80,7 @@ onMounted(async () => {
 		// 1. Create a tag from the test name
 		await onSaveTest();
 		const tag = generateTagFromName(state.value.name.value);
+
 		const testTag = await createTag(tag);
 		state.value.tags.value = [testTag.id];
 		await onSaveTest();
@@ -137,7 +138,7 @@ async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
 
 async function createTag(tagName: string) {
 	try {
-		const newTag = await tagsStore.create(tagName);
+		const newTag = await tagsStore.create(tagName, { incrementExisting: true });
 		return newTag;
 	} catch (error) {
 		toast.showError(error, 'Error', error.message);
