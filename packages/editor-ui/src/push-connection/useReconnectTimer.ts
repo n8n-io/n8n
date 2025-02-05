@@ -1,10 +1,16 @@
 import { ref } from 'vue';
 
 type UseReconnectTimerOptions = {
+	/** Callback that an attempt should be made */
 	onAttempt: () => void;
+
+	/** Callback that a future attempt was scheduled */
 	onAttemptScheduled: (delay: number) => void;
 };
 
+/**
+ * A timer for exponential backoff reconnect attempts.
+ */
 export const useReconnectTimer = ({ onAttempt, onAttemptScheduled }: UseReconnectTimerOptions) => {
 	const initialReconnectDelay = 1000;
 	const maxReconnectDelay = 15_000;
