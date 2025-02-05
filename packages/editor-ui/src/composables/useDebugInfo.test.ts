@@ -49,7 +49,7 @@ vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore,
 }));
 
-vi.mock('n8n-design-system', () => ({
+vi.mock('@n8n/composables/useDeviceSupport', () => ({
 	useDeviceSupport: () => ({
 		isTouchDevice: false,
 		userAgent: 'Mozilla/5.0',
