@@ -103,6 +103,11 @@ defineExpose({
 			focus();
 		}
 	},
+	selectAll: () => {
+		editorRef.value?.dispatch({
+			selection: selection.value.extend(0, editorRef.value?.state.doc.length),
+		});
+	},
 });
 </script>
 
