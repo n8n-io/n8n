@@ -40,6 +40,12 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+	}),
+}));
+
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
