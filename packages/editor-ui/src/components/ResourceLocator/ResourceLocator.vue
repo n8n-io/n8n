@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ResourceLocatorRequestDto } from '@n8n/api-types';
-import type { IResourceLocatorResultExpanded } from '@/Interface';
+import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -928,7 +928,7 @@ function removeOverride() {
 			:parameter="parameter"
 			:path="path"
 			:is-read-only="isReadOnly"
-			@update="(x) => onInputChange(x.value?.toString())"
+			@update="(x: IUpdateInformation) => onInputChange(x.value?.toString())"
 		/>
 	</div>
 </template>
