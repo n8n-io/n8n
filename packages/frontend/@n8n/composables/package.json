@@ -1,5 +1,5 @@
 {
-	"name": "@n8n/frontend-composables",
+	"name": "@n8n/composables",
 	"type": "module",
 	"files": [
 		"dist"

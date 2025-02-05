@@ -44,7 +44,7 @@
     "vue-tsc": "catalog:frontend"
   },
   "dependencies": {
-    "@n8n/frontend-composables": "workspace:*",
+    "@n8n/composables": "workspace:*",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",

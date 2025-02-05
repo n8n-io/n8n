@@ -1,5 +1,5 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
-import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
 import { computed, unref } from 'vue';
 

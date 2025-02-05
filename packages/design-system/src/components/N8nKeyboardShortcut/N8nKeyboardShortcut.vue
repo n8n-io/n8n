@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { computed } from 'vue';
 
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
