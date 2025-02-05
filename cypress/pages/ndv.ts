@@ -151,6 +151,9 @@ export class NDV extends BasePage {
 		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
 		expressionExpanders: () => cy.getByTestId('expander'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
+		floatingNodes: () => cy.getByTestId('floating-node'),
+		floatingNodeByName: (name: string) =>
+			cy.getByTestId('floating-node').filter(`[data-node-name="${name}"]`),
 	};
 
 	actions = {
@@ -338,6 +341,9 @@ export class NDV extends BasePage {
 		},
 		dragMainPanelToRight: () => {
 			cy.drag('[data-test-id=panel-drag-button]', [1000, 0], { moveTwice: true });
+		},
+		clickFloatingNode: (name: string) => {
+			this.getters.floatingNodeByName(name).realHover().click({ force: true });
 		},
 	};
 }
