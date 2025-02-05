@@ -615,7 +615,7 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('runEntireWorkflow()', () => {
-		it.only('should invoke runWorkflow with expected arguments', async () => {
+		it('should invoke runWorkflow with expected arguments', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
