@@ -1,9 +1,18 @@
-import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	JoinColumn,
+	JoinTable,
+	ManyToMany,
+	ManyToOne,
+	OneToMany,
+} from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import { Project } from './project';
 import { TagEntity } from './tag-entity';
+import { type WorkflowEntity } from './workflow-entity';
 
 @Entity()
 export class Folder extends WithTimestampsAndStringId {
@@ -19,6 +28,9 @@ export class Folder extends WithTimestampsAndStringId {
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
+
+	@OneToMany('WorkflowEntity', 'folder')
+	workflows: WorkflowEntity[];
 
 	@ManyToMany(() => TagEntity)
 	@JoinTable({

@@ -15,7 +15,7 @@ import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/interfaces';
 
 import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
-import { Folder } from './folder';
+import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { WorkflowStatistics } from './workflow-statistics';
@@ -98,7 +98,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: 0 })
 	triggerCount: number;
 
-	@ManyToOne(() => Folder, {
+	@ManyToOne('Folder', 'workflows', {
 		nullable: true,
 		onDelete: 'SET NULL',
 	})
