@@ -437,20 +437,19 @@ export class GSuiteAdmin implements INodeType {
 						}
 
 						if (additionalFields.roles) {
-							const roles = (additionalFields.roles as IDataObject).rolesValues as IDataObject;
-
+							const roles = additionalFields.roles as string[];
 							body.roles = {
-								superAdmin: Boolean(roles.superAdmin),
-								groupsAdmin: Boolean(roles.groupsAdmin),
-								groupsReader: Boolean(roles.groupsReader),
-								groupsEditor: Boolean(roles.groupsEditor),
-								userManagement: Boolean(roles.userManagement),
-								helpDeskAdmin: Boolean(roles.helpDeskAdmin),
-								servicesAdmin: Boolean(roles.servicesAdmin),
-								inventoryReportingAdmin: Boolean(roles.inventoryReportingAdmin),
-								storageAdmin: Boolean(roles.storageAdmin),
-								directorySyncAdmin: Boolean(roles.directorySyncAdmin),
-								mobileAdmin: Boolean(roles.mobileAdmin),
+								superAdmin: roles.includes('superAdmin'),
+								groupsAdmin: roles.includes('groupsAdmin'),
+								groupsReader: roles.includes('groupsReader'),
+								groupsEditor: roles.includes('groupsEditor'),
+								userManagement: roles.includes('userManagement'),
+								helpDeskAdmin: roles.includes('helpDeskAdmin'),
+								servicesAdmin: roles.includes('servicesAdmin'),
+								inventoryReportingAdmin: roles.includes('inventoryReportingAdmin'),
+								storageAdmin: roles.includes('storageAdmin'),
+								directorySyncAdmin: roles.includes('directorySyncAdmin'),
+								mobileAdmin: roles.includes('mobileAdmin'),
 							};
 						}
 
@@ -725,20 +724,20 @@ export class GSuiteAdmin implements INodeType {
 						}
 
 						if (updateFields.roles) {
-							const roles = (updateFields.roles as IDataObject).rolesValues as IDataObject;
+							const roles = updateFields.roles as string[];
 
 							body.roles = {
-								superAdmin: Boolean(roles.superAdmin),
-								groupsAdmin: Boolean(roles.groupsAdmin),
-								groupsReader: Boolean(roles.groupsReader),
-								groupsEditor: Boolean(roles.groupsEditor),
-								userManagement: Boolean(roles.userManagement),
-								helpDeskAdmin: Boolean(roles.helpDeskAdmin),
-								servicesAdmin: Boolean(roles.servicesAdmin),
-								inventoryReportingAdmin: Boolean(roles.inventoryReportingAdmin),
-								storageAdmin: Boolean(roles.storageAdmin),
-								directorySyncAdmin: Boolean(roles.directorySyncAdmin),
-								mobileAdmin: Boolean(roles.mobileAdmin),
+								superAdmin: roles.includes('superAdmin'),
+								groupsAdmin: roles.includes('groupsAdmin'),
+								groupsReader: roles.includes('groupsReader'),
+								groupsEditor: roles.includes('groupsEditor'),
+								userManagement: roles.includes('userManagement'),
+								helpDeskAdmin: roles.includes('helpDeskAdmin'),
+								servicesAdmin: roles.includes('servicesAdmin'),
+								inventoryReportingAdmin: roles.includes('inventoryReportingAdmin'),
+								storageAdmin: roles.includes('storageAdmin'),
+								directorySyncAdmin: roles.includes('directorySyncAdmin'),
+								mobileAdmin: roles.includes('mobileAdmin'),
 							};
 						}
 
