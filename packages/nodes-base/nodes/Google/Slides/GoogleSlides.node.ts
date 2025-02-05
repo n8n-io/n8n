@@ -23,6 +23,7 @@ export class GoogleSlides implements INodeType {
 		defaults: {
 			name: 'Google Slides',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

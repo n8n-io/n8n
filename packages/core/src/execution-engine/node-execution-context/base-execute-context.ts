@@ -41,12 +41,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
-		protected readonly runExecutionData: IRunExecutionData,
+		readonly runExecutionData: IRunExecutionData,
 		runIndex: number,
-		protected readonly connectionInputData: INodeExecutionData[],
-		protected readonly inputData: ITaskDataConnections,
-		protected readonly executeData: IExecuteData,
-		protected readonly abortSignal?: AbortSignal,
+		readonly connectionInputData: INodeExecutionData[],
+		readonly inputData: ITaskDataConnections,
+		readonly executeData: IExecuteData,
+		readonly abortSignal?: AbortSignal,
 	) {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
 	}

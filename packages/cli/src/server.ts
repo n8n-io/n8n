@@ -138,6 +138,7 @@ export class Server extends AbstractServer {
 		if (!this.globalConfig.tags.disabled) {
 			await import('@/controllers/tags.controller');
 		}
+
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------

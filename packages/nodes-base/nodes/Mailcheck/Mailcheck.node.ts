@@ -21,6 +21,7 @@ export class Mailcheck implements INodeType {
 		defaults: {
 			name: 'Mailcheck',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

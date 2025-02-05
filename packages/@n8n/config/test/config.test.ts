@@ -107,6 +107,9 @@ describe('GlobalConfig', () => {
 				maxFileSizeInKB: 10240,
 			},
 		},
+		externalHooks: {
+			files: [],
+		},
 		externalSecrets: {
 			preferGet: false,
 			updateInterval: 300,
@@ -298,6 +301,10 @@ describe('GlobalConfig', () => {
 		},
 		tags: {
 			disabled: false,
+		},
+		partialExecutions: {
+			version: 1,
+			enforce: false,
 		},
 	};
 

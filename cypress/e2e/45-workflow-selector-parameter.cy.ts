@@ -104,7 +104,10 @@ describe('Workflow Selector Parameter', () => {
 			expect(interception.request.body).to.have.property('name').that.includes('Sub-Workflow');
 			expect(interception.request.body.nodes).to.be.an('array');
 			expect(interception.request.body.nodes).to.have.length(2);
-			expect(interception.request.body.nodes[0]).to.have.property('name', 'Workflow Input Trigger');
+			expect(interception.request.body.nodes[0]).to.have.property(
+				'name',
+				'When Executed by Another Workflow',
+			);
 			expect(interception.request.body.nodes[1]).to.have.property(
 				'name',
 				'Replace me with your logic',

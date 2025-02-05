@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
+import { AssertionError } from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
@@ -105,5 +106,16 @@ describe('Credentials', () => {
 			expect(decryptedData.username).toBe('testuser');
 			expect(decryptedData.password).toBe('testpass');
 		});
+	});
+
+	describe('setData', () => {
+		test.each<{}>([[123], [null], [undefined]])(
+			'should throw an AssertionError when data is %s',
+			(data) => {
+				const credentials = new Credentials<{}>(nodeCredentials, credentialType);
+
+				expect(() => credentials.setData(data)).toThrow(AssertionError);
+			},
+		);
 	});
 });

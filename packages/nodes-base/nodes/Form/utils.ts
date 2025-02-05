@@ -50,6 +50,10 @@ export function sanitizeHtml(text: string) {
 			'pre',
 			'span',
 			'br',
+			'ul',
+			'ol',
+			'li',
+			'p',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -167,6 +171,11 @@ export function prepareFormData({
 		} else if (fieldType === 'html') {
 			input.isHtml = true;
 			input.html = field.html as string;
+		} else if (fieldType === 'hiddenField') {
+			input.isHidden = true;
+			input.hiddenName = field.fieldName as string;
+			input.hiddenValue =
+				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
@@ -178,7 +187,7 @@ export function prepareFormData({
 	return formData;
 }
 
-const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
+const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
@@ -272,6 +281,13 @@ export async function prepareFormReturnItem(
 
 		if (value === null) {
 			returnItem.json[field.fieldLabel] = null;
+			continue;
+		}
+
+		if (field.fieldType === 'html') {
+			if (field.elementName) {
+				returnItem.json[field.elementName as string] = value;
+			}
 			continue;
 		}
 
@@ -432,12 +448,15 @@ export async function formWebhook(
 			if (field.fieldType === 'html') {
 				field.html = sanitizeHtml(field.html as string);
 			}
+			if (field.fieldType === 'hiddenField') {
+				field.fieldLabel = field.fieldName as string;
+			}
 			return field;
 		},
 	);
 	const method = context.getRequestObject().method;
 
-	checkResponseModeConfiguration(context);
+	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {

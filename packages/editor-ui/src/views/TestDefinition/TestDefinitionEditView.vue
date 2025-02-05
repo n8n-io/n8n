@@ -14,6 +14,8 @@ import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/root.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IPinData } from 'n8n-workflow';
@@ -30,6 +32,7 @@ const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
 
@@ -52,7 +55,6 @@ const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 const appliedTheme = computed(() => uiStore.appliedTheme);
-
 const workflowName = computed(() => workflowStore.workflow.name);
 const hasRuns = computed(() => runs.value.length > 0);
 const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(testId.value) ?? []);
@@ -120,6 +122,18 @@ async function onSaveTest() {
 				params: { testId: savedTest.id },
 			});
 			testDefinitionStore.updateRunFieldIssues(savedTest.id);
+
+			telemetry.track(
+				'User created test',
+				{
+					test_id: savedTest.id,
+					workflow_id: currentWorkflowId.value,
+					session_id: useRootStore().pushRef,
+				},
+				{
+					withPostHog: true,
+				},
+			);
 		}
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));

@@ -50,6 +50,7 @@ export class Odoo implements INodeType {
 		defaults: {
 			name: 'Odoo',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

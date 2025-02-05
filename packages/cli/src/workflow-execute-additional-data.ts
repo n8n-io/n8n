@@ -38,7 +38,6 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getWorkflowHooksIntegrated } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExternalHooks } from '@/external-hooks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -182,9 +181,6 @@ async function startExecution(
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
 ): Promise<ExecuteWorkflowData> {
-	const externalHooks = Container.get(ExternalHooks);
-	await externalHooks.init();
-
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -305,8 +301,6 @@ async function startExecution(
 			workflow,
 		);
 	}
-
-	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	if (data.finished === true || data.status === 'waiting') {

@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "scanId": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        },
+        "result": {
+            "type": "string"
+        },
+        "api": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    }
+}

@@ -16,6 +16,7 @@ export class GoogleBusinessProfile implements INodeType {
 		defaults: {
 			name: 'Google Business Profile',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		hints: [

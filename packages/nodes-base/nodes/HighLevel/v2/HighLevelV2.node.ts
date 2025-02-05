@@ -62,6 +62,7 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'HighLevel',
 	},
+	usableAsTool: true,
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	credentials: [
