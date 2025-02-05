@@ -309,6 +309,20 @@ watch(
 );
 
 watch(
+	() => filtersModel.value.setupNeeded,
+	() => {
+		sendFiltersTelemetry('setupNeeded');
+	},
+);
+
+watch(
+	() => filtersModel.value.incomplete,
+	() => {
+		sendFiltersTelemetry('incomplete');
+	},
+);
+
+watch(
 	() => sortBy.value,
 	(newValue) => {
 		emit('sort', newValue);

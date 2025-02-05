@@ -11,9 +11,14 @@ import type {
 
 import { WorkflowToolService } from './utils/WorkflowToolService';
 
+type ISupplyDataFunctionsWithRunIndex = ISupplyDataFunctions & { runIndex: number };
+
 // Mock ISupplyDataFunctions interface
-function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
+function createMockContext(
+	overrides?: Partial<ISupplyDataFunctions>,
+): ISupplyDataFunctionsWithRunIndex {
 	return {
+		runIndex: 0,
 		getNodeParameter: jest.fn(),
 		getWorkflowDataProxy: jest.fn(),
 		getNode: jest.fn(),
@@ -35,11 +40,11 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 			warn: jest.fn(),
 		},
 		...overrides,
-	} as ISupplyDataFunctions;
+	} as ISupplyDataFunctionsWithRunIndex;
 }
 
 describe('WorkflowTool::WorkflowToolService', () => {
-	let context: ISupplyDataFunctions;
+	let context: ISupplyDataFunctionsWithRunIndex;
 	let service: WorkflowToolService;
 
 	beforeEach(() => {
@@ -93,6 +98,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify(TEST_RESPONSE, null, 2));
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.runIndex).toBe(1);
 		});
 
 		it('should handle errors during tool execution', async () => {

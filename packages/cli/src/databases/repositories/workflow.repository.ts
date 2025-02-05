@@ -158,6 +158,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			findManyOptions.order = { updatedAt: 'ASC' };
 		}
 
+		if (options.sortBy) {
+			const [column, order] = options.sortBy.split(':');
+			findManyOptions.order = { [column]: order };
+		}
+
 		if (relations.length > 0) {
 			findManyOptions.relations = relations;
 		}
