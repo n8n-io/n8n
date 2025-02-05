@@ -1,6 +1,6 @@
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/frontend-composables';
 import type { WorkflowSettings } from 'n8n-workflow';
 
 type DebugInfo = {

@@ -1,16 +1,9 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "@n8n/frontend-typescript-config",
 	"compilerOptions": {
+		"baseUrl": ".",
 		"rootDirs": [".", "../design-system/src", "../@n8n/chat/src"],
 		"outDir": "dist",
-		"target": "esnext",
-		"module": "esnext",
-		"allowJs": true,
-		"importHelpers": true,
-		"incremental": false,
-		"allowSyntheticDefaultImports": true,
-		"resolveJsonModule": true,
-		"baseUrl": ".",
 		"types": [
 			"vitest/globals",
 			"unplugin-icons/types/vue",
@@ -18,12 +11,11 @@
 		],
 		"paths": {
 			"@/*": ["./src/*"],
-			"n8n-design-system": ["../design-system/src/main.ts"],
-			"n8n-design-system/*": ["../design-system/src/*"],
+			"n8n-design-system*": ["../design-system/src*"],
+			"@n8n/frontend-composables*": ["../frontend/composables/src*"],
 			"@n8n/chat/*": ["../@n8n/chat/src/*"],
 			"@n8n/api-types*": ["../@n8n/api-types/src*"]
 		},
-		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},

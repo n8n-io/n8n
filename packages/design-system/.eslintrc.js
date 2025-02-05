@@ -1,13 +1,9 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const { createFrontendEslintConfig } = require('@n8n/frontend-eslint-config');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
-	extends: ['@n8n_io/eslint-config/frontend'],
-
-	...sharedOptions(__dirname, 'frontend'),
-
+module.exports = createFrontendEslintConfig(__dirname, {
 	rules: {
 		// TODO: Remove these
 		'import/no-default-export': 'warn',
@@ -44,4 +40,4 @@ module.exports = {
 			},
 		},
 	],
-};
+});
