@@ -283,19 +283,19 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:changeStatus                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Action',
+		displayName: 'Status',
 		name: 'action',
 		type: 'options',
 		required: true,
 		options: [
 			{
-				name: 'Enable',
+				name: 'Enabled',
 				value: 'reenable',
 				description: 'Re-enable a disabled chromebook',
 				action: 'Enable a device',
 			},
 			{
-				name: 'Disable',
+				name: 'Disabled',
 				value: 'disable',
 				description: 'Disable a chromebook',
 				action: 'Disable a device',
