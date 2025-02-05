@@ -141,6 +141,21 @@ export const deviceFields: INodeProperties[] = [
 		description: 'What subset of fields to fetch for this device',
 	},
 	{
+		displayName: 'Include Children',
+		name: 'includeChildOrgunits',
+		type: 'boolean',
+		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'Include devices from organizational units below your specified organizational unit',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['device'],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -163,15 +178,6 @@ export const deviceFields: INodeProperties[] = [
 				default: [],
 				description:
 					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Include Children',
-				name: 'includeChildOrgunits',
-				type: 'boolean',
-				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description:
-					'Include devices from organizational units below your specified organizational unit',
 			},
 			{
 				displayName: 'Order By',

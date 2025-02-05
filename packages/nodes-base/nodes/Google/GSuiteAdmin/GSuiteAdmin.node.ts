@@ -806,36 +806,28 @@ export class GSuiteAdmin implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const output = this.getNodeParameter('projection', 1);
-
+						const includeChildren = this.getNodeParameter('includeChildOrgunits', i);
 						const options = this.getNodeParameter('options', 2);
 
 						qs.projection = output;
 						Object.assign(qs, options);
 
+						qs.includeChildOrgunits = includeChildren;
 						if (qs.customer === undefined) {
 							qs.customer = 'my_customer';
 						}
 
-						if (returnAll) {
-							responseData = await googleApiRequestAllItems.call(
-								this,
-								'chromeosdevices',
-								'GET',
-								`/directory/v1/customer/${qs.customer}/devices/chromeos/`,
-								{},
-								qs,
-							);
-						} else {
+						if (!returnAll) {
 							qs.maxResults = this.getNodeParameter('limit', i);
-
-							responseData = await googleApiRequest.call(
-								this,
-								'GET',
-								`/directory/v1/customer/${qs.customer}/devices/chromeos/`,
-								{},
-								qs,
-							);
 						}
+
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/directory/v1/customer/${qs.customer}/devices/chromeos/`,
+							{},
+							qs,
+						);
 						if (!responseData || responseData.length === 0) {
 							return [this.helpers.returnJsonArray({})];
 						}

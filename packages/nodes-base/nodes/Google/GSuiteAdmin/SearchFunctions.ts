@@ -5,7 +5,7 @@ import type {
 	INodeListSearchItems,
 } from 'n8n-workflow';
 
-import { googleApiRequestAllItems } from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const qs: IDataObject = {
@@ -75,11 +75,10 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 	};
 
 	// Perform the API request to list all ChromeOS devices
-	const responseData = await googleApiRequestAllItems.call(
+	const responseData = await googleApiRequest.call(
 		this,
-		'chromeosdevices',
 		'GET',
-		'/directory/v1/customer/my_customer/devices/chromeos',
+		'/directory/v1/customer/my_customer/devices/chromeos/',
 		{},
 		qs,
 	);
