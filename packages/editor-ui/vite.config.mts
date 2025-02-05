@@ -37,8 +37,8 @@ const alias = [
 		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
 	},
 	{
-		find: /^@n8n\/composables$/,
-		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'composables', 'src', 'index.ts'),
+		find: /^@n8n\/composables(.+)$/,
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
