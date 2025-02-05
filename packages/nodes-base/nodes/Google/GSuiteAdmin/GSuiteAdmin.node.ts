@@ -845,7 +845,6 @@ export class GSuiteAdmin implements INodeType {
 
 					if (operation === 'update') {
 						const deviceId = this.getNodeParameter('deviceId', i) as string;
-						const projection = this.getNodeParameter('projection', 1);
 						const updateOptions = this.getNodeParameter('updateOptions', 1);
 
 						// Validate deviceId
@@ -860,7 +859,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${projection}`,
+							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}`,
 							qs,
 						);
 					}

@@ -113,7 +113,7 @@ export const deviceFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['get', 'getAll', 'update'],
+				operation: ['get', 'getAll'],
 				resource: ['device'],
 			},
 		},
