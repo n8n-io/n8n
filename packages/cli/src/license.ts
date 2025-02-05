@@ -227,7 +227,8 @@ export class License {
 	}
 
 	isSharingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+		return true;
 	}
 
 	isLogStreamingEnabled() {
@@ -259,7 +260,8 @@ export class License {
 	}
 
 	isAdvancedPermissionsLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
+		return true;
 	}
 
 	isDebugInEditorLicensed() {
@@ -267,7 +269,8 @@ export class License {
 	}
 
 	isBinaryDataS3Licensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+		return true;
 	}
 
 	isMultiMainLicensed() {
@@ -283,7 +286,8 @@ export class License {
 	}
 
 	isExternalSecretsEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+		return true;
 	}
 
 	isWorkflowHistoryLicensed() {
@@ -299,15 +303,18 @@ export class License {
 	}
 
 	isProjectRoleAdminLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_ADMIN);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_ADMIN);
+		return true;
 	}
 
 	isProjectRoleEditorLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_EDITOR);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_EDITOR);
+		return true;
 	}
 
 	isProjectRoleViewerLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
+		return true;
 	}
 
 	isCustomNpmRegistryEnabled() {
@@ -359,7 +366,7 @@ export class License {
 	}
 
 	getApiKeysPerUserLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT) ?? 1;
+		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT) ?? 100;
 	}
 
 	getTriggerLimit() {
