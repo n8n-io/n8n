@@ -888,7 +888,6 @@ export interface RootState {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
-	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;

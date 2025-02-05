@@ -89,7 +89,6 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	function onConnect() {
 		isConnectionOpen.value = true;
-		rootStore.setPushConnectionActive();
 
 		if (outgoingQueue.value.length) {
 			for (const message of outgoingQueue.value) {
@@ -101,7 +100,6 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	function onDisconnect() {
 		isConnectionOpen.value = false;
-		rootStore.setPushConnectionInactive();
 	}
 
 	function send(message: unknown) {

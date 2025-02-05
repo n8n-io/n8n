@@ -36,6 +36,7 @@ import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 const getDirtyNodeNames = (
 	runData: IRunData,
@@ -63,12 +64,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const toast = useToast();
 
 	const rootStore = useRootStore();
+	const pushConnectionStore = usePushConnectionStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (!rootStore.pushConnectionActive) {
+		if (!pushConnectionStore.isConnectionOpen) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
