@@ -289,6 +289,9 @@ export function aggregationToArray(
 	}
 }
 
+const getOriginalFieldValue = (field: string | number) =>
+	field === 'null' ? null : isNaN(Number(field)) ? field : Number(field);
+
 export function aggregationToArrayWithOriginalTypes(
 	aggregationResult: IDataObject,
 	fieldsToSplitBy: string[],
@@ -301,22 +304,19 @@ export function aggregationToArrayWithOriginalTypes(
 
 	if (isNext === undefined) {
 		for (const fieldName of Object.keys(aggregationResult)) {
-			const originalFieldValue =
-				fieldName === 'null' ? null : isNaN(Number(fieldName)) ? fieldName : Number(fieldName);
 			returnData.push({
 				...previousStage,
-				[splitFieldName]: originalFieldValue,
+				[splitFieldName]: getOriginalFieldValue(fieldName),
 				...(aggregationResult[fieldName] as IDataObject),
 			});
 		}
 		return returnData;
 	} else {
 		for (const key of Object.keys(aggregationResult)) {
-			const originalKeyValue = key === 'null' ? null : isNaN(Number(key)) ? key : Number(key);
 			returnData.push(
 				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
-					[splitFieldName]: originalKeyValue,
+					[splitFieldName]: getOriginalFieldValue(key),
 				}),
 			);
 		}
