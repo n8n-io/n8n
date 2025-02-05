@@ -43,7 +43,7 @@ export const useEventSourceClient = (options: UseEventSourceClientOptions) => {
 		// Ensure we disconnect any existing connection
 		disconnect();
 
-		eventSource.value = new EventSource(options.url);
+		eventSource.value = new EventSource(options.url, { withCredentials: true });
 		eventSource.value.addEventListener('open', onConnected);
 		eventSource.value.addEventListener('message', onMessage);
 		eventSource.value.addEventListener('close', onConnectionLost);

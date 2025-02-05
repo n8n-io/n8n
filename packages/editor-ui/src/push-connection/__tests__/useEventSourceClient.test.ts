@@ -46,7 +46,7 @@ describe('useEventSourceClient', () => {
 		const { connect } = useEventSourceClient({ url, onMessage });
 		connect();
 
-		expect(EventSource).toHaveBeenCalledWith(url);
+		expect(EventSource).toHaveBeenCalledWith(url, { withCredentials: true });
 	});
 
 	test('should update connection status on successful connection', () => {
