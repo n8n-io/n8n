@@ -120,7 +120,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			vi.mocked(pushConnectionStore).isConnectionOpen = false;
+			vi.mocked(pushConnectionStore).isConnected = false;
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
@@ -130,7 +130,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should successfully run a workflow', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
@@ -161,7 +161,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should handle workflow run failure', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow('Failed to run workflow');
@@ -171,7 +171,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should set waitingForWebhook if response indicates waiting', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			const mockResponse = { executionId: '123', waitingForWebhook: true };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
 
@@ -296,7 +296,7 @@ describe('useRunWorkflow({ router })', () => {
 			const mockExecutionResponse = { executionId: '123' };
 			const { runWorkflow } = useRunWorkflow({ router });
 
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
@@ -406,7 +406,7 @@ describe('useRunWorkflow({ router })', () => {
 			workflow.getParentNodes.mockReturnValue([]);
 
 			vi.mocked(settingsStore).partialExecutionVersion = 1;
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
@@ -437,7 +437,7 @@ describe('useRunWorkflow({ router })', () => {
 			workflow.getParentNodes.mockReturnValue([]);
 
 			vi.mocked(settingsStore).partialExecutionVersion = 2;
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
@@ -466,7 +466,7 @@ describe('useRunWorkflow({ router })', () => {
 			workflow.getParentNodes.mockReturnValue([]);
 
 			vi.mocked(settingsStore).partialExecutionVersion = 2;
-			vi.mocked(pushConnectionStore).isConnectionOpen = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);

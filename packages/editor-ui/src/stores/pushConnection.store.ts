@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { STORES } from '@/constants';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './root.store';
-import { WebSocketClient } from '@/push-connection/WebSocketClient';
-import { EventSourceClient } from '@/push-connection/EventSourceClient';
-import type { PushClientOptions } from '@/push-connection/AbstractPushClient';
+import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
+import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -18,10 +17,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const pushRef = computed(() => rootStore.pushRef);
-	const pushConnection = ref<WebSocketClient | EventSourceClient | null>(null);
+	/**
+	 * Queue of messages to be sent to the server. Messages are queued if
+	 * the connection is down.
+	 */
 	const outgoingQueue = ref<unknown[]>([]);
-	const isConnectionOpen = ref(false);
 
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
@@ -36,18 +36,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		};
 	};
 
-	/**
-	 * Close connection to server
-	 */
-	function pushDisconnect() {
-		pushConnection.value?.disconnect();
+	const useWebSockets = settingsStore.pushBackend === 'websocket';
 
-		isConnectionOpen.value = false;
-	}
-
-	function getConnectionUrl(useWebSockets: boolean) {
+	const getConnectionUrl = () => {
 		const restUrl = rootStore.restUrl;
-		const url = `/push?pushRef=${pushRef.value}`;
+		const url = `/push?pushRef=${rootStore.pushRef}`;
 
 		if (useWebSockets) {
 			const { protocol, host } = window.location;
@@ -58,62 +51,12 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		} else {
 			return `${restUrl}${url}`;
 		}
-	}
-
-	/**
-	 * Connect to server to receive data via a WebSocket or EventSource
-	 */
-	function pushConnect() {
-		// always close the previous connection so that we do not end up with multiple connections
-		pushDisconnect();
-
-		const useWebSockets = settingsStore.pushBackend === 'websocket';
-		const url = getConnectionUrl(useWebSockets);
-
-		const opts: PushClientOptions = {
-			url,
-			callbacks: {
-				onMessage: pushMessageReceived,
-				onConnect,
-				onDisconnect,
-			},
-		};
-
-		pushConnection.value = useWebSockets ? new WebSocketClient(opts) : new EventSourceClient(opts);
-		pushConnection.value.connect();
-	}
-
-	function serializeAndSend(message: unknown) {
-		pushConnection.value?.sendMessage(JSON.stringify(message));
-	}
-
-	function onConnect() {
-		isConnectionOpen.value = true;
-
-		if (outgoingQueue.value.length) {
-			for (const message of outgoingQueue.value) {
-				serializeAndSend(message);
-			}
-			outgoingQueue.value = [];
-		}
-	}
-
-	function onDisconnect() {
-		isConnectionOpen.value = false;
-	}
-
-	function send(message: unknown) {
-		if (!isConnectionOpen.value) {
-			outgoingQueue.value.push(message);
-			return;
-		}
-		serializeAndSend(message);
-	}
+	};
 
 	/**
 	 * Process a newly received message
 	 */
-	async function pushMessageReceived(data: unknown) {
+	async function onMessage(data: unknown) {
 		let receivedData: PushMessage;
 		try {
 			receivedData = JSON.parse(data as string);
@@ -124,19 +67,44 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
+	const url = getConnectionUrl();
+
+	const client = useWebSockets
+		? useWebSocketClient({ url, onMessage })
+		: useEventSourceClient({ url, onMessage });
+
+	function serializeAndSend(message: unknown) {
+		client.sendMessage(JSON.stringify(message));
+	}
+
+	watch(client.isConnected, (didConnect) => {
+		if (!didConnect) {
+			return;
+		}
+
+		// Send any buffered messages
+		if (outgoingQueue.value.length) {
+			for (const message of outgoingQueue.value) {
+				serializeAndSend(message);
+			}
+			outgoingQueue.value = [];
+		}
+	});
+
+	/** Removes all buffered messages from the sent queue */
 	const clearQueue = () => {
 		outgoingQueue.value = [];
 	};
 
+	const isConnected = computed(() => client.isConnected.value);
+
 	return {
-		pushRef,
-		pushSource: pushConnection,
-		isConnectionOpen,
+		isConnected,
 		onMessageReceivedHandlers,
 		addEventListener,
-		pushConnect,
-		pushDisconnect,
-		send,
+		pushConnect: client.connect,
+		pushDisconnect: client.disconnect,
+		send: client.sendMessage,
 		clearQueue,
 	};
 });

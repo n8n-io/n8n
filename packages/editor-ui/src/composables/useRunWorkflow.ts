@@ -70,7 +70,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const executionsStore = useExecutionsStore();
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (!pushConnectionStore.isConnectionOpen) {
+		if (!pushConnectionStore.isConnected) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));

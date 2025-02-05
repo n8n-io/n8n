@@ -8,7 +8,7 @@ const i18n = useI18n();
 
 <template>
 	<span>
-		<div v-if="!pushConnectionStore.isConnectionOpen" class="push-connection-lost primary-color">
+		<div v-if="!pushConnectionStore.isConnected" class="push-connection-lost primary-color">
 			<n8n-tooltip placement="bottom-end">
 				<template #content>
 					<div v-n8n-html="i18n.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
