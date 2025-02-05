@@ -406,6 +406,13 @@ export class GSuiteAdmin implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
+						if (!username) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The parameter ‘Username’ is empty. Please fill in the ‘Username’ parameter to create the user.',
+								{ itemIndex: i },
+							);
+						}
 						const body: IDataObject = {
 							name: {
 								familyName: lastName,
@@ -880,6 +887,9 @@ export class GSuiteAdmin implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
+				if (error instanceof NodeOperationError) {
+					throw error;
+				}
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({
