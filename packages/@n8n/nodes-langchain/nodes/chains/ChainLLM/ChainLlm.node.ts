@@ -88,6 +88,11 @@ async function getImageMessage(
 		NodeConnectionType.AiLanguageModel,
 		0,
 	)) as BaseLanguageModel;
+	if (!binaryData.mimeType?.startsWith('image/'))
+		throw new NodeOperationError(
+			context.getNode(),
+			`${binaryData.mimeType} is not a supported type of binary data. Only images are supported.`,
+		);
 	const dataURI = `data:${binaryData.mimeType};base64,${bufferData.toString('base64')}`;
 
 	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
