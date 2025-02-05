@@ -8,6 +8,17 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { importCurlEventBus } from '@/event-bus';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { assert } from '@/utils/assert';
+import type { CurlToJSONResponse } from '@/Interface';
+
+type NestedObject = Record<string, unknown>;
+
+// Helper type to create flattened key-value pairs
+type Flatten<T extends NestedObject, Prefix extends string = ''> = {
+	[K in keyof T]: T[K] extends NestedObject
+		? Flatten<T[K], `${Prefix}${Extract<K, string>}.`>
+		: { [key in `${Prefix}${Extract<K, string>}`]: T[K] };
+}[keyof T];
 
 interface Parameter {
 	parameterType?: string;
@@ -15,7 +26,7 @@ interface Parameter {
 	value: string;
 }
 
-interface HttpNodeParameters {
+interface HttpNodeParameters extends NestedObject {
 	url?: string;
 	method: string;
 	sendBody?: boolean;
@@ -110,7 +121,10 @@ const isBinaryRequest = (curlJson: JSONOutput): boolean => {
 	return false;
 };
 
-const toKeyValueArray = ([key, value]: string[]) => ({ name: key, value });
+const toKeyValueArray = ([key, value]: [string, unknown]) => ({
+	name: key,
+	value: value?.toString() ?? '',
+});
 
 const extractHeaders = (headers: JSONOutput['headers'] = {}): HttpNodeHeaders => {
 	const emptyHeaders = !Object.keys(headers).length;
@@ -166,13 +180,11 @@ const keyValueBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[
 };
 
 const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
+	if (!obj) return;
+
 	const regex = new RegExp(CONTENT_TYPE_KEY, 'gi');
 
-	const contentTypeKey = Object.keys(obj).find((key) => {
-		const group = Array.from(key.matchAll(regex));
-		if (group.length) return true;
-		return false;
-	});
+	const contentTypeKey = Object.keys(obj).find((key) => !!Array.from(key.matchAll(regex)).length);
 
 	if (!contentTypeKey) return;
 
@@ -205,16 +217,22 @@ const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => 
 	};
 };
 
-const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
-	Object.keys(obj).reduce((acc, k) => {
-		const pre = prefix.length ? prefix + '.' : '';
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
-		//@ts-ignore
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		else acc[pre + k] = obj[k];
-		return acc;
-	}, {});
+export const flattenObject = <T extends NestedObject>(obj: T, prefix: string = ''): Flatten<T> => {
+	const result: Partial<Record<string, unknown>> = {};
+
+	Object.keys(obj).forEach((key) => {
+		const value = obj[key];
+		const prefixedKey = prefix ? `${prefix}.${key}` : key;
+
+		if (value && typeof value === 'object' && !Array.isArray(value)) {
+			Object.assign(result, flattenObject(value as NestedObject, prefixedKey));
+		} else {
+			result[prefixedKey] = value;
+		}
+	});
+
+	return result as Flatten<T>;
+};
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
@@ -384,21 +402,22 @@ export function useImportCurlCommand(options?: {
 
 		try {
 			const parameters = flattenObject(toHttpNodeParameters(curlCommand));
-			if (parameters['parameters.url']) {
-				// Normalize placeholder values
-				parameters['parameters.url'] = parameters['parameters.url']
-					.replaceAll('%7B', '{')
-					.replaceAll('%7D', '}');
-			}
-
-			const url = parameters['parameters.url'];
+			assert(typeof parameters['parameters.url'] === 'string', 'parameters.url has to be string');
+			// Normalize placeholder values
+			const url: string = parameters['parameters.url']
+				.replaceAll('%7B', '{')
+				.replaceAll('%7D', '}');
 
 			const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
 				url.includes(`${p}://`),
 			);
 
 			if (!invalidProtocol) {
-				importCurlEventBus.emit('setHttpNodeParameters', parameters);
+				parameters['parameters.url'] = url;
+				importCurlEventBus.emit(
+					'setHttpNodeParameters',
+					parameters as unknown as CurlToJSONResponse,
+				);
 
 				options?.onImportSuccess?.();
 

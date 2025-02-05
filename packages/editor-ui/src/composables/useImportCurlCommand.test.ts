@@ -1,4 +1,4 @@
-import { toHttpNodeParameters } from '../useImportCurlCommand';
+import { toHttpNodeParameters } from '@/composables/useImportCurlCommand';
 
 describe('useImportCurlCommand', () => {
 	describe('toHttpNodeParameters', () => {
