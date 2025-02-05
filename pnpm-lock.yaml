@@ -146,6 +146,19 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@upstash/redis':
+        specifier: ^1.34.4
+        version: 1.34.4
+      '@upstash/vector':
+        specifier: ^1.2.0
+        version: 1.2.0
+      mailgun.js:
+        specifier: ^11.1.0
+        version: 11.1.0
+      neo4j-driver:
+        specifier: ^5.27.0
+        version: 5.27.0
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.0
@@ -470,7 +483,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(knkgly4tvsbdesqmuf53sm5qpe)
+        version: 0.3.24(arkjembjk7kak7cd252sqvnixu)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -6214,6 +6227,12 @@ packages:
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
 
+  '@upstash/redis@1.34.4':
+    resolution: {integrity: sha512-AZx2iD5s1Pu/KCrRA7KVCffu3NSoaYnNY7N9YI7aLAYhcJfsriQKTe+8OxQWJqGqFbrvm17Lyr9HFnDLvqNpfA==}
+
+  '@upstash/vector@1.2.0':
+    resolution: {integrity: sha512-70uyxuYdddpssgCEH3jEh5i29Lt9DhcJx4fvddv1B5x9ROHJacqW+JGMjbuzFfYBavJeu/uSxFdEa8l48ZKMkQ==}
+
   '@vitejs/plugin-legacy@6.0.0':
     resolution: {integrity: sha512-pWt9cWaGJAKYw+67VLpN8hSP+G+yAQnrf5Pqh/NzSDKFl/4KpxTtwb5OLQezHoZOxghahO/ha3IpvblBbX/t6A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
@@ -10130,6 +10149,10 @@ packages:
   magicast@0.3.5:
     resolution: {integrity: sha512-L0WhttDl+2BOsybvEOLK7fW3UA0OQ0IQ2d6Zl2x/a6vVRs3bAY0ECOSHHeL5jD+SbOpOCUEi0y1DgHEn9Qn1AQ==}
 
+  mailgun.js@11.1.0:
+    resolution: {integrity: sha512-pXYcQT3nU32gMjUjZpl2FdQN4Vv2iobqYiXqyyevk0vXTKQj8Or0ifLXLNAGqMHnymTjV0OphBpurkchvHsRAg==}
+    engines: {node: '>=18.0.0'}
+
   mailparser@3.6.7:
     resolution: {integrity: sha512-/3x8HW70DNehw+3vdOPKdlLuxOHoWcGB5jfx5vJ5XUbY9/2jUJbrrhda5Si8Dj/3w08U0y5uGAkqs5+SPTPKoA==}
 
@@ -10637,6 +10660,15 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  neo4j-driver-bolt-connection@5.27.0:
+    resolution: {integrity: sha512-TNKokHcZCkyeZbHLBB+CGciWvyLdAK6tBNFHg5zRMzheVFaJjjEhsHmjwhIA+wy+8ld4Oo0/qv/pyJNRpWAj3A==}
+
+  neo4j-driver-core@5.27.0:
+    resolution: {integrity: sha512-TXZLNjtLrySRyBPBiRkQ/Ewmt4PQG0rm/Q2ZPNPqxbq1S0UVd53PQ2N6jxKiWlkrlPfrVRd2DyE8M7X9MDXxZw==}
+
+  neo4j-driver@5.27.0:
+    resolution: {integrity: sha512-XCSGhQUxOzaJi+SBq/6kH9dpVZ6WTE9f8m2TxCKm2CySOSY21sZ/3n//FRWFM0X6a3sBFTOE2PNkZfxSj92G5w==}
 
   no-case@2.3.2:
     resolution: {integrity: sha512-rmTZ9kz+f3rCvK2TD1Ue/oZlns7OGoIWP4fc3llxxRXlOkHKoWPPWJOfFYpITabSow43QJbRIoHQXtt10VldyQ==}
@@ -16595,7 +16627,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(knkgly4tvsbdesqmuf53sm5qpe)':
+  '@langchain/community@0.3.24(arkjembjk7kak7cd252sqvnixu)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16634,6 +16666,8 @@ snapshots:
       '@smithy/signature-v4': 2.2.1
       '@smithy/util-utf8': 2.3.0
       '@supabase/supabase-js': 2.45.4
+      '@upstash/redis': 1.34.4
+      '@upstash/vector': 1.2.0
       '@xata.io/client': 0.28.4(typescript@5.7.2)
       cheerio: 1.0.0
       cohere-ai: 7.14.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(encoding@0.1.13)
@@ -16650,6 +16684,7 @@ snapshots:
       lodash: 4.17.21
       mammoth: 1.7.2
       mysql2: 3.11.0
+      neo4j-driver: 5.27.0
       pdf-parse: 1.1.1
       pg: 8.12.0
       playwright: 1.49.1
@@ -19273,6 +19308,12 @@ snapshots:
       - supports-color
 
   '@ungap/structured-clone@1.2.0': {}
+
+  '@upstash/redis@1.34.4':
+    dependencies:
+      crypto-js: 4.2.0
+
+  '@upstash/vector@1.2.0': {}
 
   '@vitejs/plugin-legacy@6.0.0(terser@5.16.1)(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))':
     dependencies:
@@ -24174,6 +24215,14 @@ snapshots:
       '@babel/types': 7.26.3
       source-map-js: 1.2.1
 
+  mailgun.js@11.1.0:
+    dependencies:
+      axios: 1.7.7
+      base-64: 1.0.0
+      url-join: 4.0.1
+    transitivePeerDependencies:
+      - debug
+
   mailparser@3.6.7:
     dependencies:
       encoding-japanese: 2.0.0
@@ -24903,6 +24952,20 @@ snapshots:
   negotiator@0.6.3: {}
 
   neo-async@2.6.2: {}
+
+  neo4j-driver-bolt-connection@5.27.0:
+    dependencies:
+      buffer: 6.0.3
+      neo4j-driver-core: 5.27.0
+      string_decoder: 1.3.0
+
+  neo4j-driver-core@5.27.0: {}
+
+  neo4j-driver@5.27.0:
+    dependencies:
+      neo4j-driver-bolt-connection: 5.27.0
+      neo4j-driver-core: 5.27.0
+      rxjs: 7.8.1
 
   no-case@2.3.2:
     dependencies:

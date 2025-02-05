@@ -98,5 +98,11 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch"
     }
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.4",
+    "@upstash/vector": "^1.2.0",
+    "mailgun.js": "^11.1.0",
+    "neo4j-driver": "^5.27.0"
   }
 }
