@@ -3,7 +3,7 @@ import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useDeviceSupport } from '@n8n/frontend-composables';
+import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
 import { useI18n } from '@/composables/useI18n';
 
 const canvasStore = useCanvasStore();

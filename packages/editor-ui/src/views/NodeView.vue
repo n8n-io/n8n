@@ -166,7 +166,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useDeviceSupport } from '@n8n/frontend-composables';
+import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';

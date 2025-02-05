@@ -1,8 +1,8 @@
 packages:
   - packages/*
-  - packages/frontend/**
   - packages/@n8n/*
   - packages/@n8n_io/*
+  - packages/frontend/**
   - cypress
 
 catalog:

@@ -13,7 +13,7 @@
 		],
 		"paths": {
 			"n8n-design-system*": ["./src*"],
-			"@n8n/frontend-composables*": ["../frontend/composables/src*"]
+			"@n8n/frontend-composables*": ["../frontend/@n8n/composables/src*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]

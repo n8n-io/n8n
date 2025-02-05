@@ -1271,7 +1271,7 @@ importers:
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
       '@n8n/frontend-composables':
         specifier: workspace:*
-        version: link:../frontend/composables
+        version: link:../frontend/@n8n/composables
       '@vueuse/core':
         specifier: '*'
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
@@ -1461,7 +1461,7 @@ importers:
         version: 1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
       '@n8n/frontend-composables':
         specifier: workspace:*
-        version: link:../frontend/composables
+        version: link:../frontend/@n8n/composables
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
@@ -1695,7 +1695,7 @@ importers:
         specifier: ^2.1.10
         version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
 
-  packages/frontend/composables:
+  packages/frontend/@n8n/composables:
     dependencies:
       vue:
         specifier: catalog:frontend
@@ -1703,13 +1703,13 @@ importers:
     devDependencies:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
-        version: link:../tooling/eslint-config
+        version: link:../../tooling/eslint-config
       '@n8n/frontend-typescript-config':
         specifier: workspace:*
-        version: link:../tooling/typescript-config
+        version: link:../../tooling/typescript-config
       '@n8n/frontend-vitest-config':
         specifier: workspace:*
-        version: link:../tooling/vitest-config
+        version: link:../../tooling/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.6.3
@@ -11925,10 +11925,6 @@ packages:
     resolution: {integrity: sha512-6K/gDlqgQscOlg9fSRpWstA8sYe8rbELsSTNpx+3kTrsVCzvSl0zIvRErM7fdl9ERWDsKnrLnwB+Ne89918XOg==}
     engines: {node: '>=10'}
 
-  resolve@1.22.3:
-    resolution: {integrity: sha512-P8ur/gp/AmbEzjr729bZnLjXK5Z+4P0zhIJgBgzqRih7hL7BOukHGtSTA3ACMY467GRFz3duQsi0bDZdR7DKdw==}
-    hasBin: true
-
   resolve@1.22.8:
     resolution: {integrity: sha512-oKWePCxqpd6FlLvGV1VU0x7bkPmmCNolxzjMf4NczoDnQcIWrAF+cPtZn5i6n+RfD2d9i0tzpKnG6Yk168yIyw==}
     hasBin: true
@@ -12096,11 +12092,6 @@ packages:
 
   selderee@0.11.0:
     resolution: {integrity: sha512-5TF+l7p4+OsnP8BCCvSyZiSPc4x4//p5uPwK8TCnVPJYRmU2aYKMpOXvw8zM5a5JvuuCGN1jmsMwuU2W02ukfA==}
-
-  semver@7.5.4:
-    resolution: {integrity: sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   semver@7.6.0:
     resolution: {integrity: sha512-EnwXhrlwXMk9gKu5/flx5sv/an57AkRplG3hTK68W7FRDN+k+OWBj65M7719OkA82XLBxrcX0KSHj+X5COhOVg==}
@@ -16952,7 +16943,7 @@ snapshots:
       lodash: 4.17.21
       minimatch: 3.0.8
       resolve: 1.22.8
-      semver: 7.5.4
+      semver: 7.6.0
       source-map: 0.6.1
       typescript: 5.7.2
     transitivePeerDependencies:
@@ -26164,7 +26155,7 @@ snapshots:
 
   rechoir@0.6.2:
     dependencies:
-      resolve: 1.22.3
+      resolve: 1.22.8
 
   redent@3.0.0:
     dependencies:
@@ -26332,12 +26323,6 @@ snapshots:
   resolve-from@5.0.0: {}
 
   resolve.exports@2.0.0: {}
-
-  resolve@1.22.3:
-    dependencies:
-      is-core-module: 2.13.1
-      path-parse: 1.0.7
-      supports-preserve-symlinks-flag: 1.0.0
 
   resolve@1.22.8:
     dependencies:
@@ -26540,10 +26525,6 @@ snapshots:
   selderee@0.11.0:
     dependencies:
       parseley: 0.12.1
-
-  semver@7.5.4:
-    dependencies:
-      lru-cache: 6.0.0
 
   semver@7.6.0:
     dependencies:

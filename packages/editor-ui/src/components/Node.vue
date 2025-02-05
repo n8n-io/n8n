@@ -47,7 +47,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { get } from 'lodash-es';
 import { N8nIconButton } from 'n8n-design-system';
-import { useDeviceSupport } from '@n8n/frontend-composables';
+import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
 
 type Props = {
 	name: string;

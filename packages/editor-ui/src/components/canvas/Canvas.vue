@@ -20,7 +20,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
-import { useDeviceSupport } from '@n8n/frontend-composables';
+import { useDeviceSupport } from '@n8n/frontend-composables/useDeviceSupport';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
