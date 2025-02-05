@@ -23,6 +23,7 @@ export class Line implements INodeType {
 		defaults: {
 			name: 'Line',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

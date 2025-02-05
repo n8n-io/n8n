@@ -47,12 +47,15 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
         uses: useblacksmith/setup-node@v5
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: pnpm
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

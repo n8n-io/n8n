@@ -24,6 +24,7 @@ export class Bitly implements INodeType {
 		defaults: {
 			name: 'Bitly',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

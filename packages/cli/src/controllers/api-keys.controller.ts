@@ -1,4 +1,4 @@
-import { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
+import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { RequestHandler } from 'express';
 
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
@@ -34,7 +34,7 @@ export class ApiKeysController {
 	async createAPIKey(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: CreateOrUpdateApiKeyRequestDto,
+		@Body { label, expiresAt }: CreateApiKeyRequestDto,
 	) {
 		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
 
@@ -43,7 +43,8 @@ export class ApiKeysController {
 		}
 
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			label: payload.label,
+			label,
+			expiresAt,
 		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
@@ -52,6 +53,7 @@ export class ApiKeysController {
 			...newApiKey,
 			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
 			rawApiKey: newApiKey.apiKey,
+			expiresAt,
 		};
 	}
 
@@ -84,10 +86,10 @@ export class ApiKeysController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') apiKeyId: string,
-		@Body payload: CreateOrUpdateApiKeyRequestDto,
+		@Body { label }: UpdateApiKeyRequestDto,
 	) {
 		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
-			label: payload.label,
+			label,
 		});
 
 		return { success: true };

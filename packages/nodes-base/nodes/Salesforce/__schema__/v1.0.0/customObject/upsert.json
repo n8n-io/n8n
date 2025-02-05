@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "boolean"
+        }
+    }
+}

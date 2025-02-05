@@ -22,6 +22,7 @@ export class Adalo implements INodeType {
 		defaults: {
 			name: 'Adalo',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

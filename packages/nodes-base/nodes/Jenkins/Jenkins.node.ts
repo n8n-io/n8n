@@ -33,6 +33,7 @@ export class Jenkins implements INodeType {
 		defaults: {
 			name: 'Jenkins',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
