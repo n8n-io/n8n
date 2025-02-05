@@ -6,6 +6,7 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
+	FROM_AI_AUTO_GENERATED_MARKER,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -525,3 +526,60 @@ export const userInInstanceRanOutOfFreeAiCredits = (runData: IRun): boolean => {
 
 	return false;
 };
+
+export type FromAICount = {
+	aiNodeCount: number;
+	aiToolCount: number;
+	fromAIOverrideCount: number;
+	fromAIExpressionCount: number;
+};
+
+export function resolveAIMetrics(nodes: INode[], nodeTypes: INodeTypes): FromAICount | {} {
+	const resolvedNodes = nodes
+		.map((x) => [x, nodeTypes.getByNameAndVersion(x.type, x.typeVersion)] as const)
+		.filter((x) => !!x[1]?.description);
+
+	const aiNodeCount = resolvedNodes.reduce(
+		(acc, x) => acc + Number(x[1].description.codex?.categories?.includes('AI')),
+		0,
+	);
+
+	if (aiNodeCount === 0) return {};
+
+	let fromAIOverrideCount = 0;
+	let fromAIExpressionCount = 0;
+
+	const tools = resolvedNodes.filter((node) =>
+		node[1].description.codex?.subcategories?.AI?.includes('Tools'),
+	);
+
+	for (const [node, _] of tools) {
+		// FlatMap to support values in resourceLocators
+		const values = Object.values(node.parameters).flatMap((param) => {
+			if (param && typeof param === 'object' && 'value' in param) param = param.value;
+			return typeof param === 'string' ? param : [];
+		});
+
+		// Note that we don't match the i in `fromAI` to support lower case i (though we miss fromai)
+		const overrides = values.reduce(
+			(acc, value) => acc + Number(value.startsWith(`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromA`)),
+			0,
+		);
+
+		fromAIOverrideCount += overrides;
+		// check for = to avoid scanning lengthy text fields
+		// this will re-count overrides
+		fromAIExpressionCount +=
+			values.reduce(
+				(acc, value) => acc + Number(value[0] === '=' && value.includes('$fromA', 2)),
+				0,
+			) - overrides;
+	}
+
+	return {
+		aiNodeCount,
+		aiToolCount: tools.length,
+		fromAIOverrideCount,
+		fromAIExpressionCount,
+	};
+}

@@ -28,6 +28,7 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

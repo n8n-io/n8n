@@ -33,6 +33,7 @@ export class Twist implements INodeType {
 		defaults: {
 			name: 'Twist',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -29,6 +29,7 @@ export class Iterable implements INodeType {
 		defaults: {
 			name: 'Iterable',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -56,6 +56,7 @@ export class GoogleChat implements INodeType {
 		defaults: {
 			name: 'Google Chat',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		webhooks: sendAndWaitWebhooksDescription,

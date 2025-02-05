@@ -42,6 +42,7 @@ export class ServiceNow implements INodeType {
 		defaults: {
 			name: 'ServiceNow',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -24,6 +24,7 @@ export class Spontit implements INodeType {
 		defaults: {
 			name: 'Spontit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -6,6 +6,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { VIEWS } from '@/constants';
 import { groupBy } from 'lodash-es';
 import type { useToast } from '@/composables/useToast';
+import { telemetry } from '@/plugins/telemetry';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -47,8 +48,15 @@ export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 
 const variablesToast = {
 	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
-	message: h(RouterLink, { to: { name: VIEWS.VARIABLES }, query: { incomplete: 'true' } }, () =>
-		i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
+	message: h(
+		RouterLink,
+		{
+			to: { name: VIEWS.VARIABLES, query: { incomplete: 'true' } },
+			onClick: () => {
+				telemetry.track('User clicked review variables');
+			},
+		},
+		() => i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
 	),
 	type: 'info' as const,
 	duration: 0,
@@ -56,8 +64,15 @@ const variablesToast = {
 
 const credentialsToast = {
 	title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
-	message: h(RouterLink, { to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } }, () =>
-		i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
+	message: h(
+		RouterLink,
+		{
+			to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } },
+			onClick: () => {
+				telemetry.track('User clicked review credentials');
+			},
+		},
+		() => i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
 	),
 	type: 'info' as const,
 	duration: 0,

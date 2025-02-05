@@ -33,41 +33,46 @@ exports[`FormBox > should render the component 1`] = `
               class="container"
               data-test-id="name"
             >
-              <label
-                class="n8n-input-label inputLabel heading small"
-                for="name"
+              <div
+                class="labelRow"
               >
-                <div
-                  class="main-content"
+                <label
+                  class="n8n-input-label inputLabel heading small"
+                  for="name"
                 >
                   <div
-                    class="title"
+                    class="main-content"
                   >
-                    <span
-                      class="n8n-text size-small bold"
+                    <div
+                      class="title"
                     >
-                      
-                      Name 
                       <span
-                        class="n8n-text primary size-small bold"
+                        class="n8n-text size-small bold"
                       >
                         
-                        *
+                        Name 
+                        <span
+                          class="n8n-text primary size-small bold"
+                        >
+                          
+                          *
+                          
+                        </span>
                         
                       </span>
-                      
-                    </span>
+                    </div>
+                    <!--v-if-->
                   </div>
-                  <!--v-if-->
-                </div>
-                <div
-                  class="trailing-content"
-                >
-                  <!--v-if-->
-                  <!--v-if-->
-                  <!--v-if-->
-                </div>
-              </label>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
               
               <div
                 class=""
@@ -114,41 +119,46 @@ exports[`FormBox > should render the component 1`] = `
               class="container"
               data-test-id="email"
             >
-              <label
-                class="n8n-input-label inputLabel heading medium"
-                for="email"
+              <div
+                class="labelRow"
               >
-                <div
-                  class="main-content"
+                <label
+                  class="n8n-input-label inputLabel heading medium"
+                  for="email"
                 >
                   <div
-                    class="title"
+                    class="main-content"
                   >
-                    <span
-                      class="n8n-text size-medium bold"
+                    <div
+                      class="title"
                     >
-                      
-                      Email 
                       <span
-                        class="n8n-text primary size-medium bold"
+                        class="n8n-text size-medium bold"
                       >
                         
-                        *
+                        Email 
+                        <span
+                          class="n8n-text primary size-medium bold"
+                        >
+                          
+                          *
+                          
+                        </span>
                         
                       </span>
-                      
-                    </span>
+                    </div>
+                    <!--v-if-->
                   </div>
-                  <!--v-if-->
-                </div>
-                <div
-                  class="trailing-content"
-                >
-                  <!--v-if-->
-                  <!--v-if-->
-                  <!--v-if-->
-                </div>
-              </label>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
               
               <div
                 class=""
@@ -195,41 +205,46 @@ exports[`FormBox > should render the component 1`] = `
               class="container"
               data-test-id="password"
             >
-              <label
-                class="n8n-input-label inputLabel heading medium"
-                for="password"
+              <div
+                class="labelRow"
               >
-                <div
-                  class="main-content"
+                <label
+                  class="n8n-input-label inputLabel heading medium"
+                  for="password"
                 >
                   <div
-                    class="title"
+                    class="main-content"
                   >
-                    <span
-                      class="n8n-text size-medium bold"
+                    <div
+                      class="title"
                     >
-                      
-                      Password 
                       <span
-                        class="n8n-text primary size-medium bold"
+                        class="n8n-text size-medium bold"
                       >
                         
-                        *
+                        Password 
+                        <span
+                          class="n8n-text primary size-medium bold"
+                        >
+                          
+                          *
+                          
+                        </span>
                         
                       </span>
-                      
-                    </span>
+                    </div>
+                    <!--v-if-->
                   </div>
-                  <!--v-if-->
-                </div>
-                <div
-                  class="trailing-content"
-                >
-                  <!--v-if-->
-                  <!--v-if-->
-                  <!--v-if-->
-                </div>
-              </label>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
               
               <div
                 class=""

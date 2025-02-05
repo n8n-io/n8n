@@ -29,6 +29,7 @@ export class DateTimeV2 implements INodeType {
 				name: 'Date & Time',
 				color: '#408000',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			description: 'Manipulate date and time values',
