@@ -15,7 +15,6 @@ import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/util
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
 import {
-	NodeHelpers,
 	type INodeProperties,
 	type IParameterLabel,
 	type NodeParameterValueType,
