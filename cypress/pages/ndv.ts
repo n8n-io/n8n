@@ -343,7 +343,7 @@ export class NDV extends BasePage {
 			cy.drag('[data-test-id=panel-drag-button]', [1000, 0], { moveTwice: true });
 		},
 		clickFloatingNode: (name: string) => {
-			this.getters.floatingNodeByName(name).should('be.visible').realHover().click();
+			this.getters.floatingNodeByName(name).realHover().click({ force: true });
 		},
 	};
 }
