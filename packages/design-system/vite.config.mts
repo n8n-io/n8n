@@ -30,7 +30,7 @@ export default mergeConfig(
 			alias: {
 				'@': resolve(__dirname, 'src'),
 				'n8n-design-system': resolve(__dirname, 'src'),
-				'@n8n/frontend-composables': resolve(frontendDir, '@n8n', 'composables', 'src', 'index.ts'),
+				'@n8n/frontend-composables(.*)': resolve(frontendDir, '@n8n', 'composables', 'src$1'),
 				lodash: 'lodash-es',
 			},
 		},
