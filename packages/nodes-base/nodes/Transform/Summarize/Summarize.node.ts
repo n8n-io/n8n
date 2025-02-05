@@ -7,6 +7,7 @@ import {
 	type INodeTypeDescription,
 	NodeExecutionOutput,
 	type NodeExecutionHint,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -14,6 +15,7 @@ import {
 	NUMERICAL_AGGREGATIONS,
 	type SummarizeOptions,
 	aggregationToArray,
+	aggregationToArrayWithOriginalTypes,
 	checkIfFieldExists,
 	fieldValueGetter,
 	splitData,
@@ -362,7 +364,12 @@ export class Summarize implements INodeType {
 				};
 				return new NodeExecutionOutput([[executionData]], fieldsNotFound);
 			}
-			const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
+			let returnData: IDataObject[] = [];
+			if (nodeVersion > 1) {
+				returnData = aggregationToArrayWithOriginalTypes(aggregationResult, fieldsToSplitBy);
+			} else {
+				returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
+			}
 			const executionData = returnData.map((item) => {
 				const { pairedItems, ...json } = item;
 				return {
