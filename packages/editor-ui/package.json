@@ -18,6 +18,8 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/module-common": "workspace:*",
+    "@n8n/module-example": "workspace:*",
     "@codemirror/autocomplete": "^6.16.0",
     "@codemirror/commands": "^6.5.0",
     "@codemirror/lang-javascript": "^6.2.2",
