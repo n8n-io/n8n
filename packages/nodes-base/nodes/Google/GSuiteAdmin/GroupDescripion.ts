@@ -135,7 +135,6 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'GroupId',
 				type: 'string',
-				hint: 'Enter the group id',
 				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
@@ -174,7 +173,6 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'groupId',
 				type: 'string',
-				hint: 'Enter the group id',
 				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
@@ -248,7 +246,7 @@ export const groupFields: INodeProperties[] = [
 				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
 				description:
-					'Query string to filter the results. Follow Google Admin SDK documentation <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups#examples"</a>.',
+					'Query string to filter the results. Follow Google Admin SDK documentation. <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups#examples" target="_blank">More info</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -286,7 +284,7 @@ export const groupFields: INodeProperties[] = [
 								value: 'email',
 							},
 						],
-						default: '',
+						default: 'email',
 						description: 'Field to sort the results by',
 					},
 					{
@@ -340,8 +338,6 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'groupId',
 				type: 'string',
-				hint: 'Enter the group id',
-
 				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
@@ -366,6 +362,9 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
+				typeOptions: {
+					rows: 2,
+				},
 				description:
 					'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
