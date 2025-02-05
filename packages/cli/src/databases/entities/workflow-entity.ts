@@ -103,7 +103,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		onDelete: 'SET NULL',
 	})
 	@JoinColumn({ name: 'folderId' })
-	folder: Folder | null = null;
+	folder: Folder;
 
 	display() {
 		return `"${this.name}" (ID: ${this.id})`;
