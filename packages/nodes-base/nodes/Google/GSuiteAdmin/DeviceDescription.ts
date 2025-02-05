@@ -115,7 +115,7 @@ export const deviceFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Projection',
+		displayName: 'Output',
 		name: 'projection',
 		type: 'options',
 		required: true,

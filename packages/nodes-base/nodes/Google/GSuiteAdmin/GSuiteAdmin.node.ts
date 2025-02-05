@@ -783,7 +783,7 @@ export class GSuiteAdmin implements INodeType {
 					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/deviceId
 					if (operation === 'get') {
 						const deviceId = this.getNodeParameter('deviceId', i) as string;
-						const projection = this.getNodeParameter('projection', 1);
+						const output = this.getNodeParameter('projection', 1);
 
 						// Validate deviceId
 						if (!deviceId) {
@@ -797,7 +797,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${projection}`,
+							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${output}`,
 							{},
 						);
 					}
@@ -805,11 +805,11 @@ export class GSuiteAdmin implements INodeType {
 					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/chromeosdevices/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const projection = this.getNodeParameter('projection', 1);
+						const output = this.getNodeParameter('projection', 1);
 
 						const options = this.getNodeParameter('options', 2);
 
-						qs.projection = projection;
+						qs.projection = output;
 						Object.assign(qs, options);
 
 						if (qs.customer === undefined) {
