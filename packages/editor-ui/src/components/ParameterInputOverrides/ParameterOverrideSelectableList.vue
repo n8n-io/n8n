@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 
-import { type INodeProperties } from 'n8n-workflow';
+import { NodeParameterValue, type INodeProperties } from 'n8n-workflow';
 import { buildValueFromOverride, type FromAIOverride } from '../../utils/fromAIOverrideUtils';
 import { computed } from 'vue';
 import { N8nSelectableList } from 'n8n-design-system';
@@ -61,7 +61,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:path="`${path}.${name}`"
 				input-size="small"
 				@update="
-					(x) => {
+					(x: IUpdateInformation) => {
 						parameterOverride.extraPropValues[name] = x.value;
 						valueChanged({
 							name: props.path,
