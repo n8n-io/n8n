@@ -61,7 +61,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:path="`${path}.${name}`"
 				input-size="small"
 				@update="
-					(x) => {
+					(x: IUpdateInformation) => {
 						parameterOverride.extraPropValues[name] = x.value;
 						valueChanged({
 							name: props.path,

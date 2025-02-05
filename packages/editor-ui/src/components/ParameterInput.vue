@@ -400,6 +400,13 @@ const getIssues = computed<string[]>(() => {
 	return [];
 });
 
+const displayIssues = computed(
+	() =>
+		props.parameter.type !== 'credentialsSelect' &&
+		!isResourceLocatorParameter.value &&
+		getIssues.value.length > 0,
+);
+
 const editorType = computed<EditorType | 'json' | 'code'>(() => {
 	return getArgument<EditorType>('editor');
 });
@@ -1019,6 +1026,7 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
+	displaysIssues: displayIssues.value,
 	focusInput: async () => await setFocus(),
 	selectInput: () => selectInput(),
 });
@@ -1598,10 +1606,7 @@ onUpdated(async () => {
 		>
 			<slot name="overrideButton" />
 		</div>
-		<ParameterIssues
-			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
-			:issues="getIssues"
-		/>
+		<ParameterIssues v-if="displayIssues" :issues="getIssues" />
 	</div>
 </template>
 
