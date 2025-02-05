@@ -118,7 +118,7 @@ const emit = defineEmits<{
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { callDebounced } = useDebounce();
+const { debounce } = useDebounce();
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
 const telemetry = useTelemetry();
@@ -794,9 +794,9 @@ function onTextInputChange(value: string) {
 
 	emit('textInput', parameterData);
 }
-function valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-	void callDebounced(valueChanged, { debounceTime: 100 }, value);
-}
+
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
+
 function onUpdateTextInput(value: string) {
 	valueChanged(value);
 	onTextInputChange(value);
@@ -1024,6 +1024,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
+	valueChangedDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
