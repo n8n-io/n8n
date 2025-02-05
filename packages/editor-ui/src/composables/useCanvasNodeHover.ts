@@ -51,16 +51,17 @@ export function useCanvasNodeHover(
 						return [];
 					}
 
+					const dx = nodeRect.x + nodeRect.width / 2 - eventCoord.x;
+					const dy = nodeRect.y + nodeRect.height / 2 - eventCoord.y;
+
 					return [
 						{
 							id: node.id,
-							distance:
-								(nodeRect.x + nodeRect.width / 2 - eventCoord.x) ** 2 +
-								(nodeRect.y + nodeRect.height / 2 - eventCoord.y) ** 2,
+							distanceSqrt: dx ** 2 + dy ** 2,
 						},
 					];
 				})
-				.toSorted((nodeA, nodeB) => nodeA.distance - nodeB.distance);
+				.toSorted((nodeA, nodeB) => nodeA.distanceSqrt - nodeB.distanceSqrt);
 
 			id.value = nearbyNodes[0]?.id;
 		},
