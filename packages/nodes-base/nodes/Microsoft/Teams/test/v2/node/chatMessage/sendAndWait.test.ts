@@ -60,8 +60,8 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 			{
 				body: {
 					content:
-						'my message\n\n[Approve](http://localhost/waiting-webhook/nodeID?approved=true)\n\n_This message was sent automatically with_ [n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId)',
-					contentType: 'text',
+						'my message<br><br><a href="http://localhost/waiting-webhook/nodeID?approved=true">Approve</a><br><br><em>This message was sent automatically with <a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams_instanceId">n8n</a></em>',
+					contentType: 'html',
 				},
 			},
 		);

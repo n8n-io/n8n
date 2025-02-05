@@ -20,24 +20,23 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 
 export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
-
 	const config = getSendAndWaitConfig(this);
 
-	const attributionText = '_This message was sent automatically with_';
+	const attributionText = 'This message was sent automatically with';
 	const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-		'n8n-nodes-base.telegram',
+		'n8n-nodes-base.microsoftTeams',
 	)}${instanceId ? '_' + instanceId : ''}`;
-	const attribution = `${attributionText} [n8n](${link})`;
+	const attribution = `<em>${attributionText} <a href="${link}">n8n</a></em>`;
 
-	const buttons: string[] = config.options.map(
-		(option) => `[${option.label}](${`${config.url}?approved=${option.value}`})`,
+	const buttons = config.options.map(
+		(option) => `<a href="${config.url}?approved=${option.value}">${option.label}</a>`,
 	);
 
-	const content = `${config.message}\n\n${buttons.join('   ')}\n\n${attribution}`;
+	const content = `${config.message}<br><br>${buttons.join(' ')}<br><br>${attribution}`;
 
 	const body = {
 		body: {
-			contentType: 'text',
+			contentType: 'html',
 			content,
 		},
 	};
