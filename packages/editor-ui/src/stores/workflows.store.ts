@@ -277,10 +277,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const runDataStalenessByName = computed(() => {
 		const stalenessByName: Record<string, CanvasNodeRunDataStaleness | undefined> = {};
+		const visitedByName: Record<string, true | undefined> = {};
 
 		// TODO: check feature flag
 
 		function markDownstreamStaleRecursively(nodeName: string) {
+			if (visitedByName[nodeName]) {
+				return; // prevent infinite recursion
+			}
+
+			visitedByName[nodeName] = true;
+
 			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
 				for (const connections of inputConnections) {
 					for (const { node } of connections ?? []) {
