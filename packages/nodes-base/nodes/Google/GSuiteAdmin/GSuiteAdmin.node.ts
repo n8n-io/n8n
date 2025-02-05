@@ -12,7 +12,7 @@ import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-wo
 import { deviceFields, deviceOperations } from './DeviceDescription';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescripion';
-import { searchGroups, searchUsers } from './SearchFunctions';
+import { searchDevices, searchGroups, searchUsers } from './SearchFunctions';
 import { userFields, userOperations } from './UserDescription';
 
 export class GSuiteAdmin implements INodeType {
@@ -172,6 +172,7 @@ export class GSuiteAdmin implements INodeType {
 		listSearch: {
 			searchGroups,
 			searchUsers,
+			searchDevices,
 		},
 	};
 
@@ -807,14 +808,36 @@ export class GSuiteAdmin implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const output = this.getNodeParameter('projection', 1);
 						const includeChildren = this.getNodeParameter('includeChildOrgunits', i);
-						const options = this.getNodeParameter('options', 2);
+						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
+						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
 
 						qs.projection = output;
-						Object.assign(qs, options);
 
 						qs.includeChildOrgunits = includeChildren;
 						if (qs.customer === undefined) {
 							qs.customer = 'my_customer';
+						}
+
+						if (filter.orgUnitPath) {
+							qs.orgUnitPath = filter.orgUnitPath as string;
+						}
+						if (filter.query && typeof filter.query === 'string') {
+							const query = filter.query.trim();
+							if (query) {
+								qs.query = query;
+							}
+						}
+						if (sort.sortRules) {
+							const { orderBy, sortOrder } = sort.sortRules as {
+								orderBy?: string;
+								sortOrder?: string;
+							};
+							if (orderBy) {
+								qs.orderBy = orderBy;
+							}
+							if (sortOrder) {
+								qs.sortOrder = sortOrder;
+							}
 						}
 
 						if (!returnAll) {

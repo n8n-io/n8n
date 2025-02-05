@@ -87,7 +87,6 @@ export const deviceFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
@@ -145,9 +144,8 @@ export const deviceFields: INodeProperties[] = [
 		name: 'includeChildOrgunits',
 		type: 'boolean',
 		default: false,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description:
-			'Include devices from organizational units below your specified organizational unit',
+			'Whether include devices from organizational units below your specified organizational unit',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -156,10 +154,10 @@ export const deviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Filter',
+		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -177,61 +175,7 @@ export const deviceFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Annotated Location',
-						value: 'annotatedLocation',
-					},
-					{
-						name: 'Annotated User',
-						value: 'annotatedUser',
-					},
-					{
-						name: 'Last Sync',
-						value: 'lastSync',
-					},
-					{
-						name: 'Notes',
-						value: 'notes',
-					},
-					{
-						name: 'Serial Number',
-						value: 'serialNumber',
-					},
-					{
-						name: 'Status',
-						value: 'status',
-					},
-					{
-						name: 'Support End Date',
-						value: 'supportEndDate',
-					},
-				],
-				default: '',
-				description: 'Property to use for sorting results',
-			},
-			{
-				displayName: 'Sort By',
-				name: 'sortBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Ascending',
-						value: 'ascending',
-					},
-					{
-						name: 'Descending',
-						value: 'descending',
-					},
-				],
-				default: '',
-				description: 'Property to use for sorting results. Must accompany Order By variable.',
+					'Specify the organizational unit name or ID. Choose from the list or use an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -239,9 +183,81 @@ export const deviceFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
-				description: "Must use Google's querying syntax",
+				description: "Use Google's querying syntax to filter results",
 			},
 		],
+	},
+	{
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Rule',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['device'],
+			},
+		},
+		options: [
+			{
+				name: 'sortRules',
+				displayName: 'Sort Rules',
+				values: [
+					{
+						displayName: 'Order By',
+						name: 'orderBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Annotated Location',
+								value: 'annotatedLocation',
+							},
+							{
+								name: 'Annotated User',
+								value: 'annotatedUser',
+							},
+							{
+								name: 'Last Sync',
+								value: 'lastSync',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+							{
+								name: 'Serial Number',
+								value: 'serialNumber',
+							},
+							{
+								name: 'Status',
+								value: 'status',
+							},
+						],
+						default: '',
+						description: 'Field to sort the results by',
+					},
+					{
+						displayName: 'Sort Order',
+						name: 'sortBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'ascending',
+							},
+							{
+								name: 'Descending',
+								value: 'descending',
+							},
+						],
+						default: '',
+						description: 'Sort order direction',
+					},
+				],
+			},
+		],
+		description: 'Define sorting rules for the results',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                               device:update......                          */
