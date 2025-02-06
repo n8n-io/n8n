@@ -11,22 +11,13 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { assert } from '@/utils/assert';
 import type { CurlToJSONResponse } from '@/Interface';
 
-type NestedObject = Record<string, unknown>;
-
-// Helper type to create flattened key-value pairs
-type Flatten<T extends NestedObject, Prefix extends string = ''> = {
-	[K in keyof T]: T[K] extends NestedObject
-		? Flatten<T[K], `${Prefix}${Extract<K, string>}.`>
-		: { [key in `${Prefix}${Extract<K, string>}`]: T[K] };
-}[keyof T];
-
 interface Parameter {
 	parameterType?: string;
 	name: string;
 	value: string;
 }
 
-interface HttpNodeParameters extends NestedObject {
+interface HttpNodeParameters extends Record<string, unknown> {
 	url?: string;
 	method: string;
 	sendBody?: boolean;
@@ -217,22 +208,16 @@ const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => 
 	};
 };
 
-export const flattenObject = <T extends NestedObject>(obj: T, prefix: string = ''): Flatten<T> => {
-	const result: Partial<Record<string, unknown>> = {};
-
-	Object.keys(obj).forEach((key) => {
-		const value = obj[key];
-		const prefixedKey = prefix ? `${prefix}.${key}` : key;
-
-		if (value && typeof value === 'object' && !Array.isArray(value)) {
-			Object.assign(result, flattenObject(value as NestedObject, prefixedKey));
-		} else {
-			result[prefixedKey] = value;
-		}
-	});
-
-	return result as Flatten<T>;
-};
+export const flattenObject = <T extends Record<string, unknown>>(obj: T, prefix = '') =>
+	Object.keys(obj).reduce(
+		(acc, k) => {
+			const pre = prefix.length ? prefix + '.' : '';
+			if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k] as T, pre + k));
+			else acc[pre + k] = obj[k];
+			return acc;
+		},
+		{} as Record<string, unknown>,
+	);
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
@@ -401,7 +386,7 @@ export function useImportCurlCommand(options?: {
 		if (curlCommand === '') return;
 
 		try {
-			const parameters = flattenObject(toHttpNodeParameters(curlCommand));
+			const parameters = flattenObject(toHttpNodeParameters(curlCommand), 'parameters');
 			assert(typeof parameters['parameters.url'] === 'string', 'parameters.url has to be string');
 			// Normalize placeholder values
 			const url: string = parameters['parameters.url']
