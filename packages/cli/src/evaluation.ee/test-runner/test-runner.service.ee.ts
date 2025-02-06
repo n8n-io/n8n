@@ -5,7 +5,6 @@ import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workf
 import type {
 	IDataObject,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -30,15 +29,21 @@ import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
+import {
+	createPinData,
+	formatTestCaseExecutionInputData,
+	getPastExecutionTriggerNode,
+} from './utils.ee';
 
-interface TestRunMetadata {
+export interface TestRunMetadata {
 	testRunId: string;
 	userId: string;
 }
 
-interface TestCaseRunMetadata extends TestRunMetadata {
+export interface TestCaseRunMetadata extends TestRunMetadata {
 	pastExecutionId: string;
+	annotation: ExecutionEntity['annotation'];
+	highlightedData: ExecutionEntity['metadata'];
 }
 
 /**
@@ -171,8 +176,7 @@ export class TestRunnerService {
 	 */
 	private async runTestCaseEvaluation(
 		evaluationWorkflow: WorkflowEntity,
-		expectedData: IRunData,
-		actualData: IRunData,
+		evaluationInputData: any,
 		abortSignal: AbortSignal,
 		metadata: TestCaseRunMetadata,
 	) {
@@ -180,16 +184,6 @@ export class TestRunnerService {
 		if (abortSignal.aborted) {
 			return;
 		}
-
-		// Prepare the evaluation wf input data.
-		// Provide both the expected data and the actual data
-		const evaluationInputData = {
-			json: {
-				metadata,
-				originalExecution: expectedData,
-				newExecution: actualData,
-			},
-		};
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
@@ -388,11 +382,18 @@ export class TestRunnerService {
 					// Get the original runData from the test case execution data
 					const originalRunData = executionData.resultData.runData;
 
+					const evaluationInputData = formatTestCaseExecutionInputData(
+						originalRunData,
+						pastExecution.executionData.workflowData,
+						testCaseRunData,
+						workflow,
+						testCaseMetadata,
+					);
+
 					// Run the evaluation workflow with the original and new run data
 					const evalExecution = await this.runTestCaseEvaluation(
 						evaluationWorkflow,
-						originalRunData,
-						testCaseRunData,
+						evaluationInputData,
 						abortSignal,
 						testCaseMetadata,
 					);

@@ -1,8 +1,17 @@
 import assert from 'assert';
-import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
+import { mapValues, pick } from 'lodash';
+import type {
+	IRunExecutionData,
+	IPinData,
+	IWorkflowBase,
+	IRunData,
+	ITaskData,
+	INode,
+} from 'n8n-workflow';
 
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 
 /**
  * Extracts the execution data from the past execution
@@ -57,4 +66,73 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
 	});
+}
+
+/**
+ * Function to check if the node is root node or sub-node.
+ * Sub-node is a node which does not have the main output (the only exception is Stop and Error node)
+ */
+function isSubNode(node: INode, nodeData: ITaskData[]) {
+	return (
+		!node.type.endsWith('stopAndError') &&
+		nodeData.some((nodeRunData) => !(nodeRunData.data && 'main' in nodeRunData.data))
+	);
+}
+
+/**
+ * Transform execution data and workflow data into a more user-friendly format to supply to evaluation workflow
+ */
+function formatExecutionData(data: IRunData, workflow: IWorkflowBase) {
+	const formattedData = {} as Record<string, any>;
+
+	for (const [nodeName, nodeData] of Object.entries(data)) {
+		const node = workflow.nodes.find((n) => n.name === nodeName);
+
+		assert(node, `Node "${nodeName}" not found in the workflow`);
+
+		const rootNode = !isSubNode(node, nodeData);
+
+		const runs = nodeData.map((nodeRunData) => ({
+			executionTime: nodeRunData.executionTime,
+			rootNode,
+			output: nodeRunData.data
+				? mapValues(nodeRunData.data, (connections) =>
+						connections.map((singleOutputData) => singleOutputData?.map((item) => item.json) ?? []),
+					)
+				: null,
+		}));
+
+		formattedData[node.id] = { nodeName, runs };
+	}
+
+	return formattedData;
+}
+
+/**
+ * Prepare the evaluation wf input data.
+ * Provide both the expected data (past execution) and the actual data (new execution),
+ * as well as any annotations or highlighted data associated with the past execution
+ */
+export function formatTestCaseExecutionInputData(
+	originalExecutionData: IRunData,
+	_originalWorkflowData: IWorkflowBase,
+	newExecutionData: IRunData,
+	_newWorkflowData: IWorkflowBase,
+	metadata: TestCaseRunMetadata,
+) {
+	const annotations = {
+		vote: metadata.annotation?.vote,
+		tags: metadata.annotation?.tags?.map((tag) => pick(tag, ['id', 'name'])),
+		highlightedData: Object.fromEntries(
+			metadata.highlightedData?.map(({ key, value }) => [key, value]),
+		),
+	};
+
+	return {
+		json: {
+			annotations,
+			originalExecution: formatExecutionData(originalExecutionData, _originalWorkflowData),
+			newExecution: formatExecutionData(newExecutionData, _newWorkflowData),
+		},
+	};
 }
