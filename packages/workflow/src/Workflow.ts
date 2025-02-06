@@ -463,7 +463,12 @@ export class Workflow {
 		checkedNodes?: string[],
 	): string[] {
 		const currentHighest: string[] = [];
-		if (this.nodes[nodeName].disabled === false) {
+		const node = this.nodes[nodeName];
+		if (!node) {
+			console.log('"%s" node missing in', nodeName, Object.keys(this.nodes));
+			throw new ApplicationError(`Node "${nodeName}" missing in the workflow`);
+		}
+		if (node.disabled === false) {
 			// If the current node is not disabled itself is the highest
 			currentHighest.push(nodeName);
 		}
