@@ -3,7 +3,7 @@ import { ref, unref } from 'vue';
 
 import { getMousePosition } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { MOUSE_EVENT_BUTTON, MOUSE_EVENT_BUTTONS } from '@/constants';
 
 /**

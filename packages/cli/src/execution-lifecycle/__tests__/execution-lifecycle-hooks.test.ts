@@ -132,6 +132,12 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow: workflowData,
 				});
 			});
+
+			it('should not emit workflow-post-execute events for waiting executions', async () => {
+				await hooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
 		});
 	};
 

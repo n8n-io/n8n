@@ -2664,6 +2664,7 @@ export interface ResourceMapperField {
 
 export type FormFieldsParameter = Array<{
 	fieldLabel: string;
+	elementName?: string;
 	fieldType?: string;
 	requiredField?: boolean;
 	fieldOptions?: { values: Array<{ option: string }> };
@@ -2709,8 +2710,8 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	attemptToConvertTypes?: boolean;
-	convertFieldsToString?: boolean;
+	attemptToConvertTypes: boolean;
+	convertFieldsToString: boolean;
 };
 
 export type FilterOperatorType =

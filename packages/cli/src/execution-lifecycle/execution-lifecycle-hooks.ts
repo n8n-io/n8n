@@ -38,6 +38,8 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
+		if (runData.status === 'waiting') return;
+
 		const { executionId, workflowData: workflow } = this;
 		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 	});
