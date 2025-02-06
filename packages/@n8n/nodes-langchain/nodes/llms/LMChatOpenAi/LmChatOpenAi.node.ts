@@ -289,6 +289,11 @@ export class LmChatOpenAi implements INodeType {
 									'Favors more complete reasoning at the cost of more tokens generated and slower responses',
 							},
 						],
+						displayOptions: {
+							show: {
+								'/model': [{ _cnd: { regex: '^o\\d+.*' } }],
+							},
+						},
 					},
 					{
 						displayName: 'Timeout',
