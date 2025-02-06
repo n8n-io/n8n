@@ -1,16 +1,10 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "@n8n/frontend-typescript-config",
 	"compilerOptions": {
-		"rootDir": ".",
-		"outDir": "dist",
-		"target": "esnext",
-		"module": "esnext",
-		"importHelpers": true,
-		"allowJs": true,
-		"incremental": false,
-		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"types": ["vitest/globals"],
+		"rootDirs": [".", "../../frontend/@n8n/composables/src"],
+		"outDir": "dist",
+		"types": ["vite/client", "vitest/globals"],
 		"typeRoots": [
 			"./node_modules/@testing-library",
 			"./node_modules/@types",
@@ -18,12 +12,9 @@
 			"../../node_modules/@types"
 		],
 		"paths": {
-			"n8n-design-system/*": ["./src/*"]
-		},
-		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
-		// TODO: remove all options below this line
-		"noImplicitAny": false,
-		"noImplicitReturns": false
+			"n8n-design-system*": ["./src*"],
+			"@n8n/composables*": ["../frontend/@n8n/composables/src*"]
+		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]
 }

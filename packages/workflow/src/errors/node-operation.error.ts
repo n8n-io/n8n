@@ -19,7 +19,7 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (typeof error === 'string') {
-			error = new ApplicationError(error);
+			error = new ApplicationError(error, { level: options.level ?? 'warning' });
 		}
 
 		super(node, error);
