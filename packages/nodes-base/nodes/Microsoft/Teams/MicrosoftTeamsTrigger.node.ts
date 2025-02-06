@@ -243,14 +243,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						'GET',
 						'/v1.0/subscriptions',
 					);
-					console.log('subscriptions', subscriptions);
+					console.log('Subscriptions:', subscriptions);
 
-					// Get the resource for the current trigger
-					const resource = this.getNodeParameter('resource', 0) as string;
-
-					// Check if a subscription exists for both the notification URL and resource
 					for (const subscription of subscriptions) {
-						if (subscription.notificationUrl === webhookUrl && subscription.resource === resource) {
+						if (subscription.notificationUrl === webhookUrl) {
 							console.log('Existing subscription found:', subscription.id);
 							this.getWorkflowStaticData('node').subscriptionId = subscription.id;
 							return true;
