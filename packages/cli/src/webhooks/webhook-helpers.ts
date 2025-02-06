@@ -503,7 +503,7 @@ export async function executeWebhook(
 
 						// for formTrigger node redirection has to be handled by sending redirectURL in response body
 						if (
-							nodeType.description.name === 'formTrigger' &&
+							['formTrigger', 'form'].includes(nodeType.description.name) &&
 							headers.location &&
 							String(responseCode).startsWith('3')
 						) {

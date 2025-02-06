@@ -43,7 +43,7 @@ export const renderFormNode = async (
 			) as string) || 'Submit';
 	}
 
-	const responseMode = 'onReceived';
+	const responseMode = 'responseNode';
 
 	let redirectUrl;
 
@@ -69,7 +69,7 @@ export const renderFormNode = async (
 		formFields: fields,
 		responseMode,
 		mode,
-		redirectUrl,
+		redirectUrl: undefined,
 		appendAttribution,
 		buttonLabel,
 	});

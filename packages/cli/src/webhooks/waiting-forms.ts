@@ -39,7 +39,7 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
-	private async reloadForm(req: WaitingWebhookRequest, res: express.Response) {
+	async reloadForm(req: WaitingWebhookRequest, res: express.Response) {
 		try {
 			await sleep(1000);
 
@@ -106,8 +106,8 @@ export class WaitingForms extends WaitingWebhooks {
 
 		if (execution.status === 'running') {
 			if (this.includeForms && req.method === 'GET') {
-				await this.reloadForm(req, res);
-				return { noWebhookResponse: true };
+				// await this.reloadForm(req, res);
+				// return { noWebhookResponse: true };
 			}
 
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
