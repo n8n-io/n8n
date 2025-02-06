@@ -486,7 +486,6 @@ onMounted(async () => {
 								v-model:current-page="currentPage"
 								v-model:page-size="rowsPerPage"
 								background
-								:hide-on-single-page="true"
 								:total="totalItems"
 								:page-sizes="[10, 25, 50, 100]"
 								layout="total, prev, pager, next, sizes"
