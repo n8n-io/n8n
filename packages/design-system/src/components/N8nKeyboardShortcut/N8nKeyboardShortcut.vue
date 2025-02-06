@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { computed } from 'vue';
 
-import { useDeviceSupport } from '../../composables/useDeviceSupport';
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
 
 const props = defineProps<KeyboardShortcut>();

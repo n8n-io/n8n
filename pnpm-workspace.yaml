@@ -2,6 +2,7 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/@n8n_io/*
+  - packages/frontend/**
   - cypress
 
 catalog:
@@ -32,10 +33,17 @@ catalog:
 
 catalogs:
   frontend:
+    '@testing-library/jest-dom': ^6.6.3
+    '@testing-library/user-event': ^14.6.0
+    '@testing-library/vue': ^8.1.0
+    '@vue/tsconfig': ^0.7.0
     '@vitest/coverage-v8': ^3.0.2
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
+    tsup: ^8.3.6
+    typescript: ^5.6.2
     vite: ^6.0.2
+    vite-plugin-dts: ^4.3.0
     vitest: ^3.0.2
     vitest-mock-extended: ^2.0.2
     vue: ^3.5.13
