@@ -36,6 +36,9 @@ const emit = defineEmits<{
 function valueChanged(parameterData: IUpdateInformation) {
 	emit('update', parameterData);
 }
+
+type IfAny<T, Y, N> = 0 extends 1 & T ? Y : N;
+type IsAny<T> = IfAny<T, true, never>;
 </script>
 
 <template>
@@ -62,6 +65,8 @@ function valueChanged(parameterData: IUpdateInformation) {
 				input-size="small"
 				@update="
 					(x: IUpdateInformation) => {
+						const y: IsAny<typeof name> extends true ? 1 : 0 = 0;
+
 						parameterOverride.extraPropValues[name] = x.value;
 						valueChanged({
 							name: props.path,
