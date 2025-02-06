@@ -313,50 +313,54 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		}
 
 		await nextTick();
-		pushViewStack({
-			title: relatedAIView?.properties.title,
-			...extendedInfo,
-			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
-			mode: 'nodes',
-			items: nodeCreatorStore.allNodeCreatorNodes,
-			nodeIcon: {
-				iconType: 'icon',
-				icon: relatedAIView?.properties.icon,
-				color: relatedAIView?.properties.iconProps?.color,
-			},
-			panelClass: relatedAIView?.properties.panelClass,
-			baseFilter: (i: INodeCreateElement) => {
-				// AI Code node could have any connection type so we don't want to display it
-				// in the compatible connection view as it would be displayed in all of them
-				if (i.key === AI_CODE_NODE_TYPE) return false;
-				const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
-				// TODO: Filtering works currently fine for displaying compatible node when dropping
-				//       input connections. However, it does not work for output connections.
-				//       For that reason does it currently display nodes that are maybe not compatible
-				//       but then errors once it got selected by the user.
-				if (displayNode && filter?.nodes?.length) {
-					return filter.nodes.includes(i.key);
-				}
+		pushViewStack(
+			{
+				title: relatedAIView?.properties.title,
+				...extendedInfo,
+				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+				mode: 'nodes',
+				items: nodeCreatorStore.allNodeCreatorNodes,
+				nodeIcon: {
+					iconType: 'icon',
+					icon: relatedAIView?.properties.icon,
+					color: relatedAIView?.properties.iconProps?.color,
+				},
+				panelClass: relatedAIView?.properties.panelClass,
+				baseFilter: (i: INodeCreateElement) => {
+					// AI Code node could have any connection type so we don't want to display it
+					// in the compatible connection view as it would be displayed in all of them
+					if (i.key === AI_CODE_NODE_TYPE) return false;
+					const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
-				return displayNode;
+					// TODO: Filtering works currently fine for displaying compatible node when dropping
+					//       input connections. However, it does not work for output connections.
+					//       For that reason does it currently display nodes that are maybe not compatible
+					//       but then errors once it got selected by the user.
+					if (displayNode && filter?.nodes?.length) {
+						return filter.nodes.includes(i.key);
+					}
+
+					return displayNode;
+				},
+				itemsMapper(item) {
+					return {
+						...item,
+						subcategory: connectionType,
+					};
+				},
+				actionsFilter: (items: ActionTypeDescription[]) => {
+					// Filter out actions that are not compatible with the connection type
+					if (items.some((item) => item.outputConnectionType)) {
+						return items.filter((item) => item.outputConnectionType === connectionType);
+					}
+					return items;
+				},
+				hideActions: true,
+				preventBack: true,
 			},
-			itemsMapper(item) {
-				return {
-					...item,
-					subcategory: connectionType,
-				};
-			},
-			actionsFilter: (items: ActionTypeDescription[]) => {
-				// Filter out actions that are not compatible with the connection type
-				if (items.some((item) => item.outputConnectionType)) {
-					return items.filter((item) => item.outputConnectionType === connectionType);
-				}
-				return items;
-			},
-			hideActions: true,
-			preventBack: true,
-		});
+			{ resetStacks: true },
+		);
 	}
 
 	function setStackBaselineItems() {
@@ -417,7 +421,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		}));
 	}
 
-	function pushViewStack(stack: ViewStack) {
+	function pushViewStack(stack: ViewStack, options: { resetStacks?: boolean } = {}) {
+		if (options.resetStacks) {
+			resetViewStacks();
+		}
+
 		if (activeViewStack.value.uuid) {
 			updateCurrentViewStack({ activeIndex: getActiveItemIndex() });
 		}

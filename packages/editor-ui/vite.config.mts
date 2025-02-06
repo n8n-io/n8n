@@ -4,7 +4,7 @@ import { defineConfig, mergeConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 
-import { vitestConfig } from '../design-system/vite.config.mts';
+import { vitestConfig } from '@n8n/frontend-vitest-config';
 import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
@@ -23,7 +23,7 @@ const alias = [
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
 		find: /^n8n-design-system$/,
-		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'index.ts'),
 	},
 	{
 		find: /^n8n-design-system\//,
@@ -36,6 +36,10 @@ const alias = [
 	{
 		find: /^@n8n\/chat\//,
 		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
+	},
+	{
+		find: /^@n8n\/composables(.+)$/,
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),

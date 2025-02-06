@@ -39,6 +39,7 @@
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",
     "@n8n/codemirror-lang-sql": "^1.0.2",
+    "@n8n/composables": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
@@ -94,6 +95,9 @@
     "xss": "catalog:"
   },
   "devDependencies": {
+    "@n8n/frontend-eslint-config": "workspace:*",
+    "@n8n/frontend-vitest-config": "workspace:*",
+    "@n8n/frontend-typescript-config": "workspace:*",
     "@faker-js/faker": "^8.0.2",
     "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",
