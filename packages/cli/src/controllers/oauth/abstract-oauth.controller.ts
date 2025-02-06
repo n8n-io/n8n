@@ -89,6 +89,7 @@ export abstract class AbstractOAuthController {
 	protected async getDecryptedData(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		raw = true,
 	) {
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
@@ -96,7 +97,7 @@ export abstract class AbstractOAuthController {
 			credential.type,
 			'internal',
 			undefined,
-			true,
+			raw,
 		);
 	}
 
