@@ -79,7 +79,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:filters': [value: IFilters];
 	'click:add': [event: Event];
-	'update:current-page': [value: number];
+	'update:current-page': [{ page: number; pageSize: number }];
+	'update:page-size': [{ page: number; pageSize: number }];
 	sort: [value: string];
 }>();
 
@@ -191,11 +192,12 @@ const hasAppliedFilters = (): boolean => {
 
 const setRowsPerPage = (numberOfRowsPerPage: number) => {
 	rowsPerPage.value = numberOfRowsPerPage;
+	emit('update:page-size', { page: currentPage.value, pageSize: numberOfRowsPerPage });
 };
 
 const setCurrentPage = (page: number) => {
 	currentPage.value = page;
-	emit('update:current-page', page);
+	emit('update:current-page', { page, pageSize: rowsPerPage.value });
 };
 
 defineExpose({
@@ -486,8 +488,10 @@ onMounted(async () => {
 								background
 								:hide-on-single-page="true"
 								:total="totalItems"
-								layout="total, prev, pager, next"
+								:page-sizes="[10, 25, 50, 100]"
+								layout="total, prev, pager, next, sizes"
 								@update:current-page="setCurrentPage"
+								@size-change="setRowsPerPage"
 							></el-pagination>
 						</div>
 					</div>
@@ -563,7 +567,7 @@ onMounted(async () => {
 .paginatedListWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing-m);
 	max-height: 100%;
 
 	.listItems {
@@ -574,6 +578,22 @@ onMounted(async () => {
 .listPagination {
 	display: flex;
 	justify-content: flex-end;
+	margin-bottom: var(--spacing-l);
+
+	:global(.el-pagination__sizes) {
+		height: 100%;
+		position: relative;
+		top: -1px;
+
+		input {
+			height: 100%;
+			min-height: 28px;
+		}
+
+		:global(.el-input__suffix) {
+			width: var(--spacing-m);
+		}
+	}
 }
 
 .sort-and-filter {

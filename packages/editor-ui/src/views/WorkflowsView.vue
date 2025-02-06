@@ -175,9 +175,13 @@ const initialize = async () => {
 	loading.value = false;
 };
 
-const fetchWorkflows = async (page: number) => {
+const fetchWorkflows = async (page: number, pageSize: number) => {
 	loading.value = true;
-	await workflowsStore.fetchWorkflowsPage(route.params?.projectId as string | undefined, page);
+	await workflowsStore.fetchWorkflowsPage(
+		route.params?.projectId as string | undefined,
+		page,
+		pageSize,
+	);
 	loading.value = false;
 };
 
@@ -317,7 +321,8 @@ const dismissEasyAICallout = () => {
 		:total-items="workflowsStore.totalWorkflowCount"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
-		@update:current-page="fetchWorkflows"
+		@update:current-page="fetchWorkflows($event.page, $event.pageSize)"
+		@update:page-size="fetchWorkflows($event.page, $event.pageSize)"
 	>
 		<template #header>
 			<ProjectHeader />
@@ -355,7 +360,7 @@ const dismissEasyAICallout = () => {
 			<WorkflowCard
 				data-test-id="resources-list-item"
 				class="mb-2xs"
-				:data="data"
+				:data="data as IWorkflowDb"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
 			/>
