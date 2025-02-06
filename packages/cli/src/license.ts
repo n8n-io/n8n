@@ -223,7 +223,7 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		return this.manager?.hasFeatureEnabled(feature) ?? true;
 	}
 
 	isSharingEnabled() {
@@ -232,15 +232,18 @@ export class License {
 	}
 
 	isLogStreamingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+		return true;
 	}
 
 	isLdapEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+		return true;
 	}
 
 	isSamlEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+		return true;
 	}
 
 	isAiAssistantEnabled() {
@@ -256,7 +259,8 @@ export class License {
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+		return true;
 	}
 
 	isAdvancedPermissionsLicensed() {
@@ -278,7 +282,8 @@ export class License {
 	}
 
 	isVariablesEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+		return true;
 	}
 
 	isSourceControlLicensed() {
@@ -291,7 +296,8 @@ export class License {
 	}
 
 	isWorkflowHistoryLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
+		return true;
 	}
 
 	isAPIDisabled() {
@@ -388,7 +394,7 @@ export class License {
 	}
 
 	getTeamProjectLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
+		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 100;
 	}
 
 	getPlanName(): string {
