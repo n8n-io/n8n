@@ -1,9 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
-import * as row from './row';
+
+import * as asset from './asset';
 import * as base from './base';
 import * as link from './link';
-import * as asset from './asset';
+import * as row from './row';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SeaTable',

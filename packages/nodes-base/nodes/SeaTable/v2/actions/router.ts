@@ -1,11 +1,10 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import * as row from './row';
-import * as base from './base';
-import * as link from './link';
 import * as asset from './asset';
-
+import * as base from './base';
 import type { SeaTable } from './Interfaces';
+import * as link from './link';
+import * as row from './row';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -40,12 +39,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			);
 
 			operationResult.push(...executionData);
-		} catch (err) {
+		} catch (error) {
 			if (this.continueOnFail()) {
-				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
+				operationResult.push({ json: this.getInputData(i)[0].json, error });
 			} else {
-				if (err.context) err.context.itemIndex = i;
-				throw err;
+				if (error.context) error.context.itemIndex = i;
+				throw error;
 			}
 		}
 	}
