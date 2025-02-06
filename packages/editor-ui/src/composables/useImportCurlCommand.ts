@@ -185,8 +185,7 @@ const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
 };
 
 const encodeBasicAuthentication = (username: string, password: string) =>
-	Buffer.from(`${username}:${password}`).toString('base64');
-
+	btoa(`${username}:${password}`);
 const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
 	Object.values(json).some((e) => typeof e === 'object');
 
