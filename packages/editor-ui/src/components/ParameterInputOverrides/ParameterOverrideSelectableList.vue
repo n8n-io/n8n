@@ -4,7 +4,7 @@ import type { IUpdateInformation } from '@/Interface';
 import { type INodeProperties } from 'n8n-workflow';
 import { buildValueFromOverride, type FromAIOverride } from '../../utils/fromAIOverrideUtils';
 import { computed } from 'vue';
-import { N8nSelectableList } from 'n8n-design-system';
+// import { N8nSelectableList } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -38,7 +38,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 }
 
 type IfAny<T, Y, N> = 0 extends 1 & T ? Y : N;
-type IsAny<T> = IfAny<T, true, never>;
 </script>
 
 <template>
@@ -65,7 +64,7 @@ type IsAny<T> = IfAny<T, true, never>;
 				input-size="small"
 				@update="
 					(x: IUpdateInformation) => {
-						const y: IsAny<typeof name> extends true ? 1 : 0 = 0;
+						const y: IfAny<typeof name, 1, 0> = 0;
 
 						parameterOverride.extraPropValues[name] = x.value;
 						valueChanged({
