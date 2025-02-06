@@ -291,8 +291,8 @@ export class LmChatOpenAi implements INodeType {
 						],
 						displayOptions: {
 							show: {
-								// reasoning_effort is only available on o1, or on o3-mini and beyond. Not on o1-mini or other GPT-models.
-								'/model': [{ _cnd: { regex: '(^o1$)|(^o[3-9].*)' } }],
+								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond. Not on o1-mini or other GPT-models.
+								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)' } }],
 							},
 						},
 					},
