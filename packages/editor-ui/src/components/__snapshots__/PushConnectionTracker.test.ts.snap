@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`PushConnectionTracker > should render when connected 1`] = `
+exports[`PushConnectionTracker > should not render error when connected and connection not requested 1`] = `
 <div>
   <span>
     
@@ -9,7 +9,16 @@ exports[`PushConnectionTracker > should render when connected 1`] = `
 </div>
 `;
 
-exports[`PushConnectionTracker > should render when disconnected 1`] = `
+exports[`PushConnectionTracker > should not render error when connected and connection requested 1`] = `
+<div>
+  <span>
+    
+    
+  </span>
+</div>
+`;
+
+exports[`PushConnectionTracker > should render error when disconnected and connection requested 1`] = `
 <div>
   <span>
     <div

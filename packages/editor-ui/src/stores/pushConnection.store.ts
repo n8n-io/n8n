@@ -23,6 +23,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 */
 	const outgoingQueue = ref<unknown[]>([]);
 
+	/** Whether the connection has been requested */
+	const isConnectionRequested = ref(false);
+
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
@@ -77,6 +80,16 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		client.sendMessage(JSON.stringify(message));
 	}
 
+	const pushConnect = () => {
+		isConnectionRequested.value = true;
+		client.connect();
+	};
+
+	const pushDisconnect = () => {
+		isConnectionRequested.value = false;
+		client.disconnect();
+	};
+
 	watch(client.isConnected, (didConnect) => {
 		if (!didConnect) {
 			return;
@@ -100,10 +113,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	return {
 		isConnected,
+		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,
-		pushConnect: client.connect,
-		pushDisconnect: client.disconnect,
+		pushConnect,
+		pushDisconnect,
 		send: serializeAndSend,
 		clearQueue,
 	};
