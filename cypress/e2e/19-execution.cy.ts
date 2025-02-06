@@ -223,7 +223,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
-	it.only('should test workflow with specific trigger node', () => {
+	it('should test workflow with specific trigger node', () => {
 		cy.createFixtureWorkflow('Two_schedule_triggers.json');
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
