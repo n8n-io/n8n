@@ -33,6 +33,7 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
+export const DEFAULT_WORKFLOW_PAGE_SIZE = 10;
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;

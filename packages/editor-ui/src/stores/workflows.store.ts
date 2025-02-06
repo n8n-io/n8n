@@ -2,6 +2,7 @@ import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
@@ -475,14 +476,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+	async function fetchAllWorkflows(
+		projectId?: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+	): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
+		};
+		const options = {
+			skip: page * pageSize - pageSize,
+			take: pageSize,
 		};
 
 		const workflows = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			isEmpty(options) ? undefined : options,
 		);
 		setWorkflows(workflows);
 		return workflows;

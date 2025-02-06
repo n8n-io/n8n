@@ -32,10 +32,11 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
-export async function getWorkflows(context: IRestApiContext, filter?: object) {
+export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
 	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		...(filter ? { filter } : {}),
+		...(options ? options : {}),
 	});
 }
 
