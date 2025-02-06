@@ -1,3 +1,4 @@
+import { useHeartbeat } from '@/push-connection/useHeartbeat';
 import { useReconnectTimer } from '@/push-connection/useReconnectTimer';
 import { ref } from 'vue';
 
@@ -27,20 +28,12 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 	 * mechanism to the protocol level ping/pong mechanism the server sends.
 	 * This is used the ensure the client notices connection issues.
 	 */
-	const heartbeatTimer = ref<ReturnType<typeof setInterval> | null>(null);
-
-	const startHeartbeat = () => {
-		heartbeatTimer.value = setInterval(() => {
+	const { startHeartbeat, stopHeartbeat } = useHeartbeat({
+		interval: 30_000,
+		onHeartbeat: () => {
 			socket.value?.send(JSON.stringify({ type: 'heartbeat' }));
-		}, 30_000);
-	};
-
-	const stopHeartbeat = () => {
-		if (heartbeatTimer.value) {
-			clearInterval(heartbeatTimer.value);
-			heartbeatTimer.value = null;
-		}
-	};
+		},
+	});
 
 	const onConnected = () => {
 		socket.value?.removeEventListener('open', onConnected);
