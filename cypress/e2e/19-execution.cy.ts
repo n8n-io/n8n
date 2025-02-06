@@ -225,7 +225,6 @@ describe('Execution', () => {
 
 	it('should test workflow with specific trigger node', () => {
 		cy.createFixtureWorkflow('Two_schedule_triggers.json');
-		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		getZoomToFitButton().click();
 		getExecuteWorkflowButton('Trigger A').should('not.be.visible');
