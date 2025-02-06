@@ -291,7 +291,7 @@ export class LmChatOpenAi implements INodeType {
 						],
 						displayOptions: {
 							show: {
-								'/model': [{ _cnd: { regex: '^o\\d+.*' } }],
+								'/model': [{ _cnd: { regex: '(^o1$)|(^o[3-9].*)' } }],
 							},
 						},
 					},
