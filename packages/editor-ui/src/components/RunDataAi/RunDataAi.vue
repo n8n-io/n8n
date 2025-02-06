@@ -48,6 +48,7 @@ function getReferencedData(
 	if (!taskData) {
 		return [];
 	}
+	console.log('getReferencedData', taskData);
 
 	const returnData: IAiDataContent[] = [];
 
@@ -55,6 +56,8 @@ function getReferencedData(
 		if (!data) {
 			return;
 		}
+
+		console.log('addFunction', data);
 
 		Object.keys(data).map((type) => {
 			returnData.push({

@@ -370,7 +370,19 @@ export class ExecuteWorkflow implements INodeType {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
-						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						returnData[i].push({
+							json: { error: error.message },
+							pairedItem: { item: i },
+							metadata:
+								error?.errorResponse?.executionId && error?.errorResponse?.workflowId
+									? {
+											subExecution: {
+												executionId: error?.errorResponse?.executionId,
+												workflowId: error?.errorResponse?.workflowId,
+											},
+										}
+									: undefined,
+						});
 						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
@@ -442,7 +454,23 @@ export class ExecuteWorkflow implements INodeType {
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message }, pairedItem }]];
+					return [
+						[
+							{
+								json: { error: error.message },
+								pairedItem,
+								metadata:
+									error?.errorResponse?.executionId && error?.errorResponse?.workflowId
+										? {
+												subExecution: {
+													executionId: error?.errorResponse?.executionId,
+													workflowId: error?.errorResponse?.workflowId,
+												},
+											}
+										: undefined,
+							},
+						],
+					];
 				}
 				throw error;
 			}

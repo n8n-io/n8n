@@ -16,6 +16,7 @@ import type {
 	ITaskMetadata,
 	IWorkflowBase,
 	IWorkflowDataProxyData,
+	JsonObject,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
@@ -23,6 +24,12 @@ import { z } from 'zod';
 
 import type { FromAIArgument } from './FromAIParser';
 import { AIParametersParser } from './FromAIParser';
+
+function errorHasMetadata(
+	response: JsonObject | undefined,
+): response is { executionId: string; workflowId: string } {
+	return ['executionId', 'workflowId'].every((x) => response?.hasOwnProperty(x));
+}
 
 /**
 	Main class for creating the Workflow tool
@@ -88,7 +95,17 @@ export class WorkflowToolService {
 			} catch (error) {
 				const executionError = error as ExecutionError;
 				const errorResponse = `There was an error: "${executionError.message}"`;
-				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError);
+
+				const metadata = errorHasMetadata(executionError.errorResponse)
+					? {
+							subExecution: {
+								executionId: executionError.errorResponse.executionId,
+								workflowId: executionError.errorResponse.workflowId,
+							},
+						}
+					: undefined;
+
+				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 				return errorResponse;
 			} finally {
 				// @ts-expect-error this accesses a private member on the actual implementation to fix https://linear.app/n8n/issue/ADO-3186/bug-workflowtool-v2-always-uses-first-row-of-input-data
