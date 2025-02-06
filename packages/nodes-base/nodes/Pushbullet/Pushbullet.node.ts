@@ -24,6 +24,7 @@ export class Pushbullet implements INodeType {
 		defaults: {
 			name: 'Pushbullet',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

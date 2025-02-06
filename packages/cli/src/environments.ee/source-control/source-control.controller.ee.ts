@@ -191,7 +191,7 @@ export class SourceControlController {
 		@Body payload: PullWorkFolderRequestDto,
 	): Promise<SourceControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
-			const result = await this.sourceControlService.pullWorkfolder(req.user.id, payload);
+			const result = await this.sourceControlService.pullWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {

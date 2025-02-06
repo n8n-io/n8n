@@ -14,6 +14,7 @@ export class SeaTable extends VersionedNodeType {
 			subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 			description: 'Read, update, write and delete data from SeaTable',
 			defaultVersion: 2,
+			usableAsTool: true,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

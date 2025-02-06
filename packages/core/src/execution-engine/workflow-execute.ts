@@ -44,7 +44,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
-	WorkflowOperationError,
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
@@ -56,6 +55,7 @@ import {
 import PCancelable from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 
 import { ExecuteContext, PollContext } from './node-execution-context';
@@ -1171,27 +1171,23 @@ export class WorkflowExecute {
 			// For webhook nodes always simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
-			// For nodes which have routing information on properties
-
-			const routingNode = new RoutingNode(
+			// NOTE: This block is only called by nodes tests.
+			// In the application, declarative nodes get assigned a `.execute` method in NodeTypes.
+			const context = new ExecuteContext(
 				workflow,
 				node,
-				connectionInputData,
-				runExecutionData ?? null,
 				additionalData,
 				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executionData,
+				[],
 			);
-
-			return {
-				data: await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executionData,
-					undefined,
-					abortSignal,
-				),
-			};
+			const routingNode = new RoutingNode(context, nodeType);
+			const data = await routingNode.runNode();
+			return { data };
 		}
 	}
 
@@ -1221,17 +1217,8 @@ export class WorkflowExecute {
 			});
 		}
 
+		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
-
-		if (!startNode) {
-			throw new ApplicationError('Failed to run workflow due to empty node execution stack', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
@@ -1246,9 +1233,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowOperationError(
-				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
-			);
+			throw new WorkflowHasIssuesError();
 		}
 
 		// Variables which hold temporary data for each node-execution

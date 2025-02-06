@@ -1,8 +1,20 @@
 import { Container } from '@n8n/di';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
+import * as a from 'node:assert';
 
+import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
+import { isObjectLiteral } from '@/utils';
+
+export class CredentialDataError extends ApplicationError {
+	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
+		super(message, {
+			extra: { name, type, id },
+			cause,
+		});
+	}
+}
 
 export class Credentials<
 	T extends object = ICredentialDataDecryptedObject,
@@ -13,6 +25,8 @@ export class Credentials<
 	 * Sets new credential object
 	 */
 	setData(data: T): void {
+		a.ok(isObjectLiteral(data));
+
 		this.data = this.cipher.encrypt(data);
 	}
 
@@ -21,17 +35,20 @@ export class Credentials<
 	 */
 	getData(): T {
 		if (this.data === undefined) {
-			throw new ApplicationError('No data is set so nothing can be returned.');
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.NO_DATA);
+		}
+
+		let decryptedData: string;
+		try {
+			decryptedData = this.cipher.decrypt(this.data);
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.DECRYPTION_FAILED, cause);
 		}
 
 		try {
-			const decryptedData = this.cipher.decrypt(this.data);
-
 			return jsonParse(decryptedData);
-		} catch (e) {
-			throw new ApplicationError(
-				'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
-			);
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause);
 		}
 	}
 

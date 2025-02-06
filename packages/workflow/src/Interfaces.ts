@@ -852,6 +852,7 @@ export type NodeTypeAndVersion = {
 	type: string;
 	typeVersion: number;
 	disabled: boolean;
+	parameters?: INodeParameters;
 };
 
 export interface FunctionsBase {
@@ -869,7 +870,10 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	getChildNodes(nodeName: string): NodeTypeAndVersion[];
+	getChildNodes(
+		nodeName: string,
+		options?: { includeNodeParameters?: boolean },
+	): NodeTypeAndVersion[];
 	getParentNodes(nodeName: string): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
@@ -1026,7 +1030,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
 export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
-	Pick<FunctionsBase, 'getNode'>;
+	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
 	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
@@ -2280,7 +2284,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
-	retryOf?: string;
+	retryOf?: string | null;
 	pushRef?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
@@ -2289,12 +2293,10 @@ export interface IWorkflowExecutionDataProcess {
 	/**
 	 * Defines which version of the partial execution flow is used.
 	 * Possible values are:
-	 *  0 - use the old flow
-	 *  1 - use the new flow
-	 * -1 - the backend chooses which flow based on the environment variable
-	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
+	 *  1 - use the old flow
+	 *  2 - use the new flow
 	 */
-	partialExecutionVersion?: string;
+	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -2404,11 +2406,6 @@ export type WorkflowActivateMode =
 	| 'activate'
 	| 'manual' // unused
 	| 'leadershipChange';
-
-export interface IWorkflowHooksOptionalParameters {
-	retryOf?: string;
-	pushRef?: string;
-}
 
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
@@ -2656,6 +2653,13 @@ export interface IExecutionSummaryNodeExecutionResult {
 
 export interface ResourceMapperFields {
 	fields: ResourceMapperField[];
+	emptyFieldsNotice?: string;
+}
+
+export interface WorkflowInputsData {
+	fields: ResourceMapperField[];
+	dataMode: string;
+	subworkflowInfo?: { id?: string };
 }
 
 export interface ResourceMapperField {
@@ -2673,6 +2677,7 @@ export interface ResourceMapperField {
 
 export type FormFieldsParameter = Array<{
 	fieldLabel: string;
+	elementName?: string;
 	fieldType?: string;
 	requiredField?: boolean;
 	fieldOptions?: { values: Array<{ option: string }> };
@@ -2680,7 +2685,10 @@ export type FormFieldsParameter = Array<{
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
 	formatDate?: string;
+	html?: string;
 	placeholder?: string;
+	fieldName?: string;
+	fieldValue?: string;
 }>;
 
 export type FieldTypeMap = {
@@ -2715,8 +2723,8 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	attemptToConvertTypes: boolean;
-	convertFieldsToString: boolean;
+	attemptToConvertTypes?: boolean;
+	convertFieldsToString?: boolean;
 };
 
 export type FilterOperatorType =

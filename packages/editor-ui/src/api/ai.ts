@@ -1,6 +1,9 @@
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { AI_ASSISTANT_MAX_CONTENT_LENGTH } from '@/constants';
 import type { ICredentialsResponse, IRestApiContext } from '@/Interface';
 import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
+import { getObjectSizeInKB } from '@/utils/objectUtils';
 import type { IDataObject } from 'n8n-workflow';
 
 export function chatWithAssistant(
@@ -10,6 +13,15 @@ export function chatWithAssistant(
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void {
+	try {
+		const payloadSize = getObjectSizeInKB(payload.payload);
+		if (payloadSize > AI_ASSISTANT_MAX_CONTENT_LENGTH) {
+			useAIAssistantHelpers().trimPayloadSize(payload);
+		}
+	} catch (e) {
+		onError(e);
+		return;
+	}
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
 		'/ai/chat',

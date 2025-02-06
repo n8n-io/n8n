@@ -33,6 +33,7 @@ import {
 	parseContentType,
 	parseIncomingMessage,
 	parseRequestObject,
+	prepareBinaryData,
 	proxyRequestToAxios,
 	removeEmptyBody,
 	setBinaryDataBuffer,
@@ -92,6 +93,27 @@ describe('NodeExecuteFunctions', () => {
 			);
 
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
+		});
+
+		test('test prepareBinaryData parses filenames correctly', async () => {
+			const filenameExpected = [
+				{
+					filename: 't?ext',
+					expected: 't?ext',
+				},
+				{
+					filename: 'no-symbol',
+					expected: 'no-symbol',
+				},
+			];
+
+			for (const { filename, expected } of filenameExpected) {
+				const binaryData: Buffer = Buffer.from('This is some binary data', 'utf8');
+
+				const result = await prepareBinaryData(binaryData, 'workflowId', 'executionId', filename);
+
+				expect(result.fileName).toEqual(expected);
+			}
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
@@ -474,7 +496,7 @@ describe('NodeExecuteFunctions', () => {
 				body: 'Not Found',
 				headers: {},
 				statusCode: 404,
-				statusMessage: null,
+				statusMessage: 'Not Found',
 			});
 			expect(hooks.executeHookFunctions).toHaveBeenCalledWith('nodeFetchedData', [
 				workflow.id,

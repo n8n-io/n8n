@@ -10,8 +10,8 @@ import N8nText from '../N8nText';
 interface ActionBoxProps {
 	emoji: string;
 	heading: string;
-	buttonText: string;
-	buttonType: ButtonType;
+	buttonText?: string;
+	buttonType?: ButtonType;
 	buttonDisabled?: boolean;
 	buttonIcon?: string;
 	description: string;

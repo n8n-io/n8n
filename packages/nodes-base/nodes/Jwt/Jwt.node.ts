@@ -52,6 +52,7 @@ export class Jwt implements INodeType {
 		defaults: {
 			name: 'JWT',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

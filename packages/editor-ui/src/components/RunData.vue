@@ -27,6 +27,7 @@ import type {
 } from '@/Interface';
 
 import {
+	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
 	HTML_NODE_TYPE,
@@ -35,6 +36,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
+	SCHEMA_PREVIEW_EXPERIMENT,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -60,7 +62,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { getGenericHints } from '@/utils/nodeViewUtils';
 import { searchInObject } from '@/utils/objectUtils';
-import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { clearJsonKey, isEmpty, isPresent } from '@/utils/typesUtils';
 import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
@@ -81,6 +83,9 @@ import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useUIStore } from '@/stores/ui.store';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
+import { usePostHog } from '@/stores/posthog.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -181,6 +186,8 @@ const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const schemaPreviewStore = useSchemaPreviewStore();
+const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -543,6 +550,36 @@ const hasInputOverwrite = computed((): boolean => {
 	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
 	return Boolean(taskData?.inputOverride);
 });
+
+const isSchemaPreviewEnabled = computed(
+	() =>
+		props.paneType === 'input' &&
+		!(nodeType.value?.codex?.categories ?? []).some(
+			(category) => category === CORE_NODES_CATEGORY,
+		) &&
+		posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+);
+
+const hasPreviewSchema = asyncComputed(async () => {
+	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
+	const nodes = props.nodes
+		.filter((n) => n.depth === 1)
+		.map((n) => workflowsStore.getNodeByName(n.name))
+		.filter(isPresent);
+
+	for (const connectedNode of nodes) {
+		const { type, typeVersion, parameters } = connectedNode;
+		const hasPreview = await schemaPreviewStore.getSchemaPreview({
+			nodeType: type,
+			version: typeVersion,
+			resource: parameters.resource as string,
+			operation: parameters.operation as string,
+		});
+
+		if (hasPreview.ok) return true;
+	}
+	return false;
+}, false);
 
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
@@ -1346,7 +1383,8 @@ defineExpose({ enterEditMode });
 
 				<N8nRadioButtons
 					v-show="
-						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
+						hasPreviewSchema ||
+						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
 					"
 					:model-value="displayMode"
 					:options="displayModes"
@@ -1431,7 +1469,7 @@ defineExpose({ enterEditMode });
 					</template>
 					<N8nIconButton
 						:icon="linkedRuns ? 'unlink' : 'link'"
-						class="linkRun"
+						:class="['linkRun', linkedRuns ? 'linked' : '']"
 						text
 						type="tertiary"
 						size="small"
@@ -1461,7 +1499,7 @@ defineExpose({ enterEditMode });
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<div v-if="props.calloutMessage" :class="$style.hintCallout">
-			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+			<N8nCallout theme="info" data-test-id="run-data-callout">
 				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 			</N8nCallout>
 		</div>
@@ -1471,6 +1509,7 @@ defineExpose({ enterEditMode });
 			:key="hint.message"
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
+			data-test-id="node-hint"
 		>
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
@@ -1493,14 +1532,13 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
-				!hasRunError &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
 				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled && !hasRunError"
+			v-show="!editMode.enabled"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
@@ -1590,7 +1628,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
@@ -1781,7 +1819,7 @@ defineExpose({ enterEditMode });
 				<LazyRunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && isSchemaView">
+			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"

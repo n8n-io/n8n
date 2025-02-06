@@ -20,7 +20,13 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExternalHooks } from '@/external-hooks';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import {
+	getWorkflowHooksMain,
+	getWorkflowHooksWorkerExecuter,
+	getWorkflowHooksWorkerMain,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
@@ -29,9 +35,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { ExecutionNotFoundError } from './errors/execution-not-found-error';
-import { EventService } from './events/event.service';
-import { ManualExecutionService } from './manual-execution.service';
+import { MaxStalledCountError } from './errors/max-stalled-count.error';
 
 @Service()
 export class WorkflowRunner {
@@ -44,11 +48,9 @@ export class WorkflowRunner {
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly externalHooks: ExternalHooks,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 	) {}
@@ -138,7 +140,7 @@ export class WorkflowRunner {
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			const workflowHooks = getWorkflowHooksMain(data, executionId);
 			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
 				undefined,
 				data.executionData,
@@ -163,7 +165,6 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -174,35 +175,17 @@ export class WorkflowRunner {
 			data.executionMode === 'manual'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			postExecutePromise
-				.then(async (executionData) => {
-					this.eventService.emit('workflow-post-execute', {
-						workflow: data.workflowData,
-						executionId,
-						userId: data.userId,
-						runData: executionData,
-					});
-					if (this.externalHooks.exists('workflow.postExecute')) {
-						try {
-							await this.externalHooks.run('workflow.postExecute', [
-								executionData,
-								data.workflowData,
-								executionId,
-							]);
-						} catch (error) {
-							this.errorReporter.error(error);
-							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
-						}
-					}
-				})
-				.catch((error) => {
-					if (error instanceof ExecutionCancelledError) return;
-					this.errorReporter.error(error);
-					this.logger.error(
-						'There was a problem running internal hook "onWorkflowPostExecute"',
-						error,
-					);
+			postExecutePromise.catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				this.errorReporter.error(error, {
+					extra: { executionId, workflowId },
 				});
+				this.logger.error('There was an error in the post-execution promise', {
+					error,
+					executionId,
+					workflowId,
+				});
+			});
 		}
 
 		return executionId;
@@ -267,7 +250,7 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			additionalData.hooks = getWorkflowHooksMain(data, executionId);
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -368,12 +351,9 @@ export class WorkflowRunner {
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
-			);
+			hooks = getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, {
+				retryOf: data.retryOf ?? undefined,
+			});
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
@@ -381,11 +361,11 @@ export class WorkflowRunner {
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+			const hooks = getWorkflowHooksWorkerExecuter(
 				data.executionMode,
 				executionId,
 				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+				{ retryOf: data.retryOf ?? undefined },
 			);
 			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			throw error;
@@ -399,11 +379,11 @@ export class WorkflowRunner {
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooksWorker = getWorkflowHooksWorkerExecuter(
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
 
 					const error = new ExecutionCancelledError(executionId);
@@ -415,14 +395,22 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
+					if (
+						error instanceof Error &&
+						error.message.includes('job stalled more than maxStalledCount')
+					) {
+						error = new MaxStalledCountError(error);
+					}
+
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooks = getWorkflowHooksWorkerExecuter(
 						data.executionMode,
 						executionId,
 						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						{ retryOf: data.retryOf ?? undefined },
 					);
+
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);

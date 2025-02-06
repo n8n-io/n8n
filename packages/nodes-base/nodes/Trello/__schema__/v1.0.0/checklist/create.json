@@ -1,0 +1,28 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"idBoard": {
+			"type": "string"
+		},
+		"idCard": {
+			"type": "string"
+		},
+		"pos": {
+			"type": "integer"
+		}
+	},
+	"required": [
+		"id",
+		"name",
+		"idBoard",
+		"idCard",
+		"pos",
+		"checkItems"
+	]
+}

@@ -22,6 +22,7 @@ export type FormTriggerData = {
 	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
+	formDescriptionMetadata?: string;
 	formSubmittedHeader?: string;
 	formSubmittedText?: string;
 	redirectUrl?: string;

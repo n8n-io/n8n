@@ -9,8 +9,8 @@ import type {
 	IDataObject,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
-	ResourceMapperFields,
 	ISupplyDataFunctions,
+	WorkflowInputsData,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -65,7 +65,11 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
+export function getFieldEntries(context: IWorkflowNodeContext): {
+	dataMode: WorkflowInputsData['dataMode'];
+	fields: FieldValueOption[];
+	subworkflowInfo?: WorkflowInputsData['subworkflowInfo'];
+} {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
@@ -89,7 +93,9 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 	}
 
 	if (Array.isArray(result)) {
-		return result;
+		const dataMode = String(inputSource);
+		const workflow = context.getWorkflow();
+		return { fields: result, dataMode, subworkflowInfo: { id: workflow.id } };
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
@@ -140,14 +146,18 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
-): Promise<ResourceMapperFields> {
+): Promise<WorkflowInputsData> {
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
+	let dataMode: string = PASSTHROUGH;
+	let subworkflowInfo: { id?: string } | undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);
+		dataMode = fieldValues.dataMode;
+		subworkflowInfo = fieldValues.subworkflowInfo;
 
-		fields = fieldValues.map((currentWorkflowInput) => {
+		fields = fieldValues.fields.map((currentWorkflowInput) => {
 			const field: ResourceMapperField = {
 				id: currentWorkflowInput.name,
 				displayName: currentWorkflowInput.name,
@@ -164,5 +174,5 @@ export async function loadWorkflowInputMappings(
 			return field;
 		});
 	}
-	return { fields };
+	return { fields, dataMode, subworkflowInfo };
 }

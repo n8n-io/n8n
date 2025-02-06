@@ -1,0 +1,94 @@
+{
+    "type": "object",
+    "properties": {
+        "Name": {
+            "type": "string"
+        },
+        "Active": {
+            "type": "boolean"
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "IncomeAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "PurchaseCost": {
+            "type": "integer"
+        },
+        "TrackQtyOnHand": {
+            "type": "boolean"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        },
+        "ExpenseAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        }
+    },
+    "required": [
+        "Name",
+        "Active",
+        "FullyQualifiedName",
+        "Type",
+        "domain",
+        "sparse",
+        "Id",
+        "SyncToken",
+        "MetaData"
+    ]
+}

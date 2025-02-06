@@ -23,6 +23,7 @@ export class Clearbit implements INodeType {
 		defaults: {
 			name: 'Clearbit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

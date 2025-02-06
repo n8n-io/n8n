@@ -61,9 +61,7 @@ export class ActiveExecutions {
 				workflowId: executionData.workflowData.id,
 			};
 
-			if (executionData.retryOf !== undefined) {
-				fullExecutionData.retryOf = executionData.retryOf.toString();
-			}
+			fullExecutionData.retryOf = executionData.retryOf ?? undefined;
 
 			const workflowId = executionData.workflowData.id;
 			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
@@ -94,13 +92,15 @@ export class ActiveExecutions {
 			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
+		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 
 		this.activeExecutions[executionId] = {
 			executionData,
-			startedAt: new Date(),
+			startedAt: resumingExecution?.startedAt ?? new Date(),
 			postExecutePromise,
 			status: executionStatus,
+			responsePromise: resumingExecution?.responsePromise,
 		};
 
 		// Automatically remove execution once the postExecutePromise settles
@@ -111,8 +111,10 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				this.concurrencyControl.release({ mode: executionData.executionMode });
-				delete this.activeExecutions[executionId];
-				this.logger.debug('Execution removed', { executionId });
+				if (this.activeExecutions[executionId]?.status !== 'waiting') {
+					delete this.activeExecutions[executionId];
+					this.logger.debug('Execution removed', { executionId });
+				}
 			});
 
 		this.logger.debug('Execution added', { executionId });
@@ -179,7 +181,7 @@ export class ActiveExecutions {
 			data = this.activeExecutions[id];
 			returnData.push({
 				id,
-				retryOf: data.executionData.retryOf,
+				retryOf: data.executionData.retryOf ?? undefined,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
 				workflowId: data.executionData.workflowData.id,
@@ -227,7 +229,7 @@ export class ActiveExecutions {
 		}
 	}
 
-	private getExecution(executionId: string): IExecutingWorkflowData {
+	getExecution(executionId: string): IExecutingWorkflowData {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {
 			throw new ExecutionNotFoundError(executionId);

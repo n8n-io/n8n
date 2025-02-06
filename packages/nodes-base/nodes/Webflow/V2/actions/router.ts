@@ -16,19 +16,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as WebflowType;
 
-	try {
-		switch (webflowNodeData.resource) {
-			case 'item':
-				returnData = await item[webflowNodeData.operation].execute.call(this, items);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
-		}
-	} catch (error) {
-		throw error;
+	switch (webflowNodeData.resource) {
+		case 'item':
+			returnData = await item[webflowNodeData.operation].execute.call(this, items);
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 	}
 
 	return [returnData];

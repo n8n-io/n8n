@@ -1,6 +1,12 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
+import {
+	WorkflowHasIssuesError,
+	InstanceSettings,
+	WorkflowExecute,
+	ErrorReporter,
+	Logger,
+} from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -13,6 +19,7 @@ import type PCancelable from 'p-cancelable';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { getWorkflowHooksWorkerExecuter } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -124,11 +131,11 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+		additionalData.hooks = getWorkflowHooksWorkerExecuter(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
-			{ retryOf: execution.retryOf as string, pushRef },
+			{ retryOf: execution.retryOf ?? undefined, pushRef },
 		);
 
 		if (pushRef) {
@@ -177,13 +184,33 @@ export class JobProcessor {
 				userId: manualData?.userId,
 			};
 
-			workflowRun = this.manualExecutionService.runManually(
-				data,
-				workflow,
-				additionalData,
-				executionId,
-				resultData.pinData,
-			);
+			try {
+				workflowRun = this.manualExecutionService.runManually(
+					data,
+					workflow,
+					additionalData,
+					executionId,
+					resultData.pinData,
+				);
+			} catch (error) {
+				if (error instanceof WorkflowHasIssuesError) {
+					// execution did not even start, but we call `workflowExecuteAfter` to notify main
+
+					const now = new Date();
+					const runData: IRun = {
+						mode: 'manual',
+						status: 'error',
+						finished: false,
+						startedAt: now,
+						stoppedAt: now,
+						data: { resultData: { error, runData: {} } },
+					};
+
+					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+					return { success: false };
+				}
+				throw error;
+			}
 		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
@@ -202,7 +229,7 @@ export class JobProcessor {
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
 			startedAt,
-			retryOf: execution.retryOf ?? '',
+			retryOf: execution.retryOf ?? undefined,
 			status: execution.status,
 		};
 

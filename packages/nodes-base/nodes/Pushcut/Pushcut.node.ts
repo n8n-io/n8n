@@ -24,6 +24,7 @@ export class Pushcut implements INodeType {
 		defaults: {
 			name: 'Pushcut',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

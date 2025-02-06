@@ -1,5 +1,4 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import nock from 'nock';
 
 import * as move from '../../../../v2/actions/file/move.operation';
 import * as transport from '../../../../v2/transport';
@@ -21,15 +20,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: file move', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'move',
