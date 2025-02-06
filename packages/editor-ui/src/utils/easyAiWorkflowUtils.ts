@@ -75,7 +75,7 @@ export const getEasyAiWorkflowJson = ({
 				parameters: {
 					options: {
 						systemMessage:
-							"=You're a helpful assistant that the user to answer questions about their calendar.\n\nToday is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}.",
+							"=You're a helpful assistant that helps the user answer questions about their calendar.\n\nToday is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}.",
 					},
 				},
 			},
