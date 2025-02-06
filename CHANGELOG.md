@@ -1,3 +1,12 @@
+## [1.77.3](https://github.com/n8n-io/n8n/compare/n8n@1.77.2...n8n@1.77.3) (2025-02-06)
+
+
+### Bug Fixes
+
+* **core:** Only use new resource mapper type validation when it is enabled ([#13099](https://github.com/n8n-io/n8n/issues/13099)) ([cf0e3ff](https://github.com/n8n-io/n8n/commit/cf0e3fffbb4f7b6a9dde96a8b0bf9168fee2e7cf))
+
+
+
 ## [1.77.2](https://github.com/n8n-io/n8n/compare/n8n@1.77.1...n8n@1.77.2) (2025-02-04)
 
 
