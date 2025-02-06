@@ -37,7 +37,6 @@ describe('ExecutionRecoveryService', () => {
 			instanceSettings,
 			push,
 			executionRepository,
-			mock(),
 		);
 	});
 
