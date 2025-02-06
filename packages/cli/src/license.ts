@@ -223,7 +223,7 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? true;
+		return true;
 	}
 
 	isSharingEnabled() {
@@ -398,7 +398,7 @@ export class License {
 	}
 
 	getPlanName(): string {
-		return this.getFeatureValue('planName') ?? 'Community';
+		return this.getFeatureValue('planName') ?? 'Enterprise';
 	}
 
 	getInfo(): string {
