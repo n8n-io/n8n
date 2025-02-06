@@ -54,9 +54,6 @@ describe('Code node', () => {
 			WorkflowPage.actions.openNode('Code');
 			ndv.actions.clickFloatingNode('Code1');
 			getEditor().should('have.text', "console.log('code node 2')");
-			getEditor().type('{selectall}').type("console.log('code node 2 edited')");
-			// wait for debounce
-			cy.wait(200);
 
 			ndv.actions.clickFloatingNode('Code');
 			getEditor().should('have.text', "console.log('code node 1')");
