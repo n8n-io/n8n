@@ -12,12 +12,21 @@ describe(useCanvasNodeHover, () => {
 		vi.useRealTimers();
 	});
 
-	function getHitBox(rect: Rect): Rect {
+	function getHitBoxMargin10(rect: Rect): Rect {
 		return {
 			x: rect.x - 10,
 			y: rect.y - 10,
 			width: rect.width + 20,
 			height: rect.height + 20,
+		};
+	}
+
+	function getHitBoxMargin100(rect: Rect): Rect {
+		return {
+			x: rect.x - 100,
+			y: rect.y - 100,
+			width: rect.width + 200,
+			height: rect.height + 200,
 		};
 	}
 
@@ -32,7 +41,7 @@ describe(useCanvasNodeHover, () => {
 		const TestComponent = defineComponent({
 			setup() {
 				const store = useVueFlow();
-				return useCanvasNodeHover(nodesRef, store, getHitBox);
+				return useCanvasNodeHover(nodesRef, store, getHitBoxMargin10);
 			},
 			render() {
 				return h('div', [
@@ -66,12 +75,7 @@ describe(useCanvasNodeHover, () => {
 		const TestComponent = defineComponent({
 			setup() {
 				const store = useVueFlow();
-				return useCanvasNodeHover(nodesRef, store, (rect) => ({
-					x: rect.x - 100,
-					y: rect.y - 100,
-					width: rect.width + 200,
-					height: rect.height + 200,
-				}));
+				return useCanvasNodeHover(nodesRef, store, getHitBoxMargin100);
 			},
 			render() {
 				return h('div', [
