@@ -1,26 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { useEventSourceClient } from '../useEventSourceClient';
-
-/** Mocked EventSource class to help testing */
-class MockEventSource extends EventTarget {
-	constructor(public url: string) {
-		super();
-	}
-
-	simulateConnectionOpen() {
-		this.dispatchEvent(new Event('open'));
-	}
-
-	simulateConnectionClose() {
-		this.dispatchEvent(new Event('close'));
-	}
-
-	simulateMessageEvent(data: string) {
-		this.dispatchEvent(new MessageEvent('message', { data }));
-	}
-
-	close = vi.fn();
-}
+import { MockEventSource } from './mockEventSource';
 
 describe('useEventSourceClient', () => {
 	let mockEventSource: MockEventSource;
