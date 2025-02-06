@@ -1,13 +1,9 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const { createFrontendEslintConfig } = require('@n8n/frontend-eslint-config');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
-	extends: ['@n8n_io/eslint-config/frontend'],
-
-	...sharedOptions(__dirname, 'frontend'),
-
+module.exports = createFrontendEslintConfig(__dirname, {
 	rules: {
 		'n8n-local-rules/dangerously-use-html-string-missing': 'error',
 
@@ -41,4 +37,4 @@ module.exports = {
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 	},
-};
+});

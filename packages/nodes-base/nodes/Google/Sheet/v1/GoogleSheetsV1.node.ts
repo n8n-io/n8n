@@ -23,7 +23,6 @@ import type {
 } from './GoogleSheet';
 import { GoogleSheet } from './GoogleSheet';
 import { versionDescription } from './versionDescription';
-import { generatePairedItemData } from '../../../../utils/utilities';
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export class GoogleSheetsV1 implements INodeType {
@@ -294,12 +293,9 @@ export class GoogleSheetsV1 implements INodeType {
 						returnData = [];
 					}
 
-					const pairedItem = generatePairedItemData(items.length);
-
 					const lookupOutput = returnData.map((item) => {
 						return {
 							json: item,
-							pairedItem,
 						};
 					});
 
