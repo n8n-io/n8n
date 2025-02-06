@@ -20,7 +20,7 @@ export class Folder extends WithTimestampsAndStringId {
 
 	@ManyToOne(() => Folder, { nullable: true })
 	@JoinColumn({ name: 'parentId' })
-	parent: Folder;
+	parent: Folder | null;
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
