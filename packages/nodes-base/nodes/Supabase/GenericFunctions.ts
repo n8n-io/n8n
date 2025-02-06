@@ -24,13 +24,15 @@ export async function supabaseApiRequest(
 	headers: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<{
+		// [ria] gets credentials from n8n
 		host: string;
 		serviceRole: string;
 	}>('supabaseApi');
 
 	const options: IRequestOptions = {
 		headers: {
-			Prefer: 'return=representation',
+			Prefer: 'return=representation', // [ria] set new header in here?? https://github.com/supabase/postgrest-js/blob/master/src/PostgrestTransformBuilder.ts#L20-L43
+			// no
 		},
 		method,
 		qs,

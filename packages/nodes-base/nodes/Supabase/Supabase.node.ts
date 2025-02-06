@@ -21,7 +21,7 @@ import {
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
-import { rowFields, rowOperations } from './RowDescription';
+import { rowFields, rowOperations, schemas } from './RowDescription';
 
 export type FieldsUiValues = Array<{
 	fieldId: string;
@@ -64,13 +64,29 @@ export class Supabase implements INodeType {
 				],
 				default: 'row',
 			},
-			...rowOperations,
+			...rowOperations, // [ria] UI Operation Drop-Down
 			...rowFields,
+			...schemas,
 		],
 	};
 
 	methods = {
 		loadOptions: {
+			// [ria] new API call to get schemas
+			async getSchemas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');
+				for (const path of Object.keys(paths as IDataObject)) {
+					//omit introspection path
+					if (path === '/') continue;
+					returnData.push({
+						name: path.replace('/', ''),
+						value: path.replace('/', ''),
+					});
+				}
+				return returnData;
+			},
+
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');

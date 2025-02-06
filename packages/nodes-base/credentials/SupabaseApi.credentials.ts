@@ -29,6 +29,13 @@ export class SupabaseApi implements ICredentialType {
 				password: true,
 			},
 		},
+		// [ria]
+		{
+			displayName: 'Schema',
+			name: 'schema',
+			type: 'string',
+			default: 'public',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -37,6 +44,8 @@ export class SupabaseApi implements ICredentialType {
 			headers: {
 				apikey: '={{$credentials.serviceRole}}',
 				Authorization: '=Bearer {{$credentials.serviceRole}}',
+				// [ria] set
+				'Accept-Profile': '={{$credentials.schema}}',
 			},
 		},
 	};
@@ -51,3 +60,24 @@ export class SupabaseApi implements ICredentialType {
 		},
 	};
 }
+
+/**
+ * cURL
+ * 
+# Append /rest/v1/ to your URL, and then use the table name as the route.
+
+# for GET or HEAD request use Accept-Profile
+curl '<SUPABASE_URL>/rest/v1/todos' \
+  -H "apikey: <SUPABASE_ANON_KEY>" \
+  -H "Authorization: Bearer <SUPABASE_ANON_KEY>" \
+  -H "Accept-Profile: myschema"
+
+# for POST, PATCH, PUT and DELETE Request use Content-Profile
+curl -X POST '<SUPABASE_URL>/rest/v1/todos' \
+  -H "apikey: <SUPABASE_ANON_KEY>" \
+  -H "Authorization: Bearer <SUPABASE_ANON_KEY>" \
+  -H "Content-Type: application/json" \
+  -H "Content-Profile: myschema" \
+  -d '{"column_name": "value"}'
+
+ */
