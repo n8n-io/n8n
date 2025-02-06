@@ -127,6 +127,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	// For paginated workflow lists
+	const totalWorkflowCount = ref(0);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const activeWorkflows = ref<string[]>([]);
@@ -476,7 +478,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchAllWorkflows(
+	async function fetchWorkflowsPage(
 		projectId?: string,
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -489,10 +491,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			take: pageSize,
 		};
 
-		const workflows = await workflowsApi.getWorkflows(
+		const { count, data } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 			isEmpty(options) ? undefined : options,
+		);
+		setWorkflows(data);
+		totalWorkflowCount.value = count;
+		return data;
+	}
+
+	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+		const filter = {
+			projectId,
+		};
+
+		const { data: workflows } = await workflowsApi.getWorkflows(
+			rootStore.restApiContext,
+			isEmpty(filter) ? undefined : filter,
 		);
 		setWorkflows(workflows);
 		return workflows;
@@ -1685,6 +1701,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowFromUrl,
 		getActivationError,
 		fetchAllWorkflows,
+		fetchWorkflowsPage,
 		fetchWorkflow,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
@@ -1758,5 +1775,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		totalWorkflowCount,
 	};
 });

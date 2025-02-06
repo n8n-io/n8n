@@ -169,9 +169,15 @@ const initialize = async () => {
 	loading.value = true;
 	await Promise.all([
 		usersStore.fetchUsers(),
-		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
+		workflowsStore.fetchWorkflowsPage(route.params?.projectId as string | undefined),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
+	loading.value = false;
+};
+
+const fetchWorkflows = async (page: number) => {
+	loading.value = true;
+	await workflowsStore.fetchWorkflowsPage(route.params?.projectId as string | undefined, page);
 	loading.value = false;
 };
 
@@ -298,6 +304,7 @@ const dismissEasyAICallout = () => {
 <template>
 	<ResourcesListLayout
 		resource-key="workflows"
+		type="list-paginated"
 		:resources="allWorkflows"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
@@ -306,8 +313,11 @@ const dismissEasyAICallout = () => {
 		:initialize="initialize"
 		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
 		:loading="loading"
+		:custom-page-size="10"
+		:total-items="workflowsStore.totalWorkflowCount"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
+		@update:current-page="fetchWorkflows"
 	>
 		<template #header>
 			<ProjectHeader />
@@ -341,13 +351,12 @@ const dismissEasyAICallout = () => {
 				</template>
 			</N8nCallout>
 		</template>
-		<template #default="{ data, updateItemSize }">
+		<template #item="{ item: data }">
 			<WorkflowCard
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data"
 				:read-only="readOnlyEnv"
-				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
 			/>
 		</template>

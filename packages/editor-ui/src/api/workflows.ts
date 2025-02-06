@@ -11,7 +11,7 @@ import type {
 	ExecutionSummary,
 	IDataObject,
 } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { getFullApiResponse, makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(
@@ -33,7 +33,7 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 }
 
 export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
-	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
+	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
