@@ -214,24 +214,31 @@ export class ActiveExecutions {
 
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
-		const { withResponsePromise, others } = this.groupExecutionIds();
-		const executionIdsToCancel = [...withResponsePromise];
-
-		if (config.getEnv('executions.mode') === 'regular') {
+		const isRegularMode = config.getEnv('executions.mode') === 'regular';
+		if (isRegularMode) {
 			// removal of active executions will no longer release capacity back,
 			// so that throttled executions cannot resume during shutdown
 			this.concurrencyControl.disable();
+		}
 
-			if (cancelAll) {
-				executionIdsToCancel.push(...others);
+		let executionIds = Object.keys(this.activeExecutions);
+		const toCancel: string[] = [];
+		for (const executionId of executionIds) {
+			const { responsePromise, status } = this.activeExecutions[executionId];
+			if (!!responsePromise || (isRegularMode && cancelAll)) {
+				// Cancel all exectutions that have a response promise, because these promises can't be retained between restarts
+				this.stopExecution(executionId);
+				toCancel.push(executionId);
+			} else if (status === 'waiting' || status === 'new') {
+				// Remove waiting and new executions to not block shutdown
+				delete this.activeExecutions[executionId];
 			}
 		}
 
-		executionIdsToCancel.forEach((executionId) => this.stopExecution(executionId));
-		await this.concurrencyControl.removeAll(executionIdsToCancel);
+		await this.concurrencyControl.removeAll(toCancel);
 
 		let count = 0;
-		let executionIds = Object.keys(this.activeExecutions);
+		executionIds = Object.keys(this.activeExecutions);
 		while (executionIds.length !== 0) {
 			if (count++ % 4 === 0) {
 				this.logger.info(`Waiting for ${executionIds.length} active executions to finish...`);
@@ -240,22 +247,6 @@ export class ActiveExecutions {
 			await sleep(500);
 			executionIds = Object.keys(this.activeExecutions);
 		}
-	}
-
-	private groupExecutionIds() {
-		const groups: Record<'withResponsePromise' | 'others', string[]> = {
-			withResponsePromise: [],
-			others: [],
-		};
-		return Object.entries(this.activeExecutions).reduce((acc, [executionId, execution]) => {
-			const { status, responsePromise } = execution;
-			const group =
-				responsePromise && (status === 'new' || status === 'waiting')
-					? acc.withResponsePromise
-					: acc.others;
-			group.push(executionId);
-			return acc;
-		}, groups);
 	}
 
 	getExecutionOrFail(executionId: string): IExecutingWorkflowData {

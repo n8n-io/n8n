@@ -245,7 +245,7 @@ describe('ActiveExecutions', () => {
 			activeExecutions.setStatus(waitingExecutionId2, 'waiting');
 		});
 
-		test('Should cancel only new and waiting executions with response-promises by default', async () => {
+		test('Should cancel only executions with response-promises by default', async () => {
 			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
@@ -263,6 +263,10 @@ describe('ActiveExecutions', () => {
 			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
+
+			await new Promise(setImmediate);
+			// the other two executions aren't cancelled, but still removed from memory
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 		});
 
 		test('Should cancel all executions when cancelAll is true', async () => {
