@@ -19,7 +19,7 @@ import type PCancelable from 'p-cancelable';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { getWorkflowHooksWorkerExecuter } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -131,20 +131,20 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		const hooks = getWorkflowHooksWorkerExecuter(
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
 			{ retryOf: execution.retryOf ?? undefined, pushRef },
 		);
-		additionalData.hooks = hooks;
+		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
-		hooks.addHandler('sendResponse', async (response): Promise<void> => {
+		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
@@ -205,7 +205,7 @@ export class JobProcessor {
 						data: { resultData: { error, runData: {} } },
 					};
 
-					await hooks.runHook('workflowExecuteAfter', [runData]);
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 					return { success: false };
 				}
 				throw error;

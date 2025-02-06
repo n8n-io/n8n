@@ -354,7 +354,7 @@ function hookFunctionsSaveWorker(
  * Returns ExecutionLifecycleHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getWorkflowHooksIntegrated(
+export function getLifecycleHooksForSubExecutions(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
@@ -375,7 +375,7 @@ export function getWorkflowHooksIntegrated(
 /**
  * Returns ExecutionLifecycleHooks instance for worker in scaling mode.
  */
-export function getWorkflowHooksWorkerExecuter(
+export function getLifecycleHooksForScalingWorker(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
@@ -401,7 +401,7 @@ export function getWorkflowHooksWorkerExecuter(
 /**
  * Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker
  */
-export function getWorkflowHooksWorkerMain(
+export function getLifecycleHooksForScalingMain(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
@@ -462,7 +462,7 @@ export function getWorkflowHooksWorkerMain(
 /**
  * Returns ExecutionLifecycleHooks instance for running the main workflow
  */
-export function getWorkflowHooksMain(
+export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
