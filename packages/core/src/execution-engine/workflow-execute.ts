@@ -1541,7 +1541,7 @@ export class WorkflowExecute {
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
 
-							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
+							if (nodeSuccessData === null || nodeSuccessData?.at(0)?.at(0) === undefined) {
 								if (executionData.node.alwaysOutputData === true) {
 									const pairedItem: IPairedItemData[] = [];
 
