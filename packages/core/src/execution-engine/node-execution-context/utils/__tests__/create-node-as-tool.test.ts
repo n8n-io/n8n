@@ -319,7 +319,7 @@ describe('createNodeAsTool', () => {
 
 			const tool = createNodeAsTool(options).response;
 
-			expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodRecord);
+			expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodEffects);
 			expect(tool.schema.shape.complexJson.description).toBe('Param with complex JSON default');
 			expect(tool.schema.shape.complexJson._def.defaultValue()).toEqual({
 				nested: { key: 'value' },
@@ -476,6 +476,70 @@ describe('createNodeAsTool', () => {
 
 			expect(tool.schema.shape.unicodeParam).toBeInstanceOf(z.ZodString);
 			expect(tool.schema.shape.unicodeParam.description).toBe('🌈 Unicode parameter 你好');
+		});
+	});
+
+	// Additional tests for JSON type parsing based on recent changes
+	describe('JSON Type Parsing and Metadata', () => {
+		it('should correctly parse a JSON parameter without default', () => {
+			node.parameters = {
+				jsonWithoutDefault:
+					"={{ $fromAI('jsonWithoutDefault', 'JSON parameter without default', 'json') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+			// Valid JSON objects (with at least one property) should pass.
+			const validJson = { key: 'value' };
+			expect(() => tool.schema.shape.jsonWithoutDefault.parse(validJson)).not.toThrow();
+
+			// Parsing an empty object should throw a validation error.
+			expect(() => tool.schema.shape.jsonWithoutDefault.parse({})).toThrow(
+				'Value must be a non-empty object or a non-empty array',
+			);
+		});
+
+		it('should correctly parse a JSON parameter with a valid default', () => {
+			node.parameters = {
+				jsonWithValidDefault:
+					"={{ $fromAI('jsonWithValidDefault', 'JSON parameter with valid default', 'json', '{\"key\": \"defaultValue\"}') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+			// The default value should be parsed from the provided JSON string.
+			expect(tool.schema.shape.jsonWithValidDefault._def.defaultValue()).toEqual({
+				key: 'defaultValue',
+			});
+		});
+
+		it('should throw an error if provided JSON default is an empty object', () => {
+			node.parameters = {
+				jsonEmptyDefault:
+					"={{ $fromAI('jsonEmptyDefault', 'JSON parameter with empty default', 'json', '{}') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+			// The default value is an empty object.
+			expect(tool.schema.shape.jsonEmptyDefault._def.defaultValue()).toEqual({});
+			// Parsing an empty object should fail.
+			expect(() => tool.schema.shape.jsonEmptyDefault.parse({})).toThrow(
+				'Value must be a non-empty object or a non-empty array',
+			);
+		});
+
+		it('should use provided JSON value over the default value', () => {
+			node.parameters = {
+				jsonParamCustom:
+					"={{ $fromAI('jsonParamCustom', 'JSON parameter with custom default', 'json', '{\"initial\": \"value\"}') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+			// Check that the default value is correctly set.
+			expect(tool.schema.shape.jsonParamCustom._def.defaultValue()).toEqual({ initial: 'value' });
+
+			// When a new valid value is provided, the schema should use it.
+			const newValue = { newKey: 'newValue' };
+			const parsedResult = tool.schema.shape.jsonParamCustom.parse(newValue);
+			expect(parsedResult).toEqual(newValue);
 		});
 	});
 });
