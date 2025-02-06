@@ -41,7 +41,11 @@ export type ExecutionLifecyleHookHandlers = {
 		(this: ExecutionLifecycleHooks, response: IExecuteResponsePromiseData) => Promise<void> | void
 	>;
 
-	/** Executed after a node fetches data */
+	/**
+	 * Executed after a node fetches data
+	 * - For a webhook node, after the node had been run.
+   * - For a http-request node, or any other node that makes http requests that still use the deprecated request* methods, after every successful http request
+s	 */
 	nodeFetchedData: Array<
 		(this: ExecutionLifecycleHooks, workflowId: string, node: INode) => Promise<void> | void
 	>;
@@ -54,7 +58,7 @@ export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
  *
  * Common use cases include:
  * - Saving execution progress to database
- * - Pushing execution status updates to the frontend UI
+ * - Pushing execution status updates to the frontend
  * - Recording workflow statistics
  * - Running external hooks for execution events
  * - Error and Cancellation handling and cleanup

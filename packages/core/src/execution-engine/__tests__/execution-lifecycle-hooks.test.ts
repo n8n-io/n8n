@@ -43,12 +43,15 @@ describe('ExecutionLifecycleHooks', () => {
 	});
 
 	describe('addHandler()', () => {
-		const hooksHandler =
+		const hooksHandlers =
 			mock<{
 				[K in keyof ExecutionLifecyleHookHandlers]: ExecutionLifecyleHookHandlers[K][number];
 			}>();
 
-		const testCases: Array<{ hook: ExecutionLifecycleHookName; args: unknown[] }> = [
+		const testCases: Array<{
+			hook: ExecutionLifecycleHookName;
+			args: Parameters<ExecutionLifecyleHookHandlers[keyof ExecutionLifecyleHookHandlers][number]>;
+		}> = [
 			{ hook: 'nodeExecuteBefore', args: ['testNode'] },
 			{
 				hook: 'nodeExecuteAfter',
@@ -60,11 +63,14 @@ describe('ExecutionLifecycleHooks', () => {
 			{ hook: 'nodeFetchedData', args: ['workflow123', mock<INode>()] },
 		];
 
-		test.each(testCases)('should add and process $hook hooks', async ({ hook, args }) => {
-			hooks.addHandler(hook, hooksHandler[hook]);
-			await hooks.runHook(hook, args);
-			expect(hooksHandler[hook]).toHaveBeenCalledWith(...args);
-		});
+		test.each(testCases)(
+			'should add handlers to $hook hook and call them',
+			async ({ hook, args }) => {
+				hooks.addHandler(hook, hooksHandlers[hook]);
+				await hooks.runHook(hook, args);
+				expect(hooksHandlers[hook]).toHaveBeenCalledWith(...args);
+			},
+		);
 	});
 
 	describe('runHook()', () => {

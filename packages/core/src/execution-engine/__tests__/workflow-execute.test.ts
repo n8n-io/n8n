@@ -1299,7 +1299,7 @@ describe('WorkflowExecute', () => {
 			// Verify static data handling
 			expect(result).toBeDefined();
 			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
-			expect(additionalData.hooks!.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
 				result,
 				workflow.staticData,
 			]);

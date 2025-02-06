@@ -501,9 +501,9 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe("when pushRef isn't set", () => {
-			beforeEach((executionMode: WorkflowExecuteMode = 'manual') => {
+			beforeEach(() => {
 				lifecycleHooks = getLifecycleHooksForRegularMain(
-					{ executionMode, workflowData, retryOf },
+					{ executionMode: 'manual', workflowData, retryOf },
 					executionId,
 				);
 			});
@@ -526,14 +526,11 @@ describe('Execution Lifecycle Hooks', () => {
 	});
 
 	describe('getLifecycleHooksForScalingMain', () => {
-		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
-			getLifecycleHooksForScalingMain(executionMode, executionId, workflowData, {
+		beforeEach(() => {
+			lifecycleHooks = getLifecycleHooksForScalingMain('manual', executionId, workflowData, {
 				pushRef,
 				retryOf,
 			});
-
-		beforeEach(() => {
-			lifecycleHooks = createHooks();
 		});
 
 		workflowEventTests();
@@ -709,9 +706,9 @@ describe('Execution Lifecycle Hooks', () => {
 	});
 
 	describe('getLifecycleHooksForSubExecutions', () => {
-		beforeEach((executionMode: WorkflowExecuteMode = 'manual') => {
+		beforeEach(() => {
 			lifecycleHooks = getLifecycleHooksForSubExecutions(
-				executionMode,
+				'manual',
 				executionId,
 				workflowData,
 				undefined,
