@@ -4,6 +4,10 @@
 
 import { getVisiblePopper, getVisibleSelect } from '../utils/popper';
 
+export function getContainer() {
+	return cy.getByTestId('ndv');
+}
+
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
 }

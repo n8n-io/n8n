@@ -160,8 +160,7 @@ export class WorkflowPage extends BasePage {
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
-		executeWorkflowButton: (triggerNodeName?: string) =>
-			cy.getByTestId(`execute-workflow-button${triggerNodeName ? `-${triggerNodeName}` : ''}`),
+		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
 		clearExecutionDataButton: () => cy.getByTestId('clear-execution-data-button'),
 		stopExecutionButton: () => cy.getByTestId('stop-execution-button'),
 		stopExecutionWaitingForWebhookButton: () =>

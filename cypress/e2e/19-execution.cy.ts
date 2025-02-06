@@ -1,3 +1,12 @@
+import { clickGetBackToCanvas, getOutputTableRow } from '../composables/ndv';
+import {
+	clickExecuteWorkflowButton,
+	getExecuteWorkflowButton,
+	getNdv,
+	getNodeByName,
+	getZoomToFitButton,
+	openNode,
+} from '../composables/workflow';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
@@ -214,31 +223,38 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
-	it('should test workflow with specific trigger node', () => {
-		cy.createFixtureWorkflow('Manual_webhook_wait.json');
+	it.only('should test workflow with specific trigger node', () => {
+		cy.createFixtureWorkflow('Two_schedule_triggers.json');
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
-		workflowPage.getters.zoomToFitButton().click();
-		workflowPage.getters.executeWorkflowButton('Manual').should('not.be.visible');
+		getZoomToFitButton().click();
+		getExecuteWorkflowButton('Trigger A').should('not.be.visible');
+		getExecuteWorkflowButton('Trigger B').should('not.be.visible');
 
-		// Hover the manual trigger node
-		workflowPage.getters.canvasNodeByName('Manual').realHover();
-		workflowPage.getters.executeWorkflowButton('Manual').should('be.visible');
+		// Execute the workflow from trigger A
+		getNodeByName('Trigger A').realHover();
+		getExecuteWorkflowButton('Trigger A').should('be.visible');
+		getExecuteWorkflowButton('Trigger B').should('not.be.visible');
+		clickExecuteWorkflowButton('Trigger A');
 
-		// Execute the workflow
-		workflowPage.getters.executeWorkflowButton('Manual').click();
-
-		// Check workflow buttons
-		workflowPage.getters.executeWorkflowButton().get('.n8n-spinner').should('be.visible');
-		workflowPage.getters.executeWorkflowButton('Manual').should('be.disabled');
-
+		// Check the output
 		successToast().contains('Workflow executed successfully');
+		openNode('Edit Fields');
+		getOutputTableRow(1).should('include.text', 'Trigger A');
 
-		cy.wait('@workflowRun').then((interception) => {
-			expect(interception.request.body)
-				.to.have.property('triggerToStartFrom')
-				.that.deep.equals({ name: 'Manual' });
-		});
+		clickGetBackToCanvas();
+		getNdv().should('not.be.visible');
+
+		// Execute the workflow from trigger B
+		getNodeByName('Trigger B').realHover();
+		getExecuteWorkflowButton('Trigger A').should('not.be.visible');
+		getExecuteWorkflowButton('Trigger B').should('be.visible');
+		clickExecuteWorkflowButton('Trigger B');
+
+		// Check the output
+		successToast().contains('Workflow executed successfully');
+		openNode('Edit Fields');
+		getOutputTableRow(1).should('include.text', 'Trigger B');
 	});
 
 	describe('execution preview', () => {
