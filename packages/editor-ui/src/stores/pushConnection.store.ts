@@ -104,7 +104,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		addEventListener,
 		pushConnect: client.connect,
 		pushDisconnect: client.disconnect,
-		send: client.sendMessage,
+		send: serializeAndSend,
 		clearQueue,
 	};
 });
