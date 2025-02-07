@@ -149,13 +149,6 @@ export class Sms77 implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Debug',
-						name: 'debug',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the API returns fake responses like in a sandbox',
-					},
-					{
 						displayName: 'Delay',
 						name: 'delay',
 						type: 'dateTime',
@@ -227,13 +220,6 @@ export class Sms77 implements INodeType {
 					},
 				},
 				options: [
-					{
-						displayName: 'Debug',
-						name: 'debug',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the API returns fake responses like in a sandbox',
-					},
 					{
 						displayName: 'From',
 						name: 'from',
