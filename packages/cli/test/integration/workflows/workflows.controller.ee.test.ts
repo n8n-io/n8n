@@ -18,9 +18,10 @@ import { mockInstance } from '@test/mocking';
 import {
 	affixRoleToSaveCredential,
 	getCredentialSharings,
+	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
@@ -1606,23 +1607,15 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(workflowFromDB).toMatchObject({ active: false });
 	});
 
-	test.todo(
-		'owner transfers workflow from project they are not part of, e.g. test global cred sharing scope',
-	);
-	test.todo(
-		'member transfers workflow from personal project to team project and wf contains a credential that they can use but not share',
-	);
-	test.todo('...');
-
-	test('foo', async () => {
+	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
 		// ARRANGE
-		const sourceProject = await createTeamProject('source project', owner);
-		const destinationProject = await createTeamProject('destination project', owner);
+		const sourceProject = await createTeamProject('source project', admin);
+		const destinationProject = await createTeamProject('destination project', member);
 		const workflow = await createWorkflow({}, sourceProject);
 		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
 
 		// ACT
-		const response = await testServer
+		await testServer
 			.authAgentFor(owner)
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({
@@ -1630,9 +1623,6 @@ describe('PUT /:workflowId/transfer', () => {
 				shareCredentials: [credential.id],
 			})
 			.expect(200);
-
-		// ASSERT
-		expect(response.body).toEqual({ data: { credentialsNotAllowedToShare: [] } });
 
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
@@ -1653,6 +1643,235 @@ describe('PUT /:workflowId/transfer', () => {
 				}),
 				expect.objectContaining({
 					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('admin transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', owner);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
+
+		// ACT
+		await testServer
+			.authAgentFor(admin)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from personal project to team project and wf contains a credential that they can use but not share', async () => {
+		// ARRANGE
+		const sourceProject = await getPersonalProject(member);
+		const destinationProject = await createTeamProject('destination project', admin);
+		const ownerProject = await getPersonalProject(owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: ownerProject });
+
+		await shareCredentialWithUsers(credential, [member]);
+		await linkUserToProject(member, destinationProject, 'project:admin');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: ownerProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from their personal project to another team project in which they have editor role', async () => {
+		// ARRANGE
+		const sourceProject = await getPersonalProject(member);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', owner);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
+
+		await linkUserToProject(member, sourceProject, 'project:admin');
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share the credential', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', admin);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const ownerProject = await getPersonalProject(owner);
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: ownerProject });
+
+		await linkUserToProject(member, sourceProject, 'project:admin');
+		await linkUserToProject(member, destinationProject, 'project:editor');
+		await shareCredentialWithProjects(credential, [sourceProject]);
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: ownerProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: sourceProject.id,
 					credentialsId: credential.id,
 					role: 'credential:user',
 				}),
