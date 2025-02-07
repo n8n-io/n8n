@@ -46,7 +46,8 @@ import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { get } from 'lodash-es';
-import { N8nIconButton, useDeviceSupport } from 'n8n-design-system';
+import { N8nIconButton } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 type Props = {
 	name: string;

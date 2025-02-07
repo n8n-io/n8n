@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { useDeviceSupport } from 'n8n-design-system';
+import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object

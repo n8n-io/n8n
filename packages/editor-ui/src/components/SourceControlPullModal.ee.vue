@@ -110,8 +110,7 @@ async function pullWorkfolder() {
 	>
 		<template #content>
 			<N8nText tag="div" class="mb-xs">
-				These resources will be updated or deleted, and any local changes to them will be lost. To
-				keep the local version, push it before pulling.
+				{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
 				<br />
 				<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 					{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}

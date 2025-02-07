@@ -1155,22 +1155,6 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).not.toHaveBeenCalled();
 		});
 
-		it('should not track when execution status is "waiting"', async () => {
-			const event: RelayEventMap['workflow-post-execute'] = {
-				workflow: mockWorkflowBase,
-				executionId: 'execution123',
-				userId: 'user123',
-				runData: {
-					status: 'waiting',
-					data: { resultData: {} },
-				} as IRun,
-			};
-
-			eventService.emit('workflow-post-execute', event);
-
-			expect(telemetry.trackWorkflowExecution).not.toHaveBeenCalled();
-		});
-
 		it('should track successful workflow execution', async () => {
 			const runData = mock<IRun>({
 				finished: true,

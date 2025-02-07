@@ -119,6 +119,7 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				allowToolUsage: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],

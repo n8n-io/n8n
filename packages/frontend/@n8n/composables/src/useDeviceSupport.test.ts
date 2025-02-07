@@ -1,4 +1,4 @@
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from './useDeviceSupport';
 
 const detectPointerType = (query: string) => {
 	const isCoarse = query === '(any-pointer: coarse)';

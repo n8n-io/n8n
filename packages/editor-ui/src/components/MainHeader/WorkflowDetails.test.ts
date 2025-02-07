@@ -11,6 +11,12 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+	}),
+}));
+
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
