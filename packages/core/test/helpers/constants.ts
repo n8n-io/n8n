@@ -5072,4 +5072,189 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 			},
 		},
 	},
+	{
+		description: 'Should normalize nodeSuccessData',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {},
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [900, 460],
+						id: 'd96fd28e-8602-43ca-8d13-081baf9ba7fe',
+						name: 'When clicking ‘Test workflow’',
+					},
+					{
+						parameters: {
+							mode: 'combine',
+							advanced: true,
+							mergeByFields: {
+								values: [
+									{
+										field1: 'value1',
+										field2: 'value2',
+									},
+								],
+							},
+							options: {},
+						},
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [1540, 580],
+						id: '7ac7885e-2596-436e-af75-5b946b248023',
+						name: 'Merge Keeping Matches',
+					},
+					{
+						parameters: {
+							mode: 'combine',
+							advanced: true,
+							mergeByFields: {
+								values: [
+									{
+										field1: 'value1',
+										field2: 'value2',
+									},
+								],
+							},
+							joinMode: 'keepNonMatches',
+							options: {},
+						},
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [1540, 340],
+						id: 'a6f7c308-9a9b-4796-9d2a-f25dfaac57c9',
+						name: 'Merge Keeping Non-Matches',
+					},
+					{
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'name',
+										value: 'foo',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										value: 'bar',
+										type: 'string',
+									},
+								],
+							},
+							options: {},
+						},
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [1140, 320],
+						id: '0b8c332a-e005-45b0-998d-4877c7718ad5',
+						name: 'Data 1',
+					},
+					{
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'name',
+										value: 'fooz',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										value: 'baz',
+										type: 'string',
+									},
+								],
+							},
+							options: {},
+						},
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [1140, 600],
+						id: '942f6fe0-dac7-46b7-96fe-0f1ef6f03c51',
+						name: 'Data 2',
+					},
+				],
+				connections: {
+					'When clicking ‘Test workflow’': {
+						main: [
+							[
+								{
+									node: 'Data 1',
+									type: NodeConnectionType.Main,
+									index: 0,
+								},
+								{
+									node: 'Data 2',
+									type: NodeConnectionType.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					'Data 1': {
+						main: [
+							[
+								{
+									node: 'Merge Keeping Non-Matches',
+									type: NodeConnectionType.Main,
+									index: 0,
+								},
+								{
+									node: 'Merge Keeping Matches',
+									type: NodeConnectionType.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+					'Data 2': {
+						main: [
+							[
+								{
+									node: 'Merge Keeping Non-Matches',
+									type: NodeConnectionType.Main,
+									index: 1,
+								},
+								{
+									node: 'Merge Keeping Matches',
+									type: NodeConnectionType.Main,
+									index: 1,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: [
+				'When clicking ‘Test workflow’',
+				'Data 1',
+				'Data 2',
+				'Merge Keeping Non-Matches',
+				'Merge Keeping Matches',
+			],
+			testAllOutputs: true,
+			nodeData: {
+				'Merge Keeping Non-Matches': [
+					[
+						[
+							{
+								name: 'foo',
+								value: 'bar',
+								_source: 'input1',
+							},
+							{
+								name: 'fooz',
+								value: 'baz',
+								_source: 'input2',
+							},
+						],
+					],
+				],
+				'Merge Keeping Matches': [],
+			},
+		},
+	},
 ];
