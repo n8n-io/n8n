@@ -278,9 +278,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const stalenessByName: Record<string, CanvasNodeRunDataStaleness | undefined> = {};
 		const visitedByName: Record<string, true | undefined> = {};
 
-		// TODO: check feature flag
-
-		function markDownstreamStaleRecursively(nodeName: string) {
+		function markDownstreamStaleRecursively(nodeName: string): void {
 			if (visitedByName[nodeName]) {
 				return; // prevent infinite recursion
 			}
@@ -306,7 +304,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			if (lastUpdate && runAt && lastUpdate > runAt) {
 				stalenessByName[nodeName] = 'stale';
-				markDownstreamStaleRecursively(nodeName);
+
+				// If new partial execution is enabled, dirty node
+				if (settingsStore.partialExecutionVersion === 2) {
+					markDownstreamStaleRecursively(nodeName);
+				}
 			}
 		}
 
