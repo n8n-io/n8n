@@ -105,11 +105,11 @@ export function addRowNumber(data: SheetRangeData, headerRow: number) {
 
 export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
-	const emtyRowIndex = data.findIndex((row) => row.slice(baseLength).every((cell) => cell === ''));
-	if (emtyRowIndex === -1) {
+	const emptyRowIndex = data.findIndex((row) => row.slice(baseLength).every((cell) => cell === ''));
+	if (emptyRowIndex === -1) {
 		return data;
 	}
-	return data.slice(0, emtyRowIndex);
+	return data.slice(0, emptyRowIndex);
 }
 
 export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
@@ -347,7 +347,6 @@ export function checkForSchemaChanges(
 	columnNames = columnNames.filter((col) => col !== '');
 
 	// if sheet does not contain ROW_NUMBER ignore it as data come from read rows operation
-
 	const schemaColumns = columnNames.includes(ROW_NUMBER)
 		? schema.map((s) => s.id)
 		: schema.filter((s) => s.id !== ROW_NUMBER).map((s) => s.id);
