@@ -14,10 +14,10 @@ import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-wor
 import type { ErrorReporter } from '@/errors/error-reporter';
 
 import { ActiveWorkflows } from '../active-workflows';
+import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
 import type { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
-import type { IGetExecuteTriggerFunctions } from '../interfaces';
 
 describe('ActiveWorkflows', () => {
 	const workflowId = 'test-workflow-id';
