@@ -18,6 +18,7 @@ const mode = 'mode';
 const now = 1717602004819;
 const now1 = 1718602004819;
 const node_type = 'node-type';
+const node_id = 'node-id';
 const node_version = 1;
 const input_node_type = 'input-node-type';
 const action = 'action';
@@ -164,6 +165,7 @@ describe('useNodeCreatorStore', () => {
 			workflow_id,
 		});
 		nodeCreatorStore.onNodeAddedToCanvas({
+			node_id,
 			node_type,
 			node_version,
 			is_auto_add: true,

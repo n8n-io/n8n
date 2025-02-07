@@ -2429,6 +2429,7 @@ export default defineComponent({
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
 				this.nodeCreatorStore.onNodeAddedToCanvas({
+					node_id: newNodeData.id,
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
