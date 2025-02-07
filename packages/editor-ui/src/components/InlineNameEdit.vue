@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, withDefaults } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { onClickOutside } from '@vueuse/core';
 
 interface Props {
 	modelValue: string;
-	subtitle: string;
+	subtitle?: string;
 	type: string;
-	readonly: boolean;
+	readonly?: boolean;
+	placeholder?: string;
+	maxlength?: number;
+	required?: boolean;
+	autosize?: boolean | { minRows: number; maxRows: number };
+	inputType?: string;
+	maxHeight?: string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	placeholder: '',
+	maxlength: 64,
+	required: true,
+	autosize: false,
+	inputType: 'text',
+	maxHeight: '22px',
+	subtitle: '',
+});
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -25,15 +39,11 @@ const onNameEdit = (value: string) => {
 
 const enableNameEdit = () => {
 	isNameEdit.value = true;
-	void nextTick(() => {
-		if (nameInput.value) {
-			nameInput.value.focus();
-		}
-	});
+	void nextTick(() => nameInput.value?.focus());
 };
 
 const disableNameEdit = () => {
-	if (!props.modelValue) {
+	if (!props.modelValue && props.required) {
 		emit('update:modelValue', `Untitled ${props.type}`);
 		showToast({
 			title: 'Error',
@@ -54,20 +64,30 @@ onClickOutside(nameInput, disableNameEdit);
 		</span>
 		<div
 			v-else
-			:class="[$style.headline, $style['headline-editable']]"
+			:class="{
+				[$style.headline]: true,
+				[$style['headline-editable']]: true,
+				[$style.editing]: isNameEdit,
+			}"
 			@keydown.stop
 			@click="enableNameEdit"
 		>
 			<div v-if="!isNameEdit">
-				<span>{{ modelValue }}</span>
+				<span>
+					<n8n-text v-if="!modelValue" size="small" color="text-base">{{ placeholder }}</n8n-text>
+					<slot v-else>{{ modelValue }}</slot>
+				</span>
 				<i><font-awesome-icon icon="pen" /></i>
 			</div>
-			<div v-else :class="$style.nameInput">
+			<div v-else :class="{ [$style.nameInput]: props.inputType !== 'textarea' }">
 				<n8n-input
 					ref="nameInput"
 					:model-value="modelValue"
-					size="xlarge"
-					:maxlength="64"
+					size="large"
+					:type="inputType"
+					:maxlength
+					:placeholder
+					:autosize
 					@update:model-value="onNameEdit"
 					@change="disableNameEdit"
 				/>
@@ -97,14 +117,21 @@ onClickOutside(nameInput, disableNameEdit);
 	border-radius: var(--border-radius-base);
 	position: relative;
 	min-height: 22px;
-	max-height: 22px;
+	max-height: v-bind(maxHeight);
 	font-weight: 400;
 
+	&.editing {
+		width: 100%;
+	}
 	i {
 		display: var(--headline-icon-display, none);
 		font-size: 0.75em;
 		margin-left: 8px;
 		color: var(--color-text-base);
+	}
+
+	:global(textarea) {
+		resize: none;
 	}
 }
 
