@@ -22,6 +22,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -464,7 +465,16 @@ function activatePane() {
 					/>
 				</N8nTooltip>
 				<N8nText v-if="!readOnly" tag="div" size="small">
-					{{ i18n.baseText('ndv.input.noOutputData.hint') }}
+					<i18n-t keypath="ndv.input.noOutputData.hint">
+						<template #info>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
+								</template>
+								<FontAwesomeIcon icon="info-circle" />
+							</N8nTooltip>
+						</template>
+					</i18n-t>
 				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">

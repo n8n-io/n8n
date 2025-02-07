@@ -5,6 +5,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@/composables/useI18n';
 import { CanvasNodeRenderType } from '@/types';
+import { N8nTooltip } from 'n8n-design-system';
 
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
@@ -78,7 +79,12 @@ const isStale = computed(
 		data-test-id="canvas-node-status-warning"
 		:class="[$style.status, $style.warning]"
 	>
-		<FontAwesomeIcon icon="exclamation-triangle" />
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{ i18n.baseText('node.dirty') }}
+			</template>
+			<FontAwesomeIcon icon="exclamation-triangle" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasRunData"
