@@ -28,18 +28,20 @@ import {
 	copyInputItems,
 	normalizeItems,
 	constructExecutionMetaData,
-	assertBinaryData,
-	getBinaryDataBuffer,
-	copyBinaryFile,
 	getRequestHelperFunctions,
-	getBinaryHelperFunctions,
 	getSSHTunnelFunctions,
 	getFileSystemHelperFunctions,
 	getCheckProcessedHelperFunctions,
-	detectBinaryEncoding,
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import {
+	assertBinaryData,
+	getBinaryDataBuffer,
+	copyBinaryFile,
+	getBinaryHelperFunctions,
+	detectBinaryEncoding,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {

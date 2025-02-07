@@ -21,12 +21,8 @@ import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	assertBinaryData,
 	constructExecutionMetaData,
 	copyInputItems,
-	detectBinaryEncoding,
-	getBinaryDataBuffer,
-	getBinaryHelperFunctions,
 	getCheckProcessedHelperFunctions,
 	getFileSystemHelperFunctions,
 	getRequestHelperFunctions,
@@ -36,6 +32,12 @@ import {
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import {
+	assertBinaryData,
+	detectBinaryEncoding,
+	getBinaryDataBuffer,
+	getBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
