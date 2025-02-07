@@ -255,6 +255,7 @@ const resetFilters = () => {
 	});
 
 	resettingFilters.value = true;
+	hasFilters.value = false;
 	sendFiltersTelemetry('reset');
 	emit('update:filters', filtersModel.value);
 };
@@ -285,6 +286,9 @@ const onUpdateFiltersLength = (length: number) => {
 
 const onSearch = (s: string) => {
 	filtersModel.value.search = s;
+	if (s) {
+		hasFilters.value = true;
+	}
 	emit('update:filters', filtersModel.value);
 };
 
@@ -352,6 +356,14 @@ watch(
 	},
 );
 
+watch(
+	() => props.resources,
+	async () => {
+		await nextTick();
+		focusSearchInput();
+	},
+);
+
 onMounted(async () => {
 	await props.initialize();
 	await nextTick();
@@ -373,7 +385,7 @@ onMounted(async () => {
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
-			<div v-if="resources.length === 0">
+			<div v-if="resources.length === 0 && !hasFilters">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"

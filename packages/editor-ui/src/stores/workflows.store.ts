@@ -483,8 +483,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
+		filters: { name?: string; tagIds?: string[] } = {},
 	): Promise<IWorkflowDb[]> {
 		const filter = {
+			...filters,
 			projectId,
 		};
 		const options = {

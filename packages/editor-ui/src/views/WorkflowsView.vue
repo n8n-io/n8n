@@ -39,6 +39,7 @@ import {
 import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -54,6 +55,7 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
+const { callDebounced } = useDebounce();
 
 interface Filters extends IFilters {
 	status: string | boolean;
@@ -150,30 +152,20 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iFilters = newFilters as Filters;
-	if (settingsStore.areTagsEnabled && iFilters.tags.length > 0) {
-		matches =
-			matches &&
-			iFilters.tags.every((tag) =>
-				(resource as IWorkflowDb).tags?.find((resourceTag) =>
-					typeof resourceTag === 'object'
-						? `${resourceTag.id}` === `${tag}`
-						: `${resourceTag}` === `${tag}`,
-				),
-			);
-	}
-
-	if (newFilters.status !== '') {
-		matches = matches && (resource as IWorkflowDb).active === newFilters.status;
-	}
-
-	return matches;
-};
+const hasFilters = computed(() => {
+	return (
+		filters.value.search ||
+		filters.value.status !== StatusFilter.ALL ||
+		filters.value.tags.length > 0 ||
+		filters.value.homeProject
+	);
+});
 
 // Methods
-const onFiltersUpdated = (newFilters: IFilters) => {
+const onFiltersUpdated = async (newFilters: IFilters) => {
 	Object.assign(filters.value, newFilters);
+	callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+	await fetchWorkflows();
 };
 
 const addWorkflow = () => {
@@ -223,6 +215,7 @@ const fetchWorkflows = async () => {
 		currentPage.value,
 		pageSize.value,
 		currentSort.value,
+		{ name: filters.value.search },
 	);
 	loading.value = false;
 };
@@ -359,7 +352,6 @@ const onSortUpdated = async (sort: string) => {
 		type="list-paginated"
 		:resources="workflowResources"
 		:filters="filters"
-		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
@@ -367,7 +359,7 @@ const onSortUpdated = async (sort: string) => {
 		:loading="loading"
 		:custom-page-size="10"
 		:total-items="workflowsStore.totalWorkflowCount"
-		:skip-front-end-sorting-and-filtering="true"
+		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 		@update:current-page="setCurrentPage"
