@@ -84,7 +84,6 @@ watchEffect(() => {
 		justify-content: flex-start;
 		align-items: center;
 		gap: var(--spacing-s);
-		margin-bottom: var(--spacing-m);
 		padding: var(--spacing-xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
@@ -101,7 +100,7 @@ watchEffect(() => {
 
 	.chartWrapper {
 		position: relative;
-		height: var(--metrics-chart-height, 400px);
+		height: var(--metrics-chart-height, 200px);
 		width: 100%;
 		padding: var(--spacing-s);
 	}

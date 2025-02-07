@@ -44,9 +44,5 @@ function onDeleteRuns(toDelete: TestRunRecord[]) {
 	flex: 1;
 	padding-top: var(--spacing-3xs);
 	overflow: auto;
-
-	@media (min-height: 56rem) {
-		margin-top: var(--spacing-2xl);
-	}
 }
 </style>
