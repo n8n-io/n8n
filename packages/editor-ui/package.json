@@ -56,7 +56,7 @@
     "change-case": "^5.4.4",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
-    "curlconverter": "^4.11.0",
+    "curlconverter": "^4.12.0",
     "comlink": "^4.4.1",
     "core-js": "^3.40.0",
     "dateformat": "^3.0.3",
