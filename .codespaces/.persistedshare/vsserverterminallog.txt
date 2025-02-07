@@ -1,0 +1,2 @@
+[[1m[38;2;99;143;79m2204262 ms[39m[22m] [[1m[38;2;86;156;214m15[39m[22m:[1m[38;2;86;156;214m33[39m[22m:[1m[38;2;86;156;214m41[39m[22m] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
+[[1m[38;2;86;156;214m15[39m[22m:[1m[38;2;86;156;214m33[39m[22m:[1m[38;2;86;156;214m41[39m[22m] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
