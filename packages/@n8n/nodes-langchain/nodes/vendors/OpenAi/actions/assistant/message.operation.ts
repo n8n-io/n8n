@@ -1,8 +1,9 @@
+import type { MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from 'langchain/agents';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import type { BufferWindowMemory } from 'langchain/memory';
+import { BufferWindowMemory } from 'langchain/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
@@ -22,7 +23,7 @@ import { promptTypeOptions } from '@utils/descriptions';
 import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
-import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -252,7 +253,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
-		const chatMessages = await memory.chatHistory.getMessages();
+		const chatMessages = await getChatMessages(memory);
 
 		// Construct a new thread from the chat history to map the memory
 		if (chatMessages.length) {
