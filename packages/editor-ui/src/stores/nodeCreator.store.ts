@@ -355,6 +355,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function onNodeAddedToCanvas(properties: {
+		node_id: string;
 		node_type: string;
 		node_version: number;
 		is_auto_add?: boolean;
