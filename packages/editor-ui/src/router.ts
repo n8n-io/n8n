@@ -61,6 +61,8 @@ const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const TestDefinitionListView = async () =>
 	await import('./views/TestDefinition/TestDefinitionListView.vue');
+const TestDefinitionNewView = async () =>
+	await import('./views/TestDefinition/TestDefinitionNewView.vue');
 const TestDefinitionEditView = async () =>
 	await import('./views/TestDefinition/TestDefinitionEditView.vue');
 const TestDefinitionRootView = async () =>
@@ -264,6 +266,7 @@ export const routes: RouteRecordRaw[] = [
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
+		props: true,
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -272,20 +275,19 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.TEST_DEFINITION,
-				components: {
-					default: TestDefinitionListView,
-				},
+				component: TestDefinitionListView,
+				props: true,
 			},
 			{
 				path: 'new',
 				name: VIEWS.NEW_TEST_DEFINITION,
-				components: {
-					default: TestDefinitionEditView,
-				},
+				component: TestDefinitionNewView,
+				props: true,
 			},
 			{
 				path: ':testId',
 				name: VIEWS.TEST_DEFINITION_EDIT,
+				props: true,
 				components: {
 					default: TestDefinitionEditView,
 				},
