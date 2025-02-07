@@ -343,8 +343,11 @@ export function checkForSchemaChanges(
 	schema: ResourceMapperField[],
 ) {
 	const updatedColumnNames: Array<{ oldName: string; newName: string }> = [];
+	// RMC filters out empty columns so do the same here
+	columnNames = columnNames.filter((col) => col !== '');
 
-	//if sheet does not contain ROW_NUMBER ignore it as data come from read rows operation
+	// if sheet does not contain ROW_NUMBER ignore it as data come from read rows operation
+
 	const schemaColumns = columnNames.includes(ROW_NUMBER)
 		? schema.map((s) => s.id)
 		: schema.filter((s) => s.id !== ROW_NUMBER).map((s) => s.id);
