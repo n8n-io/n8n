@@ -48,6 +48,8 @@ const NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
 const PATH_DENYLIST = [
 	'parameters.name',
+	// this is used in vector store tools
+	'parameters.toolName',
 	'parameters.description',
 	// This is used in e.g. the telegram node if the dropdown selects manual mode
 	'parameters.toolDescription',
