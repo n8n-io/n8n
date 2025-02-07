@@ -33,6 +33,7 @@ import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
+import { dataUriFromImageData, UnsupportedMimeTypeError } from './utils';
 
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
@@ -88,26 +89,28 @@ async function getImageMessage(
 		NodeConnectionType.AiLanguageModel,
 		0,
 	)) as BaseLanguageModel;
-	if (!binaryData.mimeType?.startsWith('image/'))
-		throw new NodeOperationError(
-			context.getNode(),
-			`${binaryData.mimeType} is not a supported type of binary data. Only images are supported.`,
-		);
-	const dataURI = `data:${binaryData.mimeType};base64,${bufferData.toString('base64')}`;
 
-	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
-	const imageUrl = directUriModels.some((i) => model instanceof i)
-		? dataURI
-		: { url: dataURI, detail };
+	try {
+		const dataURI = dataUriFromImageData(binaryData, bufferData);
 
-	return new HumanMessage({
-		content: [
-			{
-				type: 'image_url',
-				image_url: imageUrl,
-			},
-		],
-	});
+		const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
+		const imageUrl = directUriModels.some((i) => model instanceof i)
+			? dataURI
+			: { url: dataURI, detail };
+
+		return new HumanMessage({
+			content: [
+				{
+					type: 'image_url',
+					image_url: imageUrl,
+				},
+			],
+		});
+	} catch (error) {
+		if (error instanceof UnsupportedMimeTypeError)
+			throw new NodeOperationError(context.getNode(), error.message);
+		throw error;
+	}
 }
 
 async function getChainPromptTemplate(
