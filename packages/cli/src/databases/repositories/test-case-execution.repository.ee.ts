@@ -7,6 +7,31 @@ import type { IDataObject } from 'n8n-workflow';
 import { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
+type StatusUpdateOptions = {
+	testRunId: string;
+	pastExecutionId: string;
+	trx?: EntityManager;
+};
+
+type MarkAsFailedOptions = StatusUpdateOptions & {
+	errorCode?: TestCaseExecutionErrorCode;
+	errorDetails?: IDataObject;
+};
+
+type MarkAsWarningOptions = MarkAsFailedOptions;
+
+type MarkAsRunningOptions = StatusUpdateOptions & {
+	executionId: string;
+};
+
+type MarkAsEvaluationRunningOptions = StatusUpdateOptions & {
+	evaluationExecutionId: string;
+};
+
+type MarkAsCompletedOptions = StatusUpdateOptions & {
+	metrics: Record<string, number>;
+};
+
 @Service()
 export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	constructor(dataSource: DataSource) {
@@ -29,8 +54,11 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		return await this.save(mappings);
 	}
 
-	async markAsRunning(testRunId: string, pastExecutionId: string, executionId: string) {
-		return await this.update(
+	async markAsRunning({ testRunId, pastExecutionId, executionId, trx }: MarkAsRunningOptions) {
+		trx = trx ?? this.manager;
+
+		return await trx.update(
+			TestCaseExecution,
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'running',
@@ -40,12 +68,16 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAsEvaluationRunning(
-		testRunId: string,
-		pastExecutionId: string,
-		evaluationExecutionId: string,
-	) {
-		return await this.update(
+	async markAsEvaluationRunning({
+		testRunId,
+		pastExecutionId,
+		evaluationExecutionId,
+		trx,
+	}: MarkAsEvaluationRunningOptions) {
+		trx = trx ?? this.manager;
+
+		return await trx.update(
+			TestCaseExecution,
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{
 				status: 'evaluation_running',
@@ -54,12 +86,7 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAsCompleted(
-		testRunId: string,
-		pastExecutionId: string,
-		metrics: Record<string, number>,
-		trx?: EntityManager,
-	) {
+	async markAsCompleted({ testRunId, pastExecutionId, metrics, trx }: MarkAsCompletedOptions) {
 		trx = trx ?? this.manager;
 
 		return await trx.update(
@@ -86,13 +113,13 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAsFailed(
-		testRunId: string,
-		pastExecutionId: string,
-		errorCode?: TestCaseExecutionErrorCode,
-		errorDetails?: IDataObject,
-		trx?: EntityManager,
-	) {
+	async markAsFailed({
+		testRunId,
+		pastExecutionId,
+		errorCode,
+		errorDetails,
+		trx,
+	}: MarkAsFailedOptions) {
 		trx = trx ?? this.manager;
 
 		return await trx.update(
@@ -107,12 +134,12 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAsWarning(
-		testRunId: string,
-		pastExecutionId: string,
-		errorCode?: TestCaseExecutionErrorCode,
-		errorDetails?: IDataObject,
-	) {
+	async markAsWarning({
+		testRunId,
+		pastExecutionId,
+		errorCode,
+		errorDetails,
+	}: MarkAsWarningOptions) {
 		return await this.update(
 			{ testRun: { id: testRunId }, pastExecutionId },
 			{

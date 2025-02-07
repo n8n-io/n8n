@@ -48,8 +48,8 @@ export class EvaluationMetrics {
 			difference(Array.from(this.metricNames), Object.keys(addResultsInfo.addedMetrics)).length > 0
 		) {
 			throw new TestCaseExecutionError('METRICS_MISSING', {
-				expectedMetrics: Array.from(this.metricNames),
-				receivedMetrics: Object.keys(addResultsInfo.addedMetrics),
+				expectedMetrics: Array.from(this.metricNames).sort(),
+				receivedMetrics: Object.keys(addResultsInfo.addedMetrics).sort(),
 			});
 		}
 

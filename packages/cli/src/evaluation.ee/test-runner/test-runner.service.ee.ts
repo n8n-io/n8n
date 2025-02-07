@@ -69,11 +69,10 @@ export class TestRunnerService {
 	) {}
 
 	/**
-	 * Initializes the service.
-	 * As Test Runner does not have a failover mechanism, it can not resume Test Runs interrupted by the server restart.
+	 * As Test Runner does not have a recovery mechanism, it can not resume Test Runs interrupted by the server restart.
 	 * All Test Runs in incomplete state will be marked as cancelled.
 	 */
-	async init() {
+	async cleanupIncompleteRuns() {
 		await this.testRunRepository.markAllIncompleteAsFailed();
 	}
 
@@ -182,11 +181,11 @@ export class TestRunnerService {
 		});
 
 		// Update status of the test run execution mapping
-		await this.testCaseExecutionRepository.markAsRunning(
-			metadata.testRunId,
-			metadata.pastExecutionId,
+		await this.testCaseExecutionRepository.markAsRunning({
+			testRunId: metadata.testRunId,
+			pastExecutionId: metadata.pastExecutionId,
 			executionId,
-		);
+		});
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -232,11 +231,11 @@ export class TestRunnerService {
 		});
 
 		// Update status of the test run execution mapping
-		await this.testCaseExecutionRepository.markAsEvaluationRunning(
-			metadata.testRunId,
-			metadata.pastExecutionId,
-			executionId,
-		);
+		await this.testCaseExecutionRepository.markAsEvaluationRunning({
+			testRunId: metadata.testRunId,
+			pastExecutionId: metadata.pastExecutionId,
+			evaluationExecutionId: executionId,
+		});
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -404,13 +403,12 @@ export class TestRunnerService {
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
-							await this.testCaseExecutionRepository.markAsFailed(
-								testRun.id,
+							await this.testCaseExecutionRepository.markAsFailed({
+								testRunId: testRun.id,
 								pastExecutionId,
-								'FAILED_TO_EXECUTE_WORKFLOW',
-								undefined,
+								errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
 								trx,
-							);
+							});
 						});
 						continue;
 					}
@@ -441,13 +439,12 @@ export class TestRunnerService {
 					if (evalExecution.data.resultData.error) {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementFailed(testRun.id, trx);
-							await this.testCaseExecutionRepository.markAsFailed(
-								testRun.id,
+							await this.testCaseExecutionRepository.markAsFailed({
+								testRunId: testRun.id,
 								pastExecutionId,
-								'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
-								undefined,
+								errorCode: 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
 								trx,
-							);
+							});
 						});
 					} else {
 						await Db.transaction(async (trx) => {
@@ -455,19 +452,19 @@ export class TestRunnerService {
 
 							// Add warning if the evaluation workflow produced an unknown metric
 							if (unknownMetrics.size > 0) {
-								await this.testCaseExecutionRepository.markAsWarning(
-									testRun.id,
+								await this.testCaseExecutionRepository.markAsWarning({
+									testRunId: testRun.id,
 									pastExecutionId,
-									'UNKNOWN_METRICS',
-									{ unknownMetrics: Array.from(unknownMetrics) },
-								);
+									errorCode: 'UNKNOWN_METRICS',
+									errorDetails: { unknownMetrics: Array.from(unknownMetrics) },
+								});
 							} else {
-								await this.testCaseExecutionRepository.markAsCompleted(
-									testRun.id,
+								await this.testCaseExecutionRepository.markAsCompleted({
+									testRunId: testRun.id,
 									pastExecutionId,
-									addedMetrics,
+									metrics: addedMetrics,
 									trx,
-								);
+								});
 							}
 						});
 					}
@@ -477,21 +474,20 @@ export class TestRunnerService {
 						await this.testRunRepository.incrementFailed(testRun.id, trx);
 
 						if (e instanceof TestCaseExecutionError) {
-							await this.testCaseExecutionRepository.markAsFailed(
-								testRun.id,
+							await this.testCaseExecutionRepository.markAsFailed({
+								testRunId: testRun.id,
 								pastExecutionId,
-								e.code,
-								e.extra as IDataObject,
+								errorCode: e.code,
+								errorDetails: e.extra as IDataObject,
 								trx,
-							);
+							});
 						} else {
-							await this.testCaseExecutionRepository.markAsFailed(
-								testRun.id,
+							await this.testCaseExecutionRepository.markAsFailed({
+								testRunId: testRun.id,
 								pastExecutionId,
-								'UNKNOWN_ERROR',
-								undefined,
+								errorCode: 'UNKNOWN_ERROR',
 								trx,
-							);
+							});
 
 							// Report unexpected errors
 							this.errorReporter.error(e);

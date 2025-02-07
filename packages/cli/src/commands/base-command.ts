@@ -260,8 +260,8 @@ export abstract class BaseCommand extends Command {
 		Container.get(WorkflowHistoryManager).init();
 	}
 
-	async initTestRunner() {
-		await Container.get(TestRunnerService).init();
+	async cleanupTestRunner() {
+		await Container.get(TestRunnerService).cleanupIncompleteRuns();
 	}
 
 	async finally(error: Error | undefined) {
