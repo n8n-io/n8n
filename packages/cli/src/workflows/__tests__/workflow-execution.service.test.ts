@@ -166,33 +166,45 @@ describe('WorkflowExecutionService', () => {
 			});
 		});
 
-		test("should return trigger as start node without run data if there's multiple triggers", async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		test('should start from pinned trigger', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
-			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+
+			const pinnedTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'pinned',
+				type: 'n8n-nodes-base.airtableTrigger',
+			};
+
+			const unexecutedTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'to-start-from',
+				type: 'n8n-nodes-base.airtableTrigger',
+			};
+
+			const runPayload: WorkflowRequest.ManualRunPayload = {
 				startNodes: [],
 				workflowData: {
+					id: 'abc',
+					name: 'test',
+					active: false,
 					pinData: {
-						trigger: [{}],
+						[pinnedTrigger.name]: [{ json: {} }],
 					},
-					nodes: [
-						{
-							name: 'trigger',
-							type: 'n8n-nodes-base.airtableTrigger',
-							disabled: undefined,
-						},
-						{
-							name: 'other-trigger',
-							type: 'n8n-nodes-base.airtableTrigger',
-							disabled: undefined,
-						},
-					],
+					nodes: [unexecutedTrigger, pinnedTrigger],
+					connections: {},
+					createdAt: new Date(),
+					updatedAt: new Date(),
 				},
-				triggerToStartFrom: undefined,
-			});
+				runData: {},
+			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -209,43 +221,60 @@ describe('WorkflowExecutionService', () => {
 				partialExecutionVersion: 1,
 				startNodes: [
 					{
-						name: 'trigger',
+						// Start from pinned trigger
+						name: pinnedTrigger.name,
 						sourceData: null,
 					},
 				],
 				dirtyNodeNames: runPayload.dirtyNodeNames,
-				triggerToStartFrom: runPayload.triggerToStartFrom,
+				// no trigger to start from
+				triggerToStartFrom: undefined,
 			});
 			expect(result).toEqual({ executionId });
 		});
 
-		test('should call run without startNodes if triggerToStartFrom is set', async () => {
+		test('should ignore pinned trigger and start from unexecuted trigger', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
-			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
-				startNodes: undefined,
+
+			const pinnedTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'pinned',
+				type: 'n8n-nodes-base.airtableTrigger',
+			};
+
+			const unexecutedTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'to-start-from',
+				type: 'n8n-nodes-base.airtableTrigger',
+			};
+
+			const runPayload: WorkflowRequest.ManualRunPayload = {
+				startNodes: [],
 				workflowData: {
+					id: 'abc',
+					name: 'test',
+					active: false,
 					pinData: {
-						trigger: [{}],
+						[pinnedTrigger.name]: [{ json: {} }],
 					},
-					nodes: [
-						{
-							name: 'trigger',
-							type: 'n8n-nodes-base.airtableTrigger',
-							disabled: undefined,
-						},
-						{
-							name: 'other-trigger',
-							type: 'n8n-nodes-base.airtableTrigger',
-							disabled: undefined,
-						},
-					],
+					nodes: [unexecutedTrigger, pinnedTrigger],
+					connections: {},
+					createdAt: new Date(),
+					updatedAt: new Date(),
 				},
+				runData: {},
 				triggerToStartFrom: {
-					name: 'other-trigger',
+					name: unexecutedTrigger.name,
 				},
-			});
+			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -260,9 +289,10 @@ describe('WorkflowExecutionService', () => {
 				workflowData: runPayload.workflowData,
 				userId,
 				partialExecutionVersion: 1,
-				// no start nodes are set
-				startNodes: undefined,
+				// ignore pinned trigger
+				startNodes: [],
 				dirtyNodeNames: runPayload.dirtyNodeNames,
+				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
 			expect(result).toEqual({ executionId });
