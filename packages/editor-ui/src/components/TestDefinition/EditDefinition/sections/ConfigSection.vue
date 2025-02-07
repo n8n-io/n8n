@@ -26,7 +26,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	openPinningModal: [];
-	deleteMetric: [metric: Partial<TestMetricRecord>];
+	deleteMetric: [metric: TestMetricRecord];
 	openExecutionsViewForTag: [];
 	renameTag: [tag: string];
 }>();
