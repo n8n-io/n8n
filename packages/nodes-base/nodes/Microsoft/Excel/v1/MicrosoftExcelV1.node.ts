@@ -21,7 +21,6 @@ import {
 import { tableFields, tableOperations } from './TableDescription';
 import { workbookFields, workbookOperations } from './WorkbookDescription';
 import { worksheetFields, worksheetOperations } from './WorksheetDescription';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',
@@ -173,7 +172,6 @@ export class MicrosoftExcelV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
@@ -245,18 +243,12 @@ export class MicrosoftExcelV1 implements INodeType {
 						{ 'workbook-session-id': id },
 					);
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
-						{ itemData },
-					);
+					const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 
 					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData },
-						);
+						const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
 						returnData.push(...executionErrorData);
 					} else {
 						throw error;

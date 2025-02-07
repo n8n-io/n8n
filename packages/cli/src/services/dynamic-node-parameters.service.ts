@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext } from 'n8n-core';
+import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -19,6 +19,7 @@ import type {
 	NodeParameterValueType,
 	IDataObject,
 	ILocalLoadOptionsFunctions,
+	IExecuteData,
 } from 'n8n-workflow';
 import { Workflow, ApplicationError } from 'n8n-workflow';
 
@@ -103,17 +104,8 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 
-		const routingNode = new RoutingNode(
-			workflow,
-			node,
-			connectionInputData,
-			runExecutionData ?? null,
-			additionalData,
-			mode,
-		);
-
 		// Create copy of node-type with the single property we want to get the data off
-		const tempNode: INodeType = {
+		const tempNodeType: INodeType = {
 			...nodeType,
 			...{
 				description: {
@@ -135,11 +127,25 @@ export class DynamicNodeParametersService {
 			main: [[{ json: {} }]],
 		};
 
-		const optionsData = await routingNode.runNode(inputData, runIndex, tempNode, {
+		const executeData: IExecuteData = {
 			node,
 			source: null,
 			data: {},
-		});
+		};
+		const executeFunctions = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+		const routingNode = new RoutingNode(executeFunctions, tempNodeType);
+		const optionsData = await routingNode.runNode();
 
 		if (optionsData?.length === 0) {
 			return [];

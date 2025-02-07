@@ -29,6 +29,7 @@ export class Tapfiliate implements INodeType {
 		defaults: {
 			name: 'Tapfiliate',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

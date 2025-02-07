@@ -23,6 +23,7 @@ export class Strava implements INodeType {
 		defaults: {
 			name: 'Strava',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

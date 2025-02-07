@@ -63,11 +63,13 @@ describe('n8n Form Trigger', () => {
 		cy.contains('button', 'Add Field Option').click();
 		cy.contains('label', 'Field Options')
 			.parent()
+			.parent()
 			.nextAll()
 			.find('[data-test-id="parameter-input-field"]')
 			.eq(0)
 			.type('Option 1');
 		cy.contains('label', 'Field Options')
+			.parent()
 			.parent()
 			.nextAll()
 			.find('[data-test-id="parameter-input-field"]')

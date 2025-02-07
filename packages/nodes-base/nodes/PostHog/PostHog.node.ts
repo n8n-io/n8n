@@ -27,6 +27,7 @@ export class PostHog implements INodeType {
 		defaults: {
 			name: 'PostHog',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

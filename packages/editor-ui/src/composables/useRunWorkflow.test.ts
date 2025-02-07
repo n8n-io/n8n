@@ -11,7 +11,6 @@ import {
 	type ITaskData,
 } from 'n8n-workflow';
 
-import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -19,9 +18,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
 import { useI18n } from '@/composables/useI18n';
-import { useLocalStorage } from '@vueuse/core';
-import { ref } from 'vue';
 import { captor, mock } from 'vitest-mock-extended';
+import { useSettingsStore } from '@/stores/settings.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -41,15 +40,11 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
-
-	return {
-		...originalModule, // Keep all original exports
-		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }), // Mock useLocalStorage
-	};
-});
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+	}),
+}));
 
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
@@ -101,20 +96,22 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 describe('useRunWorkflow({ router })', () => {
-	let rootStore: ReturnType<typeof useRootStore>;
+	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeAll(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 
 		setActivePinia(pinia);
 
-		rootStore = useRootStore();
+		pushConnectionStore = usePushConnectionStore();
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
+		settingsStore = useSettingsStore();
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers({ router });
@@ -129,7 +126,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.setPushConnectionInactive();
+			vi.mocked(pushConnectionStore).isConnected = false;
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
@@ -139,7 +136,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should successfully run a workflow', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.setPushConnectionActive();
+			vi.mocked(pushConnectionStore).isConnected = true;
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
@@ -170,7 +167,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should handle workflow run failure', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.setPushConnectionActive();
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow('Failed to run workflow');
@@ -180,7 +177,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should set waitingForWebhook if response indicates waiting', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.setPushConnectionActive();
+			vi.mocked(pushConnectionStore).isConnected = true;
 			const mockResponse = { executionId: '123', waitingForWebhook: true };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
 
@@ -219,6 +216,7 @@ describe('useRunWorkflow({ router })', () => {
 				type: 'error',
 			});
 		});
+
 		it('should execute workflow has pin data and is active with single webhook trigger', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
@@ -304,7 +302,7 @@ describe('useRunWorkflow({ router })', () => {
 			const mockExecutionResponse = { executionId: '123' };
 			const { runWorkflow } = useRunWorkflow({ router });
 
-			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
@@ -322,8 +320,8 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toEqual(mockExecutionResponse);
 		});
 
-		it('should send dirty nodes for partial executions', async () => {
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
+		it('should send dirty nodes for partial executions v2', async () => {
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			const composable = useRunWorkflow({ router });
 			const parentName = 'When clicking';
 			const executeName = 'Code';
@@ -404,7 +402,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 		});
 
-		it('does not use the original run data if `PartialExecution.version` is set to 0', async () => {
+		it('does not use the original run data if `partialExecutionVersion` is set to 1', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -413,8 +411,8 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(0));
-			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(settingsStore).partialExecutionVersion = 1;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
@@ -435,7 +433,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('retains the original run data if `PartialExecution.version` is set to 1', async () => {
+		it('retains the original run data if `partialExecutionVersion` is set to 2', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -444,8 +442,8 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
-			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
@@ -464,7 +462,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
-		it("does not send run data if it's not a partial execution even if `PartialExecution.version` is set to 1", async () => {
+		it("does not send run data if it's not a partial execution even if `partialExecutionVersion` is set to 2", async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -473,8 +471,8 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
-			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
+			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);

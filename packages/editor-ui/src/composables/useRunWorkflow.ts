@@ -35,7 +35,8 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useLocalStorage } from '@vueuse/core';
+import { useSettingsStore } from '@/stores/settings.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 const getDirtyNodeNames = (
 	runData: IRunData,
@@ -63,12 +64,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const toast = useToast();
 
 	const rootStore = useRootStore();
+	const pushConnectionStore = usePushConnectionStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (!rootStore.pushConnectionActive) {
+		if (!pushConnectionStore.isConnected) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
@@ -260,18 +262,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				return undefined;
 			}
 
-			// -1 means the backend chooses the default
-			// 0 is the old flow
-			// 1 is the new flow
-			const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
+			const settingsStore = useSettingsStore();
+			const version = settingsStore.partialExecutionVersion;
 			const startRunData: IStartRunData = {
 				workflowData,
+				// With the new partial execution version the backend decides what run
+				// data to use and what to ignore.
 				runData: !isPartialExecution
 					? // if it's a full execution we don't want to send any run data
 						undefined
-					: partialExecutionVersion.value === 1
+					: version === 2
 						? // With the new partial execution version the backend decides
 							//what run data to use and what to ignore.
 							(runData ?? undefined)

@@ -1,3 +1,4 @@
+import { isNaN } from 'lodash';
 import get from 'lodash/get';
 import {
 	type IDataObject,
@@ -281,6 +282,41 @@ export function aggregationToArray(
 				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
 					[splitFieldName]: key,
+				}),
+			);
+		}
+		return returnData;
+	}
+}
+
+const getOriginalFieldValue = (field: string | number) =>
+	field === 'null' ? null : isNaN(Number(field)) ? field : Number(field);
+
+export function aggregationToArrayWithOriginalTypes(
+	aggregationResult: IDataObject,
+	fieldsToSplitBy: string[],
+	previousStage: IDataObject = {},
+) {
+	const returnData: IDataObject[] = [];
+	fieldsToSplitBy = parseFieldName(fieldsToSplitBy);
+	const splitFieldName = fieldsToSplitBy[0];
+	const isNext = fieldsToSplitBy[1];
+
+	if (isNext === undefined) {
+		for (const fieldName of Object.keys(aggregationResult)) {
+			returnData.push({
+				...previousStage,
+				[splitFieldName]: getOriginalFieldValue(fieldName),
+				...(aggregationResult[fieldName] as IDataObject),
+			});
+		}
+		return returnData;
+	} else {
+		for (const key of Object.keys(aggregationResult)) {
+			returnData.push(
+				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+					...previousStage,
+					[splitFieldName]: getOriginalFieldValue(key),
 				}),
 			);
 		}
