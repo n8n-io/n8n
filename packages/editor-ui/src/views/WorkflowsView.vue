@@ -11,6 +11,7 @@ import {
 	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
@@ -65,6 +66,14 @@ const StatusFilter = {
 	ALL: '',
 };
 
+/** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
+const WORKFLOWS_SORT_MAP = {
+	lastUpdated: 'updatedAt:desc',
+	lastCreated: 'createdAt:desc',
+	nameAsc: 'name:asc',
+	nameDesc: 'name:desc',
+} as const;
+
 const loading = ref(false);
 const filters = ref<Filters>({
 	search: '',
@@ -72,13 +81,34 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+
+const workflows = ref<IWorkflowDb[]>([]);
+
 const easyAICalloutVisible = ref(true);
+
+const currentPage = ref(1);
+const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
+const currentSort = ref('updatedAt:desc');
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
+
+const workflowResources = computed<IResource[]>(() =>
+	workflows.value.map((workflow) => ({
+		id: workflow.id,
+		name: workflow.name,
+		value: '',
+		updatedAt: workflow.updatedAt.toString(),
+		createdAt: workflow.createdAt.toString(),
+		homeProject: workflow.homeProject,
+		scopes: workflow.scopes,
+		type: 'workflow',
+		sharedWithProjects: workflow.sharedWithProjects,
+		readOnly: !getResourcePermissions(workflow.scopes).workflow.update,
+	})),
 );
 
 const statusFilterOptions = computed(() => [
@@ -167,20 +197,32 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
-	await Promise.all([
+	const [, workflowsPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		workflowsStore.fetchWorkflowsPage(route.params?.projectId as string | undefined),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
+	workflows.value = workflowsPage;
 	loading.value = false;
 };
 
-const fetchWorkflows = async (page: number, pageSize: number) => {
+const setCurrentPage = async (page: number) => {
+	currentPage.value = page;
+	await fetchWorkflows();
+};
+
+const setPageSize = async (size: number) => {
+	pageSize.value = size;
+	await fetchWorkflows();
+};
+
+const fetchWorkflows = async () => {
 	loading.value = true;
-	await workflowsStore.fetchWorkflowsPage(
+	workflows.value = await workflowsStore.fetchWorkflowsPage(
 		route.params?.projectId as string | undefined,
-		page,
-		pageSize,
+		currentPage.value,
+		pageSize.value,
+		currentSort.value,
 	);
 	loading.value = false;
 };
@@ -303,13 +345,19 @@ const openAIWorkflow = async (source: string) => {
 const dismissEasyAICallout = () => {
 	easyAICalloutVisible.value = false;
 };
+
+const onSortUpdated = async (sort: string) => {
+	currentSort.value =
+		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	await fetchWorkflows();
+};
 </script>
 
 <template>
 	<ResourcesListLayout
 		resource-key="workflows"
 		type="list-paginated"
-		:resources="allWorkflows"
+		:resources="workflowResources"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
@@ -319,10 +367,12 @@ const dismissEasyAICallout = () => {
 		:loading="loading"
 		:custom-page-size="10"
 		:total-items="workflowsStore.totalWorkflowCount"
+		:skip-front-end-sorting-and-filtering="true"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
-		@update:current-page="fetchWorkflows($event.page, $event.pageSize)"
-		@update:page-size="fetchWorkflows($event.page, $event.pageSize)"
+		@update:current-page="setCurrentPage"
+		@update:page-size="setPageSize"
+		@sort="onSortUpdated"
 	>
 		<template #header>
 			<ProjectHeader />

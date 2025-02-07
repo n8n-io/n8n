@@ -482,6 +482,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		projectId?: string,
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		sortBy?: string,
 	): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
@@ -489,6 +490,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const options = {
 			skip: page * pageSize - pageSize,
 			take: pageSize,
+			sortBy,
 		};
 
 		const { count, data } = await workflowsApi.getWorkflows(

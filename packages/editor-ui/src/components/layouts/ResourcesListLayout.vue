@@ -58,6 +58,8 @@ const props = withDefaults(
 		loading: boolean;
 		customPageSize?: number;
 		totalItems?: number;
+		// Set to true if sorting and filtering is done outside of the component
+		dontPerformSortingAndFiltering?: boolean;
 	}>(),
 	{
 		displayName: (resource: IResource) => resource.name || '',
@@ -73,14 +75,15 @@ const props = withDefaults(
 		shareable: true,
 		customPageSize: 25,
 		totalItems: 0,
+		dontPerformSortingAndFiltering: false,
 	},
 );
 
 const emit = defineEmits<{
 	'update:filters': [value: IFilters];
 	'click:add': [event: Event];
-	'update:current-page': [{ page: number; pageSize: number }];
-	'update:page-size': [{ page: number; pageSize: number }];
+	'update:current-page': [page: number];
+	'update:page-size': [pageSize: number];
 	sort: [value: string];
 }>();
 
@@ -121,6 +124,9 @@ const filterKeys = computed(() => {
 });
 
 const filteredAndSortedResources = computed(() => {
+	if (props.dontPerformSortingAndFiltering) {
+		return props.resources;
+	}
 	const filtered = props.resources.filter((resource) => {
 		let matches = true;
 
@@ -192,12 +198,12 @@ const hasAppliedFilters = (): boolean => {
 
 const setRowsPerPage = (numberOfRowsPerPage: number) => {
 	rowsPerPage.value = numberOfRowsPerPage;
-	emit('update:page-size', { page: currentPage.value, pageSize: numberOfRowsPerPage });
+	emit('update:page-size', numberOfRowsPerPage);
 };
 
 const setCurrentPage = (page: number) => {
 	currentPage.value = page;
-	emit('update:current-page', { page, pageSize: rowsPerPage.value });
+	emit('update:current-page', page);
 };
 
 defineExpose({
