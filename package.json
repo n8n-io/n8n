@@ -43,7 +43,8 @@
     "test:nodes": "turbo run test:nodes --concurrency=1",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "install-nodes": "ts-node src/scripts/install-nodes.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
@@ -70,7 +71,8 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.3.3",
     "typescript": "*",
-    "zx": "^8.1.4"
+    "zx": "^8.1.4",
+    "ts-node": "^10.9.1"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

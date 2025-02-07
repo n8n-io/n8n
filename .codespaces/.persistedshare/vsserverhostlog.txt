@@ -1,0 +1,2 @@
+[2025-02-07T15:33:41.907Z] [15:33:41] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
+[15:33:41] [File Watcher (node.js)] Watcher shutdown because watched path got deleted
