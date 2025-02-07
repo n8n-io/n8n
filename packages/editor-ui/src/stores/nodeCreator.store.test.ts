@@ -177,6 +177,7 @@ describe('useNodeCreatorStore', () => {
 		expect(useTelemetry().track).toHaveBeenCalledWith(
 			'User added node to workflow canvas',
 			{
+				node_id,
 				node_type,
 				node_version,
 				is_auto_add: true,
