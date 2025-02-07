@@ -89,7 +89,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
-import { type CanvasNodeRunDataStaleness } from '@/types';
+import { type CanvasNodeDirtiness } from '@/types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -274,8 +274,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
-	const runDataStalenessByName = computed(() => {
-		const stalenessByName: Record<string, CanvasNodeRunDataStaleness | undefined> = {};
+	const dirtinessByName = computed(() => {
+		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
 		const visitedByName: Record<string, true | undefined> = {};
 
 		function markDownstreamStaleRecursively(nodeName: string): void {
@@ -288,7 +288,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
 				for (const connections of inputConnections) {
 					for (const { node } of connections ?? []) {
-						stalenessByName[node] = stalenessByName[node] ?? 'upstream-stale';
+						dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
 
 						markDownstreamStaleRecursively(node);
 					}
@@ -303,7 +303,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const runAt = taskData[0]?.startTime;
 
 			if (lastUpdate && runAt && lastUpdate > runAt) {
-				stalenessByName[nodeName] = 'stale';
+				dirtiness[nodeName] = 'dirty';
 
 				// If new partial execution is enabled, dirty node
 				if (settingsStore.partialExecutionVersion === 2) {
@@ -312,7 +312,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 
-		return stalenessByName;
+		return dirtiness;
 	});
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
@@ -1695,7 +1695,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		isChatPanelOpen: computed(() => isChatPanelOpen.value),
 		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
-		runDataStalenessByName,
+		dirtinessByName,
 		setPanelOpen,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,

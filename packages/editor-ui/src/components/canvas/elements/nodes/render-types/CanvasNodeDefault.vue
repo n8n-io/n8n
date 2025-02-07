@@ -59,7 +59,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
-		[$style.warning]: renderOptions.value.runDataStaleness !== undefined,
+		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 	};
 });
 

@@ -198,7 +198,7 @@ const runsCount = computed(() => {
 });
 
 const staleData = computed(
-	() => node.value && workflowsStore.runDataStalenessByName[node.value.name] === 'stale',
+	() => node.value && workflowsStore.dirtinessByName[node.value.name] === 'dirty',
 );
 
 const outputPanelEditMode = computed(() => {

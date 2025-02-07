@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
 }
 
-.stale {
+.dirty {
 	opacity: 0.5;
 }
 

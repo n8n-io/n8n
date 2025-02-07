@@ -47,7 +47,7 @@ export const enum CanvasNodeRenderType {
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
-export type CanvasNodeRunDataStaleness = 'stale' | 'upstream-stale';
+export type CanvasNodeDirtiness = 'dirty' | 'upstream-dirty';
 
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
@@ -62,7 +62,7 @@ export type CanvasNodeDefaultRender = {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
 		tooltip?: string;
-		runDataStaleness?: CanvasNodeRunDataStaleness;
+		dirtiness?: CanvasNodeDirtiness;
 	}>;
 };
 
