@@ -68,6 +68,8 @@ function hookFunctionsWorkflowEvents(userId?: string): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				if (runData.status === 'waiting') return;
+
 				const { executionId, workflowData: workflow } = this;
 				eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
 			},

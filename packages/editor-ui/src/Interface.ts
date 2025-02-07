@@ -54,6 +54,7 @@ import type {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	ROLE,
+	AI_UNCATEGORIZED_CATEGORY,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 
@@ -888,7 +889,6 @@ export interface RootState {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
-	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
@@ -1012,7 +1012,8 @@ export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
 	| typeof AI_NODE_CREATOR_VIEW
-	| typeof AI_OTHERS_NODE_CREATOR_VIEW;
+	| typeof AI_OTHERS_NODE_CREATOR_VIEW
+	| typeof AI_UNCATEGORIZED_CATEGORY;
 
 export type NodeCreatorOpenSource =
 	| ''

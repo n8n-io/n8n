@@ -22,7 +22,7 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import type { EndpointSpec } from '@jsplumb/common';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { useI18n } from '@/composables/useI18n';
