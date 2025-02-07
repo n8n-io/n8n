@@ -1,5 +1,5 @@
 import { getManualChatModal } from './modals/chat-modal';
-import { clickGetBackToCanvas, getContainer, getParameterInputByName } from './ndv';
+import { clickGetBackToCanvas, getParameterInputByName } from './ndv';
 import { ROUTES } from '../constants';
 import type { OpenContextMenuOptions } from '../types';
 
@@ -180,10 +180,6 @@ export function getSaveButton() {
 
 export function getZoomToFitButton() {
 	return cy.getByTestId('zoom-to-fit');
-}
-
-export function getNdv() {
-	return getContainer();
 }
 
 /**

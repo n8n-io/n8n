@@ -4,7 +4,7 @@
 
 import { getVisiblePopper, getVisibleSelect } from '../utils/popper';
 
-export function getContainer() {
+export function getNdvContainer() {
 	return cy.getByTestId('ndv');
 }
 

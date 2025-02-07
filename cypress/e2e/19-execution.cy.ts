@@ -1,8 +1,7 @@
-import { clickGetBackToCanvas, getOutputTableRow } from '../composables/ndv';
+import { clickGetBackToCanvas, getNdvContainer, getOutputTableRow } from '../composables/ndv';
 import {
 	clickExecuteWorkflowButton,
 	getExecuteWorkflowButton,
-	getNdv,
 	getNodeByName,
 	getZoomToFitButton,
 	openNode,
@@ -242,7 +241,7 @@ describe('Execution', () => {
 		getOutputTableRow(1).should('include.text', 'Trigger A');
 
 		clickGetBackToCanvas();
-		getNdv().should('not.be.visible');
+		getNdvContainer().should('not.be.visible');
 
 		// Execute the workflow from trigger B
 		getNodeByName('Trigger B').realHover();

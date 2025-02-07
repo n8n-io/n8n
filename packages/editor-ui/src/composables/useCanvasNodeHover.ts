@@ -57,11 +57,11 @@ export function useCanvasNodeHover(
 					return [
 						{
 							id: node.id,
-							distanceSqrt: dx ** 2 + dy ** 2,
+							squareDistance: dx ** 2 + dy ** 2,
 						},
 					];
 				})
-				.toSorted((nodeA, nodeB) => nodeA.distanceSqrt - nodeB.distanceSqrt);
+				.toSorted((nodeA, nodeB) => nodeA.squareDistance - nodeB.squareDistance);
 
 			id.value = nearbyNodes[0]?.id;
 		},
