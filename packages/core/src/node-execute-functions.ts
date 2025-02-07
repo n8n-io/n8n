@@ -111,7 +111,11 @@ import {
 } from './constants';
 import { DataDeduplicationService } from './data-deduplication-service';
 // eslint-disable-next-line import/no-cycle
-import { PollContext, TriggerContext } from './execution-engine/node-execution-context';
+import {
+	parseIncomingMessage,
+	PollContext,
+	TriggerContext,
+} from './execution-engine/node-execution-context';
 import { ScheduledTaskManager } from './execution-engine/scheduled-task-manager';
 import { SSHClientsManager } from './execution-engine/ssh-clients-manager';
 import { InstanceSettings } from './instance-settings';
@@ -632,87 +636,6 @@ function digestAuthAxiosConfig(
 		}
 	}
 	return axiosConfig;
-}
-
-interface IContentType {
-	type: string;
-	parameters: {
-		charset: string;
-		[key: string]: string;
-	};
-}
-
-interface IContentDisposition {
-	type: string;
-	filename?: string;
-}
-
-function parseHeaderParameters(parameters: string[]): Record<string, string> {
-	return parameters.reduce(
-		(acc, param) => {
-			const [key, value] = param.split('=');
-			let decodedValue = decodeURIComponent(value).trim();
-			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
-				decodedValue = decodedValue.slice(1, -1);
-			}
-			acc[key.toLowerCase().trim()] = decodedValue;
-			return acc;
-		},
-		{} as Record<string, string>,
-	);
-}
-
-export function parseContentType(contentType?: string): IContentType | null {
-	if (!contentType) {
-		return null;
-	}
-
-	const [type, ...parameters] = contentType.split(';');
-
-	return {
-		type: type.toLowerCase(),
-		parameters: { charset: 'utf-8', ...parseHeaderParameters(parameters) },
-	};
-}
-
-export function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
-	if (!contentDisposition) {
-		return null;
-	}
-
-	// This is invalid syntax, but common
-	// Example 'filename="example.png"' (instead of 'attachment; filename="example.png"')
-	if (!contentDisposition.startsWith('attachment') && !contentDisposition.startsWith('inline')) {
-		contentDisposition = `attachment; ${contentDisposition}`;
-	}
-
-	const [type, ...parameters] = contentDisposition.split(';');
-
-	const parsedParameters = parseHeaderParameters(parameters);
-
-	let { filename } = parsedParameters;
-	const wildcard = parsedParameters['filename*'];
-	if (wildcard) {
-		// https://datatracker.ietf.org/doc/html/rfc5987
-		const [_encoding, _locale, content] = wildcard?.split("'") ?? [];
-		filename = content;
-	}
-
-	return { type, filename };
-}
-
-export function parseIncomingMessage(message: IncomingMessage) {
-	const contentType = parseContentType(message.headers['content-type']);
-	if (contentType) {
-		const { type, parameters } = contentType;
-		message.contentType = type;
-		message.encoding = parameters.charset.toLowerCase() as BufferEncoding;
-	}
-
-	const contentDisposition = parseContentDisposition(message.headers['content-disposition']);
-	if (contentDisposition) {
-		message.contentDisposition = contentDisposition;
-	}
 }
 
 export async function binaryToString(body: Buffer | Readable, encoding?: string) {
