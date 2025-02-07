@@ -35,7 +35,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 		const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
 			credential,
 			decryptedDataOriginal,
