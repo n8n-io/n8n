@@ -44,6 +44,7 @@ import {
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
+import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -1211,6 +1212,7 @@ describe('WorkflowExecute', () => {
 
 		let runExecutionData: IRunExecutionData;
 		let workflowExecute: WorkflowExecute;
+		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
 			runExecutionData = {
@@ -1224,9 +1226,12 @@ describe('WorkflowExecute', () => {
 					waitingExecutionSource: null,
 				},
 			};
-			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+			additionalData = mock();
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
-			jest.spyOn(workflowExecute, 'executeHook').mockResolvedValue(undefined);
+			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+
+			jest.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
 			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
 		});
 
@@ -1294,7 +1299,7 @@ describe('WorkflowExecute', () => {
 			// Verify static data handling
 			expect(result).toBeDefined();
 			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
-			expect(workflowExecute.executeHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
 				result,
 				workflow.staticData,
 			]);
