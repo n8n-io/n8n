@@ -1,16 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRootStore } from '@/stores/root.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useI18n } from '@/composables/useI18n';
+import { computed } from 'vue';
 
-const rootStore = useRootStore();
-const pushConnectionActive = computed(() => rootStore.pushConnectionActive);
+const pushConnectionStore = usePushConnectionStore();
 const i18n = useI18n();
+
+const showConnectionLostError = computed(() => {
+	// Only show the connection lost error if the connection has been requested
+	// and the connection is not currently connected. This is to prevent the
+	// connection error from being shown e.g. when user navigates directly to
+	// the workflow executions list, which doesn't open the connection.
+	return pushConnectionStore.isConnectionRequested && !pushConnectionStore.isConnected;
+});
 </script>
 
 <template>
 	<span>
-		<div v-if="!pushConnectionActive" class="push-connection-lost primary-color">
+		<div v-if="showConnectionLostError" class="push-connection-lost primary-color">
 			<n8n-tooltip placement="bottom-end">
 				<template #content>
 					<div v-n8n-html="i18n.baseText('pushConnectionTracker.cannotConnectToServer')"></div>

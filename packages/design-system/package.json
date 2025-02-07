@@ -1,8 +1,8 @@
 {
   "name": "n8n-design-system",
-  "version": "1.67.0",
-  "main": "src/main.ts",
-  "import": "src/main.ts",
+  "version": "1.68.0",
+  "main": "src/index.ts",
+  "import": "src/index.ts",
   "scripts": {
     "dev": "pnpm run storybook",
     "clean": "rimraf dist .turbo",
@@ -19,6 +19,9 @@
     "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "devDependencies": {
+    "@n8n/frontend-eslint-config": "workspace:*",
+    "@n8n/frontend-typescript-config": "workspace:*",
+    "@n8n/frontend-vitest-config": "workspace:*",
     "@n8n/storybook": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/user-event": "^14.6.0",
@@ -41,6 +44,7 @@
     "vue-tsc": "catalog:frontend"
   },
   "dependencies": {
+    "@n8n/composables": "workspace:*",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
