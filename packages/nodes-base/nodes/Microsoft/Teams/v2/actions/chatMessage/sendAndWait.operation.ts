@@ -4,6 +4,7 @@ import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
 } from '../../../../../../utils/sendAndWait/utils';
+import { createUtmCampaignLink } from '../../../../../../utils/utilities';
 import { chatRLC } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
@@ -23,9 +24,7 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 	const config = getSendAndWaitConfig(this);
 
 	const attributionText = 'This message was sent automatically with';
-	const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-		'n8n-nodes-base.microsoftTeams',
-	)}${instanceId ? '_' + instanceId : ''}`;
+	const link = createUtmCampaignLink('n8n-nodes-base.microsoftTeams', instanceId);
 	const attribution = `<em>${attributionText} <a href="${link}">n8n</a></em>`;
 
 	const buttons = config.options.map(
