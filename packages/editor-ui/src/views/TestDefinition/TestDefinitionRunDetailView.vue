@@ -178,6 +178,7 @@ onMounted(async () => {
 	width: 100%;
 	max-width: var(--content-container-width);
 	margin: auto;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .backButton {
