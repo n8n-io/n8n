@@ -31,7 +31,6 @@ import {
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
 	getFileSystemHelperFunctions,
-	getCheckProcessedHelperFunctions,
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -42,6 +41,7 @@ import {
 	getBinaryHelperFunctions,
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
@@ -93,7 +93,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),

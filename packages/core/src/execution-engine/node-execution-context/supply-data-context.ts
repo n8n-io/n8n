@@ -23,7 +23,6 @@ import { createDeferredPromise } from 'n8n-workflow';
 import {
 	constructExecutionMetaData,
 	copyInputItems,
-	getCheckProcessedHelperFunctions,
 	getFileSystemHelperFunctions,
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
@@ -38,6 +37,7 @@ import {
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 } from './utils/binary-helper-functions';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
@@ -85,7 +85,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>

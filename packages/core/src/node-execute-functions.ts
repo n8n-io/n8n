@@ -56,13 +56,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	SSHTunnelFunctions,
-	DeduplicationHelperFunctions,
-	IDeduplicationOutput,
-	IDeduplicationOutputItems,
-	ICheckProcessedOptions,
-	DeduplicationScope,
-	DeduplicationItemTypes,
-	ICheckProcessedContextData,
 	WebhookType,
 	SchedulingFunctions,
 } from 'n8n-workflow';
@@ -96,7 +89,6 @@ import {
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './constants';
-import { DataDeduplicationService } from './data-deduplication-service';
 // eslint-disable-next-line import/no-cycle
 import {
 	binaryToString,
@@ -487,74 +479,6 @@ export async function httpRequest(
 	}
 
 	return result.data;
-}
-
-export async function checkProcessedAndRecord(
-	items: DeduplicationItemTypes[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<IDeduplicationOutput> {
-	return await DataDeduplicationService.getInstance().checkProcessedAndRecord(
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function checkProcessedItemsAndRecord(
-	key: string,
-	items: IDataObject[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<IDeduplicationOutputItems> {
-	return await DataDeduplicationService.getInstance().checkProcessedItemsAndRecord(
-		key,
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function removeProcessed(
-	items: DeduplicationItemTypes[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<void> {
-	return await DataDeduplicationService.getInstance().removeProcessed(
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function clearAllProcessedItems(
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<void> {
-	return await DataDeduplicationService.getInstance().clearAllProcessedItems(
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function getProcessedDataCount(
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<number> {
-	return await DataDeduplicationService.getInstance().getProcessedDataCount(
-		scope,
-		contextData,
-		options,
-	);
 }
 
 export function applyPaginationRequestData(
@@ -1705,52 +1629,6 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			});
 		}
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
-	},
-});
-
-export const getCheckProcessedHelperFunctions = (
-	workflow: Workflow,
-	node: INode,
-): DeduplicationHelperFunctions => ({
-	async checkProcessedAndRecord(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput> {
-		return await checkProcessedAndRecord(items, scope, { node, workflow }, options);
-	},
-	async checkProcessedItemsAndRecord(
-		propertyName: string,
-		items: IDataObject[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutputItems> {
-		return await checkProcessedItemsAndRecord(
-			propertyName,
-			items,
-			scope,
-			{ node, workflow },
-			options,
-		);
-	},
-	async removeProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<void> {
-		return await removeProcessed(items, scope, { node, workflow }, options);
-	},
-	async clearAllProcessedItems(
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<void> {
-		return await clearAllProcessedItems(scope, { node, workflow }, options);
-	},
-	async getProcessedDataCount(
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<number> {
-		return await getProcessedDataCount(scope, { node, workflow }, options);
 	},
 });
 
