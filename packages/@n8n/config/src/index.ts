@@ -1,5 +1,6 @@
 import { AiAssistantConfig } from './configs/aiAssistant.config';
 import { CacheConfig } from './configs/cache.config';
+import { ColorConfig } from './configs/color-theme.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
@@ -138,4 +139,7 @@ export class GlobalConfig {
 
 	@Nested
 	partialExecutions: PartialExecutionsConfig;
+
+	@Nested
+	color: ColorConfig;
 }
