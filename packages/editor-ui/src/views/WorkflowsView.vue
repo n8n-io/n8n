@@ -163,8 +163,6 @@ watch(
 );
 
 const onFiltersUpdated = async (newFilters: IFilters) => {
-	console.log('SEARCH', newFilters.search, ' ==> ', filters.value.search);
-
 	// TODO: Find a better way to compare filters
 	if (
 		newFilters.search === filters.value.search &&
@@ -223,7 +221,9 @@ const fetchWorkflows = async () => {
 	loading.value = true;
 	const tagNames = filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name);
 	workflows.value = await workflowsStore.fetchWorkflowsPage(
-		route.params?.projectId as string | undefined,
+		((route.params?.projectId as string | undefined) ?? filters.value.homeProject !== '')
+			? filters.value.homeProject
+			: undefined,
 		currentPage.value,
 		pageSize.value,
 		currentSort.value,
