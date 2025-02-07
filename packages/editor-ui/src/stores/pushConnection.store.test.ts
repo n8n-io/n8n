@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { usePushConnectionStore } from './pushConnection.store';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { ref } from 'vue';
@@ -43,13 +43,14 @@ describe('usePushConnectionStore', () => {
 		isConnected?: boolean;
 	} = {}) => {
 		// Mock connected state
-		let onMessage: (data: unknown) => void;
+		let onMessage: (data: unknown) => void = vi.fn();
 		const mockWebSocketClient: WebSocketClient = {
 			isConnected: ref(isConnected),
 			connect: vi.fn(),
 			disconnect: vi.fn(),
 			sendMessage: vi.fn(),
 		};
+
 		vi.mocked(useWebSocketClient).mockImplementation((opts) => {
 			onMessage = opts.onMessage;
 			return mockWebSocketClient;
