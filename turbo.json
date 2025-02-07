@@ -45,6 +45,7 @@
 				"@n8n/codemirror-lang#lint",
 				"@n8n/storybook#lint",
 				"n8n-cypress#lint",
+				"@n8n/composables#build",
 				"n8n-design-system#lint",
 				"n8n-editor-ui#lint"
 			]
@@ -77,6 +78,7 @@
 			"dependsOn": [
 				"@n8n/chat#test",
 				"@n8n/codemirror-lang#test",
+				"@n8n/composables#build",
 				"n8n-design-system#test",
 				"n8n-editor-ui#test"
 			],
