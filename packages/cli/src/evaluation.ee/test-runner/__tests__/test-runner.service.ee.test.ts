@@ -75,6 +75,12 @@ const executionMocks = [
 			data: stringify(executionDataJson),
 			workflowData: wfUnderTestJson,
 		},
+		metadata: [
+			{
+				key: 'testRunId',
+				value: 'test-run-id',
+			},
+		],
 	}),
 	mock<ExecutionEntity>({
 		id: 'some-execution-id-2',
@@ -84,6 +90,7 @@ const executionMocks = [
 			data: stringify(executionDataJson),
 			workflowData: wfUnderTestRenamedNodesJson,
 		},
+		metadata: [],
 	}),
 ];
 
@@ -92,6 +99,7 @@ function mockExecutionData() {
 		data: {
 			resultData: {
 				runData: {},
+				error: undefined,
 			},
 		},
 	});
