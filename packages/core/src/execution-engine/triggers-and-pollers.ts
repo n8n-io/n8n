@@ -5,7 +5,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
-	IGetExecuteTriggerFunctions,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	WorkflowActivateMode,
@@ -15,6 +14,8 @@ import type {
 	IRun,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+
+import type { IGetExecuteTriggerFunctions } from './interfaces';
 
 @Service()
 export class TriggersAndPollers {
