@@ -153,18 +153,27 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const hasFilters = computed(() => {
-	return (
-		filters.value.search ||
-		filters.value.status !== StatusFilter.ALL ||
-		filters.value.tags.length > 0 ||
-		filters.value.homeProject
-	);
-});
-
 // Methods
+// Watch filters and fetch workflows
+// TODO: Find a better way to do this and avoid fetching workflows twice
+watch(
+	() => filters.value.search,
+	async () => callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true }),
+	{ deep: true },
+);
+
 const onFiltersUpdated = async (newFilters: IFilters) => {
-	console.log('newFilters', newFilters);
+	console.log('SEARCH', newFilters.search, ' ==> ', filters.value.search);
+
+	// TODO: Find a better way to compare filters
+	if (
+		newFilters.search === filters.value.search &&
+		newFilters.status === filters.value.status &&
+		newFilters.tags === filters.value.tags &&
+		newFilters.homeProject === filters.value.homeProject
+	) {
+		return;
+	}
 	Object.assign(filters.value, newFilters);
 	callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
 };
