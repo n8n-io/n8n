@@ -2,6 +2,7 @@ import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
@@ -50,5 +51,20 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(getByTestId('canvas-node-status-success')).toHaveTextContent('15');
+	});
+
+	it('should render correctly for a dirty node that has run successfully', () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: createCanvasNodeProvide({
+					data: {
+						runData: { outputMap: {}, iterations: 15, visible: true },
+						render: { type: CanvasNodeRenderType.Default, options: { dirtiness: 'dirty' } },
+					},
+				}),
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-warning')).toBeInTheDocument();
 	});
 });

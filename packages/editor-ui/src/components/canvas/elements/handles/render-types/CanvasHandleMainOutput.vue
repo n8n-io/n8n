@@ -66,7 +66,7 @@ const outputLabelClasses = computed(() => ({
 const runDataLabelClasses = computed(() => ({
 	[$style.label]: true,
 	[$style.runDataLabel]: true,
-	[$style.stale]: renderOptions.value.dirtiness !== undefined,
+	[$style.dirty]: renderOptions.value.dirtiness !== undefined,
 }));
 
 function onMouseEnter() {
