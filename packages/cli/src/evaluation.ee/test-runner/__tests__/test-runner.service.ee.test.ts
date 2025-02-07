@@ -88,7 +88,7 @@ const executionMocks = [
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
-			workflowData: wfUnderTestRenamedNodesJson,
+			workflowData: wfUnderTestJson,
 		},
 		metadata: [],
 	}),
@@ -668,6 +668,47 @@ describe('TestRunnerService', () => {
 				name: 'When chat message received',
 			}),
 		});
+	});
+
+	test('should properly run test when nodes were renamed', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestRenamedNodesJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValue('test-execution-id');
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
+			}),
+		);
+
+		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
 
 	describe('Test Run cancellation', () => {
