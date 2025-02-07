@@ -1,4 +1,5 @@
 export * from './active-workflows';
+export * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';
 export * from './partial-execution-utils';
