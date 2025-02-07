@@ -197,9 +197,17 @@ const runsCount = computed(() => {
 	return 0;
 });
 
-const staleData = computed(
-	() => node.value && workflowsStore.dirtinessByName[node.value.name] === 'dirty',
-);
+const staleData = computed(() => {
+	if (!node.value) {
+		return false;
+	}
+	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
+	if (!updatedAt || !runTaskData.value) {
+		return false;
+	}
+	const runAt = runTaskData.value.startTime;
+	return updatedAt > runAt;
+});
 
 const outputPanelEditMode = computed(() => {
 	return ndvStore.outputPanelEditMode;

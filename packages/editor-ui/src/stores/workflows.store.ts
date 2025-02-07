@@ -275,6 +275,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
 	const dirtinessByName = computed(() => {
+		// Do not highlight dirtiness if new partial execution is not enabled
+		if (settingsStore.partialExecutionVersion === 1) {
+			return {};
+		}
+
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
 		const visitedByName: Record<string, true | undefined> = {};
 
@@ -305,10 +310,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (lastUpdate && runAt && lastUpdate > runAt) {
 				dirtiness[nodeName] = 'dirty';
 
-				// If new partial execution is enabled, dirty node
-				if (settingsStore.partialExecutionVersion === 2) {
-					markDownstreamStaleRecursively(nodeName);
-				}
+				markDownstreamStaleRecursively(nodeName);
 			}
 		}
 
