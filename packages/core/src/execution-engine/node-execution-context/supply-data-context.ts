@@ -21,14 +21,8 @@ import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	assertBinaryData,
 	constructExecutionMetaData,
 	copyInputItems,
-	detectBinaryEncoding,
-	getBinaryDataBuffer,
-	getBinaryHelperFunctions,
-	getCheckProcessedHelperFunctions,
-	getFileSystemHelperFunctions,
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
 	normalizeItems,
@@ -36,6 +30,14 @@ import {
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import {
+	assertBinaryData,
+	detectBinaryEncoding,
+	getBinaryDataBuffer,
+	getBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
@@ -83,7 +85,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
