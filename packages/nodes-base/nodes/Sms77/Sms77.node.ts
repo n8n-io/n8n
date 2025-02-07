@@ -180,13 +180,6 @@ export class Sms77 implements INodeType {
 						description: 'Custom label used to group analytics',
 					},
 					{
-						displayName: 'No Reload',
-						name: 'no_reload',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to disable reload lock to allow sending duplicate messages',
-					},
-					{
 						displayName: 'Performance Tracking',
 						name: 'performance_tracking',
 						type: 'boolean',
