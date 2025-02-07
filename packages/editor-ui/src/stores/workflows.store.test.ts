@@ -730,7 +730,7 @@ describe('useWorkflowsStore', () => {
 		},
 	);
 
-	describe.only('dirtinessByName', () => {
+	describe('dirtinessByName', () => {
 		beforeEach(() => {
 			// Enable new partial execution
 			settingsStore.settings = {
