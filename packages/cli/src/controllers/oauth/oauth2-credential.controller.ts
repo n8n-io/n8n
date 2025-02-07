@@ -23,10 +23,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
-
-		// Allow decrypted data to evaluate expressions that include $secrets and apply overwrites
-		// This should only be done for the intial request to the auth URL which passes the client secret
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData, false);
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
