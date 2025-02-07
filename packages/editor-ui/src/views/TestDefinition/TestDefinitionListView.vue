@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, RouterLink } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useToast } from '@/composables/useToast';
@@ -15,7 +15,6 @@ import type {
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 import { useMessage } from '@/composables/useMessage';
-import { RouterLink } from 'vue-router';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
@@ -262,6 +261,7 @@ onMounted(async () => {
 	width: 100%;
 	max-width: var(--content-container-width);
 	margin: auto;
+	padding: var(--spacing-xl) var(--spacing-l);
 }
 .loading {
 	display: flex;
