@@ -483,8 +483,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: { name?: string; tagIds?: string[] } = {},
+		filters: { name?: string; tags?: string[]; active?: boolean } = {},
 	): Promise<IWorkflowDb[]> {
+		// TODO: Combine all filters into one object
 		const filter = {
 			...filters,
 			projectId,

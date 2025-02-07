@@ -60,6 +60,7 @@ const props = withDefaults(
 		totalItems?: number;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
+		resourcesRefreshing?: boolean;
 	}>(),
 	{
 		displayName: (resource: IResource) => resource.name || '',
@@ -76,6 +77,7 @@ const props = withDefaults(
 		customPageSize: 25,
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
+		resourcesRefreshing: false,
 	},
 );
 
@@ -385,7 +387,10 @@ onMounted(async () => {
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
-			<div v-if="resources.length === 0 && !hasFilters">
+			<div v-if="resourcesRefreshing" class="resource-list-loading">
+				<n8n-loading :rows="10" :shrink-last="false" />
+			</div>
+			<div v-else-if="resources.length === 0 && !hasFilters">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"

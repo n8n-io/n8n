@@ -99,6 +99,7 @@ const isShareable = computed(
 );
 
 const workflowResources = computed<IResource[]>(() =>
+	// TODO: Add tags
 	workflows.value.map((workflow) => ({
 		id: workflow.id,
 		name: workflow.name,
@@ -163,9 +164,9 @@ const hasFilters = computed(() => {
 
 // Methods
 const onFiltersUpdated = async (newFilters: IFilters) => {
+	console.log('newFilters', newFilters);
 	Object.assign(filters.value, newFilters);
 	callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
-	await fetchWorkflows();
 };
 
 const addWorkflow = () => {
@@ -209,13 +210,19 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
+	// TODO: Check why workflows are fetched twice when navigating projects
 	loading.value = true;
+	const tagNames = filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name);
 	workflows.value = await workflowsStore.fetchWorkflowsPage(
 		route.params?.projectId as string | undefined,
 		currentPage.value,
 		pageSize.value,
 		currentSort.value,
-		{ name: filters.value.search },
+		{
+			name: filters.value.search !== '' ? filters.value.search : undefined,
+			active: filters.value.status !== '' ? Boolean(filters.value.status) : undefined,
+			tags: tagNames.length ? tagNames : undefined,
+		},
 	);
 	loading.value = false;
 };
@@ -297,7 +304,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-watch(filters, () => saveFiltersOnQueryString(), { deep: true });
+// watch(filters, () => saveFiltersOnQueryString(), { deep: true });
 
 watch(
 	() => route.params?.projectId,
@@ -306,7 +313,7 @@ watch(
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
-	await setFiltersFromQueryString();
+	// await setFiltersFromQueryString();
 	void usersStore.showPersonalizationSurvey();
 });
 
@@ -350,13 +357,14 @@ const onSortUpdated = async (sort: string) => {
 	<ResourcesListLayout
 		resource-key="workflows"
 		type="list-paginated"
-		:resources="workflowResources"
+		:resources="workflows"
 		:filters="filters"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
-		:loading="loading"
+		:loading="false"
+		:resources-refreshing="loading"
 		:custom-page-size="10"
 		:total-items="workflowsStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
