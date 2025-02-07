@@ -5,7 +5,6 @@ import { JSDOM } from 'jsdom';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import * as mime from 'mime-types';
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
 	IDataObject,
@@ -145,6 +144,25 @@ const defaultOptimizer = <T>(response: T) => {
 
 	return String(response);
 };
+
+function isBinary(data: unknown) {
+	// Check if data is a Buffer
+	if (Buffer.isBuffer(data)) {
+		return true;
+	}
+
+	// If data is a string, assume it's text unless it contains null characters.
+	if (typeof data === 'string') {
+		// If the string contains a null character, it's likely binary.
+		if (data.includes('\0')) {
+			return true;
+		}
+		return false;
+	}
+
+	// For any other type, assume it's not binary.
+	return false;
+}
 
 const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
@@ -755,13 +773,8 @@ export const configureToolFunction = (
 			if (!response) {
 				try {
 					// Check if the response is binary data
-					if (fullResponse?.headers?.['content-type']) {
-						const contentType = fullResponse.headers['content-type'] as string;
-						const mimeType = contentType.split(';')[0].trim();
-
-						if (mime.charset(mimeType) !== 'UTF-8') {
-							throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
-						}
+					if (fullResponse.body && isBinary(fullResponse.body)) {
+						throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
 					}
 
 					response = optimizeResponse(fullResponse.body);

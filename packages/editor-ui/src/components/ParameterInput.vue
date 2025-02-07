@@ -118,7 +118,7 @@ const emit = defineEmits<{
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { callDebounced } = useDebounce();
+const { debounce } = useDebounce();
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
 const telemetry = useTelemetry();
@@ -399,6 +399,13 @@ const getIssues = computed<string[]>(() => {
 
 	return [];
 });
+
+const displayIssues = computed(
+	() =>
+		props.parameter.type !== 'credentialsSelect' &&
+		!isResourceLocatorParameter.value &&
+		getIssues.value.length > 0,
+);
 
 const editorType = computed<EditorType | 'json' | 'code'>(() => {
 	return getArgument<EditorType>('editor');
@@ -794,9 +801,9 @@ function onTextInputChange(value: string) {
 
 	emit('textInput', parameterData);
 }
-function valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-	void callDebounced(valueChanged, { debounceTime: 100 }, value);
-}
+
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
+
 function onUpdateTextInput(value: string) {
 	valueChanged(value);
 	onTextInputChange(value);
@@ -1019,11 +1026,13 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
+	displaysIssues: displayIssues.value,
 	focusInput: async () => await setFocus(),
 	selectInput: () => selectInput(),
 });
 
 onBeforeUnmount(() => {
+	valueChangedDebounced.cancel();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1597,10 +1606,7 @@ onUpdated(async () => {
 		>
 			<slot name="overrideButton" />
 		</div>
-		<ParameterIssues
-			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
-			:issues="getIssues"
-		/>
+		<ParameterIssues v-if="displayIssues" :issues="getIssues" />
 	</div>
 </template>
 
