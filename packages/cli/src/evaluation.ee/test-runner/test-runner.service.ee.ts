@@ -481,7 +481,7 @@ export class TestRunnerService {
 								testRun.id,
 								pastExecutionId,
 								e.code,
-								e.extra,
+								e.extra as IDataObject,
 								trx,
 							);
 						} else {
@@ -525,7 +525,7 @@ export class TestRunnerService {
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 			} else if (e instanceof TestRunError) {
-				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra);
+				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
 			} else {
 				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
 				throw e;

@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 export type TestCaseExecutionErrorCode =
 	| 'MOCKED_NODE_DOES_NOT_EXIST'
@@ -12,16 +12,13 @@ export type TestCaseExecutionErrorCode =
 	| 'PAYLOAD_LIMIT_EXCEEDED'
 	| 'UNKNOWN_ERROR';
 
-export class TestCaseExecutionError extends Error {
+export class TestCaseExecutionError extends ApplicationError {
 	readonly code: TestCaseExecutionErrorCode;
 
-	readonly extra: IDataObject;
-
-	constructor(code: TestCaseExecutionErrorCode, extra: IDataObject = {}) {
-		super('Test Case execution: ' + code);
+	constructor(code: TestCaseExecutionErrorCode, extra: Record<string, unknown> = {}) {
+		super('Test Case execution: ' + code, { extra });
 
 		this.code = code;
-		this.extra = extra;
 	}
 }
 
@@ -31,15 +28,12 @@ export type TestRunErrorCode =
 	| 'INTERRUPTED'
 	| 'UNKNOWN_ERROR';
 
-export class TestRunError extends Error {
+export class TestRunError extends ApplicationError {
 	readonly code: TestRunErrorCode;
 
-	readonly extra: IDataObject;
-
-	constructor(code: TestRunErrorCode, extra: IDataObject = {}) {
-		super('Test Run: ' + code);
+	constructor(code: TestRunErrorCode, extra: Record<string, unknown> = {}) {
+		super('Test Run: ' + code, { extra });
 
 		this.code = code;
-		this.extra = extra;
 	}
 }

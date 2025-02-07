@@ -10,8 +10,10 @@ import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
 import type { ListQuery } from '@/requests';
 
+export type TestRunFinalResult = 'success' | 'error' | 'warning';
+
 export type TestRunSummary = TestRun & {
-	finalResult: 'success' | 'error' | 'warning';
+	finalResult: TestRunFinalResult | null;
 };
 
 @Service()
@@ -49,7 +51,11 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	async markAsError(id: string, errorCode: TestRunErrorCode, errorDetails?: IDataObject) {
-		return await this.update(id, { status: 'error', errorCode, errorDetails });
+		return await this.update(id, {
+			status: 'error',
+			errorCode,
+			errorDetails,
+		});
 	}
 
 	async markAllIncompleteAsFailed() {
@@ -91,7 +97,16 @@ export class TestRunRepository extends Repository<TestRun> {
 		});
 	}
 
-	async getTestRunSummaryById(testDefinitionId: string, testRunId: string) {
+	/**
+	 * Test run summary is a TestRun with a final result.
+	 * Final result is calculated based on the status of all test case executions.
+	 * E.g. Test Run is considered successful if all test case executions are successful.
+	 * Test Run is considered failed if at least one test case execution is failed.
+	 */
+	async getTestRunSummaryById(
+		testDefinitionId: string,
+		testRunId: string,
+	): Promise<TestRunSummary> {
 		const testRun = await this.findOne({
 			where: { id: testRunId, testDefinition: { id: testDefinitionId } },
 			relations: ['testCaseExecutions'],
@@ -101,9 +116,9 @@ export class TestRunRepository extends Repository<TestRun> {
 			throw new NotFoundError('Test run not found');
 		}
 
-		const finalResult =
+		testRun.finalResult =
 			testRun.status === 'completed' ? getTestRunFinalResult(testRun.testCaseExecutions) : null;
 
-		return { ...testRun, finalResult };
+		return testRun as TestRunSummary;
 	}
 }

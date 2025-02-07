@@ -1,5 +1,5 @@
 import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 import {
 	datetimeColumnType,
@@ -9,6 +9,7 @@ import {
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
+import { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 
 export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
@@ -69,8 +70,14 @@ export class TestRun extends WithTimestampsAndStringId {
 	 * Optional details about the error that happened during the test run
 	 */
 	@Column(jsonColumnType, { nullable: true })
-	errorDetails: IDataObject;
+	errorDetails: IDataObject | null;
 
 	@OneToMany('TestCaseExecution', 'testRun')
 	testCaseExecutions: TestCaseExecution[];
+
+	/**
+	 * Calculated property to determine the final result of the test run
+	 * depending on the statuses of test case executions
+	 */
+	finalResult?: TestRunFinalResult | null;
 }

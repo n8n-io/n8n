@@ -4,6 +4,7 @@ import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
 /**
@@ -63,12 +64,30 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 	});
 }
 
-export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]) {
+/**
+ * Returns the final result of the test run based on the test case executions.
+ * The final result is the most severe status among all test case executions' statuses.
+ */
+export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): TestRunFinalResult {
+	// Priority of statuses: error > warning > success
+	const severityMap: Record<TestRunFinalResult, number> = {
+		error: 3,
+		warning: 2,
+		success: 1,
+	};
+
+	let finalResult: TestRunFinalResult = 'success';
+
 	for (const testCaseExecution of testCaseExecutions) {
 		if (['error', 'warning'].includes(testCaseExecution.status)) {
-			return testCaseExecution.status;
+			if (
+				testCaseExecution.status in severityMap &&
+				severityMap[testCaseExecution.status as TestRunFinalResult] > severityMap[finalResult]
+			) {
+				finalResult = testCaseExecution.status as TestRunFinalResult;
+			}
 		}
 	}
 
-	return 'success';
+	return finalResult;
 }
