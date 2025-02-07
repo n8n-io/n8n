@@ -5,7 +5,6 @@ import { getTableColumns, seaTableApiRequest, updateAble } from '../GenericFunct
 
 export async function getTableNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	// this.getCurrentNodeParameter('viewName'); // das kommt vom trigger. Brauche ich das???
 	const {
 		metadata: { tables },
 	} = await seaTableApiRequest.call(
@@ -188,7 +187,6 @@ export async function getSignatureColumns(
 		);
 		for (const col of columns.columns) {
 			if (col.type === 'digital-sign') {
-				// file+image are difficult: every time the row changes, all files trigger.
 				returnData.push({
 					name: col.name,
 					value: col.name,
@@ -205,7 +203,6 @@ export async function getTableUpdateAbleColumns(
 	const tableName = this.getNodeParameter('tableName') as string;
 	let columns = await getTableColumns.call(this, tableName);
 
-	// remove columns that could not be filled
 	columns = updateAble(columns);
 
 	return columns
@@ -237,7 +234,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 
 		for (const row of rows) {
 			returnData.push({
-				name: row['0000'] + ' (' + row._id + ')',
+				name: `${row['0000'] as string} (${row._id})`,
 				value: row._id,
 			});
 		}
@@ -249,7 +246,6 @@ export async function getTableViews(this: ILoadOptionsFunctions): Promise<INodeP
 	const returnData: INodePropertyOptions[] = [];
 	const tableName = this.getCurrentNodeParameter('tableName') as string;
 	if (tableName) {
-		// only execute if table is selected, to avoid unnecessary API requests
 		const { views } = await seaTableApiRequest.call(
 			this,
 			{},

@@ -6,7 +6,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -26,7 +26,6 @@ import type {
 import { schema } from './Schema';
 import type { TDtableMetadataColumns, TEndpointVariableName } from './types';
 
-// remove last backslash
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) return uri;
 	if (uri.endsWith('/')) return uri.slice(0, -1);
@@ -45,14 +44,14 @@ export async function getBaseAccessToken(
 ) {
 	if (ctx?.base?.access_token !== undefined) return;
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
-		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
+		url: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
 		json: true,
 	};
-	ctx.base = await this.helpers.request(options);
+	ctx.base = await this.helpers.httpRequest(options);
 }
 
 function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
@@ -92,8 +91,8 @@ export async function seaTableApiRequest(
 			? `${ctx?.credentials?.token}`
 			: `${ctx?.base?.access_token}`;
 
-	let options: IRequestOptions = {
-		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+	let options: IHttpRequestOptions = {
+		url: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		headers: {
 			Authorization: `Token ${token}`,
 		},
@@ -126,7 +125,7 @@ export async function seaTableApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'seaTableApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'seaTableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -185,7 +184,6 @@ export const split = (subject: string): string[] =>
 		.filter((s) => s.length)
 		.map((s) => s.replace(/\\([\s\S])/gm, (_, $1) => $1));
 
-// INTERNAL: get collaborator info from @auth.local address
 function getCollaboratorInfo(
 	authLocal: string | null | undefined,
 	collaboratorList: ICollaborator[],
@@ -193,13 +191,12 @@ function getCollaboratorInfo(
 	return (
 		collaboratorList.find((singleCollaborator) => singleCollaborator.email === authLocal) || {
 			contact_email: 'unknown',
-			name: 'unkown',
+			name: 'unknown',
 			email: 'unknown',
 		}
 	);
 }
 
-// INTERNAL: split asset path.
 function getAssetPath(type: string, url: string) {
 	const parts = url.split(`/${type}/`);
 	if (parts[1]) {
@@ -322,7 +319,6 @@ export function splitStringColumnsToArrays(
 	return row;
 }
 
-// remove nonUpdateColumnTypes and only use allowed columns!
 export function rowExport(row: IRowObject, columns: TDtableMetadataColumns): IRowObject {
 	const rowAllowed = {} as IRowObject;
 	columns.map((column) => {
