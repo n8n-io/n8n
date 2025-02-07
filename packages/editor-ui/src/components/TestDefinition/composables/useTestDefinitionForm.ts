@@ -114,6 +114,10 @@ export function useTestDefinitionForm() {
 		state.value.metrics = state.value.metrics.filter((metric) => metric.id !== metricId);
 	};
 
+	/**
+	 * This method would perform unnecessary updates on the BE
+	 * it's a performance degradation candidate if metrics reach certain amount
+	 */
 	const updateMetrics = async (testId: string) => {
 		const promises = state.value.metrics.map(async (metric) => {
 			if (!metric.name) return;
@@ -159,9 +163,7 @@ export function useTestDefinitionForm() {
 			if (annotationTagId) {
 				params.annotationTagId = annotationTagId;
 			}
-			if (state.value.mockedNodes.length > 0) {
-				params.mockedNodes = state.value.mockedNodes;
-			}
+			params.mockedNodes = state.value.mockedNodes;
 
 			const response = await evaluationsStore.update({ ...params, id: testId });
 			return response;
