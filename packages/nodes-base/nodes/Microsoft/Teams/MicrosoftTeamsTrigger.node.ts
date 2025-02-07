@@ -21,7 +21,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		name: 'microsoftTeamsTrigger',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
-		maxNodes: 3, // TODO take too long for activate wf
+		//	maxNodes: 3, // TODO take too long for activate wf
 		version: 1,
 		description:
 			'Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.',
@@ -277,16 +277,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				// Define resource paths for each event type
 				const resourceMap: Record<string, string> = {
-					newChannel: '/teams/{teamId}/channels',
+					newChannel: '/teams/getAllChannels',
 					newChannelMessage: '/teams/{teamId}/channels/{channelId}/messages',
 					newTeamMember: '/teams/{teamId}/members',
 					newChatMessage: '/chats/{chatId}/messages',
 					newTeam: '/teams', //TODO not supported
-					newChat: '/chats', //TODO not supported
+					newChat: '/me/chats/getAllMessages', //TODO not supported
 					anyEvent: '/event', //TODO not supported
 				};
 
-				if (event === 'newChannelMessage' || event === 'newChannel' || event === 'newTeamMember') {
+				if (event === 'newChannelMessage' || event === 'newTeamMember') {
 					const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
 					if (!teamId) {
 						throw new NodeApiError(this.getNode(), {
@@ -312,14 +312,22 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						resourcePath = resourcePath.replace('{channelId}', channelId);
 					}
 				} else if (event === 'newChatMessage') {
-					const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
-					if (!chatId) {
-						throw new NodeApiError(this.getNode(), {
-							message: 'Chat ID is required',
-							description: 'Please select a valid Chat or provide a valid Chat ID.',
-						});
+					const watchAllChats = this.getNodeParameter('watchAllChats', 0, {
+						extractValue: true,
+					}) as boolean;
+
+					if (watchAllChats) {
+						resourcePath = '/me/chats/getAllMessages';
+					} else {
+						const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
+						if (!chatId) {
+							throw new NodeApiError(this.getNode(), {
+								message: 'Chat ID is required',
+								description: 'Please select a valid Chat or provide a valid Chat ID.',
+							});
+						}
+						resourcePath = resourceMap.newChatMessage.replace('{chatId}', chatId);
 					}
-					resourcePath = resourceMap[event].replace('{chatId}', chatId);
 				} else if (event === 'anyEvent') {
 					resourcePath = resourceMap[event];
 				} else {
