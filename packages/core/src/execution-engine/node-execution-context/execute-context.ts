@@ -30,7 +30,6 @@ import {
 	constructExecutionMetaData,
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
-	getFileSystemHelperFunctions,
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -42,6 +41,7 @@ import {
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {

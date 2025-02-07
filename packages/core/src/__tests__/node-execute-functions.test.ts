@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	IHttpRequestMethods,
@@ -11,11 +10,9 @@ import type {
 } from 'n8n-workflow';
 import nock from 'nock';
 
-import { InstanceSettings } from '@/instance-settings';
 import {
 	copyInputItems,
 	invokeAxios,
-	isFilePathBlocked,
 	proxyRequestToAxios,
 	removeEmptyBody,
 } from '@/node-execute-functions';
@@ -322,13 +319,5 @@ describe('NodeExecuteFunctions', () => {
 				expect(requestOptions.body).toEqual({});
 			},
 		);
-	});
-});
-
-describe('isFilePathBlocked', () => {
-	test('should return true for static cache dir', () => {
-		const filePath = Container.get(InstanceSettings).staticCacheDir;
-
-		expect(isFilePathBlocked(filePath)).toBe(true);
 	});
 });

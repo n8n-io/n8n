@@ -18,8 +18,6 @@ import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
@@ -27,7 +25,6 @@ import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
 import type {
-	FileSystemHelperFunctions,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -73,22 +70,12 @@ import {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import path from 'path';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
 import { Logger } from '@/logging/logger';
 
-import {
-	BINARY_DATA_STORAGE_PATH,
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
-	CONFIG_FILES,
-	CUSTOM_EXTENSION_ENV,
-	RESTRICT_FILE_ACCESS_TO,
-	UM_EMAIL_TEMPLATES_INVITE,
-	UM_EMAIL_TEMPLATES_PWRESET,
-} from './constants';
 // eslint-disable-next-line import/no-cycle
 import {
 	binaryToString,
@@ -99,7 +86,6 @@ import {
 } from './execution-engine/node-execution-context';
 import { ScheduledTaskManager } from './execution-engine/scheduled-task-manager';
 import { SSHClientsManager } from './execution-engine/ssh-clients-manager';
-import { InstanceSettings } from './instance-settings';
 import type { IResponseError } from './interfaces';
 
 axios.defaults.timeout = 300000;
@@ -1529,108 +1515,6 @@ export const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions 
 			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
 	};
 };
-
-const getAllowedPaths = () => {
-	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
-	if (!restrictFileAccessTo) {
-		return [];
-	}
-	const allowedPaths = restrictFileAccessTo
-		.split(';')
-		.map((path) => path.trim())
-		.filter((path) => path);
-	return allowedPaths;
-};
-
-export function isFilePathBlocked(filePath: string): boolean {
-	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = path.resolve(filePath);
-	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
-
-	//if allowed paths are defined, allow access only to those paths
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
-	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder, staticCacheDir];
-
-		if (process.env[CONFIG_FILES]) {
-			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-		}
-
-		if (process.env[CUSTOM_EXTENSION_ENV]) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-			restrictedPaths.push(...customExtensionFolders);
-		}
-
-		if (process.env[BINARY_DATA_STORAGE_PATH]) {
-			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-		}
-
-		//check if the file path is restricted
-		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return true;
-			}
-		}
-	}
-
-	//path is not restricted
-	return false;
-}
-
-export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
-	async createReadStream(filePath) {
-		try {
-			await fsAccess(filePath);
-		} catch (error) {
-			throw error.code === 'ENOENT'
-				? new NodeOperationError(node, error, {
-						message: `The file "${String(filePath)}" could not be accessed.`,
-						level: 'warning',
-					})
-				: error;
-		}
-		if (isFilePathBlocked(filePath as string)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
-		}
-		return createReadStream(filePath);
-	},
-
-	getStoragePath() {
-		return path.join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
-	},
-
-	async writeContentToFile(filePath, content, flag) {
-		if (isFilePathBlocked(filePath as string)) {
-			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				level: 'warning',
-			});
-		}
-		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
-	},
-});
 
 /**
  * Returns a copy of the items which only contains the json data and
