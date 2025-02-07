@@ -199,7 +199,12 @@ const initialize = async () => {
 	loading.value = true;
 	const [, workflowsPage] = await Promise.all([
 		usersStore.fetchUsers(),
-		workflowsStore.fetchWorkflowsPage(route.params?.projectId as string | undefined),
+		workflowsStore.fetchWorkflowsPage(
+			route.params?.projectId as string | undefined,
+			currentPage.value,
+			pageSize.value,
+			'updatedAt:desc',
+		),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
 	workflows.value = workflowsPage;
