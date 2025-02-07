@@ -171,10 +171,6 @@ const handleMouseLeave = () => {
 	align-items: center;
 	cursor: pointer;
 	padding: var(--spacing-s);
-
-	.expanded & {
-		border-bottom: var(--border-base);
-	}
 }
 
 .title {
@@ -220,6 +216,9 @@ const handleMouseLeave = () => {
 }
 .cardContentWrapper {
 	height: max-content;
+	.expanded & {
+		border-top: var(--border-base);
+	}
 }
 
 .description {
