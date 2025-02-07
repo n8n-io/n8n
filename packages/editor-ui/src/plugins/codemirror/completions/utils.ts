@@ -15,7 +15,7 @@ import {
 	type CompletionSection,
 } from '@codemirror/autocomplete';
 import type { EditorView } from '@codemirror/view';
-import type { TransactionSpec } from '@codemirror/state';
+import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { useRouter } from 'vue-router';
 import type { DocMetadata } from 'n8n-workflow';
@@ -231,13 +231,26 @@ export function getPreviousNodes(nodeName: string) {
 
 /**
  * Remove excess parens from an option label when the cursor is already
- * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric`
+ * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric` or `$(|)` -> `$("Node Name")|`
  */
 export const stripExcessParens = (context: CompletionContext) => (option: Completion) => {
 	const followedByParens = context.state.sliceDoc(context.pos, context.pos + 2) === '()';
 
 	if (option.label.endsWith('()') && followedByParens) {
 		option.label = option.label.slice(0, '()'.length * -1);
+	}
+
+	const inParens = context.state.sliceDoc(context.pos - 1, context.pos + 1) === '()';
+	if (option.label.endsWith(')') && inParens) {
+		option.apply = (view: EditorView, completion: Completion, from: number, to: number): void => {
+			const tx: TransactionSpec = {
+				...insertCompletionText(view.state, option.label.slice(0, -1), from, to),
+				annotations: pickedCompletion.of(completion),
+			};
+
+			tx.selection = EditorSelection.cursor(from + option.label.length);
+			view.dispatch(tx);
+		};
 	}
 
 	return option;
