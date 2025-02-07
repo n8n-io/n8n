@@ -166,7 +166,11 @@ export function canBeContentOverride(
 	if (PATH_DENYLIST.includes(props.path)) return false;
 
 	const codex = nodeType?.codex;
-	if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))
+	if (
+		!codex?.categories?.includes('AI') ||
+		!codex?.subcategories?.AI?.includes('Tools') ||
+		codex?.subcategories?.AI?.includes('Vector Stores') // vector stores do no support fromAI
+	)
 		return false;
 
 	return !props.parameter.noDataExpression && 'options' !== props.parameter.type;
