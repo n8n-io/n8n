@@ -7,7 +7,12 @@ import { N8nText } from 'n8n-design-system';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeConnectionType, type IConnectedNode, type IDataObject } from 'n8n-workflow';
+import {
+	createResultError,
+	NodeConnectionType,
+	type IConnectedNode,
+	type IDataObject,
+} from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import MappingPill from './MappingPill.vue';
@@ -23,6 +28,10 @@ import {
 } from 'vue-virtual-scroller';
 
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { asyncComputed } from '@vueuse/core';
+import { usePostHog } from '@/stores/posthog.store';
+import { SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -55,7 +64,9 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const { getSchemaForExecutionData, filterSchema } = useDataSchema();
+const schemaPreviewStore = useSchemaPreviewStore();
+const posthogStore = usePostHog();
+const { getSchemaForExecutionData, getSchemaForJsonSchema, filterSchema } = useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
@@ -79,7 +90,7 @@ watch(
 	},
 );
 
-const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
+const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
 	const data =
@@ -98,42 +109,88 @@ const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 			)
 			.flat();
 
+	let schema = getSchemaForExecutionData(data);
+	let preview = false;
+
+	if (data.length === 0 && isSchemaPreviewEnabled.value) {
+		const previewSchema = await getSchemaPreview(fullNode);
+		if (previewSchema.ok) {
+			schema = getSchemaForJsonSchema(previewSchema.result);
+			preview = true;
+		}
+	}
+
 	return {
-		schema: getSchemaForExecutionData(data),
+		schema,
 		connectedOutputIndexes,
 		itemsCount: data.length,
+		preview,
 	};
 };
 
-const nodeSchema = computed(() =>
-	filterSchema(getSchemaForExecutionData(props.data), props.search),
+const isSchemaPreviewEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
 );
 
-const nodesSchemas = computed<SchemaNode[]>(() => {
-	return props.nodes.reduce<SchemaNode[]>((acc, node) => {
+const nodeSchema = asyncComputed(async () => {
+	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
+		const previewSchema = await getSchemaPreview(props.node);
+		if (previewSchema.ok) {
+			return filterSchema(getSchemaForJsonSchema(previewSchema.result), props.search);
+		}
+	}
+
+	return filterSchema(getSchemaForExecutionData(props.data), props.search);
+});
+
+async function getSchemaPreview(node: INodeUi | null) {
+	if (!node) return createResultError(new Error());
+	const {
+		type,
+		typeVersion,
+		parameters: { resource, operation },
+	} = node;
+
+	return await schemaPreviewStore.getSchemaPreview({
+		nodeType: type,
+		version: typeVersion,
+		resource: resource as string,
+		operation: operation as string,
+	});
+}
+
+const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
+	const result: SchemaNode[] = [];
+
+	for (const node of props.nodes) {
 		const fullNode = workflowsStore.getNodeByName(node.name);
-		if (!fullNode) return acc;
+		if (!fullNode) continue;
 
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
-		if (!nodeType) return acc;
+		if (!nodeType) continue;
 
-		const { schema, connectedOutputIndexes, itemsCount } = getNodeSchema(fullNode, node);
+		const { schema, connectedOutputIndexes, itemsCount, preview } = await getNodeSchema(
+			fullNode,
+			node,
+		);
 
 		const filteredSchema = filterSchema(schema, props.search);
 
-		if (!filteredSchema) return acc;
+		if (!filteredSchema) continue;
 
-		acc.push({
+		result.push({
 			node: fullNode,
 			connectedOutputIndexes,
 			depth: node.depth,
 			itemsCount,
 			nodeType,
 			schema: filteredSchema,
+			preview,
 		});
-		return acc;
-	}, []);
-});
+	}
+
+	return result;
+}, []);
 
 const nodeAdditionalInfo = (node: INodeUi) => {
 	const returnData: string[] = [];
@@ -243,21 +300,21 @@ const onDragEnd = (el: HTMLElement) => {
 				class="full-height scroller"
 			>
 				<template #default="{ item, index, active }">
-					<VirtualSchemaHeader
-						v-if="item.type === 'header'"
-						v-bind="item"
-						:collapsed="closedNodes.has(item.id)"
-						@click:toggle="toggleLeaf(item.id)"
-						@click="toggleNodeAndScrollTop(item.id)"
-					/>
 					<DynamicScrollerItem
-						v-else
 						:item="item"
 						:active="active"
-						:size-dependencies="[item.value]"
+						:size-dependencies="[item]"
 						:data-index="index"
 					>
+						<VirtualSchemaHeader
+							v-if="item.type === 'header'"
+							v-bind="item"
+							:collapsed="closedNodes.has(item.id)"
+							@click:toggle="toggleLeaf(item.id)"
+							@click="toggleNodeAndScrollTop(item.id)"
+						/>
 						<VirtualSchemaItem
+							v-else
 							v-bind="item"
 							:search="search"
 							:draggable="mappingEnabled"
@@ -283,6 +340,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 .scroller {
 	padding: 0 var(--spacing-s);
+	padding-bottom: var(--spacing-2xl);
 }
 
 .no-results {

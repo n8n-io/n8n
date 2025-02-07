@@ -108,6 +108,7 @@ export class LmChatOpenAi implements INodeType {
 												($credentials?.url && !$credentials.url.includes('api.openai.com')) ||
 												$responseItem.id.startsWith('ft:') ||
 												$responseItem.id.startsWith('o1') ||
+												$responseItem.id.startsWith('o3') ||
 												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
 											}}`,
 										},
@@ -264,6 +265,38 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						default: 'medium',
+						description:
+							'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses.',
+						type: 'options',
+						options: [
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Favors speed and economical token usage',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'Balance between speed and reasoning accuracy',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description:
+									'Favors more complete reasoning at the cost of more tokens generated and slower responses',
+							},
+						],
+						displayOptions: {
+							show: {
+								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond. Not on o1-mini or other GPT-models.
+								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)' } }],
+							},
+						},
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						default: 60000,
@@ -310,6 +343,7 @@ export class LmChatOpenAi implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'low' | 'medium' | 'high';
 		};
 
 		const configuration: ClientOptions = {};
@@ -319,6 +353,15 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
+		// Extra options to send to OpenAI, that are not directly supported by LangChain
+		const modelKwargs: {
+			response_format?: object;
+			reasoning_effort?: 'low' | 'medium' | 'high';
+		} = {};
+		if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
+		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
+			modelKwargs.reasoning_effort = options.reasoningEffort;
+
 		const model = new ChatOpenAI({
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
@@ -327,11 +370,7 @@ export class LmChatOpenAi implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 

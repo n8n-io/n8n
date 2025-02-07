@@ -24,6 +24,7 @@ export class Spotify implements INodeType {
 		defaults: {
 			name: 'Spotify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

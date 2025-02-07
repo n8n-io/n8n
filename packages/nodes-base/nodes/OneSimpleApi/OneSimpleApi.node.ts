@@ -20,6 +20,7 @@ export class OneSimpleApi implements INodeType {
 		defaults: {
 			name: 'One Simple API',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
