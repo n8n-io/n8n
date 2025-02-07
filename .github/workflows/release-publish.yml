@@ -165,6 +165,14 @@ jobs:
           version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
+      - name: Create a task runner release
+        uses: getsentry/action-release@v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist packages/@n8n/task-runner/dist
+
   trigger-release-note:
     name: Trigger a release note
     needs: [publish-to-npm, create-github-release]
