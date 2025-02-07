@@ -49,11 +49,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 1',
 					permissionLevel: 'create',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 			{
 				json: {
@@ -61,11 +56,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 2',
 					permissionLevel: 'edit',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 			{
 				json: {
@@ -73,11 +63,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 3',
 					permissionLevel: 'create',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 		]);
 	});
@@ -101,11 +86,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 2',
 					permissionLevel: 'edit',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 		]);
 	});

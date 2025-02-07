@@ -628,6 +628,7 @@ watch(
 					);
 
 					telemetry.track('User opened node modal', {
+						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 						workflow_id: workflowsStore.workflowId,
 						push_ref: pushRef.value,

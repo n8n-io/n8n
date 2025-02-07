@@ -6,7 +6,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
-import { useImportCurlCommand } from '@/composables/useImportCurlCommand';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -17,12 +16,6 @@ const curlCommand = ref('');
 const modalBus = createEventBus();
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
-
-const { importCurlCommand } = useImportCurlCommand({
-	onImportSuccess,
-	onImportFailure,
-	onAfterImport,
-});
 
 onMounted(() => {
 	curlCommand.value = (uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommand as string) ?? '';
@@ -71,7 +64,13 @@ function sendTelemetry(
 }
 
 async function onImport() {
-	await importCurlCommand(curlCommand);
+	const { useImportCurlCommand } = await import('@/composables/useImportCurlCommand');
+	const { importCurlCommand } = useImportCurlCommand({
+		onImportSuccess,
+		onImportFailure,
+		onAfterImport,
+	});
+	importCurlCommand(curlCommand);
 }
 </script>
 

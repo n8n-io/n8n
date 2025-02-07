@@ -253,7 +253,6 @@ describe('RespondToWebhook Node', () => {
 				[
 					{
 						json: { error: 'The Response Data option "notSupportedRespondWith" is not supported!' },
-						pairedItem: [{ item: 0 }],
 					},
 				],
 			]);
