@@ -106,14 +106,15 @@ const getBeforeRedirectFn =
 		}
 	};
 
+/**
+ * This function is a temporary implementation that translates all http requests
+ * done via the request library to axios directly.
+ * We are not using n8n's interface as it would an unnecessary step,
+ * considering the `request` helper has been be deprecated and should be removed.
+ * @deprecated This is only used by legacy request helpers, that are also deprecated
+ */
 // eslint-disable-next-line complexity
 export async function parseRequestObject(requestObject: IRequestOptions) {
-	// This function is a temporary implementation
-	// That translates all http requests done via
-	// the request library to axios directly
-	// We are not using n8n's interface as it would
-	// an unnecessary step, considering the `request`
-	// helper can be deprecated and removed.
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {

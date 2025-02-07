@@ -232,6 +232,9 @@ export async function invokeAxios(
 	}
 }
 
+/**
+ * @deprecated This is only used by legacy request helpers, that are also deprecated
+ */
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,

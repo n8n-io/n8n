@@ -23,6 +23,10 @@ interface IContentType {
 	};
 }
 
+/**
+ * Parses the Content-Type header string into a structured object
+ * @returns {IContentType | null} Parsed content type details or null if no content type is detected
+ */
 export const parseContentType = (contentType?: string): IContentType | null => {
 	if (!contentType) {
 		return null;
@@ -41,6 +45,10 @@ interface IContentDisposition {
 	filename?: string;
 }
 
+/**
+ * Parses the Content-Disposition header string into a structured object
+ * @returns {IContentDisposition | null} Parsed content disposition details or null if no content disposition is detected
+ */
 export const parseContentDisposition = (
 	contentDisposition?: string,
 ): IContentDisposition | null => {
@@ -69,6 +77,9 @@ export const parseContentDisposition = (
 	return { type, filename };
 };
 
+/**
+ * Augments an IncomingMessage with parsed content type and disposition information
+ */
 export function parseIncomingMessage(message: IncomingMessage) {
 	const contentType = parseContentType(message.headers['content-type']);
 	if (contentType) {
