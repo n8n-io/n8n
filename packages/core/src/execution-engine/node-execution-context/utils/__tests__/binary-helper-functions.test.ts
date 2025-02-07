@@ -1,7 +1,13 @@
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
-import type { IBinaryData, ITaskDataConnections } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type {
+	IBinaryData,
+	INode,
+	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -9,20 +15,39 @@ import { Readable } from 'stream';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 import {
+	assertBinaryData,
 	binaryToString,
+	copyBinaryFile,
+	detectBinaryEncoding,
 	getBinaryDataBuffer,
+	getBinaryHelperFunctions,
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
 
-const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
+const workflowId = 'workflow123';
+const executionId = 'execution456';
+
+const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
+	const incomingMessage = Readable.from(buffer) as IncomingMessage;
+	incomingMessage.headers = { 'content-type': `application/json;charset=${encoding}` };
+	// @ts-expect-error need this hack to fake `instanceof IncomingMessage` checks
+	incomingMessage.__proto__ = IncomingMessage.prototype;
+	return incomingMessage;
+};
 
 describe('test binary data helper methods', () => {
+	let binaryDataService: BinaryDataService;
+	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
+
+	beforeEach(() => {
+		binaryDataService = new BinaryDataService();
+		Container.set(BinaryDataService, binaryDataService);
+	});
+
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 		// Setup a 'default' binary data manager instance
-		Container.set(BinaryDataService, new BinaryDataService());
-
-		await Container.get(BinaryDataService).init({
+		await binaryDataService.init({
 			mode: 'default',
 			availableModes: ['default'],
 			localStoragePath: temporaryDir,
@@ -70,32 +95,9 @@ describe('test binary data helper methods', () => {
 		expect(getBinaryDataBufferResponse).toEqual(inputData);
 	});
 
-	test('test prepareBinaryData parses filenames correctly', async () => {
-		const filenameExpected = [
-			{
-				filename: 't?ext',
-				expected: 't?ext',
-			},
-			{
-				filename: 'no-symbol',
-				expected: 'no-symbol',
-			},
-		];
-
-		for (const { filename, expected } of filenameExpected) {
-			const binaryData: Buffer = Buffer.from('This is some binary data', 'utf8');
-
-			const result = await prepareBinaryData(binaryData, 'workflowId', 'executionId', filename);
-
-			expect(result.fileName).toEqual(expected);
-		}
-	});
-
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
-		Container.set(BinaryDataService, new BinaryDataService());
-
 		// Setup a 'filesystem' binary data manager instance
-		await Container.get(BinaryDataService).init({
+		await binaryDataService.init({
 			mode: 'filesystem',
 			availableModes: ['filesystem'],
 			localStoragePath: temporaryDir,
@@ -235,13 +237,244 @@ describe('binaryToString', () => {
 	describe('should handle IncomingMessage', () => {
 		for (const [encoding, { text, buffer }] of Object.entries(ENCODING_SAMPLES)) {
 			test(`with ${encoding}`, async () => {
-				const response = Readable.from(buffer) as IncomingMessage;
-				response.headers = { 'content-type': `application/json;charset=${encoding}` };
-				// @ts-expect-error need this hack to fake `instanceof IncomingMessage` checks
-				response.__proto__ = IncomingMessage.prototype;
-				const data = await binaryToString(response);
+				const incomingMessage = bufferToIncomingMessage(buffer, encoding);
+				const data = await binaryToString(incomingMessage);
 				expect(data).toBe(text);
 			});
 		}
+	});
+
+	it('should handle undefined encoding', async () => {
+		const buffer = Buffer.from('Test');
+		const result = await binaryToString(buffer);
+		expect(result).toBe('Test');
+	});
+
+	it('should handle stream with no explicit encoding', async () => {
+		const stream = Readable.from(Buffer.from('Test'));
+		const result = await binaryToString(stream);
+		expect(result).toBe('Test');
+	});
+});
+
+describe('detectBinaryEncoding', () => {
+	it('should detect encoding for utf-8 buffers', () => {
+		const utf8Buffer = Buffer.from('Hello, 世界');
+		expect(detectBinaryEncoding(utf8Buffer)).toBe('UTF-8');
+	});
+
+	it('should detect encoding for latin1 buffers', () => {
+		const latinBuffer = Buffer.from('señor', 'latin1');
+		expect(detectBinaryEncoding(latinBuffer)).toBe('ISO-8859-1');
+	});
+
+	it('should handle empty buffer', () => {
+		const emptyBuffer = Buffer.from('');
+		expect(detectBinaryEncoding(emptyBuffer)).toBeDefined();
+	});
+});
+
+describe('assertBinaryData', () => {
+	const mockNode = mock<INode>({ name: 'Test Node' });
+
+	it('should throw error when no binary data exists', () => {
+		const inputData = { main: [[{ json: {} }]] };
+
+		expect(() => assertBinaryData(inputData, mockNode, 0, 'testFile', 0)).toThrow(
+			"expects the node's input data to contain a binary file",
+		);
+	});
+
+	it('should throw error when specific binary property does not exist', () => {
+		const inputData = {
+			main: [
+				[
+					{
+						json: {},
+						binary: {
+							otherFile: mock<IBinaryData>(),
+						},
+					},
+				],
+			],
+		};
+
+		expect(() => assertBinaryData(inputData, mockNode, 0, 'testFile', 0)).toThrow(
+			'The item has no binary field',
+		);
+	});
+
+	it('should return binary data when it exists', () => {
+		const binaryData = mock<IBinaryData>({ fileName: 'test.txt' });
+		const inputData = {
+			main: [
+				[
+					{
+						json: {},
+						binary: {
+							testFile: binaryData,
+						},
+					},
+				],
+			],
+		};
+
+		const result = assertBinaryData(inputData, mockNode, 0, 'testFile', 0);
+		expect(result).toBe(binaryData);
+	});
+});
+
+describe('copyBinaryFile', () => {
+	const fileName = 'test.txt';
+	const filePath = `/path/to/${fileName}`;
+	const binaryData: IBinaryData = {
+		data: '',
+		mimeType: 'text/plain',
+		fileName,
+	};
+
+	const binaryDataService = mock<BinaryDataService>();
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		Container.set(BinaryDataService, binaryDataService);
+		binaryDataService.copyBinaryFile.mockResolvedValueOnce(binaryData);
+	});
+
+	it('should handle files without explicit mime type', async () => {
+		const result = await copyBinaryFile(workflowId, executionId, filePath, fileName);
+
+		expect(result.fileName).toBe(fileName);
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			workflowId,
+			executionId,
+			{
+				...binaryData,
+				fileExtension: 'txt',
+				fileType: 'text',
+			},
+			filePath,
+		);
+	});
+
+	it('should use provided mime type', async () => {
+		const result = await copyBinaryFile(
+			workflowId,
+			executionId,
+			filePath,
+			fileName,
+			'application/octet-stream',
+		);
+
+		expect(result.fileName).toBe(fileName);
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			workflowId,
+			executionId,
+			{
+				...binaryData,
+				fileExtension: 'bin',
+				fileType: undefined,
+				mimeType: 'application/octet-stream',
+			},
+			filePath,
+		);
+	});
+});
+
+describe('prepareBinaryData', () => {
+	const buffer: Buffer = Buffer.from('test', 'utf8');
+	const binaryDataService = mock<BinaryDataService>();
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		Container.set(BinaryDataService, binaryDataService);
+
+		binaryDataService.store.mockImplementation(async (_w, _e, _b, binaryData) => binaryData);
+	});
+
+	it('parses filenames correctly', async () => {
+		const fileName = 'test-file';
+
+		const result = await prepareBinaryData(buffer, executionId, workflowId, fileName);
+
+		expect(result.fileName).toEqual(fileName);
+		expect(binaryDataService.store).toHaveBeenCalledWith(workflowId, executionId, buffer, {
+			data: '',
+			fileExtension: undefined,
+			fileName,
+			fileType: 'text',
+			mimeType: 'text/plain',
+		});
+	});
+
+	it('handles IncomingMessage with responseUrl', async () => {
+		const incomingMessage = bufferToIncomingMessage(buffer);
+		incomingMessage.responseUrl = 'http://example.com/file.txt';
+
+		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
+
+		expect(result.fileName).toBe('file.txt');
+		expect(result.mimeType).toBe('text/plain');
+	});
+
+	it('handles buffer with no detectable mime type', async () => {
+		const buffer = Buffer.from([0x00, 0x01, 0x02, 0x03]);
+
+		const result = await prepareBinaryData(buffer, executionId, workflowId);
+
+		expect(result.mimeType).toBe('text/plain');
+	});
+
+	it('handles IncomingMessage with no content type or filename', async () => {
+		const incomingMessage = bufferToIncomingMessage(Buffer.from('test'));
+		delete incomingMessage.headers['content-type'];
+		delete incomingMessage.contentDisposition;
+
+		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
+
+		expect(result.mimeType).toBe('text/plain');
+	});
+});
+
+describe('setBinaryDataBuffer', () => {
+	it('should handle empty buffer', async () => {
+		const emptyBuffer = Buffer.from('');
+		const binaryData: IBinaryData = {
+			mimeType: 'text/plain',
+			data: '',
+		};
+
+		const result = await setBinaryDataBuffer(binaryData, emptyBuffer, workflowId, executionId);
+
+		expect(result).toBeDefined();
+		expect(result.data).toBe('');
+	});
+});
+
+describe('getBinaryHelperFunctions', () => {
+	it('should return helper functions with correct context', async () => {
+		const additionalData = { executionId } as IWorkflowExecuteAdditionalData;
+
+		const helperFunctions = getBinaryHelperFunctions(additionalData, workflowId);
+
+		const expectedMethods = [
+			'getBinaryPath',
+			'getBinaryStream',
+			'getBinaryMetadata',
+			'binaryToBuffer',
+			'binaryToString',
+			'prepareBinaryData',
+			'setBinaryDataBuffer',
+			'copyBinaryFile',
+		] as const;
+
+		expectedMethods.forEach((method) => {
+			expect(helperFunctions).toHaveProperty(method);
+			expect(typeof helperFunctions[method]).toBe('function');
+		});
+
+		await expect(async () => await helperFunctions.copyBinaryFile()).rejects.toThrow(
+			'`copyBinaryFile` has been removed',
+		);
 	});
 });
