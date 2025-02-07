@@ -229,13 +229,6 @@ export class Sms77 implements INodeType {
 						description:
 							'The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers.',
 					},
-					{
-						displayName: 'XML',
-						name: 'xml',
-						type: 'boolean',
-						default: false,
-						description: 'Whether the text is in XML format',
-					},
 				],
 			},
 		],
