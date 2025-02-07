@@ -33,8 +33,8 @@ import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
-import { dataUriFromImageData, UnsupportedMimeTypeError } from './utils';
 
+import { dataUriFromImageData, UnsupportedMimeTypeError } from './utils';
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
