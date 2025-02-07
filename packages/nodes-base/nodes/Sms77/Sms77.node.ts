@@ -139,7 +139,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Opton',
+				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -204,7 +204,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Opton',
+				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
 					show: {
