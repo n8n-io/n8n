@@ -62,12 +62,17 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon :class="$style.logo" ref="logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
-		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
-			{{ releaseChannel }}
-		</div>
+	<div data-test-id="n8n-logo">
+		<img
+			class="ciara-logo-img"
+			src="https://ciara-ai.s3.ap-south-1.amazonaws.com/default_business_logo.svg"
+			alt="ciara logo"
+		/>
+		<!--		<LogoIcon :class="$style.logo" ref="logo" />-->
+		<!--		<LogoText v-if="showLogoText" :class="$style.logoText" />-->
+		<!--		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">-->
+		<!--			{{ releaseChannel }}-->
+		<!--		</div>-->
 		<slot />
 	</div>
 </template>
@@ -116,5 +121,10 @@ onMounted(() => {
 	width: 40px;
 	height: 30px;
 	padding: 0 var(--spacing-4xs);
+}
+
+.ciara-logo-img {
+	height: 40px;
+	width: 50px;
 }
 </style>
