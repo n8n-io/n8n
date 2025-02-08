@@ -5,12 +5,18 @@ import * as a from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { Cipher } from '@/encryption/cipher';
+import { ErrorReporter } from '@/errors/error-reporter';
 import { isObjectLiteral } from '@/utils';
 
 export class CredentialDataError extends ApplicationError {
-	constructor({ name, type, id }: Credentials<object>, message: string, cause?: unknown) {
+	constructor(
+		{ name, type, id }: Credentials<object>,
+		message: string,
+		cause?: unknown,
+		tryAgain?: boolean,
+	) {
 		super(message, {
-			extra: { name, type, id },
+			extra: { name, type, id, tryAgain },
 			cause,
 		});
 	}
@@ -38,18 +44,7 @@ export class Credentials<
 			throw new CredentialDataError(this, CREDENTIAL_ERRORS.NO_DATA);
 		}
 
-		let decryptedData: string;
-		try {
-			decryptedData = this.cipher.decrypt(this.data);
-		} catch (cause) {
-			throw new CredentialDataError(this, CREDENTIAL_ERRORS.DECRYPTION_FAILED, cause);
-		}
-
-		try {
-			return jsonParse(decryptedData);
-		} catch (cause) {
-			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause);
-		}
+		return this.tryGetData(this.data);
 	}
 
 	/**
@@ -66,5 +61,47 @@ export class Credentials<
 			type: this.type,
 			data: this.data,
 		};
+	}
+
+	tryGetData(data: string, tryAgain = true): T {
+		let decryptedData: string;
+		try {
+			decryptedData = this.cipher.decrypt(data);
+		} catch (cause) {
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.DECRYPTION_FAILED, cause, tryAgain);
+		}
+
+		let parsedData: T;
+		try {
+			parsedData = jsonParse(decryptedData);
+		} catch (cause) {
+			if (tryAgain) {
+				Container.get(ErrorReporter).error(
+					new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause, tryAgain),
+					{
+						extra: {
+							id: this.id,
+							name: this.name,
+							type: this.type,
+							tryAgain,
+						},
+					},
+				);
+				return this.tryGetData(decryptedData, false);
+			}
+			throw new CredentialDataError(this, CREDENTIAL_ERRORS.INVALID_JSON, cause, tryAgain);
+		}
+
+		if (!tryAgain) {
+			Container.get(ErrorReporter).info('Credential was double encrypted', {
+				extra: {
+					id: this.id,
+					name: this.name,
+					type: this.type,
+				},
+			});
+		}
+
+		return parsedData;
 	}
 }
