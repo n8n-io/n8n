@@ -272,123 +272,285 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const event = this.getNodeParameter('event', 0) as string;
-				let resourcePath: string | undefined;
-				console.log('event', event);
+				let resourcePath: string;
 
-				// Define resource paths for each event type
-				const resourceMap: Record<string, string> = {
-					newChannel: '/teams/getAllChannels',
-					newChannelMessage: '/teams/{teamId}/channels/{channelId}/messages',
-					newTeamMember: '/teams/{teamId}/members',
-					newChatMessage: '/chats/{chatId}/messages',
-					newTeam: '/teams', //TODO not supported
-					newChat: '/me/chats/getAllMessages', //TODO not supported
-					anyEvent: '/event', //TODO not supported
-				};
-
-				if (event === 'newChannelMessage' || event === 'newTeamMember') {
-					const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
-					if (!teamId) {
-						throw new NodeApiError(this.getNode(), {
-							message: 'Team ID is required',
-							description:
-								'Please select a valid Team from the dropdown or provide a valid Team ID.',
-						});
-					}
-
-					resourcePath = resourceMap[event].replace('{teamId}', teamId);
-
-					if (event === 'newChannelMessage') {
-						const channelId = this.getNodeParameter('channelId', 0, {
-							extractValue: true,
-						}) as string;
-						if (!channelId) {
-							throw new NodeApiError(this.getNode(), {
-								message: 'Channel ID is required',
-								description:
-									'Please select a valid Channel or provide a valid Channel ID for the selected Team.',
-							});
-						}
-						resourcePath = resourcePath.replace('{channelId}', channelId);
-					}
-				} else if (event === 'newChatMessage') {
-					const watchAllChats = this.getNodeParameter('watchAllChats', 0, {
-						extractValue: true,
-					}) as boolean;
-
-					if (watchAllChats) {
-						resourcePath = '/me/chats/getAllMessages';
-					} else {
-						const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
-						if (!chatId) {
-							throw new NodeApiError(this.getNode(), {
-								message: 'Chat ID is required',
-								description: 'Please select a valid Chat or provide a valid Chat ID.',
-							});
-						}
-						resourcePath = resourceMap.newChatMessage.replace('{chatId}', chatId);
-					}
-				} else if (event === 'anyEvent') {
-					resourcePath = resourceMap[event];
-				} else {
-					resourcePath = resourceMap[event];
-				}
-
-				if (!resourcePath) {
-					throw new NodeApiError(this.getNode(), {
-						message: `Unsupported or invalid event: ${event}`,
-						description: `The selected event "${event}" is not supported by this trigger node.`,
-					});
-				}
-
-				const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
-				//console.log('resource path', resourcePath);
-				const body: IDataObject = {
-					changeType: 'created',
-					notificationUrl: webhookUrl,
-					resource: resourcePath,
-					expirationDateTime: expirationTime,
-					latestSupportedTlsVersion: 'v1_2',
-					lifecycleNotificationUrl: webhookUrl,
-				};
-
-				try {
-					console.log('body', body);
-					const response = await microsoftApiRequest.call(
-						this as unknown as IExecuteFunctions,
-						'POST',
-						'/v1.0/subscriptions',
-						body,
+				// Helper function to fetch all teams
+				const fetchAllTeams = async () => {
+					return await microsoftApiRequestAllItems.call(
+						this as unknown as ILoadOptionsFunctions,
+						'value',
+						'GET',
+						'/v1.0/teams',
 					);
+				};
 
-					this.getWorkflowStaticData('node').subscriptionId = response.id;
-					console.log('Subscription created successfully:', response);
-					return true;
-				} catch (error) {
-					console.error('Error creating subscription:', error);
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+				// Helper function to fetch all channels in a team
+				const fetchAllChannels = async (teamId: string) => {
+					return await microsoftApiRequestAllItems.call(
+						this as unknown as ILoadOptionsFunctions,
+						'value',
+						'GET',
+						`/v1.0/teams/${teamId}/channels`,
+					);
+				};
+
+				// Helper function to create a subscription
+				const createSubscription = async (subscriptionResource: string) => {
+					const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
+					const body: IDataObject = {
+						changeType: 'created',
+						notificationUrl: webhookUrl,
+						resource: subscriptionResource,
+						expirationDateTime: expirationTime,
+						latestSupportedTlsVersion: 'v1_2',
+						lifecycleNotificationUrl: webhookUrl,
+					};
+
+					try {
+						const response = await microsoftApiRequest.call(
+							this as unknown as IExecuteFunctions,
+							'POST',
+							'/v1.0/subscriptions',
+							body,
+						);
+
+						console.log('Subscription created successfully:', response);
+						return response.id;
+					} catch (error) {
+						console.error('Error creating subscription:', error);
+						throw new NodeApiError(this.getNode(), error as JsonObject);
+					}
+				};
+
+				// Handle resource path based on event type
+				switch (event) {
+					case 'newChat': {
+						resourcePath = '/me/chats';
+						break;
+					}
+					case 'newChatMessage': {
+						const watchAllChats = this.getNodeParameter('watchAllChats', 0, {
+							extractValue: true,
+						}) as boolean;
+
+						if (watchAllChats) {
+							resourcePath = '/me/chats/getAllMessages';
+						} else {
+							const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
+							if (!chatId) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Chat ID is required',
+									description: 'Please select a valid Chat or provide a valid Chat ID.',
+								});
+							}
+
+							resourcePath = `/chats/${chatId}/messages`;
+						}
+						break;
+					}
+
+					case 'newChannel': {
+						const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+							extractValue: true,
+						}) as boolean;
+
+						if (watchAllTeams) {
+							const teams = await fetchAllTeams();
+
+							// Create subscriptions for all teams in parallel
+							const subscriptionPromises = teams.map(async (team: { id: string }) => {
+								const teamId = team.id;
+								resourcePath = `/teams/${teamId}/channels`;
+								return await createSubscription(resourcePath);
+							});
+
+							const subscriptionIds = await Promise.all(subscriptionPromises);
+							console.log('Subscriptions created for all teams:', subscriptionIds);
+							return true;
+						} else {
+							const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
+							if (!teamId) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Team ID is required',
+									description:
+										'Please select a valid Team from the dropdown or provide a valid Team ID.',
+								});
+							}
+
+							resourcePath = `/teams/${teamId}/channels`;
+						}
+						break;
+					}
+
+					case 'newChannelMessage': {
+						const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+							extractValue: true,
+						}) as boolean;
+
+						if (watchAllTeams) {
+							const teams = await fetchAllTeams();
+
+							// Fetch all channels for all teams in parallel
+							const channelPromises = teams.map(async (team: { id: string }) => {
+								const teamId = team.id;
+								const channels = await fetchAllChannels(teamId);
+								return { teamId, channels };
+							});
+
+							const teamChannels = await Promise.all(channelPromises);
+
+							// Create subscriptions for all channels in parallel
+							const subscriptionPromises = teamChannels.flatMap(({ teamId, channels }) => {
+								return channels.map(async (channel: { id: string }) => {
+									const channelId = channel.id;
+									resourcePath = `/teams/${teamId}/channels/${channelId}/messages`;
+									return await createSubscription(resourcePath);
+								});
+							});
+
+							const subscriptionIds = await Promise.all(subscriptionPromises);
+							console.log('Subscriptions created for all channels:', subscriptionIds);
+							return true;
+						} else {
+							const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
+							if (!teamId) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Team ID is required',
+									description:
+										'Please select a valid Team from the dropdown or provide a valid Team ID.',
+								});
+							}
+
+							const watchAllChannels = this.getNodeParameter('watchAllChannels', 0, {
+								extractValue: true,
+							}) as boolean;
+
+							if (watchAllChannels) {
+								const channels = await fetchAllChannels(teamId);
+
+								// Create subscriptions for all channels in parallel
+								const subscriptionPromises = channels.map(async (channel: { id: string }) => {
+									const channelId = channel.id;
+									resourcePath = `/teams/${teamId}/channels/${channelId}/messages`;
+									return await createSubscription(resourcePath);
+								});
+
+								const subscriptionIds = await Promise.all(subscriptionPromises);
+								console.log('Subscriptions created for all channels in team:', subscriptionIds);
+								return true;
+							} else {
+								const channelId = this.getNodeParameter('channelId', 0, {
+									extractValue: true,
+								}) as string;
+								if (!channelId) {
+									throw new NodeApiError(this.getNode(), {
+										message: 'Channel ID is required',
+										description:
+											'Please select a valid Channel or provide a valid Channel ID for the selected Team.',
+									});
+								}
+
+								resourcePath = `/teams/${teamId}/channels/${channelId}/messages`;
+							}
+						}
+						break;
+					}
+
+					case 'newTeam': {
+						resourcePath = '/teams'; //TODO not supported
+						break;
+					}
+
+					case 'newTeamMember': {
+						const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+							extractValue: true,
+						}) as boolean;
+
+						if (watchAllTeams) {
+							const teams = await fetchAllTeams();
+
+							// Create subscriptions for all teams in parallel
+							const subscriptionPromises = teams.map(async (team: { id: string }) => {
+								const teamId = team.id;
+								resourcePath = `/teams/${teamId}/members`;
+								return await createSubscription(resourcePath);
+							});
+
+							const subscriptionIds = await Promise.all(subscriptionPromises);
+							console.log('Subscriptions created for all teams:', subscriptionIds);
+							return true;
+						} else {
+							const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
+							if (!teamId) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Team ID is required',
+									description:
+										'Please select a valid Team from the dropdown or provide a valid Team ID.',
+								});
+							}
+
+							resourcePath = `/teams/${teamId}/members`;
+						}
+						break;
+					}
+					//TODO not supported
+					case 'anyEvent':
+						throw new NodeApiError(this.getNode(), {
+							message: `Unsupported event: ${event}`,
+							description: `The selected event "${event}" is not supported by this trigger node.`,
+						});
+
+					default:
+						throw new NodeApiError(this.getNode(), {
+							message: `Invalid event: ${event}`,
+							description: `The selected event "${event}" is not recognized.`,
+						});
 				}
+
+				const subscriptionId = await createSubscription(resourcePath);
+				this.getWorkflowStaticData('node').subscriptionId = subscriptionId;
+				return true;
 			},
 			// Delete an existing webhook subscription
 			async delete(this: IHookFunctions): Promise<boolean> {
 				console.log('delete');
-				const subscriptionId = this.getWorkflowStaticData('node').subscriptionId;
+				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				if (!subscriptionId) {
-					return false;
+				try {
+					const subscriptions = await microsoftApiRequestAllItems.call(
+						this as unknown as ILoadOptionsFunctions,
+						'value',
+						'GET',
+						'/v1.0/subscriptions',
+					);
+
+					// Filter subscriptions by notificationUrl
+					const matchingSubscriptions = subscriptions.filter(
+						(subscription: IDataObject) => subscription.notificationUrl === webhookUrl,
+					);
+
+					if (matchingSubscriptions.length === 0) {
+						console.log('No matching subscriptions found to delete.');
+						return false;
+					}
+
+					// Delete all matching subscriptions
+					for (const subscription of matchingSubscriptions) {
+						const subscriptionId = subscription.id as string;
+						await microsoftApiRequest.call(
+							this as unknown as IExecuteFunctions,
+							'DELETE',
+							`/v1.0/subscriptions/${subscriptionId}`,
+						);
+						console.log(`Deleted subscription ${subscriptionId}`);
+					}
+
+					console.log('All matching subscriptions deleted.');
+					return true;
+				} catch (error) {
+					console.error('Error deleting subscriptions:', error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
-
-				// Delete the subscription
-				await microsoftApiRequest.call(
-					this as unknown as IExecuteFunctions,
-					'DELETE',
-					`/v1.0/subscriptions/${subscriptionId}`,
-				);
-
-				// Clear the subscription ID from static data
-				this.getWorkflowStaticData('node').subscriptionId = undefined;
-				console.log('delete subscription', subscriptionId);
-				return true;
 			},
 		},
 	};
@@ -407,7 +569,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const response: IWebhookResponseData = {
 			workflowData: eventNotifications.map((event) => [
 				{
-					json: (event.resourceData as IDataObject) ?? (event as IDataObject),
+					json: (event.resourceData as IDataObject) ?? event,
 				},
 			]),
 		};
