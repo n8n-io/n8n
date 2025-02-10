@@ -91,7 +91,6 @@
     },
     "patchedDependencies": {
       "bull@4.12.1": "patches/bull@4.12.1.patch",
-      "curlconverter@4.11.0": "patches/curlconverter@4.11.0.patch",
       "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
