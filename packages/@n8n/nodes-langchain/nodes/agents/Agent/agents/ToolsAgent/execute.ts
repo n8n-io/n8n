@@ -30,9 +30,9 @@ import { SYSTEM_MESSAGE } from './prompt';
  * Retrieve the output parser schema.
  * If the parser does not return a valid schema, default to a schema with a single text field.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getOutputParserSchema(
 	outputParser: N8nOutputParser,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): ZodObject<any, any, any, any> {
 	const schema =
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,11 +129,35 @@ export function fixEmptyContentMessage(
 }
 
 /**
- * Ensures consistent handling of final agent outputs.
- * If the final output is an array of text segments, they are merged into one string.
+ * Ensures consistent handling of outputs regardless of the model used,
+ * providing a unified output format for further processing.
  *
- * @param steps - The agent finish or action steps.
- * @returns The modified steps
+ * This method is necessary to handle different output formats from various language models.
+ * Specifically, it checks if the agent step is the final step (contains returnValues) and determines
+ * if the output is a simple string (e.g., from OpenAI models) or an array of outputs (e.g., from Anthropic models).
+ *
+ * Examples:
+ * 1. Anthropic model output:
+ * ```json
+ *    {
+ *      "output": [
+ *        {
+ *          "index": 0,
+ *          "type": "text",
+ *          "text": "The result of the calculation is approximately 1001.8166..."
+ *        }
+ *      ]
+ *    }
+ *```
+ * 2. OpenAI model output:
+ * ```json
+ *    {
+ *      "output": "The result of the calculation is approximately 1001.82..."
+ *    }
+ * ```
+ *
+ * @param steps - The agent finish or agent action steps.
+ * @returns The modified agent finish steps or the original steps.
  */
 export function handleAgentFinishOutput(
 	steps: AgentFinish | AgentAction[],
@@ -216,13 +240,16 @@ export const getAgentStepsParser =
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
 					try {
-						// If output is an object, parse it as JSON so that the parser can process it.
+						// If the output is an object, we will try to parse it as JSON
+						// this is because parser expects stringified JSON object like { "output": { .... } }
+						// so we try to parse the output before wrapping it and then stringify it
 						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
 					} catch (error) {
 						// Fallback to the raw output if parsing fails.
 						parserInput = finalResponse.output;
 					}
 				} else {
+					// If the output is not an object, we will stringify it as it is
 					parserInput = JSON.stringify(finalResponse);
 				}
 			} else {
@@ -362,22 +389,21 @@ function formatBytesToMB(bytes: number) {
  * @returns The array of execution data for all processed items
  */
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	console.log('Executing Tools Agent');
+	this.logger.debug('Executing Tools Agent');
+
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	const initialMemory = process.memoryUsage();
-
-	// Retrieve model and memory; throw immediately if the model is invalid.
-	const model = await retrieveChatModel(this);
-	const memory = await retrieveMemory(this);
-
-	// Retrieve the output parser (if any) and tools.
-	const outputParsers = await getOptionalOutputParsers(this);
-	const outputParser = outputParsers?.[0];
-	const tools = await retrieveTools(this, outputParser);
-
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
+			// Retrieve model and memory; throw immediately if the model is invalid.
+			const model = await retrieveChatModel(this);
+			const memory = await retrieveMemory(this);
+
+			// Retrieve the output parser (if any) and tools.
+			const outputParsers = await getOptionalOutputParsers(this);
+			const outputParser = outputParsers?.[0];
+			const tools = await retrieveTools(this, outputParser);
+
 			const input = getPromptInputByType({
 				ctx: this,
 				i: itemIndex,
@@ -468,17 +494,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			}
 			throw error;
 		}
-	}
-	const finalMemory = process.memoryUsage();
-
-	console.log('Memory usage before:');
-	for (const [key, value] of Object.entries(initialMemory)) {
-		console.log(`  ${key}: ${formatBytesToMB(value as number)}`);
-	}
-
-	console.log('Memory usage after:');
-	for (const [key, value] of Object.entries(finalMemory)) {
-		console.log(`  ${key}: ${formatBytesToMB(value as number)}`);
 	}
 
 	return [returnData];

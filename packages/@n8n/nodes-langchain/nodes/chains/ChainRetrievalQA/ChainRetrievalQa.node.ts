@@ -162,23 +162,21 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
-
 		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
-
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionType.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
+				const retriever = (await this.getInputConnectionData(
+					NodeConnectionType.AiRetriever,
+					0,
+				)) as BaseRetriever;
+
 				let query;
 
 				if (this.getNode().typeVersion <= 1.2) {
@@ -225,7 +223,9 @@ export class ChainRetrievalQa implements INodeType {
 
 				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
 
-				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
+				const response = await chain
+					.withConfig(getTracingConfig(this))
+					.invoke({ query }, { signal: this.getExecutionCancelSignal() });
 				returnData.push({ json: { response } });
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -45,7 +45,6 @@ function createFakeExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}):
 				return defaultValue;
 			}),
 		getNode: jest.fn().mockReturnValue({}),
-		// By default, getInputConnectionData returns an empty object.
 		getInputConnectionData: jest.fn().mockResolvedValue({}),
 		getInputData: jest.fn().mockReturnValue([]),
 		continueOnFail: jest.fn().mockReturnValue(false),
@@ -152,11 +151,6 @@ describe('fixEmptyContentMessage', () => {
 	});
 });
 
-//
-// -------------------------
-// 5. handleParsedStepOutput tests
-// -------------------------
-//
 describe('handleParsedStepOutput', () => {
 	it('should stringify the output if memory is provided', () => {
 		const output = { key: 'value' };
