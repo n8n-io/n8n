@@ -20,14 +20,13 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	copyBinaryFile,
-	getBinaryHelperFunctions,
 	getNodeWebhookUrl,
 	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/node-execute-functions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
