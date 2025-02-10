@@ -169,7 +169,7 @@ export function canBeContentOverride(
 	if (
 		!codex?.categories?.includes('AI') ||
 		!codex?.subcategories?.AI?.includes('Tools') ||
-		codex?.subcategories?.AI?.includes('Vector Stores') // vector stores do no support fromAI
+		codex?.subcategories?.AI?.includes('Vector Stores') // vector stores do not support fromAI
 	)
 		return false;
 
