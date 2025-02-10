@@ -189,14 +189,10 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
+	await setFiltersFromQueryString();
 	const [, workflowsPage] = await Promise.all([
 		usersStore.fetchUsers(),
-		workflowsStore.fetchWorkflowsPage(
-			route.params?.projectId as string | undefined,
-			currentPage.value,
-			pageSize.value,
-			'updatedAt:desc',
-		),
+		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
 	workflows.value = workflowsPage;
@@ -214,23 +210,24 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	// TODO: Check why workflows are fetched twice when navigating projects
 	loading.value = true;
-	const tagNames = filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name);
-	workflows.value = await workflowsStore.fetchWorkflowsPage(
-		((route.params?.projectId as string | undefined) ?? filters.value.homeProject !== '')
-			? filters.value.homeProject
-			: undefined,
+	const routeProjectId = route.params?.projectId as string | undefined;
+	const homeProjectFilter = filters.value.homeProject || undefined;
+
+	const fetchedWorkflows = await workflowsStore.fetchWorkflowsPage(
+		routeProjectId ?? homeProjectFilter,
 		currentPage.value,
 		pageSize.value,
 		currentSort.value,
 		{
-			name: filters.value.search !== '' ? filters.value.search : undefined,
-			active: filters.value.status !== '' ? Boolean(filters.value.status) : undefined,
-			tags: tagNames.length ? tagNames : undefined,
+			name: filters.value.search || undefined,
+			active: filters.value.status ? Boolean(filters.value.status) : undefined,
+			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
 	);
+	workflows.value = fetchedWorkflows;
 	loading.value = false;
+	return fetchedWorkflows;
 };
 
 const onClickTag = async (tagId: string) => {
@@ -311,16 +308,17 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-// watch(filters, () => saveFiltersOnQueryString(), { deep: true });
+watch(filters, () => saveFiltersOnQueryString(), { deep: true });
 
 watch(
 	() => route.params?.projectId,
-	async () => await initialize(),
+	async () => {
+		await initialize();
+	},
 );
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
-	// await setFiltersFromQueryString();
 	void usersStore.showPersonalizationSurvey();
 });
 
