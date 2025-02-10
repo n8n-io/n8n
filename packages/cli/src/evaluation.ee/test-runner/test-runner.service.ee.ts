@@ -219,7 +219,7 @@ export class TestRunnerService {
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-		data.executionMode = 'evaluation';
+		data.executionMode = 'integrated';
 
 		// Trigger the evaluation workflow
 		const executionId = await this.workflowRunner.run(data);
