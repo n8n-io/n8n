@@ -57,6 +57,7 @@ const props = withDefaults(
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
 		loading: boolean;
 		customPageSize?: number;
+		availablePageSizeOptions?: number[];
 		totalItems?: number;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
@@ -75,6 +76,7 @@ const props = withDefaults(
 		showFiltersDropdown: true,
 		shareable: true,
 		customPageSize: 25,
+		availablePageSizeOptions: () => [10, 25, 50, 100],
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
@@ -305,6 +307,12 @@ const onSearch = (s: string) => {
 	emit('update:search', s);
 };
 
+const findNearestPageSize = (size: number): number => {
+	return props.availablePageSizeOptions.reduce((prev, curr) =>
+		Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev,
+	);
+};
+
 const savePaginationToQueryString = async () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
@@ -329,12 +337,15 @@ const savePaginationToQueryString = async () => {
 
 const loadPaginationFromQueryString = async () => {
 	const query = router.currentRoute.value.query;
+
 	if (query.page) {
 		currentPage.value = parseInt(query.page as string, 10);
 	}
 
 	if (query.pageSize) {
-		rowsPerPage.value = parseInt(query.pageSize as string, 10);
+		const parsedSize = parseInt(query.pageSize as string, 10);
+		// Round to the nearest available page size, this will prevent users from passing arbitrary values
+		rowsPerPage.value = findNearestPageSize(parsedSize);
 	}
 };
 
@@ -344,6 +355,9 @@ watch(
 	() => props.filters,
 	(value) => {
 		filtersModel.value = value;
+		if (hasAppliedFilters()) {
+			hasFilters.value = true;
+		}
 	},
 );
 
@@ -555,7 +569,7 @@ onMounted(async () => {
 								v-model:page-size="rowsPerPage"
 								background
 								:total="totalItems"
-								:page-sizes="[10, 25, 50, 100]"
+								:page-sizes="availablePageSizeOptions"
 								layout="total, prev, pager, next, sizes"
 								@update:current-page="setCurrentPage"
 								@size-change="setRowsPerPage"
