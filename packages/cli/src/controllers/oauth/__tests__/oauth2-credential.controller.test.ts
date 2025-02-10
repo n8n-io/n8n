@@ -1,9 +1,8 @@
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
-import { mock } from 'jest-mock-extended';
-import { Cipher } from 'n8n-core';
-import { Logger } from 'n8n-core';
+import { captor, mock } from 'jest-mock-extended';
+import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -34,7 +33,9 @@ describe('OAuth2CredentialController', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 	(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockReturnValue(additionalData);
 
-	const cipher = mockInstance(Cipher);
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
+	Container.set(Cipher, cipher);
+
 	const externalHooks = mockInstance(ExternalHooks);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
@@ -51,7 +52,7 @@ describe('OAuth2CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth2Api',
-		data: '{"__encrypted": true}',
+		data: cipher.encrypt({}),
 	});
 
 	const controller = Container.get(OAuth2CredentialController);
@@ -62,17 +63,6 @@ describe('OAuth2CredentialController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
-
-		cipher.decrypt.mockImplementation((str: string) => {
-			const { __encrypted, ...rest } = JSON.parse(str);
-			return JSON.stringify(rest);
-		});
-		cipher.encrypt.mockImplementation((data: string | object) =>
-			JSON.stringify({
-				...(typeof data === 'string' ? JSON.parse(data) : data),
-				__encrypted: true,
-			}),
-		);
 
 		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
 			clientId: 'test-client-id',
@@ -117,15 +107,18 @@ describe('OAuth2CredentialController', () => {
 				createdAt: timestamp,
 				userId: '123',
 			});
-			expect(cipher.encrypt).toHaveBeenCalledWith({ csrfSecret: 'csrf-secret' });
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: '{"csrfSecret":"csrf-secret","__encrypted":true}',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
 				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({ csrfSecret: 'csrf-secret' }),
 			);
 			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
 				additionalData,
@@ -269,16 +262,19 @@ describe('OAuth2CredentialController', () => {
 					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				}),
 			]);
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
-			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: '{"oauthTokenData":{"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
 				}),
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
@@ -314,20 +310,23 @@ describe('OAuth2CredentialController', () => {
 					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				}),
 			]);
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: {
-					token: true,
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-				},
-			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: '{"oauthTokenData":{"token":true,"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: {
+						token: true,
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+					},
 				}),
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
@@ -355,16 +354,19 @@ describe('OAuth2CredentialController', () => {
 					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				}),
 			]);
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
-			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: '{"oauthTokenData":{"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
 				}),
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
