@@ -42,6 +42,13 @@ export class WordpressApi implements ICredentialType {
 			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
+		{
+			displayName: 'User Agent',
+			name: 'userAgent',
+			type: 'string',
+			default: 'n8n/1.0.0',
+			description: 'Custom User-Agent to include in the request header.',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -50,6 +57,9 @@ export class WordpressApi implements ICredentialType {
 			auth: {
 				username: '={{$credentials.username}}',
 				password: '={{$credentials.password}}',
+			},
+			headers: {
+				'User-Agent': '={{$credentials.userAgent}}',
 			},
 		},
 	};
