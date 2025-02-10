@@ -16,9 +16,8 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@/stores/root.store';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IPinData } from 'n8n-workflow';
+import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
@@ -33,7 +32,6 @@ const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
 
 const {
@@ -169,22 +167,13 @@ function toggleConfig() {
 }
 
 async function getExamplePinnedDataForTags() {
-	const evaluationWorkflowExecutions = await executionsStore.fetchExecutions({
-		workflowId: currentWorkflowId.value,
-		annotationTags: state.value.tags.value,
-	});
-	if (evaluationWorkflowExecutions.count > 0) {
-		const firstExecution = evaluationWorkflowExecutions.results[0];
-		const executionData = await executionsStore.fetchExecution(firstExecution.id);
-		const resultData = executionData?.data?.resultData.runData;
+	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(testId.value);
 
+	if (exampleInput !== null) {
 		examplePinnedData.value = {
 			'When called by a test run': [
 				{
-					json: {
-						originalExecution: resultData,
-						newExecution: resultData,
-					},
+					json: exampleInput as IDataObject,
 				},
 			],
 		};

@@ -221,6 +221,10 @@ export const useTestDefinitionStore = defineStore(
 			}
 		};
 
+		const fetchExampleEvaluationInput = async (testId: string) => {
+			return await testDefinitionsApi.getExampleEvaluationInput(rootStore.restApiContext, testId);
+		};
+
 		/**
 		 * Creates a new test definition using the provided parameters.
 		 *
@@ -457,6 +461,7 @@ export const useTestDefinitionStore = defineStore(
 			fetchTestDefinition,
 			fetchTestCaseExecutions,
 			fetchAll,
+			fetchExampleEvaluationInput,
 			create,
 			update,
 			deleteById,

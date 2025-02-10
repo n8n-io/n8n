@@ -123,6 +123,14 @@ export async function deleteTestDefinition(context: IRestApiContext, id: string)
 	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
 }
 
+export async function getExampleEvaluationInput(context: IRestApiContext, id: string) {
+	return await makeRestApiRequest<Record<string, unknown> | null>(
+		context,
+		'GET',
+		`${endpoint}/${id}/example-evaluation-input`,
+	);
+}
+
 // Metrics
 export interface TestMetricRecord {
 	id: string;

@@ -38,6 +38,8 @@ export declare namespace TestDefinitionsRequest {
 	type Delete = AuthenticatedRequest<RouteParams.TestId>;
 
 	type Run = AuthenticatedRequest<RouteParams.TestId>;
+
+	type ExampleEvaluationInput = AuthenticatedRequest<RouteParams.TestId>;
 }
 
 // ----------------------------------

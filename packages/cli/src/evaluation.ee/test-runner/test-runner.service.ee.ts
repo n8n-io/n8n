@@ -487,4 +487,59 @@ export class TestRunnerService {
 			});
 		}
 	}
+
+	/**
+	 * Returns the example evaluation WF input for the test definition.
+	 * It uses the latest execution of a workflow under test as a source and formats it
+	 * the same way as the evaluation input would be formatted.
+	 */
+	async getExampleEvaluationInputData(test: TestDefinition) {
+		// Select the id of latest execution with the annotation tag and workflow ID of the test
+		const lastPastExecution: Pick<ExecutionEntity, 'id'> | null = await this.executionRepository
+			.createQueryBuilder('execution')
+			.select('execution.id')
+			.leftJoin('execution.annotation', 'annotation')
+			.leftJoin('annotation.tags', 'annotationTag')
+			.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
+			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
+			.orderBy('execution.createdAt', 'DESC')
+			.getOne();
+
+		if (lastPastExecution === null) {
+			return null;
+		}
+
+		// Fetch past execution with data
+		const pastExecution = await this.executionRepository.findOne({
+			where: {
+				id: lastPastExecution.id,
+			},
+			relations: ['executionData', 'metadata', 'annotation', 'annotation.tags'],
+		});
+		assert(pastExecution, 'Execution not found');
+
+		const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
+
+		const sampleTestCaseMetadata = {
+			testRunId: 'sample-test-run-id',
+			userId: 'sample-user-id',
+			pastExecutionId: lastPastExecution.id,
+			highlightedData: pastExecution.metadata,
+			annotation: pastExecution.annotation,
+		};
+
+		// Get the original runData from the test case execution data
+		const originalRunData = executionData.resultData.runData;
+
+		// We use the same execution data for the original and new run data format example
+		const evaluationInputData = formatTestCaseExecutionInputData(
+			originalRunData,
+			pastExecution.executionData.workflowData,
+			originalRunData,
+			pastExecution.executionData.workflowData,
+			sampleTestCaseMetadata,
+		);
+
+		return evaluationInputData.json;
+	}
 }
