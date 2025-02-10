@@ -419,6 +419,7 @@ const onSortUpdated = async (sort: string) => {
 				:data="data as IWorkflowDb"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
+				@workflow:deleted="fetchWorkflows"
 			/>
 		</template>
 		<template #empty>

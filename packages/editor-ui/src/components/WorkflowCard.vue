@@ -59,6 +59,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
+	'workflow:deleted': [];
 }>();
 
 const toast = useToast();
@@ -217,6 +218,7 @@ async function deleteWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 		type: 'success',
 	});
+	emit('workflow:deleted');
 }
 
 function moveResource() {
