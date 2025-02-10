@@ -54,6 +54,17 @@ const AI_DENYLIST_NODE_TYPE: INodeTypeDescription = {
 	...MOCK_NODE_TYPE_MIXIN,
 };
 
+const AI_VECTOR_STORE_NODE_TYPE: INodeTypeDescription = {
+	name: 'aVectorStore',
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools', 'Vector Stores'],
+		},
+	},
+	...MOCK_NODE_TYPE_MIXIN,
+};
+
 const NON_AI_NODE_TYPE: INodeTypeDescription = {
 	name: 'AN_NOT_AI_NODE_TYPE',
 	...MOCK_NODE_TYPE_MIXIN,
@@ -64,6 +75,8 @@ describe('makeOverrideValue', () => {
 		['null nodeType', makeContext(''), null],
 		['non-ai node type', makeContext(''), NON_AI_NODE_TYPE],
 		['ai node type on denylist', makeContext(''), AI_DENYLIST_NODE_TYPE],
+		['vector store type', makeContext(''), AI_VECTOR_STORE_NODE_TYPE],
+		['denied parameter name', makeContext('', 'parameters.toolName'), AI_NODE_TYPE],
 	])('should not create an override for %s', (_name, context, nodeType) => {
 		expect(makeOverrideValue(context, nodeType)).toBeNull();
 	});
