@@ -282,6 +282,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
 		const visitedByName: Record<string, true | undefined> = {};
+		const runDataByNode = workflowExecutionData.value?.data?.resultData.runData ?? {};
 
 		function markDownstreamStaleRecursively(nodeName: string): void {
 			if (visitedByName[nodeName]) {
@@ -293,7 +294,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
 				for (const connections of inputConnections) {
 					for (const { node } of connections ?? []) {
-						dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
+						const hasRunData = (runDataByNode[node] ?? []).length > 0;
+
+						if (hasRunData) {
+							dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
+						}
 
 						markDownstreamStaleRecursively(node);
 					}
@@ -301,9 +306,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 
-		for (const [nodeName, taskData] of Object.entries(
-			workflowExecutionData.value?.data?.resultData.runData ?? {},
-		)) {
+		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
 			const lastUpdate = getParametersLastUpdate(nodeName);
 			const runAt = taskData[0]?.startTime;
 

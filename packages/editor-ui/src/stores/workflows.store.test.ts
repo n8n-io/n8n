@@ -781,7 +781,6 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.dirtinessByName).toEqual({
 				node1: 'dirty',
 				node2: 'upstream-dirty',
-				node3: 'upstream-dirty',
 			});
 		});
 
@@ -797,7 +796,6 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.dirtinessByName).toEqual({
 				node1: 'dirty',
 				node2: 'upstream-dirty',
-				node3: 'upstream-dirty',
 			});
 		});
 
