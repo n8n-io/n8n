@@ -334,7 +334,7 @@ describe('TestRunnerService', () => {
 		// Check evaluation workflow was executed
 		expect(workflowRunner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
-				executionMode: 'evaluation',
+				executionMode: 'integrated',
 				executionData: expect.objectContaining({
 					executionData: expect.objectContaining({
 						nodeExecutionStack: expect.arrayContaining([
