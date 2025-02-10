@@ -87,6 +87,7 @@ const emit = defineEmits<{
 	'update:current-page': [page: number];
 	'update:page-size': [pageSize: number];
 	sort: [value: string];
+	'update:search': [value: string];
 }>();
 
 defineSlots<{
@@ -120,6 +121,16 @@ const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 
 //computed
+
+const showEmptyState = computed(() => {
+	return (
+		props.resources.length === 0 &&
+		// Don't show empty state if resources are refreshing or if filters are being set
+		!hasFilters.value &&
+		!filtersModel.value.search &&
+		!props.resourcesRefreshing
+	);
+});
 
 const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
@@ -288,10 +299,7 @@ const onUpdateFiltersLength = (length: number) => {
 
 const onSearch = (s: string) => {
 	filtersModel.value.search = s;
-	if (s) {
-		hasFilters.value = true;
-	}
-	emit('update:filters', filtersModel.value);
+	emit('update:search', s);
 };
 
 //watchers
@@ -387,7 +395,7 @@ onMounted(async () => {
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
-			<div v-if="resources.length === 0 && !hasFilters && !resourcesRefreshing">
+			<div v-if="showEmptyState">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"

@@ -154,26 +154,28 @@ const emptyListDescription = computed(() => {
 });
 
 // Methods
-// Watch filters and fetch workflows
-// TODO: Find a better way to do this and avoid fetching workflows twice
-watch(
-	() => filters.value.search,
-	async () => callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true }),
-	{ deep: true },
-);
-
 const onFiltersUpdated = async (newFilters: IFilters) => {
-	// TODO: Find a better way to compare filters
+	// ATM, search is already updated because it's two-way bound
+	// so we handle it separately (also the UX is a bit different with debounce times)
 	if (
-		newFilters.search === filters.value.search &&
 		newFilters.status === filters.value.status &&
 		newFilters.tags === filters.value.tags &&
 		newFilters.homeProject === filters.value.homeProject
 	) {
 		return;
 	}
+
 	Object.assign(filters.value, newFilters);
-	callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+	await fetchWorkflows();
+};
+
+const onSearchUpdated = async (search: string) => {
+	if (search) {
+		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+	} else {
+		// No need to debounce when clearing search
+		await fetchWorkflows();
+	}
 };
 
 const addWorkflow = () => {
@@ -384,6 +386,7 @@ const onSortUpdated = async (sort: string) => {
 		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
+		@update:search="onSearchUpdated"
 		@update:current-page="setCurrentPage"
 		@update:page-size="setPageSize"
 		@sort="onSortUpdated"
