@@ -459,7 +459,7 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 		).toThrow("Column names were updated after the node's setup");
 	});
 
-	it('should not to throw error and filter out empty columns', async () => {
+	it('should filter out empty columns  without throwing an error', async () => {
 		const node: INode = {
 			id: '1',
 			name: 'Google Sheets',
