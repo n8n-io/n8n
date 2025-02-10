@@ -26,7 +26,7 @@ const expressionBracketSpacing = EditorView.updateListener.of((update) => {
 });
 
 export const expressionCloseBracketsConfig: CloseBracketConfig = {
-	brackets: ['{', '('],
+	brackets: ['{', '(', '"', "'", '['],
 	// <> so bracket completion works in HTML tags
 	before: ')]}:;<>\'"',
 };

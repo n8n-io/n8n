@@ -230,6 +230,24 @@ export function getPreviousNodes(nodeName: string) {
 }
 
 /**
+ * Finds the amount of common chars at the end of the source and the start of the target.
+ * Example: "hello world", "world peace" => 5 ("world" is the overlap)
+ */
+function findCommonBoundary(source: string, target: string) {
+	return (
+		[...source]
+			.reverse()
+			.map((_, i) => source.slice(-i - 1))
+			.find((end) => target.startsWith(end))?.length ?? 0
+	);
+}
+
+function getClosingChars(input: string): string {
+	const match = input.match(/^['"\])]+/);
+	return match ? match[0] : '';
+}
+
+/**
  * Remove excess parens from an option label when the cursor is already
  * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric` or `$(|)` -> `$("Node Name")|`
  */
@@ -240,11 +258,13 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 		option.label = option.label.slice(0, '()'.length * -1);
 	}
 
-	const inParens = context.state.sliceDoc(context.pos - 1, context.pos + 1) === '()';
-	if (option.label.endsWith(')') && inParens) {
+	const closingChars = getClosingChars(context.state.sliceDoc(context.pos));
+	const commonClosingChars = findCommonBoundary(option.label, closingChars);
+
+	if (commonClosingChars > 0) {
 		option.apply = (view: EditorView, completion: Completion, from: number, to: number): void => {
 			const tx: TransactionSpec = {
-				...insertCompletionText(view.state, option.label.slice(0, -1), from, to),
+				...insertCompletionText(view.state, option.label.slice(0, -commonClosingChars), from, to),
 				annotations: pickedCompletion.of(completion),
 			};
 
