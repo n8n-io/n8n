@@ -881,7 +881,6 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-
 		return await httpRequest(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
