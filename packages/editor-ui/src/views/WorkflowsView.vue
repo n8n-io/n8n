@@ -155,16 +155,6 @@ const emptyListDescription = computed(() => {
 
 // Methods
 const onFiltersUpdated = async (newFilters: IFilters) => {
-	// ATM, search is already updated because it's two-way bound
-	// so we handle it separately (also the UX is a bit different with debounce times)
-	if (
-		newFilters.status === filters.value.status &&
-		newFilters.tags === filters.value.tags &&
-		newFilters.homeProject === filters.value.homeProject
-	) {
-		return;
-	}
-
 	Object.assign(filters.value, newFilters);
 	await fetchWorkflows();
 };
