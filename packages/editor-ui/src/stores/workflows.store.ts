@@ -485,22 +485,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		sortBy?: string,
 		filters: { name?: string; tags?: string[]; active?: boolean } = {},
 	): Promise<IWorkflowDb[]> {
-		// TODO: Combine all filters into one object
-		const filter = {
-			...filters,
-			projectId,
-		};
+		const filter = { ...filters, projectId };
 		const options = {
-			skip: page * pageSize - pageSize,
+			skip: (page - 1) * pageSize,
 			take: pageSize,
 			sortBy,
 		};
 
 		const { count, data } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
-			isEmpty(options) ? undefined : options,
+			Object.keys(filter).length ? filter : undefined,
+			Object.keys(options).length ? options : undefined,
 		);
+
 		setWorkflows(data);
 		totalWorkflowCount.value = count;
 		return data;

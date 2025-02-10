@@ -267,10 +267,14 @@ const onUpdateFilters = (e: IFilters) => {
 	emit('update:filters', e);
 };
 
-const resetFilters = () => {
+const resetFilters = async () => {
 	Object.keys(filtersModel.value).forEach((key) => {
 		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
 	});
+
+	// Reset the pagination
+	await setCurrentPage(1);
+	await setRowsPerPage(props.customPageSize);
 
 	resettingFilters.value = true;
 	hasFilters.value = false;
@@ -314,7 +318,10 @@ const findNearestPageSize = (size: number): number => {
 };
 
 const savePaginationToQueryString = async () => {
-	// Get current query parameters
+	// For now, only available for paginated lists
+	if (props.type !== 'list-paginated') {
+		return;
+	}
 	const currentQuery = { ...route.query };
 
 	// Update pagination parameters
@@ -336,6 +343,10 @@ const savePaginationToQueryString = async () => {
 };
 
 const loadPaginationFromQueryString = async () => {
+	// For now, only available for paginated lists
+	if (props.type !== 'list-paginated') {
+		return;
+	}
 	const query = router.currentRoute.value.query;
 
 	if (query.page) {
@@ -535,7 +546,7 @@ onMounted(async () => {
 				<slot name="preamble" />
 
 				<div v-if="resourcesRefreshing" class="resource-list-loading">
-					<n8n-loading :rows="10" :shrink-last="false" />
+					<n8n-loading :rows="rowsPerPage" :shrink-last="false" />
 				</div>
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
