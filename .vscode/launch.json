@@ -63,24 +63,7 @@
 			],
 			"type": "node",
 			"request": "launch"
-		},
-		{
-			"name": "Launch n8n fix version node with debug",
-			"program": "${workspaceFolder}/packages/cli/bin/n8n",
-			"cwd": "${workspaceFolder}/packages/cli/bin",
-			// "args": ["start", "--tunnel"],
-			"request": "launch",
-			"skipFiles": ["<node_internals>/**"],
-			"type": "node",
-			"runtimeExecutable": "node",
-      "runtimeVersion": "20.18.0",
-			"env": {
-				// "N8N_PORT": "5679",
-				"N8N_USE_DEPRECATED_REQUEST_LIB": true
-			},
-			"outputCapture": "std",
-			"killBehavior": "polite"
-		},
+		}
 	]
 
 	/**
