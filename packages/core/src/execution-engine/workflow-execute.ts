@@ -1489,7 +1489,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json?.error !== undefined;
+								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1531,7 +1531,7 @@ export class WorkflowExecute {
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
 
-							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
+							if (!nodeSuccessData?.[0]?.[0]) {
 								if (executionData.node.alwaysOutputData === true) {
 									const pairedItem: IPairedItemData[] = [];
 
@@ -1548,7 +1548,7 @@ export class WorkflowExecute {
 										});
 									});
 
-									nodeSuccessData = nodeSuccessData || [];
+									nodeSuccessData ??= [];
 									nodeSuccessData[0] = [
 										{
 											json: {},
