@@ -22,7 +22,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		name: 'microsoftTeamsTrigger',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
-		//	maxNodes: 3, // TODO take too long for activate wf
 		version: 1,
 		description:
 			'Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.',
@@ -54,11 +53,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				default: 'newChannelMessage',
 				options: [
 					{
-						name: 'Any Event',
-						value: 'anyEvent',
-						description: 'Triggers on any event',
-					},
-					{
 						name: 'New Channel',
 						value: 'newChannel',
 						description: 'A new channel is created',
@@ -77,11 +71,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						name: 'New Chat Message',
 						value: 'newChatMessage',
 						description: 'A message is posted to a chat',
-					},
-					{
-						name: 'New Team',
-						value: 'newTeam',
-						description: 'A new team is created',
 					},
 					{
 						name: 'New Team Member',
@@ -234,7 +223,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		default: {
 			// Check if a webhook subscription already exists
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				console.log('checkExists');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				try {
 					// Fetch all existing subscriptions
@@ -244,11 +232,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						'GET',
 						'/v1.0/subscriptions',
 					);
-					console.log('Subscriptions:', subscriptions);
 
 					for (const subscription of subscriptions) {
 						if (subscription.notificationUrl === webhookUrl) {
-							console.log('Existing subscription found:', subscription.id);
 							this.getWorkflowStaticData('node').subscriptionId = subscription.id;
 							return true;
 						}
@@ -257,12 +243,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-				console.log('No subscription found');
 				return false;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				console.log('Create');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
@@ -291,24 +275,20 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							return subscriptionId;
 						}),
 					);
-					console.log('Subscriptions created:', subscriptionIds);
 				} else {
 					const subscriptionId = await createSubscription.call(this, webhookUrl, resourcePaths);
 					subscriptions.push(subscriptionId);
-					console.log('Subscription created:', subscriptionId);
 				}
 
 				return true;
 			},
 			// Delete an existing webhook subscription
 			async delete(this: IHookFunctions): Promise<boolean> {
-				console.log('delete');
 				const staticData = this.getWorkflowStaticData('node');
 				const subscriptions = staticData.subscriptions as string[];
 
 				// Check if subscriptions exist in static data
 				if (!subscriptions || subscriptions.length === 0) {
-					console.log('No subscriptions found in static data to delete.');
 					return false;
 				}
 
@@ -320,15 +300,12 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							'DELETE',
 							`/v1.0/subscriptions/${subscriptionId}`,
 						);
-						console.log(`Deleted subscription ${subscriptionId}`);
 					}
 
 					// Clear the subscriptions from static data after deletion
 					staticData.subscriptions = [];
-					console.log('All subscriptions deleted.');
 					return true;
 				} catch (error) {
-					console.error('Error deleting subscriptions:', error);
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			},

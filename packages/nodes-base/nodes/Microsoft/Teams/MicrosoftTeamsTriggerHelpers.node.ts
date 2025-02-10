@@ -149,10 +149,6 @@ export const getResourcePath = async function (
 			return `/teams/${teamId}/channels/${channelId}/messages`;
 		}
 
-		case 'newTeam': {
-			return '/teams'; // TODO not supported
-		}
-
 		case 'newTeamMember': {
 			const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
 				extractValue: true,
@@ -167,13 +163,6 @@ export const getResourcePath = async function (
 			if (!teamId) throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
 
 			return `/teams/${teamId}/members`;
-		}
-		//TODO - not supported
-		case 'anyEvent': {
-			throw new NodeApiError(this.getNode(), {
-				message: 'Unsupported event: anyEvent',
-				description: 'The event "anyEvent" is not supported by this trigger node.',
-			});
 		}
 
 		default: {
