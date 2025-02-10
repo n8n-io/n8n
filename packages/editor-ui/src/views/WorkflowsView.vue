@@ -99,7 +99,6 @@ const isShareable = computed(
 );
 
 const workflowResources = computed<IResource[]>(() =>
-	// TODO: Add tags
 	workflows.value.map((workflow) => ({
 		id: workflow.id,
 		name: workflow.name,
@@ -111,6 +110,7 @@ const workflowResources = computed<IResource[]>(() =>
 		type: 'workflow',
 		sharedWithProjects: workflow.sharedWithProjects,
 		readOnly: !getResourcePermissions(workflow.scopes).workflow.update,
+		tags: workflow.tags,
 	})),
 );
 
@@ -156,13 +156,16 @@ const emptyListDescription = computed(() => {
 // Methods
 const onFiltersUpdated = async (newFilters: IFilters) => {
 	Object.assign(filters.value, newFilters);
+	currentPage.value = 1;
 	await fetchWorkflows();
 };
 
 const onSearchUpdated = async (search: string) => {
 	if (search) {
+		currentPage.value = 1;
 		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
 	} else {
+		currentPage.value = 1;
 		// No need to debounce when clearing search
 		await fetchWorkflows();
 	}
@@ -233,6 +236,7 @@ const fetchWorkflows = async () => {
 const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
+		currentPage.value = 1;
 		await fetchWorkflows();
 	}
 };
@@ -372,7 +376,7 @@ const onSortUpdated = async (sort: string) => {
 	<ResourcesListLayout
 		resource-key="workflows"
 		type="list-paginated"
-		:resources="workflows"
+		:resources="workflowResources"
 		:filters="filters"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
