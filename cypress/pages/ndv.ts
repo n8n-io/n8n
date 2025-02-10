@@ -204,7 +204,7 @@ export class NDV extends BasePage {
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean },
+			opts?: Partial<Cypress.TypeOptions>,
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
