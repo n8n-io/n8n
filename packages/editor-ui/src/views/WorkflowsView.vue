@@ -233,9 +233,10 @@ const fetchWorkflows = async () => {
 	loading.value = false;
 };
 
-const onClickTag = (tagId: string) => {
+const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
+		await fetchWorkflows();
 	}
 };
 
