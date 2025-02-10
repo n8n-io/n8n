@@ -47,7 +47,6 @@ import {
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
-	NodeExecutionOutput,
 	sleep,
 	ExecutionCancelledError,
 	Node,
@@ -1101,7 +1100,7 @@ export class WorkflowExecute {
 				});
 			}
 
-			return { data };
+			return { data, hints: context.hints };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1489,7 +1488,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json?.error !== undefined;
+								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1507,10 +1506,8 @@ export class WorkflowExecute {
 									tryIndex++;
 								}
 
-								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									const hints = (nodeSuccessData as NodeExecutionOutput).getHints();
-
-									executionHints.push(...hints);
+								if (runNodeData.hints?.length) {
+									executionHints.push(...runNodeData.hints);
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
@@ -1531,7 +1528,7 @@ export class WorkflowExecute {
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
 
-							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
+							if (!nodeSuccessData?.[0]?.[0]) {
 								if (executionData.node.alwaysOutputData === true) {
 									const pairedItem: IPairedItemData[] = [];
 
@@ -1548,7 +1545,7 @@ export class WorkflowExecute {
 										});
 									});
 
-									nodeSuccessData = nodeSuccessData || [];
+									nodeSuccessData ??= [];
 									nodeSuccessData[0] = [
 										{
 											json: {},

@@ -1936,6 +1936,20 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
+	async function toggleChatOpen(source: 'node' | 'main') {
+		const workflow = workflowsStore.getCurrentWorkflow();
+
+		workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
+
+		const payload = {
+			workflow_id: workflow.id,
+			button_type: source,
+		};
+
+		void externalHooks.run('nodeView.onOpenChat', payload);
+		telemetry.track('User clicked chat open button', payload);
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -1982,5 +1996,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		initializeWorkspace,
 		resolveNodeWebhook,
 		openExecution,
+		toggleChatOpen,
 	};
 }
