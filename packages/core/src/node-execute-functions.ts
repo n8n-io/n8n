@@ -881,10 +881,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		// requestOptions.headers = {
-		// 	...requestOptions.headers,
-		// 	'user-agent': 'myapp/1.0.0',
-		// };
+
 		return await httpRequest(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
@@ -918,10 +915,6 @@ export async function httpRequestWithAuthentication(
 						node,
 					);
 				}
-				// requestOptions.headers = {
-				// 	...requestOptions.headers,
-				// 	'user-agent': 'myapp/1.0.0',
-				// };
 				// retry the request
 				return await httpRequest(requestOptions);
 			} catch (error) {

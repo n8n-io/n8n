@@ -46,8 +46,9 @@ export class WordpressApi implements ICredentialType {
 			displayName: 'User Agent',
 			name: 'userAgent',
 			type: 'string',
-			default: 'n8n/1.0.0',
-			description: 'Custom User-Agent to include in the request header.',
+			default: '',
+			description:
+				'Custom User-Agent to include in the request header. If empty, a default value (e.g. n8n/1.0.0) will be used.',
 		},
 	];
 
@@ -59,7 +60,7 @@ export class WordpressApi implements ICredentialType {
 				password: '={{$credentials.password}}',
 			},
 			headers: {
-				'User-Agent': '={{$credentials.userAgent}}',
+				'User-Agent': '={{$credentials.userAgent || "n8n/1.0.0"}}',
 			},
 		},
 	};
