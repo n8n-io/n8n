@@ -2429,6 +2429,7 @@ export default defineComponent({
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
 				this.nodeCreatorStore.onNodeAddedToCanvas({
+					node_id: newNodeData.id,
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
@@ -4690,7 +4691,7 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
 					size="large"
 					icon="comment"
 					:type="isChatOpen ? 'tertiary' : 'primary'"
