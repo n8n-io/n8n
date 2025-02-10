@@ -39,28 +39,23 @@ export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
 }
 
 function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
-	// Handle null and undefined
 	if (value === null || value === undefined) {
 		return { NULL: true };
 	}
 
-	// Handle booleans
 	if (typeof value === 'boolean') {
 		return { BOOL: value };
 	}
 
-	// Handle numbers
 	if (typeof value === 'number') {
 		return { N: value.toString() };
 	}
 
-	// Handle arrays
 	if (Array.isArray(value)) {
 		if (value.length === 0) {
 			return { L: [] };
 		}
 
-		// Check if all elements are of the same type
 		const allStrings = value.every((item): item is string => typeof item === 'string');
 		const allNumbers = value.every((item): item is number => typeof item === 'number');
 
@@ -73,7 +68,6 @@ function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
 		return { L: value.map(convertToDynamoDBValue) };
 	}
 
-	// Handle objects (maps)
 	if (typeof value === 'object') {
 		const map: { [key: string]: DynamoDBAttributeValue } = {};
 		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
@@ -82,7 +76,6 @@ function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
 		return { M: map };
 	}
 
-	// All strings (including numeric strings) should be stored as strings
 	return { S: String(value) };
 }
 
