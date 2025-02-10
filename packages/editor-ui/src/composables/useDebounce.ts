@@ -1,24 +1,19 @@
 import { ref } from 'vue';
-import { debounce as _debounce } from 'lodash-es';
+import { debounce as _debounce, type DebouncedFunc } from 'lodash-es';
 
 export interface DebounceOptions {
 	debounceTime: number;
 	trailing?: boolean;
 }
 
-export type DebouncedFunction<Args extends unknown[] = unknown[], R = void> = (...args: Args) => R;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFunction = (...args: any) => any;
 
 export function useDebounce() {
 	// Create a ref for the WeakMap to store debounced functions.
-	const debounceCache = ref(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		new WeakMap<DebouncedFunction<any, any>, DebouncedFunction<any, any>>(),
-	);
+	const debounceCache = ref(new WeakMap<AnyFunction, DebouncedFunc<AnyFunction>>());
 
-	const debounce = <T extends DebouncedFunction<Parameters<T>, ReturnType<T>>>(
-		fn: T,
-		options: DebounceOptions,
-	): T => {
+	const debounce = <T extends AnyFunction>(fn: T, options: DebounceOptions): DebouncedFunc<T> => {
 		const { trailing, debounceTime } = options;
 
 		// Check if a debounced version of the function is already stored in the WeakMap.
@@ -37,14 +32,14 @@ export function useDebounce() {
 			debounceCache.value.set(fn, debouncedFn);
 		}
 
-		return debouncedFn as T;
+		return debouncedFn;
 	};
 
-	const callDebounced = <T extends DebouncedFunction<Parameters<T>, ReturnType<T>>>(
+	const callDebounced = <T extends AnyFunction>(
 		fn: T,
 		options: DebounceOptions,
 		...inputParameters: Parameters<T>
-	): ReturnType<T> => {
+	): ReturnType<T> | undefined => {
 		const debouncedFn = debounce(fn, options);
 
 		return debouncedFn(...inputParameters);

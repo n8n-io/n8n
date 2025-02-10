@@ -5,6 +5,7 @@ import * as channel from './channel';
 import * as channelMessage from './channelMessage';
 import * as chatMessage from './chatMessage';
 import * as task from './task';
+import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Teams',
@@ -25,6 +26,7 @@ export const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Resource',

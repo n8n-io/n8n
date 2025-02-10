@@ -4,7 +4,7 @@ $--mode-selector-width: 92px;
 	--input-background-color: initial;
 	--input-font-color: initial;
 	--input-border-color: initial;
-	flex-basis: $--mode-selector-width;
+	width: $--mode-selector-width;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
@@ -48,7 +48,7 @@ $--mode-selector-width: 92px;
 
 .resourceLocator {
 	display: inline-flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	width: 100%;
 	position: relative;
 
@@ -91,7 +91,7 @@ $--mode-selector-width: 92px;
 		.inputContainer {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - $--mode-selector-width);
+			width: calc(100% - $--mode-selector-width);
 			flex-grow: 1;
 		}
 

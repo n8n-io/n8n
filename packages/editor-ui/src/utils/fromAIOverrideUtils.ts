@@ -48,6 +48,8 @@ const NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
 
 const PATH_DENYLIST = [
 	'parameters.name',
+	// this is used in vector store tools
+	'parameters.toolName',
 	'parameters.description',
 	// This is used in e.g. the telegram node if the dropdown selects manual mode
 	'parameters.toolDescription',
@@ -164,7 +166,11 @@ export function canBeContentOverride(
 	if (PATH_DENYLIST.includes(props.path)) return false;
 
 	const codex = nodeType?.codex;
-	if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))
+	if (
+		!codex?.categories?.includes('AI') ||
+		!codex?.subcategories?.AI?.includes('Tools') ||
+		codex?.subcategories?.AI?.includes('Vector Stores') // vector stores do not support fromAI
+	)
 		return false;
 
 	return !props.parameter.noDataExpression && 'options' !== props.parameter.type;

@@ -530,6 +530,7 @@ export async function executeWebhook(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },
 					);
+					responseCallback(error, {});
 				});
 		}
 

@@ -5,11 +5,7 @@ import type {
 	IExecuteFunctions,
 } from 'n8n-workflow';
 
-import {
-	generatePairedItemData,
-	updateDisplayOptions,
-	wrapData,
-} from '../../../../../utils/utilities';
+import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -112,11 +108,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		bases = bases.filter((base) => permissionLevel.includes(base.permissionLevel as string));
 	}
 
-	const itemData = generatePairedItemData(this.getInputData().length);
-
-	const returnData = this.helpers.constructExecutionMetaData(wrapData(bases), {
-		itemData,
-	});
+	const returnData = wrapData(bases);
 
 	return returnData;
 }
