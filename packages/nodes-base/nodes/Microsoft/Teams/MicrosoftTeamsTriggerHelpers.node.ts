@@ -58,10 +58,8 @@ export const createSubscription = async function (
 			body,
 		);
 
-		console.log('Subscription created successfully:', response);
 		return response.id;
 	} catch (error) {
-		console.error('Error creating subscription:', error);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 };
