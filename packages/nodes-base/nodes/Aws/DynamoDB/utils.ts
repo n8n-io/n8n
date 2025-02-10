@@ -38,7 +38,7 @@ export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
 	return ean;
 }
 
-function convertToDynamoDBValue(value: any): DynamoDBAttributeValue {
+function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
 	// Handle null and undefined
 	if (value === null || value === undefined) {
 		return { NULL: true };
@@ -61,8 +61,8 @@ function convertToDynamoDBValue(value: any): DynamoDBAttributeValue {
 		}
 
 		// Check if all elements are of the same type
-		const allStrings = value.every((item) => typeof item === 'string');
-		const allNumbers = value.every((item) => typeof item === 'number');
+		const allStrings = value.every((item): item is string => typeof item === 'string');
+		const allNumbers = value.every((item): item is number => typeof item === 'number');
 
 		if (allStrings) {
 			return { SS: value };
@@ -76,7 +76,7 @@ function convertToDynamoDBValue(value: any): DynamoDBAttributeValue {
 	// Handle objects (maps)
 	if (typeof value === 'object') {
 		const map: { [key: string]: DynamoDBAttributeValue } = {};
-		for (const [k, v] of Object.entries(value)) {
+		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
 			map[k] = convertToDynamoDBValue(v);
 		}
 		return { M: map };

@@ -1,5 +1,5 @@
-import { adjustPutItem, simplify } from '../utils';
 import type { IAttributeValue } from '../types';
+import { adjustPutItem, simplify } from '../utils';
 
 describe('DynamoDB Utils', () => {
 	describe('adjustPutItem', () => {
@@ -103,7 +103,7 @@ describe('DynamoDB Utils', () => {
 
 		it('should handle edge cases correctly', () => {
 			const input = {
-				undefined: undefined,
+				undefinedField: undefined,
 				emptyString: '',
 				zero: 0,
 				negativeNumber: -123.456,
@@ -112,7 +112,7 @@ describe('DynamoDB Utils', () => {
 			};
 
 			const expected: IAttributeValue = {
-				undefined: { NULL: true },
+				undefinedField: { NULL: true },
 				emptyString: { S: '' },
 				zero: { N: '0' },
 				negativeNumber: { N: '-123.456' },

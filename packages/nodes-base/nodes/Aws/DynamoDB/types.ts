@@ -89,7 +89,7 @@ export type DynamoDBAttributeValue = {
 };
 
 export type PutItemUi = {
-	[key: string]: any;
+	[key: string]: string | number | boolean | null | undefined | object | unknown[];
 };
 
 export type AdjustedPutItem = {
