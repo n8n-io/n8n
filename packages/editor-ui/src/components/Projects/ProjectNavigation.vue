@@ -202,6 +202,7 @@ const showAddFirstProject = computed(
 <style lang="scss" scoped>
 .home {
 	padding: 0 var(--spacing-xs);
+	padding-top: 32px;
 
 	:deep(.el-menu-item) {
 		padding: var(--spacing-m) var(--spacing-xs) !important;

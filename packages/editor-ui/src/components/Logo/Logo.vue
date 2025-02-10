@@ -34,6 +34,7 @@ const showLogoText = computed(() => {
 });
 
 const $style = useCssModule();
+
 const containerClasses = computed(() => {
 	if (location === 'authView') {
 		return [$style.logoContainer, $style.authView];
@@ -62,19 +63,28 @@ onMounted(() => {
 </script>
 
 <template>
-	<div data-test-id="n8n-logo">
-		<img
-			class="ciara-logo-img"
-			src="https://ciara-ai.s3.ap-south-1.amazonaws.com/default_business_logo.svg"
-			alt="ciara logo"
-		/>
-		<!--		<LogoIcon :class="$style.logo" ref="logo" />-->
-		<!--		<LogoText v-if="showLogoText" :class="$style.logoText" />-->
-		<!--		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">-->
-		<!--			{{ releaseChannel }}-->
-		<!--		</div>-->
+	<div :class="containerClasses" data-test-id="n8n-logo">
+		<LogoIcon :class="$style.logo" ref="logo" />
+<!--		<LogoText v-if="showLogoText" :class="$style.logoText" />-->
+		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
+			{{ releaseChannel }}
+		</div>
 		<slot />
 	</div>
+
+<!--	<div data-test-id="n8n-logo">-->
+<!--		<img-->
+<!--			class="ciara-logo-img"-->
+<!--			src="https://ciara-ai.s3.ap-south-1.amazonaws.com/default_business_logo.svg"-->
+<!--			alt="ciara logo"-->
+<!--		/>-->
+<!--		&lt;!&ndash;		<LogoIcon :class="$style.logo" ref="logo" />&ndash;&gt;-->
+<!--		&lt;!&ndash;		<LogoText v-if="showLogoText" :class="$style.logoText" />&ndash;&gt;-->
+<!--		&lt;!&ndash;		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">&ndash;&gt;-->
+<!--		&lt;!&ndash;			{{ releaseChannel }}&ndash;&gt;-->
+<!--		&lt;!&ndash;		</div>&ndash;&gt;-->
+<!--		<slot />-->
+<!--	</div>-->
 </template>
 
 <style lang="scss" module>
@@ -91,6 +101,7 @@ onMounted(() => {
 }
 
 .releaseChannelTag {
+	opacity: 0;
 	color: var(--color-text-dark);
 	padding: var(--spacing-5xs) var(--spacing-4xs);
 	background-color: var(--color-background-base);
