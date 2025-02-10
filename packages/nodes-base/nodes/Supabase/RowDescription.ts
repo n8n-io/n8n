@@ -49,28 +49,6 @@ export const rowOperations: INodeProperties[] = [
 	},
 ];
 
-// [ria] sets new UI option
-export const schemas: INodeProperties[] = [
-	{
-		displayName: 'Schema Name or ID',
-		name: 'schemaId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getSchemas',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['row'],
-				operation: ['create', 'delete', 'get', 'getAll', 'update'],
-			},
-		},
-		default: 'public',
-	},
-];
-
 export const rowFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                row:create                                  */
