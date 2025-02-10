@@ -19,17 +19,16 @@ import type {
 	JsonObject,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionType,
+	NodeOperationError,
+	parseMetadataFromError,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { FromAIArgument } from './FromAIParser';
 import { AIParametersParser } from './FromAIParser';
-
-function errorHasMetadata(
-	response: JsonObject | undefined,
-): response is { executionId: string; workflowId: string } {
-	return ['executionId', 'workflowId'].every((x) => response?.hasOwnProperty(x));
-}
 
 /**
 	Main class for creating the Workflow tool
@@ -96,15 +95,7 @@ export class WorkflowToolService {
 				const executionError = error as ExecutionError;
 				const errorResponse = `There was an error: "${executionError.message}"`;
 
-				const metadata = errorHasMetadata(executionError.errorResponse)
-					? {
-							subExecution: {
-								executionId: executionError.errorResponse.executionId,
-								workflowId: executionError.errorResponse.workflowId,
-							},
-						}
-					: undefined;
-
+				const metadata = parseMetadataFromError(error);
 				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 				return errorResponse;
 			} finally {

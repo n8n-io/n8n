@@ -15,6 +15,7 @@ import {
 	type JsonObject,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type Workflow,
+	parseMetadataFromError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -530,28 +531,15 @@ const pinButtonDisabled = computed(
 		readOnlyEnv.value,
 );
 
-function responseHasMetadata(
-	response: JsonObject | undefined,
-): response is { executionId: string; workflowId: string } {
-	return ['executionId', 'workflowId'].every((x) => response?.hasOwnProperty(x));
-}
-
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
-	console.log(
-		'activeTaskMetaData',
-		workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata,
-	);
-
-	if (responseHasMetadata(workflowRunErrorAsNodeError.value?.errorResponse)) {
+	const errorMetadata = parseMetadataFromError(workflowRunErrorAsNodeError.value?.errorResponse);
+	if (errorMetadata !== undefined) {
 		return {
 			subExecutionsCount: 1,
-			subExecution: {
-				executionId: workflowRunErrorAsNodeError.value.errorResponse.executionId,
-				workflowId: workflowRunErrorAsNodeError.value.errorResponse.workflowId,
-			},
+			...errorMetadata,
 		};
 	}
 
@@ -569,7 +557,7 @@ const hasRelatedExecution = computed(() => {
 	return Boolean(
 		activeTaskMetadata.value?.subExecution ??
 			activeTaskMetadata.value?.parentExecution ??
-			errorExecutionId.value,
+			errorExecutionId.value !== undefined,
 	);
 });
 
@@ -683,7 +671,6 @@ onMounted(() => {
 
 	if (hasRunError.value && node.value) {
 		const error = workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error;
-		console.log('error', error);
 		const errorsToTrack = ['unknown error'];
 
 		if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {

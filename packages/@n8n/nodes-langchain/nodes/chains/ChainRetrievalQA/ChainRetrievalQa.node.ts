@@ -14,7 +14,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeOperationError,
-	parseMetadata,
 	parseMetadataFromError,
 } from 'n8n-workflow';
 

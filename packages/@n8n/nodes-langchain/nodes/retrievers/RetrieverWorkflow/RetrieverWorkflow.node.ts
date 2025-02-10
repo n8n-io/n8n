@@ -4,7 +4,7 @@ import { Document } from '@langchain/core/documents';
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { NodeConnectionType, NodeOperationError, parseMetadata } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteWorkflowInfo,
@@ -403,19 +403,10 @@ export class RetrieverWorkflow implements INodeType {
 							},
 						},
 					);
-				} catch (error: unknown) {
-					const errorOptions =
-						error !== null && typeof error === 'object' && 'errorResponse' in error
-							? parseMetadata(error?.errorResponse)
-							: undefined;
-
+				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
-					throw new NodeOperationError(
-						this.executeFunctions.getNode(),
-						error as Error,
-						errorOptions,
-					);
+					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
 				const receivedItems = receivedData.data?.[0] ?? [];

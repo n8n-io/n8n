@@ -78,8 +78,6 @@ function extractRunMeta(run: IAiDataContent) {
 	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');
 
-	console.log('meta', run);
-
 	const runMeta: RunMeta = {
 		startTimeMs: run.metadata.startTime,
 		executionTimeMs: run.metadata.executionTime,
