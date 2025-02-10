@@ -72,14 +72,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'GetGroupResponse.GetGroupResult.Group',
-								},
-							},
-						],
+						postReceive: [processGroupsResponse],
 					},
 				},
 				action: 'Get group',
@@ -273,6 +266,19 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Include User List',
+		name: 'includeUsers',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		default: false,
+		description: 'Whether to include a list of users in the group',
+	},
 ];
 
 const getAllFields: INodeProperties[] = [
@@ -313,6 +319,19 @@ const getAllFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		validateType: 'number',
+	},
+	{
+		displayName: 'Include User List',
+		name: 'includeUsers',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to include a list of users in the group',
 	},
 ];
 
@@ -376,13 +395,9 @@ const updateFields: INodeProperties[] = [
 				displayName: 'New Name',
 				name: 'NewGroupName',
 				default: '',
-				placeholder: 'e.g. My New Group',
+				placeholder: 'e.g. GroupName',
 				description: 'The new name of the group',
 				type: 'string',
-				typeOptions: {
-					regex: '^[a-zA-Z0-9+=,.@_-]+$',
-				},
-				validateType: 'string',
 			},
 			{
 				displayName: 'New Path',
@@ -391,7 +406,6 @@ const updateFields: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
-				validateType: 'string',
 			},
 		],
 		placeholder: 'Add Option',

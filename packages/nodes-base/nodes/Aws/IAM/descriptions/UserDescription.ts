@@ -3,9 +3,9 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	handleErrorPostReceive,
 	handlePagination,
+	preDeleteUser,
 	presendUserFields,
 	processUsersResponse,
-	simplifyData,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -66,7 +66,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [presendUserFields, preDeleteUser],
 					},
 					request: {
 						method: 'POST',
@@ -81,7 +81,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve information of an user',
+				description: 'Retrieve an user',
 				action: 'Get user',
 				routing: {
 					send: {
@@ -119,14 +119,10 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/?Action=ListUsers&Version=2010-05-08',
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
-						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processUsersResponse, simplifyData, handleErrorPostReceive],
+						postReceive: [processUsersResponse, handleErrorPostReceive],
 					},
 				},
 				action: 'Get many users',
