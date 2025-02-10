@@ -8,8 +8,8 @@ import {
 } from '@/databases/entities/abstract-entity';
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
-import { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 
 export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
