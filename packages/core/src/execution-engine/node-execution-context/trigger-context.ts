@@ -11,7 +11,6 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	getBinaryHelperFunctions,
 	getRequestHelperFunctions,
 	getSchedulingFunctions,
 	getSSHTunnelFunctions,
@@ -19,6 +18,7 @@ import {
 } from '@/node-execute-functions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
 
 const throwOnEmit = () => {
 	throw new ApplicationError('Overwrite TriggerContext.emit function');

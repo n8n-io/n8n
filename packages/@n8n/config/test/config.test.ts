@@ -214,6 +214,7 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					dualStack: false,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',

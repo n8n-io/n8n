@@ -28,18 +28,20 @@ import {
 	copyInputItems,
 	normalizeItems,
 	constructExecutionMetaData,
-	assertBinaryData,
-	getBinaryDataBuffer,
-	copyBinaryFile,
 	getRequestHelperFunctions,
-	getBinaryHelperFunctions,
 	getSSHTunnelFunctions,
-	getFileSystemHelperFunctions,
-	getCheckProcessedHelperFunctions,
-	detectBinaryEncoding,
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import {
+	assertBinaryData,
+	getBinaryDataBuffer,
+	copyBinaryFile,
+	getBinaryHelperFunctions,
+	detectBinaryEncoding,
+} from './utils/binary-helper-functions';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
@@ -91,7 +93,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
@@ -192,7 +194,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
-		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+		await this.additionalData.hooks?.runHook('sendResponse', [response]);
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
