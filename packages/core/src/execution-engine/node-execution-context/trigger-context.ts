@@ -14,11 +14,11 @@ import {
 	getRequestHelperFunctions,
 	getSchedulingFunctions,
 	getSSHTunnelFunctions,
-	returnJsonArray,
 } from '@/node-execute-functions';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
 
 const throwOnEmit = () => {
 	throw new ApplicationError('Overwrite TriggerContext.emit function');

@@ -15,4 +15,5 @@ export { WebhookContext } from './webhook-context';
 export { getAdditionalKeys } from './utils/get-additional-keys';
 export { parseIncomingMessage } from './utils/parse-incoming-message';
 export { parseRequestObject } from './utils/parse-request-object';
+export { returnJsonArray } from './utils/return-json-array';
 export * from './utils/binary-helper-functions';

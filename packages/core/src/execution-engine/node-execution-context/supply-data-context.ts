@@ -26,7 +26,6 @@ import {
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
 	normalizeItems,
-	returnJsonArray,
 } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -39,6 +38,7 @@ import {
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { returnJsonArray } from './utils/return-json-array';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];

@@ -10,14 +10,11 @@ import type {
 import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import {
-	getRequestHelperFunctions,
-	getSchedulingFunctions,
-	returnJsonArray,
-} from '@/node-execute-functions';
+import { getRequestHelperFunctions, getSchedulingFunctions } from '@/node-execute-functions';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
 
 const throwOnEmit = () => {
 	throw new ApplicationError('Overwrite PollContext.__emit function');
