@@ -36,9 +36,33 @@ const telemetry = useTelemetry();
 
 const filter = ref('');
 const projectId = ref<string | null>(null);
-const shareableCredentials = ref<ICredentialsResponse[]>([]);
-const unShareableCredentials = ref<Array<IUsedCredential | ICredentialsResponse>>([]);
 const shareUsedCredentials = ref(false);
+const usedCredentials = ref<IUsedCredential[]>([]);
+const allCredentials = ref<ICredentialsResponse[]>([]);
+const shareableCredentials = computed(() =>
+	allCredentials.value.filter(
+		(credential) =>
+			getResourcePermissions(credential.scopes).credential.share &&
+			usedCredentials.value.find((uc) => uc.id === credential.id),
+	),
+);
+const unShareableCredentials = computed(() =>
+	usedCredentials.value.reduce(
+		(acc, uc) => {
+			const credential = credentialsStore.getCredentialById(uc.id);
+			const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
+			if (!credentialPermissions.share) {
+				if (credentialPermissions.read) {
+					acc.push(credential);
+				} else {
+					acc.push(uc);
+				}
+			}
+			return acc;
+		},
+		[] as Array<IUsedCredential | ICredentialsResponse>,
+	),
+);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
@@ -107,6 +131,9 @@ const moveResource = async () => {
 				resourceType: props.data.resourceType,
 				resourceTypeLabel: props.data.resourceTypeLabel,
 				targetProject: selectedProject.value,
+				isShareCredentialsChecked: shareUsedCredentials.value,
+				areAllUsedCredentialsShareable:
+					shareableCredentials.value.length === usedCredentials.value.length,
 			}),
 			type: 'success',
 			duration: 8000,
@@ -136,26 +163,8 @@ onMounted(async () => {
 			credentialsStore.fetchAllCredentials(),
 		]);
 
-		shareableCredentials.value = (credentials ?? []).filter(
-			(credential) =>
-				(workflow?.usedCredentials ?? []).find((c) => c.id === credential.id) &&
-				getResourcePermissions(credential.scopes).credential.share,
-		);
-		unShareableCredentials.value = (workflow?.usedCredentials ?? []).reduce(
-			(acc, uc) => {
-				const credential = credentialsStore.getCredentialById(uc.id);
-				const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-				if (!credentialPermissions.share) {
-					if (credentialPermissions.read) {
-						acc.push(credential);
-					} else {
-						acc.push(uc);
-					}
-				}
-				return acc;
-			},
-			[] as Array<IUsedCredential | ICredentialsResponse>,
-		);
+		usedCredentials.value = workflow?.usedCredentials ?? [];
+		allCredentials.value = credentials ?? [];
 	}
 });
 </script>

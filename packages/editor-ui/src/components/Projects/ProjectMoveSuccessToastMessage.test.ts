@@ -32,9 +32,59 @@ describe('ProjectMoveSuccessToastMessage', () => {
 				id: '2',
 				name: 'My Project',
 			},
+			isShareCredentialsChecked: false,
+			areAllUsedCredentialsShareable: false,
 		};
 		const { getByText } = renderComponent({ props });
-		expect(getByText(/Please double check any credentials/)).toBeInTheDocument();
+		expect(getByText(/None of the used credentials/)).toBeInTheDocument();
+	});
+
+	it('should show all credentials shared message if the resource is a workflow', async () => {
+		const props = {
+			routeName: VIEWS.PROJECTS_WORKFLOWS,
+			resource: {
+				id: '1',
+				name: 'My Workflow',
+				homeProject: {
+					id: '2',
+					name: 'My Project',
+				},
+			},
+			resourceType: ResourceType.Workflow,
+			resourceTypeLabel: 'Workflow',
+			targetProject: {
+				id: '2',
+				name: 'My Project',
+			},
+			isShareCredentialsChecked: true,
+			areAllUsedCredentialsShareable: true,
+		};
+		const { getByText } = renderComponent({ props });
+		expect(getByText(/All used credentials/)).toBeInTheDocument();
+	});
+
+	it('should show not all credentials shared message if the resource is a workflow', async () => {
+		const props = {
+			routeName: VIEWS.PROJECTS_WORKFLOWS,
+			resource: {
+				id: '1',
+				name: 'My Workflow',
+				homeProject: {
+					id: '2',
+					name: 'My Project',
+				},
+			},
+			resourceType: ResourceType.Workflow,
+			resourceTypeLabel: 'Workflow',
+			targetProject: {
+				id: '2',
+				name: 'My Project',
+			},
+			isShareCredentialsChecked: true,
+			areAllUsedCredentialsShareable: false,
+		};
+		const { getByText } = renderComponent({ props });
+		expect(getByText(/Not all used credentials/)).toBeInTheDocument();
 	});
 
 	it('should show link if the target project type is team project', async () => {
@@ -55,6 +105,8 @@ describe('ProjectMoveSuccessToastMessage', () => {
 				name: 'Team Project',
 				type: ProjectTypes.Team,
 			},
+			isShareCredentialsChecked: false,
+			areAllUsedCredentialsShareable: false,
 		};
 		const { getByRole } = renderComponent({ props });
 		expect(getByRole('link')).toBeInTheDocument();
@@ -78,10 +130,12 @@ describe('ProjectMoveSuccessToastMessage', () => {
 				name: 'Personal Project',
 				type: ProjectTypes.Personal,
 			},
+			isShareCredentialsChecked: false,
+			areAllUsedCredentialsShareable: false,
 		};
 		const { getByText, queryByText, queryByRole } = renderComponent({ props });
 		expect(getByText(/credential was moved to /)).toBeInTheDocument();
-		expect(queryByText(/Please double check any credentials/)).not.toBeInTheDocument();
+		expect(queryByText(/None of the used credentials/)).not.toBeInTheDocument();
 		expect(queryByRole('link')).not.toBeInTheDocument();
 	});
 });
