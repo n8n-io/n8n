@@ -89,7 +89,7 @@ describe('Google Sheets, getMappingColumns', () => {
 		]);
 	});
 
-	it('should map columns and add row number for update operation', async () => {
+	it('should map columns and add row number for appendOrUpdate operation', async () => {
 		loadOptionsFunctions.getNode.mockReturnValue({} as INode);
 		loadOptionsFunctions.getNodeParameter
 			.mockReturnValueOnce({ mode: 'id', value: 'spreadsheetId' }) // documentId
