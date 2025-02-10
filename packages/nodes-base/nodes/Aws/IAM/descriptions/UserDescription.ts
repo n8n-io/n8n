@@ -452,6 +452,24 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'New User Name',
+		name: 'NewUserName',
+		default: '',
+		placeholder: 'e.g. JohnSmith',
+		type: 'string',
+		validateType: 'string',
+		required: true,
+		typeOptions: {
+			regex: '^[a-zA-Z0-9+=,.@_-]+$',
+		},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -464,17 +482,6 @@ const updateFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'New User Name',
-				name: 'NewUserName',
-				default: '',
-				placeholder: 'e.g. JohnSmith',
-				type: 'string',
-				validateType: 'string',
-				typeOptions: {
-					regex: '^[a-zA-Z0-9+=,.@_-]+$',
-				},
-			},
 			{
 				displayName: 'New Path',
 				name: 'NewPath',

@@ -25,14 +25,6 @@ export class AwsIam implements INodeType {
 				location: 'outputPane',
 				type: 'warning',
 			},
-			{
-				message: 'Please select a parameter in the additional fields to update the group',
-				displayCondition:
-					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
-				whenToDisplay: 'always',
-				location: 'outputPane',
-				type: 'warning',
-			},
 		],
 		credentials: [
 			{

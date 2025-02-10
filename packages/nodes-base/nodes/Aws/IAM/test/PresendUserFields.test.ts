@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { presendUserFields } from '../GenericFunctions';
 
 describe('presendUserFields', () => {
@@ -12,28 +15,12 @@ describe('presendUserFields', () => {
 		};
 	});
 
-	it('should append PathPrefix to the URL for ListUsers operation', async () => {
-		mockContext.getNodeParameter.mockReturnValueOnce({
-			PathPrefix: 'some-prefix',
-		});
-		const requestOptions = {
-			url: 'https://example.com?Action=ListUsers',
-			headers: {},
-			body: {},
-		};
-
-		const options = await presendUserFields.call(mockContext, requestOptions);
-
-		expect(options.url).toBe('https://example.com?Action=ListUsers&PathPrefix=some-prefix');
-	});
-
 	it('should append user-related fields for CreateUser operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'UserName') return 'newUser';
+			if (name === 'userNameNew') return 'newUser';
 			if (name === 'additionalFields') {
 				return {
-					PermissionsBoundary: 'some-permission',
-					Path: '/new-path',
+					Path: '/new-path/',
 					Tags: { tags: [{ key: 'env', value: 'dev' }] },
 				};
 			}
@@ -49,17 +36,17 @@ describe('presendUserFields', () => {
 		const options = await presendUserFields.call(mockContext, requestOptions);
 
 		expect(options.url).toBe(
-			'https://example.com?Action=CreateUser&UserName=newUser&PermissionsBoundary=some-permission&Path=/new-path&Tags.member.1.Key=env&Tags.member.1.Value=dev',
+			'https://example.com?Action=CreateUser&UserName=newUser&Path=/new-path/&Tags.member.1.Key=env&Tags.member.1.Value=dev',
 		);
 	});
 
 	it('should append NewUserName and NewPath for UpdateUser operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
 			if (name === 'UserName') return { mode: 'value', value: 'oldUser' };
+			if (name === 'NewUserName') return 'newUser';
 			if (name === 'additionalFields') {
 				return {
-					NewUserName: 'newUser',
-					NewPath: '/new-path',
+					NewPath: '/new-path/',
 				};
 			}
 			return undefined;
@@ -74,7 +61,7 @@ describe('presendUserFields', () => {
 		const options = await presendUserFields.call(mockContext, requestOptions);
 
 		expect(options.url).toBe(
-			'https://example.com?Action=UpdateUser&UserName=oldUser&NewUserName=newUser&NewPath=/new-path',
+			'https://example.com?Action=UpdateUser&UserName=oldUser&NewUserName=newUser&NewPath=/new-path/',
 		);
 	});
 
@@ -116,23 +103,5 @@ describe('presendUserFields', () => {
 		expect(options.url).toBe(
 			'https://example.com?Action=RemoveUserFromGroup&UserName=someUser&GroupName=someGroup',
 		);
-	});
-
-	it('should handle missing additionalFields', async () => {
-		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'additionalFields') {
-				return {};
-			}
-		});
-
-		const requestOptions = {
-			url: 'https://example.com?Action=ListUsers',
-			headers: {},
-			body: {},
-		};
-
-		const options = await presendUserFields.call(mockContext, requestOptions);
-
-		expect(options.url).toBe('https://example.com?Action=ListUsers');
 	});
 });

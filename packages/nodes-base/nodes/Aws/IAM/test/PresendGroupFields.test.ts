@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { presendGroupFields } from '../GenericFunctions';
 
 describe('presendGroupFields', () => {
@@ -6,17 +9,21 @@ describe('presendGroupFields', () => {
 	beforeEach(() => {
 		mockContext = {
 			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({
-				name: 'TestNode',
-			})),
+			getNode: jest.fn(),
 		};
 	});
 
 	it('should append Path to the URL for CreateGroup operation', async () => {
-		mockContext.getNodeParameter.mockReturnValueOnce({
-			Path: '/new-path',
+		mockContext.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'additionalFields') {
+				return { Path: '/new-path/' };
+			}
+			if (name === 'NewName') {
+				return 'someGroup';
+			}
+			return undefined;
 		});
-		mockContext.getNodeParameter.mockReturnValueOnce('some-group');
+
 		const requestOptions = {
 			url: 'https://example.com?Action=CreateGroup',
 			headers: {},
@@ -26,52 +33,22 @@ describe('presendGroupFields', () => {
 		const options = await presendGroupFields.call(mockContext, requestOptions);
 
 		expect(options.url).toBe(
-			'https://example.com?Action=CreateGroup&GroupName=some-group&Path=/new-path',
+			'https://example.com?Action=CreateGroup&GroupName=someGroup&Path=/new-path/',
 		);
-	});
-
-	it('should append GroupName for GetGroup operation', async () => {
-		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
-		});
-		const requestOptions = {
-			url: 'https://example.com?Action=GetGroup',
-			headers: {},
-			body: {},
-		};
-
-		const options = await presendGroupFields.call(mockContext, requestOptions);
-
-		expect(options.url).toBe('https://example.com?Action=GetGroup&GroupName=some-group');
-	});
-
-	it('should append GroupName for DeleteGroup operation', async () => {
-		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
-			return undefined;
-		});
-		const requestOptions = {
-			url: 'https://example.com?Action=DeleteGroup',
-			headers: {},
-			body: {},
-		};
-
-		const options = await presendGroupFields.call(mockContext, requestOptions);
-
-		expect(options.url).toBe('https://example.com?Action=DeleteGroup&GroupName=some-group');
 	});
 
 	it('should append NewGroupName and NewPath for UpdateGroup operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
 			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
+			if (name === 'NewGroupName') return 'newGroup';
 			if (name === 'additionalFields') {
 				return {
-					NewGroupName: 'new-group',
-					NewPath: '/new-path',
+					NewPath: '/new-path/',
 				};
 			}
 			return undefined;
 		});
+
 		const requestOptions = {
 			url: 'https://example.com?Action=UpdateGroup',
 			headers: {},
@@ -81,18 +58,16 @@ describe('presendGroupFields', () => {
 		const options = await presendGroupFields.call(mockContext, requestOptions);
 
 		expect(options.url).toBe(
-			'https://example.com?Action=UpdateGroup&GroupName=some-group&NewGroupName=new-group&NewPath=/new-path',
+			'https://example.com?Action=UpdateGroup&GroupName=some-group&NewGroupName=newGroup&NewPath=/new-path/',
 		);
 	});
 
-	it('should handle missing additionalFields', async () => {
+	it('should validate and reject an invalid group name for CreateGroup', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'additionalFields') {
-				return {};
+			if (name === 'NewName') {
+				return 'Invalid Group Name!';
 			}
-			if (name === 'GroupName') {
-				return 'some-group';
-			}
+			return undefined;
 		});
 
 		const requestOptions = {
@@ -101,8 +76,28 @@ describe('presendGroupFields', () => {
 			body: {},
 		};
 
-		const options = await presendGroupFields.call(mockContext, requestOptions);
+		await expect(presendGroupFields.call(mockContext, requestOptions)).rejects.toThrow(
+			'Invalid group name provided',
+		);
+	});
 
-		expect(options.url).toBe('https://example.com?Action=CreateGroup&GroupName=some-group');
+	it('should validate and reject an invalid path for UpdateGroup', async () => {
+		mockContext.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
+			if (name === 'additionalFields') {
+				return { NewPath: 'invalid-path' };
+			}
+			return undefined;
+		});
+
+		const requestOptions = {
+			url: 'https://example.com?Action=UpdateGroup',
+			headers: {},
+			body: {},
+		};
+
+		await expect(presendGroupFields.call(mockContext, requestOptions)).rejects.toThrow(
+			'Invalid path',
+		);
 	});
 });

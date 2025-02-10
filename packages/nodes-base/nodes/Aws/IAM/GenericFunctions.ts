@@ -175,20 +175,25 @@ export async function presendUserFields(
 				url += `&MaxItems=${limit}`;
 			}
 		}
-		let prefix = additionalFields.PathPrefix as string;
-		if (typeof prefix === 'string' && prefix) {
-			prefix = prefix.trim();
-			url += `&PathPrefix=${prefix}`;
-		}
-		if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
-			const specificError = {
-				message: 'Invalid path',
-				description: 'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-			};
-			throw new NodeApiError(this.getNode(), {}, specificError);
-		}
 
-		await fetchAndValidateUserPaths.call(this as unknown as ILoadOptionsFunctions, prefix);
+		let prefix = additionalFields.PathPrefix as string;
+
+		if (prefix && typeof prefix === 'string') {
+			prefix = prefix.trim();
+
+			if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
+				const specificError = {
+					message: 'Invalid path',
+					description:
+						'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
+				};
+				throw new NodeApiError(this.getNode(), {}, specificError);
+			}
+
+			url += `&PathPrefix=${encodeURIComponent(prefix)}`;
+
+			await fetchAndValidateUserPaths.call(this as unknown as ILoadOptionsFunctions, prefix);
+		}
 	} else if (url.includes('CreateUser')) {
 		userName = this.getNodeParameter('userNameNew') as string;
 		url += `&UserName=${userName}`;
@@ -209,13 +214,16 @@ export async function presendUserFields(
 			}
 		}
 		if (additionalFields.Path) {
-			const specificError = {
-				message: 'Invalid permissions boundary provided',
-				description:
-					'Permissions boundaries must be provided in ARN format (e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy)',
-			};
-			throw new NodeApiError(this.getNode(), {}, specificError);
-			url += `&Path=${additionalFields.Path}`;
+			const path = additionalFields.Path as string;
+			if (!path.startsWith('/') || !path.endsWith('/')) {
+				const specificError = {
+					message: 'Invalid path format',
+					description:
+						'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
+				};
+				throw new NodeApiError(this.getNode(), {}, specificError);
+			}
+			url += `&Path=${path}`;
 		}
 		if (additionalFields.Tags) {
 			const additionalTags = additionalFields.Tags as {
@@ -244,8 +252,10 @@ export async function presendUserFields(
 		}
 
 		if (url.includes('UpdateUser')) {
-			if (additionalFields.NewUserName) {
-				const username = additionalFields.NewUserName as string;
+			const newUserName = this.getNodeParameter('NewUserName');
+
+			if (newUserName) {
+				const username = newUserName as string;
 				url += `&NewUserName=${username}`;
 			}
 			if (additionalFields.NewPath) {
@@ -275,7 +285,7 @@ export async function presendGroupFields(
 	let groupName: string | undefined;
 
 	if (url.includes('CreateGroup')) {
-		groupName = this.getNodeParameter('GroupName') as string;
+		groupName = this.getNodeParameter('NewName') as string;
 		const groupPattern = /^[+=,.@\\-_A-Za-z0-9]+$/;
 		if (groupPattern.test(groupName)) {
 			url += `&GroupName=${groupName}`;
@@ -294,17 +304,9 @@ export async function presendGroupFields(
 		groupName = groupNameParam.value;
 		url += `&GroupName=${groupName}`;
 	} else if (url.includes('UpdateGroup')) {
-		if (Object.keys(additionalFields || {}).length === 0) {
-			throw new NodeApiError(
-				this.getNode(),
-				{},
-				{
-					message: 'No parameter provided for update',
-					description: 'Please select a parameter in the additional fields to update the group',
-				},
-			);
-		}
 		const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
+		const newGroupName = this.getNodeParameter('NewGroupName');
+
 		groupName = groupNameParam.value;
 		if (!/^[a-zA-Z0-9+=,.@_-]+$/.test(groupName) || groupName.length > 128) {
 			throw new NodeApiError(
@@ -318,8 +320,8 @@ export async function presendGroupFields(
 			);
 		}
 		url += `&GroupName=${groupName}`;
-		if (additionalFields.NewGroupName) {
-			const name = additionalFields.NewGroupName as string;
+		if (newGroupName) {
+			const name = newGroupName as string;
 			if (!/^[a-zA-Z0-9+=,.@_-]+$/.test(name) || name.length > 128) {
 				throw new NodeApiError(
 					this.getNode(),
@@ -351,7 +353,7 @@ export async function presendGroupFields(
 	return requestOptions;
 }
 
-export async function getUsersForGroup(
+export async function searchUsersForGroup(
 	this: IExecuteSingleFunctions,
 	groupName: string,
 ): Promise<IDataObject[]> {
@@ -390,60 +392,57 @@ export async function processGroupsResponse(
 ): Promise<INodeExecutionData[]> {
 	const includeUsers = this.getNodeParameter('includeUsers', 0) as boolean;
 
-	const processedGroups: IDataObject[] = [];
-
 	const responseBody = response.body as {
 		GetGroupResponse?: { GetGroupResult?: { Group: IDataObject; Users?: IDataObject[] } };
 		ListGroupsResponse?: { ListGroupsResult?: { Groups: IDataObject[] } };
 	};
 
-	if (!includeUsers) {
-		return items;
-	}
-
-	const newBody = response.body as {
-		Group: IDataObject[];
-		Users?: IDataObject[];
-	};
+	const processedItems: INodeExecutionData[] = [];
 
 	if (responseBody?.GetGroupResponse?.GetGroupResult) {
-		const group = responseBody?.GetGroupResponse?.GetGroupResult?.Group;
-		let users: IDataObject[] = [];
-		console.log('Body with users', responseBody?.GetGroupResponse?.GetGroupResult?.Users);
-		users = responseBody?.GetGroupResponse?.GetGroupResult?.Users ?? [];
+		const group = responseBody.GetGroupResponse.GetGroupResult.Group;
 
-		return items.map(() => ({
-			json: {
-				...group,
-				Users: users,
-			},
-		}));
-	}
-
-	const groups = responseBody?.ListGroupsResponse?.ListGroupsResult?.Groups ?? [];
-
-	if (!groups.length) {
-		return items;
-	}
-
-	for (const group of groups) {
-		const groupName = group.GroupName as string;
-		if (!groupName) continue;
-
-		let users: IDataObject[] = [];
-
-		try {
-			users = (await getUsersForGroup.call(this, groupName)) ?? [];
-		} catch (error) {
-			console.error(`⚠️ Failed to fetch users for group "${groupName}":`, error);
+		if (!includeUsers) {
+			return [{ json: group }];
 		}
 
-		processedGroups.push({ ...group, Users: users });
+		const users: IDataObject[] = responseBody.GetGroupResponse.GetGroupResult.Users ?? [];
+		const groupWithUsers = { ...group, Users: users };
+		return [{ json: groupWithUsers }];
 	}
 
-	return items.map(() => ({
-		json: { Groups: processedGroups },
-	}));
+	if (responseBody?.ListGroupsResponse?.ListGroupsResult) {
+		const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
+
+		if (!groups.length) {
+			return items;
+		}
+
+		if (!includeUsers) {
+			for (const group of groups) {
+				processedItems.push(group as INodeExecutionData);
+			}
+			return processedItems;
+		}
+
+		for (const group of groups) {
+			const groupName = group.GroupName as string;
+			if (!groupName) continue;
+
+			let users: IDataObject[] = [];
+			try {
+				users = await searchUsersForGroup.call(this, groupName);
+			} catch (error) {
+				console.error(`⚠️ Failed to fetch users for group "${groupName}":`, error);
+			}
+
+			processedItems.push({ ...group, Users: users } as unknown as INodeExecutionData);
+		}
+
+		return processedItems;
+	}
+
+	return items;
 }
 
 export async function processUsersResponse(
@@ -549,11 +548,18 @@ export async function handleErrorPostReceive(
 		let specificError;
 		switch (errorCode) {
 			case 'EntityAlreadyExists':
-				specificError = {
-					message: 'User name already exists',
-					description:
-						'The given user name already exists - try entering a unique name for the user.',
-				};
+				if (errorMessage.includes('user')) {
+					specificError = {
+						message: 'User already exists',
+						description: 'Users must have unique names. Enter a different name for the new user.',
+					};
+				} else if (errorMessage.includes('group')) {
+					console.log('Got here for error in group');
+					specificError = {
+						message: 'Group already exists',
+						description: 'Groups must have unique names. Enter a different name for the new group.',
+					};
+				}
 				break;
 
 			case 'NoSuchEntity':
@@ -635,6 +641,10 @@ export async function searchGroups(
 	const opts: IHttpRequestOptions = {
 		method: 'POST',
 		url: '/?Action=ListGroups&Version=2010-05-08',
+		headers: {
+			'Cache-Control': 'no-cache',
+			Pragma: 'no-cache',
+		},
 	};
 
 	const responseData: IDataObject = await awsRequest.call(this, opts);
@@ -801,6 +811,47 @@ export async function preDeleteUser(
 		};
 
 		await awsRequest.call(this as unknown as ILoadOptionsFunctions, removeOpts);
+	}
+
+	return requestOptions;
+}
+
+export async function preDeleteGroup(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const groupName = this.getNodeParameter('GroupName', '') as { mode: string; value: string };
+
+	if (!groupName.value) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Group is required',
+				description: 'You must provide a valid Group to delete.',
+			},
+		);
+	}
+
+	const users = await searchUsersForGroup.call(this, groupName.value);
+	const userNames = users.map((user) => user.UserName as string);
+
+	if (!userNames.length) {
+		return requestOptions;
+	}
+
+	for (const userName of userNames) {
+		const removeUserOpts: IHttpRequestOptions = {
+			method: 'POST',
+			url: `/?Action=RemoveUserFromGroup&GroupName=${groupName.value}&UserName=${userName}&Version=2010-05-08`,
+			ignoreHttpStatusErrors: true,
+		};
+
+		try {
+			await awsRequest.call(this as unknown as ILoadOptionsFunctions, removeUserOpts);
+		} catch (error) {
+			console.error(`⚠️ Failed to remove user "${userName}" from "${groupName.value}":`, error);
+		}
 	}
 
 	return requestOptions;

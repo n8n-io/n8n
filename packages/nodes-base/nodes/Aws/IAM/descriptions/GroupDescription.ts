@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	handleErrorPostReceive,
 	handlePagination,
+	preDeleteGroup,
 	presendGroupFields,
 	processGroupsResponse,
 } from '../GenericFunctions';
@@ -45,7 +46,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Delete an existing group',
 				routing: {
 					send: {
-						preSend: [presendGroupFields],
+						preSend: [presendGroupFields, preDeleteGroup],
 					},
 					request: {
 						method: 'POST',
@@ -72,7 +73,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processGroupsResponse],
+						postReceive: [handleErrorPostReceive, processGroupsResponse],
 					},
 				},
 				action: 'Get group',
@@ -130,7 +131,7 @@ export const groupOperations: INodeProperties[] = [
 const createFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
-		name: 'GroupName',
+		name: 'NewName',
 		default: '',
 		placeholder: 'e.g. GroupName',
 		description: 'The name of the new group to create',
@@ -381,6 +382,21 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
+		displayName: 'New Name',
+		name: 'NewGroupName',
+		default: '',
+		required: true,
+		placeholder: 'e.g. GroupName',
+		description: 'The new name of the group',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		default: {},
@@ -391,14 +407,6 @@ const updateFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'New Name',
-				name: 'NewGroupName',
-				default: '',
-				placeholder: 'e.g. GroupName',
-				description: 'The new name of the group',
-				type: 'string',
-			},
 			{
 				displayName: 'New Path',
 				name: 'NewPath',
