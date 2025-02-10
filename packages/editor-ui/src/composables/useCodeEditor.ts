@@ -2,7 +2,12 @@ import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { useTypescript } from '@/plugins/codemirror/typescript/client/useTypescript';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
-import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import {
+	closeBrackets,
+	closeBracketsKeymap,
+	closeCompletion,
+	completionStatus,
+} from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
@@ -290,6 +295,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				},
 			}),
 			keymap.of(editorKeymap),
+			keymap.of(closeBracketsKeymap),
 		];
 
 		const parsedStoredState = jsonParse<IDataObject | null>(
