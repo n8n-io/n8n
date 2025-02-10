@@ -13,11 +13,11 @@ export interface IRequestBody {
 }
 
 export interface IAttributeValue {
-	[attribute: string]: IAttributeValueValue;
+	[attribute: string]: DynamoDBAttributeValue;
 }
 
 export interface IAttributeValueValue {
-	[type: string]: string | string[] | IAttributeValue[];
+	[type: string]: DynamoDBAttributeValue;
 }
 
 export interface IAttributeValueUi {
@@ -75,14 +75,23 @@ export type FieldsUiValues = Array<{
 	fieldValue: string;
 }>;
 
+export type DynamoDBAttributeValue = {
+	S?: string;
+	N?: string;
+	B?: string;
+	BOOL?: boolean;
+	NULL?: boolean;
+	M?: { [key: string]: DynamoDBAttributeValue };
+	L?: DynamoDBAttributeValue[];
+	SS?: string[];
+	NS?: string[];
+	BS?: string[];
+};
+
 export type PutItemUi = {
-	attribute: string;
-	type: 'S' | 'N';
-	value: string;
+	[key: string]: any;
 };
 
 export type AdjustedPutItem = {
-	[attribute: string]: {
-		[type: string]: string;
-	};
+	[attribute: string]: DynamoDBAttributeValue;
 };

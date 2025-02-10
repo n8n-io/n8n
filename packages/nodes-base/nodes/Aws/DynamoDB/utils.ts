@@ -1,9 +1,10 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy, assert, ApplicationError } from 'n8n-workflow';
+import { deepCopy, ApplicationError } from 'n8n-workflow';
 
 import type {
 	AdjustedPutItem,
 	AttributeValueType,
+	DynamoDBAttributeValue,
 	EAttributeValueType,
 	IAttributeNameUi,
 	IAttributeValue,
@@ -37,24 +38,60 @@ export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
 	return ean;
 }
 
-export function adjustPutItem(putItemUi: PutItemUi) {
-	const adjustedPutItem: AdjustedPutItem = {};
+function convertToDynamoDBValue(value: any): DynamoDBAttributeValue {
+	// Handle null and undefined
+	if (value === null || value === undefined) {
+		return { NULL: true };
+	}
 
-	Object.entries(putItemUi).forEach(([attribute, value]) => {
-		let type: string;
+	// Handle booleans
+	if (typeof value === 'boolean') {
+		return { BOOL: value };
+	}
 
-		if (typeof value === 'boolean') {
-			type = 'BOOL';
-		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
-			type = 'M';
-		} else if (isNaN(Number(value))) {
-			type = 'S';
-		} else {
-			type = 'N';
+	// Handle numbers
+	if (typeof value === 'number') {
+		return { N: value.toString() };
+	}
+
+	// Handle arrays
+	if (Array.isArray(value)) {
+		if (value.length === 0) {
+			return { L: [] };
 		}
 
-		adjustedPutItem[attribute] = { [type]: value.toString() };
-	});
+		// Check if all elements are of the same type
+		const allStrings = value.every((item) => typeof item === 'string');
+		const allNumbers = value.every((item) => typeof item === 'number');
+
+		if (allStrings) {
+			return { SS: value };
+		}
+		if (allNumbers) {
+			return { NS: value.map(String) };
+		}
+		return { L: value.map(convertToDynamoDBValue) };
+	}
+
+	// Handle objects (maps)
+	if (typeof value === 'object') {
+		const map: { [key: string]: DynamoDBAttributeValue } = {};
+		for (const [k, v] of Object.entries(value)) {
+			map[k] = convertToDynamoDBValue(v);
+		}
+		return { M: map };
+	}
+
+	// All strings (including numeric strings) should be stored as strings
+	return { S: String(value) };
+}
+
+export function adjustPutItem(putItemUi: PutItemUi): AdjustedPutItem {
+	const adjustedPutItem: AdjustedPutItem = {};
+
+	for (const [key, value] of Object.entries(putItemUi)) {
+		adjustedPutItem[key] = convertToDynamoDBValue(value);
+	}
 
 	return adjustedPutItem;
 }
@@ -72,7 +109,7 @@ export function simplify(item: IAttributeValue): IDataObject {
 	return output;
 }
 
-function decodeAttribute(type: AttributeValueType, attribute: string | IAttributeValue) {
+function decodeAttribute(type: AttributeValueType, attribute: any): any {
 	switch (type) {
 		case 'BOOL':
 			return Boolean(attribute);
@@ -80,15 +117,34 @@ function decodeAttribute(type: AttributeValueType, attribute: string | IAttribut
 			return Number(attribute);
 		case 'S':
 			return String(attribute);
+		case 'NULL':
+			return null;
 		case 'SS':
+			return Array.isArray(attribute) ? attribute.map(String) : [String(attribute)];
 		case 'NS':
-			return attribute;
+			return Array.isArray(attribute) ? attribute.map(Number) : [Number(attribute)];
+		case 'L':
+			return Array.isArray(attribute)
+				? attribute.map((item) => {
+						if (typeof item === 'object' && item !== null) {
+							const [itemType, itemValue] = Object.entries(item)[0];
+							return decodeAttribute(itemType as AttributeValueType, itemValue);
+						}
+						return null;
+					})
+				: [];
 		case 'M':
-			assert(
-				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
-				'Attribute must be an object',
-			);
-			return simplify(attribute);
+			if (typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null) {
+				const result: IDataObject = {};
+				for (const [key, value] of Object.entries(attribute)) {
+					if (typeof value === 'object' && value !== null) {
+						const [valueType, valueContent] = Object.entries(value)[0];
+						result[key] = decodeAttribute(valueType as AttributeValueType, valueContent);
+					}
+				}
+				return result;
+			}
+			return {};
 		default:
 			return null;
 	}
