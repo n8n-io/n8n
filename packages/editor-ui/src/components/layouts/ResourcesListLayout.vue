@@ -10,7 +10,7 @@ import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
@@ -107,6 +107,7 @@ defineSlots<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
@@ -209,13 +210,15 @@ const hasAppliedFilters = (): boolean => {
 	});
 };
 
-const setRowsPerPage = (numberOfRowsPerPage: number) => {
+const setRowsPerPage = async (numberOfRowsPerPage: number) => {
 	rowsPerPage.value = numberOfRowsPerPage;
+	await savePaginationToQueryString();
 	emit('update:page-size', numberOfRowsPerPage);
 };
 
-const setCurrentPage = (page: number) => {
+const setCurrentPage = async (page: number) => {
 	currentPage.value = page;
+	await savePaginationToQueryString();
 	emit('update:current-page', page);
 };
 
@@ -302,6 +305,39 @@ const onSearch = (s: string) => {
 	emit('update:search', s);
 };
 
+const savePaginationToQueryString = async () => {
+	// Get current query parameters
+	const currentQuery = { ...route.query };
+
+	// Update pagination parameters
+	if (currentPage.value !== 1) {
+		currentQuery.page = currentPage.value.toString();
+	} else {
+		delete currentQuery.page;
+	}
+
+	if (rowsPerPage.value !== props.customPageSize) {
+		currentQuery.pageSize = rowsPerPage.value.toString();
+	} else {
+		delete currentQuery.pageSize;
+	}
+
+	await router.replace({
+		query: Object.keys(currentQuery).length ? currentQuery : undefined,
+	});
+};
+
+const loadPaginationFromQueryString = async () => {
+	const query = router.currentRoute.value.query;
+	if (query.page) {
+		currentPage.value = parseInt(query.page as string, 10);
+	}
+
+	if (query.pageSize) {
+		rowsPerPage.value = parseInt(query.pageSize as string, 10);
+	}
+};
+
 //watchers
 
 watch(
@@ -375,6 +411,7 @@ watch(
 );
 
 onMounted(async () => {
+	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
 

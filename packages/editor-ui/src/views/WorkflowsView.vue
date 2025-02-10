@@ -238,26 +238,36 @@ const onClickTag = async (tagId: string) => {
 };
 
 const saveFiltersOnQueryString = () => {
-	const query: { [key: string]: string } = {};
+	// Get current query parameters
+	const currentQuery = { ...route.query };
 
+	// Update filter parameters
 	if (filters.value.search) {
-		query.search = filters.value.search;
+		currentQuery.search = filters.value.search;
+	} else {
+		delete currentQuery.search;
 	}
 
 	if (typeof filters.value.status !== 'string') {
-		query.status = filters.value.status.toString();
+		currentQuery.status = filters.value.status.toString();
+	} else {
+		delete currentQuery.status;
 	}
 
 	if (filters.value.tags.length) {
-		query.tags = filters.value.tags.join(',');
+		currentQuery.tags = filters.value.tags.join(',');
+	} else {
+		delete currentQuery.tags;
 	}
 
 	if (filters.value.homeProject) {
-		query.homeProject = filters.value.homeProject;
+		currentQuery.homeProject = filters.value.homeProject;
+	} else {
+		delete currentQuery.homeProject;
 	}
 
 	void router.replace({
-		query: Object.keys(query).length ? query : undefined,
+		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
 
