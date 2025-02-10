@@ -47,7 +47,6 @@ export async function execute(
 
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData.tables), {
 				itemData: { item: i },
-				k,
 			});
 
 			returnData = returnData.concat(executionData);
