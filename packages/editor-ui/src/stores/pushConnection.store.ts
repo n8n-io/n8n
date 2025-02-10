@@ -77,7 +77,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		: useEventSourceClient({ url, onMessage });
 
 	function serializeAndSend(message: unknown) {
-		client.sendMessage(JSON.stringify(message));
+		if (client.isConnected.value) {
+			client.sendMessage(JSON.stringify(message));
+		} else {
+			outgoingQueue.value.push(message);
+		}
 	}
 
 	const pushConnect = () => {
