@@ -814,9 +814,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		return;
 	}
 	// Only update the value if it has changed
-	const oldValue = node.value?.parameters
-		? nodeHelpers.getParameterValue(node.value?.parameters, props.parameter.name, '')
-		: undefined;
+	const oldValue = get(node.value, props.path);
 	if (oldValue !== undefined && oldValue === value) {
 		return;
 	}
@@ -849,6 +847,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		value,
 	};
 
+	console.log('emit', value);
 	emit('update', parameterData);
 
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
