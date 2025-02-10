@@ -112,6 +112,7 @@ createChat({
 	mode: 'window',
 	chatInputKey: 'chatInput',
 	chatSessionKey: 'sessionId',
+	loadPreviousSession: true,
 	metadata: {},
 	showWelcomeScreen: false,
 	defaultLanguage: 'en',
@@ -161,15 +162,20 @@ createChat({
 - **Default**: `false`
 - **Description**: Whether to show the welcome screen when the Chat window is opened.
 
+### `chatInputKey`
+- **Type**: `string`
+- **Default**: `'chatInput'`
+- **Description**: The key to use for sending the chat input for the AI Agent node.
+
 ### `chatSessionKey`
 - **Type**: `string`
 - **Default**: `'sessionId'`
 - **Description**: The key to use for sending the chat history session ID for the AI Memory node.
 
-### `chatInputKey`
-- **Type**: `string`
-- **Default**: `'chatInput'`
-- **Description**: The key to use for sending the chat input for the AI Agent node.
+### `loadPreviousSession`
+- **Type**: `boolean`
+- **Default**: `true`
+- **Description**: Whether to load previous messages (chat context). 
 
 ### `defaultLanguage`
 - **Type**: `string`

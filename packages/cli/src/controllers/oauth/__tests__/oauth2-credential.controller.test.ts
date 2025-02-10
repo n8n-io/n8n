@@ -4,6 +4,7 @@ import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { Logger } from 'n8n-core';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 
 import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
@@ -19,7 +20,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import { SecretsHelper } from '@/secrets-helpers.ee';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
+
+jest.mock('@/workflow-execute-additional-data');
 
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);
@@ -27,6 +31,9 @@ describe('OAuth2CredentialController', () => {
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockReturnValue(additionalData);
+
 	const cipher = mockInstance(Cipher);
 	const externalHooks = mockInstance(ExternalHooks);
 	const credentialsHelper = mockInstance(CredentialsHelper);
@@ -107,6 +114,14 @@ describe('OAuth2CredentialController', () => {
 					name: 'Test Credential',
 					type: 'oAuth2Api',
 				}),
+			);
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				false,
 			);
 		});
 	});
@@ -256,6 +271,14 @@ describe('OAuth2CredentialController', () => {
 				}),
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				true,
+			);
 		});
 
 		it('merges oauthTokenData if it already exists', async () => {

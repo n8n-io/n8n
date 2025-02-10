@@ -24,7 +24,6 @@ import type { ExecutionStatus } from './ExecutionStatus';
 import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
-import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -398,26 +397,6 @@ export interface INodeTypeNameVersion {
 	version: number;
 }
 
-export interface IGetExecutePollFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): IPollFunctions;
-}
-
-export interface IGetExecuteTriggerFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): ITriggerFunctions;
-}
-
 export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
@@ -759,7 +738,7 @@ export interface DeduplicationHelperFunctions {
 		options: ICheckProcessedOptions,
 	): Promise<number>;
 }
-export interface NodeHelperFunctions {
+interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
@@ -1194,11 +1173,6 @@ export interface INodeExecutionData {
 	 * will be removed in future. For more information see PR #12469.
 	 */
 	index?: number;
-}
-
-export interface INodeExecuteFunctions {
-	getExecutePollFunctions: IGetExecutePollFunctions;
-	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
 }
 
 export type NodeParameterValue = string | number | boolean | undefined | null;
@@ -2262,17 +2236,6 @@ export interface IWorkflowCredentials {
 	};
 }
 
-export interface IWorkflowExecuteHooks {
-	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined;
-	nodeExecuteAfter?: Array<
-		(nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>
-	>;
-	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
-	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
-	workflowExecuteBefore?: Array<(workflow?: Workflow, data?: IRunExecutionData) => Promise<void>>;
-	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
-}
-
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
@@ -2350,7 +2313,6 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
-	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
