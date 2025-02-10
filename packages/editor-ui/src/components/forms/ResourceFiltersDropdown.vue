@@ -4,7 +4,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import type { IFilters } from '../layouts/ResourcesListLayout.vue';
+import type { BaseFilters } from '../layouts/ResourcesListLayout.vue';
 import { useI18n } from '@/composables/useI18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
@@ -25,7 +25,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'update:modelValue': [value: IFilters];
+	'update:modelValue': [value: BaseFilters];
 	'update:filtersLength': [value: number];
 }>();
 
@@ -67,7 +67,7 @@ const setKeyValue = (key: string, value: unknown) => {
 	const filters = {
 		...props.modelValue,
 		[key]: value,
-	} as IFilters;
+	} as BaseFilters;
 
 	emit('update:modelValue', filters);
 };
@@ -76,7 +76,7 @@ const resetFilters = () => {
 	if (props.reset) {
 		props.reset();
 	} else {
-		const filters = { ...props.modelValue } as IFilters;
+		const filters = { ...props.modelValue } as BaseFilters;
 
 		props.keys.forEach((key) => {
 			filters[key] = Array.isArray(props.modelValue[key]) ? [] : '';

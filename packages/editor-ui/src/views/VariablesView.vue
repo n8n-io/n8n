@@ -15,8 +15,8 @@ import VariablesForm from '@/components/VariablesForm.vue';
 import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 
 import ResourcesListLayout, {
-	type IResource,
-	type IFilters,
+	type Resource,
+	type BaseFilters,
 } from '@/components/layouts/ResourcesListLayout.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
@@ -154,7 +154,7 @@ const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 	}
 };
 
-type Filters = IFilters & { incomplete?: boolean };
+type Filters = BaseFilters & { incomplete?: boolean };
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
@@ -162,18 +162,18 @@ const filters = computed<Filters>(
 	() => ({ ...route.query, incomplete: route.query.incomplete?.toString() === 'true' }) as Filters,
 );
 
-const handleFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iResource = resource as EnvironmentVariable;
+const handleFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
+	const Resource = resource as EnvironmentVariable;
 	const filtersToApply = newFilters as Filters;
 
 	if (filtersToApply.incomplete) {
-		matches = matches && !iResource.value;
+		matches = matches && !Resource.value;
 	}
 
 	return matches;
 };
 
-const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
+const nameSortFn = (a: Resource, b: Resource, direction: 'asc' | 'desc') => {
 	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 		return -1;
 	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
@@ -185,8 +185,8 @@ const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
 		: displayName(b).trim().localeCompare(displayName(a).trim());
 };
 const sortFns = {
-	nameAsc: (a: IResource, b: IResource) => nameSortFn(a, b, 'asc'),
-	nameDesc: (a: IResource, b: IResource) => nameSortFn(a, b, 'desc'),
+	nameAsc: (a: Resource, b: Resource) => nameSortFn(a, b, 'asc'),
+	nameDesc: (a: Resource, b: Resource) => nameSortFn(a, b, 'desc'),
 };
 
 const unavailableNoticeProps = computed(() => ({
@@ -203,7 +203,7 @@ function goToUpgrade() {
 	void usePageRedirectionHelper().goToUpgrade('variables', 'upgrade-variables');
 }
 
-function displayName(resource: IResource) {
+function displayName(resource: Resource) {
 	return (resource as EnvironmentVariable).key;
 }
 

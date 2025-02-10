@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref } from 'vue';
 import ResourcesListLayout, {
-	type IResource,
-	type IFilters,
+	type Resource,
+	type BaseFilters,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
@@ -41,23 +41,7 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 
-const i18n = useI18n();
-const route = useRoute();
-const router = useRouter();
-
-const sourceControlStore = useSourceControlStore();
-const usersStore = useUsersStore();
-const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
-const projectsStore = useProjectsStore();
-const telemetry = useTelemetry();
-const uiStore = useUIStore();
-const tagsStore = useTagsStore();
-const documentTitle = useDocumentTitle();
-const { callDebounced } = useDebounce();
-
-interface Filters extends IFilters {
+interface Filters extends BaseFilters {
 	status: string | boolean;
 	tags: string[];
 }
@@ -75,6 +59,22 @@ const WORKFLOWS_SORT_MAP = {
 	nameAsc: 'name:asc',
 	nameDesc: 'name:desc',
 } as const;
+
+const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+const sourceControlStore = useSourceControlStore();
+const usersStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
+const posthogStore = usePostHog();
+const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
+const uiStore = useUIStore();
+const tagsStore = useTagsStore();
+const documentTitle = useDocumentTitle();
+const { callDebounced } = useDebounce();
 
 const loading = ref(false);
 const filters = ref<Filters>({
@@ -98,7 +98,7 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const workflowResources = computed<IResource[]>(() =>
+const workflowResources = computed<Resource[]>(() =>
 	workflows.value.map((workflow) => ({
 		id: workflow.id,
 		name: workflow.name,
@@ -153,8 +153,24 @@ const emptyListDescription = computed(() => {
 	}
 });
 
+// Watchers
+watch(filters, () => saveFiltersOnQueryString(), { deep: true });
+
+watch(
+	() => route.params?.projectId,
+	async () => {
+		await initialize();
+	},
+);
+
+// Lifecycle hooks
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('workflows.heading'));
+	void usersStore.showPersonalizationSurvey();
+});
+
 // Methods
-const onFiltersUpdated = async (newFilters: IFilters) => {
+const onFiltersUpdated = async (newFilters: BaseFilters) => {
 	Object.assign(filters.value, newFilters);
 	currentPage.value = 1;
 	await fetchWorkflows();
@@ -320,20 +336,6 @@ const setFiltersFromQueryString = async () => {
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
 	after(async () => await initialize());
-});
-
-watch(filters, () => saveFiltersOnQueryString(), { deep: true });
-
-watch(
-	() => route.params?.projectId,
-	async () => {
-		await initialize();
-	},
-);
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('workflows.heading'));
-	void usersStore.showPersonalizationSurvey();
 });
 
 const openAIWorkflow = async (source: string) => {

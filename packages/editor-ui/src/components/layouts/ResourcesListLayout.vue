@@ -15,7 +15,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 
-export type IResource = {
+export type Resource = {
 	id: string;
 	name?: string;
 	value?: string;
@@ -28,30 +28,37 @@ export type IResource = {
 	sharedWithProjects?: ProjectSharingData[];
 };
 
-export interface IFilters {
+export type BaseFilters = {
 	search: string;
 	homeProject: string;
 	[key: string]: boolean | string | string[];
-}
+};
 
-type IResourceKeyType = 'credentials' | 'workflows' | 'variables';
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables';
+
+const route = useRoute();
+const router = useRouter();
+const i18n = useI18n();
+const { callDebounced } = useDebounce();
+const usersStore = useUsersStore();
+const telemetry = useTelemetry();
 
 const props = withDefaults(
 	defineProps<{
-		resourceKey: IResourceKeyType;
-		displayName?: (resource: IResource) => string;
-		resources: IResource[];
+		resourceKey: ResourceKeyType;
+		displayName?: (resource: Resource) => string;
+		resources: Resource[];
 		disabled: boolean;
 		initialize?: () => Promise<void>;
-		filters?: IFilters;
+		filters?: BaseFilters;
 		additionalFiltersHandler?: (
-			resource: IResource,
-			filters: IFilters,
+			resource: Resource,
+			filters: BaseFilters,
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
 		showFiltersDropdown?: boolean;
-		sortFns?: Record<string, (a: IResource, b: IResource) => number>;
+		sortFns?: Record<string, (a: Resource, b: Resource) => number>;
 		sortOptions?: string[];
 		type?: 'datatable' | 'list-infinite' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
@@ -59,12 +66,12 @@ const props = withDefaults(
 		customPageSize?: number;
 		availablePageSizeOptions?: number[];
 		totalItems?: number;
+		resourcesRefreshing?: boolean;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
-		resourcesRefreshing?: boolean;
 	}>(),
 	{
-		displayName: (resource: IResource) => resource.name || '',
+		displayName: (resource: Resource) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
@@ -83,8 +90,16 @@ const props = withDefaults(
 	},
 );
 
+const sortBy = ref(props.sortOptions[0]);
+const hasFilters = ref(false);
+const filtersModel = ref(props.filters);
+const currentPage = ref(1);
+const rowsPerPage = ref<number>(props.customPageSize);
+const resettingFilters = ref(false);
+const search = ref<HTMLElement | null>(null);
+
 const emit = defineEmits<{
-	'update:filters': [value: IFilters];
+	'update:filters': [value: BaseFilters];
 	'click:add': [event: Event];
 	'update:current-page': [page: number];
 	'update:page-size': [pageSize: number];
@@ -108,23 +123,7 @@ defineSlots<{
 	item(props: { item: unknown; index: number }): unknown;
 }>();
 
-const route = useRoute();
-const router = useRouter();
-const i18n = useI18n();
-const { callDebounced } = useDebounce();
-const usersStore = useUsersStore();
-const telemetry = useTelemetry();
-
-const sortBy = ref(props.sortOptions[0]);
-const hasFilters = ref(false);
-const filtersModel = ref(props.filters);
-const currentPage = ref(1);
-const rowsPerPage = ref<number>(props.customPageSize);
-const resettingFilters = ref(false);
-const search = ref<HTMLElement | null>(null);
-
 //computed
-
 const showEmptyState = computed(() => {
 	return (
 		props.resources.length === 0 &&
@@ -188,8 +187,95 @@ const filteredAndSortedResources = computed(() => {
 	});
 });
 
-//methods
+//watchers
 
+watch(
+	() => props.filters,
+	(value) => {
+		filtersModel.value = value;
+		if (hasAppliedFilters()) {
+			hasFilters.value = true;
+		}
+	},
+);
+
+watch(
+	() => filtersModel.value.homeProject,
+	() => {
+		sendFiltersTelemetry('homeProject');
+	},
+);
+
+watch(
+	() => filtersModel.value.tags,
+	() => {
+		sendFiltersTelemetry('tags');
+	},
+);
+
+watch(
+	() => filtersModel.value.type,
+	() => {
+		sendFiltersTelemetry('type');
+	},
+);
+
+watch(
+	() => filtersModel.value.search,
+	() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
+);
+
+watch(
+	() => filtersModel.value.setupNeeded,
+	() => {
+		sendFiltersTelemetry('setupNeeded');
+	},
+);
+
+watch(
+	() => filtersModel.value.incomplete,
+	() => {
+		sendFiltersTelemetry('incomplete');
+	},
+);
+
+watch(
+	() => sortBy.value,
+	(newValue) => {
+		emit('sort', newValue);
+		sendSortingTelemetry();
+	},
+);
+
+watch(
+	() => route?.params?.projectId,
+	async () => {
+		await resetFilters();
+	},
+);
+
+watch(
+	() => props.resources,
+	async () => {
+		await nextTick();
+		focusSearchInput();
+	},
+);
+
+// Lifecycle hooks
+onMounted(async () => {
+	await loadPaginationFromQueryString();
+	await props.initialize();
+	await nextTick();
+
+	focusSearchInput();
+
+	if (hasAppliedFilters()) {
+		hasFilters.value = true;
+	}
+});
+
+//methods
 const focusSearchInput = () => {
 	if (search.value) {
 		search.value.focus();
@@ -263,7 +349,7 @@ const onAddButtonClick = (e: Event) => {
 	emit('click:add', e);
 };
 
-const onUpdateFilters = (e: IFilters) => {
+const onUpdateFilters = (e: BaseFilters) => {
 	emit('update:filters', e);
 };
 
@@ -359,93 +445,6 @@ const loadPaginationFromQueryString = async () => {
 		rowsPerPage.value = findNearestPageSize(parsedSize);
 	}
 };
-
-//watchers
-
-watch(
-	() => props.filters,
-	(value) => {
-		filtersModel.value = value;
-		if (hasAppliedFilters()) {
-			hasFilters.value = true;
-		}
-	},
-);
-
-watch(
-	() => filtersModel.value.homeProject,
-	() => {
-		sendFiltersTelemetry('homeProject');
-	},
-);
-
-watch(
-	() => filtersModel.value.tags,
-	() => {
-		sendFiltersTelemetry('tags');
-	},
-);
-
-watch(
-	() => filtersModel.value.type,
-	() => {
-		sendFiltersTelemetry('type');
-	},
-);
-
-watch(
-	() => filtersModel.value.search,
-	() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
-);
-
-watch(
-	() => filtersModel.value.setupNeeded,
-	() => {
-		sendFiltersTelemetry('setupNeeded');
-	},
-);
-
-watch(
-	() => filtersModel.value.incomplete,
-	() => {
-		sendFiltersTelemetry('incomplete');
-	},
-);
-
-watch(
-	() => sortBy.value,
-	(newValue) => {
-		emit('sort', newValue);
-		sendSortingTelemetry();
-	},
-);
-
-watch(
-	() => route?.params?.projectId,
-	() => {
-		resetFilters();
-	},
-);
-
-watch(
-	() => props.resources,
-	async () => {
-		await nextTick();
-		focusSearchInput();
-	},
-);
-
-onMounted(async () => {
-	await loadPaginationFromQueryString();
-	await props.initialize();
-	await nextTick();
-
-	focusSearchInput();
-
-	if (hasAppliedFilters()) {
-		hasFilters.value = true;
-	}
-});
 </script>
 
 <template>
