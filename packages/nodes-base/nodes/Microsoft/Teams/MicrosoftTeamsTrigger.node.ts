@@ -259,51 +259,57 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				const resourcePaths = await getResourcePath.call(this, event);
 
-				// Initialize static data for subscriptions if it doesn't exist
-				const staticData = this.getWorkflowStaticData('node');
-				if (!staticData.subscriptions) {
-					staticData.subscriptions = [];
-				}
-
-				const subscriptions = staticData.subscriptions as string[];
-
 				if (Array.isArray(resourcePaths)) {
-					const subscriptionIds = await Promise.all(
+					await Promise.all(
 						resourcePaths.map(async (resource) => {
-							const subscriptionId = await createSubscription.call(this, webhookUrl, resource);
-							subscriptions.push(subscriptionId);
-							return subscriptionId;
+							await createSubscription.call(this, webhookUrl, resource);
 						}),
 					);
 				} else {
-					const subscriptionId = await createSubscription.call(this, webhookUrl, resourcePaths);
-					subscriptions.push(subscriptionId);
+					await createSubscription.call(this, webhookUrl, resourcePaths);
 				}
 
 				return true;
 			},
 			// Delete an existing webhook subscription
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const staticData = this.getWorkflowStaticData('node');
-				const subscriptions = staticData.subscriptions as string[];
-
-				// Check if subscriptions exist in static data
-				if (!subscriptions || subscriptions.length === 0) {
-					return false;
-				}
+				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				try {
-					// Delete all subscriptions stored in static data
-					for (const subscriptionId of subscriptions) {
-						await microsoftApiRequest.call(
-							this as unknown as IExecuteFunctions,
-							'DELETE',
-							`/v1.0/subscriptions/${subscriptionId}`,
-						);
+					// Fetch all subscriptions
+					const subscriptions = await microsoftApiRequestAllItems.call(
+						this as unknown as ILoadOptionsFunctions,
+						'value',
+						'GET',
+						'/v1.0/subscriptions',
+					);
+
+					// Filter subscriptions by notificationUrl
+					const matchingSubscriptions = subscriptions.filter(
+						(subscription: IDataObject) => subscription.notificationUrl === webhookUrl,
+					);
+
+					if (matchingSubscriptions.length === 0) {
+						return false;
 					}
 
-					// Clear the subscriptions from static data after deletion
-					staticData.subscriptions = [];
+					// Delete all matching subscriptions
+					for (const subscription of matchingSubscriptions) {
+						const subscriptionId = subscription.id as string;
+						try {
+							await microsoftApiRequest.call(
+								this as unknown as IExecuteFunctions,
+								'DELETE',
+								`/v1.0/subscriptions/${subscriptionId}`,
+							);
+						} catch (error) {
+							if ((error as JsonObject).httpStatusCode === 404) {
+							} else {
+								throw error;
+							}
+						}
+					}
+
 					return true;
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
