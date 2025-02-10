@@ -275,45 +275,46 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				const resourcePaths = await getResourcePath.call(this, event);
 
+				// Initialize static data for subscriptions if it doesn't exist
+				const staticData = this.getWorkflowStaticData('node');
+				if (!staticData.subscriptions) {
+					staticData.subscriptions = [];
+				}
+
+				const subscriptions = staticData.subscriptions as string[];
+
 				if (Array.isArray(resourcePaths)) {
 					const subscriptionIds = await Promise.all(
-						resourcePaths.map(
-							async (resource) => await createSubscription.call(this, webhookUrl, resource),
-						),
+						resourcePaths.map(async (resource) => {
+							const subscriptionId = await createSubscription.call(this, webhookUrl, resource);
+							subscriptions.push(subscriptionId);
+							return subscriptionId;
+						}),
 					);
 					console.log('Subscriptions created:', subscriptionIds);
 				} else {
 					const subscriptionId = await createSubscription.call(this, webhookUrl, resourcePaths);
-					this.getWorkflowStaticData('node').subscriptionId = subscriptionId;
+					subscriptions.push(subscriptionId);
+					console.log('Subscription created:', subscriptionId);
 				}
+
 				return true;
 			},
 			// Delete an existing webhook subscription
 			async delete(this: IHookFunctions): Promise<boolean> {
 				console.log('delete');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const staticData = this.getWorkflowStaticData('node');
+				const subscriptions = staticData.subscriptions as string[];
+
+				// Check if subscriptions exist in static data
+				if (!subscriptions || subscriptions.length === 0) {
+					console.log('No subscriptions found in static data to delete.');
+					return false;
+				}
 
 				try {
-					const subscriptions = await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					);
-
-					// Filter subscriptions by notificationUrl
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription: IDataObject) => subscription.notificationUrl === webhookUrl,
-					);
-
-					if (matchingSubscriptions.length === 0) {
-						console.log('No matching subscriptions found to delete.');
-						return false;
-					}
-
-					// Delete all matching subscriptions
-					for (const subscription of matchingSubscriptions) {
-						const subscriptionId = subscription.id as string;
+					// Delete all subscriptions stored in static data
+					for (const subscriptionId of subscriptions) {
 						await microsoftApiRequest.call(
 							this as unknown as IExecuteFunctions,
 							'DELETE',
@@ -322,7 +323,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						console.log(`Deleted subscription ${subscriptionId}`);
 					}
 
-					console.log('All matching subscriptions deleted.');
+					// Clear the subscriptions from static data after deletion
+					staticData.subscriptions = [];
+					console.log('All subscriptions deleted.');
 					return true;
 				} catch (error) {
 					console.error('Error deleting subscriptions:', error);
