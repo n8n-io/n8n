@@ -278,7 +278,9 @@ export async function autoMapInputData(
 				}
 			});
 			if (item.json[ROW_NUMBER]) {
-				delete item.json[ROW_NUMBER];
+				const { [ROW_NUMBER]: _, ...json } = item.json;
+				returnData.push(json);
+				return;
 			}
 			returnData.push(item.json);
 		});
