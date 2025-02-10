@@ -51,7 +51,7 @@ describe('OAuth1CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth1Api',
-		data: 'encrypted',
+		data: '{"__encrypted": true}',
 	});
 
 	const controller = Container.get(OAuth1CredentialController);
@@ -63,8 +63,16 @@ describe('OAuth1CredentialController', () => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
 
-		cipher.decrypt.mockReturnValue('{}');
-		cipher.encrypt.mockReturnValue('encrypted');
+		cipher.decrypt.mockImplementation((str: string) => {
+			const { __encrypted, ...rest } = JSON.parse(str);
+			return JSON.stringify(rest);
+		});
+		cipher.encrypt.mockImplementation((data: string | object) =>
+			JSON.stringify({
+				...(typeof data === 'string' ? JSON.parse(data) : data),
+				__encrypted: true,
+			}),
+		);
 	});
 
 	describe('getAuthUri', () => {
@@ -109,7 +117,7 @@ describe('OAuth1CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"csrfSecret":"csrf-secret","__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth1Api',
@@ -245,7 +253,7 @@ describe('OAuth1CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"oauthTokenData":{"access_token":"new_token"},"__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth1Api',

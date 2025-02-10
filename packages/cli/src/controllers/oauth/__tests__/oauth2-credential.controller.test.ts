@@ -51,7 +51,7 @@ describe('OAuth2CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth2Api',
-		data: 'encrypted',
+		data: '{"__encrypted": true}',
 	});
 
 	const controller = Container.get(OAuth2CredentialController);
@@ -63,8 +63,16 @@ describe('OAuth2CredentialController', () => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
 
-		cipher.decrypt.mockReturnValue('{}');
-		cipher.encrypt.mockReturnValue('encrypted');
+		cipher.decrypt.mockImplementation((str: string) => {
+			const { __encrypted, ...rest } = JSON.parse(str);
+			return JSON.stringify(rest);
+		});
+		cipher.encrypt.mockImplementation((data: string | object) =>
+			JSON.stringify({
+				...(typeof data === 'string' ? JSON.parse(data) : data),
+				__encrypted: true,
+			}),
+		);
 
 		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
 			clientId: 'test-client-id',
@@ -113,7 +121,7 @@ describe('OAuth2CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"csrfSecret":"csrf-secret","__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
@@ -267,7 +275,7 @@ describe('OAuth2CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"oauthTokenData":{"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
@@ -316,7 +324,7 @@ describe('OAuth2CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"oauthTokenData":{"token":true,"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
@@ -353,7 +361,7 @@ describe('OAuth2CredentialController', () => {
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: '{"oauthTokenData":{"access_token":"access-token","refresh_token":"refresh-token"},"__encrypted":true}',
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
