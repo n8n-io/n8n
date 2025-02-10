@@ -1,5 +1,5 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy, ApplicationError } from 'n8n-workflow';
+import { deepCopy, assert, ApplicationError } from 'n8n-workflow';
 
 import type {
 	AdjustedPutItem,
@@ -11,33 +11,17 @@ import type {
 	IAttributeValueUi,
 	IAttributeValueValue,
 	PutItemUi,
+	LegacyAdjustedPutItem,
+	ILegacyAttributeValue,
 } from './types';
+import { isLegacyPutItem } from './types';
 
 const addColon = (attribute: string) =>
 	(attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`);
 
 const addPound = (key: string) => (key = key.charAt(0) === '#' ? key : `#${key}`);
 
-export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
-	const eav: IAttributeValue = {};
-
-	eavUi.forEach(({ attribute, type, value }) => {
-		eav[addColon(attribute)] = { [type]: value } as IAttributeValueValue;
-	});
-
-	return eav;
-}
-
-export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
-	const ean: { [key: string]: string } = {};
-
-	eanUi.forEach(({ key, value }) => {
-		ean[addPound(key)] = value;
-	});
-
-	return ean;
-}
-
+// Helper function to convert values to DynamoDB format
 function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
 	if (value === null || value === undefined) {
 		return { NULL: true };
@@ -79,60 +63,45 @@ function convertToDynamoDBValue(value: unknown): DynamoDBAttributeValue {
 	return { S: String(value) };
 }
 
-export function adjustPutItem(putItemUi: PutItemUi): AdjustedPutItem {
-	const adjustedPutItem: AdjustedPutItem = {};
+type SimpleValue = string | number | boolean | null | IDataObject | SimpleValue[];
+type DecodedValue = SimpleValue;
 
-	for (const [key, value] of Object.entries(putItemUi)) {
-		adjustedPutItem[key] = convertToDynamoDBValue(value);
-	}
-
-	return adjustedPutItem;
-}
-
-export function simplify(item: IAttributeValue): IDataObject {
-	const output: IDataObject = {};
-
-	for (const [attribute, value] of Object.entries(item)) {
-		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
-		//nedded as simplify is used in decodeItem
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
-		output[attribute] = decodeAttribute(type, content);
-	}
-
-	return output;
-}
-
-function decodeAttribute(type: AttributeValueType, attribute: any): any {
+function decodeValue(type: AttributeValueType, content: unknown, version?: number): DecodedValue {
 	switch (type) {
 		case 'BOOL':
-			return Boolean(attribute);
+			return Boolean(content);
 		case 'N':
-			return Number(attribute);
+			return Number(content);
 		case 'S':
-			return String(attribute);
+			return String(content);
 		case 'NULL':
 			return null;
 		case 'SS':
-			return Array.isArray(attribute) ? attribute.map(String) : [String(attribute)];
+			return Array.isArray(content) ? content.map(String) : [String(content)];
 		case 'NS':
-			return Array.isArray(attribute) ? attribute.map(Number) : [Number(attribute)];
-		case 'L':
-			return Array.isArray(attribute)
-				? attribute.map((item) => {
-						if (typeof item === 'object' && item !== null) {
-							const [itemType, itemValue] = Object.entries(item)[0];
-							return decodeAttribute(itemType as AttributeValueType, itemValue);
-						}
-						return null;
-					})
-				: [];
+			return Array.isArray(content) ? content.map((n) => Number(n)) : [Number(content)];
+		case 'L': {
+			if (!Array.isArray(content)) return [];
+			return content.map((item): SimpleValue => {
+				if (typeof item === 'object' && item !== null) {
+					const [itemType, itemValue] = Object.entries(item)[0] as [AttributeValueType, unknown];
+					return decodeValue(itemType, itemValue, version);
+				}
+				return null;
+			});
+		}
 		case 'M':
-			if (typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null) {
+			if (typeof content === 'object' && !Array.isArray(content) && content !== null) {
 				const result: IDataObject = {};
-				for (const [key, value] of Object.entries(attribute)) {
+				for (const [key, value] of Object.entries(content)) {
 					if (typeof value === 'object' && value !== null) {
-						const [valueType, valueContent] = Object.entries(value)[0];
-						result[key] = decodeAttribute(valueType as AttributeValueType, valueContent);
+						const [valueType, valueContent] = Object.entries(value)[0] as [
+							AttributeValueType,
+							unknown,
+						];
+						result[key] = decodeValue(valueType, valueContent, version);
+					} else {
+						result[key] = null;
 					}
 				}
 				return result;
@@ -141,6 +110,133 @@ function decodeAttribute(type: AttributeValueType, attribute: any): any {
 		default:
 			return null;
 	}
+}
+
+export function simplifyV1(item: IAttributeValue): IDataObject {
+	const output: IDataObject = {};
+
+	for (const [attribute, value] of Object.entries(item)) {
+		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
+		//nedded as simplify is used in decodeItem
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+		output[attribute] = decodeAttributeV1(type, content);
+	}
+
+	return output;
+}
+
+// Legacy v1 decode
+function decodeAttributeV1(type: AttributeValueType, attribute: unknown): DecodedValue {
+	switch (type) {
+		case 'BOOL':
+			return attribute === 'false' ? false : Boolean(attribute);
+		case 'N':
+			return Number(attribute);
+		case 'S':
+			return String(attribute);
+		case 'SS':
+		case 'NS':
+			return attribute as string[];
+		case 'M':
+			assert(
+				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
+				'Attribute must be an object',
+			);
+			// eslint-disable-next-line @typescript-eslint/no-use-before-define
+			return simplify(attribute as IAttributeValue);
+		default:
+			return null;
+	}
+}
+
+// Version 1.1 decode with support for all DynamoDB types
+function decodeAttributeV1_1(type: AttributeValueType, attribute: unknown): DecodedValue {
+	return decodeValue(type, attribute, 1.1);
+}
+
+// Main simplify function that delegates to the appropriate version
+export function simplify(
+	item: IAttributeValue | ILegacyAttributeValue,
+	version?: number,
+): IDataObject {
+	const output: IDataObject = {};
+	for (const [attribute, value] of Object.entries(item)) {
+		const [type, content] = Object.entries(value)[0] as [AttributeValueType, unknown];
+		const decoded =
+			version === 1.1 ? decodeAttributeV1_1(type, content) : decodeAttributeV1(type, content);
+		output[attribute] = decoded;
+	}
+	return output;
+}
+
+export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]): IAttributeValue {
+	const eav: IAttributeValue = {};
+
+	eavUi.forEach(({ attribute, type, value }) => {
+		eav[addColon(attribute)] = { [type]: value } as IAttributeValueValue;
+	});
+
+	return eav;
+}
+
+export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]): Record<string, string> {
+	const ean: Record<string, string> = {};
+
+	eanUi.forEach(({ key, value }) => {
+		ean[addPound(key)] = value;
+	});
+
+	return ean;
+}
+
+// Legacy version 1 implementation
+function adjustPutItemV1(putItemUi: PutItemUi): LegacyAdjustedPutItem {
+	const adjustedPutItem: LegacyAdjustedPutItem = {};
+
+	Object.entries(putItemUi).forEach(([attribute, value]) => {
+		let type: string;
+
+		if (typeof value === 'boolean') {
+			type = 'BOOL';
+		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+			type = 'M';
+		} else if (isNaN(Number(value))) {
+			type = 'S';
+		} else {
+			type = 'N';
+		}
+
+		adjustedPutItem[attribute] = { [type]: value?.toString() ?? '' };
+	});
+
+	return adjustedPutItem;
+}
+
+// Version 1.1: New behavior with proper type handling
+function adjustPutItemV1_1(putItemUi: PutItemUi): AdjustedPutItem {
+	if (isLegacyPutItem(putItemUi)) {
+		// Convert legacy format to new format
+		return {
+			[putItemUi.attribute]: { [putItemUi.type]: putItemUi.value },
+		} as AdjustedPutItem;
+	}
+
+	const adjustedPutItem: AdjustedPutItem = {};
+	for (const [key, value] of Object.entries(putItemUi)) {
+		adjustedPutItem[key] = convertToDynamoDBValue(value);
+	}
+	return adjustedPutItem;
+}
+
+export function adjustPutItem(
+	putItemUi: PutItemUi,
+	version?: number,
+	typeHandling?: string,
+): AdjustedPutItem {
+	if (version === 1.1 && typeHandling !== 'string') {
+		return adjustPutItemV1_1(putItemUi);
+	}
+	return adjustPutItemV1(putItemUi);
 }
 
 export function validateJSON(input: any): object {
@@ -173,12 +269,17 @@ export function mapToAttributeValues(item: IDataObject): void {
 	}
 }
 
-export function decodeItem(item: IAttributeValue): IDataObject {
+export function decodeItem(item: IAttributeValue, version?: number): IDataObject {
 	const _item: IDataObject = {};
-	for (const entry of Object.entries(item)) {
-		const [attribute, value]: [string, object] = entry;
-		const [type, content]: [string, object] = Object.entries(value)[0];
-		_item[attribute] = decodeAttribute(type as EAttributeValueType, content as unknown as string);
+	for (const [attribute, value] of Object.entries(item)) {
+		const [type, content] = Object.entries(value)[0] as [AttributeValueType, unknown];
+		const decoded =
+			version === 1.1
+				? decodeAttributeV1_1(type as EAttributeValueType, content)
+				: decodeAttributeV1(type as EAttributeValueType, content);
+		if (decoded !== null) {
+			_item[attribute] = decoded;
+		}
 	}
 
 	return _item;
