@@ -277,15 +277,17 @@ export class GmailTrigger implements INodeType {
 				delete allFilters.receivedAfter;
 			}
 
-			Object.assign(qs, prepareQuery.call(this, filters, 0), options);
+			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
-			const { messages }: MessageListResponse = await googleApiRequest.call(
+			const messagesResponse: MessageListResponse = await googleApiRequest.call(
 				this,
 				'GET',
 				'/gmail/v1/users/me/messages',
 				{},
 				qs,
 			);
+
+			const messages = messagesResponse.messages ?? [];
 
 			if (!messages.length) {
 				nodeStaticData.lastTimeChecked = endDate;

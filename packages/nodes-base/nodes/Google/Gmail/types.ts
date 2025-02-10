@@ -15,7 +15,7 @@ export type Message = {
 export type ListMessage = Pick<Message, 'id' | 'threadId'>;
 
 export type MessageListResponse = {
-	messages: ListMessage[];
+	messages?: ListMessage[];
 	nextPageToken?: string;
 	resultSizeEstimate: number;
 };
