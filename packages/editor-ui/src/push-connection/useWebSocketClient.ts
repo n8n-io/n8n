@@ -44,8 +44,7 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 
 	const onConnectionLost = (event: CloseEvent) => {
 		console.warn(`[WebSocketClient] Connection lost, code=${event.code ?? 'unknown'}`);
-		isConnected.value = false;
-		stopHeartbeat();
+		disconnect();
 		reconnectTimer.scheduleReconnect();
 	};
 
