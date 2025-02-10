@@ -476,9 +476,10 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	executionsStore.activeExecution = null;
 
 	isBlankRedirect.value = true;
+	const templateId = workflow.meta.templateId;
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId: workflow.meta.templateId },
+		query: { templateId },
 	});
 
 	const convertedNodes = workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
@@ -486,6 +487,7 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	workflowsStore.setConnections(workflow.connections);
 	await addNodes(convertedNodes);
 	await workflowsStore.getNewWorkflowData(workflow.name, projectsStore.currentProjectId);
+	workflowsStore.addToWorkflowMetadata({ templateId });
 
 	uiStore.stateIsDirty = true;
 
