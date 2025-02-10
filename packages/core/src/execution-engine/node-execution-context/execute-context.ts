@@ -11,6 +11,7 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	NodeExecutionHint,
 	Result,
 	Workflow,
 	WorkflowExecuteMode,
@@ -50,6 +51,8 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
 
 	readonly getNodeParameter: IExecuteFunctions['getNodeParameter'];
+
+	readonly hints: NodeExecutionHint[] = [];
 
 	constructor(
 		workflow: Workflow,
@@ -209,5 +212,9 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	getParentCallbackManager(): CallbackManager | undefined {
 		return this.additionalData.parentCallbackManager;
+	}
+
+	addExecutionHints(...hints: NodeExecutionHint[]) {
+		this.hints.push(...hints);
 	}
 }
