@@ -121,6 +121,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
