@@ -51,6 +51,7 @@ describe('OAuth2CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth2Api',
+		data: 'encrypted',
 	});
 
 	const controller = Container.get(OAuth2CredentialController);
@@ -61,6 +62,9 @@ describe('OAuth2CredentialController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
+
+		cipher.decrypt.mockReturnValue('{}');
+		cipher.encrypt.mockReturnValue('encrypted');
 
 		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
 			clientId: 'test-client-id',
@@ -92,7 +96,6 @@ describe('OAuth2CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
@@ -106,6 +109,7 @@ describe('OAuth2CredentialController', () => {
 				createdAt: timestamp,
 				userId: '123',
 			});
+			expect(cipher.encrypt).toHaveBeenCalledWith({ csrfSecret: 'csrf-secret' });
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
@@ -248,7 +252,6 @@ describe('OAuth2CredentialController', () => {
 					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 
@@ -294,7 +297,6 @@ describe('OAuth2CredentialController', () => {
 					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 
@@ -336,7 +338,6 @@ describe('OAuth2CredentialController', () => {
 					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 

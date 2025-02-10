@@ -51,6 +51,7 @@ describe('OAuth1CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth1Api',
+		data: 'encrypted',
 	});
 
 	const controller = Container.get(OAuth1CredentialController);
@@ -61,6 +62,9 @@ describe('OAuth1CredentialController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
+
+		cipher.decrypt.mockReturnValue('{}');
+		cipher.encrypt.mockReturnValue('encrypted');
 	});
 
 	describe('getAuthUri', () => {
@@ -98,7 +102,6 @@ describe('OAuth1CredentialController', () => {
 				})
 				.once()
 				.reply(200, { oauth_token: 'random-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
@@ -233,7 +236,6 @@ describe('OAuth1CredentialController', () => {
 				})
 				.once()
 				.reply(200, 'access_token=new_token');
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 
