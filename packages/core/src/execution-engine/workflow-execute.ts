@@ -47,7 +47,6 @@ import {
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
-	NodeExecutionOutput,
 	sleep,
 	ExecutionCancelledError,
 	Node,
@@ -1101,7 +1100,7 @@ export class WorkflowExecute {
 				});
 			}
 
-			return { data };
+			return { data, hints: context.hints };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1507,10 +1506,8 @@ export class WorkflowExecute {
 									tryIndex++;
 								}
 
-								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									const hints = (nodeSuccessData as NodeExecutionOutput).getHints();
-
-									executionHints.push(...hints);
+								if (runNodeData.hints?.length) {
+									executionHints.push(...runNodeData.hints);
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
