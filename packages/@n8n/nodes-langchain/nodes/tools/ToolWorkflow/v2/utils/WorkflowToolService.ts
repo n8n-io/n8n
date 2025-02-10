@@ -16,7 +16,6 @@ import type {
 	ITaskMetadata,
 	IWorkflowBase,
 	IWorkflowDataProxyData,
-	JsonObject,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import {
