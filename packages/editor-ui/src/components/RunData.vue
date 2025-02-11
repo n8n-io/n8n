@@ -541,20 +541,14 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	}
 	const errorMetadata = parseMetadataFromError(workflowRunErrorAsNodeError.value);
 	if (errorMetadata !== undefined) {
-		return {
-			subExecutionsCount: 1,
-			...errorMetadata,
-		};
+		return errorMetadata;
 	}
 
 	// This is needed for the WorkflowRetriever to display the associated execution
 	if (parentNodeError.value) {
 		const subNodeMetadata = parseMetadataFromError(parentNodeError.value);
 		if (subNodeMetadata !== undefined) {
-			return {
-				subExecutionsCount: 1,
-				...subNodeMetadata,
-			};
+			return subNodeMetadata;
 		}
 	}
 

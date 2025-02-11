@@ -387,6 +387,54 @@ describe('RunData', () => {
 		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
 	});
 
+	it('should render sub-execution link in header with sub-node error', async () => {
+		const metadata = {
+			subExecution: {
+				workflowId: 'xyz',
+				executionId: '123',
+			},
+		};
+
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
+				},
+			],
+			displayMode: 'table',
+			paneType: 'output',
+			runs: [
+				{
+					hints: [],
+					startTime: 1737643696893,
+					executionTime: 2,
+					source: [
+						{
+							previousNode: 'When clicking ‘Test workflow’',
+						},
+					],
+					executionStatus: 'error',
+					error: {
+						level: 'error',
+						errorResponse: {
+							...metadata.subExecution,
+						},
+					} as never,
+				},
+			],
+		});
+
+		expect(getByTestId('related-execution-link')).toBeInTheDocument();
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
+
+		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item View sub-execution 123');
+
+		getByTestId('related-execution-link').click();
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
+	});
+
 	it('should render input selector when input node has error', async () => {
 		const testNodes = [
 			{
