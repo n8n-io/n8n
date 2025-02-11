@@ -72,7 +72,7 @@ function onDelete() {
 }
 
 @media (prefers-color-scheme: dark) {
-	.canvas-edge-toolbar-button {
+	body:not([data-theme]) .canvas-edge-toolbar-button {
 		@include dark-button-styles();
 	}
 }
