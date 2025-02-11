@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import type { IWorkflowDb, IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -25,6 +25,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -60,6 +61,8 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
+	'workflow:moved': [];
+	'workflow:duplicated': [];
 }>();
 
 const toast = useToast();
@@ -73,6 +76,8 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+
+const workflowListEventBus = createEventBus();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -161,6 +166,7 @@ async function onAction(action: string) {
 					tags: (props.data.tags ?? []).map((tag) =>
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
+					externalEventBus: workflowListEventBus,
 				},
 			});
 			break;
@@ -228,9 +234,28 @@ function moveResource() {
 			resource: props.data,
 			resourceType: ResourceType.Workflow,
 			resourceTypeLabel: resourceTypeLabel.value,
+			eventBus: workflowListEventBus,
 		},
 	});
 }
+
+const emitWorkflowMoved = () => {
+	emit('workflow:moved');
+};
+
+const emitWorkflowDuplicated = () => {
+	emit('workflow:duplicated');
+};
+
+onMounted(() => {
+	workflowListEventBus.on('resource-moved', emitWorkflowMoved);
+	workflowListEventBus.on('workflow-duplicated', emitWorkflowDuplicated);
+});
+
+onBeforeUnmount(() => {
+	workflowListEventBus.off('resource-moved', emitWorkflowMoved);
+	workflowListEventBus.off('workflow-duplicated', emitWorkflowDuplicated);
+});
 </script>
 
 <template>

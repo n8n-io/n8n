@@ -436,6 +436,8 @@ const onSortUpdated = async (sort: string) => {
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
 				@workflow:deleted="fetchWorkflows"
+				@workflow:moved="fetchWorkflows"
+				@workflow:duplicated="fetchWorkflows"
 			/>
 		</template>
 		<template #empty>

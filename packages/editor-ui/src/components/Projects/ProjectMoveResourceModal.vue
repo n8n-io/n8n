@@ -13,6 +13,7 @@ import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuc
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const props = defineProps<{
 	modalName: string;
@@ -20,6 +21,7 @@ const props = defineProps<{
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: ResourceType;
 		resourceTypeLabel: string;
+		eventBus?: EventBus;
 	};
 }>();
 
@@ -104,6 +106,13 @@ const moveResource = async () => {
 			type: 'success',
 			duration: 8000,
 		});
+		if (props.data.eventBus) {
+			props.data.eventBus.emit('resource-moved', {
+				resourceId: props.data.resource.id,
+				resourceType: props.data.resourceType,
+				targetProjectId: selectedProject.value.id,
+			});
+		}
 	} catch (error) {
 		toast.showError(
 			error.message,
