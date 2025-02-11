@@ -21,7 +21,6 @@ import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	copyInputItems,
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
 	normalizeItems,
@@ -35,6 +34,7 @@ import {
 	getBinaryHelperFunctions,
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
+import { copyInputItems } from './utils/copy-input-items';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
