@@ -531,7 +531,7 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			if (!dbWorkflow.active) {
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.active) {
 				this.logger.debug(`Skipping workflow ${dbWorkflow.display()} as it is no longer active`, {
 					workflowId: dbWorkflow.id,
 				});
