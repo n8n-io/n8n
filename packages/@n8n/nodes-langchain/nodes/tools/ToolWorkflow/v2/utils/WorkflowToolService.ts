@@ -24,6 +24,7 @@ import {
 	jsonParse,
 	NodeConnectionType,
 	NodeOperationError,
+	parseMetadataFromError,
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { z } from 'zod';

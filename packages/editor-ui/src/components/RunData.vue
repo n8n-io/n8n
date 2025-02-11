@@ -302,6 +302,12 @@ const subworkflowExecutionError = computed(() => {
 const hasSubworkflowExecutionError = computed(() =>
 	Boolean(workflowsStore.subWorkflowExecutionError),
 );
+
+// Sub-nodes may wish to display the parent node error as it can contain additional metadata
+const parentNodeError = computed(() => {
+	const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
+	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
+});
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) {
 		return null;
@@ -309,8 +315,7 @@ const workflowRunErrorAsNodeError = computed(() => {
 
 	// If the node is a sub-node, we need to get the parent node error to check for input errors
 	if (isSubNodeType.value && props.paneType === 'input') {
-		const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
-		return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
+		return parentNodeError.value;
 	}
 	return workflowRunData.value?.[node.value?.name]?.[props.runIndex]?.error as NodeError;
 });
@@ -535,12 +540,23 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
-	const errorMetadata = parseMetadataFromError(workflowRunErrorAsNodeError.value?.errorResponse);
+	const errorMetadata = parseMetadataFromError(workflowRunErrorAsNodeError.value);
 	if (errorMetadata !== undefined) {
 		return {
 			subExecutionsCount: 1,
 			...errorMetadata,
 		};
+	}
+
+	// This is needed for the WorkflowRetriever to display the associated execution
+	if (parentNodeError.value) {
+		const subNodeMetadata = parseMetadataFromError(parentNodeError.value);
+		if (subNodeMetadata !== undefined) {
+			return {
+				subExecutionsCount: 1,
+				...subNodeMetadata,
+			};
+		}
 	}
 
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
@@ -550,6 +566,11 @@ const errorExecutionId = computed(() => {
 	if (!hasRunError.value || !workflowRunErrorAsNodeError.value?.errorResponse) {
 		return undefined;
 	}
+
+	if (isSubNodeType.value) {
+		return parentNodeError.value?.errorResponse?.executionId;
+	}
+
 	return String(workflowRunErrorAsNodeError.value?.errorResponse?.executionId);
 });
 
