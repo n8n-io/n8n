@@ -252,6 +252,7 @@ const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
 		currentPage.value = 1;
+		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
 };
