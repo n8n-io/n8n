@@ -54,13 +54,13 @@ const columns = computed(
 		{
 			prop: 'status',
 			label: locale.baseText('testDefinition.listRuns.status'),
-			filters: [
-				{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
-				{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
-				{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
-				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
-			],
-			filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
+			// filters: [
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
+			// ],
+			// filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
 			prop: `metrics.${metric}`,

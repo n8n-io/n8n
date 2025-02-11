@@ -2,9 +2,10 @@
 import type { RouteLocationRaw } from 'vue-router';
 import TableCell from './TableCell.vue';
 import { ElTable, ElTableColumn } from 'element-plus';
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { isEqual } from 'lodash-es';
+import { N8nIcon, N8nTooltip } from 'n8n-design-system';
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
@@ -88,21 +89,16 @@ const handleSelectionChange = (rows: TableRow[]) => {
 	emit('selectionChange', rows);
 };
 
-const computeTableHeight = () => {
-	const containerHeight = tableRef.value?.$el?.parentElement?.clientHeight ?? 600;
-	const height = Math.min(Math.max(containerHeight, MIN_TABLE_HEIGHT), MAX_TABLE_HEIGHT);
-	tableHeight.value = `${height - 100}px`;
+const handleColumnResize = (
+	newWidth: number,
+	_oldWidth: number,
+	column: { minWidth: number; width: number },
+	// event: MouseEvent,
+) => {
+	if (column.minWidth && newWidth < column.minWidth) {
+		column.width = column.minWidth;
+	}
 };
-
-onMounted(() => {
-	computeTableHeight();
-
-	window.addEventListener('resize', computeTableHeight);
-});
-
-onUnmounted(() => {
-	window.removeEventListener('resize', computeTableHeight);
-});
 </script>
 
 <template>
@@ -112,16 +108,21 @@ onUnmounted(() => {
 		:default-sort="defaultSort"
 		:data="localData"
 		:border="true"
-		:max-height="tableHeight"
 		resizable
+		:cell-class-name="$style.customCell"
+		:row-class-name="$style.customRow"
 		@selection-change="handleSelectionChange"
-		@vue:mounted="computeTableHeight"
+		@header-dragend="handleColumnResize"
+		scrollbar-always-on
 	>
 		<ElTableColumn
 			v-if="selectable"
 			type="selection"
 			:selectable="selectableFilter"
 			data-test-id="table-column-select"
+			width="46"
+			fixed
+			align="center"
 		/>
 		<ElTableColumn
 			v-for="column in columns"
@@ -129,12 +130,38 @@ onUnmounted(() => {
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
+			:min-width="100"
+			:width="175"
+			show-overflow-tooltip
 		>
+			<template #header="headerProps">
+				<N8nTooltip
+					:content="headerProps.column.label"
+					placement="top"
+					:disabled="['runNumber', 'status', 'date'].includes(headerProps.column.property)"
+				>
+					<div :class="$style.customHeaderCell">
+						<div :class="$style.customHeaderCellLabel">
+							{{ headerProps.column.label }}
+						</div>
+						<div
+							v-if="headerProps.column.sortable && headerProps.column.order"
+							:class="$style.customHeaderCellSort"
+						>
+							<N8nIcon
+								:icon="headerProps.column.order === 'descending' ? 'arrow-up' : 'arrow-down'"
+								size="small"
+							/>
+						</div>
+					</div>
+				</N8nTooltip>
+			</template>
 			<template #default="{ row }">
 				<TableCell
 					:key="row.status"
 					:column="column"
 					:row="row"
+					:class="$style.cell"
 					data-test-id="table-cell"
 					@click="$emit('rowClick', row)"
 				/>
@@ -144,9 +171,68 @@ onUnmounted(() => {
 </template>
 
 <style module lang="scss">
+.customCell {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	border-bottom: 1px solid var(--border-color-light) !important;
+}
+
+.cell {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.customRow {
+	&:hover {
+		& > .customCell {
+			background-color: var(--color-background-light);
+		}
+	}
+}
+
+.customHeaderCell {
+	display: flex;
+	gap: 4px;
+}
+
+.customHeaderCellLabel {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-base);
+}
+
+.customHeaderCellSort {
+	display: flex;
+	align-items: center;
+}
+
 .table {
-	:global(.el-table__cell) {
-		padding: var(--spacing-3xs) 0;
+	border-radius: 12px;
+
+	:global(.el-table__column-resize-proxy) {
+		background-color: var(--color-primary);
+		width: 3px;
+	}
+
+	:global(thead th) {
+		padding: 6px 0;
+	}
+
+	:global(.caret-wrapper) {
+		display: none;
+	}
+
+	:global(.el-scrollbar__thumb) {
+		background-color: var(--color-foreground-base);
+	}
+
+	:global(.el-scrollbar__bar) {
+		opacity: 1;
 	}
 }
 </style>
