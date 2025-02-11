@@ -847,7 +847,6 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		value,
 	};
 
-	console.log('emit', value);
 	emit('update', parameterData);
 
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
