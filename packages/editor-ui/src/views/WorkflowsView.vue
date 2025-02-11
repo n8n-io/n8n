@@ -25,7 +25,7 @@ import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
-import { useRoute, useRouter } from 'vue-router';
+import { LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	N8nCard,
