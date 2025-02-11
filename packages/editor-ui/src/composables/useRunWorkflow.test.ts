@@ -345,6 +345,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 			};
+			vi.mocked(workflowsStore).dirtinessByName = { [executeName]: 'dirty' };
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
 				name: 'Test Workflow',
 				getParentNodes: () => [parentName],

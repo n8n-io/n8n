@@ -1254,12 +1254,12 @@ function onRunIndexChange(run: number) {
 
 function enableNode() {
 	if (node.value) {
-		const updateInformation = {
+		const updateInformation: INodeUpdatePropertiesInformation = {
 			name: node.value.name,
 			properties: {
 				disabled: !node.value.disabled,
-			} as IDataObject,
-		} as INodeUpdatePropertiesInformation;
+			},
+		};
 
 		workflowsStore.updateNodeProperties(updateInformation);
 	}

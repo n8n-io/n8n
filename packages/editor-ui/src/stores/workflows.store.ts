@@ -307,12 +307,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
-			const lastUpdate = getParametersLastUpdate(nodeName);
 			const runAt = taskData[0]?.startTime;
 
-			if (lastUpdate && runAt && lastUpdate > runAt) {
-				dirtiness[nodeName] = 'dirty';
+			if (!runAt) {
+				continue;
+			}
 
+			const parametersLastUpdate = getParametersLastUpdate(nodeName);
+
+			if (parametersLastUpdate && parametersLastUpdate > runAt) {
+				dirtiness[nodeName] = 'dirty';
+				markDownstreamStaleRecursively(nodeName);
+				continue;
+			}
+
+			const incomingConnectionsLastUpdate = getIncomingConnectionsLastUpdate(nodeName);
+
+			if (incomingConnectionsLastUpdate && incomingConnectionsLastUpdate > runAt) {
+				dirtiness[nodeName] = 'incoming-connections-changed';
 				markDownstreamStaleRecursively(nodeName);
 			}
 		}
@@ -373,6 +385,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getParametersLastUpdate(nodeName: string): number | undefined {
 		return nodeMetadata.value[nodeName]?.parametersLastUpdatedAt;
+	}
+
+	function getIncomingConnectionsLastUpdate(nodeName: string): number | undefined {
+		return nodeMetadata.value[nodeName]?.incomingConnectionsLastUpdatedAt;
 	}
 
 	function isNodePristine(nodeName: string): boolean {
@@ -995,6 +1011,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				connections.splice(parseInt(index, 10), 1);
 			}
 		}
+
+		nodeMetadata.value[destinationData.node].incomingConnectionsLastUpdatedAt = Date.now();
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
@@ -1222,9 +1240,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (const key of Object.keys(updateInformation.properties)) {
 				uiStore.stateIsDirty = true;
 
-				updateNodeAtIndex(nodeIndex, {
-					[key]: updateInformation.properties[key],
-				});
+				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
+				const property = updateInformation.properties[typedKey];
+
+				updateNodeAtIndex(nodeIndex, { [key]: property });
+			}
+
+			if (updateInformation.properties.disabled !== undefined) {
+				const outgoingConnections = Object.values(
+					outgoingConnectionsByNodeName(updateInformation.name),
+				);
+
+				for (const nodeConnections of outgoingConnections) {
+					for (const connections of nodeConnections) {
+						for (const { node } of connections ?? []) {
+							nodeMetadata.value[node].incomingConnectionsLastUpdatedAt = Date.now();
+						}
+					}
+				}
 			}
 		}
 	}
@@ -1711,6 +1744,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodeById,
 		getNodesByIds,
 		getParametersLastUpdate,
+		getIncomingConnectionsLastUpdate,
 		isNodePristine,
 		isNodeExecuting,
 		getExecutionDataById,

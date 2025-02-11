@@ -139,10 +139,7 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: {
-		position: XYPosition;
-		[key: string]: IDataObject | XYPosition;
-	};
+	properties: Partial<Pick<INodeUi, 'position' | 'credentials' | 'disabled'>>;
 }
 
 export type XYPosition = [number, number];
@@ -849,6 +846,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	incomingConnectionsLastUpdatedAt?: number;
 	pristine: boolean;
 }
 

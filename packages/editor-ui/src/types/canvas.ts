@@ -47,7 +47,7 @@ export const enum CanvasNodeRenderType {
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
-export type CanvasNodeDirtiness = 'dirty' | 'upstream-dirty';
+export type CanvasNodeDirtiness = 'dirty' | 'upstream-dirty' | 'incoming-connections-changed';
 
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
