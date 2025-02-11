@@ -51,6 +51,7 @@ describe('ProjectMoveResourceModal', () => {
 				resourceTypeLabel: 'workflow',
 				resource: {
 					id: '1',
+					name: 'My Workflow',
 					homeProject: {
 						id: '2',
 						name: 'My Project',
@@ -76,6 +77,7 @@ describe('ProjectMoveResourceModal', () => {
 				resourceTypeLabel: 'workflow',
 				resource: {
 					id: '1',
+					name: 'My Workflow',
 					homeProject: {
 						id: '2',
 						name: 'My Project',
@@ -98,6 +100,7 @@ describe('ProjectMoveResourceModal', () => {
 				resourceTypeLabel: 'Workflow',
 				resource: {
 					id: '1',
+					name: 'My Workflow',
 					homeProject: {
 						id: projects[0].id,
 						name: projects[0].name,
@@ -133,6 +136,7 @@ describe('ProjectMoveResourceModal', () => {
 				resourceTypeLabel: 'credential',
 				resource: {
 					id: '1',
+					name: 'My credential',
 					homeProject: {
 						id: '2',
 						name: 'My Project',

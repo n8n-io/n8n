@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, h } from 'vue';
+import { truncate } from 'n8n-design-system';
 import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
@@ -63,7 +64,7 @@ const unShareableCredentials = computed(() =>
 		[] as Array<IUsedCredential | ICredentialsResponse>,
 	),
 );
-const processedName = computed(
+const homeProjectName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 const availableProjects = computed(() =>
@@ -84,6 +85,11 @@ const selectedProject = computed(() =>
 );
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
+const targetProjectName = computed(() => {
+	const { name, email } = splitName(selectedProject.value?.name ?? '');
+	return truncate(name ?? email ?? '', 25);
+});
+const resourceName = computed(() => truncate(props.data.resource.name, 25));
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -123,13 +129,13 @@ const moveResource = async () => {
 			title: i18n.baseText('projects.move.resource.success.title', {
 				interpolate: {
 					resourceTypeLabel: props.data.resourceTypeLabel,
+					resourceName: resourceName.value,
+					targetProjectName: targetProjectName.value,
 				},
 			}),
 			message: h(ProjectMoveSuccessToastMessage, {
 				routeName: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
-				resource: props.data.resource,
 				resourceType: props.data.resourceType,
-				resourceTypeLabel: props.data.resourceTypeLabel,
 				targetProject: selectedProject.value,
 				isShareCredentialsChecked: shareUsedCredentials.value,
 				areAllUsedCredentialsShareable:
@@ -144,7 +150,7 @@ const moveResource = async () => {
 			i18n.baseText('projects.move.resource.error.title', {
 				interpolate: {
 					resourceTypeLabel: props.data.resourceTypeLabel,
-					resourceName: props.data.resource.name,
+					resourceName: resourceName.value,
 				},
 			}),
 		);
@@ -181,19 +187,19 @@ onMounted(async () => {
 			<N8nText>
 				<i18n-t keypath="projects.move.resource.modal.message">
 					<template #resourceName
-						><strong>{{ props.data.resource.name }}</strong></template
+						><strong>{{ resourceName }}</strong></template
 					>
 					<template v-if="isResourceInTeamProject" #inTeamProject>
 						<i18n-t keypath="projects.move.resource.modal.message.team">
 							<template #resourceHomeProjectName
-								><strong>{{ processedName }}</strong></template
+								><strong>{{ homeProjectName }}</strong></template
 							>
 						</i18n-t>
 					</template>
 					<template v-else #inPersonalProject>
 						<i18n-t keypath="projects.move.resource.modal.message.personal">
 							<template #resourceHomeProjectName
-								><strong>{{ processedName }}</strong></template
+								><strong>{{ homeProjectName }}</strong></template
 							>
 						</i18n-t>
 					</template>
