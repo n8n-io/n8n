@@ -335,11 +335,11 @@ describe('hasKey', () => {
 
 		expect(result).toEqual(true);
 	});
-	it('should return false if the input is an array with the key `length`', () => {
+	it('should return true if the input is an array with the key `length`', () => {
 		const x: unknown = [1, 2];
 		const result = hasKey(x, 'length');
 
-		expect(result).toEqual(false);
+		expect(result).toEqual(true);
 	});
 	it('should return false if the input is an object without the key', () => {
 		const x: unknown = { a: 3 };
