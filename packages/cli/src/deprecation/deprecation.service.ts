@@ -12,7 +12,10 @@ type Deprecation = {
 	message: string;
 
 	/** Function to identify the specific value in the env var that is deprecated. */
-	checkValue?: (value: string) => boolean;
+	checkValue?: (value?: string) => boolean;
+
+	/** Whether to show a deprecation warning if the env var is missing. */
+	warnIfMissing?: boolean;
 };
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
@@ -39,10 +42,17 @@ export class DeprecationService {
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},
+		{
+			envVar: 'N8N_RUNNERS_ENABLED',
+			message:
+				'Running n8n without task runners is deprecated. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/',
+			checkValue: (value?: string) => value !== 'true',
+			warnIfMissing: true,
+		},
 	];
 
-	/** Runtime state of deprecated env vars. */
-	private readonly state: Record<EnvVarName, { inUse: boolean }> = {};
+	/** Runtime state of deprecation-related env vars. */
+	private readonly state: Record<EnvVarName, { mustWarn: boolean }> = {};
 
 	constructor(private readonly logger: Logger) {}
 
@@ -50,14 +60,12 @@ export class DeprecationService {
 		this.deprecations.forEach((d) => {
 			const envValue = process.env[d.envVar];
 			this.state[d.envVar] = {
-				inUse: d.checkValue
-					? envValue !== undefined && d.checkValue(envValue)
-					: envValue !== undefined,
+				mustWarn: d.checkValue ? d.checkValue(envValue) : envValue !== undefined,
 			};
 		});
 
-		const inUse = Object.entries(this.state)
-			.filter(([, d]) => d.inUse)
+		const mustWarn = Object.entries(this.state)
+			.filter(([, d]) => d.mustWarn)
 			.map(([envVar]) => {
 				const deprecation = this.deprecations.find((d) => d.envVar === envVar);
 				if (!deprecation) {
@@ -66,19 +74,19 @@ export class DeprecationService {
 				return deprecation;
 			});
 
-		if (inUse.length === 0) return;
+		if (mustWarn.length === 0) return;
 
-		const header = `The following environment variable${
-			inUse.length === 1 ? ' is' : 's are'
-		} deprecated and will be removed in an upcoming version of n8n. Please take the recommended actions to update your configuration`;
-		const deprecations = inUse
+		const header = `There ${
+			mustWarn.length === 1 ? 'is a deprecation' : 'are deprecations'
+		} related to your environment variables. Please take the recommended actions to update your configuration`;
+		const deprecations = mustWarn
 			.map(({ envVar, message }) => ` - ${envVar} -> ${message}\n`)
 			.join('');
 
 		this.logger.warn(`\n${header}:\n${deprecations}`);
 	}
 
-	isInUse(envVar: string) {
-		return this.state[envVar]?.inUse ?? false;
+	mustWarn(envVar: string) {
+		return this.state[envVar]?.mustWarn ?? false;
 	}
 }
