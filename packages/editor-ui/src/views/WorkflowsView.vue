@@ -36,7 +36,6 @@ import {
 	N8nSelect,
 	N8nText,
 } from 'n8n-design-system';
-import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
@@ -297,7 +296,7 @@ function isValidProjectId(projectId: string) {
 
 const setFiltersFromQueryString = async () => {
 	const { tags, status, search, homeProject, sort } = route.query ?? {};
-	const newQuery: { [key: string]: string | string[] | boolean } = {};
+	const newQuery: LocationQueryRaw = {};
 
 	if (homeProject && typeof homeProject === 'string') {
 		await projectsStore.getAvailableProjects();
@@ -328,8 +327,8 @@ const setFiltersFromQueryString = async () => {
 		typeof status === 'string' &&
 		[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
 	) {
-		newQuery.status = status;
-		filters.value.status = status === 'true';
+		newQuery.status = status; // Keep as string in URL
+		filters.value.status = status === 'true'; // Convert to boolean for filters
 	}
 
 	if (sort && typeof sort === 'string') {
