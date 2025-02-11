@@ -405,6 +405,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
+	triggerNode?: string;
 }
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
@@ -889,7 +890,6 @@ export interface RootState {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
-	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
