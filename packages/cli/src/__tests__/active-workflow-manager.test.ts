@@ -126,7 +126,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('add', () => {
-			test('should skip inactive workflow in `init` activation mode', async () => {
+			test('should skip inactive workflow in `init` and `leadershipChange` activation modes', async () => {
 				const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
 				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
 				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowManager, 'addTriggersAndPollers');
