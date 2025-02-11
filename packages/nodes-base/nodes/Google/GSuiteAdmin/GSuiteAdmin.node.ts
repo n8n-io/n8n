@@ -783,7 +783,8 @@ export class GSuiteAdmin implements INodeType {
 				if (resource === 'device') {
 					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/deviceId
 					if (operation === 'get') {
-						const deviceId = this.getNodeParameter('deviceId', i) as string;
+						const deviceIdObject = this.getNodeParameter('deviceId', i) as IDataObject;
+						const deviceId = deviceIdObject.value as string;
 						const output = this.getNodeParameter('projection', 1);
 
 						// Validate deviceId
@@ -859,7 +860,8 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const deviceId = this.getNodeParameter('deviceId', i) as string;
+						const deviceIdObject = this.getNodeParameter('deviceId', i) as IDataObject;
+						const deviceId = deviceIdObject.value as string;
 						const updateOptions = this.getNodeParameter('updateOptions', 1);
 
 						// Validate deviceId
@@ -880,7 +882,8 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (operation === 'changeStatus') {
-						const deviceId = this.getNodeParameter('deviceId', i) as string;
+						const deviceIdObject = this.getNodeParameter('deviceId', i) as IDataObject;
+						const deviceId = deviceIdObject.value as string;
 						const action = this.getNodeParameter('action', 1);
 
 						qs.action = action;
