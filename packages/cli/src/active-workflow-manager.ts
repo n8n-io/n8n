@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { chunk } from 'lodash';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -421,54 +422,59 @@ export class ActiveWorkflowManager {
 			this.logger.info(' ================================');
 		}
 
-		const { activationBatchSize } = this.workflowsConfig;
+		const batches = chunk(dbWorkflows, this.workflowsConfig.activationBatchSize);
 
-		for (let i = 0; i < dbWorkflows.length; i += activationBatchSize) {
-			const batch = dbWorkflows.slice(i, i + activationBatchSize);
-
+		for (const batch of batches) {
 			const activationPromises = batch.map(async (dbWorkflow) => {
-				try {
-					const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
-						shouldPublish: false,
-					});
-					if (wasActivated) {
-						this.logger.info(`   - ${dbWorkflow.display()})`);
-						this.logger.info('     => Started');
-						this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
-							workflowName: dbWorkflow.name,
-							workflowId: dbWorkflow.id,
-						});
-					}
-				} catch (error) {
-					this.errorReporter.error(error);
-					this.logger.info(
-						`     => ERROR: Workflow ${dbWorkflow.display()} could not be activated on first try, keep on trying if not an auth issue`,
-					);
-
-					this.logger.info(`               ${error.message}`);
-					this.logger.error(
-						`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
-						{
-							workflowName: dbWorkflow.name,
-							workflowId: dbWorkflow.id,
-						},
-					);
-
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					this.executeErrorWorkflow(error, dbWorkflow, 'internal');
-
-					// do not keep trying to activate on authorization error
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					if (error.message.includes('Authorization')) return;
-
-					this.addQueuedWorkflowActivation('init', dbWorkflow);
-				}
+				await this.activateWorkflow(dbWorkflow, activationMode);
 			});
 
 			await Promise.all(activationPromises);
 		}
 
 		this.logger.debug('Finished activating workflows (startup)');
+	}
+
+	private async activateWorkflow(
+		dbWorkflow: WorkflowEntity,
+		activationMode: 'init' | 'leadershipChange',
+	) {
+		try {
+			const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
+				shouldPublish: false,
+			});
+			if (wasActivated) {
+				this.logger.info(`   - ${dbWorkflow.display()})`);
+				this.logger.info('     => Started');
+				this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				});
+			}
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.info(
+				`     => ERROR: Workflow ${dbWorkflow.display()} could not be activated on first try, keep on trying if not an auth issue`,
+			);
+
+			this.logger.info(`               ${error.message}`);
+			this.logger.error(
+				`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
+				{
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				},
+			);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+
+			// do not keep trying to activate on authorization error
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			if (error.message.includes('Authorization')) return;
+
+			this.addQueuedWorkflowActivation('init', dbWorkflow);
+		}
 	}
 
 	async clearAllActivationErrors() {
