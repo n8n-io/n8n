@@ -12,7 +12,6 @@ import {
 	type ITaskMetadata,
 	type NodeError,
 	type NodeHint,
-	type JsonObject,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type Workflow,
 	parseMetadataFromError,
@@ -568,7 +567,7 @@ const errorExecutionId = computed(() => {
 	}
 
 	if (isSubNodeType.value) {
-		return parentNodeError.value?.errorResponse?.executionId;
+		return String(parentNodeError.value?.errorResponse?.executionId);
 	}
 
 	return String(workflowRunErrorAsNodeError.value?.errorResponse?.executionId);
