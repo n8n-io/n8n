@@ -24,7 +24,6 @@ export async function supabaseApiRequest(
 	headers: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<{
-		// [ria] gets credentials from n8n
 		host: string;
 		serviceRole: string;
 		schema: string;
@@ -40,12 +39,10 @@ export async function supabaseApiRequest(
 		uri: uri || `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
-	// [ria]
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-
 		if (options.headers) {
 			if (options.method && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(options.method)) {
 				options.headers['Content-Profile'] = credentials.schema;
@@ -53,13 +50,11 @@ export async function supabaseApiRequest(
 				options.headers['Accept-Profile'] = credentials.schema;
 			}
 		}
-
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
-		// [ria] header is sent but still resource could not be found error!
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -318,7 +313,6 @@ export async function validateCredentials(
 		headers: {
 			apikey: serviceRole,
 			Authorization: 'Bearer ' + serviceRole,
-			// 'Content-Profile': 'your-profile-value-here', // [ria] Add the Content-Profile header (get from credentials!)
 		},
 		method: 'GET',
 		uri: `${credentials.host}/rest/v1/`,
