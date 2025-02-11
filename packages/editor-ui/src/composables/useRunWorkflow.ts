@@ -15,9 +15,10 @@ import type {
 	IRun,
 	INode,
 	IDataObject,
+	IWorkflowBase,
 } from 'n8n-workflow';
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, TelemetryHelpers } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -35,7 +36,9 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 const getDirtyNodeNames = (
 	runData: IRunData,
@@ -61,14 +64,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
+	const telemetry = useTelemetry();
+	const externalHooks = useExternalHooks();
+	const settingsStore = useSettingsStore();
 
 	const rootStore = useRootStore();
+	const pushConnectionStore = usePushConnectionStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (!rootStore.pushConnectionActive) {
+		if (!pushConnectionStore.isConnected) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
@@ -166,7 +173,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				executedNode = options.triggerNode;
 			}
 
-			if (options.triggerNode && options.nodeData) {
+			if (options.triggerNode) {
 				triggerToStartFrom = {
 					name: options.triggerNode,
 					data: options.nodeData,
@@ -305,6 +312,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				stoppedAt: undefined,
 				workflowId: workflow.id,
 				executedNode,
+				triggerNode: triggerToStartFrom?.name,
 				data: {
 					resultData: {
 						runData: startRunData.runData ?? {},
@@ -350,7 +358,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				});
 			} catch (error) {}
 
-			await useExternalHooks().run('workflowRun.runWorkflow', {
+			await externalHooks.run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode,
 				source: options.source,
 			});
@@ -465,8 +473,31 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
+	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
+		const workflow = workflowHelpers.getCurrentWorkflow();
+
+		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
+			const telemetryPayload = {
+				workflow_id: workflow.id,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+						{ isCloudDeployment: settingsStore.isCloudDeployment },
+					).nodeGraph,
+				),
+				button_type: source,
+			};
+			telemetry.track('User clicked execute workflow button', telemetryPayload);
+			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
+		});
+
+		void runWorkflow({ triggerNode });
+	}
+
 	return {
 		consolidateRunDataAndStartNodes,
+		runEntireWorkflow,
 		runWorkflow,
 		runWorkflowApi,
 		stopCurrentExecution,

@@ -1,22 +1,12 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
-import { STORES, TIME } from '@/constants';
+import { STORES } from '@/constants';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './root.store';
-
-export interface PushState {
-	pushRef: string;
-	pushSource: WebSocket | EventSource | null;
-	reconnectTimeout: NodeJS.Timeout | null;
-	retryTimeout: NodeJS.Timeout | null;
-	pushMessageQueue: Array<{ event: Event; retriesLeft: number }>;
-	connectRetries: number;
-	lostConnection: boolean;
-	outgoingQueue: unknown[];
-	isConnectionOpen: boolean;
-}
+import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
+import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -27,18 +17,20 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const pushRef = computed(() => rootStore.pushRef);
-	const pushSource = ref<WebSocket | EventSource | null>(null);
-	const reconnectTimeout = ref<NodeJS.Timeout | null>(null);
-	const connectRetries = ref(0);
-	const lostConnection = ref(false);
+	/**
+	 * Queue of messages to be sent to the server. Messages are queued if
+	 * the connection is down.
+	 */
 	const outgoingQueue = ref<unknown[]>([]);
-	const isConnectionOpen = ref(false);
+
+	/** Whether the connection has been requested */
+	const isConnectionRequested = ref(false);
 
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
 		onMessageReceivedHandlers.value.push(handler);
+
 		return () => {
 			const index = onMessageReceivedHandlers.value.indexOf(handler);
 			if (index !== -1) {
@@ -47,103 +39,30 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		};
 	};
 
-	function onConnectionError() {
-		pushDisconnect();
-		connectRetries.value++;
-		reconnectTimeout.value = setTimeout(
-			attemptReconnect,
-			Math.min(connectRetries.value * 2000, 8 * TIME.SECOND), // maximum 8 seconds backoff
-		);
-	}
+	const useWebSockets = settingsStore.pushBackend === 'websocket';
 
-	/**
-	 * Close connection to server
-	 */
-	function pushDisconnect() {
-		if (pushSource.value !== null) {
-			pushSource.value.removeEventListener('error', onConnectionError);
-			pushSource.value.removeEventListener('close', onConnectionError);
-			pushSource.value.removeEventListener('message', pushMessageReceived);
-			if (pushSource.value.readyState < 2) pushSource.value.close();
-			pushSource.value = null;
-		}
-
-		isConnectionOpen.value = false;
-	}
-
-	/**
-	 * Connect to server to receive data via a WebSocket or EventSource
-	 */
-	function pushConnect() {
-		// always close the previous connection so that we do not end up with multiple connections
-		pushDisconnect();
-
-		if (reconnectTimeout.value) {
-			clearTimeout(reconnectTimeout.value);
-			reconnectTimeout.value = null;
-		}
-
-		const useWebSockets = settingsStore.pushBackend === 'websocket';
-
+	const getConnectionUrl = () => {
 		const restUrl = rootStore.restUrl;
-		const url = `/push?pushRef=${pushRef.value}`;
+		const url = `/push?pushRef=${rootStore.pushRef}`;
 
 		if (useWebSockets) {
 			const { protocol, host } = window.location;
 			const baseUrl = restUrl.startsWith('http')
 				? restUrl.replace(/^http/, 'ws')
 				: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
-			pushSource.value = new WebSocket(`${baseUrl}${url}`);
+			return `${baseUrl}${url}`;
 		} else {
-			pushSource.value = new EventSource(`${restUrl}${url}`, { withCredentials: true });
+			return `${restUrl}${url}`;
 		}
-
-		pushSource.value.addEventListener('open', onConnectionSuccess, false);
-		pushSource.value.addEventListener('message', pushMessageReceived, false);
-		pushSource.value.addEventListener(useWebSockets ? 'close' : 'error', onConnectionError, false);
-	}
-
-	function attemptReconnect() {
-		pushConnect();
-	}
-
-	function serializeAndSend(message: unknown) {
-		if (pushSource.value && 'send' in pushSource.value) {
-			pushSource.value.send(JSON.stringify(message));
-		}
-	}
-
-	function onConnectionSuccess() {
-		isConnectionOpen.value = true;
-		connectRetries.value = 0;
-		lostConnection.value = false;
-		rootStore.setPushConnectionActive();
-		pushSource.value?.removeEventListener('open', onConnectionSuccess);
-
-		if (outgoingQueue.value.length) {
-			for (const message of outgoingQueue.value) {
-				serializeAndSend(message);
-			}
-			outgoingQueue.value = [];
-		}
-	}
-
-	function send(message: unknown) {
-		if (!isConnectionOpen.value) {
-			outgoingQueue.value.push(message);
-			return;
-		}
-		serializeAndSend(message);
-	}
+	};
 
 	/**
 	 * Process a newly received message
 	 */
-	async function pushMessageReceived(event: Event) {
+	async function onMessage(data: unknown) {
 		let receivedData: PushMessage;
 		try {
-			// @ts-ignore
-			receivedData = JSON.parse(event.data);
+			receivedData = JSON.parse(data as string);
 		} catch (error) {
 			return;
 		}
@@ -151,19 +70,59 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
+	const url = getConnectionUrl();
+
+	const client = useWebSockets
+		? useWebSocketClient({ url, onMessage })
+		: useEventSourceClient({ url, onMessage });
+
+	function serializeAndSend(message: unknown) {
+		if (client.isConnected.value) {
+			client.sendMessage(JSON.stringify(message));
+		} else {
+			outgoingQueue.value.push(message);
+		}
+	}
+
+	const pushConnect = () => {
+		isConnectionRequested.value = true;
+		client.connect();
+	};
+
+	const pushDisconnect = () => {
+		isConnectionRequested.value = false;
+		client.disconnect();
+	};
+
+	watch(client.isConnected, (didConnect) => {
+		if (!didConnect) {
+			return;
+		}
+
+		// Send any buffered messages
+		if (outgoingQueue.value.length) {
+			for (const message of outgoingQueue.value) {
+				serializeAndSend(message);
+			}
+			outgoingQueue.value = [];
+		}
+	});
+
+	/** Removes all buffered messages from the sent queue */
 	const clearQueue = () => {
 		outgoingQueue.value = [];
 	};
 
+	const isConnected = computed(() => client.isConnected.value);
+
 	return {
-		pushRef,
-		pushSource,
-		isConnectionOpen,
+		isConnected,
+		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,
 		pushConnect,
 		pushDisconnect,
-		send,
+		send: serializeAndSend,
 		clearQueue,
 	};
 });

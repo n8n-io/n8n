@@ -51,7 +51,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
-import * as curlParserApi from '@/api/curlHelper';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -524,19 +523,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarMenuCollapsed.value = newCollapsedState;
 	};
 
-	const getCurlToJson = async (curlCommand: string) => {
-		const parameters = await curlParserApi.getCurlToJson(rootStore.restApiContext, curlCommand);
-
-		// Normalize placeholder values
-		if (parameters['parameters.url']) {
-			parameters['parameters.url'] = parameters['parameters.url']
-				.replaceAll('%7B', '{')
-				.replaceAll('%7D', '}');
-		}
-
-		return parameters;
-	};
-
 	const removeBannerFromStack = (name: BannerName) => {
 		bannerStack.value = bannerStack.value.filter((bannerName) => bannerName !== name);
 	};
@@ -653,7 +639,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		resetSelectedNodes,
 		setCurlCommand,
 		toggleSidebarMenuCollapse,
-		getCurlToJson,
 		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,

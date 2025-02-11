@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
@@ -12,7 +13,10 @@ import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private loadNodesAndCredentials: LoadNodesAndCredentials) {}
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {}
 
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
@@ -33,14 +37,24 @@ export class NodeTypes implements INodeTypes {
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
-		const toolRequested = nodeType.startsWith('n8n-nodes-base') && nodeType.endsWith('Tool');
+
+		const { communityPackages } = this.globalConfig.nodes;
+		const allowToolUsage = communityPackages.allowToolUsage
+			? true
+			: nodeType.startsWith('n8n-nodes-base');
+		const toolRequested = nodeType.endsWith('Tool');
+
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
-		if (toolRequested) {
+		if (allowToolUsage && toolRequested) {
 			nodeType = nodeType.replace(/Tool$/, '');
 		}
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (toolRequested && typeof versionedNodeType.supplyData === 'function') {
+			throw new ApplicationError('Node already has a `supplyData` method', { extra: { nodeType } });
+		}
+
 		if (
 			!versionedNodeType.execute &&
 			!versionedNodeType.poll &&

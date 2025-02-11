@@ -118,7 +118,7 @@ const emit = defineEmits<{
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { callDebounced } = useDebounce();
+const { debounce } = useDebounce();
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
 const telemetry = useTelemetry();
@@ -801,9 +801,9 @@ function onTextInputChange(value: string) {
 
 	emit('textInput', parameterData);
 }
-function valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-	void callDebounced(valueChanged, { debounceTime: 100 }, value);
-}
+
+const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
+
 function onUpdateTextInput(value: string) {
 	valueChanged(value);
 	onTextInputChange(value);
@@ -1032,6 +1032,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
+	valueChangedDebounced.cancel();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1066,11 +1067,11 @@ watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
 });
 
-// Focus input field when changing from fixed value to expression
+// Focus input field when changing between fixed and expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (!props.isReadOnly && isExpression && !wasExpression) {
+	if (!props.isReadOnly && isExpression !== wasExpression) {
 		await nextTick();
-		inputField.value?.focus();
+		await setFocus();
 	}
 });
 
