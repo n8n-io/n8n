@@ -23,9 +23,6 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions } from '@/node-execute-functions';
-
 import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
@@ -40,6 +37,7 @@ import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-fu
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 

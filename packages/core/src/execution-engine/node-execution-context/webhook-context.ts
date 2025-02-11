@@ -18,12 +18,10 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions } from '@/node-execute-functions';
-
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
 

@@ -9,11 +9,9 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions } from '@/node-execute-functions';
-
 import { NodeExecutionContext } from './node-execution-context';
 import { extractValue } from './utils/extract-value';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class LoadOptionsContext extends NodeExecutionContext implements ILoadOptionsFunctions {

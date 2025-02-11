@@ -19,9 +19,6 @@ import type {
 } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions } from '@/node-execute-functions';
-
 import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
@@ -33,8 +30,10 @@ import { constructExecutionMetaData } from './utils/construct-execution-metadata
 import { copyInputItems } from './utils/copy-input-items';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
+// eslint-disable-next-line import/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
