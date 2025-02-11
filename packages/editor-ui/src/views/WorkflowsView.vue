@@ -384,6 +384,12 @@ const onSortUpdated = async (sort: string) => {
 	}
 	await fetchWorkflows();
 };
+
+const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
+	const workflow = workflows.value.find((w) => w.id === data.id);
+	if (!workflow) return;
+	workflow.active = data.active;
+};
 </script>
 
 <template>
@@ -450,6 +456,7 @@ const onSortUpdated = async (sort: string) => {
 				@workflow:deleted="fetchWorkflows"
 				@workflow:moved="fetchWorkflows"
 				@workflow:duplicated="fetchWorkflows"
+				@workflow:active-toggle="onWorkflowActiveToggle"
 			/>
 		</template>
 		<template #empty>

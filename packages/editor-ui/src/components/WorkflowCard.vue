@@ -63,6 +63,7 @@ const emit = defineEmits<{
 	'workflow:deleted': [];
 	'workflow:moved': [];
 	'workflow:duplicated': [];
+	'workflow:active-toggle': [value: { id: string; active: boolean }];
 }>();
 
 const toast = useToast();
@@ -247,6 +248,10 @@ const emitWorkflowDuplicated = () => {
 	emit('workflow:duplicated');
 };
 
+const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
+	emit('workflow:active-toggle', value);
+};
+
 onMounted(() => {
 	workflowListEventBus.on('resource-moved', emitWorkflowMoved);
 	workflowListEventBus.on('workflow-duplicated', emitWorkflowDuplicated);
@@ -307,6 +312,7 @@ onBeforeUnmount(() => {
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
+					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
 
 				<n8n-action-toggle
