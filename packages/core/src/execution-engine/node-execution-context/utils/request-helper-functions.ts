@@ -229,7 +229,7 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	}
 };
 
-const createFormDataObject = (data: Record<string, unknown>) => {
+export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();
 	const keys = Object.keys(data);
 	keys.forEach((key) => {
@@ -721,7 +721,7 @@ export async function proxyRequestToAxios(
 }
 
 // eslint-disable-next-line complexity
-function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
+export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
 
@@ -887,12 +887,7 @@ export function applyPaginationRequestData(
 	return merge({}, requestData, preparedPaginationData);
 }
 
-/**
- * Makes a request using OAuth data for authentication
- *
- * @param {(IHttpRequestOptions | IRequestOptions)} requestOptions
- *
- */
+/** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1132,9 +1127,7 @@ export async function requestOAuth2(
 		});
 }
 
-/**
- * Makes a request using OAuth1 data for authentication
- */
+/** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1322,7 +1315,7 @@ export async function httpRequestWithAuthentication(
 	}
 }
 
-// TODO: Move up later
+/** @deprecated use httpRequestWithAuthentication */
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1468,223 +1461,222 @@ export const getRequestHelperFunctions = (
 		return parameterValue;
 	};
 
-	return {
-		httpRequest,
-		// eslint-disable-next-line complexity
-		async requestWithAuthenticationPaginated(
-			this: IExecuteFunctions,
-			requestOptions: IRequestOptions,
-			itemIndex: number,
-			paginationOptions: PaginationOptions,
-			credentialsType?: string,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<any[]> {
-			const responseData = [];
-			if (!requestOptions.qs) {
-				requestOptions.qs = {};
-			}
-			requestOptions.resolveWithFullResponse = true;
-			requestOptions.simple = false;
+	// eslint-disable-next-line complexity
+	async function requestWithAuthenticationPaginated(
+		this: IExecuteFunctions,
+		requestOptions: IRequestOptions,
+		itemIndex: number,
+		paginationOptions: PaginationOptions,
+		credentialsType?: string,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any[]> {
+		const responseData = [];
+		if (!requestOptions.qs) {
+			requestOptions.qs = {};
+		}
+		requestOptions.resolveWithFullResponse = true;
+		requestOptions.simple = false;
 
-			let tempResponseData: IN8nHttpFullResponse;
-			let makeAdditionalRequest: boolean;
-			let paginateRequestData: PaginationOptions['request'];
+		let tempResponseData: IN8nHttpFullResponse;
+		let makeAdditionalRequest: boolean;
+		let paginateRequestData: PaginationOptions['request'];
 
-			const runIndex = 0;
+		const runIndex = 0;
 
-			const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-				$request: requestOptions,
-				$response: {} as IN8nHttpFullResponse,
-				$version: node.typeVersion,
-				$pageCount: 0,
-			};
+		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+			$request: requestOptions,
+			$response: {} as IN8nHttpFullResponse,
+			$version: node.typeVersion,
+			$pageCount: 0,
+		};
 
-			const executeData: IExecuteData = {
-				data: {},
-				node,
-				source: null,
-			};
+		const executeData: IExecuteData = {
+			data: {},
+			node,
+			source: null,
+		};
 
-			const hashData = {
-				identicalCount: 0,
-				previousLength: 0,
-				previousHash: '',
-			};
-			do {
-				paginateRequestData = getResolvedValue(
-					paginationOptions.request as unknown as NodeParameterValueType,
+		const hashData = {
+			identicalCount: 0,
+			previousLength: 0,
+			previousHash: '',
+		};
+		do {
+			paginateRequestData = getResolvedValue(
+				paginationOptions.request as unknown as NodeParameterValueType,
+				itemIndex,
+				runIndex,
+				executeData,
+				additionalKeys,
+				false,
+			) as object as PaginationOptions['request'];
+
+			const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
+
+			if (!validateUrl(tempRequestOptions.uri as string)) {
+				throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
 					itemIndex,
 					runIndex,
-					executeData,
-					additionalKeys,
-					false,
-				) as object as PaginationOptions['request'];
+					type: 'invalid_url',
+				});
+			}
 
-				const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
-
-				if (!validateUrl(tempRequestOptions.uri as string)) {
-					throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
-						itemIndex,
-						runIndex,
-						type: 'invalid_url',
-					});
-				}
-
-				if (credentialsType) {
-					tempResponseData = await this.helpers.requestWithAuthentication.call(
-						this,
-						credentialsType,
-						tempRequestOptions,
-						additionalCredentialOptions,
-					);
-				} else {
-					tempResponseData = await this.helpers.request(tempRequestOptions);
-				}
-
-				const newResponse: IN8nHttpFullResponse = Object.assign(
-					{
-						body: {},
-						headers: {},
-						statusCode: 0,
-					},
-					pick(tempResponseData, ['body', 'headers', 'statusCode']),
+			if (credentialsType) {
+				tempResponseData = await this.helpers.requestWithAuthentication.call(
+					this,
+					credentialsType,
+					tempRequestOptions,
+					additionalCredentialOptions,
 				);
+			} else {
+				tempResponseData = await this.helpers.request(tempRequestOptions);
+			}
 
-				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
+			const newResponse: IN8nHttpFullResponse = Object.assign(
+				{
+					body: {},
+					headers: {},
+					statusCode: 0,
+				},
+				pick(tempResponseData, ['body', 'headers', 'statusCode']),
+			);
 
-				if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
-					// Keep the original string version that we can use it to hash if needed
-					contentBody = await binaryToString(newResponse.body as Buffer | Readable);
+			let contentBody: Exclude<IN8nHttpResponse, Buffer>;
 
-					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
-					if (responseContentType.includes('application/json')) {
-						newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
-					} else {
-						newResponse.body = contentBody;
-					}
-					tempResponseData.__bodyResolved = true;
-					tempResponseData.body = newResponse.body;
+			if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
+				// Keep the original string version that we can use it to hash if needed
+				contentBody = await binaryToString(newResponse.body as Buffer | Readable);
+
+				const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
+				if (responseContentType.includes('application/json')) {
+					newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
 				} else {
-					contentBody = newResponse.body;
+					newResponse.body = contentBody;
+				}
+				tempResponseData.__bodyResolved = true;
+				tempResponseData.body = newResponse.body;
+			} else {
+				contentBody = newResponse.body;
+			}
+
+			if (paginationOptions.binaryResult !== true || tempResponseData.headers.etag) {
+				// If the data is not binary (and so not a stream), or an etag is present,
+				// we check via etag or hash if identical data is received
+
+				let contentLength = 0;
+				if ('content-length' in tempResponseData.headers) {
+					contentLength = parseInt(tempResponseData.headers['content-length'] as string) || 0;
 				}
 
-				if (paginationOptions.binaryResult !== true || tempResponseData.headers.etag) {
-					// If the data is not binary (and so not a stream), or an etag is present,
-					// we check via etag or hash if identical data is received
-
-					let contentLength = 0;
-					if ('content-length' in tempResponseData.headers) {
-						contentLength = parseInt(tempResponseData.headers['content-length'] as string) || 0;
+				if (hashData.previousLength === contentLength) {
+					let hash: string;
+					if (tempResponseData.headers.etag) {
+						// If an etag is provided, we use it as "hash"
+						hash = tempResponseData.headers.etag as string;
+					} else {
+						// If there is no etag, we calculate a hash from the data in the body
+						if (typeof contentBody !== 'string') {
+							contentBody = JSON.stringify(contentBody);
+						}
+						hash = crypto.createHash('md5').update(contentBody).digest('base64');
 					}
 
-					if (hashData.previousLength === contentLength) {
-						let hash: string;
-						if (tempResponseData.headers.etag) {
-							// If an etag is provided, we use it as "hash"
-							hash = tempResponseData.headers.etag as string;
-						} else {
-							// If there is no etag, we calculate a hash from the data in the body
-							if (typeof contentBody !== 'string') {
-								contentBody = JSON.stringify(contentBody);
-							}
-							hash = crypto.createHash('md5').update(contentBody).digest('base64');
+					if (hashData.previousHash === hash) {
+						hashData.identicalCount += 1;
+						if (hashData.identicalCount > 2) {
+							// Length was identical 5x and hash 3x
+							throw new NodeOperationError(
+								node,
+								'The returned response was identical 5x, so requests got stopped',
+								{
+									itemIndex,
+									description:
+										'Check if "Pagination Completed When" has been configured correctly.',
+								},
+							);
 						}
-
-						if (hashData.previousHash === hash) {
-							hashData.identicalCount += 1;
-							if (hashData.identicalCount > 2) {
-								// Length was identical 5x and hash 3x
-								throw new NodeOperationError(
-									node,
-									'The returned response was identical 5x, so requests got stopped',
-									{
-										itemIndex,
-										description:
-											'Check if "Pagination Completed When" has been configured correctly.',
-									},
-								);
-							}
-						} else {
-							hashData.identicalCount = 0;
-						}
-						hashData.previousHash = hash;
 					} else {
 						hashData.identicalCount = 0;
 					}
-					hashData.previousLength = contentLength;
+					hashData.previousHash = hash;
+				} else {
+					hashData.identicalCount = 0;
 				}
+				hashData.previousLength = contentLength;
+			}
 
-				responseData.push(tempResponseData);
+			responseData.push(tempResponseData);
 
-				additionalKeys.$response = newResponse;
-				additionalKeys.$pageCount = (additionalKeys.$pageCount ?? 0) + 1;
+			additionalKeys.$response = newResponse;
+			additionalKeys.$pageCount = (additionalKeys.$pageCount ?? 0) + 1;
 
-				const maxRequests = getResolvedValue(
-					paginationOptions.maxRequests,
-					itemIndex,
-					runIndex,
-					executeData,
-					additionalKeys,
-					false,
-				) as number;
+			const maxRequests = getResolvedValue(
+				paginationOptions.maxRequests,
+				itemIndex,
+				runIndex,
+				executeData,
+				additionalKeys,
+				false,
+			) as number;
 
-				if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
-					break;
+			if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
+				break;
+			}
+
+			makeAdditionalRequest = getResolvedValue(
+				paginationOptions.continue,
+				itemIndex,
+				runIndex,
+				executeData,
+				additionalKeys,
+				false,
+			) as boolean;
+
+			if (makeAdditionalRequest) {
+				if (paginationOptions.requestInterval) {
+					const requestInterval = getResolvedValue(
+						paginationOptions.requestInterval,
+						itemIndex,
+						runIndex,
+						executeData,
+						additionalKeys,
+						false,
+					) as number;
+
+					await sleep(requestInterval);
 				}
-
-				makeAdditionalRequest = getResolvedValue(
-					paginationOptions.continue,
-					itemIndex,
-					runIndex,
-					executeData,
-					additionalKeys,
-					false,
-				) as boolean;
-
-				if (makeAdditionalRequest) {
-					if (paginationOptions.requestInterval) {
-						const requestInterval = getResolvedValue(
-							paginationOptions.requestInterval,
-							itemIndex,
-							runIndex,
-							executeData,
-							additionalKeys,
-							false,
-						) as number;
-
-						await sleep(requestInterval);
+				if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
+					// We have it configured to let all requests pass no matter the response code
+					// via "requestOptions.simple = false" to not by default fail if it is for example
+					// configured to stop on 404 response codes. For that reason we have to throw here
+					// now an error manually if the response code is not a success one.
+					let data = tempResponseData.body;
+					if (data instanceof Readable && paginationOptions.binaryResult !== true) {
+						data = await binaryToString(data as Buffer | Readable);
+					} else if (typeof data === 'object') {
+						data = JSON.stringify(data);
 					}
-					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
-						// We have it configured to let all requests pass no matter the response code
-						// via "requestOptions.simple = false" to not by default fail if it is for example
-						// configured to stop on 404 response codes. For that reason we have to throw here
-						// now an error manually if the response code is not a success one.
-						let data = tempResponseData.body;
-						if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-							data = await binaryToString(data as Buffer | Readable);
-						} else if (typeof data === 'object') {
-							data = JSON.stringify(data);
-						}
 
-						throw Object.assign(
-							new Error(`${tempResponseData.statusCode} - "${data?.toString()}"`),
-							{
-								statusCode: tempResponseData.statusCode,
-								error: data,
-								isAxiosError: true,
-								response: {
-									headers: tempResponseData.headers,
-									status: tempResponseData.statusCode,
-									statusText: tempResponseData.statusMessage,
-								},
-							},
-						);
-					}
+					throw Object.assign(new Error(`${tempResponseData.statusCode} - "${data?.toString()}"`), {
+						statusCode: tempResponseData.statusCode,
+						error: data,
+						isAxiosError: true,
+						response: {
+							headers: tempResponseData.headers,
+							status: tempResponseData.statusCode,
+							statusText: tempResponseData.statusMessage,
+						},
+					});
 				}
-			} while (makeAdditionalRequest);
+			}
+		} while (makeAdditionalRequest);
 
-			return responseData;
-		},
+		return responseData;
+	}
+
+	return {
+		httpRequest,
+		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
 			credentialsType,

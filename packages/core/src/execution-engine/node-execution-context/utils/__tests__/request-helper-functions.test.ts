@@ -7,6 +7,7 @@ import type {
 	INode,
 	IRequestOptions,
 	IWorkflowExecuteAdditionalData,
+	PaginationOptions,
 	Workflow,
 } from 'n8n-workflow';
 import nock from 'nock';
@@ -15,6 +16,10 @@ import type { SecureContextOptions } from 'tls';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import {
+	applyPaginationRequestData,
+	convertN8nRequestToAxios,
+	createFormDataObject,
+	httpRequest,
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
@@ -391,6 +396,470 @@ describe('Request Helper Functions', () => {
 					expect(axiosOptions.maxRedirects).toEqual(1234);
 				},
 			);
+		});
+	});
+
+	describe('createFormDataObject', () => {
+		test('should create FormData with simple key-value pairs', () => {
+			const data = { key1: 'value1', key2: 'value2' };
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+
+			const formDataEntries: string[] = [];
+			formData.getHeaders(); // Ensures form data is processed
+
+			formData.on('data', (chunk) => {
+				formDataEntries.push(chunk.toString());
+			});
+		});
+
+		test('should handle array values', () => {
+			const data = { files: ['file1.txt', 'file2.txt'] };
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+		});
+
+		test('should handle complex form data with options', () => {
+			const data = {
+				file: {
+					value: Buffer.from('test content'),
+					options: {
+						filename: 'test.txt',
+						contentType: 'text/plain',
+					},
+				},
+			};
+
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+		});
+	});
+
+	describe('convertN8nRequestToAxios', () => {
+		test('should convert basic HTTP request options', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				headers: { 'Custom-Header': 'test' },
+				qs: { param1: 'value1' },
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect(axiosConfig).toEqual(
+				expect.objectContaining({
+					method: 'GET',
+					url: 'https://example.com',
+					headers: expect.objectContaining({
+						'Custom-Header': 'test',
+						'User-Agent': 'n8n',
+					}),
+					params: { param1: 'value1' },
+				}),
+			);
+		});
+
+		test('should handle body and content type', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'POST',
+				url: 'https://example.com',
+				body: { key: 'value' },
+				headers: { 'content-type': 'application/json' },
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect(axiosConfig).toEqual(
+				expect.objectContaining({
+					method: 'POST',
+					data: { key: 'value' },
+					headers: expect.objectContaining({
+						'content-type': 'application/json',
+					}),
+				}),
+			);
+		});
+
+		test('should handle form data', () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const requestOptions: IHttpRequestOptions = {
+				method: 'POST',
+				url: 'https://example.com',
+				body: formData,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect(axiosConfig).toEqual(
+				expect.objectContaining({
+					method: 'POST',
+					data: formData,
+					headers: expect.objectContaining({
+						...formData.getHeaders(),
+						'User-Agent': 'n8n',
+					}),
+				}),
+			);
+		});
+
+		test('should handle disable follow redirect', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				disableFollowRedirect: true,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect(axiosConfig.maxRedirects).toBe(0);
+		});
+
+		test('should handle SSL certificate validation', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				skipSslCertificateValidation: true,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect(axiosConfig.httpsAgent?.options.rejectUnauthorized).toBe(false);
+		});
+	});
+
+	describe('applyPaginationRequestData', () => {
+		test('should merge pagination request data with original request options', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+				qs: { page: 1 },
+				headers: { 'X-Original-Header': 'original' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+				headers: { 'X-Pagination-Header': 'pagination' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'GET',
+				qs: { page: 1 },
+				headers: {
+					'X-Original-Header': 'original',
+					'X-Pagination-Header': 'pagination',
+				},
+				body: { key: 'value' },
+			});
+		});
+
+		test('should handle formData correctly', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				formData: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				formData: { key: 'value', original: 'data' },
+			});
+		});
+
+		test('should handle form data correctly', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				form: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				form: { key: 'value', original: 'data' },
+			});
+		});
+
+		test('should prefer pagination body over original body', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				body: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				body: { key: 'value', original: 'data' },
+			});
+		});
+
+		test('should merge complex request options', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+				qs: { page: 1, limit: 10 },
+				headers: { 'X-Original-Header': 'original' },
+				body: { filter: 'active' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+				headers: { 'X-Pagination-Header': 'pagination' },
+				qs: { offset: 20 },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'GET',
+				qs: { offset: 20, limit: 10, page: 1 },
+				headers: {
+					'X-Original-Header': 'original',
+					'X-Pagination-Header': 'pagination',
+				},
+				body: { key: 'value', filter: 'active' },
+			});
+		});
+
+		test('should handle edge cases with empty pagination data', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://original.com/api',
+				method: 'GET',
+			});
+		});
+	});
+
+	describe('httpRequest', () => {
+		const baseUrl = 'https://example.com';
+
+		beforeEach(() => {
+			nock.cleanAll();
+		});
+
+		test('should make a simple GET request', async () => {
+			const scope = nock(baseUrl)
+				.get('/users')
+				.reply(200, { users: ['John', 'Jane'] });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/users`,
+			});
+
+			expect(response).toEqual({ users: ['John', 'Jane'] });
+			scope.done();
+		});
+
+		test('should make a POST request with JSON body', async () => {
+			const requestBody = { name: 'John', age: 30 };
+			const scope = nock(baseUrl)
+				.post('/users', requestBody)
+				.reply(201, { id: '123', ...requestBody });
+
+			const response = await httpRequest({
+				method: 'POST',
+				url: `${baseUrl}/users`,
+				body: requestBody,
+				json: true,
+			});
+
+			expect(response).toEqual({ id: '123', name: 'John', age: 30 });
+			scope.done();
+		});
+
+		test('should return full response when returnFullResponse is true', async () => {
+			const scope = nock(baseUrl).get('/data').reply(
+				200,
+				{ key: 'value' },
+				{
+					'X-Custom-Header': 'test-header',
+				},
+			);
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/data`,
+				returnFullResponse: true,
+			});
+
+			expect(response).toEqual({
+				body: { key: 'value' },
+				headers: expect.objectContaining({
+					'x-custom-header': 'test-header',
+				}),
+				statusCode: 200,
+				statusMessage: 'OK',
+			});
+			scope.done();
+		});
+
+		test('should handle form data request', async () => {
+			const formData = new FormData();
+			formData.append('file', 'test content', 'file.txt');
+
+			const scope = nock(baseUrl)
+				.post('/upload')
+				.matchHeader('content-type', /multipart\/form-data; boundary=/)
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'POST',
+				url: `${baseUrl}/upload`,
+				body: formData,
+			});
+
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		test('should handle query parameters', async () => {
+			const scope = nock(baseUrl)
+				.get('/search')
+				.query({ q: 'test', page: '1' })
+				.reply(200, { results: ['result1', 'result2'] });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/search`,
+				qs: { q: 'test', page: '1' },
+			});
+
+			expect(response).toEqual({ results: ['result1', 'result2'] });
+			scope.done();
+		});
+
+		test('should ignore HTTP status errors when configured', async () => {
+			const scope = nock(baseUrl).get('/error').reply(500, { error: 'Internal Server Error' });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/error`,
+				ignoreHttpStatusErrors: true,
+			});
+
+			expect(response).toEqual({ error: 'Internal Server Error' });
+			scope.done();
+		});
+
+		test('should handle different array formats in query parameters', async () => {
+			const scope = nock(baseUrl)
+				.get('/list')
+				.query({
+					tags: ['tag1', 'tag2'],
+					categories: ['cat1', 'cat2'],
+				})
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/list`,
+				qs: {
+					tags: ['tag1', 'tag2'],
+					categories: ['cat1', 'cat2'],
+				},
+				arrayFormat: 'indices',
+			});
+
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		test('should remove empty body for GET requests', async () => {
+			const scope = nock(baseUrl).get('/data').reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/data`,
+				body: {},
+			});
+
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		test('should set default user agent', async () => {
+			const scope = nock(baseUrl, {
+				reqheaders: {
+					'user-agent': 'n8n',
+				},
+			})
+				.get('/test')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/test`,
+			});
+
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		test('should respect custom headers', async () => {
+			const scope = nock(baseUrl, {
+				reqheaders: {
+					'X-Custom-Header': 'custom-value',
+					'user-agent': 'n8n',
+				},
+			})
+				.get('/test')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/test`,
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
+
+			expect(response).toEqual({ success: true });
+			scope.done();
 		});
 	});
 });
