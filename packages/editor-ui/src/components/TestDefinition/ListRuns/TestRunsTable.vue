@@ -44,14 +44,14 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 		{
 			prop: 'status',
 			label: locale.baseText('testDefinition.listRuns.status'),
-			filters: [
-				{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
-				{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
-				{ text: locale.baseText('testDefinition.listRuns.status.completed'), value: 'completed' },
-				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
-				{ text: locale.baseText('testDefinition.listRuns.status.cancelled'), value: 'cancelled' },
-			],
-			filterMethod: (value: string, row: TestRunRecord) => row.status === value,
+			// filters: [
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.completed'), value: 'completed' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
+			// 	{ text: locale.baseText('testDefinition.listRuns.status.cancelled'), value: 'cancelled' },
+			// ],
+			// filterMethod: (value: string, row: TestRunRecord) => row.status === value,
 		},
 		{
 			prop: 'date',
@@ -66,7 +66,7 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 			prop: `metrics.${metric}`,
 			label: metric,
 			sortable: true,
-			formatter: (row: TestRunRecord) => `${row.metrics?.[metric]?.toFixed(2) ?? '-'}`,
+			formatter: (row: TestRunRecord) => (row.metrics?.[metric] ?? 0).toFixed(2),
 		})),
 	];
 });
@@ -84,7 +84,7 @@ async function deleteRuns() {
 <template>
 	<div :class="$style.container">
 		<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
-			locale.baseText('testDefinition.edit.pastRuns')
+			locale.baseText('testDefinition.edit.pastRuns.total', { adjustToNumber: runs.length })
 		}}</N8nHeading>
 		<div :class="$style.header">
 			<n8n-button
@@ -103,6 +103,7 @@ async function deleteRuns() {
 				}}
 			</n8n-button>
 		</div>
+
 		<TestTableBase
 			:data="runs"
 			:columns="columns"
@@ -110,9 +111,6 @@ async function deleteRuns() {
 			@row-click="navigateToRunDetail"
 			@selection-change="onSelectionChange"
 		/>
-		<N8nText :class="$style.runsTableTotal">{{
-			locale.baseText('testDefinition.edit.pastRuns.total', { adjustToNumber: runs.length })
-		}}</N8nText>
 	</div>
 </template>
 

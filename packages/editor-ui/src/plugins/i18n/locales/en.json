@@ -2880,7 +2880,7 @@
 	"testDefinition.listRuns.status.success": "Success",
 	"testDefinition.listRuns.metricsOverTime": "Metrics over time",
 	"testDefinition.listRuns.status": "Status",
-	"testDefinition.listRuns.runNumber": "Run #",
+	"testDefinition.listRuns.runNumber": "Run",
 	"testDefinition.listRuns.runDate": "Run date",
 	"testDefinition.listRuns.runStatus": "Run status",
 	"testDefinition.listRuns.noRuns": "No test runs",

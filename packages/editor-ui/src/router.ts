@@ -295,6 +295,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: ':testId/runs',
 				name: VIEWS.TEST_DEFINITION_RUNS,
+				props: true,
 				components: {
 					default: TestDefinitionRunsListView,
 				},
@@ -302,6 +303,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: ':testId/runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+				props: true,
 				components: {
 					default: TestDefinitionRunDetailView,
 				},
