@@ -287,12 +287,13 @@ export async function presendGroupFields(
 	if (url.includes('CreateGroup')) {
 		groupName = this.getNodeParameter('NewName') as string;
 		const groupPattern = /^[+=,.@\\-_A-Za-z0-9]+$/;
-		if (groupPattern.test(groupName)) {
+		if (groupPattern.test(groupName) && groupName.length <= 128) {
 			url += `&GroupName=${groupName}`;
 		} else {
 			const specificError = {
 				message: 'Invalid group name provided',
-				description: "The group name not contain spaces. Valid characters: '+=,.@-_' characters.",
+				description:
+					"The group name can have up to 128 characters. Valid characters: '+=,.@-_' characters.",
 			};
 			throw new NodeApiError(this.getNode(), {}, specificError);
 		}

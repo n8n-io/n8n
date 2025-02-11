@@ -268,7 +268,7 @@ const getFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Include User List',
+		displayName: 'Include Users',
 		name: 'includeUsers',
 		type: 'boolean',
 		displayOptions: {
@@ -322,7 +322,7 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Include User List',
+		displayName: 'Include Users',
 		name: 'includeUsers',
 		type: 'boolean',
 		displayOptions: {
