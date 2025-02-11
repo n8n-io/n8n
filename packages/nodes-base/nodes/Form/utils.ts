@@ -190,6 +190,7 @@ export function prepareFormData({
 export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const nodeVersion = context.getNode().typeVersion;
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
@@ -206,11 +207,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		);
 	}
 
-	if (
-		isRespondToWebhookConnected &&
-		responseMode !== 'responseNode' &&
-		context.getNode().typeVersion <= 2.1
-	) {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(`${context.getNode().name} node not correctly configured`),
@@ -221,7 +218,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		);
 	}
 
-	if (isRespondToWebhookConnected) {
+	if (isRespondToWebhookConnected && nodeVersion > 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(
