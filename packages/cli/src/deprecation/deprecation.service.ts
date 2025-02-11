@@ -60,7 +60,9 @@ export class DeprecationService {
 		this.deprecations.forEach((d) => {
 			const envValue = process.env[d.envVar];
 			this.state[d.envVar] = {
-				mustWarn: d.checkValue ? d.checkValue(envValue) : envValue !== undefined,
+				mustWarn:
+					(d.warnIfMissing !== undefined && envValue === undefined) ||
+					(d.checkValue ? d.checkValue(envValue) : envValue !== undefined),
 			};
 		});
 
