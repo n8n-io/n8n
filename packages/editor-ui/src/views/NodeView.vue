@@ -1700,7 +1700,12 @@ export default defineComponent({
 					oldPosition[1] !== updateInformation.properties.position[1]
 				) {
 					this.historyStore.pushCommandToUndo(
-						new MoveNodeCommand(nodeName, oldPosition, updateInformation.properties.position),
+						new MoveNodeCommand(
+							nodeName,
+							oldPosition,
+							updateInformation.properties.position,
+							Date.now(),
+						),
 						recordHistory,
 					);
 				}
@@ -2914,7 +2919,9 @@ export default defineComponent({
 				if (!this.isLoading) {
 					this.uiStore.stateIsDirty = true;
 					if (!this.suspendRecordingDetachedConnections) {
-						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
+						this.historyStore.pushCommandToUndo(
+							new AddConnectionCommand(connectionData, Date.now()),
+						);
 					}
 					// When we add multiple nodes, this event could be fired hundreds of times for large workflows.
 					// And because the updateNodesInputIssues() method is quite expensive, we only call it if not in insert mode
@@ -3103,7 +3110,9 @@ export default defineComponent({
 						.overrideTargetEndpoint as Endpoint | null;
 
 					if (connectionInfo) {
-						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
+						this.historyStore.pushCommandToUndo(
+							new RemoveConnectionCommand(connectionInfo, Date.now()),
+						);
 					}
 					this.connectTwoNodes(
 						sourceNodeName,
@@ -3122,7 +3131,7 @@ export default defineComponent({
 				) {
 					// Ff connection being detached by user, save this in history
 					// but skip if it's detached as a side effect of bulk undo/redo or node rename process
-					const removeCommand = new RemoveConnectionCommand(connectionInfo);
+					const removeCommand = new RemoveConnectionCommand(connectionInfo, Date.now());
 					this.historyStore.pushCommandToUndo(removeCommand);
 				}
 
@@ -3719,7 +3728,7 @@ export default defineComponent({
 				// Remove node from selected index if found in it
 				this.uiStore.removeNodeFromSelection(node);
 				if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node));
+					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
 				}
 			}); // allow other events to finish like drag stop
 
@@ -3818,7 +3827,9 @@ export default defineComponent({
 			workflow.renameNode(currentName, newName);
 
 			if (trackHistory) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName));
+				this.historyStore.pushCommandToUndo(
+					new RenameNodeCommand(currentName, newName, Date.now()),
+				);
 			}
 
 			// Update also last selected node and execution data

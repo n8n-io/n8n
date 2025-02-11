@@ -37,6 +37,15 @@ import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { computed } from 'vue';
+import type { CanvasNodeDirtiness } from '@/types';
+import {
+	BulkCommand,
+	EnableNodeToggleCommand,
+	RemoveConnectionCommand,
+	type Undoable,
+} from '@/models/history';
+import { useHistoryStore } from '@/stores/history.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -49,6 +58,91 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
+	const historyStore = useHistoryStore();
+	const settingsStore = useSettingsStore();
+
+	const dirtinessByName = computed(() => {
+		// Do not highlight dirtiness if new partial execution is not enabled
+		if (settingsStore.partialExecutionVersion === 1) {
+			return {};
+		}
+
+		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
+		const visitedNodes: Set<string> = new Set();
+		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
+
+		function markDownstreamStaleRecursively(nodeName: string): void {
+			if (visitedNodes.has(nodeName)) {
+				return; // prevent infinite recursion
+			}
+
+			visitedNodes.add(nodeName);
+
+			for (const inputConnections of Object.values(
+				workflowsStore.outgoingConnectionsByNodeName(nodeName),
+			)) {
+				for (const connections of inputConnections) {
+					for (const { node } of connections ?? []) {
+						const hasRunData = (runDataByNode[node] ?? []).length > 0;
+
+						if (hasRunData) {
+							dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
+						}
+
+						markDownstreamStaleRecursively(node);
+					}
+				}
+			}
+		}
+
+		function shouldMarkDirty(command: Undoable, nodeName: string): boolean {
+			if (command instanceof BulkCommand) {
+				return command.commands.some((c) => shouldMarkDirty(c, nodeName));
+			}
+
+			if (command instanceof RemoveConnectionCommand) {
+				return command.connectionData[1]?.node === nodeName;
+			}
+
+			if (command instanceof EnableNodeToggleCommand) {
+				debugger;
+				return command.nodeName === nodeName;
+			}
+
+			return false;
+		}
+
+		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
+			const runAt = taskData[0]?.startTime;
+
+			if (!runAt) {
+				continue;
+			}
+
+			const parametersLastUpdate = workflowsStore.getParametersLastUpdate(nodeName);
+
+			if (parametersLastUpdate && parametersLastUpdate > runAt) {
+				dirtiness[nodeName] = 'dirty';
+				markDownstreamStaleRecursively(nodeName);
+				continue;
+			}
+
+			const incomingConnectionsLastUpdate = Math.max(
+				0,
+				...historyStore.undoStack.flatMap((command) =>
+					shouldMarkDirty(command, nodeName) ? [command.getTimestamp()] : [],
+				),
+			);
+
+			if (incomingConnectionsLastUpdate > runAt) {
+				dirtiness[nodeName] = 'incoming-connections-changed';
+				markDownstreamStaleRecursively(nodeName);
+			}
+		}
+
+		return dirtiness;
+	});
+
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (!pushConnectionStore.isConnected) {
@@ -245,7 +339,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
-			const settingsStore = useSettingsStore();
 			const version = settingsStore.partialExecutionVersion;
 			const startRunData: IStartRunData = {
 				workflowData,
@@ -269,9 +362,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 
 			if (startRunData.runData) {
-				const nodeNames = Object.entries(workflowsStore.dirtinessByName).flatMap(
-					([nodeName, dirtiness]) =>
-						dirtiness === 'incoming-connections-changed' || dirtiness === 'dirty' ? [nodeName] : [],
+				const nodeNames = Object.entries(dirtinessByName).flatMap(([nodeName, dirtiness]) =>
+					dirtiness === 'incoming-connections-changed' || dirtiness === 'dirty' ? [nodeName] : [],
 				);
 
 				startRunData.dirtyNodeNames = nodeNames.length > 0 ? nodeNames : undefined;
@@ -451,6 +543,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	return {
+		dirtinessByName,
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
 		runWorkflowApi,

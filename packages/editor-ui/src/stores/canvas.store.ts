@@ -294,7 +294,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 							const oldPosition = node.position;
 							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
 								historyStore.pushCommandToUndo(
-									new MoveNodeCommand(node.name, oldPosition, newNodePosition),
+									new MoveNodeCommand(node.name, oldPosition, newNodePosition, Date.now()),
 								);
 								workflowStore.updateNodeProperties(updateInformation);
 							}

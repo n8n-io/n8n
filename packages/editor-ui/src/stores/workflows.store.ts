@@ -89,7 +89,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
-import { type CanvasNodeDirtiness } from '@/types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -274,64 +273,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
-	const dirtinessByName = computed(() => {
-		// Do not highlight dirtiness if new partial execution is not enabled
-		if (settingsStore.partialExecutionVersion === 1) {
-			return {};
-		}
-
-		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
-		const visitedNodes: Set<string> = new Set();
-		const runDataByNode = workflowExecutionData.value?.data?.resultData.runData ?? {};
-
-		function markDownstreamStaleRecursively(nodeName: string): void {
-			if (visitedNodes.has(nodeName)) {
-				return; // prevent infinite recursion
-			}
-
-			visitedNodes.add(nodeName);
-
-			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
-				for (const connections of inputConnections) {
-					for (const { node } of connections ?? []) {
-						const hasRunData = (runDataByNode[node] ?? []).length > 0;
-
-						if (hasRunData) {
-							dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
-						}
-
-						markDownstreamStaleRecursively(node);
-					}
-				}
-			}
-		}
-
-		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
-			const runAt = taskData[0]?.startTime;
-
-			if (!runAt) {
-				continue;
-			}
-
-			const parametersLastUpdate = getParametersLastUpdate(nodeName);
-
-			if (parametersLastUpdate && parametersLastUpdate > runAt) {
-				dirtiness[nodeName] = 'dirty';
-				markDownstreamStaleRecursively(nodeName);
-				continue;
-			}
-
-			const incomingConnectionsLastUpdate = getIncomingConnectionsLastUpdate(nodeName);
-
-			if (incomingConnectionsLastUpdate && incomingConnectionsLastUpdate > runAt) {
-				dirtiness[nodeName] = 'incoming-connections-changed';
-				markDownstreamStaleRecursively(nodeName);
-			}
-		}
-
-		return dirtiness;
-	});
-
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
 			return null;
@@ -385,10 +326,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getParametersLastUpdate(nodeName: string): number | undefined {
 		return nodeMetadata.value[nodeName]?.parametersLastUpdatedAt;
-	}
-
-	function getIncomingConnectionsLastUpdate(nodeName: string): number | undefined {
-		return nodeMetadata.value[nodeName]?.incomingConnectionsLastUpdatedAt;
 	}
 
 	function isNodePristine(nodeName: string): boolean {
@@ -1011,8 +948,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				connections.splice(parseInt(index, 10), 1);
 			}
 		}
-
-		nodeMetadata.value[destinationData.node].incomingConnectionsLastUpdatedAt = Date.now();
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
@@ -1244,20 +1179,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				const property = updateInformation.properties[typedKey];
 
 				updateNodeAtIndex(nodeIndex, { [key]: property });
-			}
-
-			if (updateInformation.properties.disabled !== undefined) {
-				const outgoingConnections = Object.values(
-					outgoingConnectionsByNodeName(updateInformation.name),
-				);
-
-				for (const nodeConnections of outgoingConnections) {
-					for (const connections of nodeConnections) {
-						for (const { node } of connections ?? []) {
-							nodeMetadata.value[node].incomingConnectionsLastUpdatedAt = Date.now();
-						}
-					}
-				}
 			}
 		}
 	}
@@ -1733,7 +1654,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		isChatPanelOpen: computed(() => isChatPanelOpen.value),
 		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
-		dirtinessByName,
 		setPanelOpen,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
@@ -1744,7 +1664,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodeById,
 		getNodesByIds,
 		getParametersLastUpdate,
-		getIncomingConnectionsLastUpdate,
 		isNodePristine,
 		isNodeExecuting,
 		getExecutionDataById,

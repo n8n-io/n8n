@@ -765,7 +765,7 @@ const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation)
 
 const nameChanged = (name: string) => {
 	if (node.value) {
-		historyStore.pushCommandToUndo(new RenameNodeCommand(node.value.name, name));
+		historyStore.pushCommandToUndo(new RenameNodeCommand(node.value.name, name, Date.now()));
 	}
 	valueChanged({
 		value: name,

@@ -846,7 +846,6 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
-	incomingConnectionsLastUpdatedAt?: number;
 	pristine: boolean;
 }
 
