@@ -46,7 +46,7 @@ export class DeprecationService {
 			envVar: 'N8N_RUNNERS_ENABLED',
 			message:
 				'Running n8n without task runners is deprecated. Task runners will be turned on by default in a future version. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners now and avoid potential issues in the future. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/',
-			checkValue: (value?: string) => value !== 'true',
+			checkValue: (value?: string) => value !== 'true' && value !== '1',
 			warnIfMissing: true,
 		},
 	];
