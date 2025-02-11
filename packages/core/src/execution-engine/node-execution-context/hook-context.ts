@@ -12,13 +12,10 @@ import type {
 import { ApplicationError } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import {
-	getNodeWebhookUrl,
-	getRequestHelperFunctions,
-	getWebhookDescription,
-} from '@/node-execute-functions';
+import { getRequestHelperFunctions } from '@/node-execute-functions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getNodeWebhookUrl, getWebhookDescription } from './utils/webhook-helper-functions';
 
 export class HookContext extends NodeExecutionContext implements IHookFunctions {
 	readonly helpers: IHookFunctions['helpers'];
