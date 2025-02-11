@@ -296,7 +296,7 @@ function isValidProjectId(projectId: string) {
 }
 
 const setFiltersFromQueryString = async () => {
-	const { tags, status, search, homeProject } = route.query ?? {};
+	const { tags, status, search, homeProject, sort } = route.query ?? {};
 
 	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
@@ -328,6 +328,11 @@ const setFiltersFromQueryString = async () => {
 
 	if (Object.keys(filtersToApply).length) {
 		Object.assign(filters.value, filtersToApply);
+	}
+
+	if (sort && typeof sort === 'string') {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 	}
 
 	void router.replace({ query: pickBy(route.query) });
@@ -370,6 +375,11 @@ const dismissEasyAICallout = () => {
 const onSortUpdated = async (sort: string) => {
 	currentSort.value =
 		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	if (currentSort.value !== 'updatedAt:desc') {
+		void router.replace({ query: { ...route.query, sort } });
+	} else {
+		void router.replace({ query: { ...route.query, sort: undefined } });
+	}
 	await fetchWorkflows();
 };
 </script>

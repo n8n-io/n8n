@@ -444,6 +444,10 @@ const loadPaginationFromQueryString = async () => {
 		// Round to the nearest available page size, this will prevent users from passing arbitrary values
 		await setRowsPerPage(findNearestPageSize(parsedSize));
 	}
+
+	if (query.sort) {
+		sortBy.value = query.sort as string;
+	}
 };
 </script>
 
@@ -659,7 +663,6 @@ const loadPaginationFromQueryString = async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-m);
-	max-height: 100%;
 
 	.listItems {
 		overflow: auto;
