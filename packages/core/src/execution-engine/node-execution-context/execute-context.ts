@@ -27,7 +27,6 @@ import {
 import {
 	copyInputItems,
 	normalizeItems,
-	constructExecutionMetaData,
 	getRequestHelperFunctions,
 	getSSHTunnelFunctions,
 } from '@/node-execute-functions';
@@ -40,6 +39,7 @@ import {
 	getBinaryHelperFunctions,
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
+import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';

@@ -12,6 +12,7 @@ export { SupplyDataContext } from './supply-data-context';
 export { TriggerContext } from './trigger-context';
 export { WebhookContext } from './webhook-context';
 
+export { constructExecutionMetaData } from './utils/construct-execution-metadata';
 export { getAdditionalKeys } from './utils/get-additional-keys';
 export { parseIncomingMessage } from './utils/parse-incoming-message';
 export { parseRequestObject } from './utils/parse-request-object';
