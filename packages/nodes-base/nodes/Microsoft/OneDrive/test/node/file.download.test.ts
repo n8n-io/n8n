@@ -69,7 +69,7 @@ describe('Test MicrosoftOneDrive, file > download', () => {
 		});
 		expect(prepareBinaryData).toHaveBeenCalledTimes(1);
 		expect(result).toEqual([
-			[{ binary: { data: { data: 'testBibary' } }, json: { data: 'test' } }],
+			[{ binary: { data: { data: 'testBinary' } }, json: { data: 'test' } }],
 		]);
 	});
 });
