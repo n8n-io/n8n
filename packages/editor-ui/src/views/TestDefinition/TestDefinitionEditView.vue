@@ -167,7 +167,10 @@ function toggleConfig() {
 }
 
 async function getExamplePinnedDataForTags() {
-	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(testId.value);
+	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(
+		testId.value,
+		state.value.tags.value[0],
+	);
 
 	if (exampleInput !== null) {
 		examplePinnedData.value = {
@@ -186,7 +189,7 @@ watch(
 	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
 	{ deep: true },
 );
-watch(() => state.value.tags, getExamplePinnedDataForTags);
+watch(() => state.value.tags.value, getExamplePinnedDataForTags);
 watch(
 	() => [
 		state.value.description,

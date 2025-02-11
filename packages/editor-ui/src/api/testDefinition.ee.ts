@@ -123,11 +123,15 @@ export async function deleteTestDefinition(context: IRestApiContext, id: string)
 	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
 }
 
-export async function getExampleEvaluationInput(context: IRestApiContext, id: string) {
+export async function getExampleEvaluationInput(
+	context: IRestApiContext,
+	testDefinitionId: string,
+	annotationTagId: string,
+) {
 	return await makeRestApiRequest<Record<string, unknown> | null>(
 		context,
 		'GET',
-		`${endpoint}/${id}/example-evaluation-input`,
+		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
 	);
 }
 

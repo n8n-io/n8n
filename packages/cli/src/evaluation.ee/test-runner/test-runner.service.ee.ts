@@ -492,15 +492,17 @@ export class TestRunnerService {
 	 * Returns the example evaluation WF input for the test definition.
 	 * It uses the latest execution of a workflow under test as a source and formats it
 	 * the same way as the evaluation input would be formatted.
+	 * We explicitly provide annotation tag here (and DO NOT use the one from DB), because the test definition
+	 * might not be saved to the DB with the updated annotation tag at the moment we need to get the example data.
 	 */
-	async getExampleEvaluationInputData(test: TestDefinition) {
+	async getExampleEvaluationInputData(test: TestDefinition, annotationTagId: string) {
 		// Select the id of latest execution with the annotation tag and workflow ID of the test
 		const lastPastExecution: Pick<ExecutionEntity, 'id'> | null = await this.executionRepository
 			.createQueryBuilder('execution')
 			.select('execution.id')
 			.leftJoin('execution.annotation', 'annotation')
 			.leftJoin('annotation.tags', 'annotationTag')
-			.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
+			.where('annotationTag.id = :tagId', { tagId: annotationTagId })
 			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 			.orderBy('execution.createdAt', 'DESC')
 			.getOne();

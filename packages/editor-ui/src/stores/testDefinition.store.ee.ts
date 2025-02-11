@@ -221,8 +221,12 @@ export const useTestDefinitionStore = defineStore(
 			}
 		};
 
-		const fetchExampleEvaluationInput = async (testId: string) => {
-			return await testDefinitionsApi.getExampleEvaluationInput(rootStore.restApiContext, testId);
+		const fetchExampleEvaluationInput = async (testId: string, annotationTagId: string) => {
+			return await testDefinitionsApi.getExampleEvaluationInput(
+				rootStore.restApiContext,
+				testId,
+				annotationTagId,
+			);
 		};
 
 		/**
