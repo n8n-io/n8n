@@ -28,7 +28,7 @@ describe('Test MicrosoftOneDrive, file > download', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	let microsoftOneDrive: MicrosoftOneDrive;
 	const httpRequest = jest.fn(async () => ({ body: mock<IncomingMessage>() }));
-	const prepareBinaryData = jest.fn(async () => ({ data: 'testBibary' }));
+	const prepareBinaryData = jest.fn(async () => ({ data: 'testBinary' }));
 
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
