@@ -430,7 +430,9 @@ describe('RunData', () => {
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
-		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item View sub-execution 123');
+		expect(getByTestId('ndv-items-count')).toHaveTextContent(
+			'1 item, 1 sub-execution View sub-execution',
+		);
 
 		getByTestId('related-execution-link').click();
 		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
