@@ -58,12 +58,23 @@ export class SupabaseApi implements ICredentialType {
 			},
 			url: '/',
 		},
+		// [ria] this does not catch the error when schema is not found (406 - Not Acceptable) - need to put that in the docs! to expose the schema
+		// rules: [
+		// 	{
+		// 		type: 'responseSuccessBody',
+		// 		properties: {
+		// 			key: 'error',
+		// 			value: 'invalid_auth',
+		// 			message: 'Invalid access token',
+		// 		},
+		// 	},
+		// ],
 	};
 }
 
 /**
  * cURL
- * 
+ *
 # Append /rest/v1/ to your URL, and then use the table name as the route.
 
 # for GET or HEAD request use Accept-Profile
