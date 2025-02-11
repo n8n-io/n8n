@@ -281,15 +281,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
-		const visitedByName: Record<string, true | undefined> = {};
+		const visitedNodes: Set<string> = new Set();
 		const runDataByNode = workflowExecutionData.value?.data?.resultData.runData ?? {};
 
 		function markDownstreamStaleRecursively(nodeName: string): void {
-			if (visitedByName[nodeName]) {
+			if (visitedNodes.has(nodeName)) {
 				return; // prevent infinite recursion
 			}
 
-			visitedByName[nodeName] = true;
+			visitedNodes.add(nodeName);
 
 			for (const inputConnections of Object.values(outgoingConnectionsByNodeName(nodeName))) {
 				for (const connections of inputConnections) {
