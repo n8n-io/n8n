@@ -20,7 +20,7 @@ type Deprecation = {
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
 
-/** Responsible for warning about use of deprecated env vars. */
+/** Responsible for warning about deprecations related to env vars. */
 @Service()
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
