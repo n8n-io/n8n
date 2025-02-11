@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflows,
@@ -82,6 +83,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	async init() {
@@ -419,43 +421,51 @@ export class ActiveWorkflowManager {
 			this.logger.info(' ================================');
 		}
 
-		for (const dbWorkflow of dbWorkflows) {
-			try {
-				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
-					shouldPublish: false,
-				});
+		const { activationBatchSize } = this.workflowsConfig;
 
-				if (wasActivated) {
-					this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
-						workflowName: dbWorkflow.name,
-						workflowId: dbWorkflow.id,
+		for (let i = 0; i < dbWorkflows.length; i += activationBatchSize) {
+			const batch = dbWorkflows.slice(i, i + activationBatchSize);
+
+			const activationPromises = batch.map(async (dbWorkflow) => {
+				try {
+					const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
+						shouldPublish: false,
 					});
-					this.logger.info('     => Started');
+					if (wasActivated) {
+						this.logger.info(`   - ${dbWorkflow.display()})`);
+						this.logger.info('     => Started');
+						this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
+							workflowName: dbWorkflow.name,
+							workflowId: dbWorkflow.id,
+						});
+					}
+				} catch (error) {
+					this.errorReporter.error(error);
+					this.logger.info(
+						`     => ERROR: Workflow ${dbWorkflow.display()} could not be activated on first try, keep on trying if not an auth issue`,
+					);
+
+					this.logger.info(`               ${error.message}`);
+					this.logger.error(
+						`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
+						{
+							workflowName: dbWorkflow.name,
+							workflowId: dbWorkflow.id,
+						},
+					);
+
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+
+					// do not keep trying to activate on authorization error
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					if (error.message.includes('Authorization')) return;
+
+					this.addQueuedWorkflowActivation('init', dbWorkflow);
 				}
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.info(
-					'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
-				);
+			});
 
-				this.logger.info(`               ${error.message}`);
-				this.logger.error(
-					`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
-					{
-						workflowName: dbWorkflow.name,
-						workflowId: dbWorkflow.id,
-					},
-				);
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				this.executeErrorWorkflow(error, dbWorkflow, 'internal');
-
-				// do not keep trying to activate on authorization error
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				if (error.message.includes('Authorization')) continue;
-
-				this.addQueuedWorkflowActivation('init', dbWorkflow);
-			}
+			await Promise.all(activationPromises);
 		}
 
 		this.logger.debug('Finished activating workflows (startup)');
@@ -533,7 +543,6 @@ export class ActiveWorkflowManager {
 			}
 
 			if (shouldDisplayActivationMessage) {
-				this.logger.info(`   - ${dbWorkflow.display()}`);
 				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
