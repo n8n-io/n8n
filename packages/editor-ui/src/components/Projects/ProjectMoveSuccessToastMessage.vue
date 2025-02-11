@@ -25,12 +25,13 @@ const projectName = computed(() => {
 	const { name, email } = splitName(props.targetProject?.name ?? '');
 	return truncate(name ?? email ?? '', 25);
 });
+const resourceName = computed(() => truncate(props.resource.name, 25));
 </script>
 <template>
 	<i18n-t keypath="projects.move.resource.success.message">
 		<template #resourceTypeLabel>{{ props.resourceTypeLabel }}</template>
 		<template #resourceName
-			><strong>{{ props.resource.name }}</strong></template
+			><strong>{{ resourceName }}</strong></template
 		>
 		<template #targetProjectName
 			><strong>{{ projectName }}</strong></template
