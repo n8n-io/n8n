@@ -73,9 +73,11 @@ export class TestRunsController {
 
 	@Get('/:testDefinitionId/runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
+		const { testDefinitionId, id } = req.params;
+
 		await this.getTestDefinition(req);
 
-		return await this.getTestRun(req);
+		return await this.testRunRepository.getTestRunSummaryById(testDefinitionId, id);
 	}
 
 	@Get('/:testDefinitionId/runs/:id/cases')
