@@ -43,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -144,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
