@@ -20,7 +20,7 @@ import type {
 import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions, normalizeItems } from '@/node-execute-functions';
+import { getRequestHelperFunctions } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -34,6 +34,7 @@ import { copyInputItems } from './utils/copy-input-items';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { normalizeItems } from './utils/normalize-items';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
