@@ -53,7 +53,6 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 		qs,
 	);
 
-	// Handle cases where no groups are found
 	if (!responseData || responseData.length === 0) {
 		return { results: [] };
 	}
@@ -83,13 +82,12 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 		qs,
 	);
 
-	// Handle cases where no devices are found
-	if (!responseData || responseData.length === 0) {
+	if (!responseData || !responseData.chromeosdevices || responseData.chromeosdevices.length === 0) {
 		return { results: [] };
 	}
 
 	// Map the API response
-	const results: INodeListSearchItems[] = responseData.map(
+	const results: INodeListSearchItems[] = responseData.chromeosdevices.map(
 		(device: { deviceId?: string; serialNumber?: string }) => ({
 			name: device.serialNumber || 'Unknown Device',
 			value: device.deviceId,
