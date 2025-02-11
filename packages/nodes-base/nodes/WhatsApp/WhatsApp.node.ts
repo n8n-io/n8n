@@ -31,6 +31,7 @@ export class WhatsApp implements INodeType {
 		defaults: {
 			name: 'WhatsApp Business Cloud',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		webhooks: sendAndWaitWebhooksDescription,

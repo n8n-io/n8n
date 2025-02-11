@@ -38,6 +38,13 @@ vi.mock('@/composables/useToast', () => {
 		},
 	};
 });
+
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+	}),
+}));
+
 // Test data
 const mockNodes: INodeUi[] = [
 	{

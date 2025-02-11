@@ -45,6 +45,7 @@ export class Magento2 implements INodeType {
 		defaults: {
 			name: 'Magento 2',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

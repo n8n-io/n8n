@@ -25,11 +25,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Set release version in env
@@ -160,6 +164,14 @@ jobs:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
           version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
+
+      - name: Create a task runner release
+        uses: getsentry/action-release@v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist packages/@n8n/task-runner/dist
 
   trigger-release-note:
     name: Trigger a release note

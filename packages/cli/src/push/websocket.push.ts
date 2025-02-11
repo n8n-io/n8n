@@ -1,3 +1,4 @@
+import { heartbeatMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 import type WebSocket from 'ws';
@@ -18,11 +19,19 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 		super.add(pushRef, userId, connection);
 
-		const onMessage = (data: WebSocket.RawData) => {
+		const onMessage = async (data: WebSocket.RawData) => {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+				const msg: unknown = JSON.parse(buffer.toString('utf8'));
 
-				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
+				// Client sends application level heartbeat messages to react
+				// to connection issues. This is in addition to the protocol
+				// level ping/pong mechanism used by the server.
+				if (await this.isClientHeartbeat(msg)) {
+					return;
+				}
+
+				this.onMessageReceived(pushRef, msg);
 			} catch (error) {
 				this.errorReporter.error(
 					new ApplicationError('Error parsing push message', {
@@ -66,5 +75,11 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		}
 		connection.isAlive = false;
 		connection.ping();
+	}
+
+	private async isClientHeartbeat(msg: unknown) {
+		const result = await heartbeatMessageSchema.safeParseAsync(msg);
+
+		return result.success;
 	}
 }

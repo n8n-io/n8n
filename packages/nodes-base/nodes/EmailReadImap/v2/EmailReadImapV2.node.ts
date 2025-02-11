@@ -85,7 +85,7 @@ const versionDescription: INodeTypeDescription = {
 		activationHint:
 			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 	},
-
+	usableAsTool: true,
 	inputs: [],
 	outputs: [NodeConnectionType.Main],
 	credentials: [

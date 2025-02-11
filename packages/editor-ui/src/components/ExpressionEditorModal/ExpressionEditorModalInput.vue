@@ -4,7 +4,6 @@ import { Prec } from '@codemirror/state';
 import { dropCursor, EditorView, keymap } from '@codemirror/view';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { forceParse } from '@/utils/forceParse';
 import { inputTheme } from './theme';
@@ -15,6 +14,7 @@ import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
+import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
 
 type Props = {
 	modelValue: string;
@@ -41,7 +41,7 @@ const extensions = computed(() => [
 	mappingDropCursor(),
 	dropCursor(),
 	history(),
-	expressionInputHandler(),
+	expressionCloseBrackets(),
 	EditorView.lineWrapping,
 	EditorView.domEventHandlers({ scroll: (_, view) => forceParse(view) }),
 	infoBoxTooltips(),

@@ -2822,6 +2822,32 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('toggleChatOpen', () => {
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `true` if the chat panel is closed', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = false;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', true);
+		});
+
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `false` if the chat panel is open', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = true;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', false);
+		});
+	});
 });
 
 function buildImportNodes() {

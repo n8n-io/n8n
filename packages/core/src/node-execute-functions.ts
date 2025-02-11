@@ -14,31 +14,20 @@ import type {
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
-import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
-import chardet from 'chardet';
 import crypto, { createHmac } from 'crypto';
-import FileType from 'file-type';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
-import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { extension, lookup } from 'mime-types';
 import type {
-	BinaryHelperFunctions,
-	FileSystemHelperFunctions,
-	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
-	IBinaryData,
 	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -52,13 +41,11 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	IRunExecutionData,
-	ITaskDataConnections,
 	ITriggerFunctions,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionWithMetadata,
-	NodeHelperFunctions,
 	NodeParameterValueType,
 	PaginationOptions,
 	RequestHelperFunctions,
@@ -66,13 +53,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	SSHTunnelFunctions,
-	DeduplicationHelperFunctions,
-	IDeduplicationOutput,
-	IDeduplicationOutputItems,
-	ICheckProcessedOptions,
-	DeduplicationScope,
-	DeduplicationItemTypes,
-	ICheckProcessedContextData,
 	WebhookType,
 	SchedulingFunctions,
 } from 'n8n-workflow';
@@ -82,7 +62,6 @@ import {
 	NodeOperationError,
 	NodeSslError,
 	deepCopy,
-	fileTypeFromMimeType,
 	isObjectEmpty,
 	ExecutionBaseError,
 	jsonParse,
@@ -91,31 +70,22 @@ import {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import path from 'path';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
 import { Logger } from '@/logging/logger';
 
-import { BinaryDataService } from './binary-data/binary-data.service';
-import type { BinaryData } from './binary-data/types';
-import { binaryToBuffer } from './binary-data/utils';
-import {
-	BINARY_DATA_STORAGE_PATH,
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
-	CONFIG_FILES,
-	CUSTOM_EXTENSION_ENV,
-	RESTRICT_FILE_ACCESS_TO,
-	UM_EMAIL_TEMPLATES_INVITE,
-	UM_EMAIL_TEMPLATES_PWRESET,
-} from './constants';
-import { DataDeduplicationService } from './data-deduplication-service';
 // eslint-disable-next-line import/no-cycle
-import { PollContext, TriggerContext } from './execution-engine/node-execution-context';
+import {
+	binaryToString,
+	parseIncomingMessage,
+	parseRequestObject,
+	PollContext,
+	TriggerContext,
+} from './execution-engine/node-execution-context';
 import { ScheduledTaskManager } from './execution-engine/scheduled-task-manager';
 import { SSHClientsManager } from './execution-engine/ssh-clients-manager';
-import { InstanceSettings } from './instance-settings';
 import type { IResponseError } from './interfaces';
 
 axios.defaults.timeout = 300000;
@@ -137,31 +107,6 @@ axios.interceptors.request.use((config) => {
 	return config;
 });
 
-const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
-		form.append(key, value.value, value.options);
-	} else {
-		form.append(key, value);
-	}
-};
-
-const createFormDataObject = (data: Record<string, unknown>) => {
-	const formData = new FormData();
-	const keys = Object.keys(data);
-	keys.forEach((key) => {
-		const formField = data[key];
-
-		if (formField instanceof Array) {
-			formField.forEach((item) => {
-				pushFormDataValue(formData, key, item);
-			});
-		} else {
-			pushFormDataValue(formData, key, formField);
-		}
-	});
-	return formData;
-};
-
 export const validateUrl = (url?: string): boolean => {
 	if (!url) return false;
 
@@ -181,29 +126,6 @@ function searchForHeader(config: AxiosRequestConfig, headerName: string) {
 	const headerNames = Object.keys(config.headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
-}
-
-async function generateContentLengthHeader(config: AxiosRequestConfig) {
-	if (!(config.data instanceof FormData)) {
-		return;
-	}
-	try {
-		const length = await new Promise<number>((res, rej) => {
-			config.data.getLength((error: Error | null, length: number) => {
-				if (error) {
-					rej(error);
-					return;
-				}
-				res(length);
-			});
-		});
-		config.headers = {
-			...config.headers,
-			'content-length': length,
-		};
-	} catch (error) {
-		Container.get(Logger).error('Unable to calculate form data length', { error });
-	}
 }
 
 const getHostFromRequestObject = (
@@ -238,351 +160,6 @@ const getBeforeRedirectFn =
 			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
 		}
 	};
-
-// eslint-disable-next-line complexity
-export async function parseRequestObject(requestObject: IRequestOptions) {
-	// This function is a temporary implementation
-	// That translates all http requests done via
-	// the request library to axios directly
-	// We are not using n8n's interface as it would
-	// an unnecessary step, considering the `request`
-	// helper can be deprecated and removed.
-	const axiosConfig: AxiosRequestConfig = {};
-
-	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as AxiosHeaders;
-	}
-
-	// Let's start parsing the hardest part, which is the request body.
-	// The process here is as following?
-	// - Check if we have a `content-type` header. If this was set,
-	//   we will follow
-	// - Check if the `form` property was set. If yes, then it's x-www-form-urlencoded
-	// - Check if the `formData` property exists. If yes, then it's multipart/form-data
-	// - Lastly, we should have a regular `body` that is probably a JSON.
-
-	const contentTypeHeaderKeyName =
-		axiosConfig.headers &&
-		Object.keys(axiosConfig.headers).find(
-			(headerName) => headerName.toLowerCase() === 'content-type',
-		);
-	const contentType =
-		contentTypeHeaderKeyName &&
-		(axiosConfig.headers?.[contentTypeHeaderKeyName] as string | undefined);
-	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
-		// there are nodes incorrectly created, informing the content type header
-		// and also using formData. Request lib takes precedence for the formData.
-		// We will do the same.
-		// Merge body and form properties.
-		if (typeof requestObject.body === 'string') {
-			axiosConfig.data = requestObject.body;
-		} else {
-			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
-				string,
-				string
-			>;
-			if (requestObject.useQuerystring === true) {
-				axiosConfig.data = stringify(allData, { arrayFormat: 'repeat' });
-			} else {
-				axiosConfig.data = stringify(allData);
-			}
-		}
-	} else if (contentType?.includes('multipart/form-data')) {
-		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
-			axiosConfig.data = requestObject.formData;
-		} else {
-			const allData: Partial<FormData> = {
-				...(requestObject.body as object | undefined),
-				...(requestObject.formData as object | undefined),
-			};
-
-			axiosConfig.data = createFormDataObject(allData);
-		}
-		// replace the existing header with a new one that
-		// contains the boundary property.
-		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
-		const headers = axiosConfig.data.getHeaders();
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-		await generateContentLengthHeader(axiosConfig);
-	} else {
-		// When using the `form` property it means the content should be x-www-form-urlencoded.
-		if (requestObject.form !== undefined && requestObject.body === undefined) {
-			// If we have only form
-			axiosConfig.data =
-				typeof requestObject.form === 'string'
-					? stringify(requestObject.form, { format: 'RFC3986' })
-					: stringify(requestObject.form).toString();
-			if (axiosConfig.headers !== undefined) {
-				const headerName = searchForHeader(axiosConfig, 'content-type');
-				if (headerName) {
-					delete axiosConfig.headers[headerName];
-				}
-				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-			} else {
-				axiosConfig.headers = {
-					'Content-Type': 'application/x-www-form-urlencoded',
-				};
-			}
-		} else if (requestObject.formData !== undefined) {
-			// remove any "content-type" that might exist.
-			if (axiosConfig.headers !== undefined) {
-				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) => {
-					if (header.toLowerCase() === 'content-type') {
-						delete axiosConfig.headers?.[header];
-					}
-				});
-			}
-
-			if (requestObject.formData instanceof FormData) {
-				axiosConfig.data = requestObject.formData;
-			} else {
-				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
-			}
-			// Mix in headers as FormData creates the boundary.
-			const headers = axiosConfig.data.getHeaders();
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-			await generateContentLengthHeader(axiosConfig);
-		} else if (requestObject.body !== undefined) {
-			// If we have body and possibly form
-			if (requestObject.form !== undefined && requestObject.body) {
-				// merge both objects when exist.
-				requestObject.body = Object.assign(requestObject.body, requestObject.form);
-			}
-			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
-		}
-	}
-
-	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString();
-	}
-
-	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString();
-	}
-
-	if (requestObject.baseURL !== undefined) {
-		axiosConfig.baseURL = requestObject.baseURL?.toString();
-	}
-
-	if (requestObject.method !== undefined) {
-		axiosConfig.method = requestObject.method;
-	}
-
-	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
-		axiosConfig.params = requestObject.qs;
-	}
-
-	function hasArrayFormatOptions(
-		arg: IRequestOptions,
-	): arg is Required<Pick<IRequestOptions, 'qsStringifyOptions'>> {
-		if (
-			typeof arg.qsStringifyOptions === 'object' &&
-			arg.qsStringifyOptions !== null &&
-			!Array.isArray(arg.qsStringifyOptions) &&
-			'arrayFormat' in arg.qsStringifyOptions
-		) {
-			return true;
-		}
-
-		return false;
-	}
-
-	if (
-		requestObject.useQuerystring === true ||
-		(hasArrayFormatOptions(requestObject) &&
-			requestObject.qsStringifyOptions.arrayFormat === 'repeat')
-	) {
-		axiosConfig.paramsSerializer = (params) => {
-			return stringify(params, { arrayFormat: 'repeat' });
-		};
-	} else if (requestObject.useQuerystring === false) {
-		axiosConfig.paramsSerializer = (params) => {
-			return stringify(params, { arrayFormat: 'indices' });
-		};
-	}
-
-	if (
-		hasArrayFormatOptions(requestObject) &&
-		requestObject.qsStringifyOptions.arrayFormat === 'brackets'
-	) {
-		axiosConfig.paramsSerializer = (params) => {
-			return stringify(params, { arrayFormat: 'brackets' });
-		};
-	}
-
-	if (requestObject.auth !== undefined) {
-		// Check support for sendImmediately
-		if (requestObject.auth.bearer !== undefined) {
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				Authorization: `Bearer ${requestObject.auth.bearer}`,
-			});
-		} else {
-			const authObj = requestObject.auth;
-			// Request accepts both user/username and pass/password
-			axiosConfig.auth = {
-				username: (authObj.user || authObj.username) as string,
-				password: (authObj.password || authObj.pass) as string,
-			};
-		}
-	}
-
-	// Only set header if we have a body, otherwise it may fail
-	if (requestObject.json === true) {
-		// Add application/json headers - do not set charset as it breaks a lot of stuff
-		// only add if no other accept headers was sent.
-		const acceptHeaderExists =
-			axiosConfig.headers === undefined
-				? false
-				: Object.keys(axiosConfig.headers)
-						.map((headerKey) => headerKey.toLowerCase())
-						.includes('accept');
-		if (!acceptHeaderExists) {
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				Accept: 'application/json',
-			});
-		}
-	}
-	if (requestObject.json === false || requestObject.json === undefined) {
-		// Prevent json parsing
-		axiosConfig.transformResponse = (res) => res;
-	}
-
-	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
-	const { method } = requestObject;
-	if (
-		(requestObject.followRedirect !== false &&
-			(!method || method === 'GET' || method === 'HEAD')) ||
-		requestObject.followAllRedirects
-	) {
-		axiosConfig.maxRedirects = requestObject.maxRedirects;
-	} else {
-		axiosConfig.maxRedirects = 0;
-	}
-
-	const host = getHostFromRequestObject(requestObject);
-	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
-	}
-	if (requestObject.rejectUnauthorized === false) {
-		agentOptions.rejectUnauthorized = false;
-		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
-	}
-
-	axiosConfig.httpsAgent = new Agent(agentOptions);
-
-	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
-
-	if (requestObject.timeout !== undefined) {
-		axiosConfig.timeout = requestObject.timeout;
-	}
-
-	if (requestObject.proxy !== undefined) {
-		// try our best to parse the url provided.
-		if (typeof requestObject.proxy === 'string') {
-			try {
-				const url = new URL(requestObject.proxy);
-				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
-				axiosConfig.proxy = {
-					host,
-					port: parseInt(url.port, 10),
-					protocol: url.protocol,
-				};
-				if (!url.port) {
-					// Sets port to a default if not informed
-					if (url.protocol === 'http') {
-						axiosConfig.proxy.port = 80;
-					} else if (url.protocol === 'https') {
-						axiosConfig.proxy.port = 443;
-					}
-				}
-				if (url.username || url.password) {
-					axiosConfig.proxy.auth = {
-						username: url.username,
-						password: url.password,
-					};
-				}
-			} catch (error) {
-				// Not a valid URL. We will try to simply parse stuff
-				// such as user:pass@host:port without protocol (we'll assume http)
-				if (requestObject.proxy.includes('@')) {
-					const [userpass, hostport] = requestObject.proxy.split('@');
-					const [username, password] = userpass.split(':');
-					const [hostname, port] = hostport.split(':');
-					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
-					axiosConfig.proxy = {
-						host,
-						port: parseInt(port, 10),
-						protocol: 'http',
-						auth: {
-							username,
-							password,
-						},
-					};
-				} else if (requestObject.proxy.includes(':')) {
-					const [hostname, port] = requestObject.proxy.split(':');
-					axiosConfig.proxy = {
-						host: hostname,
-						port: parseInt(port, 10),
-						protocol: 'http',
-					};
-				} else {
-					axiosConfig.proxy = {
-						host: requestObject.proxy,
-						port: 80,
-						protocol: 'http',
-					};
-				}
-			}
-		} else {
-			axiosConfig.proxy = requestObject.proxy;
-		}
-	}
-
-	if (requestObject.useStream) {
-		axiosConfig.responseType = 'stream';
-	} else if (requestObject.encoding === null) {
-		// When downloading files, return an arrayBuffer.
-		axiosConfig.responseType = 'arraybuffer';
-	}
-
-	// If we don't set an accept header
-	// Axios forces "application/json, text/plan, */*"
-	// Which causes some nodes like NextCloud to break
-	// as the service returns XML unless requested otherwise.
-	const allHeaders = axiosConfig.headers ? Object.keys(axiosConfig.headers) : [];
-	if (!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'accept')) {
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
-	}
-	if (
-		requestObject.json !== false &&
-		axiosConfig.data !== undefined &&
-		axiosConfig.data !== '' &&
-		!(axiosConfig.data instanceof Buffer) &&
-		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
-	) {
-		// Use default header for application/json
-		// If we don't specify this here, axios will add
-		// application/json; charset=utf-8
-		// and this breaks a lot of stuff
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-			'content-type': 'application/json',
-		});
-	}
-
-	if (requestObject.simple === false) {
-		axiosConfig.validateStatus = () => true;
-	}
-
-	/**
-	 * Missing properties:
-	 * encoding (need testing)
-	 * gzip (ignored - default already works)
-	 * resolveWithFullResponse (implemented elsewhere)
-	 */
-	return axiosConfig;
-}
 
 function digestAuthAxiosConfig(
 	axiosConfig: AxiosRequestConfig,
@@ -635,96 +212,6 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-interface IContentType {
-	type: string;
-	parameters: {
-		charset: string;
-		[key: string]: string;
-	};
-}
-
-interface IContentDisposition {
-	type: string;
-	filename?: string;
-}
-
-function parseHeaderParameters(parameters: string[]): Record<string, string> {
-	return parameters.reduce(
-		(acc, param) => {
-			const [key, value] = param.split('=');
-			let decodedValue = decodeURIComponent(value).trim();
-			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
-				decodedValue = decodedValue.slice(1, -1);
-			}
-			acc[key.toLowerCase().trim()] = decodedValue;
-			return acc;
-		},
-		{} as Record<string, string>,
-	);
-}
-
-export function parseContentType(contentType?: string): IContentType | null {
-	if (!contentType) {
-		return null;
-	}
-
-	const [type, ...parameters] = contentType.split(';');
-
-	return {
-		type: type.toLowerCase(),
-		parameters: { charset: 'utf-8', ...parseHeaderParameters(parameters) },
-	};
-}
-
-export function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
-	if (!contentDisposition) {
-		return null;
-	}
-
-	// This is invalid syntax, but common
-	// Example 'filename="example.png"' (instead of 'attachment; filename="example.png"')
-	if (!contentDisposition.startsWith('attachment') && !contentDisposition.startsWith('inline')) {
-		contentDisposition = `attachment; ${contentDisposition}`;
-	}
-
-	const [type, ...parameters] = contentDisposition.split(';');
-
-	const parsedParameters = parseHeaderParameters(parameters);
-
-	let { filename } = parsedParameters;
-	const wildcard = parsedParameters['filename*'];
-	if (wildcard) {
-		// https://datatracker.ietf.org/doc/html/rfc5987
-		const [_encoding, _locale, content] = wildcard?.split("'") ?? [];
-		filename = content;
-	}
-
-	return { type, filename };
-}
-
-export function parseIncomingMessage(message: IncomingMessage) {
-	const contentType = parseContentType(message.headers['content-type']);
-	if (contentType) {
-		const { type, parameters } = contentType;
-		message.contentType = type;
-		message.encoding = parameters.charset.toLowerCase() as BufferEncoding;
-	}
-
-	const contentDisposition = parseContentDisposition(message.headers['content-disposition']);
-	if (contentDisposition) {
-		message.contentDisposition = contentDisposition;
-	}
-}
-
-export async function binaryToString(body: Buffer | Readable, encoding?: string) {
-	if (!encoding && body instanceof IncomingMessage) {
-		parseIncomingMessage(body);
-		encoding = body.encoding;
-	}
-	const buffer = await binaryToBuffer(body);
-	return iconv.decode(buffer, encoding ?? 'utf-8');
-}
-
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -745,6 +232,9 @@ export async function invokeAxios(
 	}
 }
 
+/**
+ * @deprecated This is only used by legacy request helpers, that are also deprecated
+ */
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -773,7 +263,7 @@ export async function proxyRequestToAxios(
 		} else if (body === '') {
 			body = axiosConfig.responseType === 'arraybuffer' ? Buffer.alloc(0) : undefined;
 		}
-		await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
+		await additionalData?.hooks?.runHook('nodeFetchedData', [workflow?.id, node]);
 		return configObject.resolveWithFullResponse
 			? {
 					body,
@@ -978,313 +468,6 @@ export async function httpRequest(
 	}
 
 	return result.data;
-}
-
-export function getBinaryPath(binaryDataId: string): string {
-	return Container.get(BinaryDataService).getPath(binaryDataId);
-}
-
-/**
- * Returns binary file metadata
- */
-export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
-	return await Container.get(BinaryDataService).getMetadata(binaryDataId);
-}
-
-/**
- * Returns binary file stream for piping
- */
-export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
-	return await Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
-}
-
-export function assertBinaryData(
-	inputData: ITaskDataConnections,
-	node: INode,
-	itemIndex: number,
-	propertyName: string,
-	inputIndex: number,
-): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description: 'Make sure that the previous node outputs a binary file',
-			},
-		);
-	}
-
-	const binaryPropertyData = binaryKeyData[propertyName];
-	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description:
-					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
-			},
-		);
-	}
-
-	return binaryPropertyData;
-}
-
-/**
- * Returns binary data buffer for given item index and property name.
- */
-export async function getBinaryDataBuffer(
-	inputData: ITaskDataConnections,
-	itemIndex: number,
-	propertyName: string,
-	inputIndex: number,
-): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
-	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
-}
-
-export function detectBinaryEncoding(buffer: Buffer): string {
-	return chardet.detect(buffer) as string;
-}
-
-/**
- * Store an incoming IBinaryData & related buffer using the configured binary data manager.
- *
- * @export
- * @param {IBinaryData} binaryData
- * @param {Buffer | Readable} bufferOrStream
- * @returns {Promise<IBinaryData>}
- */
-export async function setBinaryDataBuffer(
-	binaryData: IBinaryData,
-	bufferOrStream: Buffer | Readable,
-	workflowId: string,
-	executionId: string,
-): Promise<IBinaryData> {
-	return await Container.get(BinaryDataService).store(
-		workflowId,
-		executionId,
-		bufferOrStream,
-		binaryData,
-	);
-}
-
-export async function copyBinaryFile(
-	workflowId: string,
-	executionId: string,
-	filePath: string,
-	fileName: string,
-	mimeType?: string,
-): Promise<IBinaryData> {
-	let fileExtension: string | undefined;
-	if (!mimeType) {
-		// If no mime type is given figure it out
-
-		if (filePath) {
-			// Use file path to guess mime type
-			const mimeTypeLookup = lookup(filePath);
-			if (mimeTypeLookup) {
-				mimeType = mimeTypeLookup;
-			}
-		}
-
-		if (!mimeType) {
-			// read the first bytes of the file to guess mime type
-			const fileTypeData = await FileType.fromFile(filePath);
-			if (fileTypeData) {
-				mimeType = fileTypeData.mime;
-				fileExtension = fileTypeData.ext;
-			}
-		}
-	}
-
-	if (!fileExtension && mimeType) {
-		fileExtension = extension(mimeType) || undefined;
-	}
-
-	if (!mimeType) {
-		// Fall back to text
-		mimeType = 'text/plain';
-	}
-
-	const returnData: IBinaryData = {
-		mimeType,
-		fileType: fileTypeFromMimeType(mimeType),
-		fileExtension,
-		data: '',
-	};
-
-	if (fileName) {
-		returnData.fileName = fileName;
-	} else if (filePath) {
-		returnData.fileName = path.parse(filePath).base;
-	}
-
-	return await Container.get(BinaryDataService).copyBinaryFile(
-		workflowId,
-		executionId,
-		returnData,
-		filePath,
-	);
-}
-
-/**
- * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
- * base64 and adds metadata.
- */
-// eslint-disable-next-line complexity
-export async function prepareBinaryData(
-	binaryData: Buffer | Readable,
-	executionId: string,
-	workflowId: string,
-	filePath?: string,
-	mimeType?: string,
-): Promise<IBinaryData> {
-	let fileExtension: string | undefined;
-	if (binaryData instanceof IncomingMessage) {
-		if (!filePath) {
-			try {
-				const { responseUrl } = binaryData;
-				filePath =
-					binaryData.contentDisposition?.filename ??
-					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
-			} catch {}
-		}
-		if (!mimeType) {
-			mimeType = binaryData.contentType;
-		}
-	}
-
-	if (!mimeType) {
-		// If no mime type is given figure it out
-
-		if (filePath) {
-			// Use file path to guess mime type
-			const mimeTypeLookup = lookup(filePath);
-			if (mimeTypeLookup) {
-				mimeType = mimeTypeLookup;
-			}
-		}
-
-		if (!mimeType) {
-			if (Buffer.isBuffer(binaryData)) {
-				// Use buffer to guess mime type
-				const fileTypeData = await FileType.fromBuffer(binaryData);
-				if (fileTypeData) {
-					mimeType = fileTypeData.mime;
-					fileExtension = fileTypeData.ext;
-				}
-			} else if (binaryData instanceof IncomingMessage) {
-				mimeType = binaryData.headers['content-type'];
-			} else {
-				// TODO: detect filetype from other kind of streams
-			}
-		}
-	}
-
-	if (!fileExtension && mimeType) {
-		fileExtension = extension(mimeType) || undefined;
-	}
-
-	if (!mimeType) {
-		// Fall back to text
-		mimeType = 'text/plain';
-	}
-
-	const returnData: IBinaryData = {
-		mimeType,
-		fileType: fileTypeFromMimeType(mimeType),
-		fileExtension,
-		data: '',
-	};
-
-	if (filePath) {
-		const filePathParts = path.parse(filePath);
-
-		if (filePathParts.dir !== '') {
-			returnData.directory = filePathParts.dir;
-		}
-		returnData.fileName = filePathParts.base;
-
-		// Remove the dot
-		const fileExtension = filePathParts.ext.slice(1);
-		if (fileExtension) {
-			returnData.fileExtension = fileExtension;
-		}
-	}
-
-	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
-}
-
-export async function checkProcessedAndRecord(
-	items: DeduplicationItemTypes[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<IDeduplicationOutput> {
-	return await DataDeduplicationService.getInstance().checkProcessedAndRecord(
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function checkProcessedItemsAndRecord(
-	key: string,
-	items: IDataObject[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<IDeduplicationOutputItems> {
-	return await DataDeduplicationService.getInstance().checkProcessedItemsAndRecord(
-		key,
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function removeProcessed(
-	items: DeduplicationItemTypes[],
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<void> {
-	return await DataDeduplicationService.getInstance().removeProcessed(
-		items,
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function clearAllProcessedItems(
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<void> {
-	return await DataDeduplicationService.getInstance().clearAllProcessedItems(
-		scope,
-		contextData,
-		options,
-	);
-}
-
-export async function getProcessedDataCount(
-	scope: DeduplicationScope,
-	contextData: ICheckProcessedContextData,
-	options: ICheckProcessedOptions,
-): Promise<number> {
-	return await DataDeduplicationService.getInstance().getProcessedDataCount(
-		scope,
-		contextData,
-		options,
-	);
 }
 
 export function applyPaginationRequestData(
@@ -2336,180 +1519,6 @@ export const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions 
 	};
 };
 
-const getAllowedPaths = () => {
-	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
-	if (!restrictFileAccessTo) {
-		return [];
-	}
-	const allowedPaths = restrictFileAccessTo
-		.split(';')
-		.map((path) => path.trim())
-		.filter((path) => path);
-	return allowedPaths;
-};
-
-export function isFilePathBlocked(filePath: string): boolean {
-	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = path.resolve(filePath);
-	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
-
-	//if allowed paths are defined, allow access only to those paths
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
-	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder, staticCacheDir];
-
-		if (process.env[CONFIG_FILES]) {
-			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-		}
-
-		if (process.env[CUSTOM_EXTENSION_ENV]) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-			restrictedPaths.push(...customExtensionFolders);
-		}
-
-		if (process.env[BINARY_DATA_STORAGE_PATH]) {
-			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-		}
-
-		//check if the file path is restricted
-		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return true;
-			}
-		}
-	}
-
-	//path is not restricted
-	return false;
-}
-
-export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
-	async createReadStream(filePath) {
-		try {
-			await fsAccess(filePath);
-		} catch (error) {
-			throw error.code === 'ENOENT'
-				? new NodeOperationError(node, error, {
-						message: `The file "${String(filePath)}" could not be accessed.`,
-						level: 'warning',
-					})
-				: error;
-		}
-		if (isFilePathBlocked(filePath as string)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
-		}
-		return createReadStream(filePath);
-	},
-
-	getStoragePath() {
-		return path.join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
-	},
-
-	async writeContentToFile(filePath, content, flag) {
-		if (isFilePathBlocked(filePath as string)) {
-			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				level: 'warning',
-			});
-		}
-		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
-	},
-});
-
-export const getNodeHelperFunctions = (
-	{ executionId }: IWorkflowExecuteAdditionalData,
-	workflowId: string,
-): NodeHelperFunctions => ({
-	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		await copyBinaryFile(workflowId, executionId!, filePath, fileName, mimeType),
-});
-
-export const getBinaryHelperFunctions = (
-	{ executionId }: IWorkflowExecuteAdditionalData,
-	workflowId: string,
-): BinaryHelperFunctions => ({
-	getBinaryPath,
-	getBinaryStream,
-	getBinaryMetadata,
-	binaryToBuffer,
-	binaryToString,
-	prepareBinaryData: async (binaryData, filePath, mimeType) =>
-		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
-	setBinaryDataBuffer: async (data, binaryData) =>
-		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
-	copyBinaryFile: async () => {
-		throw new ApplicationError('`copyBinaryFile` has been removed. Please upgrade this node.');
-	},
-});
-
-export const getCheckProcessedHelperFunctions = (
-	workflow: Workflow,
-	node: INode,
-): DeduplicationHelperFunctions => ({
-	async checkProcessedAndRecord(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutput> {
-		return await checkProcessedAndRecord(items, scope, { node, workflow }, options);
-	},
-	async checkProcessedItemsAndRecord(
-		propertyName: string,
-		items: IDataObject[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<IDeduplicationOutputItems> {
-		return await checkProcessedItemsAndRecord(
-			propertyName,
-			items,
-			scope,
-			{ node, workflow },
-			options,
-		);
-	},
-	async removeProcessed(
-		items: DeduplicationItemTypes[],
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<void> {
-		return await removeProcessed(items, scope, { node, workflow }, options);
-	},
-	async clearAllProcessedItems(
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<void> {
-		return await clearAllProcessedItems(scope, { node, workflow }, options);
-	},
-	async getProcessedDataCount(
-		scope: DeduplicationScope,
-		options: ICheckProcessedOptions,
-	): Promise<number> {
-		return await getProcessedDataCount(scope, { node, workflow }, options);
-	},
-});
-
 /**
  * Returns a copy of the items which only contains the json data and
  * of that only the defined properties
@@ -2554,16 +1563,4 @@ export function getExecuteTriggerFunctions(
 	activation: WorkflowActivateMode,
 ): ITriggerFunctions {
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
-}
-
-export function getCredentialTestFunctions(): ICredentialTestFunctions {
-	return {
-		logger: Container.get(Logger),
-		helpers: {
-			...getSSHTunnelFunctions(),
-			request: async (uriOrObject: string | object, options?: object) => {
-				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
-			},
-		},
-	};
 }
