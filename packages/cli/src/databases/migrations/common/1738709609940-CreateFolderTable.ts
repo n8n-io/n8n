@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 export class CreateFolderTable1738709609940 implements ReversibleMigration {
 	async up({ runQuery, escape, schemaBuilder: { createTable, column } }: MigrationContext) {
 		const workflowTable = escape.tableName('workflow_entity');
-		const workflowFolderId = escape.columnName('folderId');
+		const workflowFolderId = escape.columnName('parentFolderId');
 		const folderTable = escape.tableName('folder');
 		const folderId = escape.columnName('id');
 
@@ -11,7 +11,7 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
-				column('parentId').varchar(36).default(null),
+				column('parentFolderId').varchar(36).default(null),
 				column('projectId').varchar(36).notNull,
 			)
 			.withForeignKey('projectId', {
@@ -19,7 +19,7 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('parentId', {
+			.withForeignKey('parentFolderId', {
 				tableName: 'folder',
 				columnName: 'id',
 				onDelete: 'CASCADE',
@@ -49,7 +49,7 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 
 	async down({ runQuery, escape, schemaBuilder: { dropTable } }: MigrationContext) {
 		const workflowTable = escape.tableName('workflow_entity');
-		const workflowFolderId = escape.columnName('folderId');
+		const workflowFolderId = escape.columnName('parentFolderId');
 
 		await runQuery(`ALTER TABLE ${workflowTable} DROP COLUMN ${workflowFolderId}`);
 

@@ -19,14 +19,14 @@ export class Folder extends WithTimestampsAndStringId {
 	name: string;
 
 	@ManyToOne(() => Folder, { nullable: true })
-	@JoinColumn({ name: 'parentId' })
-	parent: Folder | null;
+	@JoinColumn({ name: 'parentFolderId' })
+	parentFolder: Folder | null;
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
 
-	@OneToMany('WorkflowEntity', 'folder')
+	@OneToMany('WorkflowEntity', 'parentFolder')
 	workflows: WorkflowEntity[];
 
 	@ManyToMany(() => TagEntity)
