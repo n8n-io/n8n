@@ -299,7 +299,7 @@ type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ?
 
 describe('hasKey', () => {
 	it('should return false if the input is null', () => {
-		const x: unknown = null;
+		const x = null;
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
@@ -307,7 +307,7 @@ describe('hasKey', () => {
 		y;
 	});
 	it('should return false if the input is undefined', () => {
-		const x: unknown = undefined;
+		const x = undefined;
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
@@ -315,7 +315,7 @@ describe('hasKey', () => {
 		y;
 	});
 	it('should return false if the input is a number', () => {
-		const x: unknown = 1;
+		const x = 1;
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
@@ -323,33 +323,39 @@ describe('hasKey', () => {
 		y;
 	});
 	it('should return false if the input is an array out of bounds', () => {
-		const x: unknown = [1, 2];
+		const x = [1, 2];
 		const result = hasKey(x, 5);
 
 		expect(result).toEqual(false);
 	});
 
 	it('should return true if the input is an array within bounds', () => {
-		const x: unknown = [1, 2];
+		const x = [1, 2];
 		const result = hasKey(x, 1);
 
 		expect(result).toEqual(true);
 	});
 	it('should return true if the input is an array with the key `length`', () => {
-		const x: unknown = [1, 2];
+		const x = [1, 2];
 		const result = hasKey(x, 'length');
 
 		expect(result).toEqual(true);
 	});
+	it('should return true if the input is an array with the key `toString`', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 'toString');
+
+		expect(result).toEqual(false);
+	});
 	it('should return false if the input is an object without the key', () => {
-		const x: unknown = { a: 3 };
+		const x = { a: 3 };
 		const result = hasKey(x, 'a');
 
 		expect(result).toEqual(true);
 	});
 
 	it('should return true if the input is an object with the key', () => {
-		const x: unknown = { a: 3 };
+		const x = { a: 3 };
 		const result = hasKey(x, 'b');
 
 		expect(result).toEqual(false);
