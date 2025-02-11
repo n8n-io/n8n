@@ -335,7 +335,7 @@ describe('hasKey', () => {
 
 		expect(result).toEqual(true);
 	});
-	it('should return true if the input is an array with the key `toString`', () => {
+	it('should return false if the input is an array with the key `toString`', () => {
 		const x = [1, 2];
 		const result = hasKey(x, 'toString');
 
