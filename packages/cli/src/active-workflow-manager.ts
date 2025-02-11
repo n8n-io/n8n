@@ -411,9 +411,9 @@ export class ActiveWorkflowManager {
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
-		const dbWorkflows = await this.workflowRepository.getAllActive();
+		const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
 
-		if (dbWorkflows.length === 0) return;
+		if (dbWorkflowIds.length === 0) return;
 
 		if (this.instanceSettings.isLeader) {
 			this.logger.info(' ================================');
@@ -421,11 +421,11 @@ export class ActiveWorkflowManager {
 			this.logger.info(' ================================');
 		}
 
-		const batches = chunk(dbWorkflows, this.workflowsConfig.activationBatchSize);
+		const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
 
 		for (const batch of batches) {
-			const activationPromises = batch.map(async (dbWorkflow) => {
-				await this.activateWorkflow(dbWorkflow, activationMode);
+			const activationPromises = batch.map(async (dbWorkflowId) => {
+				await this.activateWorkflow(dbWorkflowId, activationMode);
 			});
 
 			await Promise.all(activationPromises);
@@ -435,9 +435,13 @@ export class ActiveWorkflowManager {
 	}
 
 	private async activateWorkflow(
-		dbWorkflow: WorkflowEntity,
+		dbWorkflowId: string,
 		activationMode: 'init' | 'leadershipChange',
 	) {
+		const dbWorkflow = await this.workflowRepository.findById(dbWorkflowId);
+
+		if (!dbWorkflow) return;
+
 		try {
 			const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,

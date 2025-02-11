@@ -37,11 +37,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getAllActive() {
-		return await this.find({
+	async getAllActiveIds() {
+		const result = await this.find({
 			where: { active: true },
 			relations: { shared: { project: { projectRelations: true } } },
+			select: { id: true },
 		});
+
+		return result.map(({ id }) => id);
 	}
 
 	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
