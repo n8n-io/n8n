@@ -555,23 +555,9 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
-const errorExecutionId = computed(() => {
-	if (!hasRunError.value || !workflowRunErrorAsNodeError.value?.errorResponse) {
-		return undefined;
-	}
-
-	if (isSubNodeType.value && parentNodeError.value?.errorResponse?.executionId) {
-		return String(parentNodeError.value?.errorResponse?.executionId);
-	}
-
-	return String(workflowRunErrorAsNodeError.value?.errorResponse?.executionId);
-});
-
 const hasRelatedExecution = computed(() => {
 	return Boolean(
-		activeTaskMetadata.value?.subExecution ??
-			activeTaskMetadata.value?.parentExecution ??
-			errorExecutionId.value !== undefined,
+		activeTaskMetadata.value?.subExecution ?? activeTaskMetadata.value?.parentExecution,
 	);
 });
 
@@ -1337,12 +1323,6 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 			});
 		}
 	}
-
-	// if (errorExecutionId.value) {
-	// 	return i18n.baseText('runData.openSubExecutionSingle', {
-	// 		interpolate: { id: errorExecutionId.value },
-	// 	});
-	// }
 
 	return;
 }
