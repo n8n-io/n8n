@@ -43,12 +43,15 @@ export interface UpdateTestResponse {
 export interface TestRunRecord {
 	id: string;
 	testDefinitionId: string;
-	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled';
+	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number>;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;
 	completedAt: string;
+	errorCode?: string;
+	errorDetails?: Record<string, unknown>;
+	finalResult?: 'success' | 'error' | 'warning';
 }
 
 interface GetTestRunParams {

@@ -9,8 +9,11 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
+import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 
 /**
@@ -50,6 +53,8 @@ export function createPinData(
 
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
+			} else {
+				throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
 			}
 		}
 	}
@@ -66,6 +71,34 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
 	});
+}
+
+/**
+ * Returns the final result of the test run based on the test case executions.
+ * The final result is the most severe status among all test case executions' statuses.
+ */
+export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): TestRunFinalResult {
+	// Priority of statuses: error > warning > success
+	const severityMap: Record<TestRunFinalResult, number> = {
+		error: 3,
+		warning: 2,
+		success: 1,
+	};
+
+	let finalResult: TestRunFinalResult = 'success';
+
+	for (const testCaseExecution of testCaseExecutions) {
+		if (['error', 'warning'].includes(testCaseExecution.status)) {
+			if (
+				testCaseExecution.status in severityMap &&
+				severityMap[testCaseExecution.status as TestRunFinalResult] > severityMap[finalResult]
+			) {
+				finalResult = testCaseExecution.status as TestRunFinalResult;
+			}
+		}
+	}
+
+	return finalResult;
 }
 
 /**

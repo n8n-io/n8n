@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -54,6 +55,12 @@ const executionDataJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
 );
 
+const executionDataRenamedNodesJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/execution-data-renamed-nodes.json'), {
+		encoding: 'utf-8',
+	}),
+);
+
 const executionDataMultipleTriggersJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.multiple-triggers.json'), {
 		encoding: 'utf-8',
@@ -68,7 +75,7 @@ const executionDataMultipleTriggersJson2 = JSON.parse(
 
 const executionMocks = [
 	mock<ExecutionEntity>({
-		id: 'some-execution-id',
+		id: 'past-execution-id',
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
@@ -83,12 +90,12 @@ const executionMocks = [
 		],
 	}),
 	mock<ExecutionEntity>({
-		id: 'some-execution-id-2',
+		id: 'past-execution-id-2',
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
-			data: stringify(executionDataJson),
-			workflowData: wfUnderTestJson,
+			data: stringify(executionDataRenamedNodesJson),
+			workflowData: wfUnderTestRenamedNodesJson,
 		},
 		metadata: [],
 	}),
@@ -98,7 +105,11 @@ function mockExecutionData() {
 	return mock<IRun>({
 		data: {
 			resultData: {
-				runData: {},
+				runData: {
+					'When clicking ‘Test workflow’': mock<ITaskData[]>(),
+				},
+				// error is an optional prop, but jest-mock-extended will mock it by default,
+				// which affects the code logic. So, we need to explicitly set it to undefined.
 				error: undefined,
 			},
 		},
@@ -175,10 +186,10 @@ describe('TestRunnerService', () => {
 		executionsQbMock.getMany.mockResolvedValueOnce(executionMocks);
 		executionRepository.createQueryBuilder.mockReturnValueOnce(executionsQbMock);
 		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id' } }))
+			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id' } }))
 			.mockResolvedValueOnce(executionMocks[0]);
 		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id-2' } }))
+			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id-2' } }))
 			.mockResolvedValueOnce(executionMocks[1]);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -238,20 +249,20 @@ describe('TestRunnerService', () => {
 			...wfEvaluationJson,
 		});
 
-		workflowRunner.run.mockResolvedValue('test-execution-id');
+		workflowRunner.run.mockResolvedValue('some-execution-id');
 
 		await testRunnerService.runTest(
 			mock<User>(),
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+		expect(workflowRunner.run).toHaveBeenCalled();
 	});
 
 	test('should run both workflow under test and evaluation workflow', async () => {
@@ -300,7 +311,7 @@ describe('TestRunnerService', () => {
 
 		activeExecutions.getPostExecutePromise
 			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5, metric2: 100 }));
 
 		await testRunnerService.runTest(
 			mock<User>(),
@@ -330,7 +341,7 @@ describe('TestRunnerService', () => {
 		// Check evaluation workflow was executed
 		expect(workflowRunner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
-				executionMode: 'evaluation',
+				executionMode: 'integrated',
 				executionData: expect.objectContaining({
 					executionData: expect.objectContaining({
 						nodeExecutionStack: expect.arrayContaining([
@@ -351,7 +362,7 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
-			metric2: 0,
+			metric2: 50,
 		});
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
@@ -632,6 +643,7 @@ describe('TestRunnerService', () => {
 		const startNodesData = (testRunnerService as any).getStartNodesData(
 			wfMultipleTriggersJson,
 			executionDataMultipleTriggersJson,
+			wfMultipleTriggersJson, // Test case where workflow didn't change
 		);
 
 		expect(startNodesData).toEqual({
@@ -660,6 +672,7 @@ describe('TestRunnerService', () => {
 		const startNodesData = (testRunnerService as any).getStartNodesData(
 			wfMultipleTriggersJson,
 			executionDataMultipleTriggersJson2,
+			wfMultipleTriggersJson, // Test case where workflow didn't change
 		);
 
 		expect(startNodesData).toEqual({
@@ -687,7 +700,7 @@ describe('TestRunnerService', () => {
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
 			id: 'workflow-under-test-id',
-			...wfUnderTestRenamedNodesJson,
+			...wfUnderTestJson,
 		});
 
 		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
@@ -702,13 +715,42 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+	});
+
+	test('should properly choose trigger when it was renamed', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		const startNodesData = (testRunnerService as any).getStartNodesData(
+			wfUnderTestRenamedNodesJson, // Test case where workflow didn't change
+			executionDataJson,
+			wfUnderTestJson,
+		);
+
+		expect(startNodesData).toEqual({
+			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'Set attribute' })]),
+			triggerToStartFrom: expect.objectContaining({
+				name: 'Manual Run',
+			}),
+		});
 	});
 
 	describe('Test Run cancellation', () => {
