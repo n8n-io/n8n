@@ -90,7 +90,6 @@ export class ActiveWorkflowManager {
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized');
-		await this.webhookService.populateCache();
 	}
 
 	async getAllWorkflowActivationErrors() {
@@ -530,6 +529,13 @@ export class ActiveWorkflowManager {
 				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
 					level: 'warning',
 				});
+			}
+
+			if (!dbWorkflow.active) {
+				this.logger.debug(`Skipping workflow ${dbWorkflow.display()} as it is no longer active`, {
+					workflowId: dbWorkflow.id,
+				});
+				return false;
 			}
 
 			if (shouldDisplayActivationMessage) {
