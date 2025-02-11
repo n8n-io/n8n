@@ -1,27 +1,6 @@
-import type { INodeExecutionData } from '@/.';
-import { parseErrorResponseWorkflowMetadata, parseErrorMetadata } from '@/MetadataUtils';
+import { parseErrorMetadata } from '@/MetadataUtils';
 
 describe('MetadataUtils', () => {
-	describe('parseMetadata', () => {
-		it('should return undefined if response does not have subworkflow data', () => {
-			const response = { someKey: 'someValue' };
-			const result = parseErrorResponseWorkflowMetadata(response);
-			expect(result).toBeUndefined();
-		});
-
-		it('should return metadata if response has subworkflow data', () => {
-			const response = { executionId: '123', workflowId: '456' };
-			const expectedMetadata: INodeExecutionData['metadata'] = {
-				subExecution: {
-					executionId: '123',
-					workflowId: '456',
-				},
-			};
-			const result = parseErrorResponseWorkflowMetadata(response);
-			expect(result).toEqual(expectedMetadata);
-		});
-	});
-
 	describe('parseMetadataFromError', () => {
 		it('should return undefined if error does not have response', () => {
 			const error = { message: 'An error occurred' };
@@ -37,11 +16,12 @@ describe('MetadataUtils', () => {
 
 		it('should return metadata if error response has subworkflow data', () => {
 			const error = { errorResponse: { executionId: '123', workflowId: '456' } };
-			const expectedMetadata: INodeExecutionData['metadata'] = {
+			const expectedMetadata = {
 				subExecution: {
 					executionId: '123',
 					workflowId: '456',
 				},
+				subExecutionsCount: 1,
 			};
 			const result = parseErrorMetadata(error);
 			expect(result).toEqual(expectedMetadata);

@@ -11,9 +11,7 @@ function responseHasSubworkflowData(
 
 type ISubWorkflowMetadata = Required<Pick<ITaskMetadata, 'subExecution' | 'subExecutionsCount'>>;
 
-export function parseErrorResponseWorkflowMetadata(
-	response: unknown,
-): ISubWorkflowMetadata | undefined {
+function parseErrorResponseWorkflowMetadata(response: unknown): ISubWorkflowMetadata | undefined {
 	if (!responseHasSubworkflowData(response)) return undefined;
 
 	return {
