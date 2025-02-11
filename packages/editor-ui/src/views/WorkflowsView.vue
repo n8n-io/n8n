@@ -297,25 +297,30 @@ function isValidProjectId(projectId: string) {
 
 const setFiltersFromQueryString = async () => {
 	const { tags, status, search, homeProject, sort } = route.query ?? {};
-
-	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+	const newQuery: { [key: string]: string | string[] | boolean } = {};
 
 	if (homeProject && typeof homeProject === 'string') {
 		await projectsStore.getAvailableProjects();
 		if (isValidProjectId(homeProject)) {
-			filtersToApply.homeProject = homeProject;
+			newQuery.homeProject = homeProject;
+			filters.value.homeProject = homeProject;
 		}
 	}
 
 	if (search && typeof search === 'string') {
-		filtersToApply.search = search;
+		newQuery.search = search;
+		filters.value.search = search;
 	}
 
 	if (tags && typeof tags === 'string') {
 		await tagsStore.fetchAll();
 		const currentTags = tagsStore.allTags.map((tag) => tag.id);
+		const validTags = tags.split(',').filter((tag) => currentTags.includes(tag));
 
-		filtersToApply.tags = tags.split(',').filter((tag) => currentTags.includes(tag));
+		if (validTags.length) {
+			newQuery.tags = validTags.join(',');
+			filters.value.tags = validTags;
+		}
 	}
 
 	if (
@@ -323,19 +328,17 @@ const setFiltersFromQueryString = async () => {
 		typeof status === 'string' &&
 		[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
 	) {
-		filtersToApply.status = status === 'true';
-	}
-
-	if (Object.keys(filtersToApply).length) {
-		Object.assign(filters.value, filtersToApply);
+		newQuery.status = status;
+		filters.value.status = status === 'true';
 	}
 
 	if (sort && typeof sort === 'string') {
-		currentSort.value =
-			WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+		const newSort = WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+		newQuery.sort = sort;
+		currentSort.value = newSort;
 	}
 
-	void router.replace({ query: pickBy(route.query) });
+	void router.replace({ query: newQuery });
 };
 
 sourceControlStore.$onAction(({ name, after }) => {
