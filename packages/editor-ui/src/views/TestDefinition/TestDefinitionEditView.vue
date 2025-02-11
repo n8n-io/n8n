@@ -231,7 +231,7 @@ const updateDescription = (value: string) => {
 			</InlineNameEdit>
 		</div>
 
-		<div :class="$style.content" style="flex: 1; min-height: 0">
+		<div :class="$style.content">
 			<RunsSection
 				v-if="runs.length > 0"
 				v-model:selectedMetric="selectedMetric"
