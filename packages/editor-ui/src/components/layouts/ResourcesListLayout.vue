@@ -662,11 +662,9 @@ const loadPaginationFromQueryString = async () => {
 .paginatedListWrapper {
 	display: flex;
 	flex-direction: column;
+	height: 100%;
+	overflow: auto;
 	gap: var(--spacing-m);
-
-	.listItems {
-		overflow: auto;
-	}
 }
 
 .listPagination {
