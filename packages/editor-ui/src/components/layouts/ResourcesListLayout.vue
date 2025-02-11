@@ -436,13 +436,13 @@ const loadPaginationFromQueryString = async () => {
 	const query = router.currentRoute.value.query;
 
 	if (query.page) {
-		currentPage.value = parseInt(query.page as string, 10);
+		await setCurrentPage(parseInt(query.page as string, 10));
 	}
 
 	if (query.pageSize) {
 		const parsedSize = parseInt(query.pageSize as string, 10);
 		// Round to the nearest available page size, this will prevent users from passing arbitrary values
-		rowsPerPage.value = findNearestPageSize(parsedSize);
+		await setRowsPerPage(findNearestPageSize(parsedSize));
 	}
 };
 </script>
