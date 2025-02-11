@@ -411,7 +411,9 @@ onBeforeUnmount(() => {
 
 		<CanvasNodeTrigger
 			v-if="
-				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
+				!props.readOnly &&
+				props.data.render.type === CanvasNodeRenderType.Default &&
+				props.data.render.options.trigger
 			"
 			:name="data.name"
 			:type="data.type"
