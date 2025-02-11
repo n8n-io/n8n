@@ -60,7 +60,7 @@ const props = withDefaults(
 		showFiltersDropdown?: boolean;
 		sortFns?: Record<string, (a: Resource, b: Resource) => number>;
 		sortOptions?: string[];
-		type?: 'datatable' | 'list-infinite' | 'list-paginated';
+		type?: 'datatable' | 'list-full' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
 		loading: boolean;
 		customPageSize?: number;
@@ -76,7 +76,7 @@ const props = withDefaults(
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
 		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		type: 'list-infinite',
+		type: 'list-full',
 		typeProps: () => ({ itemSize: 80 }),
 		loading: true,
 		additionalFiltersHandler: undefined,
@@ -556,9 +556,9 @@ const loadPaginationFromQueryString = async () => {
 					ref="listWrapperRef"
 					:class="$style.listWrapper"
 				>
-					<!-- INFINITE SCROLLING LIST -->
+					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
 					<n8n-recycle-scroller
-						v-if="type === 'list-infinite'"
+						v-if="type === 'list-full'"
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
