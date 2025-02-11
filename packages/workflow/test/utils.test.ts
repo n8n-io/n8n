@@ -303,24 +303,18 @@ describe('hasKey', () => {
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
-		const y: Expect<Equal<typeof x, unknown>> = true;
-		y;
 	});
 	it('should return false if the input is undefined', () => {
 		const x = undefined;
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
-		const y: Expect<Equal<typeof x, unknown>> = true;
-		y;
 	});
 	it('should return false if the input is a number', () => {
 		const x = 1;
 		const result = hasKey(x, 'key');
 
 		expect(result).toEqual(false);
-		const y: Expect<Equal<typeof x, unknown>> = true;
-		y;
 	});
 	it('should return false if the input is an array out of bounds', () => {
 		const x = [1, 2];
