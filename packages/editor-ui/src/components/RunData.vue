@@ -566,7 +566,7 @@ const errorExecutionId = computed(() => {
 		return undefined;
 	}
 
-	if (isSubNodeType.value) {
+	if (isSubNodeType.value && parentNodeError.value?.errorResponse?.executionId) {
 		return String(parentNodeError.value?.errorResponse?.executionId);
 	}
 
