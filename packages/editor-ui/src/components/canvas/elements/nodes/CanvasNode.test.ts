@@ -161,7 +161,7 @@ describe('CanvasNode', () => {
 			},
 		});
 
-		it('should render trigger button only if the node is a trigger node and is not read only', () => {
+		it('should render execute workflow button only if the node is a trigger node and is not read only', () => {
 			const { queryByTestId } = renderComponent({
 				props: createCanvasNodeProps({ readOnly: false, data: triggerNodeData }),
 			});
@@ -169,7 +169,7 @@ describe('CanvasNode', () => {
 			expect(queryByTestId('execute-workflow-button-foo')).toBeInTheDocument();
 		});
 
-		it('should not render trigger button if the node is a trigger node and is read only', () => {
+		it('should not render execute workflow button if the node is a trigger node and is read only', () => {
 			const { queryByTestId } = renderComponent({
 				props: createCanvasNodeProps({ readOnly: true, data: triggerNodeData }),
 			});
