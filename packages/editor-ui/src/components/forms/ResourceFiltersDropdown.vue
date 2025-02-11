@@ -124,6 +124,7 @@ onBeforeMount(async () => {
 				<n8n-badge
 					v-show="filtersLength > 0"
 					:class="$style['filter-button-count']"
+					data-test-id="resources-list-filters-count"
 					theme="primary"
 				>
 					{{ filtersLength }}
