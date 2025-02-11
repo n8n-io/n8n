@@ -24,7 +24,7 @@ import {
 	jsonParse,
 	NodeConnectionType,
 	NodeOperationError,
-	parseMetadataFromError,
+	parseErrorMetadata,
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -94,7 +94,7 @@ export class WorkflowToolService {
 				const executionError = error as ExecutionError;
 				const errorResponse = `There was an error: "${executionError.message}"`;
 
-				const metadata = parseMetadataFromError(error);
+				const metadata = parseErrorMetadata(error);
 				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 				return errorResponse;
 			} finally {

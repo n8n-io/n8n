@@ -393,6 +393,7 @@ describe('RunData', () => {
 				workflowId: 'xyz',
 				executionId: '123',
 			},
+			subExecutionsCount: 1,
 		};
 
 		const { getByTestId } = render({

@@ -14,7 +14,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeOperationError,
-	parseMetadataFromError,
+	parseErrorMetadata,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
@@ -230,7 +230,7 @@ export class ChainRetrievalQa implements INodeType {
 				returnData.push({ json: { response } });
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const metadata = parseMetadataFromError(error);
+					const metadata = parseErrorMetadata(error);
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: { item: itemIndex },

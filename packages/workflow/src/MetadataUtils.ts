@@ -1,4 +1,4 @@
-import type { INodeExecutionData } from '.';
+import type { ITaskMetadata } from '.';
 import { hasKey } from './utils';
 
 function responseHasSubworkflowData(
@@ -9,7 +9,11 @@ function responseHasSubworkflowData(
 	);
 }
 
-export function parseMetadata(response: unknown): INodeExecutionData['metadata'] {
+type ISubWorkflowMetadata = Required<Pick<ITaskMetadata, 'subExecution' | 'subExecutionsCount'>>;
+
+export function parseErrorResponseWorkflowMetadata(
+	response: unknown,
+): ISubWorkflowMetadata | undefined {
 	if (!responseHasSubworkflowData(response)) return undefined;
 
 	return {
@@ -17,12 +21,13 @@ export function parseMetadata(response: unknown): INodeExecutionData['metadata']
 			executionId: response.executionId,
 			workflowId: response.workflowId,
 		},
+		subExecutionsCount: 1,
 	};
 }
 
-export function parseMetadataFromError(error: unknown): INodeExecutionData['metadata'] {
+export function parseErrorMetadata(error: unknown): ISubWorkflowMetadata | undefined {
 	if (hasKey(error, 'errorResponse')) {
-		return parseMetadata(error.errorResponse);
+		return parseErrorResponseWorkflowMetadata(error.errorResponse);
 	}
 	return undefined;
 }

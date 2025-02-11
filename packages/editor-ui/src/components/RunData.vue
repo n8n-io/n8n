@@ -14,7 +14,7 @@ import {
 	type NodeHint,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type Workflow,
-	parseMetadataFromError,
+	parseErrorMetadata,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -539,14 +539,14 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
-	const errorMetadata = parseMetadataFromError(workflowRunErrorAsNodeError.value);
+	const errorMetadata = parseErrorMetadata(workflowRunErrorAsNodeError.value);
 	if (errorMetadata !== undefined) {
 		return errorMetadata;
 	}
 
 	// This is needed for the WorkflowRetriever to display the associated execution
 	if (parentNodeError.value) {
-		const subNodeMetadata = parseMetadataFromError(parentNodeError.value);
+		const subNodeMetadata = parseErrorMetadata(parentNodeError.value);
 		if (subNodeMetadata !== undefined) {
 			return subNodeMetadata;
 		}
@@ -1338,11 +1338,11 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 		}
 	}
 
-	if (errorExecutionId.value) {
-		return i18n.baseText('runData.openSubExecutionSingle', {
-			interpolate: { id: errorExecutionId.value },
-		});
-	}
+	// if (errorExecutionId.value) {
+	// 	return i18n.baseText('runData.openSubExecutionSingle', {
+	// 		interpolate: { id: errorExecutionId.value },
+	// 	});
+	// }
 
 	return;
 }
