@@ -24,11 +24,7 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import {
-	normalizeItems,
-	getRequestHelperFunctions,
-	getSSHTunnelFunctions,
-} from '@/node-execute-functions';
+import { normalizeItems, getRequestHelperFunctions } from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -44,6 +40,7 @@ import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-fu
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { returnJsonArray } from './utils/return-json-array';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];

@@ -50,9 +50,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-	SSHTunnelFunctions,
 	WebhookType,
-	SchedulingFunctions,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
@@ -81,8 +79,6 @@ import {
 	PollContext,
 	TriggerContext,
 } from './execution-engine/node-execution-context';
-import { ScheduledTaskManager } from './execution-engine/scheduled-task-manager';
-import { SSHClientsManager } from './execution-engine/ssh-clients-manager';
 import type { IResponseError } from './interfaces';
 
 axios.defaults.timeout = 300000;
@@ -1460,19 +1456,6 @@ export const getRequestHelperFunctions = (
 				oAuth2Options,
 			);
 		},
-	};
-};
-
-export const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
-	getSSHClient: async (credentials) =>
-		await Container.get(SSHClientsManager).getClient(credentials),
-});
-
-export const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
-	const scheduledTaskManager = Container.get(ScheduledTaskManager);
-	return {
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
 	};
 };
 
