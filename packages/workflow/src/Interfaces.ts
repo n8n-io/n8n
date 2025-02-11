@@ -1556,12 +1556,12 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
+type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null;
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(
-		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1598,11 +1598,9 @@ export interface INodeType {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
-	nonRoutingOperations?: {
+	customOperations?: {
 		[resource: string]: {
-			[operation: string]: (
-				context: IExecuteFunctions,
-			) => Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
 		};
 	};
 }

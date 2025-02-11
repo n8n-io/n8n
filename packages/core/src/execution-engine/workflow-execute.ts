@@ -41,8 +41,6 @@ import type {
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
-	IExecuteFunctions,
-	NodeExecutionWithMetadata,
 	INodeType,
 } from 'n8n-workflow';
 import {
@@ -975,19 +973,12 @@ export class WorkflowExecute {
 		return workflowIssues;
 	}
 
-	private getRoutingNodeExecuteFunction(node: INode, type: INodeType) {
+	private getCustomOperation(node: INode, type: INodeType) {
 		const { resource, operation } = node.parameters;
-		if (
-			typeof resource === 'string' &&
-			typeof operation === 'string' &&
-			type.nonRoutingOperations?.[resource]?.[operation]
-		) {
-			return type.nonRoutingOperations[resource][operation] as (
-				context: IExecuteFunctions,
-			) => Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
-		}
 
-		return undefined;
+		if (typeof resource !== 'string' || typeof operation !== 'string') return;
+
+		return type.customOperations?.[resource]?.[operation];
 	}
 
 	/** Executes the given node */
@@ -1019,14 +1010,14 @@ export class WorkflowExecute {
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		const routingExecuteFunction = this.getRoutingNodeExecuteFunction(node, nodeType);
+		const customOperation = this.getCustomOperation(node, nodeType);
+
+		if (customOperation) {
+			nodeType.execute = customOperation;
+		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (
-			nodeType.execute ||
-			routingExecuteFunction ||
-			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
-		) {
+		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
 			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
@@ -1085,7 +1076,7 @@ export class WorkflowExecute {
 			inputData = newInputData;
 		}
 
-		if (nodeType.execute || routingExecuteFunction) {
+		if (nodeType.execute) {
 			const closeFunctions: CloseFunction[] = [];
 			const context = new ExecuteContext(
 				workflow,
@@ -1101,16 +1092,10 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 
-			let data;
-
-			if (routingExecuteFunction) {
-				data = await routingExecuteFunction(context);
-			} else if (nodeType.execute) {
-				data =
-					nodeType instanceof Node
-						? await nodeType.execute(context)
-						: await nodeType.execute.call(context);
-			}
+			const data =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
 
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),

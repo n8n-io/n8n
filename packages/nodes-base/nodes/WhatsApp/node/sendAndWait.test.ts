@@ -1,6 +1,6 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import { type IExecuteFunctions } from 'n8n-workflow';
 
 import { WhatsApp } from '../WhatsApp.node';
 
@@ -24,8 +24,6 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 	it('should send message and put execution to wait', async () => {
 		const items = [{ json: { data: 'test' } }];
 		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
-			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
-			if (key === 'resource') return 'message';
 			if (key === 'phoneNumberId') return '11111';
 			if (key === 'recipientPhoneNumber') return '22222';
 			if (key === 'message') return 'my message';
@@ -44,7 +42,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
 
-		const result = await whatsApp.execute.call(mockExecuteFunctions);
+		const result = await whatsApp.customOperations.message.sendAndWait.call(mockExecuteFunctions);
 
 		expect(result).toEqual([items]);
 
