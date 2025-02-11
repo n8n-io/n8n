@@ -103,6 +103,7 @@ const workflowResources = computed<Resource[]>(() =>
 		id: workflow.id,
 		name: workflow.name,
 		value: '',
+		active: workflow.active,
 		updatedAt: workflow.updatedAt.toString(),
 		createdAt: workflow.createdAt.toString(),
 		homeProject: workflow.homeProject,
@@ -153,9 +154,6 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-// Watchers
-watch(filters, () => saveFiltersOnQueryString(), { deep: true });
-
 watch(
 	() => route.params?.projectId,
 	async () => {
@@ -173,6 +171,7 @@ onMounted(async () => {
 const onFiltersUpdated = async (newFilters: BaseFilters) => {
 	Object.assign(filters.value, newFilters);
 	currentPage.value = 1;
+	saveFiltersOnQueryString();
 	await fetchWorkflows();
 };
 
