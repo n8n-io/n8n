@@ -351,7 +351,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername)',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 
 			// ----------------------------------
@@ -706,7 +706,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -2141,7 +2141,9 @@ export class Telegram implements INodeType {
 						},
 					};
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
+						formData,
+					});
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
