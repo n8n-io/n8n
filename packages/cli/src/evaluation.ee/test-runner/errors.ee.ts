@@ -16,7 +16,7 @@ export class TestCaseExecutionError extends ApplicationError {
 	readonly code: TestCaseExecutionErrorCode;
 
 	constructor(code: TestCaseExecutionErrorCode, extra: Record<string, unknown> = {}) {
-		super('Test Case execution: ' + code, { extra });
+		super('Test Case execution failed with code ' + code, { extra });
 
 		this.code = code;
 	}
@@ -32,7 +32,7 @@ export class TestRunError extends ApplicationError {
 	readonly code: TestRunErrorCode;
 
 	constructor(code: TestRunErrorCode, extra: Record<string, unknown> = {}) {
-		super('Test Run: ' + code, { extra });
+		super('Test Run failed with code ' + code, { extra });
 
 		this.code = code;
 	}

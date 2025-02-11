@@ -12,6 +12,15 @@ import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/err
 
 export type TestCaseRunMetrics = Record<string, number | boolean>;
 
+export type TestCaseExecutionStatus =
+	| 'new' // Test case execution was created and added to the test run, but has not been started yet
+	| 'running' // Workflow under test is running
+	| 'evaluation_running' // Evaluation workflow is running
+	| 'success' // Both workflows have completed successfully
+	| 'error' // An error occurred during the execution of workflow under test or evaluation workflow
+	| 'warning' // There were warnings during the execution of workflow under test or evaluation workflow. Used only to signal possible issues to user, not to indicate a failure.
+	| 'cancelled';
+
 /**
  * This entity represents the linking between the test runs and individual executions.
  * It stores status, links to past, new and evaluation executions, and metrics produced by individual evaluation wf executions
@@ -51,7 +60,7 @@ export class TestCaseExecution extends WithStringId {
 	evaluationExecutionId: string | null;
 
 	@Column()
-	status: 'new' | 'running' | 'evaluation_running' | 'success' | 'error' | 'warning' | 'cancelled';
+	status: TestCaseExecutionStatus;
 
 	@Column({ type: datetimeColumnType, nullable: true })
 	runAt: Date | null;
