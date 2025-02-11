@@ -29,11 +29,26 @@ const emit = defineEmits<{
 	'update:filtersLength': [value: number];
 }>();
 
-const selectedProject = ref<ProjectSharingData | null>(null);
-
 const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
+
+const selectedProject = computed<ProjectSharingData | null>({
+	get: () => {
+		return (
+			projectsStore.availableProjects.find(
+				(project) => project.id === props.modelValue.homeProject,
+			) ?? null
+		);
+	},
+	set: (value) => {
+		if (value) {
+			setKeyValue('homeProject', value.id);
+		} else {
+			setKeyValue('homeProject', '');
+		}
+	},
+});
 
 const filtersLength = computed(() => {
 	let length = 0;
@@ -93,10 +108,6 @@ watch(filtersLength, (value) => {
 
 onBeforeMount(async () => {
 	await projectsStore.getAvailableProjects();
-	selectedProject.value =
-		projectsStore.availableProjects.find(
-			(project) => project.id === props.modelValue.homeProject,
-		) ?? null;
 });
 </script>
 
