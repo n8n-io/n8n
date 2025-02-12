@@ -1,4 +1,4 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	handleErrorPostReceive,
@@ -53,17 +53,6 @@ export const userOperations: INodeProperties[] = [
 				description: 'Create a new user',
 				action: 'Create user',
 				routing: {
-					send: {
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								console.log(requestOptions);
-								return requestOptions;
-							},
-						],
-					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -872,14 +861,6 @@ const updateFields: INodeProperties[] = [
 				],
 			},
 		],
-		// routing: {
-		// 	send: {
-		// 		type: 'body',
-		// 		property: 'UserAttributes',
-		// 		value:
-		// 			'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
-		// 	},
-		// },
 	},
 ];
 
