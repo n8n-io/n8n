@@ -233,7 +233,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Blob Name',
-		name: 'blob',
+		name: 'blobCreate',
 		default: '',
 		description: 'The name of the new or existing blob',
 		displayOptions: {

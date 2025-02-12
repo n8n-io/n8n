@@ -194,7 +194,7 @@ export const containerOperations: INodeProperties[] = [
 const createFields: INodeProperties[] = [
 	{
 		displayName: 'Container Name',
-		name: 'container',
+		name: 'containerCreate',
 		default: '',
 		description: 'The name of the new container',
 		displayOptions: {
