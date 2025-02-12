@@ -66,7 +66,7 @@ export class FolderRepository extends Repository<Folder> {
 			query.andWhere('folder.projectId = :projectId', { projectId });
 		}
 
-		if (name) {
+		if (name && typeof name === 'string') {
 			query.andWhere('LOWER(folder.name) LIKE LOWER(:name)', { name: `%${name}%` });
 		}
 
