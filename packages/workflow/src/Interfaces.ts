@@ -2012,6 +2012,10 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$secrets?: IDataObject;
 	$pageCount?: number;
 
+	$environment?: {
+		deployment: string;
+	};
+
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */

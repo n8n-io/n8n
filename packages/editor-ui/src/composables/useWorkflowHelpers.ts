@@ -101,6 +101,10 @@ export function resolveParameter<T = IDataObject>(
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 
+		$settings: {
+			deploymentType: useSettingsStore().deploymentType,
+		},
+
 		...opts.additionalKeys,
 	};
 
@@ -687,7 +691,26 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		if (showUrlFor === 'test') {
 			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
 		} else {
-			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
+			if (isForm) {
+				baseUrl = rootStore.formUrl;
+			} else if (useSettingsStore().deploymentType === 'cloud') {
+				let useQueue: boolean;
+				try {
+					useQueue = !!resolveExpression(node.parameters.useQueue as string, undefined, {
+						isForCredential: false,
+					});
+				} catch (error) {
+					useQueue = false;
+				}
+
+				if (useQueue) {
+					baseUrl = useSettingsStore().webhookQueueUrl;
+				} else {
+					baseUrl = rootStore.webhookUrl;
+				}
+			} else {
+				baseUrl = rootStore.webhookUrl;
+			}
 		}
 
 		const workflowId = workflowsStore.workflowId;
