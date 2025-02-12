@@ -380,7 +380,7 @@ export class ChatTrigger extends Node {
 						description: 'Shown at the top of the chat',
 					},
 					{
-						displayName: 'Custom CSS',
+						displayName: 'Custom Chat Styling',
 						name: 'customCss',
 						type: 'string',
 						typeOptions: {
@@ -393,14 +393,14 @@ export class ChatTrigger extends Node {
 							},
 						},
 						default: `
+${cssVariables}
+
+/* You can override any class styles, too. Right-click inspect in Chat UI to find class to override. */
 .chat-message {
-	max-width: 50%; #Whatever
-}
-:root{
-${cssVariables.map(({ name, default: defaultValue }) => `${name}: ${defaultValue?.toString()};`).join('\n')}
+	max-width: 50%;
 }
 `.trim(),
-						description: 'Full CSS override for complete customization of the chat appearance',
+						description: 'Override default styling of the public chat interface with CSS',
 					},
 				],
 			},

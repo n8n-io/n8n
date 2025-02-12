@@ -59,13 +59,14 @@ export function createPage({
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
 			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 			<style>
+				${sanitizedCustomCss ?? ''}
+
 				html,
 				body,
 				#n8n-chat {
 					width: 100%;
 					height: 100%;
 				}
-				${sanitizedCustomCss ?? ''}
 			</style>
 		</head>
 		<body>
