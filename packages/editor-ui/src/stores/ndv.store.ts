@@ -93,6 +93,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const workflowsStore = useWorkflowsStore();
 
+	const autoExpressionMode = ref<{ [key: string]: true }>({});
+
 	const activeNode = computed(() => {
 		return workflowsStore.getNodeByName(activeNodeName.value || '');
 	});
@@ -403,6 +405,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		expressionOutputItemIndex,
 		isTableHoverOnboarded,
 		mainPanelDimensions,
+		autoExpressionMode,
 		setActiveNodeName,
 		setInputNodeName,
 		setInputRunIndex,

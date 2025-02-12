@@ -17,6 +17,7 @@ interface Props {
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
+	path?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+	path: '',
 });
 
 const emit = defineEmits<{
@@ -38,9 +40,9 @@ const i18n = useI18n();
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
-const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
-);
+const shouldShowExpressionSelector = computed(() => {
+	return !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly;
+});
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
 		return false;
@@ -60,7 +62,12 @@ const shouldShowOptions = computed(() => {
 
 	return false;
 });
-const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
+const selectedView = computed(() => {
+	if (useNDVStore().autoExpressionMode[props.path]) {
+		return 'auto';
+	}
+	return isValueAnExpression.value ? 'expression' : 'fixed';
+});
 const activeNode = computed(() => useNDVStore().activeNode);
 const hasRemoteMethod = computed(
 	() =>
@@ -72,6 +79,19 @@ const resetValueLabel = computed(() => {
 	}
 
 	return i18n.baseText('parameterInput.resetValue');
+});
+
+const modes = computed(() => {
+	const baseModes = [
+		{ label: i18n.baseText('parameterInput.fixed'), value: 'fixed' },
+		{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
+	];
+
+	if (['string', 'number'].includes(props.parameter.type) && props.path) {
+		baseModes.unshift({ label: 'Auto', value: 'auto' });
+	}
+
+	return baseModes;
 });
 
 const actions = computed(() => {
@@ -116,11 +136,17 @@ const actions = computed(() => {
 
 const onMenuToggle = (visible: boolean) => emit('menu-expanded', visible);
 const onViewSelected = (selected: string) => {
+	console.log('onViewSelected', useNDVStore().autoExpressionMode);
+	if (selected === 'auto') {
+		if (props.path) useNDVStore().autoExpressionMode[props.path] = true;
+	}
 	if (selected === 'expression') {
+		delete useNDVStore().autoExpressionMode[props.path ?? ''];
 		emit('update:modelValue', isValueAnExpression.value ? 'openExpression' : 'addExpression');
 	}
 
 	if (selected === 'fixed' && isValueAnExpression.value) {
+		delete useNDVStore().autoExpressionMode[props.path ?? ''];
 		emit('update:modelValue', 'removeExpression');
 	}
 };
@@ -168,10 +194,7 @@ const getArgument = (argumentName: string) => {
 				size="small"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
-				:options="[
-					{ label: i18n.baseText('parameterInput.fixed'), value: 'fixed' },
-					{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
-				]"
+				:options="modes"
 				@update:model-value="onViewSelected"
 			/>
 		</div>

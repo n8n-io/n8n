@@ -474,6 +474,23 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 	} else if (parameterData.name.startsWith('parameters.')) {
 		// A node parameter changed
 
+		if (ndvStore.autoExpressionMode[parameterData.name]) {
+			const hasExpressionTempalte =
+				typeof newValue === 'string' && newValue.includes('{{') && newValue.includes('}}');
+
+			if (hasExpressionTempalte && !(newValue as string).startsWith('=')) {
+				newValue = '=' + newValue;
+			}
+
+			if (
+				typeof newValue === 'string' &&
+				!hasExpressionTempalte &&
+				(newValue as string).startsWith('=')
+			) {
+				newValue = (newValue as string).slice(1);
+			}
+		}
+
 		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
 		if (!nodeType) {
 			return;
