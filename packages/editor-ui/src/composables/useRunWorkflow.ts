@@ -187,7 +187,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage'
 			) {
-				const startNode = workflow.getStartNode(options.destinationNode);
+				const newDestinationNode = workflowsStore.getNewDestinationNode(options.destinationNode);
+				const startNode = workflow.getStartNode(newDestinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =

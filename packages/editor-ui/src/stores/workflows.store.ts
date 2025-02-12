@@ -1536,8 +1536,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		chatMessages.value.push(message);
 	}
 
+	function getNewDestinationNode(nodeName: string): string {
+		const workflow = getCurrentWorkflow();
+		const node = workflow.getNode(nodeName)!;
+
+		const nodeTypesStore = useNodeTypesStore();
+
+		if (nodeTypesStore.isAiToolNode(node.type)) {
+			nodeName = workflow.getChildNodes(node.name, NodeConnectionType.AiTool, 1)[0];
+		}
+
+		return nodeName;
+	}
+
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
+
+		nodeName = getNewDestinationNode(nodeName);
+
 		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
 
 		const matchedChatNode = parents.find((parent) => {
@@ -1748,5 +1764,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		getNewDestinationNode,
 	};
 });

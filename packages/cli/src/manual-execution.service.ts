@@ -6,6 +6,8 @@ import {
 	recreateNodeExecutionStack,
 	WorkflowExecute,
 	Logger,
+	isTool,
+	rewireGraph,
 } from 'n8n-core';
 import type {
 	IPinData,
@@ -49,6 +51,7 @@ export class ManualExecutionService {
 		pinData?: IPinData,
 	): PCancelable<IRun> {
 		if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+			console.log('chat execution');
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
 				{ executionId },
@@ -89,6 +92,7 @@ export class ManualExecutionService {
 			data.startNodes === undefined ||
 			data.startNodes.length === 0
 		) {
+			console.log('full execution');
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
 			// be removed and the previous one can be merged into
@@ -103,10 +107,24 @@ export class ManualExecutionService {
 
 			const startNode = this.getExecutionStartNode(data, workflow);
 
+			if (data.destinationNode) {
+				const destinationNode = workflow.getNode(data.destinationNode);
+
+				a.ok(destinationNode);
+
+				if (isTool(destinationNode, workflow.nodeTypes)) {
+					console.log('done this');
+					workflow = rewireGraph(destinationNode, DirectedGraph.fromWorkflow(workflow)).toWorkflow(
+						workflow,
+					);
+				}
+			}
+
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
 		} else {
+			console.log('partial execution');
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes

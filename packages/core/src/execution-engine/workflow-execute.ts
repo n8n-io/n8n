@@ -1718,11 +1718,19 @@ export class WorkflowExecute {
 					) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
-						await hooks.runHook('nodeExecuteAfter', [
-							executionNode.name,
-							taskData,
-							this.runExecutionData,
-						]);
+						if (executionNode.rewireOutputLogTo) {
+							await hooks.runHook('nodeExecuteAfter', [
+								executionNode.name,
+								{ ...taskData, data: { [executionNode.rewireOutputLogTo]: nodeSuccessData } },
+								this.runExecutionData,
+							]);
+						} else {
+							await hooks.runHook('nodeExecuteAfter', [
+								executionNode.name,
+								taskData,
+								this.runExecutionData,
+							]);
+						}
 
 						// If destination node is defined and got executed stop execution
 						continue;

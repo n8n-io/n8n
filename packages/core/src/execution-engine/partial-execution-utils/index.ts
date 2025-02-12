@@ -39,6 +39,8 @@ export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 		allIncomingConnection.map((cn) => `${cn.from.name} -> ${cn.to.name}`),
 	);
 
+	tool.rewireOutputLogTo = NodeConnectionType.AiTool;
+
 	for (const cn of allIncomingConnection) {
 		graph.addConnection({ from: cn.from, to: tool });
 	}
