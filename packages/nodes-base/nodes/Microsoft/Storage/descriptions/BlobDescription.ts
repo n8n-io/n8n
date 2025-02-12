@@ -811,7 +811,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add tag',
+				placeholder: 'Add Tag',
 				routing: {
 					send: {
 						preSend: [
@@ -941,6 +941,7 @@ const deleteFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 		],
+		placeholder: 'Add Options',
 		type: 'collection',
 	},
 ];
