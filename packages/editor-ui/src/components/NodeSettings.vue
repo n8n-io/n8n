@@ -128,6 +128,12 @@ const isReadOnly = computed(
 const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
+const isAiToolNode = computed(() => !!node.value && nodeTypesStore.isAiToolNode(node.value.type));
+
+const isAiToolWithTestArg = computed(() => {
+	// TODO: Check if the AI tool node has a test argument
+	return true;
+});
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
@@ -139,16 +145,9 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		const outputs = NodeHelpers.getNodeOutputs(
-			currentWorkflowInstance.value,
-			workflowNode!,
-			props.nodeType,
-		);
-		const outputNames = NodeHelpers.getConnectionTypes(outputs);
-
 		if (
 			!inputNames.includes(NodeConnectionType.Main) &&
-			!outputNames.includes(NodeConnectionType.AiTool) &&
+			!isAiToolNode.value &&
 			!isTriggerNode.value
 		) {
 			return false;
@@ -231,6 +230,13 @@ const credentialOwnerName = computed(() => {
 		: undefined;
 
 	return credentialsStore.getCredentialOwnerName(credential);
+});
+
+const isNodeExecuteButtonDisabled = computed(() => {
+	return (
+		(outputPanelEditMode.value.enabled && !isTriggerNode.value) ||
+		(isAiToolNode.value && !isAiToolWithTestArg.value)
+	);
 });
 
 const setValue = (name: string, value: NodeParameterValue) => {
@@ -969,7 +975,7 @@ onBeforeUnmount(() => {
 						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:disabled="isNodeExecuteButtonDisabled"
 						:tooltip="executeButtonTooltip"
 						size="small"
 						telemetry-source="parameters"

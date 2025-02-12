@@ -121,6 +121,17 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
+	const isAiToolNode = computed(() => {
+		return (nodeTypeName: string) => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			return !!(
+				nodeType &&
+				nodeType.group.includes('transform') &&
+				nodeType.outputs.includes(NodeConnectionType.AiTool)
+			);
+		};
+	});
+
 	const isCoreNodeType = computed(() => {
 		return (nodeType: INodeTypeDescription) => {
 			return nodeType.codex?.categories?.includes('Core Nodes');
@@ -327,6 +338,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
+		isAiToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,
