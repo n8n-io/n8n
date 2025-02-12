@@ -2,6 +2,8 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import type { TextSplitter } from '@langchain/textsplitters';
 import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
@@ -901,15 +903,18 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputConnectionData(
 			connectionType: Exclude<
 				AINodeConnectionType,
-				NodeConnectionType.AiLanguageModel | NodeConnectionType.AiMemory
+				| NodeConnectionType.AiLanguageModel
+				| NodeConnectionType.AiMemory
+				| NodeConnectionType.AiVectorStore
+				| NodeConnectionType.AiTextSplitter
 			>,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
 		getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex?: number): Promise<T>;
-		getAIMemory<T extends BaseChatMemory = BaseChatMemory>(
-			itemIndex?: number,
-		): Promise<T | undefined>;
+		getAIMemory(itemIndex?: number): Promise<BaseChatMemory | undefined>;
+		getAIVectorStore(itemIndex?: number): Promise<VectorStore | undefined>;
+		getAITextSplitter(itemIndex?: number): Promise<TextSplitter | undefined>;
 
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
@@ -987,6 +992,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'getInputConnectionData'
 		| 'getAIModel'
 		| 'getAIMemory'
+		| 'getAIVectorStore'
+		| 'getAITextSplitter'
 		| 'getInputData'
 		| 'getNodeOutputs'
 		| 'executeWorkflow'

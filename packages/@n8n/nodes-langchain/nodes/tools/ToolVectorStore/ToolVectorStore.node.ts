@@ -1,4 +1,3 @@
-import type { VectorStore } from '@langchain/core/vectorstores';
 import { VectorDBQAChain } from 'langchain/chains';
 import { VectorStoreQATool } from 'langchain/tools';
 import type {
@@ -7,7 +6,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -95,10 +94,10 @@ export class ToolVectorStore implements INodeType {
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
-		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
-			itemIndex,
-		)) as VectorStore;
+		const vectorStore = await this.getAIVectorStore(itemIndex);
+		if (!vectorStore) {
+			throw new NodeOperationError(this.getNode(), 'Vector Store Tool requires a Vector Store');
+		}
 
 		const llm = await this.getAIModel();
 

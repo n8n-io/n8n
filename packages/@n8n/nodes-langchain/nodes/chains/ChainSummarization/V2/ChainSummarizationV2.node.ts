@@ -385,10 +385,7 @@ export class ChainSummarizationV2 implements INodeType {
 
 						// In advanced mode user can connect text splitter node so we just retrieve it
 						case 'advanced':
-							textSplitter = (await this.getInputConnectionData(
-								NodeConnectionType.AiTextSplitter,
-								0,
-							)) as TextSplitter | undefined;
+							textSplitter = await this.getAITextSplitter();
 							break;
 						default:
 							break;

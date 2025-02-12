@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -178,10 +177,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		this.logger.debug('Supply Data for Binary Input Loader');
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+		const textSplitter = await this.getAITextSplitter();
 
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', 0) as string;
 		const processor = new N8nBinaryLoader(this, undefined, binaryDataKey, textSplitter);

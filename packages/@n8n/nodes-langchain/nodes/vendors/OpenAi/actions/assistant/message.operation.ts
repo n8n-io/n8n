@@ -228,10 +228,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const useMemoryConnector =
 		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
-	const memory =
-		useMemoryConnector || nodeVersion < 1.6
-			? await this.getAIMemory<BufferWindowMemory>()
-			: undefined;
+	const memory = useMemoryConnector || nodeVersion < 1.6 ? await this.getAIMemory() : undefined;
 
 	const threadId =
 		nodeVersion >= 1.6 && !useMemoryConnector
@@ -245,7 +242,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
-		const chatMessages = await getChatMessages(memory);
+		const chatMessages = await getChatMessages(memory as BufferWindowMemory);
 
 		// Construct a new thread from the chat history to map the memory
 		if (chatMessages.length) {

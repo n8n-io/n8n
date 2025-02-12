@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
-import type { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -105,10 +104,7 @@ export class DocumentGithubLoader implements INodeType {
 			ignorePaths: string;
 		};
 
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as CharacterTextSplitter | undefined;
+		const textSplitter = await this.getAITextSplitter();
 
 		const { index } = this.addInputData(NodeConnectionType.AiDocument, [
 			[{ json: { repository, branch, ignorePaths, recursive } }],

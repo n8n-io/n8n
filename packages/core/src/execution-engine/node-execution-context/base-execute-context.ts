@@ -1,5 +1,7 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import type { TextSplitter } from '@langchain/textsplitters';
 import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
@@ -23,6 +25,7 @@ import type {
 	ISourceData,
 	AiEvent,
 	CloseFunction,
+	AINodeConnectionType,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -220,27 +223,38 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 	}
 
-	async getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex = 0): Promise<T> {
-		return (await getInputConnectionData.call(
-			this,
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			this.connectionInputData,
-			this.inputData,
-			this.additionalData,
-			this.executeData,
-			this.mode,
-			this.closeFunctions,
+	async getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex = 0) {
+		return await this.getInputConnectionDataAtIndex<T>(
 			NodeConnectionType.AiLanguageModel,
 			itemIndex,
-			this.abortSignal,
-		)) as T;
+		);
 	}
 
-	async getAIMemory<T extends BaseChatMemory = BaseChatMemory>(
-		itemIndex = 0,
-	): Promise<T | undefined> {
+	async getAIMemory(itemIndex = 0) {
+		return await this.getInputConnectionDataAtIndex<BaseChatMemory>(
+			NodeConnectionType.AiMemory,
+			itemIndex,
+		);
+	}
+
+	async getAIVectorStore(itemIndex = 0) {
+		return await this.getInputConnectionDataAtIndex<VectorStore>(
+			NodeConnectionType.AiVectorStore,
+			itemIndex,
+		);
+	}
+
+	async getAITextSplitter(itemIndex = 0) {
+		return await this.getInputConnectionDataAtIndex<TextSplitter | undefined>(
+			NodeConnectionType.AiTextSplitter,
+			itemIndex,
+		);
+	}
+
+	private async getInputConnectionDataAtIndex<T>(
+		connectionType: AINodeConnectionType,
+		itemIndex: number,
+	) {
 		return (await getInputConnectionData.call(
 			this,
 			this.workflow,
@@ -252,7 +266,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.executeData,
 			this.mode,
 			this.closeFunctions,
-			NodeConnectionType.AiMemory,
+			connectionType,
 			itemIndex,
 			this.abortSignal,
 		)) as T;

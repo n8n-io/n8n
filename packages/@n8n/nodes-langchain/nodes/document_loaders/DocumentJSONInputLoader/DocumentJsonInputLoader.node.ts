@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -81,10 +80,7 @@ export class DocumentJsonInputLoader implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		this.logger.debug('Supply Data for JSON Input Loader');
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+		const textSplitter = await this.getAITextSplitter();
 
 		const processor = new N8nJsonLoader(this, undefined, textSplitter);
 
