@@ -64,7 +64,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const historyStore = useHistoryStore();
-	const settingsStore = useSettingsStore();
 
 	const dirtinessByName = computed(() => {
 		// Do not highlight dirtiness if new partial execution is not enabled
@@ -117,8 +116,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return false;
 		}
 
-		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
-			const runAt = taskData[0]?.startTime;
+		for (const node of workflowsStore.allNodes) {
+			const nodeName = node.name;
+			const runAt = runDataByNode[nodeName]?.[0]?.startTime;
 
 			if (!runAt) {
 				continue;
