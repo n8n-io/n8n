@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref } from 'vue';
+import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
 import ResourcesListLayout, {
 	type Resource,
 	type BaseFilters,
@@ -39,6 +39,7 @@ import {
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
+import { createEventBus } from 'n8n-design-system/utils';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -82,6 +83,8 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+
+const workflowListEventBus = createEventBus();
 
 const workflows = ref<IWorkflowDb[]>([]);
 
@@ -164,6 +167,14 @@ watch(
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 	void usersStore.showPersonalizationSurvey();
+
+	workflowListEventBus.on('resource-moved', fetchWorkflows);
+	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
+});
+
+onBeforeUnmount(() => {
+	workflowListEventBus.off('resource-moved', fetchWorkflows);
+	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 });
 
 // Methods
@@ -451,6 +462,7 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data as IWorkflowDb"
+				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
 				@workflow:deleted="fetchWorkflows"

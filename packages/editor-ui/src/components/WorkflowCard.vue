@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed } from 'vue';
 import type { IWorkflowDb, IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -25,7 +25,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
-import { createEventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -39,6 +39,7 @@ const props = withDefaults(
 	defineProps<{
 		data: IWorkflowDb;
 		readOnly?: boolean;
+		workflowListEventBus?: EventBus;
 	}>(),
 	{
 		data: () => ({
@@ -54,6 +55,7 @@ const props = withDefaults(
 			versionId: '',
 		}),
 		readOnly: false,
+		workflowListEventBus: undefined,
 	},
 );
 
@@ -61,8 +63,6 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
-	'workflow:moved': [];
-	'workflow:duplicated': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 }>();
 
@@ -77,8 +77,6 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-
-const workflowListEventBus = createEventBus();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -167,7 +165,7 @@ async function onAction(action: string) {
 					tags: (props.data.tags ?? []).map((tag) =>
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
-					externalEventBus: workflowListEventBus,
+					externalEventBus: props.workflowListEventBus,
 				},
 			});
 			break;
@@ -235,32 +233,14 @@ function moveResource() {
 			resource: props.data,
 			resourceType: ResourceType.Workflow,
 			resourceTypeLabel: resourceTypeLabel.value,
-			eventBus: workflowListEventBus,
+			eventBus: props.workflowListEventBus,
 		},
 	});
 }
 
-const emitWorkflowMoved = () => {
-	emit('workflow:moved');
-};
-
-const emitWorkflowDuplicated = () => {
-	emit('workflow:duplicated');
-};
-
 const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
 };
-
-onMounted(() => {
-	workflowListEventBus.on('resource-moved', emitWorkflowMoved);
-	workflowListEventBus.on('workflow-duplicated', emitWorkflowDuplicated);
-});
-
-onBeforeUnmount(() => {
-	workflowListEventBus.off('resource-moved', emitWorkflowMoved);
-	workflowListEventBus.off('workflow-duplicated', emitWorkflowDuplicated);
-});
 </script>
 
 <template>
