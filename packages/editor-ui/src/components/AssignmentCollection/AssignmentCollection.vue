@@ -128,7 +128,6 @@ function optionSelected(action: string) {
 					:custom-actions="actions"
 					:is-read-only="isReadOnly"
 					:show-expression-selector="false"
-					:path="path"
 					@update:model-value="optionSelected"
 				/>
 			</template>

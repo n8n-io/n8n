@@ -338,7 +338,6 @@ defineExpose({
 					:loading-message="fetchingFieldsLabel"
 					:is-read-only="isReadOnly"
 					:value="props.paramValue"
-					:path="path"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
