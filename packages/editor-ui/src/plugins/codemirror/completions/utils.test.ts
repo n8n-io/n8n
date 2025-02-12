@@ -1,16 +1,35 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { autocompletableNodeNames, expressionWithFirstItem } from './utils';
-import type { MockInstance } from 'vitest';
 import * as ndvStore from '@/stores/ndv.store';
+import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import { NodeConnectionType, type IConnections } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { autocompletableNodeNames, expressionWithFirstItem, stripExcessParens } from './utils';
 
 vi.mock('@/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		getCurrentWorkflow: vi.fn(),
 	}),
 }));
+
+const editorFromString = (docWithCursor: string) => {
+	const cursorPosition = docWithCursor.indexOf('|');
+
+	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
+
+	const state = EditorState.create({
+		doc,
+		selection: { anchor: cursorPosition },
+	});
+
+	return {
+		context: new CompletionContext(state, cursorPosition, false),
+		view: new EditorView({ state, doc }),
+	};
+};
 
 describe('completion utils', () => {
 	describe('expressionWithFirstItem', () => {
@@ -120,6 +139,43 @@ describe('completion utils', () => {
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
 			expect(autocompletableNodeNames()).toEqual(['Normal Node']);
+		});
+	});
+
+	describe('stripExcessParens', () => {
+		test.each([
+			{
+				doc: '$(|',
+				completion: { label: "$('Node Name')" },
+				expected: "$('Node Name')",
+			},
+			{
+				doc: '$(|)',
+				completion: { label: "$('Node Name')" },
+				expected: "$('Node Name')",
+			},
+			{
+				doc: "$('|')",
+				completion: { label: "$('Node Name')" },
+				expected: "$('Node Name')",
+			},
+			{
+				doc: "$('No|')",
+				completion: { label: "$('Node Name')" },
+				expected: "$('Node Name')",
+			},
+		])('should complete $doc to $expected', ({ doc, completion, expected }) => {
+			const { context, view } = editorFromString(doc);
+			const result = stripExcessParens(context)(completion);
+			const from = 0;
+			const to = doc.indexOf('|');
+			if (typeof result.apply === 'function') {
+				result.apply(view, completion, from, to);
+			} else {
+				view.dispatch(insertCompletionText(view.state, completion.label, from, to));
+			}
+
+			expect(view.state.doc.toString()).toEqual(expected);
 		});
 	});
 });
