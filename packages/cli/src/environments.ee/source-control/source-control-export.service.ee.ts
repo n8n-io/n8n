@@ -2,11 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
-import {
-	ApplicationError,
-	formatWorkflow,
-	type ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
@@ -16,6 +12,7 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowDb } from '@/interfaces';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
