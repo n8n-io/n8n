@@ -12,6 +12,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
@@ -378,6 +379,29 @@ export class ChatTrigger extends Node {
 						placeholder: 'e.g. Welcome',
 						description: 'Shown at the top of the chat',
 					},
+					{
+						displayName: 'Custom CSS',
+						name: 'customCss',
+						type: 'string',
+						typeOptions: {
+							rows: 10,
+							editor: 'htmlEditor',
+						},
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
+						default: `
+.chat-message {
+	max-width: 50%; #Whatever
+}
+:root{
+${cssVariables.map(({ name, default: defaultValue }) => `${name}: ${defaultValue?.toString()};`).join('\n')}
+}
+`.trim(),
+						description: 'Full CSS override for complete customization of the chat appearance',
+					},
 				],
 			},
 		],
@@ -466,6 +490,7 @@ export class ChatTrigger extends Node {
 			title?: string;
 			allowFileUploads?: boolean;
 			allowedFilesMimeTypes?: string;
+			customCss?: string;
 		};
 
 		const req = ctx.getRequestObject();
@@ -517,6 +542,7 @@ export class ChatTrigger extends Node {
 					authentication,
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
+					customCss: options.customCss,
 				});
 
 				res.status(200).send(page).end();

@@ -28,6 +28,7 @@ import { n8nCompletionSources } from '@/plugins/codemirror/completions/addComple
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { cssLanguage } from '@codemirror/lang-css';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
@@ -59,6 +60,9 @@ const editorValue = ref<string>(props.modelValue);
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
+	new LanguageSupport(cssLanguage, [
+		cssLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
+	]),
 	new LanguageSupport(htmlLanguage, [
 		htmlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
 		n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
@@ -86,7 +90,6 @@ const {
 	editor: editorRef,
 	segments,
 	readEditorValue,
-	isDirty,
 } = useExpressionEditor({
 	editorRef: htmlEditor,
 	editorValue,
@@ -234,7 +237,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
 

@@ -10,6 +10,7 @@ export function createPage({
 	authentication,
 	allowFileUploads,
 	allowedFilesMimeTypes,
+	customCss,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -23,6 +24,7 @@ export function createPage({
 	authentication: AuthenticationChatOption;
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
+	customCss?: string;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -41,6 +43,7 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
+	const sanitizedCustomCss = customCss?.toString() ?? '';
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
 	)
@@ -62,6 +65,7 @@ export function createPage({
 					width: 100%;
 					height: 100%;
 				}
+				${sanitizedCustomCss ?? ''}
 			</style>
 		</head>
 		<body>
