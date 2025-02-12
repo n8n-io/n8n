@@ -411,14 +411,13 @@ onBeforeUnmount(() => {
 
 		<CanvasNodeTrigger
 			v-if="
-				!props.readOnly &&
-				props.data.render.type === CanvasNodeRenderType.Default &&
-				props.data.render.options.trigger
+				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
 			"
 			:name="data.name"
 			:type="data.type"
 			:hovered="nearbyHovered"
 			:disabled="isDisabled"
+			:read-only="readOnly"
 			:class="$style.trigger"
 		/>
 	</div>
