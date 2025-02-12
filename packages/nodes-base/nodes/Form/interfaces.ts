@@ -31,6 +31,7 @@ export type FormTriggerData = {
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	customCss?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

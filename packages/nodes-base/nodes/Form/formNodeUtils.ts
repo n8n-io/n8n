@@ -21,6 +21,7 @@ export const renderFormNode = async (
 		formTitle: string;
 		formDescription: string;
 		buttonLabel: string;
+		customCss?: string;
 	};
 
 	let title = options.formTitle;
@@ -72,6 +73,7 @@ export const renderFormNode = async (
 		redirectUrl,
 		appendAttribution,
 		buttonLabel,
+		customCss: options.customCss,
 	});
 
 	return {

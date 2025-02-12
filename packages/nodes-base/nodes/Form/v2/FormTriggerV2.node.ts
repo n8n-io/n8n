@@ -21,6 +21,7 @@ import {
 } from '../common.descriptions';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils';
+import { cssVariables } from '../cssVariables';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -179,6 +180,22 @@ const descriptionV2: INodeTypeDescription = {
 							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'htmlEditor',
+					},
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gt: 2 } }],
+						},
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},

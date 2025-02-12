@@ -19,6 +19,7 @@ import {
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
+import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './formCompletionUtils';
 import { renderFormNode } from './formNodeUtils';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -85,6 +86,17 @@ const pageProperties = updateDisplayOptions(
 					name: 'buttonLabel',
 					type: 'string',
 					default: 'Submit',
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'htmlEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},
@@ -183,7 +195,20 @@ const completionProperties = updateDisplayOptions(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [{ ...formTitle, required: false, displayName: 'Completion Page Title' }],
+			options: [
+				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'htmlEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
+				},
+			],
 			displayOptions: {
 				show: {
 					respondWith: ['text'],

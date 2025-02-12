@@ -15,7 +15,10 @@ export const renderFormCompletion = async (
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
-	const options = context.getNodeParameter('options', {}) as { formTitle: string };
+	const options = context.getNodeParameter('options', {}) as {
+		formTitle: string;
+		customCss?: string;
+	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
 
 	if (redirectUrl) {
@@ -39,6 +42,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
+		customCss: options.customCss,
 	});
 
 	return { noWebhookResponse: true };
