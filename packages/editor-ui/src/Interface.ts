@@ -402,6 +402,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
+	triggerNode?: string;
 }
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };

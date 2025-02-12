@@ -4702,7 +4702,7 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
 					size="large"
 					icon="comment"
 					:type="isChatOpen ? 'tertiary' : 'primary'"
