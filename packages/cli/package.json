@@ -167,7 +167,7 @@
     "syslog-client": "1.1.1",
     "uuid": "catalog:",
     "validator": "13.7.0",
-    "ws": "8.17.1",
+    "ws": "8.18.0",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",

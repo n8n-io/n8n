@@ -44,7 +44,7 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "ws": "^8.18.0"
+    "ws": "8.18.0"
   },
   "devDependencies": {
     "@types/lodash": "catalog:"
