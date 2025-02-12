@@ -130,6 +130,7 @@
     "@types/mime-types": "^2.1.0",
     "@types/pg": "^8.11.6",
     "@types/temp": "^0.9.1",
+    "@types/sanitize-html": "^2.11.0",
     "n8n-core": "workspace:*"
   },
   "dependencies": {
@@ -182,6 +183,7 @@
     "pdf-parse": "1.1.1",
     "pg": "8.12.0",
     "redis": "4.6.12",
+    "sanitize-html": "2.12.1",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",

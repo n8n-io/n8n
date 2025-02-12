@@ -1,5 +1,6 @@
-import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+import sanitizeHtml from 'sanitize-html';
 
+import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
 export function createPage({
 	instanceId,
 	webhookUrl,
@@ -43,7 +44,11 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
-	const sanitizedCustomCss = customCss?.toString() ?? '';
+	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
+		allowedTags: ['style'],
+		allowedAttributes: false,
+	});
+
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
 	)
@@ -59,8 +64,6 @@ export function createPage({
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
 			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 			<style>
-				${sanitizedCustomCss ?? ''}
-
 				html,
 				body,
 				#n8n-chat {
@@ -68,6 +71,7 @@ export function createPage({
 					height: 100%;
 				}
 			</style>
+			${sanitizedCustomCss}
 		</head>
 		<body>
 			<script type="module">
