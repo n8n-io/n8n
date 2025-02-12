@@ -14,12 +14,14 @@ const {
 	type,
 	hovered,
 	disabled,
+	readOnly,
 	class: cls,
 } = defineProps<{
 	name: string;
 	type: string;
 	hovered?: boolean;
 	disabled?: boolean;
+	readOnly?: boolean;
 	class?: string;
 }>();
 
@@ -29,7 +31,7 @@ const style = useCssModule();
 const containerClass = computed(() => ({
 	[cls ?? '']: true,
 	[style.container]: true,
-	[style.interactive]: !disabled,
+	[style.interactive]: !disabled && !readOnly,
 	[style.hovered]: !!hovered,
 	[style.variant1]: variant.value === 1,
 	[style.variant2]: variant.value === 2,
@@ -55,42 +57,44 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 
-			<N8nButton
-				v-if="variant === 1 && type === CHAT_TRIGGER_NODE_TYPE"
-				type="secondary"
-				size="large"
-				:disabled="isExecuting"
-				:data-test-id="testId"
-				@click.capture="toggleChatOpen('node')"
-				>{{ isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open') }}</N8nButton
-			>
-			<N8nButton
-				v-else-if="variant === 1"
-				type="secondary"
-				size="large"
-				:disabled="isExecuting"
-				:data-test-id="testId"
-				@click.capture="runEntireWorkflow('node', name)"
-				>{{ i18n.baseText('nodeView.runButtonText.executeWorkflow') }}</N8nButton
-			>
-			<N8nButton
-				v-else-if="variant === 2 && type === CHAT_TRIGGER_NODE_TYPE"
-				:type="isChatOpen ? 'secondary' : 'primary'"
-				size="large"
-				:disabled="isExecuting"
-				:data-test-id="testId"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click.capture="toggleChatOpen('node')"
-			/>
-			<N8nButton
-				v-else
-				type="primary"
-				size="large"
-				:disabled="isExecuting"
-				:data-test-id="testId"
-				:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-				@click.capture="runEntireWorkflow('node', name)"
-			/>
+			<template v-if="!readOnly">
+				<N8nButton
+					v-if="variant === 1 && type === CHAT_TRIGGER_NODE_TYPE"
+					type="secondary"
+					size="large"
+					:disabled="isExecuting"
+					:data-test-id="testId"
+					@click.capture="toggleChatOpen('node')"
+					>{{ isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open') }}</N8nButton
+				>
+				<N8nButton
+					v-else-if="variant === 1"
+					type="secondary"
+					size="large"
+					:disabled="isExecuting"
+					:data-test-id="testId"
+					@click.capture="runEntireWorkflow('node', name)"
+					>{{ i18n.baseText('nodeView.runButtonText.executeWorkflow') }}</N8nButton
+				>
+				<N8nButton
+					v-else-if="variant === 2 && type === CHAT_TRIGGER_NODE_TYPE"
+					:type="isChatOpen ? 'secondary' : 'primary'"
+					size="large"
+					:disabled="isExecuting"
+					:data-test-id="testId"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+					@click.capture="toggleChatOpen('node')"
+				/>
+				<N8nButton
+					v-else
+					type="primary"
+					size="large"
+					:disabled="isExecuting"
+					:data-test-id="testId"
+					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
+					@click.capture="runEntireWorkflow('node', name)"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -112,7 +116,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 		align-items: center;
 	}
 
-	&.hovered button {
+	&.interactive.hovered button {
 		pointer-events: all;
 	}
 }
