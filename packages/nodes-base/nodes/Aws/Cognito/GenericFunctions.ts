@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
@@ -65,7 +67,10 @@ export async function presendFilters(
 	const filterValue = filterToSend?.value as string;
 
 	if (!filterValue) {
-		throw new NodeOperationError(this.getNode(), 'Please provide Value to use filtering.');
+		throw new NodeApiError(this.getNode(), {
+			message: "Invalid value for 'Value'",
+			description: 'Please provide Value to use filtering.',
+		});
 	}
 
 	let body: IDataObject;
@@ -117,14 +122,18 @@ export async function presendVerifyPath(
 	const path = this.getNodeParameter('path', '/') as string;
 
 	if (path.length < 1 || path.length > 512) {
-		throw new NodeOperationError(this.getNode(), 'Path must be between 1 and 512 characters.');
+		throw new NodeApiError(this.getNode(), {
+			message: 'Invalid Path format',
+			description: 'Path must be between 1 and 512 characters.',
+		});
 	}
 
 	if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Path must begin and end with a forward slash and contain valid ASCII characters.',
-		);
+		throw new NodeApiError(this.getNode(), {
+			message: 'Invalid Path format',
+			description:
+				'Path must begin and end with a forward slash and contain valid ASCII characters.',
+		});
 	}
 
 	return requestOptions;
@@ -135,6 +144,7 @@ export async function processAttributes(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	let body: Record<string, any>;
+
 	if (typeof requestOptions.body === 'string') {
 		try {
 			body = JSON.parse(requestOptions.body);
@@ -152,10 +162,33 @@ export async function processAttributes(
 		Value: string;
 	}>;
 
-	const processedAttributes = attributes.map((attribute) => ({
-		Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
-		Value: attribute.Value,
-	}));
+	if (!Array.isArray(attributes) || attributes.length === 0) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'Missing User Attributes',
+			description: 'At least one attribute must be specified before updating the user.',
+		});
+	}
+
+	const processedAttributes = attributes.map((attribute, index) => {
+		if (!attribute.Name || typeof attribute.Name !== 'string' || attribute.Name.trim() === '') {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Invalid Attribute Name',
+				description: 'Each attribute must have a valid "Name". Ensure it is a non-empty string.',
+			});
+		}
+
+		if (attribute.Value === undefined || attribute.Value === null || attribute.Value === '') {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Invalid Attribute Value',
+				description: `The attribute "${attribute.Name}" must have a valid "Value". Ensure it is properly filled.`,
+			});
+		}
+
+		return {
+			Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
+			Value: attribute.Value,
+		};
+	});
 
 	body.UserAttributes = processedAttributes;
 
@@ -477,7 +510,7 @@ export async function searchUsers(
 			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
 			const username = user.Username as string;
 
-			const name = email || sub || username;
+			const name = email ?? sub ?? username;
 			const value = username;
 
 			return { name, value };
@@ -501,7 +534,6 @@ export async function searchGroups(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
-
 	const userPoolId = userPoolIdRaw.value as string;
 
 	if (!userPoolId) {
@@ -709,7 +741,7 @@ export async function listUsersInGroup(
 	return { results, paginationToken: responseData.NextToken as string | undefined };
 }
 
-export async function getUsersForGroup(
+export async function searchUsersForGroup(
 	this: IExecuteSingleFunctions,
 	groupName: string,
 	userPoolId: string,
@@ -723,7 +755,7 @@ export async function getUsersForGroup(
 	return [] as IDataObject[];
 }
 
-export async function processUsersForGroups(
+export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
@@ -731,36 +763,40 @@ export async function processUsersForGroups(
 	const userPoolIdRaw = this.getNodeParameter('userPoolId') as IDataObject;
 	const userPoolId = userPoolIdRaw.value as string;
 	const include = this.getNodeParameter('includeUsers', 0) as boolean;
+	const responseBody = response.body as { Group: IDataObject; Users?: IDataObject[] };
 
 	if (!include) {
+		if (responseBody.Group) {
+			const group = responseBody.Group;
+			return [{ json: group }];
+		}
 		return items;
 	}
 
 	const processedGroups: IDataObject[] = [];
 
-	if (response.body && typeof response.body === 'object') {
-		if ('Group' in response.body) {
-			const group = (response.body as { Group: IDataObject }).Group;
-			const usersResponse = await getUsersForGroup.call(
+	if (responseBody && typeof responseBody === 'object') {
+		if (responseBody.Group) {
+			const group = (responseBody as { Group: IDataObject }).Group;
+			const usersResponse = await searchUsersForGroup.call(
 				this,
 				group.GroupName as string,
 				userPoolId,
 			);
 
-			if (usersResponse.length > 0) {
-				return items.map((item) => ({
-					json: { ...item.json, Users: usersResponse },
-				}));
-			} else {
-				return items.map((item) => ({
-					json: { ...item.json },
-				}));
-			}
+			return [
+				{
+					json: {
+						...group,
+						Users: usersResponse.length > 0 ? usersResponse : [],
+					},
+				},
+			];
 		} else {
 			const groups = (response.body as { Groups: IDataObject[] }).Groups;
 
 			for (const group of groups) {
-				const usersResponse = await getUsersForGroup.call(
+				const usersResponse = await searchUsersForGroup.call(
 					this,
 					group.GroupName as string,
 					userPoolId,
@@ -781,4 +817,88 @@ export async function processUsersForGroups(
 	return items.map((item) => ({
 		json: { ...item.json, Groups: processedGroups },
 	}));
+}
+
+export async function isUserInGroup(
+	this: IExecuteSingleFunctions,
+	groupName: string,
+	userPoolId: string,
+	userName: string,
+): Promise<boolean> {
+	const usersInGroup = await searchUsersForGroup.call(this, groupName, userPoolId);
+	return usersInGroup.some((user) => {
+		return user.Username === userName;
+	});
+}
+
+export async function listGroups(
+	this: ILoadOptionsFunctions,
+	userPoolId: string,
+): Promise<IDataObject[]> {
+	const listGroupsOpts: IHttpRequestOptions = {
+		url: '',
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
+		},
+		body: JSON.stringify({
+			UserPoolId: userPoolId,
+			MaxResults: 60,
+		}),
+	};
+
+	const responseData: IDataObject = await awsRequest.call(this, listGroupsOpts);
+
+	const responseBody = responseData as { Groups: IDataObject[] };
+
+	const groups = responseBody?.Groups;
+
+	return groups || [];
+}
+
+export async function searchGroupsForUser(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const userNameObj = this.getNodeParameter('Username') as { mode: string; value: string };
+	const userName = userNameObj?.value;
+	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
+	const userPoolId = userPoolIdRaw.value as string;
+
+	if (!userName || !userPoolId) {
+		console.warn('⚠️ Missing required parameters: User or User Pool');
+		return { results: [] };
+	}
+
+	const groups = await listGroups.call(this, userPoolId);
+
+	if (!groups || groups.length === 0) {
+		return { results: [] };
+	}
+
+	const groupCheckPromises = groups.map(async (group) => {
+		const groupName = group.GroupName as string;
+		if (!groupName) return null;
+
+		const isUserInGroupFlag = await isUserInGroup.call(
+			this as unknown as IExecuteSingleFunctions,
+			groupName,
+			userPoolId,
+			userName,
+		);
+
+		return isUserInGroupFlag ? { name: groupName, value: groupName } : null;
+	});
+
+	const resolvedResults = await Promise.all(groupCheckPromises);
+	const validUserGroups = resolvedResults.filter(
+		(group) => group !== null,
+	) as INodeListSearchItems[];
+
+	const filteredGroups = validUserGroups
+		.filter((group) => !filter || group.name.toLowerCase().includes(filter.toLowerCase()))
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return { results: filteredGroups, paginationToken };
 }

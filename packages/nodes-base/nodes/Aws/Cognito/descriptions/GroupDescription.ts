@@ -5,7 +5,7 @@ import {
 	handlePagination,
 	presendAdditionalFields,
 	presendVerifyPath,
-	processUsersForGroups,
+	processGroupsResponse,
 } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
@@ -86,7 +86,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processUsersForGroups, handleErrorPostReceive],
+						postReceive: [processGroupsResponse, handleErrorPostReceive],
 					},
 				},
 				action: 'Get group',
@@ -110,7 +110,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processUsersForGroups, handleErrorPostReceive],
+						postReceive: [processGroupsResponse, handleErrorPostReceive],
 					},
 				},
 				action: 'Get many groups',
@@ -200,7 +200,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group Name',
-		name: 'GroupName',
+		name: 'NewGroupName',
 		default: '',
 		placeholder: 'e.g. My New Group',
 		description: 'The name of the new group to create',

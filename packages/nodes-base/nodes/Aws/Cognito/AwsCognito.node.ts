@@ -14,6 +14,7 @@ import {
 	searchUserPools,
 	searchGroups,
 	searchUsers,
+	searchGroupsForUser,
 } from './GenericFunctions';
 
 export class AwsCognito implements INodeType {
@@ -101,6 +102,7 @@ export class AwsCognito implements INodeType {
 			searchUserPools,
 			searchGroups,
 			searchUsers,
+			searchGroupsForUser,
 		},
 	};
 }

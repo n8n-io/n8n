@@ -187,6 +187,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Update a user',
 				action: 'Update user',
 				routing: {
+					send: {
+						preSend: [processAttributes],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -869,15 +872,14 @@ const updateFields: INodeProperties[] = [
 				],
 			},
 		],
-		routing: {
-			send: {
-				preSend: [processAttributes],
-				type: 'body',
-				property: 'UserAttributes',
-				value:
-					'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
-			},
-		},
+		// routing: {
+		// 	send: {
+		// 		type: 'body',
+		// 		property: 'UserAttributes',
+		// 		value:
+		// 			'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
+		// 	},
+		// },
 	},
 ];
 
@@ -1141,7 +1143,7 @@ const removeFromGroupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the group you want to update',
+		description: 'Select the group you want to remove the user from',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -1154,7 +1156,7 @@ const removeFromGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchGroups',
+					searchListMethod: 'searchGroupsForUser',
 					searchable: true,
 				},
 			},
