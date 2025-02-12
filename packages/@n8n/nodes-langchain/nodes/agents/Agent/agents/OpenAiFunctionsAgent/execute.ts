@@ -23,10 +23,7 @@ export async function openAiFunctionsAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing OpenAi Functions Agent');
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as ChatOpenAI;
+	const model = await this.getAIModel<ChatOpenAI>();
 
 	if (!(model instanceof ChatOpenAI)) {
 		throw new NodeOperationError(

@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
@@ -94,10 +93,7 @@ export class OutputParserAutofixing implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			itemIndex,
-		)) as BaseLanguageModel;
+		const model = await this.getAIModel(itemIndex);
 		const outputParser = (await this.getInputConnectionData(
 			NodeConnectionType.AiOutputParser,
 			itemIndex,

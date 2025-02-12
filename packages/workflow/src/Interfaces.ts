@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
@@ -894,11 +895,15 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
+
+		/** @deprecated */
 		getInputConnectionData(
-			connectionType: AINodeConnectionType,
+			connectionType: Exclude<AINodeConnectionType, NodeConnectionType.AiLanguageModel>,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
+		getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex?: number): Promise<T>;
+
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
@@ -973,6 +978,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'addInputData'
 		| 'addOutputData'
 		| 'getInputConnectionData'
+		| 'getAIModel'
 		| 'getInputData'
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
@@ -1077,11 +1083,9 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
-	getInputConnectionData(
-		connectionType: AINodeConnectionType,
-		itemIndex: number,
-		inputIndex?: number,
-	): Promise<unknown>;
+
+	/** @deprecated */
+	getInputConnectionData: IExecuteFunctions['getInputConnectionData'];
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,

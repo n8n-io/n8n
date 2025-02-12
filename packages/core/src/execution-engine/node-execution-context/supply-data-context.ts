@@ -19,6 +19,7 @@ import type {
 } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
+// eslint-disable-next-line import/no-cycle
 import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
@@ -53,7 +54,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		inputData: ITaskDataConnections,
 		private readonly connectionType: NodeConnectionType,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 	) {
 		super(
@@ -66,6 +67,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			connectionInputData,
 			inputData,
 			executeData,
+			closeFunctions,
 			abortSignal,
 		);
 

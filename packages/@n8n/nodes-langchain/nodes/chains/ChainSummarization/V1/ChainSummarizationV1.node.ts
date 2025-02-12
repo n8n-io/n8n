@@ -1,5 +1,4 @@
 import type { Document } from '@langchain/core/documents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
 import type { SummarizationChainParams } from 'langchain/chains';
 import { loadSummarizationChain } from 'langchain/chains';
@@ -166,10 +165,7 @@ export class ChainSummarizationV1 implements INodeType {
 		this.logger.debug('Executing Vector Store QA Chain');
 		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.getAIModel();
 
 		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader

@@ -60,7 +60,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 	) {
 		super(
@@ -73,6 +73,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			connectionInputData,
 			inputData,
 			executeData,
+			closeFunctions,
 			abortSignal,
 		);
 

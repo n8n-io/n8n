@@ -1,5 +1,4 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { DataSource } from '@n8n/typeorm';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
@@ -31,10 +30,7 @@ export async function sqlAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing SQL Agent');
 
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const model = await this.getAIModel();
 	const items = this.getInputData();
 
 	const returnData: INodeExecutionData[] = [];

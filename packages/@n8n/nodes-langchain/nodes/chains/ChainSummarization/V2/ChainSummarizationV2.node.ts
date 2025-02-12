@@ -1,5 +1,4 @@
 import type { Document } from '@langchain/core/documents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { loadSummarizationChain } from 'langchain/chains';
@@ -321,10 +320,7 @@ export class ChainSummarizationV2 implements INodeType {
 			| 'simple'
 			| 'advanced';
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.getAIModel();
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];

@@ -49,6 +49,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 			connectionInputData,
 			inputData,
 			executeData,
+			[],
 			abortSignal,
 		);
 

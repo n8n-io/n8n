@@ -18,7 +18,7 @@ export async function conversationalAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Conversational Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.getAIModel();
 
 	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');

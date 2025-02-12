@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { VectorDBQAChain } from 'langchain/chains';
 import { VectorStoreQATool } from 'langchain/tools';
@@ -101,10 +100,7 @@ export class ToolVectorStore implements INodeType {
 			itemIndex,
 		)) as VectorStore;
 
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const llm = await this.getAIModel();
 
 		const description = VectorStoreQATool.getDescription(name, toolDescription);
 		const vectorStoreTool = new VectorStoreQATool(name, description, {

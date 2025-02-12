@@ -85,10 +85,7 @@ async function getImageMessage(
 	}
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-	const model = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const model = await context.getAIModel();
 
 	try {
 		const dataURI = dataUriFromImageData(binaryData, bufferData);
@@ -524,10 +521,7 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const llm = await this.getAIModel();
 
 		const outputParsers = await getOptionalOutputParsers(this);
 

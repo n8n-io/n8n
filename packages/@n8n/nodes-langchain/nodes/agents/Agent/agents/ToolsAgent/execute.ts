@@ -98,7 +98,7 @@ function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Tools Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.getAIModel();
 
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(

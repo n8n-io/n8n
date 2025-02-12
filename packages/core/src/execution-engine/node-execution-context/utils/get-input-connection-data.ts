@@ -20,12 +20,14 @@ import {
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
-import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import/no-cycle
-import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import type { BaseExecuteContext } from '../base-execute-context';
+// eslint-disable-next-line import/no-cycle
+import { SupplyDataContext } from '../supply-data-context';
+import type { WebhookContext } from '../webhook-context';
 
 export async function getInputConnectionData(
-	this: ExecuteContext | WebhookContext | SupplyDataContext,
+	this: BaseExecuteContext | WebhookContext,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
 	parentRunIndex: number,

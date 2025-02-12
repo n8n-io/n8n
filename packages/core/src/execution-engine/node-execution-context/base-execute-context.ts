@@ -1,3 +1,4 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
@@ -20,6 +21,7 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	CloseFunction,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -32,6 +34,8 @@ import {
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 import { NodeExecutionContext } from './node-execution-context';
+// eslint-disable-next-line import/no-cycle
+import { getInputConnectionData } from './utils/get-input-connection-data';
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	protected readonly binaryDataService = Container.get(BinaryDataService);
@@ -46,6 +50,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		readonly connectionInputData: INodeExecutionData[],
 		readonly inputData: ITaskDataConnections,
 		readonly executeData: IExecuteData,
+		readonly closeFunctions: CloseFunction[],
 		readonly abortSignal?: AbortSignal,
 	) {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
@@ -212,6 +217,24 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.logger.warn(`There was a problem sending message to UI: ${error.message}`);
 		}
+	}
+
+	async getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex = 0): Promise<T> {
+		return (await getInputConnectionData.call(
+			this,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			this.connectionInputData,
+			this.inputData,
+			this.additionalData,
+			this.executeData,
+			this.mode,
+			this.closeFunctions,
+			NodeConnectionType.AiLanguageModel,
+			itemIndex,
+			this.abortSignal,
+		)) as T;
 	}
 
 	logAiEvent(eventName: AiEvent, msg: string) {

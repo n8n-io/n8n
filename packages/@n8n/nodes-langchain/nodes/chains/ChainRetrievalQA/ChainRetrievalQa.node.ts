@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	ChatPromptTemplate,
 	SystemMessagePromptTemplate,
@@ -163,10 +162,7 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.getAIModel();
 
 		const retriever = (await this.getInputConnectionData(
 			NodeConnectionType.AiRetriever,
