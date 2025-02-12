@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.77.0",
+  "version": "1.78.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -112,7 +112,6 @@
     "convict": "6.2.4",
     "cookie-parser": "1.4.7",
     "csrf": "3.1.0",
-    "curlconverter": "3.21.0",
     "dotenv": "8.6.0",
     "express": "4.21.1",
     "express-async-errors": "3.1.1",

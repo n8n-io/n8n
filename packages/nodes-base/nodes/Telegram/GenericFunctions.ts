@@ -11,6 +11,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../utils/sendAndWait/utils';
+import { createUtmCampaignLink } from '../../utils/utilities';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -80,9 +81,7 @@ export function addAdditionalFields(
 
 	if (operation === 'sendMessage') {
 		const attributionText = 'This message was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.telegram',
-		)}${instanceId ? '_' + instanceId : ''}`;
+		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 
 		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
 			additionalFields.appendAttribution = true;
@@ -263,9 +262,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const instanceId = context.getInstanceId();
 	const attributionText = 'This message was sent automatically with ';
-	const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-		'n8n-nodes-base.telegram',
-	)}${instanceId ? '_' + instanceId : ''}`;
+	const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 	text = `${text}\n\n_${attributionText}_[n8n](${link})`;
 
 	const body = {

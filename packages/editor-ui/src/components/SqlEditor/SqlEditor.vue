@@ -4,7 +4,6 @@ import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { ifNotIn } from '@codemirror/autocomplete';
@@ -33,6 +32,10 @@ import {
 import { onClickOutside } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
+import {
+	expressionCloseBrackets,
+	expressionCloseBracketsConfig,
+} from '@/plugins/codemirror/expressionCloseBrackets';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -72,6 +75,7 @@ const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
 	function sqlWithN8nLanguageSupport() {
 		return new LanguageSupport(dialect.language, [
+			dialect.language.data.of({ closeBrackets: expressionCloseBracketsConfig }),
 			dialect.language.data.of({
 				autocomplete: ifNotIn(['Resolvable'], keywordCompletionSource(dialect, true)),
 			}),
@@ -81,7 +85,7 @@ const extensions = computed(() => {
 
 	const baseExtensions = [
 		sqlWithN8nLanguageSupport(),
-		expressionInputHandler(),
+		expressionCloseBrackets(),
 		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fullscreen ? '100%' : '40vh',

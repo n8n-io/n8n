@@ -8,6 +8,7 @@ import {
 	Credentials,
 	UnrecognizedNodeTypeError,
 	constructExecutionMetaData,
+	ExecutionLifecycleHooks,
 } from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
@@ -28,14 +29,13 @@ import type {
 	INodeTypeData,
 	INodeTypes,
 	IRun,
-	ITaskData,
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, ICredentialsHelper, NodeHelpers } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -155,22 +155,15 @@ export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hookFunctions = {
-		nodeExecuteAfter: [
-			async (nodeName: string, _data: ITaskData): Promise<void> => {
-				nodeExecutionOrder.push(nodeName);
-			},
-		],
-		workflowExecuteAfter: [
-			async (fullRunData: IRun): Promise<void> => {
-				waitPromise.resolve(fullRunData);
-			},
-		],
-	};
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
+		nodeExecutionOrder.push(nodeName);
+	});
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 
 	return mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: new CredentialsHelper(),
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+		hooks,
 		// Get from node.parameters
 		currentNodeParameters: undefined,
 	});

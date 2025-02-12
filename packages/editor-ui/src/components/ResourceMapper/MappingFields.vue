@@ -444,11 +444,16 @@ defineExpose({
 
 <style module lang="scss">
 .parameterItem {
+	--delete-option-width: 22px;
 	display: flex;
 	padding: 0 0 0 var(--spacing-s);
 
 	.parameterInput {
 		width: 100%;
+	}
+
+	.parameterInput:first-child {
+		margin-left: var(--delete-option-width);
 	}
 
 	&.hasIssues {

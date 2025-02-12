@@ -100,11 +100,17 @@ export class WorkflowExecutionService {
 		partialExecutionVersion: 1 | 2 = 1,
 	) {
 		const pinData = workflowData.pinData;
-		const pinnedTrigger = this.selectPinnedActivatorStarter(
+		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
 		);
+
+		// if we have a trigger to start from and it's not the pinned trigger
+		// ignore the pinned trigger
+		if (pinnedTrigger && triggerToStartFrom && pinnedTrigger.name !== triggerToStartFrom.name) {
+			pinnedTrigger = null;
+		}
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
