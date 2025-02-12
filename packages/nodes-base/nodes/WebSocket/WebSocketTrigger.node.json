@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-base.webSocketTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.websockettrigger/"
+			}
+		]
+	},
+	"alias": ["Socket", "Channel", "wss"]
+}
