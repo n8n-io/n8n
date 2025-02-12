@@ -36,25 +36,10 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'smtp',
 			required: true,
 			testedBy: 'smtpConnectionTest',
-			displayOptions: {
-				show: {
-					instanceSmtpServerAvailable: [true],
-				},
-			},
 		},
 	],
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
-		{
-			displayName: 'Instance SMTP Server Available',
-			name: 'instanceSmtpServerAvailable',
-			type: 'string',
-			noDataExpression: true,
-			default: '={{$parameter["instanceSmtpServerAvailable"]}}',
-			typeOptions: {
-				loadOptionsMethod: 'shouldEnableCredentials',
-			},
-		},
 		{
 			displayName: 'Resource',
 			name: 'resource',
