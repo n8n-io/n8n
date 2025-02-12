@@ -39,11 +39,11 @@ const properties: INodeProperties[] = [
 		// TODO: Why is this eslint rule needed here?
 		displayName: 'To Email' /* eslint-disable-line */,
 		name: 'toEmail',
-		type: 'options',
+		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
-		default: 'marc@n8n.io',
+		default: [],
 		noDataExpression: true,
 		description /* eslint-disable-line */:
 			'Email address of the recipient from the list of users on this instance',
@@ -200,12 +200,19 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+const instanceSmtpCredentials = {
+	host: process.env.N8N_SMTP_HOST as string,
+	port: process.env.N8N_SMTP_PORT as unknown as number,
+	secure: process.env.N8N_SMTP_SSL === 'true',
+};
+
+const DEFAULT_INSTANCE_SMTP_SENDER = 'no-reply@local.n8n';
+
 // TODO: This should be abstracted into a utility function to share with the send operation
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
 	const instanceId = this.getInstanceId();
-	const credentials = await this.getCredentials('smtp');
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;
@@ -214,13 +221,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			item = items[itemIndex];
 
-			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
+			const fromEmail = process.env.N8N_SMTP_SENDER ?? DEFAULT_INSTANCE_SMTP_SENDER;
 			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
 			const subject = this.getNodeParameter('subject', itemIndex) as string;
 			const emailFormat = this.getNodeParameter('emailFormat', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as EmailSendOptions;
 
-			const transporter = configureTransport(credentials, options);
+			const transporter = configureTransport(instanceSmtpCredentials, options);
 
 			const mailOptions: IDataObject = {
 				from: fromEmail,

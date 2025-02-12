@@ -36,10 +36,25 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'smtp',
 			required: true,
 			testedBy: 'smtpConnectionTest',
+			displayOptions: {
+				show: {
+					instanceSmtpServerAvailable: [true],
+				},
+			},
 		},
 	],
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
+		{
+			displayName: 'Instance SMTP Server Available',
+			name: 'instanceSmtpServerAvailable',
+			type: 'hidden',
+			noDataExpression: true,
+			default: true,
+			typeOptions: {
+				loadOptionsMethod: 'shouldEnableCredentials',
+			},
+		},
 		{
 			displayName: 'Resource',
 			name: 'resource',
@@ -96,7 +111,7 @@ export class EmailSendV2 implements INodeType {
 	methods = {
 		credentialTest: { smtpConnectionTest },
 		loadOptions: {
-			// TODO: Retrieve users properly
+			// TODO: Retrieve users from instance user list
 			async getUsers(this: ILoadOptionsFunctions) {
 				return [
 					{
@@ -117,7 +132,22 @@ export class EmailSendV2 implements INodeType {
 				];
 			},
 
-			// TODO: Get server status from somewhere
+			async shouldEnableCredentials(this: ILoadOptionsFunctions) {
+				const operation = this.getNodeParameter('operation', 0);
+
+				let enableCredentials = true;
+
+				// Disable credentials if we have instance SMTP server available
+				if (operation === OPERATION_SEND_TO_INSTANCE_USER) {
+					const { N8N_EMAIL_MODE, N8N_SMTP_HOST, N8N_SMTP_PORT } = process.env;
+					enableCredentials =
+						N8N_EMAIL_MODE === 'smtp' && N8N_SMTP_HOST !== undefined && N8N_SMTP_PORT !== undefined;
+				}
+
+				return [{ name: 'Enabled', value: enableCredentials }];
+			},
+
+			// TODO: Can probably use above function
 			async getSmtpServerStatus(this: ILoadOptionsFunctions) {
 				return [
 					{
