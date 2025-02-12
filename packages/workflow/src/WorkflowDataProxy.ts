@@ -973,6 +973,19 @@ export class WorkflowDataProxy {
 			const placeholdersDataInputData =
 				inputData?.[NodeConnectionType.AiTool]?.[0]?.[itemIndex].json;
 
+			const currentNode = that.workflow.getNode(that.activeNodeName);
+
+			if (currentNode?.rewireOutputLogTo) {
+				if (testValue === undefined) {
+					throw new ExpressionError(`Test value for ${name} is missing`, {
+						runIndex,
+						itemIndex,
+						type: 'no_execution_data',
+					});
+				}
+				return testValue;
+			}
+
 			if (Boolean(!placeholdersDataInputData) && !testValue) {
 				throw new ExpressionError('No execution data available', {
 					runIndex,
