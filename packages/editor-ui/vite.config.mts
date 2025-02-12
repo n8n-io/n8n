@@ -11,6 +11,7 @@ import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
+import { posix as pathPosix } from 'path';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -66,8 +67,11 @@ const plugins = [
 	}),
 	viteStaticCopy({
 		targets: [
-			{ src: resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: '' },
-			{ src: resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'), dest: '' },
+			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				dest: 'public',
+			},
 		],
 	}),
 	vue(),
