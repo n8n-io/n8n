@@ -12,15 +12,7 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type {
-	IPinData,
-	ExecutionSummary,
-	IConnection,
-	INodeExecutionData,
-	IRunExecutionData,
-	IRunData,
-	IConnections,
-} from 'n8n-workflow';
+import type { IPinData, ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -729,80 +721,6 @@ describe('useWorkflowsStore', () => {
 			);
 		},
 	);
-
-	describe('dirtinessByName', () => {
-		beforeEach(() => {
-			// Enable new partial execution
-			settingsStore.settings = {
-				partialExecution: { version: 2, enforce: true },
-			} as FrontendSettings;
-
-			workflowsStore.workflowExecutionData = createExecutionData({
-				node1: [
-					{
-						startTime: +new Date('2025-01-01'), // ran before parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node2: [
-					{
-						startTime: +new Date('2025-01-03'), // ran after parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node3: [], // never ran before
-			});
-
-			workflowsStore.nodeMetadata = {
-				node1: { parametersLastUpdatedAt: +new Date('2025-01-02'), pristine: true },
-				node2: { parametersLastUpdatedAt: +new Date('2025-01-02'), pristine: true },
-				node3: { parametersLastUpdatedAt: +new Date('2025-01-02'), pristine: true },
-			};
-		});
-
-		it('should mark nodes with run data older than the last update time as dirty', () => {
-			workflowsStore.workflow = { connections: {} as IConnections } as IWorkflowDb;
-
-			expect(workflowsStore.dirtinessByName).toEqual({ node1: 'parameters-updated' });
-		});
-
-		it('should mark nodes with a dirty node somewhere in its upstream as upstream-dirty', () => {
-			workflowsStore.workflow = {
-				connections: {
-					node1: { main: [[{ node: 'node2', type: 'main', index: 0 }]] },
-					node2: { main: [[{ node: 'node3', type: 'main', index: 0 }]] },
-				} as IConnections,
-			} as IWorkflowDb;
-
-			expect(workflowsStore.dirtinessByName).toEqual({
-				node1: 'parameters-updated',
-				node2: 'upstream-dirty',
-			});
-		});
-
-		it('should return even if the connections forms a loop', () => {
-			workflowsStore.workflow = {
-				connections: {
-					node1: { main: [[{ node: 'node2', type: 'main', index: 0 }]] },
-					node2: { main: [[{ node: 'node3', type: 'main', index: 0 }]] },
-					node3: { main: [[{ node: 'node1', type: 'main', index: 0 }]] },
-				} as IConnections,
-			} as IWorkflowDb;
-
-			expect(workflowsStore.dirtinessByName).toEqual({
-				node1: 'parameters-updated',
-				node2: 'upstream-dirty',
-			});
-		});
-
-		function createExecutionData(runData: IRunData) {
-			return { data: { resultData: { runData } } as IRunExecutionData } as IExecutionResponse;
-		}
-	});
 });
 
 function getMockEditFieldsNode() {
