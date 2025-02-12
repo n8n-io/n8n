@@ -66,9 +66,19 @@ function onDelete() {
 </style>
 
 <style lang="scss">
-[data-theme='dark'] .canvas-edge-toolbar-button {
+@mixin dark-button-styles {
 	--button-background-color: var(--color-background-base);
 	--button-hover-background-color: var(--color-background-light);
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) .canvas-edge-toolbar-button {
+		@include dark-button-styles();
+	}
+}
+
+[data-theme='dark'] .canvas-edge-toolbar-button {
+	@include dark-button-styles();
 }
 
 .canvas-edge-toolbar-button {
