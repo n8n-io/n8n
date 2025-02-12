@@ -126,6 +126,10 @@ const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
 
+const props = defineProps<{
+	initialNodeId?: string | undefined;
+}>();
+
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -1599,6 +1603,27 @@ watch(
 	},
 );
 
+watch(
+	() => route.params.nodeId,
+	async (newId) => {
+		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		else setNodeActive(newId);
+	},
+);
+
+watch(
+	() => ndvStore.activeNode,
+	async (val) => {
+		// This is just out of caution
+		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
+
+		await router.push({
+			name: route.name,
+			params: { name: workflowId.value, nodeId: val?.id },
+		});
+	},
+);
+
 /**
  * Lifecycle
  */
@@ -1629,6 +1654,13 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
+
+				// A delay here makes opening the NDV a bit less jarring
+				setTimeout(() => {
+					if (props.initialNodeId) {
+						onSetNodeActive(props.initialNodeId);
+					}
+				}, 500);
 
 				emitPostMessageReady();
 			});

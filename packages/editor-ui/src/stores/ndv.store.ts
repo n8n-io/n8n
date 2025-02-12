@@ -18,13 +18,15 @@ import {
 	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
 	STORES,
+	VIEWS,
 } from '@/constants';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import router from '@/router';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,

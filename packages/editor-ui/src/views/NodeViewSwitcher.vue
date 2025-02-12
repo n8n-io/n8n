@@ -20,6 +20,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const { nodeViewVersion, migrateToNewNodeViewVersion } = useNodeViewVersionSwitcher();
 
 const workflowId = computed<string>(() => route.params.name as string);
+const nodeId = computed(() => route.params.nodeId as string | undefined);
 
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -75,6 +76,6 @@ onBeforeRouteLeave(async (to, from, next) => {
 </script>
 
 <template>
-	<NodeViewV2 v-if="nodeViewVersion === '2'" />
+	<NodeViewV2 v-if="nodeViewVersion === '2'" :initial-node-id="nodeId" />
 	<NodeViewV1 v-else />
 </template>
