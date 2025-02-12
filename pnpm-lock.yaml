@@ -140,25 +140,25 @@ overrides:
 
 patchedDependencies:
   '@types/express-serve-static-core@4.17.43':
-    hash: 5orrj4qleu2iko5t27vl44u4we
+    hash: 15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea
     path: patches/@types__express-serve-static-core@4.17.43.patch
   '@types/uuencode@0.0.3':
-    hash: 3i7wecddkama6vhpu5o37g24u4
+    hash: 083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62
     path: patches/@types__uuencode@0.0.3.patch
   '@types/ws@8.5.4':
-    hash: nbzuqaoyqbrfwipijj5qriqqju
+    hash: 3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357
     path: patches/@types__ws@8.5.4.patch
   bull@4.12.1:
-    hash: ep6h4rqtpclldfcdohxlgcb3aq
+    hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
   pkce-challenge@3.0.0:
-    hash: dypouzb3lve7vncq25i5fuanki
+    hash: 4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b
     path: patches/pkce-challenge@3.0.0.patch
   pyodide@0.23.4:
-    hash: kzcwsjcayy5m6iezu7r4tdimjq
+    hash: c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c
     path: patches/pyodide@0.23.4.patch
   vue-tsc@2.1.10:
-    hash: z2iuqlt7ype4qnrwd5eymeecl4
+    hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.1.10.patch
 
 importers:
@@ -375,7 +375,7 @@ importers:
         version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/@n8n/client-oauth2:
     dependencies:
@@ -443,7 +443,7 @@ importers:
         version: 3.0.3
       '@types/uuencode':
         specifier: ^0.0.3
-        version: 0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)
+        version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -461,7 +461,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(77263c3fabb2ad4a7bd89ea0922555eb))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -488,7 +488,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(xbnzedcvjhnriori3dst4asz2q)
+        version: 0.3.24(61593ec037542bd45cb8735ad3bb3805)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -575,7 +575,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi)
+        version: 0.3.11(77263c3fabb2ad4a7bd89ea0922555eb)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -843,7 +843,7 @@ importers:
         version: 2.4.3
       bull:
         specifier: 4.12.1
-        version: 4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq)
+        version: 4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68)
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
@@ -981,7 +981,7 @@ importers:
         version: 1.0.1
       pkce-challenge:
         specifier: 3.0.0
-        version: 3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki)
+        version: 3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b)
       posthog-node:
         specifier: 3.2.1
         version: 3.2.1
@@ -1117,7 +1117,7 @@ importers:
         version: 13.7.7
       '@types/ws':
         specifier: ^8.5.4
-        version: 8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)
+        version: 8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -1377,7 +1377,7 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/editor-ui:
     dependencies:
@@ -1699,7 +1699,7 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/frontend/@n8n/composables:
     dependencies:
@@ -1748,7 +1748,7 @@ importers:
         version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/frontend/tooling/eslint-config:
     dependencies:
@@ -1958,7 +1958,7 @@ importers:
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
         specifier: 0.23.4
-        version: 0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)(encoding@0.1.13)
+        version: 0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13)
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -16045,7 +16045,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(77263c3fabb2ad4a7bd89ea0922555eb))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16054,7 +16054,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi)
+      langchain: 0.3.11(77263c3fabb2ad4a7bd89ea0922555eb)
     transitivePeerDependencies:
       - encoding
 
@@ -16591,7 +16591,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(xbnzedcvjhnriori3dst4asz2q)':
+  '@langchain/community@0.3.24(61593ec037542bd45cb8735ad3bb3805)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16602,7 +16602,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi)
+      langchain: 0.3.11(77263c3fabb2ad4a7bd89ea0922555eb)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -16617,7 +16617,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
       '@browserbasehq/sdk': 2.0.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(77263c3fabb2ad4a7bd89ea0922555eb))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -18717,7 +18717,7 @@ snapshots:
 
   '@types/eventsource@1.1.9': {}
 
-  '@types/express-serve-static-core@4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)':
+  '@types/express-serve-static-core@4.17.43(patch_hash=15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea)':
     dependencies:
       '@types/node': 18.16.16
       '@types/qs': 6.9.15
@@ -18727,7 +18727,7 @@ snapshots:
   '@types/express@4.17.21':
     dependencies:
       '@types/body-parser': 1.19.2
-      '@types/express-serve-static-core': 4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)
+      '@types/express-serve-static-core': 4.17.43(patch_hash=15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea)
       '@types/qs': 6.9.15
       '@types/serve-static': 1.15.0
 
@@ -19064,7 +19064,7 @@ snapshots:
 
   '@types/utf8@3.0.3': {}
 
-  '@types/uuencode@0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)':
+  '@types/uuencode@0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)':
     dependencies:
       '@types/node': 18.16.16
 
@@ -19092,7 +19092,7 @@ snapshots:
     dependencies:
       '@types/node': 18.16.16
 
-  '@types/ws@8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)':
+  '@types/ws@8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)':
     dependencies:
       '@types/node': 18.16.16
 
@@ -20202,7 +20202,7 @@ snapshots:
       - supports-color
     optional: true
 
-  bull@4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq):
+  bull@4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1
@@ -23746,7 +23746,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(uhxpxbd3xjubkjdqqkxxpkezmi):
+  langchain@0.3.11(77263c3fabb2ad4a7bd89ea0922555eb):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -25416,7 +25416,7 @@ snapshots:
 
   pirates@4.0.6: {}
 
-  pkce-challenge@3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki):
+  pkce-challenge@3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b):
     dependencies:
       crypto-js: 4.2.0
 
@@ -25743,7 +25743,7 @@ snapshots:
 
   pure-rand@6.0.1: {}
 
-  pyodide@0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)(encoding@0.1.13):
+  pyodide@0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13):
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8(encoding@0.1.13)
@@ -27868,7 +27868,7 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.13(typescript@5.7.2)
 
-  vue-tsc@2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2):
+  vue-tsc@2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2):
     dependencies:
       '@volar/typescript': 2.4.10
       '@vue/language-core': 2.1.10(typescript@5.7.2)
