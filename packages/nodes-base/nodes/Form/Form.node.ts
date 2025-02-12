@@ -32,7 +32,7 @@ const waitTimeProperties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether the workflow will automatically resume execution after the specified limit type',
+			'Whether to limit the time this node should wait for a user response before execution resumes',
 	},
 	...updateDisplayOptions(
 		{
