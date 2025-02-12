@@ -61,6 +61,25 @@ export function useCanvasLayout({ id }: CanvasLayoutOptions = {}) {
 		return subGraph;
 	}
 
+	function createDagreConfigurableSubGraph({
+		nodeIds,
+		parent,
+	}: { nodeIds: string[]; parent: dagre.graphlib.Graph }) {
+		const subGraph = new dagre.graphlib.Graph();
+		subGraph.setGraph({ rankdir: 'TB', edgesep: 48, nodesep: 48, ranksep: 48 });
+		subGraph.setDefaultEdgeLabel(() => ({}));
+		const nodeIdSet = new Set(nodeIds);
+
+		nodeIds.forEach((nodeId) => subGraph.setNode(nodeId, parent.node(nodeId)));
+
+		parent
+			.edges()
+			.filter((edge) => nodeIdSet.has(edge.v) && nodeIdSet.has(edge.w))
+			.forEach((edge) => subGraph.setEdge(edge.v, edge.w, parent.edge(edge)));
+
+		return subGraph;
+	}
+
 	function findAnchor({
 		nodeById,
 		graph,
@@ -136,6 +155,31 @@ export function useCanvasLayout({ id }: CanvasLayoutOptions = {}) {
 
 		for (const graph of subgraphs) {
 			dagre.layout(graph);
+
+			// const configurableNodes = graph
+			// 	.nodes()
+			// 	.map((nodeId) => nodeById[nodeId])
+			// 	.filter((node) => get(node, 'data.render.options.configurable'));
+
+			// for (const configurableNode of configurableNodes) {
+			// 	const connectedConfigurationNodes =
+			// 		graph.inEdges(configurableNode.id)?.map((edge) => edge.v) ?? [];
+			// 	const configGraph = createDagreConfigurableSubGraph({
+			// 		nodeIds: [...connectedConfigurationNodes, configurableNode.id],
+			// 		parent: graph,
+			// 	});
+
+			// 	dagre.layout(configGraph);
+			// 	const boundingBox = calcBoundingBox(configGraph);
+
+			// 	console.log(graph.nodes().length);
+			// 	configGraph.nodes().forEach((nodeId) => [graph.removeNode(nodeId)]);
+			// 	configGraph.setNode(configurableNode.id, {
+			// 		width: boundingBox.width,
+			// 		height: boundingBox.height,
+			// 	});
+			// 	console.log(graph.nodes().length);
+			// }
 
 			const boundingBox = calcBoundingBox(graph);
 
