@@ -27,7 +27,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 const isStale = computed(
 	() =>
 		render.value.type === CanvasNodeRenderType.Default &&
-		render.value.options.dirtiness === 'dirty',
+		render.value.options.dirtiness === 'parameters-updated',
 );
 </script>
 

@@ -59,7 +59,10 @@ describe('CanvasNodeStatusIcons', () => {
 				provide: createCanvasNodeProvide({
 					data: {
 						runData: { outputMap: {}, iterations: 15, visible: true },
-						render: { type: CanvasNodeRenderType.Default, options: { dirtiness: 'dirty' } },
+						render: {
+							type: CanvasNodeRenderType.Default,
+							options: { dirtiness: 'parameters-updated' },
+						},
 					},
 				}),
 			},

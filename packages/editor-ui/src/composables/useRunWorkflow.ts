@@ -125,17 +125,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			return false;
 		}
 
-		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
-			const runAt = taskData?.[0]?.startTime;
+		for (const node of workflowsStore.allNodes) {
+			const nodeName = node.name;
+			const runAt = runDataByNode[nodeName]?.[0]?.startTime ?? 0;
 
 			if (!runAt) {
 				continue;
 			}
 
-			const parametersLastUpdate = workflowsStore.getParametersLastUpdate(nodeName);
+			const parametersLastUpdate = workflowsStore.getParametersLastUpdate(nodeName) ?? 0;
 
-			if (parametersLastUpdate && parametersLastUpdate > runAt) {
-				dirtiness[nodeName] = 'dirty';
+			if (parametersLastUpdate > runAt) {
+				dirtiness[nodeName] = 'parameters-updated';
 				markDownstreamStaleRecursively(nodeName);
 				continue;
 			}
@@ -148,8 +149,17 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			);
 
 			if (incomingConnectionsLastUpdate > runAt) {
-				dirtiness[nodeName] = 'incoming-connections-changed';
+				dirtiness[nodeName] = 'incoming-connections-updated';
 				markDownstreamStaleRecursively(nodeName);
+				continue;
+			}
+
+			const pinnedDataUpdatedAt = workflowsStore.getPinnedDataLastUpdate(nodeName) ?? 0;
+
+			if (pinnedDataUpdatedAt > runAt) {
+				dirtiness[nodeName] = 'pinned-data-updated';
+				markDownstreamStaleRecursively(nodeName);
+				continue;
 			}
 		}
 
@@ -376,7 +386,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			if (startRunData.runData) {
 				const nodeNames = Object.entries(dirtinessByName.value).flatMap(([nodeName, dirtiness]) =>
-					dirtiness === 'incoming-connections-changed' || dirtiness === 'dirty' ? [nodeName] : [],
+					dirtiness ? [nodeName] : [],
 				);
 
 				startRunData.dirtyNodeNames = nodeNames.length > 0 ? nodeNames : undefined;

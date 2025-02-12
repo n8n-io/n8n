@@ -767,7 +767,7 @@ describe('useWorkflowsStore', () => {
 		it('should mark nodes with run data older than the last update time as dirty', () => {
 			workflowsStore.workflow = { connections: {} as IConnections } as IWorkflowDb;
 
-			expect(workflowsStore.dirtinessByName).toEqual({ node1: 'dirty' });
+			expect(workflowsStore.dirtinessByName).toEqual({ node1: 'parameters-updated' });
 		});
 
 		it('should mark nodes with a dirty node somewhere in its upstream as upstream-dirty', () => {
@@ -779,7 +779,7 @@ describe('useWorkflowsStore', () => {
 			} as IWorkflowDb;
 
 			expect(workflowsStore.dirtinessByName).toEqual({
-				node1: 'dirty',
+				node1: 'parameters-updated',
 				node2: 'upstream-dirty',
 			});
 		});
@@ -794,7 +794,7 @@ describe('useWorkflowsStore', () => {
 			} as IWorkflowDb;
 
 			expect(workflowsStore.dirtinessByName).toEqual({
-				node1: 'dirty',
+				node1: 'parameters-updated',
 				node2: 'upstream-dirty',
 			});
 		});
