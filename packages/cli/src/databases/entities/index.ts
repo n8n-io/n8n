@@ -10,6 +10,7 @@ import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
+import { Folder } from './folder';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
@@ -66,4 +67,5 @@ export const entities = {
 	TestMetric,
 	TestRun,
 	TestCaseExecution,
+	Folder,
 };
