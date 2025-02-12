@@ -67,6 +67,8 @@ import {
 	recreateNodeExecutionStack,
 	handleCycles,
 	filterDisabledNodes,
+	isTool,
+	rewireGraph,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -353,6 +355,19 @@ export class WorkflowExecute {
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
+		console.log('destination.name', destination.name);
+
+		// 0. Tool Handling
+		// Is the destination node a tool?
+		// no: continue
+		// yes:
+		//   remove root node from graph and connect tool to root nodes main-parent directly
+		if (isTool(destination, workflow.nodeTypes)) {
+			workflow = rewireGraph(destination, DirectedGraph.fromWorkflow(workflow)).toWorkflow(
+				workflow,
+			);
+		}
+
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
@@ -361,10 +376,14 @@ export class WorkflowExecute {
 			);
 		}
 
+		console.log('trigger.name', trigger.name);
+
 		// 2. Find the Subgraph
 		let graph = DirectedGraph.fromWorkflow(workflow);
 		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = graph.getNodes();
+
+		console.log('[...filteredNodes.keys()]', [...filteredNodes.keys()]);
 
 		// 3. Find the Start Nodes
 		runData = omit(runData, dirtyNodeNames);
