@@ -68,6 +68,8 @@ import {
 	recreateNodeExecutionStack,
 	handleCycles,
 	filterDisabledNodes,
+	isTool,
+	rewireGraph,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -399,9 +401,13 @@ export class WorkflowExecute {
 			throw new UserError('Connect a trigger to run this node');
 		}
 
+		console.log('trigger.name', trigger.name);
+
 		// 2. Find the Subgraph
 		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = graph.getNodes();
+
+		console.log('[...filteredNodes.keys()]', [...filteredNodes.keys()]);
 
 		// 3. Find the Start Nodes
 		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
