@@ -35,7 +35,7 @@ export class SlackApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://slack.com',
-			url: '/api/users.profile.get',
+			url: '/api/auth.test',
 		},
 		rules: [
 			{
