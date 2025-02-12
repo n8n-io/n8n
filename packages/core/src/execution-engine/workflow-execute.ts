@@ -1012,12 +1012,12 @@ export class WorkflowExecute {
 
 		const customOperation = this.getCustomOperation(node, nodeType);
 
-		if (customOperation) {
-			nodeType.execute = customOperation;
-		}
-
 		let connectionInputData: INodeExecutionData[] = [];
-		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+		if (
+			nodeType.execute ||
+			customOperation ||
+			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
+		) {
 			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
@@ -1076,7 +1076,7 @@ export class WorkflowExecute {
 			inputData = newInputData;
 		}
 
-		if (nodeType.execute) {
+		if (nodeType.execute || customOperation) {
 			const closeFunctions: CloseFunction[] = [];
 			const context = new ExecuteContext(
 				workflow,
@@ -1092,10 +1092,16 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 
-			const data =
-				nodeType instanceof Node
-					? await nodeType.execute(context)
-					: await nodeType.execute.call(context);
+			let data;
+
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context)
+						: await nodeType.execute.call(context);
+			}
 
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),
