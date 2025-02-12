@@ -8,7 +8,6 @@ import type {
 	FindOptionsSelect,
 	FindManyOptions,
 	FindOptionsRelations,
-	Filter,
 } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
