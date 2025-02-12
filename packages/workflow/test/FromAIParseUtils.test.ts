@@ -8,23 +8,28 @@ import {
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
 
 describe('extractFromAICalls', () => {
-	test.each<[string, [unknown, unknown, unknown, unknown]]>([
-		['$fromAI("a", "b", "string")', ['a', 'b', 'string', undefined]],
-		['$fromAI("a", "b", "number", 5)', ['a', 'b', 'number', 5]],
-		['$fromAI("a", "`", "number", 5)', ['a', '`', 'number', 5]],
-		['$fromAI("a", "\\`", "number", 5)', ['a', '`', 'number', 5]], // this is a bit surprising, but intended
-		['$fromAI("a", "\\n", "number", 5)', ['a', 'n', 'number', 5]], // this is a bit surprising, but intended
-		['{{ $fromAI("a", "b", "boolean") }}', ['a', 'b', 'boolean', undefined]],
-	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
-		expect(extractFromAICalls(formula)).toEqual([
-			{
-				key,
-				description,
-				type,
-				defaultValue,
-			},
-		]);
-	});
+	test.each<[string, [unknown, unknown, unknown, unknown, unknown]]>([
+		['$fromAI("a", "b", "string")', ['a', 'b', 'string', undefined, undefined]],
+		['$fromAI("a", "b", "number", 5)', ['a', 'b', 'number', 5, undefined]],
+		['$fromAI("a", "`", "number", 5)', ['a', '`', 'number', 5, undefined]],
+		['$fromAI("a", "\\`", "number", 5)', ['a', '`', 'number', 5, undefined]], // this is a bit surprising, but intended
+		['$fromAI("a", "\\n", "number", 5)', ['a', 'n', 'number', 5, undefined]], // this is a bit surprising, but intended
+		['$fromAI("a", "\\n", "number", 5, 6)', ['a', 'n', 'number', 5, 6]], // this is a bit surprising, but intended
+		['{{ $fromAI("a", "b", "boolean") }}', ['a', 'b', 'boolean', undefined, undefined]],
+	])(
+		'should parse args as expected for %s',
+		(formula, [key, description, type, defaultValue, testValue]) => {
+			expect(extractFromAICalls(formula)).toEqual([
+				{
+					key,
+					description,
+					type,
+					defaultValue,
+					testValue,
+				},
+			]);
+		},
+	);
 
 	test.each([
 		['$fromAI("a", "b", "c")'],
@@ -43,12 +48,16 @@ describe('extractFromAICalls', () => {
 				description: 'b',
 				type: 'number',
 				defaultValue: undefined,
+				testValue,
+				undefined,
 			},
 			{
 				key: 'c',
 				description: 'd',
 				type: 'string',
 				defaultValue: undefined,
+				testValue,
+				undefined,
 			},
 		]);
 	});

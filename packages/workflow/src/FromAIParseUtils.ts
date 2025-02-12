@@ -12,6 +12,7 @@ export type FromAIArgument = {
 	description?: string;
 	type?: FromAIArgumentType;
 	defaultValue?: string | number | boolean | Record<string, unknown>;
+	testValue?: string | number | boolean | Record<string, unknown>;
 };
 
 class ParseError extends Error {}
@@ -208,6 +209,7 @@ function parseArguments(argsString: string): FromAIArgument {
 		description: cleanArgs[1],
 		type: (cleanArgs?.[2] ?? 'string') as FromAIArgumentType,
 		defaultValue: parseDefaultValue(cleanArgs[3]),
+		testValue: parseDefaultValue(cleanArgs[4]),
 	};
 }
 
