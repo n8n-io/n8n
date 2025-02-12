@@ -2,7 +2,6 @@ import { mock } from 'jest-mock-extended';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -299,7 +298,7 @@ describe('WorkflowExecutionService', () => {
 	});
 
 	describe('selectPinnedActivatorStarter()', () => {
-		const workflow = mock<IWorkflowDb>({
+		const workflow = mock<IWorkflowBase>({
 			nodes: [],
 		});
 
