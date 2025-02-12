@@ -42,7 +42,7 @@ export const containerOperations: INodeProperties[] = [
 						qs: {
 							restype: 'container',
 						},
-						url: '=/{{ $parameter["container"] }}',
+						url: '=/{{ $parameter["containerCreate"] }}',
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -129,7 +129,7 @@ export const containerOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								const { metadata, ...properties } = parseHeaders(response.headers);
-								const simplify = this.getNodeParameter('simplify', true) as boolean;
+								const simplify = this.getNodeParameter('options.simplify', true) as boolean;
 								if (simplify) {
 									delete properties.contentLength;
 									delete properties.server;
@@ -215,7 +215,7 @@ const createFields: INodeProperties[] = [
 						this: IExecuteSingleFunctions,
 						requestOptions: IHttpRequestOptions,
 					): Promise<IHttpRequestOptions> {
-						const container = this.getNodeParameter('container') as string;
+						const container = this.getNodeParameter('containerCreate') as string;
 						if (container.length < 3 || container.length > 63) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -430,17 +430,27 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
+		displayName: 'Options',
+		name: 'options',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['container'],
 				operation: ['get'],
 			},
 		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		options: [
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+		placeholder: 'Add Options',
+		type: 'collection',
 	},
 ];
 

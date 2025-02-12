@@ -52,6 +52,9 @@ describe('Azure Storage Node', () => {
 										value: 'mycontainer',
 										mode: 'id',
 									},
+									options: {
+										simplify: false,
+									},
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.azureStorage',
@@ -125,6 +128,9 @@ describe('Azure Storage Node', () => {
 										__rl: true,
 										value: 'mycontainer',
 										mode: 'id',
+									},
+									options: {
+										simplify: false,
 									},
 									requestOptions: {},
 								},

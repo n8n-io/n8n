@@ -42,7 +42,7 @@ describe('Azure Storage Node', () => {
 										value: 'mycontainer',
 										mode: 'list',
 									},
-									blob: 'myblob',
+									blobCreate: 'myblob',
 									options: {
 										accessTier: 'Hot',
 										blobType: 'BlockBlob',
@@ -305,6 +305,7 @@ describe('Azure Storage Node', () => {
 									options: {
 										leaseId: 'leaseId123',
 										origin: 'origin123',
+										simplify: false,
 										upn: true,
 									},
 									requestOptions: {},
@@ -379,7 +380,9 @@ describe('Azure Storage Node', () => {
 										mode: 'list',
 									},
 									returnAll: true,
-									options: {},
+									options: {
+										simplify: false,
+									},
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.azureStorage',
@@ -474,6 +477,7 @@ describe('Azure Storage Node', () => {
 											'permissions',
 										],
 										filter: ['deleted', 'files', 'directories'],
+										simplify: true,
 										upn: true,
 									},
 									requestOptions: {},
@@ -509,7 +513,7 @@ describe('Azure Storage Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Azure Storage': [azureStorageNodeResponse.blobGetAll],
+						'Azure Storage': [azureStorageNodeResponse.blobGetAllSimple],
 					},
 				},
 				nock: {

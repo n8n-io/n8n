@@ -6,6 +6,7 @@ import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -37,7 +38,7 @@ export const blobOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'PUT',
-						url: '=/{{ $parameter["container"] }}/{{ $parameter["blob"] }}',
+						url: '=/{{ $parameter["container"] }}/{{ $parameter["blobCreate"] }}',
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -119,7 +120,7 @@ export const blobOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								const headerData = parseHeaders(response.headers);
-								const simplify = this.getNodeParameter('simplify', true) as boolean;
+								const simplify = this.getNodeParameter('options.simplify', true) as boolean;
 								if (simplify) {
 									delete headerData.acceptRanges;
 									delete headerData.server;
@@ -129,8 +130,14 @@ export const blobOperations: INodeProperties[] = [
 									delete headerData.connection;
 								}
 
+								const { metadata, ...properties } = headerData;
+
 								const newItem: INodeExecutionData = {
-									json: headerData,
+									json: {
+										name: (this.getNodeParameter('blob') as INodeParameterResourceLocator).value,
+										properties,
+										...(metadata ? { metadata: metadata as IDataObject } : {}),
+									},
 									binary: {},
 								};
 
@@ -184,9 +191,23 @@ export const blobOperations: INodeProperties[] = [
 								data: INodeExecutionData[],
 								_response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
+								const bodyData = await parseBlobList(data[0].json as unknown as string);
+								if (this.getNodeParameter('options.simplify', true)) {
+									for (const blob of bodyData.blobs) {
+										const properties = blob.properties as IDataObject;
+										if (!properties.cacheControl) delete properties.cacheControl;
+										if (!properties.contentCRC64) delete properties.contentCRC64;
+										if (!properties.contentEncoding) delete properties.contentEncoding;
+										if (!properties.contentLanguage) delete properties.contentLanguage;
+										if (!properties.contentDisposition) delete properties.contentDisposition;
+										delete properties.accessTier;
+										delete properties.accessTierChangeTime;
+										delete properties.accessTierInferred;
+									}
+								}
 								return [
 									{
-										json: await parseBlobList(data[0].json as unknown as string),
+										json: bodyData,
 									},
 								];
 							},
@@ -322,7 +343,7 @@ const createFields: INodeProperties[] = [
 	{
 		displayName: 'URL',
 		name: 'url',
-		default: 'data',
+		default: '',
 		description: 'URL where to read of the blob contents from',
 		displayOptions: {
 			show: {
@@ -342,7 +363,11 @@ const createFields: INodeProperties[] = [
 						const url = this.getNodeParameter('url') as string;
 
 						requestOptions.headers ??= {};
-						requestOptions.headers[HeaderConstants.CONTENT_LENGTH] = 0;
+
+						// Documentation specifies Content-Length: 0, but this causes invalid signature for SharedKey:
+						// Required. Specifies the number of bytes being transmitted in the request body. The value of this header must be set to 0. When the length isn't 0, the operation fails with the status code 400 (Bad Request).
+						// requestOptions.headers[HeaderConstants.CONTENT_LENGTH] = 0;
+
 						requestOptions.headers[HeaderConstants.X_MS_BLOB_TYPE] = 'BlockBlob';
 						requestOptions.headers[HeaderConstants.X_MS_COPY_SOURCE] = url;
 
@@ -351,6 +376,7 @@ const createFields: INodeProperties[] = [
 				],
 			},
 		},
+		placeholder: 'e.g. https://example.com/image.jpg',
 		type: 'string',
 	},
 	{
@@ -1016,19 +1042,6 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['blob'],
-				operation: ['get'],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		default: {},
@@ -1072,6 +1085,14 @@ const getFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
 				displayName: 'UPN',
 				name: 'upn',
 				description:
@@ -1088,6 +1109,7 @@ const getFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 		],
+		placeholder: 'Add Options',
 		type: 'collection',
 	},
 ];
@@ -1326,6 +1348,14 @@ const getAllFields: INodeProperties[] = [
 				type: 'multiOptions',
 			},
 			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
 				displayName: 'UPN',
 				name: 'upn',
 				description:
@@ -1342,6 +1372,7 @@ const getAllFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 		],
+		placeholder: 'Add Options',
 		type: 'collection',
 	},
 ];

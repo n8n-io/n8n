@@ -36,7 +36,7 @@ describe('Azure Storage Node', () => {
 							{
 								parameters: {
 									operation: 'create',
-									container: 'mycontainer',
+									containerCreate: 'mycontainer',
 									options: {
 										accessLevel: 'blob',
 										metadata: {
@@ -191,6 +191,9 @@ describe('Azure Storage Node', () => {
 										__rl: true,
 										mode: 'list',
 										value: 'mycontainer',
+									},
+									options: {
+										simplify: false,
 									},
 									requestOptions: {},
 								},

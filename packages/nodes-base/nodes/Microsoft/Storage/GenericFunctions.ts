@@ -20,7 +20,7 @@ import { firstCharLowerCase, parseBooleans, parseNumbers } from 'xml2js/lib/proc
 
 import { compareHeader } from './compare-header';
 
-export const XMsVersion = '2020-10-02';
+export const XMsVersion = '2021-12-02';
 
 export const HeaderConstants = {
 	AUTHORIZATION: 'authorization',
@@ -132,6 +132,8 @@ export async function handleErrorPostReceive(
 				error: {
 					code: string;
 					message: string;
+					headerName?: string;
+					headerValue?: string;
 				};
 			}) ?? {};
 
@@ -155,6 +157,17 @@ export async function handleErrorPostReceive(
 			}
 
 			if (operation === 'create') {
+				if (
+					this.getNodeParameter('from') === 'url' &&
+					((error?.code === 'InvalidHeaderValue' &&
+						error?.headerName === HeaderConstants.X_MS_COPY_SOURCE) ||
+						error?.code === 'CannotVerifyCopySource')
+				) {
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'The provided URL is invalid',
+						description: "Double-check the value in the parameter 'URL' and try again",
+					});
+				}
 			} else if (operation === 'delete') {
 				if (error?.code === 'BlobNotFound') {
 					throw new NodeApiError(this.getNode(), error as JsonObject, {
