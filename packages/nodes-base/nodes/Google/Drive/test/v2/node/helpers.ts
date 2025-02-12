@@ -1,5 +1,5 @@
 import { get } from 'lodash';
-import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 import { Readable } from 'stream';
 
@@ -32,7 +32,7 @@ export const createMockExecuteFunction = (
 		},
 		helpers: {
 			constructExecutionMetaData,
-			returnJsonArray,
+			returnJsonArray: () => [],
 			prepareBinaryData: () => {},
 			httpRequest: () => {},
 		},

@@ -1,9 +1,4 @@
-import {
-	NodeConnectionType,
-	NodeExecutionOutput,
-	NodeOperationError,
-	tryToParseDateTime,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, tryToParseDateTime } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -126,13 +121,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 						);
 
 						if (maxEntriesNum > 0 && processedDataCount / maxEntriesNum > 0.5) {
-							return new NodeExecutionOutput(returnData, [
-								{
-									message: `Some duplicates may be not be removed since you're approaching the maximum history size (${maxEntriesNum} items). You can raise this limit using the ‘history size’ option.`,
-									location: 'outputPane',
-								},
-							]);
-						} else return returnData;
+							this.addExecutionHints({
+								message: `Some duplicates may be not be removed since you're approaching the maximum history size (${maxEntriesNum} items). You can raise this limit using the ‘history size’ option.`,
+								location: 'outputPane',
+							});
+						}
+						return returnData;
 					} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
 						if (!['node', 'workflow'].includes(scope)) {
 							throw new NodeOperationError(

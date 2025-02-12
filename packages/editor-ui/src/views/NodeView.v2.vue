@@ -68,8 +68,8 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -166,7 +166,8 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
+const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebhook } =
+	useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -203,6 +204,7 @@ const {
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
+	toggleChatOpen,
 } = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
@@ -1104,29 +1106,6 @@ const isClearExecutionButtonVisible = computed(
 
 const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 
-async function onRunWorkflow() {
-	trackRunWorkflow();
-
-	void runWorkflow({});
-}
-
-function trackRunWorkflow() {
-	void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
-		const telemetryPayload = {
-			workflow_id: workflowId.value,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{ isCloudDeployment: settingsStore.isCloudDeployment },
-				).nodeGraph,
-			),
-		};
-		telemetry.track('User clicked execute workflow button', telemetryPayload);
-		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
-	});
-}
-
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
@@ -1288,14 +1267,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
-
-	const payload = {
-		workflow_id: workflowId.value,
-	};
-
-	void externalHooks.run('nodeView.onOpenChat', payload);
-	telemetry.track('User clicked chat open button', payload);
+	await toggleChatOpen('main');
 }
 
 /**
@@ -1734,7 +1706,7 @@ onBeforeUnmount(() => {
 		@duplicate:nodes="onDuplicateNodes"
 		@copy:nodes="onCopyNodes"
 		@cut:nodes="onCutNodes"
-		@run:workflow="onRunWorkflow"
+		@run:workflow="runEntireWorkflow('main')"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
@@ -1751,12 +1723,12 @@ onBeforeUnmount(() => {
 				:executing="isWorkflowRunning"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="onRunWorkflow"
+				@click="runEntireWorkflow('main')"
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
 				:type="isChatOpen ? 'tertiary' : 'primary'"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
 				@click="onOpenChat"
 			/>
 			<CanvasStopCurrentExecutionButton

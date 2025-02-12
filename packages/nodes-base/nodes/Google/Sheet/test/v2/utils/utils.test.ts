@@ -458,6 +458,27 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 			] as ResourceMapperField[]),
 		).toThrow("Column names were updated after the node's setup");
 	});
+
+	it('should filter out empty columns  without throwing an error', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['', '', 'id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
 });
 
 describe('Test Google Sheets, getSpreadsheetId', () => {

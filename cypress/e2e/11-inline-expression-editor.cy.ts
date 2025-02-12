@@ -1,3 +1,4 @@
+import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
@@ -23,6 +24,25 @@ describe('Inline expression editor', () => {
 			// click outside to close
 			ndv.getters.outputPanel().click();
 			WorkflowPage.getters.inlineExpressionEditorOutput().should('not.exist');
+		});
+
+		it('should switch between expression and fixed using keyboard', () => {
+			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+			WorkflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+
+			// Should switch to expression with =
+			ndv.getters.assignmentCollectionAdd('assignments').click();
+			ndv.actions.typeIntoParameterInput('value', '=');
+
+			// Should complete {{ --> {{ | }}
+			WorkflowPage.getters.inlineExpressionEditorInput().click().type('{{');
+			WorkflowPage.getters.inlineExpressionEditorInput().should('have.text', '{{  }}');
+
+			// Should switch back to fixed with backspace on empty expression
+			ndv.actions.typeIntoParameterInput('value', '{selectall}{backspace}');
+			ndv.getters.parameterInput('value').click();
+			ndv.actions.typeIntoParameterInput('value', '{backspace}');
+			ndv.getters.inlineExpressionEditorInput().should('not.exist');
 		});
 	});
 

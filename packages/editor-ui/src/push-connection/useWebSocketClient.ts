@@ -1,7 +1,7 @@
 import { useHeartbeat } from '@/push-connection/useHeartbeat';
 import { useReconnectTimer } from '@/push-connection/useReconnectTimer';
 import { ref } from 'vue';
-
+import { createHeartbeatMessage } from '@n8n/api-types';
 export type UseWebSocketClientOptions<T> = {
 	url: string;
 	onMessage: (data: T) => void;
@@ -31,7 +31,7 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 	const { startHeartbeat, stopHeartbeat } = useHeartbeat({
 		interval: 30_000,
 		onHeartbeat: () => {
-			socket.value?.send(JSON.stringify({ type: 'heartbeat' }));
+			socket.value?.send(JSON.stringify(createHeartbeatMessage()));
 		},
 	});
 
@@ -44,8 +44,7 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 
 	const onConnectionLost = (event: CloseEvent) => {
 		console.warn(`[WebSocketClient] Connection lost, code=${event.code ?? 'unknown'}`);
-		isConnected.value = false;
-		stopHeartbeat();
+		disconnect();
 		reconnectTimer.scheduleReconnect();
 	};
 

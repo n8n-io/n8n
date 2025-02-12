@@ -136,10 +136,11 @@ export abstract class AbstractOAuthController {
 
 	protected async encryptAndSaveData(
 		credential: ICredentialsDb,
-		decryptedData: ICredentialDataDecryptedObject,
+		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[] = [],
 	) {
-		const credentials = new Credentials(credential, credential.type);
-		credentials.setData(decryptedData);
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),

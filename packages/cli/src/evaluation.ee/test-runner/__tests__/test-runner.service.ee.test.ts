@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -54,6 +55,12 @@ const executionDataJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
 );
 
+const executionDataRenamedNodesJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/execution-data-renamed-nodes.json'), {
+		encoding: 'utf-8',
+	}),
+);
+
 const executionDataMultipleTriggersJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.multiple-triggers.json'), {
 		encoding: 'utf-8',
@@ -81,7 +88,7 @@ const executionMocks = [
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
-			data: stringify(executionDataJson),
+			data: stringify(executionDataRenamedNodesJson),
 			workflowData: wfUnderTestRenamedNodesJson,
 		},
 	}),
@@ -91,7 +98,12 @@ function mockExecutionData() {
 	return mock<IRun>({
 		data: {
 			resultData: {
-				runData: {},
+				runData: {
+					'When clicking ‘Test workflow’': mock<ITaskData[]>(),
+				},
+				// error is an optional prop, but jest-mock-extended will mock it by default,
+				// which affects the code logic. So, we need to explicitly set it to undefined.
+				error: undefined,
 			},
 		},
 	});
@@ -292,7 +304,7 @@ describe('TestRunnerService', () => {
 
 		activeExecutions.getPostExecutePromise
 			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5, metric2: 100 }));
 
 		await testRunnerService.runTest(
 			mock<User>(),
@@ -322,7 +334,7 @@ describe('TestRunnerService', () => {
 		// Check evaluation workflow was executed
 		expect(workflowRunner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
-				executionMode: 'evaluation',
+				executionMode: 'integrated',
 				executionData: expect.objectContaining({
 					executionData: expect.objectContaining({
 						nodeExecutionStack: expect.arrayContaining([
@@ -343,7 +355,7 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
-			metric2: 0,
+			metric2: 50,
 		});
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
@@ -624,6 +636,7 @@ describe('TestRunnerService', () => {
 		const startNodesData = (testRunnerService as any).getStartNodesData(
 			wfMultipleTriggersJson,
 			executionDataMultipleTriggersJson,
+			wfMultipleTriggersJson, // Test case where workflow didn't change
 		);
 
 		expect(startNodesData).toEqual({
@@ -652,12 +665,42 @@ describe('TestRunnerService', () => {
 		const startNodesData = (testRunnerService as any).getStartNodesData(
 			wfMultipleTriggersJson,
 			executionDataMultipleTriggersJson2,
+			wfMultipleTriggersJson, // Test case where workflow didn't change
 		);
 
 		expect(startNodesData).toEqual({
 			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'NoOp' })]),
 			triggerToStartFrom: expect.objectContaining({
 				name: 'When chat message received',
+			}),
+		});
+	});
+
+	test('should properly choose trigger when it was renamed', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		const startNodesData = (testRunnerService as any).getStartNodesData(
+			wfUnderTestRenamedNodesJson, // Test case where workflow didn't change
+			executionDataJson,
+			wfUnderTestJson,
+		);
+
+		expect(startNodesData).toEqual({
+			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'Set attribute' })]),
+			triggerToStartFrom: expect.objectContaining({
+				name: 'Manual Run',
 			}),
 		});
 	});
