@@ -161,5 +161,5 @@ export const postgresMigrations: Migration[] = [
 	AddStatsColumnsToTestRun1736172058779,
 	CreateTestCaseExecutionTable1736947513045,
 	AddErrorColumnsToTestRuns1737715421462,
-  CreateFolderTable1738709609940,
+	CreateFolderTable1738709609940,
 ];
