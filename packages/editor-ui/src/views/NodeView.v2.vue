@@ -1658,7 +1658,7 @@ onMounted(() => {
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
 					if (props.initialNodeId) {
-						onSetNodeActive(props.initialNodeId);
+						setNodeActive(props.initialNodeId);
 					}
 				}, 500);
 
