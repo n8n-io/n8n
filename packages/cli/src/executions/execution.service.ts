@@ -36,7 +36,6 @@ import type {
 	CreateExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
-	IWorkflowDb,
 } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -268,7 +267,7 @@ export class ExecutionService {
 	async createErrorExecution(
 		error: ExecutionError,
 		node: INode,
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
 	) {

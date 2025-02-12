@@ -30,6 +30,7 @@ import {
 	WorkflowActivationError,
 	WebhookPathTakenError,
 	ApplicationError,
+	formatWorkflow,
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -39,13 +40,11 @@ import {
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
@@ -60,7 +59,7 @@ interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
 	lastTimeout: number;
 	timeout: NodeJS.Timeout;
-	workflowData: IWorkflowDb;
+	workflowData: IWorkflowBase;
 }
 
 @Service()
@@ -271,7 +270,7 @@ export class ActiveWorkflowManager {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -322,7 +321,7 @@ export class ActiveWorkflowManager {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecuteTriggerFunctions(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -379,7 +378,7 @@ export class ActiveWorkflowManager {
 				);
 				this.executeErrorWorkflow(activationError, workflowData, mode);
 
-				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
+				this.addQueuedWorkflowActivation(activation, workflowData);
 			};
 			return new TriggerContext(workflow, node, additionalData, mode, activation, emit, emitError);
 		};
@@ -436,7 +435,7 @@ export class ActiveWorkflowManager {
 	}
 
 	private async activateWorkflow(
-		dbWorkflow: WorkflowEntity,
+		dbWorkflow: IWorkflowBase,
 		activationMode: 'init' | 'leadershipChange',
 	) {
 		try {
@@ -444,9 +443,9 @@ export class ActiveWorkflowManager {
 				shouldPublish: false,
 			});
 			if (wasActivated) {
-				this.logger.info(`   - ${dbWorkflow.display()})`);
+				this.logger.info(`   - ${formatWorkflow(dbWorkflow)})`);
 				this.logger.info('     => Started');
-				this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
+				this.logger.debug(`Successfully started workflow ${formatWorkflow(dbWorkflow)}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
@@ -454,12 +453,12 @@ export class ActiveWorkflowManager {
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.info(
-				`     => ERROR: Workflow ${dbWorkflow.display()} could not be activated on first try, keep on trying if not an auth issue`,
+				`     => ERROR: Workflow ${formatWorkflow(dbWorkflow)} could not be activated on first try, keep on trying if not an auth issue`,
 			);
 
 			this.logger.info(`               ${error.message}`);
 			this.logger.error(
-				`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
+				`Issue on initial workflow activation try of ${formatWorkflow(dbWorkflow)} (startup)`,
 				{
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
@@ -518,7 +517,7 @@ export class ActiveWorkflowManager {
 	async add(
 		workflowId: string,
 		activationMode: WorkflowActivateMode,
-		existingWorkflow?: WorkflowEntity,
+		existingWorkflow?: IWorkflowBase,
 		{ shouldPublish } = { shouldPublish: true },
 	) {
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
@@ -549,7 +548,7 @@ export class ActiveWorkflowManager {
 			}
 
 			if (shouldDisplayActivationMessage) {
-				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
+				this.logger.debug(`Initializing active workflow ${formatWorkflow(dbWorkflow)} (startup)`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
@@ -570,7 +569,7 @@ export class ActiveWorkflowManager {
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(
-					`Workflow ${dbWorkflow.display()} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
 					{ level: 'warning' },
 				);
 			}
@@ -673,7 +672,7 @@ export class ActiveWorkflowManager {
 	 */
 	private addQueuedWorkflowActivation(
 		activationMode: WorkflowActivateMode,
-		workflowData: WorkflowEntity,
+		workflowData: IWorkflowBase,
 	) {
 		const workflowId = workflowData.id;
 		const workflowName = workflowData.name;
@@ -811,7 +810,7 @@ export class ActiveWorkflowManager {
 	 * Register as active in memory a trigger- or poller-based workflow.
 	 */
 	async addTriggersAndPollers(
-		dbWorkflow: WorkflowEntity,
+		dbWorkflow: IWorkflowBase,
 		workflow: Workflow,
 		{
 			activationMode,
@@ -838,7 +837,7 @@ export class ActiveWorkflowManager {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
+			this.logger.debug(`Adding triggers and pollers for workflow ${formatWorkflow(dbWorkflow)}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,
@@ -850,7 +849,7 @@ export class ActiveWorkflowManager {
 				getPollFunctions,
 			);
 
-			this.logger.debug(`Workflow ${dbWorkflow.display()} activated`, {
+			this.logger.debug(`Workflow ${formatWorkflow(dbWorkflow)} activated`, {
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 			});

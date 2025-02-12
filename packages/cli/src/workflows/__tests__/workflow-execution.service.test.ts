@@ -1,8 +1,7 @@
 import { mock } from 'jest-mock-extended';
-import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -73,7 +72,7 @@ describe('WorkflowExecutionService', () => {
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
 			const node = mock<INode>();
-			const workflow = mock<WorkflowEntity>({ active: true, nodes: [node] });
+			const workflow = mock<IWorkflowBase>({ active: true, nodes: [node] });
 
 			workflowRunner.run.mockResolvedValue('fake-execution-id');
 
