@@ -162,35 +162,27 @@ export async function processAttributes(
 		Value: string;
 	}>;
 
-	if (!Array.isArray(attributes) || attributes.length === 0) {
+	if (!Array.isArray(attributes)) {
 		throw new NodeApiError(this.getNode(), {
-			message: 'Missing User Attributes',
-			description: 'At least one attribute must be specified before updating the user.',
+			message: 'Invalid User Attributes',
+			description: 'Expected an array of attributes but received an invalid format.',
 		});
 	}
 
-	const processedAttributes = attributes.map((attribute, index) => {
-		if (!attribute.Name || typeof attribute.Name !== 'string' || attribute.Name.trim() === '') {
-			throw new NodeApiError(this.getNode(), {
-				message: 'Invalid Attribute Name',
-				description: 'Each attribute must have a valid "Name". Ensure it is a non-empty string.',
-			});
-		}
-
-		if (attribute.Value === undefined || attribute.Value === null || attribute.Value === '') {
-			throw new NodeApiError(this.getNode(), {
-				message: 'Invalid Attribute Value',
-				description: `The attribute "${attribute.Name}" must have a valid "Value". Ensure it is properly filled.`,
-			});
-		}
-
-		return {
+	const processedAttributes = attributes
+		.filter(
+			(attribute) =>
+				attribute.Name &&
+				attribute.Value !== undefined &&
+				attribute.Value !== null &&
+				attribute.Value !== '',
+		)
+		.map((attribute) => ({
 			Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
 			Value: attribute.Value,
-		};
-	});
+		}));
 
-	body.UserAttributes = processedAttributes;
+	body.UserAttributes = processedAttributes.length > 0 ? processedAttributes : [];
 
 	requestOptions.body = JSON.stringify(body);
 

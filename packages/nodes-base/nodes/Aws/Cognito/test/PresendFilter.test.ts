@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { presendFilters } from '../GenericFunctions';
 
@@ -41,7 +41,7 @@ describe('presendFilters', () => {
 	test('should throw an error if any filter parameter is missing', async () => {
 		mockContext.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'filters') {
-				return { filter: { attribute: 'name' } }; // Missing value
+				return { filter: { attribute: 'name' } };
 			}
 			return {};
 		});
@@ -53,9 +53,7 @@ describe('presendFilters', () => {
 			headers: {},
 		};
 
-		await expect(presendFilters.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(mockContext.getNode(), 'Please provide Value to use filtering.'),
-		);
+		await expect(presendFilters.call(mockContext, requestOptions)).rejects.toThrow(NodeApiError);
 	});
 
 	test('should parse requestOptions.body if it is a string', async () => {

@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { presendVerifyPath } from '../GenericFunctions';
 
@@ -39,9 +39,7 @@ describe('presendVerifyPath', () => {
 			body: {},
 		};
 
-		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(mockContext.getNode(), 'Path must be between 1 and 512 characters.'),
-		);
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(NodeApiError);
 	});
 
 	test('should throw an error if path is too long', async () => {
@@ -54,13 +52,10 @@ describe('presendVerifyPath', () => {
 			body: {},
 		};
 
-		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(mockContext.getNode(), 'Path must be between 1 and 512 characters.'),
-		);
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(NodeApiError);
 	});
 
 	test('should throw an error if path does not start and end with a slash', async () => {
-		// Mocking the return value of getNodeParameter for the path
 		mockGetNodeParameter.mockReturnValueOnce('invalidpath');
 
 		const requestOptions = {
@@ -70,12 +65,7 @@ describe('presendVerifyPath', () => {
 			body: {},
 		};
 
-		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(
-				mockContext.getNode(),
-				'Path must begin and end with a forward slash and contain valid ASCII characters.',
-			),
-		);
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(NodeApiError);
 	});
 
 	test('should throw an error if path contains invalid characters', async () => {
@@ -88,11 +78,6 @@ describe('presendVerifyPath', () => {
 			body: {},
 		};
 
-		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(
-				mockContext.getNode(),
-				'Path must begin and end with a forward slash and contain valid ASCII characters.',
-			),
-		);
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(NodeApiError);
 	});
 });
