@@ -258,13 +258,13 @@ function adjustHeight(event: Event) {
 
 	textarea {
 		font-family: inherit;
-		font-size: var(--chat--input--font-size, inherit);
+		font-size: var(--chat--input--font-size);
 		width: 100%;
 		border: var(--chat--input--border, 0);
-		border-radius: var(--chat--input--border-radius, 0);
-		padding: var(--chat--input--padding, 0.8rem);
+		border-radius: var(--chat--input--border-radius);
+		padding: var(--chat--input--padding);
 		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
-		max-height: var(--chat--textarea--max-height, 30rem);
+		max-height: var(--chat--textarea--max-height);
 		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
 		resize: none;
 		overflow-y: auto;
@@ -274,7 +274,7 @@ function adjustHeight(event: Event) {
 		line-height: var(--chat--input--line-height, 1.5);
 
 		&::placeholder {
-			font-size: var(--chat--input--placeholder--font-size, var(--chat--input--font-size, inherit));
+			font-size: var(--chat--input--placeholder--font-size, var(--chat--input--font-size));
 		}
 		&:focus,
 		&:hover {
@@ -315,20 +315,17 @@ function adjustHeight(event: Event) {
 				--chat--input--send--button--background-hover,
 				var(--chat--input--send--button--background)
 			);
-			color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
+			color: var(--chat--input--send--button--color-hover);
 		}
 	}
 }
 .chat-input-file-button {
 	background: var(--chat--input--file--button--background, white);
-	color: var(--chat--input--file--button--color, var(--chat--color-secondary));
+	color: var(--chat--input--file--button--color);
 
 	&:hover {
-		background: var(
-			--chat--input--file--button--background-hover,
-			var(--chat--input--file--button--background)
-		);
-		color: var(--chat--input--file--button--color-hover, var(--chat--color-secondary-shade-50));
+		background: var(--chat--input--file--button--background-hover);
+		color: var(--chat--input--file--button--color-hover);
 	}
 }
 
@@ -340,11 +337,11 @@ function adjustHeight(event: Event) {
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: 0.5rem;
-	padding: var(--chat--files-spacing, 0.25rem);
+	padding: var(--chat--files-spacing);
 }
 
 .chat-input-left-panel {
-	width: var(--chat--input--left--panel--width, 2rem);
+	width: var(--chat--input--left--panel--width);
 	margin-left: 0.4rem;
 }
 </style>

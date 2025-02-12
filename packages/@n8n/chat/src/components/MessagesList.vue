@@ -51,6 +51,6 @@ watch(
 .chat-messages-list {
 	margin-top: auto;
 	display: block;
-	padding: var(--chat--messages-list--padding, var(--chat--spacing));
+	padding: var(--chat--messages-list--padding);
 }
 </style>
