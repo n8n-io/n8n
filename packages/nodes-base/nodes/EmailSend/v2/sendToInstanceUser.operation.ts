@@ -14,6 +14,28 @@ import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	{
+		displayName: 'SMTP Status' /* eslint-disable-line */,
+		name: 'smtpServerEnabled',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getSmtpServerStatus',
+		},
+		default: 'ServerDisabled',
+		description: '' /* eslint-disable-line */,
+	},
+	{
+		displayName:
+			"No SMTP server configured. To enable this operation, you'll need to set up an email server first by following the setup guide.",
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				smtpServerEnabled: [false], // Notice appears when SMTP server is disabled
+			},
+		},
+	},
+	{
 		// TODO: Why is this eslint rule needed here?
 		displayName: 'To Email' /* eslint-disable-line */,
 		name: 'toEmail',
@@ -25,6 +47,11 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		description /* eslint-disable-line */:
 			'Email address of the recipient from the list of users on this instance',
+		displayOptions: {
+			show: {
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
+			},
+		},
 	},
 	{
 		displayName: 'Subject',
@@ -33,6 +60,11 @@ const properties: INodeProperties[] = [
 		default: '',
 		placeholder: 'My subject line',
 		description: 'Subject line of the email',
+		displayOptions: {
+			show: {
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
+			},
+		},
 	},
 	{
 		displayName: 'Email Format',
@@ -60,6 +92,9 @@ const properties: INodeProperties[] = [
 			hide: {
 				'@version': [2],
 			},
+			show: {
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
+			},
 		},
 	},
 	{
@@ -84,6 +119,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'@version': [2],
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
 			},
 		},
 	},
@@ -99,6 +135,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				emailFormat: ['text', 'both'],
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
 			},
 		},
 	},
@@ -114,6 +151,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				emailFormat: ['html', 'both'],
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
 			},
 		},
 	},
@@ -128,30 +166,6 @@ const properties: INodeProperties[] = [
 				...appendAttributionOption,
 				description:
 					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
-			},
-			{
-				displayName: 'Attachments',
-				name: 'attachments',
-				type: 'string',
-				default: '',
-				description:
-					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
-			},
-			{
-				displayName: 'CC Email',
-				name: 'ccEmail',
-				type: 'string',
-				default: '',
-				placeholder: 'cc@example.com',
-				description: 'Email address of CC recipient',
-			},
-			{
-				displayName: 'BCC Email',
-				name: 'bccEmail',
-				type: 'string',
-				default: '',
-				placeholder: 'bcc@example.com',
-				description: 'Email address of BCC recipient',
 			},
 			{
 				displayName: 'Ignore SSL Issues (Insecure)',
@@ -169,6 +183,11 @@ const properties: INodeProperties[] = [
 				description: 'The email address to send the reply to',
 			},
 		],
+		displayOptions: {
+			show: {
+				smtpServerEnabled: [true], // This appears when SMTP server is enabled
+			},
+		},
 	},
 ];
 
@@ -181,6 +200,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+// TODO: This should be abstracted into a utility function to share with the send operation
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
@@ -205,8 +225,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const mailOptions: IDataObject = {
 				from: fromEmail,
 				to: toEmail,
-				cc: options.ccEmail,
-				bcc: options.bccEmail,
 				subject,
 				replyTo: options.replyTo,
 			};
@@ -238,28 +256,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					`;
 				} else {
 					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
-				}
-			}
-
-			if (options.attachments && item.binary) {
-				const attachments = [];
-				const attachmentProperties: string[] = options.attachments
-					.split(',')
-					.map((propertyName) => {
-						return propertyName.trim();
-					});
-
-				for (const propertyName of attachmentProperties) {
-					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
-					attachments.push({
-						filename: binaryData.fileName || 'unknown',
-						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
-						cid: propertyName,
-					});
-				}
-
-				if (attachments.length) {
-					mailOptions.attachments = attachments;
 				}
 			}
 

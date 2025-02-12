@@ -116,6 +116,22 @@ export class EmailSendV2 implements INodeType {
 					},
 				];
 			},
+
+			// TODO: Get server status from somewhere
+			async getSmtpServerStatus(this: ILoadOptionsFunctions) {
+				return [
+					{
+						name: 'ServerDisabled',
+						value: false,
+						description: 'SMTP server is not enabled',
+					},
+					{
+						name: 'ServerEnabled',
+						value: true,
+						description: 'SMTP server is enabled',
+					},
+				];
+			},
 		},
 	};
 
