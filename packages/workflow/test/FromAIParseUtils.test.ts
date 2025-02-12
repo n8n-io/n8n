@@ -16,6 +16,7 @@ describe('extractFromAICalls', () => {
 		['$fromAI("a", "\\n", "number", 5)', ['a', 'n', 'number', 5, undefined]], // this is a bit surprising, but intended
 		['$fromAI("a", "\\n", "number", 5, 6)', ['a', 'n', 'number', 5, 6]], // this is a bit surprising, but intended
 		['{{ $fromAI("a", "b", "boolean") }}', ['a', 'b', 'boolean', undefined, undefined]],
+		['{{ $fromAI("a", "b", "boolean", "", true) }}', ['a', 'b', 'boolean', undefined, true]],
 	])(
 		'should parse args as expected for %s',
 		(formula, [key, description, type, defaultValue, testValue]) => {
@@ -48,7 +49,6 @@ describe('extractFromAICalls', () => {
 				description: 'b',
 				type: 'number',
 				defaultValue: undefined,
-				testValue,
 				undefined,
 			},
 			{
@@ -56,7 +56,6 @@ describe('extractFromAICalls', () => {
 				description: 'd',
 				type: 'string',
 				defaultValue: undefined,
-				testValue,
 				undefined,
 			},
 		]);
