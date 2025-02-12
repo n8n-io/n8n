@@ -140,7 +140,18 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
+		const outputs = NodeHelpers.getNodeOutputs(
+			currentWorkflowInstance.value,
+			workflowNode!,
+			props.nodeType,
+		);
+		const outputNames = NodeHelpers.getConnectionTypes(outputs);
+
+		if (
+			!inputNames.includes(NodeConnectionTypes.Main) &&
+			!outputNames.includes(NodeConnectionTypes.AiTool) &&
+			!isTriggerNode.value
+		) {
 			return false;
 		}
 	}
