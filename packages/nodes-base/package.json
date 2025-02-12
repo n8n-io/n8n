@@ -702,6 +702,7 @@
       "dist/nodes/QuickBase/QuickBase.node.js",
       "dist/nodes/QuickBooks/QuickBooks.node.js",
       "dist/nodes/QuickChart/QuickChart.node.js",
+      "dist/nodes/QuickMail/QuickMail.node.js",
       "dist/nodes/RabbitMQ/RabbitMQ.node.js",
       "dist/nodes/RabbitMQ/RabbitMQTrigger.node.js",
       "dist/nodes/Raindrop/Raindrop.node.js",

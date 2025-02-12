@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.quickMail",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "HITL", "Core Nodes"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/credentials/quickmail/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.quickmail/"
+			}
+		]
+	},
+	"alias": ["SMTP", "email", "human", "form", "wait", "hitl", "approval"]
+}
