@@ -45,5 +45,7 @@ export function cleanRunData(
 		}
 	}
 
+	console.log('newRunData', newRunData);
+
 	return newRunData;
 }
