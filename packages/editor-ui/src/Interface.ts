@@ -139,7 +139,10 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: Partial<Pick<INodeUi, 'position' | 'credentials' | 'disabled'>>;
+	properties: {
+		position: XYPosition;
+		[key: string]: IDataObject | XYPosition;
+	};
 }
 
 export type XYPosition = [number, number];
