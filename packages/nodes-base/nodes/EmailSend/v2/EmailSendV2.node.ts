@@ -48,9 +48,9 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Instance SMTP Server Available',
 			name: 'instanceSmtpServerAvailable',
-			type: 'hidden',
+			type: 'string',
 			noDataExpression: true,
-			default: true,
+			default: '={{$parameter["instanceSmtpServerAvailable"]}}',
 			typeOptions: {
 				loadOptionsMethod: 'shouldEnableCredentials',
 			},
@@ -86,9 +86,9 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Send message and wait for response',
 				},
 				{
-					name: 'Send an Email to Instance User',
+					name: 'Send an Email to n8n User' /* eslint-disable-line */,
 					value: OPERATION_SEND_TO_INSTANCE_USER,
-					action: 'Send an Email to Instance User',
+					action: 'Send an Email to n8n User',
 				},
 			],
 		},
