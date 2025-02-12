@@ -129,12 +129,15 @@ export const containerOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								const { metadata, ...properties } = parseHeaders(response.headers);
-								delete properties.contentLength;
-								delete properties.server;
-								delete properties.requestId;
-								delete properties.version;
-								delete properties.date;
-								delete properties.connection;
+								const simplify = this.getNodeParameter('simplify', true) as boolean;
+								if (simplify) {
+									delete properties.contentLength;
+									delete properties.server;
+									delete properties.requestId;
+									delete properties.version;
+									delete properties.date;
+									delete properties.connection;
+								}
 								return [
 									{
 										json: {
@@ -425,6 +428,19 @@ const getFields: INodeProperties[] = [
 		],
 		required: true,
 		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['container'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];
 

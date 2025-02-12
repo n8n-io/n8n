@@ -119,12 +119,16 @@ export const blobOperations: INodeProperties[] = [
 								response: IN8nHttpFullResponse,
 							): Promise<INodeExecutionData[]> {
 								const headerData = parseHeaders(response.headers);
-								delete headerData.acceptRanges;
-								delete headerData.server;
-								delete headerData.requestId;
-								delete headerData.version;
-								delete headerData.date;
-								delete headerData.connection;
+								const simplify = this.getNodeParameter('simplify', true) as boolean;
+								if (simplify) {
+									delete headerData.acceptRanges;
+									delete headerData.server;
+									delete headerData.requestId;
+									delete headerData.version;
+									delete headerData.date;
+									delete headerData.connection;
+								}
+
 								const newItem: INodeExecutionData = {
 									json: headerData,
 									binary: {},
@@ -1009,6 +1013,19 @@ const getFields: INodeProperties[] = [
 		],
 		required: true,
 		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['blob'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
