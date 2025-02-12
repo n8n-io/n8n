@@ -20,6 +20,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import { routes as insightsRoutes } from './features/insights/insightsRouter';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -755,6 +756,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
+	insightsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
