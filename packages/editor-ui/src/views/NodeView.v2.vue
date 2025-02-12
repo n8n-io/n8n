@@ -1606,8 +1606,12 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
+		console.log(newId);
 		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
-		else setNodeActive(newId);
+		else {
+			const nodeUi = workflowsStore.findNodeByPartialId(newId);
+			if (nodeUi) setNodeActive(nodeUi?.id);
+		}
 	},
 );
 
@@ -1617,9 +1621,10 @@ watch(
 		// This is just out of caution
 		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
 
+		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : undefined;
 		await router.push({
 			name: route.name,
-			params: { name: workflowId.value, nodeId: val?.id },
+			params: { name: workflowId.value, nodeId },
 		});
 	},
 );
@@ -1658,7 +1663,8 @@ onMounted(() => {
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
 					if (props.initialNodeId) {
-						setNodeActive(props.initialNodeId);
+						const nodeUi = workflowsStore.findNodeByPartialId(props.initialNodeId);
+						if (nodeUi) setNodeActive(nodeUi.id);
 					}
 				}, 500);
 
