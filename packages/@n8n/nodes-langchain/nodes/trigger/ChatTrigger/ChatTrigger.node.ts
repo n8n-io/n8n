@@ -1,4 +1,3 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { pick } from 'lodash';
 import { Node, NodeConnectionType } from 'n8n-workflow';
 import type {
@@ -528,9 +527,7 @@ export class ChatTrigger extends Node {
 
 		if (bodyData.action === 'loadPreviousSession') {
 			if (options?.loadPreviousSession === 'memory') {
-				const memory = (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-					| BaseChatMemory
-					| undefined;
+				const memory = await ctx.getAIMemory();
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
 					.filter((message) => !message?.additional_kwargs?.hideFromUI)
 					.map((message) => message?.toJSON());

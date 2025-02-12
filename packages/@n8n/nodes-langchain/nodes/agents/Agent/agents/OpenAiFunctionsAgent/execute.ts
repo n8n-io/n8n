@@ -3,14 +3,9 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { ChatOpenAI } from '@langchain/openai';
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
-import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
+import { BufferMemory } from 'langchain/memory';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
@@ -31,9 +26,7 @@ export async function openAiFunctionsAgentExecute(
 			'OpenAI Functions Agent requires OpenAI Chat Model',
 		);
 	}
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await this.getAIMemory();
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, false);
 	const outputParsers = await getOptionalOutputParsers(this);
 	const options = this.getNodeParameter('options', 0, {}) as {

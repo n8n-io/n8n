@@ -1,4 +1,3 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -9,7 +8,7 @@ import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
@@ -107,9 +106,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		);
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await this.getAIMemory();
 
 	const tools = (await getConnectedTools(this, true, false)) as Array<DynamicStructuredTool | Tool>;
 	const outputParser = (await getOptionalOutputParsers(this))?.[0];

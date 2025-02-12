@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { Container } from '@n8n/di';
 import { get } from 'lodash';
@@ -232,6 +233,26 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.mode,
 			this.closeFunctions,
 			NodeConnectionType.AiLanguageModel,
+			itemIndex,
+			this.abortSignal,
+		)) as T;
+	}
+
+	async getAIMemory<T extends BaseChatMemory = BaseChatMemory>(
+		itemIndex = 0,
+	): Promise<T | undefined> {
+		return (await getInputConnectionData.call(
+			this,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			this.connectionInputData,
+			this.inputData,
+			this.additionalData,
+			this.executeData,
+			this.mode,
+			this.closeFunctions,
+			NodeConnectionType.AiMemory,
 			itemIndex,
 			this.abortSignal,
 		)) as T;

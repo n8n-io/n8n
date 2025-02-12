@@ -1,6 +1,6 @@
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { Request, Response } from 'express';
 import type {
-	AINodeConnectionType,
 	CloseFunction,
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -8,7 +8,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -16,7 +15,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -133,10 +132,9 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async getInputConnectionData(
-		connectionType: AINodeConnectionType,
-		itemIndex: number,
-	): Promise<unknown> {
+	async getAIMemory<T extends BaseChatMemory = BaseChatMemory>(
+		itemIndex = 0,
+	): Promise<T | undefined> {
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data.
@@ -157,19 +155,19 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			source: null,
 		};
 
-		return await getInputConnectionData.call(
+		return (await getInputConnectionData.call(
 			this,
 			this.workflow,
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,
 			this.closeFunctions,
-			connectionType,
+			NodeConnectionType.AiMemory,
 			itemIndex,
-		);
+		)) as T;
 	}
 }

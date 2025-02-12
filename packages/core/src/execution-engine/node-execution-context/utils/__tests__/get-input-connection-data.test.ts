@@ -226,7 +226,6 @@ describe('getInputConnectionData', () => {
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toBe(response);
 			expect(supplyData).toHaveBeenCalled();
-			// @ts-expect-error private property
 			expect(executeContext.closeFunctions).toContain(closeFunction);
 		});
 	});

@@ -10,12 +10,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	NodeConnectionType,
-	NodeOperationError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
@@ -235,9 +230,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
 	const memory =
 		useMemoryConnector || nodeVersion < 1.6
-			? ((await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-					| BufferWindowMemory
-					| undefined)
+			? await this.getAIMemory<BufferWindowMemory>()
 			: undefined;
 
 	const threadId =

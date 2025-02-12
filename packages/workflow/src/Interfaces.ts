@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { LogScope } from '@n8n/config';
@@ -898,11 +899,17 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		/** @deprecated */
 		getInputConnectionData(
-			connectionType: Exclude<AINodeConnectionType, NodeConnectionType.AiLanguageModel>,
+			connectionType: Exclude<
+				AINodeConnectionType,
+				NodeConnectionType.AiLanguageModel | NodeConnectionType.AiMemory
+			>,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
 		getAIModel<T extends BaseLanguageModel = BaseLanguageModel>(itemIndex?: number): Promise<T>;
+		getAIMemory<T extends BaseChatMemory = BaseChatMemory>(
+			itemIndex?: number,
+		): Promise<T | undefined>;
 
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
@@ -979,6 +986,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'addOutputData'
 		| 'getInputConnectionData'
 		| 'getAIModel'
+		| 'getAIMemory'
 		| 'getInputData'
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
@@ -1084,8 +1092,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 
-	/** @deprecated */
-	getInputConnectionData: IExecuteFunctions['getInputConnectionData'];
+	getAIMemory: IExecuteFunctions['getAIMemory'];
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
