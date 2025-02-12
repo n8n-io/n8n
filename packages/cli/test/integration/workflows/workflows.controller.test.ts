@@ -659,7 +659,15 @@ describe('GET /workflows', () => {
 
 			expect(response.body).toEqual({
 				count: 1,
-				data: [objectContaining({ name: 'First', tags: [{ id: any(String), name: 'A' }] })],
+				data: [
+					objectContaining({
+						name: 'First',
+						tags: [
+							{ id: any(String), name: 'A' },
+							{ id: any(String), name: 'B' },
+						],
+					}),
+				],
 			});
 		});
 
@@ -891,27 +899,30 @@ describe('GET /workflows', () => {
 		test('should sort by name column', async () => {
 			await createWorkflow({ name: 'a' }, owner);
 			await createWorkflow({ name: 'b' }, owner);
+			await createWorkflow({ name: 'My workflow' }, owner);
 
 			let response;
 
 			response = await authOwnerAgent.get('/workflows').query('sortBy=name:asc').expect(200);
 
 			expect(response.body).toEqual({
-				count: 2,
-				data: arrayContaining([
+				count: 3,
+				data: [
 					expect.objectContaining({ name: 'a' }),
 					expect.objectContaining({ name: 'b' }),
-				]),
+					expect.objectContaining({ name: 'My workflow' }),
+				],
 			});
 
 			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
 
 			expect(response.body).toEqual({
-				count: 2,
-				data: arrayContaining([
+				count: 3,
+				data: [
+					expect.objectContaining({ name: 'My workflow' }),
 					expect.objectContaining({ name: 'b' }),
 					expect.objectContaining({ name: 'a' }),
-				]),
+				],
 			});
 		});
 
