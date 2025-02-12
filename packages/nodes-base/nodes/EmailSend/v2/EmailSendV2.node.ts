@@ -1,5 +1,6 @@
 import type {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -9,9 +10,12 @@ import { NodeConnectionType, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
+import * as sendToInstanceUser from './sendToInstanceUser.operation';
 import { smtpConnectionTest } from './utils';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+
+const OPERATION_SEND_TO_INSTANCE_USER = 'sendToInstanceUser';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
@@ -66,10 +70,16 @@ export const versionDescription: INodeTypeDescription = {
 					value: SEND_AND_WAIT_OPERATION,
 					action: 'Send message and wait for response',
 				},
+				{
+					name: 'Send an Email to Instance User',
+					value: OPERATION_SEND_TO_INSTANCE_USER,
+					action: 'Send an Email to Instance User',
+				},
 			],
 		},
 		...send.description,
 		...sendAndWait.description,
+		...sendToInstanceUser.description,
 	],
 };
 
@@ -85,6 +95,28 @@ export class EmailSendV2 implements INodeType {
 
 	methods = {
 		credentialTest: { smtpConnectionTest },
+		loadOptions: {
+			// TODO: Retrieve users properly
+			async getUsers(this: ILoadOptionsFunctions) {
+				return [
+					{
+						name: 'Marc Littlemore',
+						value: 'marc@n8n.io',
+						description: 'marc@n8n.io' /* eslint-disable-line */,
+					},
+					{
+						name: 'Tuukka Kantola',
+						value: 'tuukka@n8n.io',
+						description: 'tuukka@n8n.io' /* eslint-disable-line */,
+					},
+					{
+						name: 'Jonathan Bennetts',
+						value: 'jonathan@n8n.io',
+						description: 'jonathan@n8n.io' /* eslint-disable-line */,
+					},
+				];
+			},
+		},
 	};
 
 	webhook = sendAndWaitWebhook;
@@ -99,6 +131,10 @@ export class EmailSendV2 implements INodeType {
 
 		if (operation === 'send') {
 			returnData = await send.execute.call(this);
+		}
+
+		if (operation === OPERATION_SEND_TO_INSTANCE_USER) {
+			returnData = await sendToInstanceUser.execute.call(this);
 		}
 
 		return returnData;
