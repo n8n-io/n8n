@@ -42,9 +42,11 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { computed } from 'vue';
 import type { CanvasNodeDirtiness } from '@/types';
 import {
+	AddConnectionCommand,
+	AddNodeCommand,
 	BulkCommand,
 	EnableNodeToggleCommand,
-	RemoveConnectionCommand,
+	RemoveNodeCommand,
 	type Undoable,
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
@@ -104,21 +106,27 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				return command.commands.some((c) => shouldMarkDirty(c, nodeName));
 			}
 
-			if (command instanceof RemoveConnectionCommand) {
+			if (command instanceof AddConnectionCommand) {
 				return command.connectionData[1]?.node === nodeName;
 			}
 
+			if (command instanceof RemoveNodeCommand || command instanceof AddNodeCommand) {
+				return Object.values(workflowsStore.incomingConnectionsByNodeName(nodeName)).some((c) =>
+					c.some((cc) => cc?.some((ccc) => ccc.node === command.node.name)),
+				);
+			}
+
 			if (command instanceof EnableNodeToggleCommand) {
-				debugger;
-				return command.nodeName === nodeName;
+				return Object.values(workflowsStore.incomingConnectionsByNodeName(nodeName)).some((c) =>
+					c.some((cc) => cc?.some((ccc) => ccc.node === command.nodeName)),
+				);
 			}
 
 			return false;
 		}
 
-		for (const node of workflowsStore.allNodes) {
-			const nodeName = node.name;
-			const runAt = runDataByNode[nodeName]?.[0]?.startTime;
+		for (const [nodeName, taskData] of Object.entries(runDataByNode)) {
+			const runAt = taskData?.[0]?.startTime;
 
 			if (!runAt) {
 				continue;
@@ -367,7 +375,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 
 			if (startRunData.runData) {
-				const nodeNames = Object.entries(dirtinessByName).flatMap(([nodeName, dirtiness]) =>
+				const nodeNames = Object.entries(dirtinessByName.value).flatMap(([nodeName, dirtiness]) =>
 					dirtiness === 'incoming-connections-changed' || dirtiness === 'dirty' ? [nodeName] : [],
 				);
 
