@@ -85,12 +85,6 @@
         }
     },
     "required": [
-        "content",
-        "origin_server_ts",
-        "room_id",
-        "sender",
-        "type",
-        "unsigned",
         "event_id"
     ]
 }
