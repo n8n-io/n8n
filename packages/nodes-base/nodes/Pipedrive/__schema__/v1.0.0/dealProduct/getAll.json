@@ -10,9 +10,6 @@
         "product_id": {
             "type": "integer"
         },
-        "product_variation_id": {
-            "type": "null"
-        },
         "name": {
             "type": "string"
         },
@@ -37,9 +34,6 @@
         "last_edit": {
             "type": "string"
         },
-        "tax": {
-            "type": "integer"
-        },
         "quantity_formatted": {
             "type": "string"
         },
@@ -57,9 +51,6 @@
         },
         "billing_frequency": {
             "type": "string"
-        },
-        "billing_frequency_cycles": {
-            "type": "null"
         },
         "product": {
             "type": "null"
