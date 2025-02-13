@@ -21,6 +21,9 @@
         },
         "AccountId": {
             "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
         }
     },
     "required": [
