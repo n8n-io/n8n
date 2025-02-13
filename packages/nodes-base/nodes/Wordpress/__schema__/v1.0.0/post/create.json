@@ -130,10 +130,7 @@
                 "footnotes": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "footnotes"
-            ]
+            }
         },
         "categories": {
             "type": "array",
@@ -445,10 +442,7 @@
                 "replies",
                 "version-history",
                 "wp:attachment",
-                "wp:term",
-                "wp:action-assign-categories",
-                "wp:action-create-tags",
-                "wp:action-assign-tags",
+                "wp:action-publish",
                 "curies"
             ]
         }
