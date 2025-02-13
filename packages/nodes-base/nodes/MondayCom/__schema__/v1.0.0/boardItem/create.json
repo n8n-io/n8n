@@ -4,8 +4,5 @@
         "id": {
             "type": "string"
         }
-    },
-    "required": [
-        "id"
-    ]
+    }
 }
