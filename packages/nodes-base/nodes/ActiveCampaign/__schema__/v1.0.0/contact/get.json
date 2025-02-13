@@ -95,128 +95,6 @@
                 ]
             }
         },
-        "contactData": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "contact": {
-                        "type": "string"
-                    },
-                    "tstamp": {
-                        "type": "string"
-                    },
-                    "geoIp4": {
-                        "type": "string"
-                    },
-                    "geoCountry2": {
-                        "type": "string"
-                    },
-                    "geo_country": {
-                        "type": "string"
-                    },
-                    "geoState": {
-                        "type": "string"
-                    },
-                    "geoCity": {
-                        "type": "string"
-                    },
-                    "geoZip": {
-                        "type": "string"
-                    },
-                    "geoArea": {
-                        "type": "string"
-                    },
-                    "geoLat": {
-                        "type": "string"
-                    },
-                    "geoLon": {
-                        "type": "string"
-                    },
-                    "geoTz": {
-                        "type": "string"
-                    },
-                    "geoTzOffset": {
-                        "type": "string"
-                    },
-                    "ga_campaign_source": {
-                        "type": "string"
-                    },
-                    "ga_campaign_name": {
-                        "type": "string"
-                    },
-                    "ga_campaign_medium": {
-                        "type": "string"
-                    },
-                    "ga_campaign_term": {
-                        "type": "string"
-                    },
-                    "ga_campaign_content": {
-                        "type": "string"
-                    },
-                    "ga_campaign_customsegment": {
-                        "type": "string"
-                    },
-                    "ga_first_visit": {
-                        "type": "null"
-                    },
-                    "ga_times_visited": {
-                        "type": "string"
-                    },
-                    "fb_id": {
-                        "type": "string"
-                    },
-                    "fb_name": {
-                        "type": "string"
-                    },
-                    "tw_id": {
-                        "type": "string"
-                    },
-                    "created_timestamp": {
-                        "type": "string"
-                    },
-                    "updated_timestamp": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "contact",
-                    "tstamp",
-                    "geoTstamp",
-                    "geoIp4",
-                    "geoCountry2",
-                    "geo_country",
-                    "geoState",
-                    "geoCity",
-                    "geoZip",
-                    "geoArea",
-                    "geoLat",
-                    "geoLon",
-                    "geoTz",
-                    "geoTzOffset",
-                    "ga_campaign_source",
-                    "ga_campaign_name",
-                    "ga_campaign_medium",
-                    "ga_campaign_term",
-                    "ga_campaign_content",
-                    "ga_campaign_customsegment",
-                    "ga_first_visit",
-                    "ga_times_visited",
-                    "fb_id",
-                    "fb_name",
-                    "tw_id",
-                    "created_timestamp",
-                    "updated_timestamp",
-                    "created_by",
-                    "updated_by",
-                    "links",
-                    "id"
-                ]
-            }
-        },
         "contactLists": {
             "type": "array",
             "items": {
@@ -607,6 +485,56 @@
                 ]
             }
         },
+        "accountContacts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string"
+                    },
+                    "contact": {
+                        "type": "string"
+                    },
+                    "jobTitle": {
+                        "type": "string"
+                    },
+                    "createdTimestamp": {
+                        "type": "string"
+                    },
+                    "updatedTimestamp": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "account": {
+                                "type": "string"
+                            },
+                            "contact": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "account",
+                            "contact"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "contact",
+                    "jobTitle",
+                    "createdTimestamp",
+                    "updatedTimestamp",
+                    "links",
+                    "id"
+                ]
+            }
+        },
         "contact": {
             "type": "object",
             "properties": {
@@ -700,9 +628,6 @@
                         "type": "string"
                     }
                 },
-                "contactData": {
-                    "type": "string"
-                },
                 "fieldValues": {
                     "type": "array",
                     "items": {
@@ -778,10 +703,10 @@
                         "scoreValues": {
                             "type": "string"
                         },
-                        "automationEntryCounts": {
+                        "accountContacts": {
                             "type": "string"
                         },
-                        "accountContacts": {
+                        "automationEntryCounts": {
                             "type": "string"
                         }
                     },
@@ -806,6 +731,9 @@
                     ]
                 },
                 "id": {
+                    "type": "string"
+                },
+                "contactData": {
                     "type": "string"
                 }
             },
@@ -857,51 +785,123 @@
                 "organization"
             ]
         },
-        "accountContacts": {
+        "contactData": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "account": {
-                        "type": "string"
-                    },
                     "contact": {
                         "type": "string"
                     },
-                    "jobTitle": {
+                    "tstamp": {
                         "type": "string"
                     },
-                    "createdTimestamp": {
+                    "geoIp4": {
                         "type": "string"
                     },
-                    "updatedTimestamp": {
+                    "geoCountry2": {
                         "type": "string"
                     },
-                    "links": {
-                        "type": "object",
-                        "properties": {
-                            "account": {
-                                "type": "string"
-                            },
-                            "contact": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "account",
-                            "contact"
-                        ]
+                    "geo_country": {
+                        "type": "string"
+                    },
+                    "geoState": {
+                        "type": "string"
+                    },
+                    "geoCity": {
+                        "type": "string"
+                    },
+                    "geoZip": {
+                        "type": "string"
+                    },
+                    "geoArea": {
+                        "type": "string"
+                    },
+                    "geoLat": {
+                        "type": "string"
+                    },
+                    "geoLon": {
+                        "type": "string"
+                    },
+                    "geoTz": {
+                        "type": "string"
+                    },
+                    "geoTzOffset": {
+                        "type": "string"
+                    },
+                    "ga_campaign_source": {
+                        "type": "string"
+                    },
+                    "ga_campaign_name": {
+                        "type": "string"
+                    },
+                    "ga_campaign_medium": {
+                        "type": "string"
+                    },
+                    "ga_campaign_term": {
+                        "type": "string"
+                    },
+                    "ga_campaign_content": {
+                        "type": "string"
+                    },
+                    "ga_campaign_customsegment": {
+                        "type": "string"
+                    },
+                    "ga_first_visit": {
+                        "type": "null"
+                    },
+                    "ga_times_visited": {
+                        "type": "string"
+                    },
+                    "fb_id": {
+                        "type": "string"
+                    },
+                    "fb_name": {
+                        "type": "string"
+                    },
+                    "tw_id": {
+                        "type": "string"
+                    },
+                    "created_timestamp": {
+                        "type": "string"
+                    },
+                    "updated_timestamp": {
+                        "type": "string"
                     },
                     "id": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "account",
                     "contact",
-                    "jobTitle",
-                    "createdTimestamp",
-                    "updatedTimestamp",
+                    "tstamp",
+                    "geoTstamp",
+                    "geoIp4",
+                    "geoCountry2",
+                    "geo_country",
+                    "geoState",
+                    "geoCity",
+                    "geoZip",
+                    "geoArea",
+                    "geoLat",
+                    "geoLon",
+                    "geoTz",
+                    "geoTzOffset",
+                    "ga_campaign_source",
+                    "ga_campaign_name",
+                    "ga_campaign_medium",
+                    "ga_campaign_term",
+                    "ga_campaign_content",
+                    "ga_campaign_customsegment",
+                    "ga_first_visit",
+                    "ga_times_visited",
+                    "fb_id",
+                    "fb_name",
+                    "tw_id",
+                    "created_timestamp",
+                    "updated_timestamp",
+                    "created_by",
+                    "updated_by",
                     "links",
                     "id"
                 ]
