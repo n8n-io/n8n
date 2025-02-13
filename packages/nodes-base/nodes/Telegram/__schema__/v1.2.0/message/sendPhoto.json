@@ -42,10 +42,10 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "type": {
+                        "username": {
                             "type": "string"
                         },
-                        "username": {
+                        "type": {
                             "type": "string"
                         }
                     },
