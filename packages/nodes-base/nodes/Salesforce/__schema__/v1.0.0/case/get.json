@@ -43,9 +43,6 @@
         "IsClosed": {
             "type": "boolean"
         },
-        "IsEscalated": {
-            "type": "boolean"
-        },
         "OwnerId": {
             "type": "string"
         },
@@ -67,6 +64,12 @@
         "Comments": {
             "type": "null"
         },
+        "IsEscalated": {
+            "type": "boolean"
+        },
+        "AssetId": {
+            "type": "null"
+        },
         "ProductId": {
             "type": "null"
         },
@@ -74,9 +77,6 @@
             "type": "string"
         },
         "ServiceContractId": {
-            "type": "null"
-        },
-        "AssetId": {
             "type": "null"
         },
         "IsClosedOnCreate": {
@@ -100,21 +100,15 @@
         "CaseNumber",
         "ContactId",
         "AccountId",
-        "ParentId",
-        "SuppliedName",
-        "SuppliedEmail",
-        "SuppliedPhone",
         "SuppliedCompany",
         "Type",
         "Status",
         "Reason",
-        "Origin",
         "Subject",
         "Priority",
         "Description",
         "IsClosed",
         "ClosedDate",
-        "IsEscalated",
         "OwnerId",
         "CreatedDate",
         "CreatedById",
