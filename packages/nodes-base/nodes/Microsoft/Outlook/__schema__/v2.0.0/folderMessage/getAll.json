@@ -10,6 +10,21 @@
         "subject": {
             "type": "string"
         },
+        "conversationId": {
+            "type": "string"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
         "body": {
             "type": "object",
             "properties": {
@@ -24,67 +39,9 @@
                 "contentType",
                 "content"
             ]
-        },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "conversationId": {
-            "type": "string"
         }
-    }
+    },
+    "required": [
+        "id"
+    ]
 }
