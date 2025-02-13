@@ -57,8 +57,5 @@
         "content": {
             "type": "string"
         }
-    },
-    "required": [
-        "id"
-    ]
+    }
 }
