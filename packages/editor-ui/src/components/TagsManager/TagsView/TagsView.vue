@@ -30,9 +30,6 @@ const emit = defineEmits<{
 	disableCreate: [];
 }>();
 
-const matches = (name: string, filter: string) =>
-	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
-
 const i18n = useI18n();
 const rbacStore = useRBACStore();
 
