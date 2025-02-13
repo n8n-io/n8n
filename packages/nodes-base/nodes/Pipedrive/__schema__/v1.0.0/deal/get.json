@@ -225,6 +225,39 @@
         "cc_email": {
             "type": "string"
         },
+        "6ed765e95e07cb884c5ca83bed7f9129687b06f1": {
+            "type": "string"
+        },
+        "6978a0bb41b5952de4d88d432af93fcd1cee3c48": {
+            "type": "string"
+        },
+        "5a3096c3afe73de34f661fb2f39fd1730b8b9a14": {
+            "type": "integer"
+        },
+        "0d2381bc2f18042052f532661380b2526d5d1418": {
+            "type": "string"
+        },
+        "861f700a2a00ee759b696c61c68ad81d6add71b8": {
+            "type": "string"
+        },
+        "4d2ee5efefb51e5c4c85f5aaee8a1080a3db2303": {
+            "type": "string"
+        },
+        "943fc1f0be467988db62ed6e53b7662a9e03da71": {
+            "type": "string"
+        },
+        "2b88250c8fe6de6a9c18a843012c3be4120bc977": {
+            "type": "string"
+        },
+        "5bf837804980758d9b007751a08a0282c400d7d8": {
+            "type": "string"
+        },
+        "509080cf228cf9363d8d822ae4e7391e42b46bd0": {
+            "type": "string"
+        },
+        "0bb28fa193c6b091813e9ba57a42aae322b1f098": {
+            "type": "string"
+        },
         "org_hidden": {
             "type": "boolean"
         },
@@ -307,14 +340,6 @@
         "stay_in_pipeline_stages": {
             "type": "object",
             "properties": {
-                "times_in_stages": {
-                    "type": "object",
-                    "properties": {
-                        "36": {
-                            "type": "integer"
-                        }
-                    }
-                },
                 "order_of_stages": {
                     "type": "array",
                     "items": {
@@ -326,39 +351,6 @@
                 "times_in_stages",
                 "order_of_stages"
             ]
-        },
-        "6ed765e95e07cb884c5ca83bed7f9129687b06f1": {
-            "type": "string"
-        },
-        "6978a0bb41b5952de4d88d432af93fcd1cee3c48": {
-            "type": "string"
-        },
-        "5a3096c3afe73de34f661fb2f39fd1730b8b9a14": {
-            "type": "integer"
-        },
-        "0d2381bc2f18042052f532661380b2526d5d1418": {
-            "type": "string"
-        },
-        "861f700a2a00ee759b696c61c68ad81d6add71b8": {
-            "type": "string"
-        },
-        "4d2ee5efefb51e5c4c85f5aaee8a1080a3db2303": {
-            "type": "string"
-        },
-        "943fc1f0be467988db62ed6e53b7662a9e03da71": {
-            "type": "string"
-        },
-        "2b88250c8fe6de6a9c18a843012c3be4120bc977": {
-            "type": "string"
-        },
-        "5bf837804980758d9b007751a08a0282c400d7d8": {
-            "type": "string"
-        },
-        "509080cf228cf9363d8d822ae4e7391e42b46bd0": {
-            "type": "string"
-        },
-        "0bb28fa193c6b091813e9ba57a42aae322b1f098": {
-            "type": "string"
         }
     }
 }
