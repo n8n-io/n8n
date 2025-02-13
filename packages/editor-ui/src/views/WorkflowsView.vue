@@ -405,10 +405,10 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 
 <template>
 	<ResourcesListLayout
+		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
 		:resources="workflowResources"
-		:filters="filters"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
@@ -419,7 +419,6 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 		:total-items="workflowsStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
-		@update:filters="onFiltersUpdated"
 		@update:search="onSearchUpdated"
 		@update:current-page="setCurrentPage"
 		@update:page-size="setPageSize"

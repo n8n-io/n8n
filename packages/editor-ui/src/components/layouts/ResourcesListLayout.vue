@@ -92,7 +92,6 @@ const props = withDefaults(
 
 const sortBy = ref(props.sortOptions[0]);
 const hasFilters = ref(false);
-const filtersModel = ref(props.filters);
 const currentPage = ref(1);
 const rowsPerPage = ref<number>(props.customPageSize);
 const resettingFilters = ref(false);
@@ -124,6 +123,11 @@ defineSlots<{
 }>();
 
 //computed
+const filtersModel = computed({
+	get: () => props.filters,
+	set: (newValue) => emit('update:filters', newValue),
+});
+
 const showEmptyState = computed(() => {
 	return (
 		props.resources.length === 0 &&
