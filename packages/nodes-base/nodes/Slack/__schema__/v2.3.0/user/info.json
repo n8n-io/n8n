@@ -95,12 +95,6 @@
                 "is_custom_image": {
                     "type": "boolean"
                 },
-                "huddle_state": {
-                    "type": "string"
-                },
-                "huddle_state_expiration_ts": {
-                    "type": "integer"
-                },
                 "first_name": {
                     "type": "string"
                 },
@@ -133,6 +127,12 @@
                 },
                 "team": {
                     "type": "string"
+                },
+                "huddle_state": {
+                    "type": "string"
+                },
+                "huddle_state_expiration_ts": {
+                    "type": "integer"
                 }
             },
             "required": [
