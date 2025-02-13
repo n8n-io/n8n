@@ -97,6 +97,12 @@
                 ]
             }
         },
+        "aliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "customerId": {
             "type": "string"
         },
@@ -123,41 +129,6 @@
         },
         "recoveryEmail": {
             "type": "string"
-        },
-        "recoveryPhone": {
-            "type": "string"
-        },
-        "aliases": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "organizations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    },
-                    "customType": {
-                        "type": "string"
-                    },
-                    "costCenter": {
-                        "type": "string"
-                    },
-                    "department": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "customType"
-                ]
-            }
         }
     }
 }
