@@ -13,7 +13,7 @@ import {
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -217,7 +217,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				workflowData as IWorkflowDb,
+				workflowData,
 				workflowStartNode,
 				executionMode,
 				runExecutionData.pushRef,
