@@ -19,26 +19,11 @@
                 "lastUpdated": {
                     "type": "integer"
                 },
-                "createdBy": {
-                    "type": "integer"
-                },
-                "modifiedBy": {
-                    "type": "integer"
-                },
-                "ownerId": {
-                    "type": "integer"
-                },
                 "type": {
-                    "type": "string"
-                },
-                "uid": {
                     "type": "string"
                 },
                 "timestamp": {
                     "type": "integer"
-                },
-                "source": {
-                    "type": "string"
                 },
                 "allAccessibleTeamIds": {
                     "type": "array",
@@ -59,6 +44,21 @@
                     "type": "boolean"
                 },
                 "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "integer"
+                },
+                "modifiedBy": {
+                    "type": "integer"
+                },
+                "ownerId": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             },
@@ -126,7 +126,13 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "status": {
+                    "type": "string"
+                },
                 "body": {
+                    "type": "string"
+                },
+                "subject": {
                     "type": "string"
                 },
                 "to": {
@@ -134,10 +140,10 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "raw": {
+                            "email": {
                                 "type": "string"
                             },
-                            "email": {
+                            "raw": {
                                 "type": "string"
                             },
                             "firstName": {
@@ -178,9 +184,6 @@
                         ]
                     }
                 },
-                "html": {
-                    "type": "string"
-                },
                 "ownerIdsFrom": {
                     "type": "array",
                     "items": {
@@ -192,61 +195,6 @@
                     "items": {
                         "type": "integer"
                     }
-                },
-                "status": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "raw": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        },
-                        "firstName": {
-                            "type": "string"
-                        },
-                        "lastName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "email"
-                    ]
-                },
-                "sender": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "email"
-                    ]
-                },
-                "text": {
-                    "type": "string"
-                },
-                "messageId": {
-                    "type": "string"
-                },
-                "loggedFrom": {
-                    "type": "string"
-                },
-                "mediaProcessingStatus": {
-                    "type": "string"
-                },
-                "attachedVideoOpened": {
-                    "type": "boolean"
-                },
-                "attachedVideoWatched": {
-                    "type": "boolean"
                 }
             }
         }
