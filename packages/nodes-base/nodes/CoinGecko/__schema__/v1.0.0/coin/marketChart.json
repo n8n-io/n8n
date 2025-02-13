@@ -4,9 +4,6 @@
         "time": {
             "type": "string"
         },
-        "price": {
-            "type": "number"
-        },
         "totalVolume": {
             "type": "number"
         }
