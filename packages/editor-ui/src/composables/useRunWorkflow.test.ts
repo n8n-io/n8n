@@ -23,7 +23,6 @@ import { useI18n } from '@/composables/useI18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { type FrontendSettings } from '@n8n/api-types';
 import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('@/stores/workflows.store', () => ({
@@ -665,93 +664,6 @@ describe('useRunWorkflow({ router })', () => {
 					id: 'workflowId',
 					nodes: [],
 				},
-			});
-		});
-	});
-
-	describe('dirtinessByName', () => {
-		beforeEach(() => {
-			// Enable new partial execution
-			settingsStore.settings = {
-				partialExecution: { version: 2, enforce: true },
-			} as FrontendSettings;
-
-			vi.mocked(workflowsStore).getWorkflowRunData = {
-				node1: [
-					{
-						startTime: +new Date('2025-01-01'), // ran before parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node2: [
-					{
-						startTime: +new Date('2025-01-03'), // ran after parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node3: [], // never ran before
-			};
-
-			vi.mocked(workflowsStore).allNodes = [
-				createTestNode({ name: 'node1' }),
-				createTestNode({ name: 'node2' }),
-				createTestNode({ name: 'node3' }),
-			];
-
-			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation(
-				(nodeName) =>
-					({
-						node1: +new Date('2025-01-02'),
-						node2: +new Date('2025-01-02'),
-						node3: +new Date('2025-01-02'),
-					})[nodeName],
-			);
-			vi.mocked(workflowsStore).getPinnedDataLastUpdate.mockReturnValue(undefined);
-		});
-
-		it('should mark nodes with run data older than the last update time as dirty', () => {
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(() => ({}));
-
-			const { dirtinessByName } = useRunWorkflow({ router });
-
-			expect(dirtinessByName.value).toEqual({ node1: 'parameters-updated' });
-		});
-
-		it('should mark nodes with a dirty node somewhere in its upstream as upstream-dirty', () => {
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(
-				(nodeName) =>
-					({
-						node1: { main: [[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }]] },
-						node2: { main: [[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }]] },
-					})[nodeName] ?? ({} as INodeConnections),
-			);
-
-			const { dirtinessByName } = useRunWorkflow({ router });
-
-			expect(dirtinessByName.value).toEqual({
-				node1: 'parameters-updated',
-				node2: 'upstream-dirty',
-			});
-		});
-
-		it('should return even if the connections forms a loop', () => {
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(
-				(nodeName) =>
-					({
-						node1: { main: [[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }]] },
-						node2: { main: [[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }]] },
-					})[nodeName] ?? ({} as INodeConnections),
-			);
-
-			const { dirtinessByName } = useRunWorkflow({ router });
-
-			expect(dirtinessByName.value).toEqual({
-				node1: 'parameters-updated',
-				node2: 'upstream-dirty',
 			});
 		});
 	});

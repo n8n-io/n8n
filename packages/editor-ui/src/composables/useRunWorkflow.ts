@@ -39,17 +39,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { computed } from 'vue';
-import type { CanvasNodeDirtiness } from '@/types';
-import {
-	AddConnectionCommand,
-	AddNodeCommand,
-	BulkCommand,
-	EnableNodeToggleCommand,
-	RemoveNodeCommand,
-	type Undoable,
-} from '@/models/history';
-import { useHistoryStore } from '@/stores/history.store';
+import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -65,106 +55,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
-	const historyStore = useHistoryStore();
-
-	const dirtinessByName = computed(() => {
-		// Do not highlight dirtiness if new partial execution is not enabled
-		if (settingsStore.partialExecutionVersion === 1) {
-			return {};
-		}
-
-		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
-		const visitedNodes: Set<string> = new Set();
-		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
-
-		function markDownstreamStaleRecursively(nodeName: string): void {
-			if (visitedNodes.has(nodeName)) {
-				return; // prevent infinite recursion
-			}
-
-			visitedNodes.add(nodeName);
-
-			for (const inputConnections of Object.values(
-				workflowsStore.outgoingConnectionsByNodeName(nodeName),
-			)) {
-				for (const connections of inputConnections) {
-					for (const { node } of connections ?? []) {
-						const hasRunData = (runDataByNode[node] ?? []).length > 0;
-
-						if (hasRunData) {
-							dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
-						}
-
-						markDownstreamStaleRecursively(node);
-					}
-				}
-			}
-		}
-
-		function shouldMarkDirty(command: Undoable, nodeName: string): boolean {
-			if (command instanceof BulkCommand) {
-				return command.commands.some((c) => shouldMarkDirty(c, nodeName));
-			}
-
-			if (command instanceof AddConnectionCommand) {
-				return command.connectionData[1]?.node === nodeName;
-			}
-
-			if (command instanceof RemoveNodeCommand || command instanceof AddNodeCommand) {
-				return Object.values(workflowsStore.incomingConnectionsByNodeName(nodeName)).some((c) =>
-					c.some((cc) => cc?.some((ccc) => ccc.node === command.node.name)),
-				);
-			}
-
-			if (command instanceof EnableNodeToggleCommand) {
-				return Object.values(workflowsStore.incomingConnectionsByNodeName(nodeName)).some((c) =>
-					c.some((cc) => cc?.some((ccc) => ccc.node === command.nodeName)),
-				);
-			}
-
-			return false;
-		}
-
-		for (const node of workflowsStore.allNodes) {
-			const nodeName = node.name;
-			const runAt = runDataByNode[nodeName]?.[0]?.startTime ?? 0;
-
-			if (!runAt) {
-				continue;
-			}
-
-			const parametersLastUpdate = workflowsStore.getParametersLastUpdate(nodeName) ?? 0;
-
-			if (parametersLastUpdate > runAt) {
-				dirtiness[nodeName] = 'parameters-updated';
-				markDownstreamStaleRecursively(nodeName);
-				continue;
-			}
-
-			const incomingConnectionsLastUpdate = Math.max(
-				0,
-				...historyStore.undoStack.flatMap((command) =>
-					shouldMarkDirty(command, nodeName) ? [command.getTimestamp()] : [],
-				),
-			);
-
-			if (incomingConnectionsLastUpdate > runAt) {
-				dirtiness[nodeName] = 'incoming-connections-updated';
-				markDownstreamStaleRecursively(nodeName);
-				continue;
-			}
-
-			const pinnedDataUpdatedAt = workflowsStore.getPinnedDataLastUpdate(nodeName) ?? 0;
-
-			if (pinnedDataUpdatedAt > runAt) {
-				dirtiness[nodeName] = 'pinned-data-updated';
-				markDownstreamStaleRecursively(nodeName);
-				continue;
-			}
-		}
-
-		return dirtiness;
-	});
+	const { dirtinessByName } = useNodeDirtiness();
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -322,24 +213,31 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				}
 			}
 
-			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
-				// Find for each start node the source data
-				let sourceData = get(runData, [name, 0, 'source', 0], null);
-				if (sourceData === null) {
-					const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
-					const executeData = workflowHelpers.executeData(
-						parentNodes,
-						name,
-						NodeConnectionType.Main,
-						0,
-					);
-					sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
-				}
-				return {
-					name,
-					sourceData,
-				};
-			});
+			// partial executions must have a destination node
+			const isPartialExecution = options.destinationNode !== undefined;
+			const version = settingsStore.partialExecutionVersion;
+			debugger;
+			const startNodes: StartNodeData[] =
+				isPartialExecution && version === 2
+					? []
+					: startNodeNames.map((name) => {
+							// Find for each start node the source data
+							let sourceData = get(runData, [name, 0, 'source', 0], null);
+							if (sourceData === null) {
+								const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+								const executeData = workflowHelpers.executeData(
+									parentNodes,
+									name,
+									NodeConnectionType.Main,
+									0,
+								);
+								sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+							}
+							return {
+								name,
+								sourceData,
+							};
+						});
 
 			const singleWebhookTrigger = triggers.find((node) =>
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
@@ -360,9 +258,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				return undefined;
 			}
 
-			// partial executions must have a destination node
-			const isPartialExecution = options.destinationNode !== undefined;
-			const version = settingsStore.partialExecutionVersion;
 			const startRunData: IStartRunData = {
 				workflowData,
 				// With the new partial execution version the backend decides what run
@@ -589,7 +484,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	return {
-		dirtinessByName,
 		consolidateRunDataAndStartNodes,
 		runEntireWorkflow,
 		runWorkflow,

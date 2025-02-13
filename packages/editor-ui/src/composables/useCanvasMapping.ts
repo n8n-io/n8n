@@ -49,8 +49,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
-import { useRunWorkflow } from './useRunWorkflow';
-import { useRouter } from 'vue-router';
+import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 
 export function useCanvasMapping({
 	nodes,
@@ -65,8 +64,7 @@ export function useCanvasMapping({
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
-	const router = useRouter();
-	const { dirtinessByName } = useRunWorkflow({ router });
+	const { dirtinessByName } = useNodeDirtiness();
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
 		return {
