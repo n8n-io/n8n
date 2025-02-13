@@ -47,9 +47,6 @@
         "$approved": {
             "type": "boolean"
         },
-        "Reporting_To": {
-            "type": "null"
-        },
         "$approval": {
             "type": "object",
             "properties": {
@@ -193,6 +190,9 @@
         "Locked__s": {
             "type": "boolean"
         },
+        "$approval_state": {
+            "type": "string"
+        },
         "Tag": {
             "type": "array",
             "items": {
@@ -210,9 +210,6 @@
                     "id"
                 ]
             }
-        },
-        "$approval_state": {
-            "type": "string"
         }
     },
     "required": [
