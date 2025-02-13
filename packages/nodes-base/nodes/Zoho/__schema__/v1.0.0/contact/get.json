@@ -26,6 +26,12 @@
         "$field_states": {
             "type": "null"
         },
+        "Other_State": {
+            "type": "null"
+        },
+        "Other_Country": {
+            "type": "null"
+        },
         "$state": {
             "type": "string"
         },
@@ -35,6 +41,9 @@
         "$process_flow": {
             "type": "boolean"
         },
+        "Assistant": {
+            "type": "null"
+        },
         "$locked_for_me": {
             "type": "boolean"
         },
@@ -43,6 +52,9 @@
         },
         "$approved": {
             "type": "boolean"
+        },
+        "Reporting_To": {
+            "type": "null"
         },
         "$approval": {
             "type": "object",
@@ -69,6 +81,9 @@
                 "reject",
                 "resubmit"
             ]
+        },
+        "Other_City": {
+            "type": "null"
         },
         "Created_Time": {
             "type": "string"
@@ -98,8 +113,14 @@
                 "email"
             ]
         },
+        "Secondary_Email": {
+            "type": "null"
+        },
         "$is_duplicate": {
             "type": "boolean"
+        },
+        "Vendor_Name": {
+            "type": "null"
         },
         "$review_process": {
             "type": "object",
@@ -120,8 +141,14 @@
                 "resubmit"
             ]
         },
+        "Other_Zip": {
+            "type": "null"
+        },
         "Full_Name": {
             "type": "string"
+        },
+        "Asst_Phone": {
+            "type": "null"
         },
         "Modified_By": {
             "type": "object",
@@ -151,7 +178,13 @@
         "Modified_Time": {
             "type": "string"
         },
+        "Date_of_Birth": {
+            "type": "null"
+        },
         "Unsubscribed_Time": {
+            "type": "null"
+        },
+        "Other_Street": {
             "type": "null"
         },
         "Last_Name": {
@@ -160,47 +193,14 @@
         "$in_merge": {
             "type": "boolean"
         },
-        "$approval_state": {
-            "type": "string"
-        },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Secondary_Email": {
-            "type": "null"
-        },
-        "Vendor_Name": {
-            "type": "null"
-        },
-        "Date_of_Birth": {
-            "type": "null"
         },
         "Fax": {
             "type": "null"
         },
-        "Other_Country": {
-            "type": "null"
-        },
-        "Assistant": {
-            "type": "null"
-        },
-        "Other_Zip": {
-            "type": "null"
-        },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Other_State": {
-            "type": "null"
-        },
-        "Reporting_To": {
-            "type": "null"
-        },
-        "Other_City": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
+        "$approval_state": {
+            "type": "string"
         },
         "$canvas_id": {
             "type": "null"
@@ -211,25 +211,20 @@
         "Email",
         "$currency_symbol",
         "$field_states",
-        "Mailing_State",
         "Last_Activity_Time",
         "$state",
         "$process_flow",
-        "Mailing_Country",
         "$locked_for_me",
         "id",
         "$approved",
         "$approval",
         "$editable",
         "$zia_owner_assignment",
-        "Mailing_Zip",
         "$review_process",
-        "Mailing_Street",
         "Salutation",
         "First_Name",
         "Full_Name",
         "$review",
-        "Mailing_City",
         "$orchestration",
         "Last_Name",
         "$in_merge",
