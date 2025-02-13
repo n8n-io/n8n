@@ -24,7 +24,7 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "url": {
+                            "operation": {
                                 "type": "string"
                             },
                             "assignments": {
@@ -61,16 +61,13 @@
                                     "assignments"
                                 ]
                             },
-                            "authentication": {
+                            "url": {
                                 "type": "string"
                             },
                             "jsCode": {
                                 "type": "string"
                             },
-                            "resource": {
-                                "type": "string"
-                            },
-                            "operation": {
+                            "authentication": {
                                 "type": "string"
                             },
                             "path": {
@@ -78,13 +75,13 @@
                             }
                         }
                     },
+                    "type": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string"
-                    },
-                    "type": {
                         "type": "string"
                     },
                     "webhookId": {
@@ -93,49 +90,10 @@
                 },
                 "required": [
                     "parameters",
-                    "name",
                     "type",
-                    "typeVersion",
-                    "position"
+                    "position",
+                    "name"
                 ]
-            }
-        },
-        "connections": {
-            "type": "object",
-            "properties": {
-                "When clicking ‘Test workflow’": {
-                    "type": "object",
-                    "properties": {
-                        "main": {
-                            "type": "array",
-                            "items": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "node": {
-                                            "type": "string"
-                                        },
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "index": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": [
-                                        "node",
-                                        "type",
-                                        "index"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "required": [
-                        "main"
-                    ]
-                }
             }
         },
         "settings": {
@@ -144,7 +102,21 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "executionOrder"
+            ]
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "templateCredsSetupCompleted"
+            ]
         },
         "triggerCount": {
             "type": "integer"
