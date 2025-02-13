@@ -22,7 +22,7 @@
         "properties": {
             "type": "object",
             "properties": {
-                "lastmodifieddate": {
+                "firstname": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -33,7 +33,7 @@
                         "value"
                     ]
                 },
-                "firstname": {
+                "lastmodifieddate": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -88,6 +88,12 @@
                     },
                     "form-type": {
                         "type": "string"
+                    },
+                    "contact-associated-by": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -195,9 +201,6 @@
                                 "items": {
                                     "type": "integer"
                                 }
-                            },
-                            "updated-by-user-id": {
-                                "type": "null"
                             },
                             "timestamp": {
                                 "type": "integer"
