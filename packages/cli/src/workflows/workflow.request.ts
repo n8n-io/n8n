@@ -26,7 +26,7 @@ export declare namespace WorkflowRequest {
 
 	type ManualRunPayload = {
 		workflowData: IWorkflowBase;
-		runData: IRunData;
+		runData?: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		dirtyNodeNames?: string[];
