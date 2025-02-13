@@ -54,9 +54,6 @@
         "updated_at": {
             "type": "string"
         },
-        "form_id": {
-            "type": "integer"
-        },
         "nr_due_by": {
             "type": "null"
         },
