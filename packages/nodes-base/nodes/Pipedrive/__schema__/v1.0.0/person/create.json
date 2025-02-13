@@ -103,9 +103,6 @@
                     },
                     "primary": {
                         "type": "boolean"
-                    },
-                    "label": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -197,9 +194,6 @@
                     "primary"
                 ]
             }
-        },
-        "postal_address": {
-            "type": "null"
         },
         "postal_address_lat": {
             "type": "null"
