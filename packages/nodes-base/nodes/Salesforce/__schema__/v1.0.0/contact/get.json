@@ -28,8 +28,17 @@
         "LastName": {
             "type": "string"
         },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Suffix": {
+            "type": "null"
+        },
         "Name": {
             "type": "string"
+        },
+        "MailingStateCode": {
+            "type": "null"
         },
         "MailingLatitude": {
             "type": "null"
@@ -79,19 +88,10 @@
         "JigsawContactId": {
             "type": "null"
         },
-        "MiddleName": {
-            "type": "null"
-        },
-        "Suffix": {
-            "type": "null"
-        },
-        "MailingStateCode": {
-            "type": "null"
-        },
         "IsPriorityRecord": {
             "type": "boolean"
         },
-        "LID__Level__c": {
+        "LID__No_longer_at_Company__c": {
             "type": "null"
         },
         "LID__LinkedIn_Company_Id__c": {
@@ -99,12 +99,6 @@
         },
         "LID__LinkedIn_Member_Token__c": {
             "type": "null"
-        },
-        "LID__No_longer_at_Company__c": {
-            "type": "null"
-        },
-        "LID__Session_Id__c": {
-            "type": "string"
         }
     }
 }
