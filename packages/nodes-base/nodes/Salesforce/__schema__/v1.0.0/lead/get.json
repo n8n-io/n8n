@@ -28,16 +28,7 @@
         "LastName": {
             "type": "string"
         },
-        "MiddleName": {
-            "type": "null"
-        },
-        "Suffix": {
-            "type": "null"
-        },
         "Name": {
-            "type": "string"
-        },
-        "Company": {
             "type": "string"
         },
         "Latitude": {
@@ -49,37 +40,13 @@
         "GeocodeAccuracy": {
             "type": "null"
         },
-        "Address": {
-            "type": "object",
-            "properties": {
-                "geocodeAccuracy": {
-                    "type": "null"
-                },
-                "latitude": {
-                    "type": "null"
-                },
-                "longitude": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "geocodeAccuracy",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "state",
-                "street"
-            ]
-        },
-        "Fax": {
-            "type": "null"
-        },
         "PhotoUrl": {
             "type": "string"
         },
         "Status": {
+            "type": "string"
+        },
+        "CurrencyIsoCode": {
             "type": "string"
         },
         "AnnualRevenue": {
@@ -112,18 +79,6 @@
         "SystemModstamp": {
             "type": "string"
         },
-        "DoNotCall": {
-            "type": "boolean"
-        },
-        "HasOptedOutOfFax": {
-            "type": "boolean"
-        },
-        "LastTransferDate": {
-            "type": "string"
-        },
-        "Jigsaw": {
-            "type": "null"
-        },
         "JigsawContactId": {
             "type": "null"
         },
@@ -136,14 +91,35 @@
         "IndividualId": {
             "type": "null"
         },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Suffix": {
+            "type": "null"
+        },
+        "Fax": {
+            "type": "null"
+        },
+        "DoNotCall": {
+            "type": "boolean"
+        },
+        "HasOptedOutOfFax": {
+            "type": "boolean"
+        },
+        "LastTransferDate": {
+            "type": "string"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
         "Pronouns": {
             "type": "null"
         },
         "GenderIdentity": {
             "type": "null"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
         }
     }
 }
