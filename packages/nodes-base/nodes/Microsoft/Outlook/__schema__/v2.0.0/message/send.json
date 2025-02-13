@@ -4,5 +4,8 @@
         "success": {
             "type": "boolean"
         }
-    }
+    },
+    "required": [
+        "success"
+    ]
 }
