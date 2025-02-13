@@ -85,16 +85,7 @@
         "respondbydate": {
             "type": "string"
         },
-        "responsedate": {
-            "type": "string"
-        },
-        "slaresponsestate": {
-            "type": "string"
-        },
         "fixbydate": {
-            "type": "string"
-        },
-        "dateassigned": {
             "type": "string"
         },
         "excludefromsla": {
@@ -284,6 +275,27 @@
             "type": "boolean"
         },
         "purchaseordernumber": {
+            "type": "string"
+        },
+        "responsedate": {
+            "type": "string"
+        },
+        "slaresponsestate": {
+            "type": "string"
+        },
+        "dateclosed": {
+            "type": "string"
+        },
+        "hasbeenclosed": {
+            "type": "boolean"
+        },
+        "date_fully_closed": {
+            "type": "string"
+        },
+        "closure_agent_id": {
+            "type": "integer"
+        },
+        "emailcclist": {
             "type": "string"
         }
     },
