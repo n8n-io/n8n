@@ -1,16 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "copyright": {
-            "type": "string"
-        },
         "date": {
             "type": "string"
         },
         "explanation": {
-            "type": "string"
-        },
-        "hdurl": {
             "type": "string"
         },
         "media_type": {
@@ -23,6 +17,12 @@
             "type": "string"
         },
         "url": {
+            "type": "string"
+        },
+        "copyright": {
+            "type": "string"
+        },
+        "hdurl": {
             "type": "string"
         }
     }
