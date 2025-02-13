@@ -26,6 +26,79 @@
                         "properties": {
                             "mimeType": {
                                 "type": "string"
+                            },
+                            "partId": {
+                                "type": "string"
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "body": {
+                                "type": "object",
+                                "properties": {
+                                    "size": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "size"
+                                ]
+                            },
+                            "parts": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "partId": {
+                                            "type": "string"
+                                        },
+                                        "mimeType": {
+                                            "type": "string"
+                                        },
+                                        "filename": {
+                                            "type": "string"
+                                        },
+                                        "headers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "value": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name",
+                                                    "value"
+                                                ]
+                                            }
+                                        },
+                                        "body": {
+                                            "type": "object",
+                                            "properties": {
+                                                "size": {
+                                                    "type": "integer"
+                                                },
+                                                "data": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "size"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "partId",
+                                        "mimeType",
+                                        "filename",
+                                        "headers",
+                                        "body"
+                                    ]
+                                }
                             }
                         },
                         "required": [
@@ -59,13 +132,28 @@
                             ]
                         }
                     },
-                    "To": {
+                    "From": {
                         "type": "string"
                     },
                     "Subject": {
                         "type": "string"
                     },
-                    "From": {
+                    "To": {
+                        "type": "string"
+                    },
+                    "Received": {
+                        "type": "string"
+                    },
+                    "Content-Type": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "MIME-Version": {
+                        "type": "string"
+                    },
+                    "Message-ID": {
                         "type": "string"
                     }
                 },
@@ -77,8 +165,9 @@
                     "sizeEstimate",
                     "historyId",
                     "internalDate",
-                    "To",
-                    "From"
+                    "labels",
+                    "From",
+                    "To"
                 ]
             }
         }
