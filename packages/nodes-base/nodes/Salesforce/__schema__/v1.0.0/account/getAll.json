@@ -16,10 +16,10 @@
                 "url"
             ]
         },
-        "Name": {
+        "Id": {
             "type": "string"
         },
-        "Id": {
+        "Name": {
             "type": "string"
         }
     }
