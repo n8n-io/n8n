@@ -139,8 +139,5 @@
         "Voice ID": {
             "type": "string"
         }
-    },
-    "required": [
-        "id"
-    ]
+    }
 }
