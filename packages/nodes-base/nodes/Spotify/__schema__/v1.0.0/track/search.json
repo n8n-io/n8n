@@ -94,6 +94,9 @@
                         ]
                     }
                 },
+                "is_playable": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
