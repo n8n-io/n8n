@@ -82,14 +82,14 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "label": {
+                                "type": "string"
+                            },
                             "value": {
                                 "type": "string"
                             },
                             "primary": {
                                 "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
                             }
                         },
                         "required": [
@@ -132,49 +132,6 @@
                 "email",
                 "phone",
                 "owner_id",
-                "value"
-            ]
-        },
-        "org_id": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "people_count": {
-                    "type": "integer"
-                },
-                "owner_id": {
-                    "type": "integer"
-                },
-                "label_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "cc_email": {
-                    "type": "string"
-                },
-                "owner_name": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "name",
-                "people_count",
-                "owner_id",
-                "address",
-                "label_ids",
-                "active_flag",
-                "cc_email",
-                "owner_name",
                 "value"
             ]
         },
@@ -235,11 +192,11 @@
         "participants_count": {
             "type": "integer"
         },
+        "origin": {
+            "type": "string"
+        },
         "stage_order_nr": {
             "type": "integer"
-        },
-        "next_activity_duration": {
-            "type": "null"
         },
         "formatted_value": {
             "type": "string"
