@@ -13,9 +13,6 @@
         "name": {
             "type": "string"
         },
-        "phone": {
-            "type": "null"
-        },
         "time_zone": {
             "type": "string"
         },
