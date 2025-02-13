@@ -332,9 +332,6 @@
         "post_password": {
             "type": "string"
         },
-        "global_unique_id": {
-            "type": "string"
-        },
         "_links": {
             "type": "object",
             "properties": {
@@ -385,6 +382,9 @@
                 "self",
                 "collection"
             ]
+        },
+        "global_unique_id": {
+            "type": "string"
         }
     },
     "required": [
