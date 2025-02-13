@@ -28,12 +28,6 @@
         "error_message": {
             "type": "null"
         },
-        "from": {
-            "type": "string"
-        },
-        "messaging_service_sid": {
-            "type": "null"
-        },
         "num_media": {
             "type": "string"
         },
