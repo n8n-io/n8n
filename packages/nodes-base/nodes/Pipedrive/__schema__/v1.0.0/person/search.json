@@ -54,5 +54,8 @@
         "update_time": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "result_score"
+    ]
 }
