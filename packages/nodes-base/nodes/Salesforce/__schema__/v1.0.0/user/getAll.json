@@ -16,13 +16,13 @@
                 "url"
             ]
         },
+        "Email": {
+            "type": "string"
+        },
         "Id": {
             "type": "string"
         },
         "Name": {
-            "type": "string"
-        },
-        "Email": {
             "type": "string"
         }
     },
