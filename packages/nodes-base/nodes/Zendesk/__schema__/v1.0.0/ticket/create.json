@@ -53,6 +53,18 @@
         "submitter_id": {
             "type": "integer"
         },
+        "collaborator_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "follower_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
         "forum_topic_id": {
             "type": "null"
         },
@@ -121,9 +133,6 @@
                 ]
             }
         },
-        "ticket_form_id": {
-            "type": "integer"
-        },
         "brand_id": {
             "type": "integer"
         },
@@ -135,6 +144,9 @@
         },
         "from_messaging_channel": {
             "type": "boolean"
+        },
+        "ticket_form_id": {
+            "type": "integer"
         }
     }
 }
