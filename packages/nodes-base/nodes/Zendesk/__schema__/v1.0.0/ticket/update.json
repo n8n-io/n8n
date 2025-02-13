@@ -70,6 +70,9 @@
         "is_public": {
             "type": "boolean"
         },
+        "due_at": {
+            "type": "null"
+        },
         "tags": {
             "type": "array",
             "items": {
