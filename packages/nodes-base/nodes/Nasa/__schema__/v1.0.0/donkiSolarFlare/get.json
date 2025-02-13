@@ -50,13 +50,8 @@
         }
     },
     "required": [
-        "flrID",
         "catalog",
         "instruments",
-        "beginTime",
-        "peakTime",
-        "endTime",
-        "classType",
         "sourceLocation",
         "activeRegionNum",
         "note",
