@@ -26,28 +26,6 @@
         "$field_states": {
             "type": "null"
         },
-        "$review_process": {
-            "type": "object",
-            "properties": {
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$review": {
-            "type": "null"
-        },
         "$state": {
             "type": "string"
         },
@@ -56,9 +34,6 @@
         },
         "$locked_for_me": {
             "type": "boolean"
-        },
-        "Account_Name": {
-            "type": "string"
         },
         "id": {
             "type": "string"
@@ -92,16 +67,10 @@
                 "resubmit"
             ]
         },
-        "Modified_Time": {
-            "type": "string"
-        },
         "Created_Time": {
             "type": "string"
         },
         "$editable": {
-            "type": "boolean"
-        },
-        "$in_merge": {
             "type": "boolean"
         },
         "Created_By": {
@@ -122,6 +91,59 @@
                 "id",
                 "email"
             ]
+        },
+        "$review_process": {
+            "type": "object",
+            "properties": {
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "Modified_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$review": {
+            "type": "null"
+        },
+        "Account_Name": {
+            "type": "string"
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "Locked__s": {
+            "type": "boolean"
         },
         "Tag": {
             "type": "array",
