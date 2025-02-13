@@ -1,0 +1,50 @@
+{
+    "type": "object",
+    "properties": {
+        "Email": {
+            "type": "string"
+        },
+        "Departmento": {
+            "type": "string"
+        },
+        "investment_id": {
+            "type": "string"
+        },
+        "Plazo": {
+            "type": "integer"
+        },
+        "Provincia": {
+            "type": "string"
+        },
+        "Monto": {
+            "type": "integer"
+        },
+        "Telefono": {
+            "type": "integer"
+        },
+        "Fecha de inversion": {
+            "type": "string"
+        },
+        "Distrito": {
+            "type": "string"
+        },
+        "Final Percent Ajustado": {
+            "type": "integer"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "Direccion": {
+            "type": "string"
+        },
+        "No DNI": {
+            "type": "string"
+        },
+        "Interés total": {
+            "type": "integer"
+        },
+        "Fecha de devolucion": {
+            "type": "string"
+        }
+    }
+}
