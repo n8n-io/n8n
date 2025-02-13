@@ -26,95 +26,6 @@
                 ]
             }
         },
-        "num_likes": {
-            "type": "integer"
-        },
-        "num_hearts": {
-            "type": "integer"
-        },
-        "workspace": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
-        },
-        "start_at": {
-            "type": "null"
-        },
-        "resource_subtype": {
-            "type": "string"
-        },
-        "due_at": {
-            "type": "null"
-        },
-        "assignee_status": {
-            "type": "string"
-        },
-        "completed": {
-            "type": "boolean"
-        },
-        "actual_time_minutes": {
-            "type": "integer"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "modified_at": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "resource_type": {
-            "type": "string"
-        },
-        "liked": {
-            "type": "boolean"
-        },
-        "hearted": {
-            "type": "boolean"
-        },
-        "permalink_url": {
-            "type": "string"
-        },
         "memberships": {
             "type": "array",
             "items": {
@@ -164,6 +75,117 @@
                     "section"
                 ]
             }
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "name"
+                ]
+            }
+        },
+        "start_at": {
+            "type": "null"
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "assignee_status": {
+            "type": "string"
+        },
+        "completed": {
+            "type": "boolean"
+        },
+        "actual_time_minutes": {
+            "type": "integer"
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
+        },
+        "num_hearts": {
+            "type": "integer"
+        },
+        "num_likes": {
+            "type": "integer"
+        },
+        "hearted": {
+            "type": "boolean"
+        },
+        "liked": {
+            "type": "boolean"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "name"
+                ]
+            }
+        },
+        "permalink_url": {
+            "type": "string"
         },
         "custom_fields": {
             "type": "array",
@@ -252,59 +274,6 @@
                     "created_by"
                 ]
             }
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
         }
-    },
-    "required": [
-        "gid",
-        "projects",
-        "num_likes",
-        "num_hearts",
-        "workspace",
-        "tags",
-        "start_at",
-        "start_on",
-        "resource_subtype",
-        "due_at",
-        "due_on",
-        "completed_at",
-        "assignee_status",
-        "completed",
-        "actual_time_minutes",
-        "assignee",
-        "notes",
-        "name",
-        "modified_at",
-        "created_at",
-        "resource_type",
-        "parent",
-        "likes",
-        "hearts",
-        "liked",
-        "hearted",
-        "permalink_url",
-        "memberships",
-        "followers"
-    ]
+    }
 }
