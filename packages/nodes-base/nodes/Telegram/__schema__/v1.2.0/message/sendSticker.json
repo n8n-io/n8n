@@ -39,9 +39,6 @@
                         "id": {
                             "type": "integer"
                         },
-                        "type": {
-                            "type": "string"
-                        },
                         "first_name": {
                             "type": "string"
                         },
@@ -49,6 +46,9 @@
                             "type": "string"
                         },
                         "username": {
+                            "type": "string"
+                        },
+                        "type": {
                             "type": "string"
                         }
                     },
