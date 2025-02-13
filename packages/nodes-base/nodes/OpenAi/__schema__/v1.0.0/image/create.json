@@ -3,9 +3,6 @@
     "properties": {
         "url": {
             "type": "string"
-        },
-        "revised_prompt": {
-            "type": "string"
         }
     }
 }
