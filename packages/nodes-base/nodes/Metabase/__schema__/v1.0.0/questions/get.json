@@ -1,7 +1,16 @@
 {
     "type": "object",
     "properties": {
+        "cache_invalidated_at": {
+            "type": "null"
+        },
         "archived": {
+            "type": "boolean"
+        },
+        "view_count": {
+            "type": "integer"
+        },
+        "can_run_adhoc_query": {
             "type": "boolean"
         },
         "creator": {
@@ -154,16 +163,13 @@
         "collection": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "is_personal": {
-                    "type": "boolean"
-                },
                 "archived": {
                     "type": "boolean"
                 },
                 "slug": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "type": {
@@ -177,6 +183,9 @@
                 },
                 "namespace": {
                     "type": "null"
+                },
+                "is_personal": {
+                    "type": "boolean"
                 },
                 "created_at": {
                     "type": "string"
@@ -192,15 +201,6 @@
         },
         "parameter_usage_count": {
             "type": "integer"
-        },
-        "cache_invalidated_at": {
-            "type": "null"
-        },
-        "view_count": {
-            "type": "integer"
-        },
-        "can_run_adhoc_query": {
-            "type": "boolean"
         }
     },
     "required": [
