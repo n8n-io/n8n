@@ -27,9 +27,6 @@
                     "flags": {
                         "type": "integer"
                     },
-                    "bot": {
-                        "type": "boolean"
-                    },
                     "banner": {
                         "type": "null"
                     },
@@ -92,14 +89,20 @@
                     "proxy_url": {
                         "type": "string"
                     },
+                    "width": {
+                        "type": "integer"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
                     "content_type": {
                         "type": "string"
                     },
-                    "content_scan_version": {
-                        "type": "integer"
-                    },
-                    "title": {
+                    "placeholder": {
                         "type": "string"
+                    },
+                    "placeholder_version": {
+                        "type": "integer"
                     }
                 },
                 "required": [
@@ -108,8 +111,7 @@
                     "size",
                     "url",
                     "proxy_url",
-                    "content_type",
-                    "content_scan_version"
+                    "content_type"
                 ]
             }
         },
@@ -121,16 +123,16 @@
                     "type": {
                         "type": "string"
                     },
-                    "title": {
+                    "url": {
                         "type": "string"
                     },
-                    "description": {
-                        "type": "string"
-                    },
-                    "author": {
+                    "provider": {
                         "type": "object",
                         "properties": {
                             "name": {
+                                "type": "string"
+                            },
+                            "url": {
                                 "type": "string"
                             }
                         },
@@ -138,7 +140,7 @@
                             "name"
                         ]
                     },
-                    "image": {
+                    "thumbnail": {
                         "type": "object",
                         "properties": {
                             "url": {
@@ -153,6 +155,12 @@
                             "height": {
                                 "type": "integer"
                             },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
                             "flags": {
                                 "type": "integer"
                             }
@@ -162,11 +170,64 @@
                             "proxy_url",
                             "width",
                             "height",
+                            "placeholder",
+                            "placeholder_version",
                             "flags"
                         ]
                     },
-                    "timestamp": {
+                    "video": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
+                            "flags": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "placeholder",
+                            "placeholder_version",
+                            "flags"
+                        ]
+                    },
+                    "title": {
                         "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "author": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "color": {
+                        "type": "integer"
                     }
                 },
                 "required": [
@@ -176,9 +237,6 @@
         },
         "timestamp": {
             "type": "string"
-        },
-        "edited_timestamp": {
-            "type": "null"
         },
         "flags": {
             "type": "integer"
@@ -214,6 +272,12 @@
                     "type": "null"
                 },
                 "banner_color": {
+                    "type": "null"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "primary_guild": {
                     "type": "null"
                 }
             },
