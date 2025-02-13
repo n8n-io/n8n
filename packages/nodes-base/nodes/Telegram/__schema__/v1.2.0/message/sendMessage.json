@@ -81,22 +81,10 @@
                             "type"
                         ]
                     }
-                },
-                "link_preview_options": {
-                    "type": "object",
-                    "properties": {
-                        "is_disabled": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "is_disabled"
-                    ]
                 }
             },
             "required": [
                 "message_id",
-                "from",
                 "chat",
                 "date",
                 "text"
