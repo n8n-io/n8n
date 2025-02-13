@@ -22,20 +22,6 @@
         "application_fee_amount": {
             "type": "null"
         },
-        "billing_details": {
-            "type": "object",
-            "properties": {
-                "phone": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "address",
-                "email",
-                "name",
-                "phone"
-            ]
-        },
         "calculated_statement_descriptor": {
             "type": "string"
         },
@@ -143,6 +129,9 @@
                         "brand": {
                             "type": "string"
                         },
+                        "capture_before": {
+                            "type": "integer"
+                        },
                         "country": {
                             "type": "string"
                         },
@@ -237,9 +226,6 @@
                         },
                         "three_d_secure": {
                             "type": "null"
-                        },
-                        "capture_before": {
-                            "type": "integer"
                         }
                     },
                     "required": [
