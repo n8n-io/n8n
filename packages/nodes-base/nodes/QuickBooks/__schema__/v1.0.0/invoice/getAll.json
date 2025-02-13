@@ -53,9 +53,6 @@
                     },
                     "Type": {
                         "type": "string"
-                    },
-                    "StringValue": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -237,17 +234,6 @@
                 "name"
             ]
         },
-        "CustomerMemo": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
         "BillAddr": {
             "type": "object",
             "properties": {
@@ -275,12 +261,6 @@
                     "type": "string"
                 },
                 "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "PostalCode": {
                     "type": "string"
                 }
             },
