@@ -31,7 +31,11 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: WorkflowEntity[], projectId: string) {
+	async importWorkflows(
+		workflows: WorkflowEntity[],
+		projectId: string,
+		keepDbActiveState: boolean | undefined = false,
+	) {
 		await this.initRecords();
 
 		for (const workflow of workflows) {
@@ -48,13 +52,18 @@ export class ImportService {
 
 		await Db.transaction(async (tx) => {
 			for (const workflow of workflows) {
-				if (workflow.active) {
+				const dbWorkflow = workflow.id
+					? await tx.findOneBy(WorkflowEntity, { id: workflow.id })
+					: null;
+
+				if (dbWorkflow?.active === true && keepDbActiveState) {
+					workflow.active = true;
+					this.logger.info(`Activating workflow "${workflow.name}".`);
+				} else {
 					workflow.active = false;
 
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
@@ -62,7 +71,7 @@ export class ImportService {
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!dbWorkflow) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
