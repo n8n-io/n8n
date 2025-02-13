@@ -32,12 +32,5 @@
         "archived": {
             "type": "boolean"
         }
-    },
-    "required": [
-        "id",
-        "properties",
-        "createdAt",
-        "updatedAt",
-        "archived"
-    ]
+    }
 }
