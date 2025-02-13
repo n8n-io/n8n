@@ -10,28 +10,6 @@
         "id": {
             "type": "string"
         },
-        "status": {
-            "type": "object",
-            "properties": {
-                "privacyStatus": {
-                    "type": "string"
-                },
-                "isLinked": {
-                    "type": "boolean"
-                },
-                "longUploadsStatus": {
-                    "type": "string"
-                },
-                "madeForKids": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "privacyStatus",
-                "isLinked",
-                "longUploadsStatus"
-            ]
-        },
         "snippet": {
             "type": "object",
             "properties": {
@@ -207,6 +185,28 @@
             "required": [
                 "topicIds",
                 "topicCategories"
+            ]
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "privacyStatus": {
+                    "type": "string"
+                },
+                "isLinked": {
+                    "type": "boolean"
+                },
+                "longUploadsStatus": {
+                    "type": "string"
+                },
+                "madeForKids": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "privacyStatus",
+                "isLinked",
+                "longUploadsStatus"
             ]
         },
         "brandingSettings": {
