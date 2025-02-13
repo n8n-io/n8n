@@ -41,13 +41,7 @@ const selectedProject = computed<ProjectSharingData | null>({
 			) ?? null
 		);
 	},
-	set: (value) => {
-		if (value) {
-			setKeyValue('homeProject', value.id);
-		} else {
-			setKeyValue('homeProject', '');
-		}
-	},
+	set: (value) => setKeyValue('homeProject', value?.id ?? ''),
 });
 
 const filtersLength = computed(() => {
