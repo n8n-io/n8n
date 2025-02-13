@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
 	IExecuteFunctions,
@@ -369,7 +369,12 @@ export class ExecuteWorkflow implements INodeType {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
-						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						const metadata = parseErrorMetadata(error);
+						returnData[i].push({
+							json: { error: error.message },
+							pairedItem: { item: i },
+							metadata,
+						});
 						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
@@ -436,7 +441,15 @@ export class ExecuteWorkflow implements INodeType {
 				return workflowResult;
 			} catch (error) {
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message } }]];
+					const metadata = parseErrorMetadata(error);
+					return [
+						[
+							{
+								json: { error: error.message },
+								metadata,
+							},
+						],
+					];
 				}
 				throw error;
 			}
