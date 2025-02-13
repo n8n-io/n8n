@@ -186,15 +186,6 @@
                             "id": {
                                 "type": "string"
                             },
-                            "sequence_id": {
-                                "type": "string"
-                            },
-                            "etag": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
                             "file_version": {
                                 "type": "object",
                                 "properties": {
@@ -214,7 +205,16 @@
                                     "sha1"
                                 ]
                             },
+                            "sequence_id": {
+                                "type": "string"
+                            },
+                            "etag": {
+                                "type": "string"
+                            },
                             "sha1": {
+                                "type": "string"
+                            },
+                            "name": {
                                 "type": "string"
                             }
                         },
