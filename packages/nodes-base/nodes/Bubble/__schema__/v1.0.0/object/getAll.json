@@ -1,13 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "Modified Date": {
+            "type": "string"
+        },
         "Created Date": {
             "type": "string"
         },
         "Created By": {
-            "type": "string"
-        },
-        "Modified Date": {
             "type": "string"
         },
         "_id": {
@@ -15,8 +15,8 @@
         }
     },
     "required": [
-        "Created Date",
         "Modified Date",
+        "Created Date",
         "_id"
     ]
 }
