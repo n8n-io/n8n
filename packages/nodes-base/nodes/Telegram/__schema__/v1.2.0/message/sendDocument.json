@@ -47,9 +47,6 @@
                         },
                         "type": {
                             "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
                         }
                     },
                     "required": [
@@ -66,6 +63,9 @@
                         "file_name": {
                             "type": "string"
                         },
+                        "mime_type": {
+                            "type": "string"
+                        },
                         "file_id": {
                             "type": "string"
                         },
@@ -74,9 +74,6 @@
                         },
                         "file_size": {
                             "type": "integer"
-                        },
-                        "mime_type": {
-                            "type": "string"
                         }
                     },
                     "required": [
