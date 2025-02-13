@@ -4,5 +4,8 @@
         "requestId": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "requestId"
+    ]
 }
