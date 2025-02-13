@@ -408,11 +408,10 @@ export class GSuiteAdmin implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!username) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'The parameter ‘Username’ is empty. Please fill in the ‘Username’ parameter to create the user.',
-								{ itemIndex: i },
-							);
+							throw new NodeOperationError(this.getNode(), 'The parameter ‘Username’ is empty', {
+								itemIndex: i,
+								description: 'Please fill in the ‘Username’ parameter to create the user',
+							});
 						}
 						const body: IDataObject = {
 							name: {
