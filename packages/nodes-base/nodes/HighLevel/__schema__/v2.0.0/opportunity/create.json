@@ -91,14 +91,20 @@
                         "email": {
                             "type": "string"
                         },
+                        "phone": {
+                            "type": "string"
+                        },
                         "tags": {
                             "type": "array",
                             "items": {
                                 "type": "string"
                             }
                         },
-                        "phone": {
-                            "type": "string"
+                        "followers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     },
                     "required": [
