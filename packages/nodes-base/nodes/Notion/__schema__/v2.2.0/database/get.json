@@ -4,15 +4,221 @@
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
         "url": {
             "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "emoji": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type"
+            ]
+        },
+        "created_time": {
+            "type": "string"
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "object",
+                "id"
+            ]
+        },
+        "last_edited_by": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "object",
+                "id"
+            ]
+        },
+        "last_edited_time": {
+            "type": "string"
+        },
+        "title": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "link": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "content",
+                            "link"
+                        ]
+                    },
+                    "annotations": {
+                        "type": "object",
+                        "properties": {
+                            "bold": {
+                                "type": "boolean"
+                            },
+                            "italic": {
+                                "type": "boolean"
+                            },
+                            "strikethrough": {
+                                "type": "boolean"
+                            },
+                            "underline": {
+                                "type": "boolean"
+                            },
+                            "code": {
+                                "type": "boolean"
+                            },
+                            "color": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "bold",
+                            "italic",
+                            "strikethrough",
+                            "underline",
+                            "code",
+                            "color"
+                        ]
+                    },
+                    "plain_text": {
+                        "type": "string"
+                    },
+                    "href": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "type",
+                    "text",
+                    "annotations",
+                    "plain_text",
+                    "href"
+                ]
+            }
+        },
+        "description": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "content",
+                            "link"
+                        ]
+                    },
+                    "annotations": {
+                        "type": "object",
+                        "properties": {
+                            "bold": {
+                                "type": "boolean"
+                            },
+                            "italic": {
+                                "type": "boolean"
+                            },
+                            "strikethrough": {
+                                "type": "boolean"
+                            },
+                            "underline": {
+                                "type": "boolean"
+                            },
+                            "code": {
+                                "type": "boolean"
+                            },
+                            "color": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "bold",
+                            "italic",
+                            "strikethrough",
+                            "underline",
+                            "code",
+                            "color"
+                        ]
+                    },
+                    "plain_text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "text",
+                    "annotations",
+                    "plain_text",
+                    "href"
+                ]
+            }
+        },
+        "is_inline": {
+            "type": "boolean"
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "workspace": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type"
+            ]
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "in_trash": {
+            "type": "boolean"
+        },
+        "request_id": {
+            "type": "string"
         }
-    },
-    "required": [
-        "id",
-        "url"
-    ]
+    }
 }
