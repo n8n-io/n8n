@@ -55,13 +55,16 @@
         "ID": {
             "type": "integer"
         },
+        "Type": {
+            "type": "string"
+        },
+        "Lead": {
+            "type": "null"
+        },
         "Assigned to user": {
             "type": "integer"
         },
         "Done": {
-            "type": "string"
-        },
-        "Type": {
             "type": "string"
         },
         "Due date": {
@@ -96,9 +99,6 @@
         },
         "Contact person": {
             "type": "integer"
-        },
-        "Lead": {
-            "type": "null"
         },
         "Update time": {
             "type": "string"
@@ -152,7 +152,6 @@
         "last_notification_user_id",
         "notification_language_id",
         "calendar_sync_include_context",
-        "deal_id",
         "active_flag",
         "update_user_id",
         "source_timezone",
