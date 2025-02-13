@@ -7,6 +7,9 @@
         "InvoiceID": {
             "type": "string"
         },
+        "InvoiceNumber": {
+            "type": "string"
+        },
         "Reference": {
             "type": "string"
         },
@@ -127,9 +130,6 @@
                 },
                 "HasValidationErrors": {
                     "type": "boolean"
-                },
-                "BankAccountDetails": {
-                    "type": "string"
                 }
             },
             "required": [
@@ -165,6 +165,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "LineItemID": {
+                        "type": "string"
+                    },
                     "Description": {
                         "type": "string"
                     },
@@ -172,9 +175,6 @@
                         "type": "string"
                     },
                     "AccountCode": {
-                        "type": "string"
-                    },
-                    "LineItemID": {
                         "type": "string"
                     },
                     "AccountID": {
@@ -192,12 +192,6 @@
             "type": "string"
         },
         "CurrencyCode": {
-            "type": "string"
-        },
-        "InvoiceNumber": {
-            "type": "string"
-        },
-        "BrandingThemeID": {
             "type": "string"
         },
         "DueDateString": {
