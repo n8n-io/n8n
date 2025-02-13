@@ -64,9 +64,6 @@
         "pending_time": {
             "type": "null"
         },
-        "type": {
-            "type": "null"
-        },
         "updated_by_id": {
             "type": "integer"
         },
@@ -111,7 +108,6 @@
         "article_count",
         "escalation_at",
         "pending_time",
-        "type",
         "time_unit",
         "preferences",
         "updated_by_id",
