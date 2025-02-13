@@ -15,20 +15,20 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "phoneLabel": {
-                        "type": "null"
-                    },
                     "phone": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "phoneLabel",
-                    "phone"
+                    "phone",
+                    "phoneLabel"
                 ]
             }
         },
         "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
             "type": "string"
         },
         "type": {
@@ -50,6 +50,12 @@
             "type": "string"
         },
         "lastNameLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
             "type": "string"
         },
         "phone": {
@@ -83,15 +89,6 @@
                 "sourceId",
                 "timestamp"
             ]
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
         },
         "followers": {
             "type": "array",
