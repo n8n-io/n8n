@@ -17,7 +17,6 @@ import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
@@ -80,7 +79,7 @@ export class TestRunnerService {
 	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
 	 */
 	private getStartNodesData(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		pastExecutionData: IRunExecutionData,
 		pastExecutionWorkflowData: IWorkflowBase,
 	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
@@ -140,7 +139,7 @@ export class TestRunnerService {
 	 * Waits for the workflow under test to finish execution.
 	 */
 	private async runTestCase(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		pastExecutionData: IRunExecutionData,
 		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
@@ -197,7 +196,7 @@ export class TestRunnerService {
 	 * Run the evaluation workflow with the expected and actual run data.
 	 */
 	private async runTestCaseEvaluation(
-		evaluationWorkflow: WorkflowEntity,
+		evaluationWorkflow: IWorkflowBase,
 		expectedData: IRunData,
 		actualData: IRunData,
 		abortSignal: AbortSignal,
