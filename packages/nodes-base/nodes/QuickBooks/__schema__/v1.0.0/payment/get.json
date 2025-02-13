@@ -27,6 +27,20 @@
                 "value"
             ]
         },
+        "PaymentMethodRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
+        "PaymentRefNum": {
+            "type": "string"
+        },
         "UnappliedAmt": {
             "type": "integer"
         },
@@ -77,6 +91,9 @@
                 "value",
                 "name"
             ]
+        },
+        "ExchangeRate": {
+            "type": "integer"
         },
         "Line": {
             "type": "array",
@@ -166,20 +183,6 @@
                     "LineEx"
                 ]
             }
-        },
-        "PaymentMethodRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
-        "PaymentRefNum": {
-            "type": "string"
         }
     },
     "required": [
