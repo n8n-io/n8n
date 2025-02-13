@@ -33,9 +33,6 @@
                     "id": {
                         "type": "string"
                     },
-                    "orderindex": {
-                        "type": "null"
-                    },
                     "assignee": {
                         "type": "null"
                     },
