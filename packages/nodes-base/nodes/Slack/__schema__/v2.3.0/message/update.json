@@ -130,16 +130,13 @@
                                                     "style": {
                                                         "type": "object",
                                                         "properties": {
-                                                            "italic": {
-                                                                "type": "boolean"
-                                                            },
                                                             "bold": {
                                                                 "type": "boolean"
+                                                            },
+                                                            "italic": {
+                                                                "type": "boolean"
                                                             }
-                                                        },
-                                                        "required": [
-                                                            "italic"
-                                                        ]
+                                                        }
                                                     },
                                                     "url": {
                                                         "type": "string"
@@ -148,9 +145,6 @@
                                                         "type": "string"
                                                     },
                                                     "unicode": {
-                                                        "type": "string"
-                                                    },
-                                                    "user_id": {
                                                         "type": "string"
                                                     }
                                                 },
