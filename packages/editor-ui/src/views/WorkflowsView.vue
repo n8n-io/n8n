@@ -178,8 +178,7 @@ onBeforeUnmount(() => {
 });
 
 // Methods
-const onFiltersUpdated = async (newFilters: BaseFilters) => {
-	Object.assign(filters.value, newFilters);
+const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
 	await fetchWorkflows();
@@ -422,6 +421,7 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 		@update:search="onSearchUpdated"
 		@update:current-page="setCurrentPage"
 		@update:page-size="setPageSize"
+		@update:filters="onFiltersUpdated"
 		@sort="onSortUpdated"
 	>
 		<template #header>
