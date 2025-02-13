@@ -4,38 +4,17 @@
         "user": {
             "type": "string"
         },
-        "text": {
-            "type": "string"
-        },
         "type": {
             "type": "string"
         },
         "ts": {
             "type": "string"
         },
-        "thread_ts": {
+        "text": {
             "type": "string"
         },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
+        "team": {
             "type": "string"
-        },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
         },
         "blocks": {
             "type": "array",
@@ -87,9 +66,6 @@
             }
         },
         "client_msg_id": {
-            "type": "string"
-        },
-        "team": {
             "type": "string"
         }
     }
