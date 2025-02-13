@@ -24,7 +24,6 @@
         "Key",
         "LastModified",
         "ETag",
-        "Size",
-        "StorageClass"
+        "Size"
     ]
 }
