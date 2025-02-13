@@ -178,10 +178,10 @@
                 "longUploadsStatus": {
                     "type": "string"
                 },
-                "madeForKids": {
+                "isChannelMonetizationEnabled": {
                     "type": "boolean"
                 },
-                "isChannelMonetizationEnabled": {
+                "madeForKids": {
                     "type": "boolean"
                 }
             },
@@ -213,11 +213,39 @@
                     "required": [
                         "title"
                     ]
+                },
+                "image": {
+                    "type": "object",
+                    "properties": {
+                        "bannerExternalUrl": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "bannerExternalUrl"
+                    ]
                 }
             },
             "required": [
                 "channel"
             ]
+        },
+        "topicDetails": {
+            "type": "object",
+            "properties": {
+                "topicIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "topicCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     }
 }
