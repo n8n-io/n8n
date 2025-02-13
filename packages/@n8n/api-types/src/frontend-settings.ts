@@ -96,6 +96,7 @@ export interface FrontendSettings {
 		};
 	};
 	workflowTagsDisabled: boolean;
+	primaryColorTheme: string; // [ria] might not need this!
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;

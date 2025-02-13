@@ -370,7 +370,7 @@ export const schema = {
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
-	// [ria]
+	// [ria] this is using the backend API
 	color_theme: {
 		format: String,
 		default: '#ff6f5c',

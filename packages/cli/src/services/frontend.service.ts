@@ -1,5 +1,6 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
+// import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config'; // [ria] GlobalConfig.color is mine!
+import { GlobalConfig, FrontendConfig, SecurityConfig, ColorConfig } from '@n8n/config'; // [ria] evtl besser
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -26,6 +27,7 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
+// import { ColorConfig } from '@n8n/config/src/configs/color-theme.config'; // [ria]
 
 @Service()
 export class FrontendService {
@@ -45,6 +47,7 @@ export class FrontendService {
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
 		private readonly frontendConfig: FrontendConfig,
+		private readonly colorConfig: ColorConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -155,6 +158,8 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			primaryColorTheme: (this.colorConfig as { primary: string }).primary as never, // [ria] here! good!
+			// primaryColorTheme: config.getEnv('color_theme'), // [ria] here! good!
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {

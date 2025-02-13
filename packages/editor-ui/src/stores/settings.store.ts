@@ -185,6 +185,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
+	const isCustomColorTheme = computed(() => settings.value.primaryColorTheme);
+
 	const isCanvasV2Enabled = computed(() =>
 		(settings.value.betaFeatures ?? []).includes('canvas_v2'),
 	);
@@ -256,7 +258,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+		console.log('[ria]:', fetchedSettings);
 		setSettings(fetchedSettings);
+		// if (fetchedSettings.primaryColorTheme) { // [ria] sinnlos
+		// 	settings.value.primaryColorTheme = fetchedSettings.primaryColorTheme;
+		// }
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		setAllowedModules(fetchedSettings.allowedModules);
 		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
@@ -436,6 +442,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution,
 		isCommunityPlan,
 		isAskAiEnabled,
+		isCustomColorTheme,
 		isCanvasV2Enabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
