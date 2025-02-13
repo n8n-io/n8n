@@ -70,6 +70,9 @@
                 "lastActionDate": {
                     "type": "string"
                 },
+                "indexVersion": {
+                    "type": "integer"
+                },
                 "followers": {
                     "type": "array",
                     "items": {
@@ -97,14 +100,14 @@
                                 "type": "string"
                             }
                         },
-                        "assignedTo": {
-                            "type": "string"
-                        },
                         "followers": {
                             "type": "array",
                             "items": {
                                 "type": "string"
                             }
+                        },
+                        "assignedTo": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -113,9 +116,6 @@
                         "tags",
                         "followers"
                     ]
-                },
-                "indexVersion": {
-                    "type": "integer"
                 }
             },
             "required": [
