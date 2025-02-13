@@ -7,10 +7,5 @@
         "success": {
             "type": "boolean"
         }
-    },
-    "required": [
-        "id",
-        "success",
-        "errors"
-    ]
+    }
 }
