@@ -7,6 +7,25 @@
         "actual_time_minutes": {
             "type": "null"
         },
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "name",
+                "resource_type"
+            ]
+        },
         "assignee_status": {
             "type": "string"
         },
@@ -65,6 +84,25 @@
                     },
                     "description": {
                         "type": "string"
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
                     },
                     "resource_subtype": {
                         "type": "string"
@@ -125,8 +163,76 @@
         "hearted": {
             "type": "boolean"
         },
+        "hearts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
+                    }
+                },
+                "required": [
+                    "gid",
+                    "user"
+                ]
+            }
+        },
         "liked": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
+                    }
+                },
+                "required": [
+                    "gid",
+                    "user"
+                ]
+            }
         },
         "memberships": {
             "type": "array",
