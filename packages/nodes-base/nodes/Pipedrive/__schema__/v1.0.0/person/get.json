@@ -36,6 +36,49 @@
                 "value"
             ]
         },
+        "org_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "people_count": {
+                    "type": "integer"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "label_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "cc_email": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "people_count",
+                "owner_id",
+                "address",
+                "label_ids",
+                "active_flag",
+                "cc_email",
+                "owner_name",
+                "value"
+            ]
+        },
         "name": {
             "type": "string"
         },
@@ -144,11 +187,14 @@
         "update_time": {
             "type": "string"
         },
-        "add_time": {
-            "type": "string"
-        },
         "visible_to": {
             "type": "string"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
         },
         "im": {
             "type": "array",
@@ -168,11 +214,11 @@
                 ]
             }
         },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
         },
         "cc_email": {
             "type": "string"
@@ -182,12 +228,6 @@
         },
         "owner_name": {
             "type": "string"
-        },
-        "postal_address_lat": {
-            "type": "null"
-        },
-        "postal_address_long": {
-            "type": "null"
         }
     }
 }
