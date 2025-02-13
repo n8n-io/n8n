@@ -36,6 +36,7 @@ interface Props {
 	parameterIssues?: string[];
 	parameter: INodeProperties;
 	sampleWorkflow?: IWorkflowDataCreate;
+	allowModeSelector?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -47,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
 	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
+	allowModeSelector: true,
 });
 
 const emit = defineEmits<{
@@ -275,7 +277,7 @@ const onAddResourceClicked = async () => {
 				}"
 			>
 				<div :class="$style.background"></div>
-				<div :class="$style.modeSelector">
+				<div v-if="allowModeSelector" :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
 						:size="inputSize"

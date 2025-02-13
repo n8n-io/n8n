@@ -64,6 +64,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	AI_CREDITS_EXPERIMENT,
+	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -218,6 +219,8 @@ const isExecutionPreview = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
+
+const missingErrorWorkflowCallout = ref<InstanceType<typeof N8nCallout>>();
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
@@ -1667,6 +1670,11 @@ onBeforeUnmount(() => {
 		pushConnectionStore.pushDisconnect();
 	}
 });
+
+function onConfigureErrorWorkflow() {
+	missingErrorWorkflowCallout.value?.close();
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
 </script>
 
 <template>
@@ -1780,10 +1788,30 @@ onBeforeUnmount(() => {
 				:renaming="renamingActive"
 			-->
 		</Suspense>
+		<N8nCallout
+			v-if="workflowsStore?.isWorkflowActive && !workflowsStore?.workflowSettings?.errorWorkflow"
+			ref="missingErrorWorkflowCallout"
+			theme="warning"
+			icon="exclamation-circle"
+			:slim="true"
+			closeable
+			:class="$style.missingErrorWorkflow"
+		>
+			This active workflow is missing an error workflow -
+			<a @click.prevent="onConfigureErrorWorkflow">configure one now</a>
+		</N8nCallout>
 	</WorkflowCanvas>
 </template>
 
 <style lang="scss" module>
+.missingErrorWorkflow {
+	z-index: 100000000;
+	position: absolute;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	border-radius: 40px;
+}
 .executionButtons {
 	position: absolute;
 	display: flex;

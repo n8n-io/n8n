@@ -172,3 +172,88 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 		executionOrder: 'v1',
 	},
 };
+
+export const SAMPLE_ERROR_WORKFLOW: IWorkflowDataCreate = {
+	name: 'Simple error workflow',
+	nodes: [
+		{
+			parameters: {},
+			type: 'n8n-nodes-base.errorTrigger',
+			typeVersion: 1,
+			position: [-240, -20],
+			id: 'f271d47d-14cb-4049-9aee-39ea3c970ee4',
+			name: 'Error Trigger',
+		},
+		{
+			parameters: {
+				subject: '=Workflow error - There was an issue with "{{ $json.workflow.name }}" ',
+				message:
+					'=<h3>Error details</h3>\n<p>Your workflow {{ $json.workflow.name }} hit an error whilst trying to execute.</p>\n\n<code>{{ $json.execution.error.message }}</code>\n\n<p><a href="{{ $json.execution.url }}">View failed execution details</a></p>',
+				options: {},
+			},
+			type: 'n8n-nodes-base.gmail',
+			typeVersion: 2.1,
+			position: [-20, -20],
+			id: 'd3012288-9d31-4944-b2e5-29c8397a3269',
+			name: 'Gmail',
+			webhookId: 'e715f939-6016-4a49-a456-7fa6c9b38940',
+		},
+		{
+			parameters: {
+				content:
+					'## Error workflow example\nHere is a simple error workflow that is setup to use Gmail to send a notification when a workflow fails. It will include the error information and a link to the failed execution to find out more information.',
+				height: 140,
+				width: 400,
+			},
+			type: 'n8n-nodes-base.stickyNote',
+			position: [-680, -100],
+			typeVersion: 1,
+			id: '9bc3819b-7f80-40ca-9c30-7ed6140fb01f',
+			name: 'Sticky Note',
+		},
+		{
+			parameters: {
+				content:
+					"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nDon't want to use **Gmail**? Simply exchange this with the a different node that can send notifications such as slack or Microsoft Outlook.",
+				height: 333,
+				width: 246,
+				color: 7,
+			},
+			id: '958f3f26-049e-4699-9432-7bd6d9e7b10f',
+			name: 'Sticky Note1',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [-80, -80],
+		},
+		{
+			parameters: {
+				content:
+					"### Steps to complete\n- [ ] Open the gmail node and select a credential\n- [ ] Set the 'to' field to an email to receive notifications\n- [ ] Save this error workflow\n- [ ] Select this error workflow in the settings of production workflows so it's called when they hit an error",
+				height: 200,
+				width: 400,
+			},
+			type: 'n8n-nodes-base.stickyNote',
+			position: [-680, 60],
+			typeVersion: 1,
+			id: '994363f7-8d65-4921-8db7-f5a230732f4c',
+			name: 'Sticky Note2',
+		},
+	],
+	pinData: {},
+	connections: {
+		'Error Trigger': {
+			main: [
+				[
+					{
+						node: 'Gmail',
+						type: NodeConnectionType.Main,
+						index: 0,
+					},
+				],
+			],
+		},
+	},
+	settings: {
+		executionOrder: 'v1',
+	},
+};

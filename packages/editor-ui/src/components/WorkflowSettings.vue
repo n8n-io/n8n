@@ -14,7 +14,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
-import type { WorkflowSettings } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
@@ -27,6 +27,8 @@ import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import { SAMPLE_ERROR_WORKFLOW } from '@/constants.workflows';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -462,6 +464,17 @@ onMounted(async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 });
+
+const errorWorkflowRl = computed<INodeParameterResourceLocator>(() => ({
+	value: workflowSettings.value.errorWorkflow,
+	__rl: true,
+	cachedResultName: workflows.value.find((w) => w.id === workflowSettings.value.errorWorkflow)
+		?.name,
+	mode: 'list',
+}));
+function onErrorWorkflowUpdate(value: INodeParameterResourceLocator) {
+	workflowSettings.value.errorWorkflow = value?.value?.toString();
+}
 </script>
 
 <template>
@@ -515,12 +528,32 @@ onMounted(async () => {
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<WorkflowSelectorParameterInput
+							ref="workflowInput"
+							:parameter="{
+								displayName: 'Error Workflow',
+								name: 'workflowId',
+								type: 'workflowSelector',
+								default: '',
+							}"
+							:model-value="errorWorkflowRl"
+							display-title="Select Workflow"
+							:is-value-expression="false"
+							:expression-edit-dialog-visible="false"
+							:path="'workflows'"
+							:allow-mode-selector="false"
+							allow-new
+							input-size="xlarge"
+							@update:model-value="onErrorWorkflowUpdate"
+							:sample-workflow="SAMPLE_ERROR_WORKFLOW"
+						/>
+						<!-- <n8n-select
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
+							data-input-id="errorWorkflow"
 							data-test-id="workflow-settings-error-workflow"
 						>
 							<n8n-option
@@ -530,7 +563,7 @@ onMounted(async () => {
 								:value="item.id"
 							>
 							</n8n-option>
-						</n8n-select>
+						</n8n-select> -->
 					</el-col>
 				</el-row>
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
