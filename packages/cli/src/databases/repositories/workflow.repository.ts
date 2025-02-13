@@ -271,12 +271,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			const direction = order.toUpperCase() as 'ASC' | 'DESC';
 
 			if (column === 'name') {
-				qb.orderBy(`LOWER(workflow.${column})`, direction);
+				// SQLite-compatible case-insensitive sorting
+				qb.addSelect('LOWER(workflow.name)', 'workflowNameLower').orderBy(
+					'workflowNameLower',
+					direction,
+					'NULLS LAST',
+				);
 			} else {
-				qb.orderBy(`workflow.${column}`, direction);
+				qb.orderBy(`workflow.${column}`, direction, 'NULLS LAST');
 			}
 		} else {
-			qb.orderBy('workflow.updatedAt', 'ASC');
+			qb.orderBy('workflow.updatedAt', 'ASC', 'NULLS LAST');
 		}
 	}
 

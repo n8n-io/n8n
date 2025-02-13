@@ -960,6 +960,72 @@ describe('GET /workflows', () => {
 			});
 		});
 	});
+
+	describe('pagination', () => {
+		beforeEach(async () => {
+			await createWorkflow({ name: 'Workflow 1' }, owner);
+			await createWorkflow({ name: 'Workflow 2' }, owner);
+			await createWorkflow({ name: 'Workflow 3' }, owner);
+			await createWorkflow({ name: 'Workflow 4' }, owner);
+			await createWorkflow({ name: 'Workflow 5' }, owner);
+		});
+
+		test('should fail when skip is provided without take', async () => {
+			await authOwnerAgent.get('/workflows').query('skip=2').expect(500);
+		});
+
+		test('should handle skip with take parameter', async () => {
+			const response = await authOwnerAgent.get('/workflows').query('skip=2&take=2').expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(5);
+			expect(response.body.data[0].name).toBe('Workflow 3');
+			expect(response.body.data[1].name).toBe('Workflow 4');
+		});
+
+		test('should handle pagination with sorting', async () => {
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('take=2&skip=1&sortBy=name:desc');
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(5);
+			expect(response.body.data[0].name).toBe('Workflow 4');
+			expect(response.body.data[1].name).toBe('Workflow 3');
+		});
+
+		test('should handle pagination with filtering', async () => {
+			// Create additional workflows with specific names for filtering
+			await createWorkflow({ name: 'Special Workflow 1' }, owner);
+			await createWorkflow({ name: 'Special Workflow 2' }, owner);
+			await createWorkflow({ name: 'Special Workflow 3' }, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('take=2&skip=1')
+				.query('filter={"name":"Special"}')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(3); // Only 3 'Special' workflows exist
+			expect(response.body.data[0].name).toBe('Special Workflow 2');
+			expect(response.body.data[1].name).toBe('Special Workflow 3');
+		});
+
+		test('should return empty array when pagination exceeds total count', async () => {
+			const response = await authOwnerAgent.get('/workflows').query('take=2&skip=10').expect(200);
+
+			expect(response.body.data).toHaveLength(0);
+			expect(response.body.count).toBe(5);
+		});
+
+		test('should return all results when no pagination parameters are provided', async () => {
+			const response = await authOwnerAgent.get('/workflows').expect(200);
+
+			expect(response.body.data).toHaveLength(5);
+			expect(response.body.count).toBe(5);
+		});
+	});
 });
 
 describe('PATCH /workflows/:workflowId', () => {
