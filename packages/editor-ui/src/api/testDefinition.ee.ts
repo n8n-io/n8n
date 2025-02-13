@@ -126,6 +126,18 @@ export async function deleteTestDefinition(context: IRestApiContext, id: string)
 	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
 }
 
+export async function getExampleEvaluationInput(
+	context: IRestApiContext,
+	testDefinitionId: string,
+	annotationTagId: string,
+) {
+	return await makeRestApiRequest<Record<string, unknown> | null>(
+		context,
+		'GET',
+		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
+	);
+}
+
 // Metrics
 export interface TestMetricRecord {
 	id: string;
