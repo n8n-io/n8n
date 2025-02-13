@@ -31,10 +31,10 @@
         "attributes": {
             "type": "object",
             "properties": {
-                "FIRSTNAME": {
+                "LASTNAME": {
                     "type": "string"
                 },
-                "LASTNAME": {
+                "FIRSTNAME": {
                     "type": "string"
                 },
                 "PHONE": {
