@@ -107,8 +107,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applySorting(qb, options.sortBy);
 		this.applyPagination(qb, options);
 
-		console.log('qb.getQuery()', qb.getQuery());
-
 		const [workflows, count] = (await qb.getManyAndCount()) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
