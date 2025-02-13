@@ -28,5 +28,17 @@
         "webViewLink": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "kind",
+        "id",
+        "etag",
+        "title",
+        "updated",
+        "selfLink",
+        "position",
+        "status",
+        "links",
+        "webViewLink"
+    ]
 }
