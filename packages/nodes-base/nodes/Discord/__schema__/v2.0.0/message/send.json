@@ -27,12 +27,6 @@
                     "flags": {
                         "type": "integer"
                     },
-                    "banner": {
-                        "type": "null"
-                    },
-                    "avatar_decoration_data": {
-                        "type": "null"
-                    },
                     "clan": {
                         "type": "null"
                     },
@@ -100,6 +94,7 @@
                     "url",
                     "proxy_url",
                     "content_type",
+                    "content_scan_version",
                     "title"
                 ]
             }
@@ -112,13 +107,13 @@
                     "type": {
                         "type": "string"
                     },
+                    "url": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },
                     "description": {
-                        "type": "string"
-                    },
-                    "timestamp": {
                         "type": "string"
                     },
                     "author": {
@@ -130,33 +125,6 @@
                         },
                         "required": [
                             "name"
-                        ]
-                    },
-                    "image": {
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string"
-                            },
-                            "proxy_url": {
-                                "type": "string"
-                            },
-                            "width": {
-                                "type": "integer"
-                            },
-                            "height": {
-                                "type": "integer"
-                            },
-                            "flags": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "url",
-                            "proxy_url",
-                            "width",
-                            "height",
-                            "flags"
                         ]
                     }
                 },
@@ -246,5 +214,23 @@
         "tts": {
             "type": "boolean"
         }
-    }
+    },
+    "required": [
+        "type",
+        "content",
+        "mentions",
+        "mention_roles",
+        "attachments",
+        "embeds",
+        "timestamp",
+        "edited_timestamp",
+        "flags",
+        "components",
+        "id",
+        "channel_id",
+        "author",
+        "pinned",
+        "mention_everyone",
+        "tts"
+    ]
 }
