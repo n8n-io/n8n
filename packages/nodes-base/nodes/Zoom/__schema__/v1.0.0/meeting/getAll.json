@@ -30,6 +30,9 @@
         },
         "join_url": {
             "type": "string"
+        },
+        "supportGoLive": {
+            "type": "boolean"
         }
     },
     "required": [
