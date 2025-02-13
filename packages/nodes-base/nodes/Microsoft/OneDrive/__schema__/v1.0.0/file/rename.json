@@ -34,12 +34,9 @@
         "createdBy": {
             "type": "object",
             "properties": {
-                "user": {
+                "application": {
                     "type": "object",
                     "properties": {
-                        "email": {
-                            "type": "string"
-                        },
                         "id": {
                             "type": "string"
                         },
@@ -52,9 +49,12 @@
                         "displayName"
                     ]
                 },
-                "application": {
+                "user": {
                     "type": "object",
                     "properties": {
+                        "email": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "string"
                         },
@@ -75,12 +75,9 @@
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "user": {
+                "application": {
                     "type": "object",
                     "properties": {
-                        "email": {
-                            "type": "string"
-                        },
                         "id": {
                             "type": "string"
                         },
@@ -93,9 +90,12 @@
                         "displayName"
                     ]
                 },
-                "application": {
+                "user": {
                     "type": "object",
                     "properties": {
+                        "email": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "string"
                         },
