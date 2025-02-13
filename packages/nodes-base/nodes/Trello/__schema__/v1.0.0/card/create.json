@@ -117,12 +117,6 @@
         "idBoard": {
             "type": "string"
         },
-        "idChecklists": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "idList": {
             "type": "string"
         },
@@ -280,6 +274,9 @@
                     },
                     "pos": {
                         "type": "integer"
+                    },
+                    "fileName": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -332,6 +329,7 @@
         "cover",
         "isTemplate",
         "cardRole",
+        "mirrorSourceId",
         "attachments",
         "stickers",
         "limits"
