@@ -48,6 +48,9 @@
                                     "updatedByUserId": {
                                         "type": "integer"
                                     },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
                                     "useTimestampAsPersistenceTimestamp": {
                                         "type": "boolean"
                                     }
