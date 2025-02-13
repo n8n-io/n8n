@@ -88,9 +88,6 @@
                     "content": {
                         "type": "string"
                     },
-                    "priority": {
-                        "type": "null"
-                    },
                     "task_count": {
                         "type": "integer"
                     },
