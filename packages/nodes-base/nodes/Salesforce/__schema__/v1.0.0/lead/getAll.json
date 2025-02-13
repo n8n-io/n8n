@@ -16,13 +16,13 @@
                 "url"
             ]
         },
-        "Id": {
+        "Status": {
             "type": "string"
         },
         "LastName": {
             "type": "string"
         },
-        "Status": {
+        "Id": {
             "type": "string"
         }
     },
