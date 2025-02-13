@@ -286,9 +286,6 @@
                     "name": {
                         "type": "string"
                     },
-                    "slug": {
-                        "type": "string"
-                    },
                     "position": {
                         "type": "integer"
                     },
@@ -303,12 +300,14 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "slug": {
+                        "type": "string"
                     }
                 },
                 "required": [
                     "id",
                     "name",
-                    "slug",
                     "position",
                     "visible",
                     "variation",
@@ -512,7 +511,6 @@
         "meta_data",
         "stock_status",
         "has_options",
-        "post_password",
         "permalink_template",
         "generated_slug",
         "_links"
