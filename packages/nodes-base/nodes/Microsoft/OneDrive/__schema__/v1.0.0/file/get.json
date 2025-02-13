@@ -159,6 +159,7 @@
         }
     },
     "required": [
+        "@odata.context",
         "createdDateTime",
         "id",
         "lastModifiedDateTime",
