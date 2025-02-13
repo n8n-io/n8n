@@ -13,11 +13,5 @@
         "mimeType": {
             "type": "string"
         }
-    },
-    "required": [
-        "kind",
-        "id",
-        "name",
-        "mimeType"
-    ]
+    }
 }
