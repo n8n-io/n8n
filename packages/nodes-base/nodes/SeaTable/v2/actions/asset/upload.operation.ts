@@ -197,9 +197,12 @@ export async function execute(
 
 		// Remove duplicates based on "url", keeping the last one
 		const uniqueAssets = Array.from(
-			// @ts-ignore
 			mergedArray
-				.reduce((map, asset) => map.set(asset.url, asset), new Map())
+				.reduce(
+					(map: { set: (arg0: any, arg1: any) => any }, asset: { url: any }) =>
+						map.set(asset.url, asset),
+					new Map(),
+				)
 				.values(),
 		);
 
