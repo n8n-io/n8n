@@ -10,5 +10,8 @@
         "url": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "id"
+    ]
 }
