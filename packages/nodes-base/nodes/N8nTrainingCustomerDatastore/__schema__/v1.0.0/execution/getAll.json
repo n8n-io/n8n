@@ -10,22 +10,11 @@
         "mode": {
             "type": "string"
         },
-        "stoppedAt": {
-            "type": "string"
+        "retrySuccessId": {
+            "type": "null"
         },
         "workflowId": {
             "type": "string"
         }
-    },
-    "required": [
-        "id",
-        "finished",
-        "mode",
-        "retryOf",
-        "retrySuccessId",
-        "startedAt",
-        "stoppedAt",
-        "workflowId",
-        "waitTill"
-    ]
+    }
 }
