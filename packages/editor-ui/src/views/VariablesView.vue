@@ -158,6 +158,9 @@ type Filters = BaseFilters & { incomplete?: boolean };
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
+const onSearchUpdated = (search: string) => {
+	updateFilter({ ...filters.value, search });
+};
 const filters = ref<Filters>({
 	...route.query,
 	incomplete: route.query.incomplete?.toString() === 'true',
@@ -224,10 +227,10 @@ onMounted(() => {
 <template>
 	<ResourcesListLayout
 		ref="layoutRef"
+		v-model:filters="filters"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="variables"
-		v-model:filters="filters"
 		:additional-filters-handler="handleFilter"
 		:shareable="false"
 		:display-name="displayName"
@@ -237,6 +240,7 @@ onMounted(() => {
 		:type-props="{ columns }"
 		:loading="isLoading"
 		@update:filters="updateFilter"
+		@update:search="onSearchUpdated"
 		@click:add="addEmptyVariableForm"
 	>
 		<template #header>

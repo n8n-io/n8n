@@ -54,6 +54,10 @@ const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
 
+const onSearchUpdated = (search: string) => {
+	updateFilter({ ...filters.value, search });
+};
+
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
@@ -201,15 +205,16 @@ onMounted(() => {
 <template>
 	<ResourcesListLayout
 		ref="layout"
+		v-model:filters="filters"
 		resource-key="credentials"
 		:resources="allCredentials"
 		:initialize="initialize"
-		v-model:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@update:filters="updateFilter"
+		@update:search="onSearchUpdated"
 	>
 		<template #header>
 			<ProjectHeader />
