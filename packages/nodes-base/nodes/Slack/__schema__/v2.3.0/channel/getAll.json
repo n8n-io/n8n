@@ -108,6 +108,15 @@
                 "last_set"
             ]
         },
+        "previous_names": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "num_members": {
+            "type": "integer"
+        },
         "properties": {
             "type": "object",
             "properties": {
@@ -133,15 +142,6 @@
                     "type": "string"
                 }
             }
-        },
-        "previous_names": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "num_members": {
-            "type": "integer"
         }
     },
     "required": [
