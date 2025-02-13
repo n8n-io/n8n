@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "error": {
-            "type": "string"
-        },
         "subreddit_id": {
             "type": "string"
         },
@@ -186,6 +183,9 @@
         },
         "distinguished": {
             "type": "null"
+        },
+        "error": {
+            "type": "string"
         }
     }
 }
