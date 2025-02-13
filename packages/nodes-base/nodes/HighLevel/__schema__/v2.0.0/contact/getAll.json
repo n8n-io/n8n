@@ -40,6 +40,21 @@
         "website": {
             "type": "null"
         },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "value"
+                ]
+            }
+        },
         "attributions": {
             "type": "array",
             "items": {
@@ -58,21 +73,6 @@
                 "required": [
                     "utmSessionSource",
                     "medium"
-                ]
-            }
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
                 ]
             }
         }
