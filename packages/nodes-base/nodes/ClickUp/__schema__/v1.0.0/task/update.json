@@ -232,9 +232,6 @@
                 ]
             }
         },
-        "points": {
-            "type": "null"
-        },
         "time_spent": {
             "type": "integer"
         },
@@ -255,6 +252,9 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
+                            "sorting": {
+                                "type": "string"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
@@ -275,9 +275,6 @@
                                         "color"
                                     ]
                                 }
-                            },
-                            "sorting": {
-                                "type": "string"
                             },
                             "new_drop_down": {
                                 "type": "boolean"
