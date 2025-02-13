@@ -12,6 +12,42 @@
             "properties": {
                 "channel": {
                     "type": "string"
+                },
+                "source": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "object",
+                            "properties": {
+                                "address": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name"
+                            ]
+                        },
+                        "to": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "address": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "rel"
+                    ]
                 }
             },
             "required": [
@@ -158,7 +194,6 @@
         "created_at",
         "updated_at",
         "subject",
-        "recipient",
-        "brand_id"
+        "recipient"
     ]
 }
