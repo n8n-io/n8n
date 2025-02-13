@@ -16,6 +16,9 @@
         "name": {
             "type": "string"
         },
+        "contentType": {
+            "type": "string"
+        },
         "size": {
             "type": "integer"
         },
@@ -25,6 +28,7 @@
     },
     "required": [
         "@odata.type",
+        "@odata.mediaContentType",
         "id"
     ]
 }
