@@ -103,6 +103,10 @@ const handleColumnResize = (
 		column.width = column.minWidth;
 	}
 };
+
+function hasStatus(row: unknown): row is TableRowWithStatus {
+	return typeof row === 'object' && row !== null && 'status' in row;
+}
 </script>
 
 <template>
@@ -115,9 +119,9 @@ const handleColumnResize = (
 		resizable
 		:cell-class-name="$style.customCell"
 		:row-class-name="$style.customRow"
+		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
-		scrollbar-always-on
 	>
 		<ElTableColumn
 			v-if="selectable"
