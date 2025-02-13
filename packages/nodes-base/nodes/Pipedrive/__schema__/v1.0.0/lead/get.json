@@ -22,9 +22,6 @@
         "value": {
             "type": "null"
         },
-        "expected_close_date": {
-            "type": "null"
-        },
         "is_archived": {
             "type": "boolean"
         },
