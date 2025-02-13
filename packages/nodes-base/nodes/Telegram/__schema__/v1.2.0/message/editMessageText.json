@@ -10,6 +10,36 @@
                 "message_id": {
                     "type": "integer"
                 },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "username": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "type"
+                    ]
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "edit_date": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
                 "from": {
                     "type": "object",
                     "properties": {
@@ -32,36 +62,6 @@
                         "first_name",
                         "username"
                     ]
-                },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        },
-                        "type": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
-                },
-                "date": {
-                    "type": "integer"
-                },
-                "edit_date": {
-                    "type": "integer"
-                },
-                "text": {
-                    "type": "string"
                 }
             },
             "required": [
@@ -72,9 +72,5 @@
                 "text"
             ]
         }
-    },
-    "required": [
-        "ok",
-        "result"
-    ]
+    }
 }
