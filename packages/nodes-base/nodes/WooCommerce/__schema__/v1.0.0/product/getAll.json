@@ -351,6 +351,9 @@
         "post_password": {
             "type": "string"
         },
+        "global_unique_id": {
+            "type": "string"
+        },
         "_links": {
             "type": "object",
             "properties": {
@@ -361,6 +364,20 @@
                         "properties": {
                             "href": {
                                 "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
                             }
                         },
                         "required": [
@@ -387,9 +404,6 @@
                 "self",
                 "collection"
             ]
-        },
-        "global_unique_id": {
-            "type": "string"
         }
     },
     "required": [
