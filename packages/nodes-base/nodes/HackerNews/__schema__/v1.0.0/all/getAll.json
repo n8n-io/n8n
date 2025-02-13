@@ -10,6 +10,12 @@
                         "matchLevel": {
                             "type": "string"
                         },
+                        "matchedWords": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
                         "value": {
                             "type": "string"
                         }
