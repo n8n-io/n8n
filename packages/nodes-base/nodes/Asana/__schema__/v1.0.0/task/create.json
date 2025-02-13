@@ -63,9 +63,6 @@
         "due_at": {
             "type": "null"
         },
-        "notes": {
-            "type": "string"
-        },
         "completed_at": {
             "type": "null"
         },
@@ -78,7 +75,7 @@
         "actual_time_minutes": {
             "type": "integer"
         },
-        "resource_type": {
+        "notes": {
             "type": "string"
         },
         "name": {
@@ -88,6 +85,9 @@
             "type": "string"
         },
         "created_at": {
+            "type": "string"
+        },
+        "resource_type": {
             "type": "string"
         },
         "memberships": {
@@ -225,9 +225,6 @@
         "hearted": {
             "type": "boolean"
         },
-        "permalink_url": {
-            "type": "string"
-        },
         "custom_fields": {
             "type": "array",
             "items": {
@@ -240,6 +237,9 @@
                         "type": "string"
                     },
                     "enabled": {
+                        "type": "boolean"
+                    },
+                    "is_formula_field": {
                         "type": "boolean"
                     },
                     "name": {
@@ -337,6 +337,9 @@
                     "name"
                 ]
             }
+        },
+        "permalink_url": {
+            "type": "string"
         }
     }
 }
