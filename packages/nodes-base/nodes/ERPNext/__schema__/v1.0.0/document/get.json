@@ -19,16 +19,13 @@
         "idx": {
             "type": "integer"
         },
-        "doctype": {
-            "type": "string"
-        },
         "naming_series": {
             "type": "string"
         },
-        "customer_name": {
+        "company": {
             "type": "string"
         },
-        "language": {
+        "doctype": {
             "type": "string"
         }
     },
