@@ -1,6 +1,17 @@
 {
     "type": "object",
     "properties": {
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
         "DueDate": {
             "type": "string"
         },
@@ -30,6 +41,9 @@
                 "CreateTime",
                 "LastUpdatedTime"
             ]
+        },
+        "DocNumber": {
+            "type": "string"
         },
         "TxnDate": {
             "type": "string"
@@ -144,17 +158,6 @@
                 "name"
             ]
         },
-        "SalesTermRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
         "LinkedTxn": {
             "type": "array",
             "items": {
@@ -172,9 +175,6 @@
                     "TxnType"
                 ]
             }
-        },
-        "DocNumber": {
-            "type": "string"
         },
         "TxnTaxDetail": {
             "type": "object",
