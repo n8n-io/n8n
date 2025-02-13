@@ -16,6 +16,15 @@
         "linkedin": {
             "type": "string"
         },
+        "company": {
+            "type": "string"
+        },
+        "website": {
+            "type": "string"
+        },
+        "company_linkedin": {
+            "type": "string"
+        },
         "email": {
             "type": "array",
             "items": {
@@ -34,19 +43,10 @@
                 ]
             }
         },
-        "company": {
-            "type": "string"
-        },
-        "website": {
+        "phone": {
             "type": "string"
         },
         "country": {
-            "type": "string"
-        },
-        "company_linkedin": {
-            "type": "string"
-        },
-        "phone": {
             "type": "string"
         },
         "nb_employees": {
