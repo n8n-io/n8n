@@ -205,11 +205,21 @@ const parameters = computed(() => {
 	return props.nodeType?.properties ?? [];
 });
 
-const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
-
-const parametersNoneSetting = computed(() =>
-	parameters.value.filter((item) => !item.isNodeSetting),
+const groupedParameters = computed(() =>
+	parameters.value.reduce<Record<'settings' | 'noneSettings', INodeProperties[]>>(
+		(groups, parameter) => {
+			if (parameter.isNodeSetting) {
+				groups.settings.push(parameter);
+			} else {
+				groups.noneSettings.push(parameter);
+			}
+			return groups;
+		},
+		{ settings: [], noneSettings: [] },
+	),
 );
+const parametersSetting = computed(() => groupedParameters.value.settings);
+const parametersNoneSetting = computed(() => groupedParameters.value.noneSettings);
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
@@ -639,7 +649,7 @@ const populateHiddenIssuesSet = () => {
 
 const populateSettings = () => {
 	if (isExecutable.value && !isTriggerNode.value) {
-		nodeSettings.value.push(
+		setting.value.push(
 			...([
 				{
 					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
@@ -731,7 +741,7 @@ const populateSettings = () => {
 			] as INodeProperties[]),
 		);
 	}
-	nodeSettings.value.push(
+	setting.value.push(
 		...([
 			{
 				displayName: i18n.baseText('nodeSettings.notes.displayName'),
@@ -887,7 +897,7 @@ const setNodeValues = () => {
 		}
 
 		// Set default node settings
-		for (const nodeSetting of nodeSettings.value) {
+		for (const nodeSetting of setting.value) {
 			if (!foundNodeSettings.includes(nodeSetting.name)) {
 				// Set default value
 				nodeValues.value = {
@@ -1107,7 +1117,7 @@ onBeforeUnmount(() => {
 					@parameter-blur="onParameterBlur"
 				/>
 				<ParameterInputList
-					:parameters="nodeSettings"
+					:parameters="setting"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
