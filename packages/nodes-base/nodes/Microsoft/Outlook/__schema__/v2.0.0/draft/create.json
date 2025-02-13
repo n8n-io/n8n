@@ -95,8 +95,7 @@
                             }
                         },
                         "required": [
-                            "name",
-                            "address"
+                            "name"
                         ]
                     }
                 },
@@ -121,7 +120,8 @@
                             }
                         },
                         "required": [
-                            "name"
+                            "name",
+                            "address"
                         ]
                     }
                 },
@@ -192,36 +192,5 @@
                 "flagStatus"
             ]
         }
-    },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "id",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "changeKey",
-        "categories",
-        "receivedDateTime",
-        "sentDateTime",
-        "hasAttachments",
-        "internetMessageId",
-        "subject",
-        "bodyPreview",
-        "importance",
-        "parentFolderId",
-        "conversationId",
-        "conversationIndex",
-        "isDeliveryReceiptRequested",
-        "isReadReceiptRequested",
-        "isRead",
-        "isDraft",
-        "webLink",
-        "inferenceClassification",
-        "body",
-        "toRecipients",
-        "ccRecipients",
-        "bccRecipients",
-        "replyTo",
-        "flag"
-    ]
+    }
 }
