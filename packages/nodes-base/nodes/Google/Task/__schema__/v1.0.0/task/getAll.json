@@ -22,13 +22,7 @@
         "position": {
             "type": "string"
         },
-        "notes": {
-            "type": "string"
-        },
         "status": {
-            "type": "string"
-        },
-        "due": {
             "type": "string"
         },
         "links": {
@@ -54,6 +48,9 @@
             }
         },
         "webViewLink": {
+            "type": "string"
+        },
+        "due": {
             "type": "string"
         }
     },
