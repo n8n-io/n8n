@@ -278,7 +278,6 @@
         }
     },
     "required": [
-        "id",
-        "labelNames"
+        "id"
     ]
 }
