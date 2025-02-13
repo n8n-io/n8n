@@ -43,9 +43,6 @@
                 "escalation_calculation": {
                     "type": "object",
                     "properties": {
-                        "first_response_at": {
-                            "type": "string"
-                        },
                         "last_update_at": {
                             "type": "string"
                         },
@@ -66,6 +63,9 @@
                         },
                         "escalation_disabled": {
                             "type": "boolean"
+                        },
+                        "first_response_at": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -87,30 +87,6 @@
             "type": "string"
         },
         "checklist_id": {
-            "type": "null"
-        },
-        "product": {
-            "type": "string"
-        },
-        "ticket_severity": {
-            "type": "string"
-        },
-        "sub_priority": {
-            "type": "string"
-        },
-        "resolution": {
-            "type": "string"
-        },
-        "type_from_ahlsell": {
-            "type": "string"
-        },
-        "wait_for_3rd_party": {
-            "type": "string"
-        },
-        "internal_ticket": {
-            "type": "boolean"
-        },
-        "internal_issue_type": {
             "type": "null"
         },
         "articles": {
@@ -171,10 +147,10 @@
                                 "preferences": {
                                     "type": "object",
                                     "properties": {
-                                        "Content-Type": {
+                                        "Mime-Type": {
                                             "type": "string"
                                         },
-                                        "Mime-Type": {
+                                        "Content-Type": {
                                             "type": "string"
                                         },
                                         "Content-ID": {
@@ -236,6 +212,30 @@
                     "sender"
                 ]
             }
+        },
+        "product": {
+            "type": "string"
+        },
+        "ticket_severity": {
+            "type": "string"
+        },
+        "sub_priority": {
+            "type": "string"
+        },
+        "resolution": {
+            "type": "string"
+        },
+        "type_from_ahlsell": {
+            "type": "string"
+        },
+        "wait_for_3rd_party": {
+            "type": "string"
+        },
+        "internal_ticket": {
+            "type": "boolean"
+        },
+        "internal_issue_type": {
+            "type": "null"
         }
     }
 }
