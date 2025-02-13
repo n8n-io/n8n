@@ -25,6 +25,9 @@
         "impressions": {
             "type": "string"
         },
+        "interactionRate": {
+            "type": "number"
+        },
         "interactions": {
             "type": "string"
         },
@@ -33,12 +36,6 @@
         },
         "amountMicros": {
             "type": "string"
-        },
-        "interactionRate": {
-            "type": "number"
-        },
-        "optimizationScore": {
-            "type": "number"
         }
     }
 }
