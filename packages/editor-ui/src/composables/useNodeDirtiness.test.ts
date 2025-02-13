@@ -1,204 +1,190 @@
-import { createTestNode } from '@/__tests__/mocks';
+/* eslint-disable n8n-local-rules/no-unneeded-backticks */
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type FrontendSettings } from '@n8n/api-types';
-import { createTestingPinia } from '@pinia/testing';
-import { type INodeConnections, NodeConnectionType } from 'n8n-workflow';
-import { setActivePinia } from 'pinia';
-import type router from 'vue-router';
-
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn().mockReturnValue({
-		allNodes: [],
-		runWorkflow: vi.fn(),
-		subWorkflowExecutionError: null,
-		getWorkflowRunData: null,
-		setWorkflowExecutionData: vi.fn(),
-		activeExecutionId: null,
-		nodesIssuesExist: false,
-		executionWaitingForWebhook: false,
-		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
-		getNodeByName: vi.fn(),
-		getExecution: vi.fn(),
-		nodeIssuesExit: vi.fn(),
-		checkIfNodeHasChatParent: vi.fn(),
-		getParametersLastUpdate: vi.fn(),
-		getPinnedDataLastUpdate: vi.fn(),
-		outgoingConnectionsByNodeName: vi.fn(),
-	}),
-}));
-
-vi.mock('@/stores/pushConnection.store', () => ({
-	usePushConnectionStore: vi.fn().mockReturnValue({
-		isConnected: true,
-	}),
-}));
-
-vi.mock('@/composables/useTelemetry', () => ({
-	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
-}));
-
-vi.mock('@/composables/useI18n', () => ({
-	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
-}));
-
-vi.mock('@/composables/useExternalHooks', () => ({
-	useExternalHooks: vi.fn().mockReturnValue({
-		run: vi.fn(),
-	}),
-}));
-
-vi.mock('@/composables/useToast', () => ({
-	useToast: vi.fn().mockReturnValue({
-		clearAllStickyNotifications: vi.fn(),
-		showMessage: vi.fn(),
-		showError: vi.fn(),
-	}),
-}));
-
-vi.mock('@/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: vi.fn().mockReturnValue({
-		getCurrentWorkflow: vi.fn(),
-		saveCurrentWorkflow: vi.fn(),
-		getWorkflowDataToSave: vi.fn(),
-		setDocumentTitle: vi.fn(),
-		executeData: vi.fn(),
-		getNodeTypes: vi.fn().mockReturnValue([]),
-	}),
-}));
-
-vi.mock('@/composables/useNodeHelpers', () => ({
-	useNodeHelpers: vi.fn().mockReturnValue({
-		updateNodesExecutionIssues: vi.fn(),
-	}),
-}));
-
-vi.mock('vue-router', async (importOriginal) => {
-	const { RouterLink } = await importOriginal<typeof router>();
-	return {
-		RouterLink,
-		useRouter: vi.fn().mockReturnValue({
-			push: vi.fn(),
-		}),
-		useRoute: vi.fn(),
-	};
-});
+import { uniq } from 'lodash-es';
+import { type IConnections, type IRunData, NodeConnectionType } from 'n8n-workflow';
+import { createPinia, setActivePinia } from 'pinia';
+import { type RouteLocationNormalizedLoaded } from 'vue-router';
 
 describe(useNodeDirtiness, () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 
-	beforeAll(() => {
-		const pinia = createTestingPinia({ stubActions: false });
-
-		setActivePinia(pinia);
-
+	beforeEach(() => {
+		vi.useFakeTimers();
+		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		settingsStore = useSettingsStore();
+
+		// Enable new partial execution
+		settingsStore.settings = {
+			partialExecution: { version: 2, enforce: true },
+		} as FrontendSettings;
 	});
 
-	describe.only('dirtinessByName', () => {
-		beforeEach(() => {
-			// Enable new partial execution
-			settingsStore.settings = {
-				partialExecution: { version: 2, enforce: true },
-			} as FrontendSettings;
+	it('should mark nodes with run data older than the last update time as dirty', async () => {
+		expect(
+			await calculateDirtiness({
+				workflow: `
+				a✅
+				b✅
+				c✅
+				`,
+				action: () => workflowsStore.setNodeParameters({ name: 'a', value: 1 }),
+			}),
+		).toMatchInlineSnapshot(`
+				{
+				  "a": "parameters-updated",
+				}
+			`);
+	});
 
-			vi.mocked(workflowsStore).getWorkflowRunData = {
-				node1: [
-					{
-						startTime: +new Date('2025-01-01'), // ran before parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node2: [
-					{
-						startTime: +new Date('2025-01-03'), // ran after parameter update
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-					},
-				],
-				node3: [], // never ran before
-			};
+	it('should mark nodes with a dirty node somewhere in its upstream as upstream-dirty', async () => {
+		expect(
+			await calculateDirtiness({
+				workflow: `
+				a✅ -> b✅
+				b -> c✅
+				c -> d
+				`,
+				action: () => workflowsStore.setNodeParameters({ name: 'b', value: 1 }),
+			}),
+		).toMatchInlineSnapshot(`
+				{
+				  "b": "parameters-updated",
+				  "c": "upstream-dirty",
+				}
+			`);
+	});
 
-			vi.mocked(workflowsStore).allNodes = [
-				createTestNode({ name: 'node1' }),
-				createTestNode({ name: 'node2' }),
-				createTestNode({ name: 'node3' }),
-			];
+	it('should return even if the connections forms a loop', async () => {
+		expect(
+			await calculateDirtiness({
+				workflow: `
+				a✅ -> b✅
+				b -> c✅
+				c -> d
+				d -> e✅
+				e -> b
+				`,
+				action: () => workflowsStore.setNodeParameters({ name: 'a', value: 1 }),
+			}),
+		).toMatchInlineSnapshot(`
+				{
+				  "a": "parameters-updated",
+				  "b": "upstream-dirty",
+				  "c": "upstream-dirty",
+				  "e": "upstream-dirty",
+				}
+			`);
+	});
 
-			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation(
-				(nodeName) =>
-					({
-						node1: +new Date('2025-01-02'),
-						node2: +new Date('2025-01-02'),
-						node3: +new Date('2025-01-02'),
-					})[nodeName],
+	it('should mark downstream nodes of a disabled node dirty', async () => {
+		expect(
+			await calculateDirtiness({
+				workflow: `
+				a✅ -> b✅
+				b -> c✅
+				`,
+				action: () =>
+					useNodeHelpers().disableNodes([workflowsStore.nodesByName.b], { trackHistory: true }),
+			}),
+		).toMatchInlineSnapshot(`
+			{
+			  "c": "incoming-connections-updated",
+			}
+		`);
+	});
+
+	it('should restore original dirtiness after undoing a command', async () => {
+		expect(
+			await calculateDirtiness({
+				workflow: `
+				a✅ -> b✅
+				b -> c✅
+				`,
+				action: async () => {
+					useNodeHelpers().disableNodes([workflowsStore.nodesByName.b], { trackHistory: true });
+					await useHistoryHelper({} as RouteLocationNormalizedLoaded).undo();
+				},
+			}),
+		).toMatchInlineSnapshot(`{}`);
+	});
+
+	async function calculateDirtiness({
+		workflow,
+		action,
+	}: { workflow: string; action: () => Promise<void> | void }) {
+		const parsedConnections = workflow
+			.split('\n')
+			.filter((line) => line.trim() !== '')
+			.map((line) =>
+				line.split('->').flatMap((node) => {
+					const [name, second] = node.trim().split('✅');
+
+					return name ? [{ name, hasData: second !== undefined }] : [];
+				}),
 			);
-			vi.mocked(workflowsStore).getPinnedDataLastUpdate.mockReturnValue(undefined);
-		});
-
-		it('should mark nodes with run data older than the last update time as dirty', () => {
-			function calculateDirtiness(workflow: string) {
-				vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(() => ({}));
-				const { dirtinessByName } = useNodeDirtiness();
-
-				return dirtinessByName.value;
+		const nodes = uniq(parsedConnections?.flat()).map(({ name }) => createTestNode({ name }));
+		const connections = parsedConnections?.reduce<IConnections>((conn, [from, to]) => {
+			if (!to) {
+				return conn;
 			}
 
-			expect(
-				calculateDirtiness(`
-				A* -> B
-				B -> C
-				C
-				`),
-			).toMatchInlineSnapshot(`
-				{
-				  "node1": "parameters-updated",
-				}
-			`);
+			const conns = conn[from.name]?.[NodeConnectionType.Main]?.[0] ?? [];
+
+			conn[from.name] = {
+				...conn[from.name],
+				[NodeConnectionType.Main]: [
+					[...conns, { node: to.name, type: NodeConnectionType.Main, index: conns.length }],
+					...(conn[from.name]?.Main?.slice(1) ?? []),
+				],
+			};
+			return conn;
+		}, {});
+		const wf = createTestWorkflow({ nodes, connections });
+
+		workflowsStore.setNodes(wf.nodes);
+		workflowsStore.setConnections(wf.connections);
+
+		workflowsStore.setWorkflowExecutionData({
+			id: wf.id,
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			workflowData: wf,
+			startedAt: new Date(0),
+			createdAt: new Date(0),
+			data: {
+				resultData: {
+					runData: nodes.reduce<IRunData>((acc, node) => {
+						if (parsedConnections.some((c) => c.some((n) => n.name === node.name && n.hasData))) {
+							acc[node.name] = [
+								{
+									startTime: +new Date('2025-01-01'), // ran before parameter update
+									executionTime: 0,
+									executionStatus: 'success',
+									source: [],
+								},
+							];
+						}
+
+						return acc;
+					}, {}),
+				},
+			},
 		});
 
-		it('should mark nodes with a dirty node somewhere in its upstream as upstream-dirty', () => {
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(
-				(nodeName) =>
-					({
-						node1: { main: [[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }]] },
-						node2: { main: [[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }]] },
-					})[nodeName] ?? ({} as INodeConnections),
-			);
+		vi.setSystemTime(new Date('2025-01-02'));
+		await action();
 
-			const { dirtinessByName } = useNodeDirtiness();
+		const { dirtinessByName } = useNodeDirtiness();
 
-			expect(dirtinessByName.value).toMatchInlineSnapshot(`
-				{
-				  "node1": "parameters-updated",
-				  "node2": "upstream-dirty",
-				}
-			`);
-		});
-
-		it('should return even if the connections forms a loop', () => {
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(
-				(nodeName) =>
-					({
-						node1: { main: [[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }]] },
-						node2: { main: [[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }]] },
-					})[nodeName] ?? ({} as INodeConnections),
-			);
-
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toMatchInlineSnapshot(`
-				{
-				  "node1": "parameters-updated",
-				  "node2": "upstream-dirty",
-				}
-			`);
-		});
-	});
+		return dirtinessByName.value;
+	}
 });

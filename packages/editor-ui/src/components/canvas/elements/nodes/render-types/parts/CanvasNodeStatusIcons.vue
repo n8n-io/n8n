@@ -24,7 +24,7 @@ const {
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
-const isStale = computed(
+const isParameterChanged = computed(
 	() =>
 		render.value.type === CanvasNodeRenderType.Default &&
 		render.value.options.dirtiness === 'parameters-updated',
@@ -75,7 +75,7 @@ const isStale = computed(
 		<FontAwesomeIcon icon="sync-alt" spin />
 	</div>
 	<div
-		v-else-if="isStale"
+		v-else-if="isParameterChanged"
 		data-test-id="canvas-node-status-warning"
 		:class="[$style.status, $style.warning]"
 	>

@@ -35,11 +35,9 @@ function markDownstreamDirtyRecursively(
 			for (const { node } of connections ?? []) {
 				const hasRunData = (runDataByNode[node] ?? []).length > 0;
 
-				if (!hasRunData || dirtiness[node] !== undefined) {
-					continue;
+				if (hasRunData) {
+					dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
 				}
-
-				dirtiness[node] = 'upstream-dirty';
 
 				markDownstreamDirtyRecursively(
 					node,
@@ -56,7 +54,7 @@ function markDownstreamDirtyRecursively(
 /**
  * Does the command make the given node dirty?
  */
-function shouldMarkDirty(
+function shouldCommandMarkDirty(
 	command: Undoable,
 	nodeName: string,
 	nodeLastRanAt: number,
@@ -68,7 +66,7 @@ function shouldMarkDirty(
 
 	if (command instanceof BulkCommand) {
 		return command.commands.some((cmd) =>
-			shouldMarkDirty(cmd, nodeName, nodeLastRanAt, getIncomingConnections),
+			shouldCommandMarkDirty(cmd, nodeName, nodeLastRanAt, getIncomingConnections),
 		);
 	}
 
@@ -102,7 +100,7 @@ function shouldMarkDirty(
 }
 
 /**
- * Determines the subgraph that is affected by the change made after the last execution
+ * Determines the subgraph that is affected by changes made after the last (partial) execution
  */
 export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
@@ -129,6 +127,15 @@ export function useNodeDirtiness() {
 			);
 		}
 
+		function shouldMarkDirty(command: Undoable, nodeName: string, nodeLastRanAt: number) {
+			return shouldCommandMarkDirty(
+				command,
+				nodeName,
+				nodeLastRanAt,
+				workflowsStore.incomingConnectionsByNodeName,
+			);
+		}
+
 		for (const node of workflowsStore.allNodes) {
 			const nodeName = node.name;
 			const runAt = runDataByNode[nodeName]?.[0]?.startTime ?? 0;
@@ -145,12 +152,7 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			if (
-				runAt &&
-				historyStore.undoStack.some((command) =>
-					shouldMarkDirty(command, nodeName, runAt, workflowsStore.incomingConnectionsByNodeName),
-				)
-			) {
+			if (historyStore.undoStack.some((command) => shouldMarkDirty(command, nodeName, runAt))) {
 				dirtiness[nodeName] = 'incoming-connections-updated';
 				markDownstreamDirty(nodeName);
 				continue;
