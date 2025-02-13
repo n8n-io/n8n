@@ -10,42 +10,19 @@
                 "message_id": {
                     "type": "integer"
                 },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "is_bot": {
-                            "type": "boolean"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
                 "chat": {
                     "type": "object",
                     "properties": {
                         "id": {
                             "type": "integer"
                         },
-                        "first_name": {
+                        "username": {
                             "type": "string"
                         },
                         "type": {
                             "type": "string"
                         },
-                        "username": {
+                        "first_name": {
                             "type": "string"
                         }
                     },
@@ -86,6 +63,29 @@
                             "height"
                         ]
                     }
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "is_bot",
+                        "first_name",
+                        "username"
+                    ]
                 }
             },
             "required": [
