@@ -6,6 +6,7 @@ import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.v
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { tagMatchesSearch } from '@/utils/tagUtils';
 
 defineOptions({ name: 'TagsView' });
 
@@ -53,7 +54,7 @@ const rows = computed(() => {
 
 	const disabled = isCreateEnabled.value || !!updateId.value || !!deleteId.value;
 	const tagRows = props.tags
-		.filter((tag) => stickyIds.value.has(tag.id) || matches(tag.name, search.value))
+		.filter((tag) => stickyIds.value.has(tag.id) || tagMatchesSearch(tag, search.value))
 		.map(
 			(tag): ITagRow => ({
 				tag,

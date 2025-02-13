@@ -8,6 +8,7 @@ import type { EventBus } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
+import { tagMatchesSearch } from '@/utils/tagUtils';
 
 interface TagsDropdownProps {
 	placeholder: string;
@@ -59,7 +60,7 @@ const container = ref<HTMLDivElement>();
 const dropdownId = uuid();
 
 const options = computed<ITag[]>(() => {
-	return props.allTags.filter((tag: ITag) => tag && tag.name.includes(filter.value));
+	return props.allTags.filter((tag: ITag) => tag && tagMatchesSearch(tag, filter.value));
 });
 
 const appliedTags = computed<string[]>(() => {
