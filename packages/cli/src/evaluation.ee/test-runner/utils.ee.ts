@@ -11,7 +11,6 @@ import type {
 
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -23,7 +22,7 @@ import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runne
  * to decide which nodes to pin.
  */
 export function createPinData(
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 	mockedNodes: MockedNodeItem[],
 	executionData: IRunExecutionData,
 	pastWorkflowData?: IWorkflowBase,
