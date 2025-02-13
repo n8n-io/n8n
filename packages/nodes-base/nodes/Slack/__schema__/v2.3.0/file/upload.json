@@ -79,6 +79,12 @@
         "is_starred": {
             "type": "boolean"
         },
+        "channels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "has_more_shares": {
             "type": "boolean"
         },
