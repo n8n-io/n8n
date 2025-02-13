@@ -104,10 +104,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	@JoinColumn({ name: 'parentFolderId' })
 	parentFolder: Folder | null;
-
-	display() {
-		return `"${this.name}" (ID: ${this.id})`;
-	}
 }
 
 /**

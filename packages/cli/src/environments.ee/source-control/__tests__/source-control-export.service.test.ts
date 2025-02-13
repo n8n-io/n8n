@@ -247,14 +247,15 @@ describe('SourceControlExportService', () => {
 						projectRelations: [],
 					}),
 					workflow: mock({
-						display: () => 'TestWorkflow',
+						id: 'test-workflow-id',
+						name: 'TestWorkflow',
 					}),
 				}),
 			]);
 
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
-				'Workflow TestWorkflow has no owner',
+				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
 			);
 		});
 	});
