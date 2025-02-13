@@ -7,9 +7,6 @@
                 "on": {
                     "type": "boolean"
                 },
-                "bri": {
-                    "type": "integer"
-                },
                 "alert": {
                     "type": "string"
                 },
@@ -18,6 +15,9 @@
                 },
                 "reachable": {
                     "type": "boolean"
+                },
+                "bri": {
+                    "type": "integer"
                 },
                 "ct": {
                     "type": "integer"
@@ -117,11 +117,7 @@
                                 }
                             }
                         }
-                    },
-                    "required": [
-                        "mindimlevel",
-                        "maxlumen"
-                    ]
+                    }
                 },
                 "streaming": {
                     "type": "object",
