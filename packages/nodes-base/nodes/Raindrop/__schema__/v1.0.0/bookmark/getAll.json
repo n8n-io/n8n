@@ -42,16 +42,16 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
+                    "link": {
                         "type": "string"
                     },
-                    "link": {
+                    "type": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "type",
-                    "link"
+                    "link",
+                    "type"
                 ]
             }
         },
@@ -60,6 +60,45 @@
             "items": {
                 "type": "string"
             }
+        },
+        "important": {
+            "type": "boolean"
+        },
+        "reminder": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "date"
+            ]
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "string"
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "$ref": {
+                    "type": "string"
+                },
+                "$id": {
+                    "type": "integer"
+                },
+                "oid": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "$ref",
+                "$id",
+                "oid"
+            ]
         },
         "highlights": {
             "type": "array",
@@ -99,34 +138,6 @@
                 ]
             }
         },
-        "important": {
-            "type": "boolean"
-        },
-        "removed": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "string"
-        },
-        "collection": {
-            "type": "object",
-            "properties": {
-                "$ref": {
-                    "type": "string"
-                },
-                "$id": {
-                    "type": "integer"
-                },
-                "oid": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "$ref",
-                "$id",
-                "oid"
-            ]
-        },
         "lastUpdate": {
             "type": "string"
         },
@@ -161,17 +172,6 @@
         },
         "collectionId": {
             "type": "integer"
-        },
-        "reminder": {
-            "type": "object",
-            "properties": {
-                "date": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "date"
-            ]
         }
     },
     "required": [
@@ -185,10 +185,10 @@
         "cover",
         "media",
         "tags",
-        "highlights",
         "removed",
         "created",
         "collection",
+        "highlights",
         "lastUpdate",
         "domain",
         "creatorRef",
