@@ -211,7 +211,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			]);
 	}
 
-	private applySelect(qb: SelectQueryBuilder<WorkflowEntity>, select?: Record<string, any>): void {
+	private applySelect(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		select?: Record<string, boolean>,
+	): void {
 		// Always start with workflow.id
 		qb.select(['workflow.id']);
 
