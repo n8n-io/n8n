@@ -10,13 +10,13 @@
         "attributes": {
             "type": "object",
             "properties": {
+                "unit_of_measurement": {
+                    "type": "string"
+                },
                 "friendly_name": {
                     "type": "string"
                 },
                 "state_class": {
-                    "type": "string"
-                },
-                "unit_of_measurement": {
                     "type": "string"
                 },
                 "device_class": {
