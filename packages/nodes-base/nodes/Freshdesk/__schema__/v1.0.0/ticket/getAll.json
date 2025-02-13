@@ -66,6 +66,12 @@
             "items": {
                 "type": "string"
             }
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
         }
     },
     "required": [
