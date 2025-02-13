@@ -127,19 +127,25 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('add', () => {
-			test('should skip inactive workflow in `init` and `leadershipChange` activation modes', async () => {
-				const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
-				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowManager, 'addTriggersAndPollers');
-				workflowRepository.findById.mockResolvedValue(mock<WorkflowEntity>({ active: false }));
+			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
+				'should skip inactive workflow in `%s` activation mode',
+				async (mode) => {
+					const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
+					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addTriggersAndPollersSpy = jest.spyOn(
+						activeWorkflowManager,
+						'addTriggersAndPollers',
+					);
+					workflowRepository.findById.mockResolvedValue(mock<WorkflowEntity>({ active: false }));
 
-				const result = await activeWorkflowManager.add('some-id', 'init');
+					const result = await activeWorkflowManager.add('some-id', mode);
 
-				expect(checkSpy).not.toHaveBeenCalled();
-				expect(addWebhooksSpy).not.toHaveBeenCalled();
-				expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
-				expect(result).toBe(false);
-			});
+					expect(checkSpy).not.toHaveBeenCalled();
+					expect(addWebhooksSpy).not.toHaveBeenCalled();
+					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(result).toBe(false);
+				},
+			);
 		});
 	});
 });
