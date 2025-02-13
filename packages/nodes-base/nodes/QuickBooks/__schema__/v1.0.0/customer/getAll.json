@@ -50,11 +50,25 @@
                 "Id"
             ]
         },
+        "Notes": {
+            "type": "string"
+        },
         "Job": {
             "type": "boolean"
         },
         "BillWithParent": {
             "type": "boolean"
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
         },
         "CurrencyRef": {
             "type": "object",
@@ -137,20 +151,6 @@
             "required": [
                 "Address"
             ]
-        },
-        "SalesTermRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
-        "Notes": {
-            "type": "string"
         },
         "WebAddr": {
             "type": "object",
