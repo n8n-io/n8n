@@ -54,10 +54,10 @@ const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
 
-const filters = computed<Filters>(
-	() =>
-		({ ...route.query, setupNeeded: route.query.setupNeeded?.toString() === 'true' }) as Filters,
-);
+const filters = ref<Filters>({
+	...route.query,
+	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+} as Filters);
 const loading = ref(false);
 
 const needsSetup = (data: string | undefined): boolean => {
@@ -204,7 +204,7 @@ onMounted(() => {
 		resource-key="credentials"
 		:resources="allCredentials"
 		:initialize="initialize"
-		:filters="filters"
+		v-model:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"

@@ -187,6 +187,7 @@ const onFiltersUpdated = async () => {
 const onSearchUpdated = async (search: string) => {
 	if (search) {
 		currentPage.value = 1;
+		saveFiltersOnQueryString();
 		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
 	} else {
 		currentPage.value = 1;

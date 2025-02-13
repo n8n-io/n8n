@@ -158,9 +158,10 @@ type Filters = BaseFilters & { incomplete?: boolean };
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
-const filters = computed<Filters>(
-	() => ({ ...route.query, incomplete: route.query.incomplete?.toString() === 'true' }) as Filters,
-);
+const filters = ref<Filters>({
+	...route.query,
+	incomplete: route.query.incomplete?.toString() === 'true',
+} as Filters);
 
 const handleFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
 	const Resource = resource as EnvironmentVariable;
@@ -226,7 +227,7 @@ onMounted(() => {
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="variables"
-		:filters="filters"
+		v-model:filters="filters"
 		:additional-filters-handler="handleFilter"
 		:shareable="false"
 		:display-name="displayName"
