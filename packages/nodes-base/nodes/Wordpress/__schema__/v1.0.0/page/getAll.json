@@ -106,27 +106,6 @@
             "properties": {
                 "footnotes": {
                     "type": "string"
-                },
-                "advanced_seo_description": {
-                    "type": "string"
-                },
-                "jetpack_seo_html_title": {
-                    "type": "string"
-                },
-                "jetpack_seo_noindex": {
-                    "type": "boolean"
-                },
-                "jetpack_post_was_ever_published": {
-                    "type": "boolean"
-                },
-                "_starter_page_template": {
-                    "type": "string"
-                },
-                "_wpcom_template_layout_category": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             },
             "required": [
@@ -317,15 +296,6 @@
                 "wp:attachment",
                 "curies"
             ]
-        },
-        "jetpack_sharing_enabled": {
-            "type": "boolean"
-        },
-        "jetpack_likes_enabled": {
-            "type": "boolean"
-        },
-        "jetpack_shortlink": {
-            "type": "string"
         }
     },
     "required": [
