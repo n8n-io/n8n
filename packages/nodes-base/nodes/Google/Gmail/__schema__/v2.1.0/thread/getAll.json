@@ -12,8 +12,6 @@
         }
     },
     "required": [
-        "id",
-        "snippet",
-        "historyId"
+        "id"
     ]
 }
