@@ -46,7 +46,6 @@
                     }
                 },
                 "required": [
-                    "id",
                     "text",
                     "type",
                     "value",
