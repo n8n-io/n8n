@@ -1,13 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "profileUrl": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "fullName": {
+            "type": "string"
+        },
+        "connectionDegree": {
+            "type": "string"
+        },
         "query": {
             "type": "string"
         },
         "timestamp": {
             "type": "string"
         },
-        "profileUrl": {
+        "location": {
             "type": "string"
         }
     }
