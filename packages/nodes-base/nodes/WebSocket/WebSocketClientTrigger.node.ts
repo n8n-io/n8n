@@ -12,20 +12,20 @@ type Options = {
 	jsonParseBody: boolean;
 };
 
-export class WebSocketTrigger implements INodeType {
+export class WebSocketClientTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'WebSocket Trigger',
-		name: 'webSocketTrigger',
+		displayName: 'WebSocket Client Trigger',
+		name: 'webSocketClientTrigger',
 		description: 'Starts the workflow when a webhook message is recieved',
 		icon: {
-			light: 'file:websocket.svg',
-			dark: 'file:websocket-dark.svg',
+			light: 'file:websocket-client.svg',
+			dark: 'file:websocket-client-dark.svg',
 		},
 		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,
 		defaults: {
-			name: 'WebSocket Trigger',
+			name: 'WebSocket Client Trigger',
 		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
