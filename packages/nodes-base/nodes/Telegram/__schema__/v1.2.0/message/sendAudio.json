@@ -91,7 +91,6 @@
             },
             "required": [
                 "message_id",
-                "from",
                 "chat",
                 "date"
             ]
