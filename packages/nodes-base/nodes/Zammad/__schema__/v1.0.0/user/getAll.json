@@ -64,6 +64,12 @@
         "preferences": {
             "type": "object",
             "properties": {
+                "locale": {
+                    "type": "string"
+                },
+                "theme": {
+                    "type": "string"
+                },
                 "notification_config": {
                     "type": "object",
                     "properties": {
@@ -271,14 +277,8 @@
                         "matrix"
                     ]
                 },
-                "locale": {
-                    "type": "string"
-                },
                 "intro": {
                     "type": "boolean"
-                },
-                "theme": {
-                    "type": "string"
                 },
                 "secondaryAction": {
                     "type": "string"
