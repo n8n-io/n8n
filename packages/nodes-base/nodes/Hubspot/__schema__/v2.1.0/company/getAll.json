@@ -39,17 +39,20 @@
                                     "timestamp": {
                                         "type": "integer"
                                     },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
                                     "sourceId": {
                                         "type": "string"
                                     },
-                                    "source": {
+                                    "requestId": {
                                         "type": "string"
                                     },
                                     "updatedByUserId": {
                                         "type": "integer"
-                                    },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
                                     }
                                 },
                                 "required": [
