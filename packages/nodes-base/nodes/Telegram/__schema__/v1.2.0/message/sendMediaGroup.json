@@ -41,13 +41,13 @@
                             "id": {
                                 "type": "integer"
                             },
+                            "username": {
+                                "type": "string"
+                            },
                             "type": {
                                 "type": "string"
                             },
                             "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
                                 "type": "string"
                             }
                         },
