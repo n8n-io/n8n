@@ -176,15 +176,6 @@
         "origin": {
             "type": "string"
         },
-        "origin_id": {
-            "type": "null"
-        },
-        "channel": {
-            "type": "null"
-        },
-        "channel_id": {
-            "type": "null"
-        },
         "stage_order_nr": {
             "type": "integer"
         },
