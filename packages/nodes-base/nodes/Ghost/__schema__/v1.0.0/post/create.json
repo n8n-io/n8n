@@ -424,6 +424,9 @@
         "url": {
             "type": "string"
         },
+        "reading_time": {
+            "type": "integer"
+        },
         "og_title": {
             "type": "null"
         },
@@ -462,9 +465,6 @@
         },
         "newsletter": {
             "type": "null"
-        },
-        "reading_time": {
-            "type": "integer"
         }
     }
 }
