@@ -18,8 +18,6 @@ import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow'
 import {
 	buildInputSchemaField,
 	buildJsonSchemaExampleField,
-	inputSchemaField,
-	jsonSchemaExampleField,
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
