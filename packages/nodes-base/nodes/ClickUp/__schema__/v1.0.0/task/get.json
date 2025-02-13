@@ -4,6 +4,9 @@
         "id": {
             "type": "string"
         },
+        "custom_id": {
+            "type": "null"
+        },
         "custom_item_id": {
             "type": "integer"
         },
@@ -64,9 +67,6 @@
                 "username": {
                     "type": "string"
                 },
-                "color": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 }
@@ -107,6 +107,36 @@
                 ]
             }
         },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "null"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "color",
+                    "initials",
+                    "email"
+                ]
+            }
+        },
         "watchers": {
             "type": "array",
             "items": {
@@ -114,9 +144,6 @@
                 "properties": {
                     "id": {
                         "type": "integer"
-                    },
-                    "username": {
-                        "type": "string"
                     },
                     "initials": {
                         "type": "string"
@@ -175,6 +202,12 @@
                                 "name": {
                                     "type": "string"
                                 },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
+                                "assignee": {
+                                    "type": "null"
+                                },
                                 "group_assignee": {
                                     "type": "null"
                                 },
@@ -190,137 +223,17 @@
                                 "start_date": {
                                     "type": "null"
                                 },
+                                "start_date_time": {
+                                    "type": "boolean"
+                                },
                                 "due_date": {
                                     "type": "null"
                                 },
+                                "due_date_time": {
+                                    "type": "boolean"
+                                },
                                 "sent_due_date_notif": {
                                     "type": "null"
-                                },
-                                "children": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "id": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "orderindex": {
-                                                "type": "integer"
-                                            },
-                                            "assignee": {
-                                                "type": "null"
-                                            },
-                                            "group_assignee": {
-                                                "type": "null"
-                                            },
-                                            "resolved": {
-                                                "type": "boolean"
-                                            },
-                                            "parent": {
-                                                "type": "string"
-                                            },
-                                            "date_created": {
-                                                "type": "string"
-                                            },
-                                            "start_date": {
-                                                "type": "null"
-                                            },
-                                            "start_date_time": {
-                                                "type": "null"
-                                            },
-                                            "due_date": {
-                                                "type": "null"
-                                            },
-                                            "due_date_time": {
-                                                "type": "null"
-                                            },
-                                            "sent_due_date_notif": {
-                                                "type": "null"
-                                            },
-                                            "children": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": "string"
-                                                        },
-                                                        "name": {
-                                                            "type": "string"
-                                                        },
-                                                        "orderindex": {
-                                                            "type": "number"
-                                                        },
-                                                        "assignee": {
-                                                            "type": "null"
-                                                        },
-                                                        "group_assignee": {
-                                                            "type": "null"
-                                                        },
-                                                        "resolved": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "parent": {
-                                                            "type": "string"
-                                                        },
-                                                        "date_created": {
-                                                            "type": "string"
-                                                        },
-                                                        "start_date": {
-                                                            "type": "null"
-                                                        },
-                                                        "start_date_time": {
-                                                            "type": "null"
-                                                        },
-                                                        "due_date": {
-                                                            "type": "null"
-                                                        },
-                                                        "due_date_time": {
-                                                            "type": "null"
-                                                        },
-                                                        "sent_due_date_notif": {
-                                                            "type": "null"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "id",
-                                                        "name",
-                                                        "orderindex",
-                                                        "assignee",
-                                                        "group_assignee",
-                                                        "resolved",
-                                                        "parent",
-                                                        "date_created",
-                                                        "start_date",
-                                                        "start_date_time",
-                                                        "due_date",
-                                                        "due_date_time",
-                                                        "sent_due_date_notif",
-                                                        "children"
-                                                    ]
-                                                }
-                                            }
-                                        },
-                                        "required": [
-                                            "id",
-                                            "name",
-                                            "orderindex",
-                                            "assignee",
-                                            "group_assignee",
-                                            "resolved",
-                                            "parent",
-                                            "date_created",
-                                            "start_date",
-                                            "start_date_time",
-                                            "due_date",
-                                            "due_date_time",
-                                            "sent_due_date_notif",
-                                            "children"
-                                        ]
-                                    }
                                 }
                             },
                             "required": [
@@ -381,6 +294,9 @@
                 ]
             }
         },
+        "points": {
+            "type": "null"
+        },
         "time_spent": {
             "type": "integer"
         },
@@ -424,6 +340,9 @@
                                         "color"
                                     ]
                                 }
+                            },
+                            "new_drop_down": {
+                                "type": "boolean"
                             }
                         }
                     },
@@ -442,36 +361,6 @@
                     "date_created",
                     "hide_from_guests",
                     "required"
-                ]
-            }
-        },
-        "linked_tasks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "task_id": {
-                        "type": "string"
-                    },
-                    "link_id": {
-                        "type": "string"
-                    },
-                    "date_created": {
-                        "type": "string"
-                    },
-                    "userid": {
-                        "type": "string"
-                    },
-                    "workspace_id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "task_id",
-                    "link_id",
-                    "date_created",
-                    "userid",
-                    "workspace_id"
                 ]
             }
         },
@@ -513,6 +402,9 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "token": {
+                    "type": "null"
                 },
                 "seo_optimized": {
                     "type": "boolean"
@@ -557,6 +449,9 @@
                 "name": {
                     "type": "string"
                 },
+                "hidden": {
+                    "type": "boolean"
+                },
                 "access": {
                     "type": "boolean"
                 }
@@ -576,6 +471,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "hidden": {
+                    "type": "boolean"
                 },
                 "access": {
                     "type": "boolean"
@@ -676,6 +574,9 @@
                     },
                     "url": {
                         "type": "string"
+                    },
+                    "email_data": {
+                        "type": "null"
                     },
                     "workspace_id": {
                         "type": "null"
