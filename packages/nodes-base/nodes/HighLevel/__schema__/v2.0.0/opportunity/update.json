@@ -22,9 +22,6 @@
                 "status": {
                     "type": "string"
                 },
-                "source": {
-                    "type": "string"
-                },
                 "lastStatusChangeAt": {
                     "type": "string"
                 },
@@ -73,6 +70,9 @@
                 "lastActionDate": {
                     "type": "string"
                 },
+                "indexVersion": {
+                    "type": "integer"
+                },
                 "followers": {
                     "type": "array",
                     "items": {
@@ -104,29 +104,12 @@
                     "required": [
                         "id",
                         "name",
-                        "email",
-                        "phone",
                         "tags",
                         "followers"
                     ]
                 },
-                "customFields": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "fieldValue"
-                        ]
-                    }
-                },
-                "indexVersion": {
-                    "type": "integer"
+                "source": {
+                    "type": "string"
                 }
             },
             "required": [
