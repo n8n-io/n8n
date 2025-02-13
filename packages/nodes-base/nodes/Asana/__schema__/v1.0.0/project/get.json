@@ -63,25 +63,6 @@
                     "description": {
                         "type": "string"
                     },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "name",
-                            "resource_type"
-                        ]
-                    },
                     "resource_subtype": {
                         "type": "string"
                     },
@@ -127,6 +108,21 @@
                             "gid": {
                                 "type": "string"
                             },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_subtype": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "is_formula_field": {
+                                "type": "boolean"
+                            },
                             "enum_options": {
                                 "type": "array",
                                 "items": {
@@ -156,21 +152,6 @@
                                         "resource_type"
                                     ]
                                 }
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_subtype": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "is_formula_field": {
-                                "type": "boolean"
                             }
                         },
                         "required": [
