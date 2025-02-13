@@ -1624,6 +1624,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
@@ -1667,6 +1668,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
@@ -1695,14 +1697,12 @@ describe('PUT /:workflowId/transfer', () => {
 
 	test('member transfers workflow from personal project to team project and wf contains a credential that they can use but not share', async () => {
 		// ARRANGE
-		const sourceProject = await getPersonalProject(member);
-		const destinationProject = await createTeamProject('destination project', admin);
-		const ownerProject = await getPersonalProject(owner);
+		const sourceProject = memberPersonalProject;
+		const destinationProject = await createTeamProject('destination project', member);
 		const workflow = await createWorkflow({}, sourceProject);
-		const credential = await saveCredential(randomCredentialPayload(), { project: ownerProject });
+		const credential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		await shareCredentialWithUsers(credential, [member]);
-		await linkUserToProject(member, destinationProject, 'project:admin');
 
 		// ACT
 		await testServer
@@ -1714,6 +1714,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
@@ -1727,7 +1728,7 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(allCredentialSharings).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					projectId: ownerProject.id,
+					projectId: ownerPersonalProject.id,
 					credentialsId: credential.id,
 					role: 'credential:owner',
 				}),
@@ -1742,8 +1743,8 @@ describe('PUT /:workflowId/transfer', () => {
 
 	test('member transfers workflow from their personal project to another team project in which they have editor role', async () => {
 		// ARRANGE
-		const sourceProject = await getPersonalProject(member);
-		const destinationProject = await createTeamProject('destination project', owner);
+		const sourceProject = memberPersonalProject;
+		const destinationProject = await createTeamProject('destination project');
 		const workflow = await createWorkflow({}, sourceProject);
 		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
 
@@ -1759,6 +1760,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
@@ -1787,12 +1789,11 @@ describe('PUT /:workflowId/transfer', () => {
 
 	test('member transfers workflow from a team project as project admin to another team project in which they have editor role', async () => {
 		// ARRANGE
-		const sourceProject = await createTeamProject('source project', owner);
-		const destinationProject = await createTeamProject('destination project', owner);
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
 		const workflow = await createWorkflow({}, sourceProject);
 		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
 
-		await linkUserToProject(member, sourceProject, 'project:admin');
 		await linkUserToProject(member, destinationProject, 'project:editor');
 
 		// ACT
@@ -1805,6 +1806,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
@@ -1831,15 +1833,14 @@ describe('PUT /:workflowId/transfer', () => {
 		);
 	});
 
-	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share the credential', async () => {
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share the credential that is only shared into the source project', async () => {
 		// ARRANGE
-		const sourceProject = await createTeamProject('source project', admin);
-		const destinationProject = await createTeamProject('destination project', owner);
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
 		const ownerProject = await getPersonalProject(owner);
 		const workflow = await createWorkflow({}, sourceProject);
-		const credential = await saveCredential(randomCredentialPayload(), { project: ownerProject });
+		const credential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-		await linkUserToProject(member, sourceProject, 'project:admin');
 		await linkUserToProject(member, destinationProject, 'project:editor');
 		await shareCredentialWithProjects(credential, [sourceProject]);
 
@@ -1853,6 +1854,7 @@ describe('PUT /:workflowId/transfer', () => {
 			})
 			.expect(200);
 
+		// ASSERT
 		const allWorkflowSharings = await getWorkflowSharing(workflow);
 		expect(allWorkflowSharings).toHaveLength(1);
 		expect(allWorkflowSharings[0]).toMatchObject({
