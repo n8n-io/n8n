@@ -19,16 +19,10 @@
         "idx": {
             "type": "integer"
         },
-        "naming_series": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "disabled": {
-            "type": "integer"
-        },
         "doctype": {
+            "type": "string"
+        },
+        "naming_series": {
             "type": "string"
         }
     },
