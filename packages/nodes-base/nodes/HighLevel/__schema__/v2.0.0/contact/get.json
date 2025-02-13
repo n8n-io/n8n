@@ -10,6 +10,21 @@
                 "type": "string"
             }
         },
+        "additionalPhones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "phone",
+                    "phoneLabel"
+                ]
+            }
+        },
         "dateAdded": {
             "type": "string"
         },
@@ -99,21 +114,6 @@
                 "required": [
                     "id",
                     "value"
-                ]
-            }
-        },
-        "additionalPhones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "phone": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "phone",
-                    "phoneLabel"
                 ]
             }
         },
