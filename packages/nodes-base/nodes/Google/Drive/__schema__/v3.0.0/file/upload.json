@@ -67,40 +67,6 @@
         "modifiedByMe": {
             "type": "boolean"
         },
-        "owners": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "kind": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "photoLink": {
-                        "type": "string"
-                    },
-                    "me": {
-                        "type": "boolean"
-                    },
-                    "permissionId": {
-                        "type": "string"
-                    },
-                    "emailAddress": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "kind",
-                    "displayName",
-                    "photoLink",
-                    "me",
-                    "permissionId",
-                    "emailAddress"
-                ]
-            }
-        },
         "lastModifyingUser": {
             "type": "object",
             "properties": {
@@ -132,22 +98,10 @@
                 "emailAddress"
             ]
         },
-        "shared": {
-            "type": "boolean"
-        },
-        "ownedByMe": {
-            "type": "boolean"
-        },
         "capabilities": {
             "type": "object",
             "properties": {
-                "canAcceptOwnership": {
-                    "type": "boolean"
-                },
                 "canAddChildren": {
-                    "type": "boolean"
-                },
-                "canAddMyDriveParent": {
                     "type": "boolean"
                 },
                 "canChangeCopyRequiresWriterPermission": {
@@ -216,9 +170,6 @@
                 "canRemoveContentRestriction": {
                     "type": "boolean"
                 },
-                "canRemoveMyDriveParent": {
-                    "type": "boolean"
-                },
                 "canRename": {
                     "type": "boolean"
                 },
@@ -229,6 +180,15 @@
                     "type": "boolean"
                 },
                 "canUntrash": {
+                    "type": "boolean"
+                },
+                "canAcceptOwnership": {
+                    "type": "boolean"
+                },
+                "canAddMyDriveParent": {
+                    "type": "boolean"
+                },
+                "canRemoveMyDriveParent": {
                     "type": "boolean"
                 }
             },
@@ -267,47 +227,6 @@
         },
         "copyRequiresWriterPermission": {
             "type": "boolean"
-        },
-        "writersCanShare": {
-            "type": "boolean"
-        },
-        "permissions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "kind": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    },
-                    "emailAddress": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "deleted": {
-                        "type": "boolean"
-                    },
-                    "pendingOwner": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "kind",
-                    "id",
-                    "type",
-                    "role"
-                ]
-            }
         },
         "permissionIds": {
             "type": "array",
@@ -359,6 +278,93 @@
                 "securityUpdateEligible",
                 "securityUpdateEnabled"
             ]
+        },
+        "owners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "photoLink": {
+                        "type": "string"
+                    },
+                    "me": {
+                        "type": "boolean"
+                    },
+                    "permissionId": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "displayName",
+                    "photoLink",
+                    "me",
+                    "permissionId",
+                    "emailAddress"
+                ]
+            }
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "ownedByMe": {
+            "type": "boolean"
+        },
+        "writersCanShare": {
+            "type": "boolean"
+        },
+        "permissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "pendingOwner": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id",
+                    "type",
+                    "role"
+                ]
+            }
         }
-    }
+    },
+    "required": [
+        "kind",
+        "id",
+        "name",
+        "mimeType"
+    ]
 }
