@@ -47,6 +47,9 @@
                         },
                         "last_name": {
                             "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -91,7 +94,6 @@
             },
             "required": [
                 "message_id",
-                "from",
                 "chat",
                 "date"
             ]
