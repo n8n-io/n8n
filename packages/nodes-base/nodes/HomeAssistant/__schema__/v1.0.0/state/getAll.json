@@ -22,12 +22,6 @@
                         "type": "string"
                     }
                 },
-                "user_id": {
-                    "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                },
                 "latitude": {
                     "type": "number"
                 },
@@ -38,6 +32,12 @@
                     "type": "integer"
                 },
                 "source": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "friendly_name": {
                     "type": "string"
                 }
             },
