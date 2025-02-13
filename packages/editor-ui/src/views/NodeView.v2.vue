@@ -187,6 +187,7 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	importTemplate,
 	revertAddNode,
 	createConnection,
 	revertCreateConnection,
@@ -476,16 +477,13 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	executionsStore.activeExecution = null;
 
 	isBlankRedirect.value = true;
+	const templateId = workflow.meta.templateId;
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId: workflow.meta.templateId },
+		query: { templateId },
 	});
 
-	const convertedNodes = workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
-
-	workflowsStore.setConnections(workflow.connections);
-	await addNodes(convertedNodes);
-	await workflowsStore.getNewWorkflowData(workflow.name, projectsStore.currentProjectId);
+	await importTemplate({ id: templateId, name: workflow.name, workflow });
 
 	uiStore.stateIsDirty = true;
 
@@ -526,12 +524,7 @@ async function openWorkflowTemplate(templateId: string) {
 	isBlankRedirect.value = true;
 	await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
-	const convertedNodes = data.workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
-
-	workflowsStore.setConnections(data.workflow.connections);
-	await addNodes(convertedNodes);
-	await workflowsStore.getNewWorkflowData(data.name, projectsStore.currentProjectId);
-	workflowsStore.addToWorkflowMetadata({ templateId });
+	await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
 
 	uiStore.stateIsDirty = true;
 
