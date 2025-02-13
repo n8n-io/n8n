@@ -94,6 +94,9 @@
                         "type": "string"
                     }
                 },
+                "snapshot_url": {
+                    "type": "null"
+                },
                 "twitter_screen_name": {
                     "type": "string"
                 },
