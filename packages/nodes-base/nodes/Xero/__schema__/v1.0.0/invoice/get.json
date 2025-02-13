@@ -13,6 +13,41 @@
         "Reference": {
             "type": "string"
         },
+        "Overpayments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "OverpaymentID": {
+                        "type": "string"
+                    },
+                    "CurrencyRate": {
+                        "type": "integer"
+                    },
+                    "AppliedAmount": {
+                        "type": "number"
+                    },
+                    "DateString": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "Total": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "OverpaymentID",
+                    "CurrencyRate",
+                    "AppliedAmount",
+                    "DateString",
+                    "Date",
+                    "LineItems",
+                    "Total"
+                ]
+            }
+        },
         "SentToContact": {
             "type": "boolean"
         },
@@ -70,16 +105,10 @@
                 "Name": {
                     "type": "string"
                 },
-                "FirstName": {
-                    "type": "string"
-                },
-                "LastName": {
-                    "type": "string"
-                },
                 "EmailAddress": {
                     "type": "string"
                 },
-                "AccountsReceivableTaxType": {
+                "BankAccountDetails": {
                     "type": "string"
                 },
                 "Addresses": {
@@ -90,10 +119,10 @@
                             "AddressType": {
                                 "type": "string"
                             },
-                            "AddressLine1": {
+                            "City": {
                                 "type": "string"
                             },
-                            "City": {
+                            "Region": {
                                 "type": "string"
                             },
                             "PostalCode": {
@@ -102,7 +131,7 @@
                             "Country": {
                                 "type": "string"
                             },
-                            "Region": {
+                            "AddressLine1": {
                                 "type": "string"
                             }
                         },
@@ -170,9 +199,6 @@
                 "IsCustomer": {
                     "type": "boolean"
                 },
-                "DefaultCurrency": {
-                    "type": "string"
-                },
                 "SalesTrackingCategories": {
                     "type": "array",
                     "items": {
@@ -238,7 +264,16 @@
                 "HasValidationErrors": {
                     "type": "boolean"
                 },
-                "BankAccountDetails": {
+                "FirstName": {
+                    "type": "string"
+                },
+                "LastName": {
+                    "type": "string"
+                },
+                "AccountsReceivableTaxType": {
+                    "type": "string"
+                },
+                "DefaultCurrency": {
                     "type": "string"
                 }
             },
@@ -284,6 +319,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "ItemCode": {
+                        "type": "string"
+                    },
                     "Description": {
                         "type": "string"
                     },
@@ -292,6 +330,24 @@
                     },
                     "AccountCode": {
                         "type": "string"
+                    },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Code": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "ItemID",
+                            "Code"
+                        ]
                     },
                     "Tracking": {
                         "type": "array",
@@ -324,28 +380,6 @@
                     },
                     "AccountID": {
                         "type": "string"
-                    },
-                    "ItemCode": {
-                        "type": "string"
-                    },
-                    "Item": {
-                        "type": "object",
-                        "properties": {
-                            "ItemID": {
-                                "type": "string"
-                            },
-                            "Name": {
-                                "type": "string"
-                            },
-                            "Code": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "ItemID",
-                            "Name",
-                            "Code"
-                        ]
                     }
                 },
                 "required": [
@@ -363,9 +397,6 @@
             "type": "string"
         },
         "CurrencyCode": {
-            "type": "string"
-        },
-        "Url": {
             "type": "string"
         }
     },
