@@ -91,14 +91,14 @@
         "is_custom_image": {
             "type": "boolean"
         },
-        "image_1024": {
-            "type": "string"
-        },
         "huddle_state": {
             "type": "string"
         },
         "huddle_state_expiration_ts": {
             "type": "integer"
+        },
+        "image_1024": {
+            "type": "string"
         }
     },
     "required": [
