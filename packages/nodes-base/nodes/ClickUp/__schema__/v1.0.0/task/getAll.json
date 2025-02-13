@@ -95,6 +95,36 @@
                 ]
             }
         },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "color",
+                    "initials",
+                    "email"
+                ]
+            }
+        },
         "watchers": {
             "type": "array",
             "items": {
@@ -102,9 +132,6 @@
                 "properties": {
                     "id": {
                         "type": "integer"
-                    },
-                    "username": {
-                        "type": "string"
                     },
                     "initials": {
                         "type": "string"
@@ -163,15 +190,6 @@
                                 "name": {
                                     "type": "string"
                                 },
-                                "orderindex": {
-                                    "type": "integer"
-                                },
-                                "assignee": {
-                                    "type": "null"
-                                },
-                                "group_assignee": {
-                                    "type": "null"
-                                },
                                 "resolved": {
                                     "type": "boolean"
                                 },
@@ -184,14 +202,8 @@
                                 "start_date": {
                                     "type": "null"
                                 },
-                                "start_date_time": {
-                                    "type": "boolean"
-                                },
                                 "due_date": {
                                     "type": "null"
-                                },
-                                "due_date_time": {
-                                    "type": "boolean"
                                 },
                                 "sent_due_date_notif": {
                                     "type": "null"
@@ -252,6 +264,9 @@
                 ]
             }
         },
+        "points": {
+            "type": "null"
+        },
         "custom_fields": {
             "type": "array",
             "items": {
@@ -289,6 +304,9 @@
                                         "color"
                                     ]
                                 }
+                            },
+                            "sorting": {
+                                "type": "string"
                             }
                         }
                     },
@@ -307,6 +325,44 @@
                     "date_created",
                     "hide_from_guests",
                     "required"
+                ]
+            }
+        },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "depends_on": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "userid": {
+                        "type": "string"
+                    },
+                    "workspace_id": {
+                        "type": "string"
+                    },
+                    "chain_id": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "task_id",
+                    "depends_on",
+                    "type",
+                    "date_created",
+                    "userid",
+                    "workspace_id",
+                    "chain_id"
                 ]
             }
         },
