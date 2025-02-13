@@ -18,6 +18,9 @@
         },
         "Id": {
             "type": "string"
+        },
+        "Subject": {
+            "type": "string"
         }
     },
     "required": [
