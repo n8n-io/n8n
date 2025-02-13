@@ -34,21 +34,6 @@
         "createdAt": {
             "type": "string"
         },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "displayName"
-            ]
-        },
         "dueDate": {
             "type": "null"
         },
