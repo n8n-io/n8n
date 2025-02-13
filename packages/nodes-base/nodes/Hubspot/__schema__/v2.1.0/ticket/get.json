@@ -13,80 +13,6 @@
         "properties": {
             "type": "object",
             "properties": {
-                "hs_email_subject": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "sourceId",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sourceId": {
-                            "type": "string"
-                        },
-                        "updatedByUserId": {
-                            "type": "null"
-                        },
-                        "isEncrypted": {
-                            "type": "null"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "sensitivityLevel",
-                        "persistenceTimestamp"
-                    ]
-                },
                 "support_form_message": {
                     "type": "object",
                     "properties": {
@@ -166,6 +92,76 @@
                         "persistenceTimestamp"
                     ]
                 },
+                "subject": {
+                    "type": "object",
+                    "properties": {
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceLabel": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "value",
+                                    "timestamp",
+                                    "source",
+                                    "sourceVid"
+                                ]
+                            }
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "isEncrypted": {
+                            "type": "null"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "versions",
+                        "value",
+                        "source",
+                        "timestamp",
+                        "sourceId",
+                        "updatedByUserId",
+                        "isEncrypted",
+                        "sensitivityLevel",
+                        "persistenceTimestamp"
+                    ]
+                },
                 "support_form_subject": {
                     "type": "object",
                     "properties": {
@@ -201,8 +197,10 @@
                                     "value",
                                     "timestamp",
                                     "sourceId",
+                                    "sourceLabel",
                                     "source",
-                                    "sourceVid"
+                                    "sourceVid",
+                                    "persistenceTimestamp"
                                 ]
                             }
                         },
@@ -217,6 +215,9 @@
                         },
                         "sourceId": {
                             "type": "string"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
                         },
                         "isEncrypted": {
                             "type": "null"
@@ -279,6 +280,80 @@
                                     "source",
                                     "sourceVid",
                                     "persistenceTimestamp"
+                                ]
+                            }
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "isEncrypted": {
+                            "type": "null"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "versions",
+                        "value",
+                        "source",
+                        "timestamp",
+                        "sourceId",
+                        "updatedByUserId",
+                        "isEncrypted",
+                        "sensitivityLevel",
+                        "persistenceTimestamp"
+                    ]
+                },
+                "hs_email_subject": {
+                    "type": "object",
+                    "properties": {
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "value",
+                                    "timestamp",
+                                    "sourceId",
+                                    "source",
+                                    "sourceVid"
                                 ]
                             }
                         },
