@@ -55,5 +55,25 @@
         "timeFinalized": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "kind",
+        "id",
+        "selfLink",
+        "mediaLink",
+        "name",
+        "bucket",
+        "generation",
+        "metageneration",
+        "contentType",
+        "storageClass",
+        "size",
+        "md5Hash",
+        "crc32c",
+        "etag",
+        "timeCreated",
+        "updated",
+        "timeStorageClassUpdated",
+        "timeFinalized"
+    ]
 }
