@@ -52,35 +52,35 @@
                 "dkim-signature": {
                     "type": "string"
                 },
-                "content-type": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "mime-version": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "string"
-                },
-                "subject": {
+                "from": {
                     "type": "string"
                 },
                 "message-id": {
                     "type": "string"
                 },
-                "from": {
+                "subject": {
+                    "type": "string"
+                },
+                "mime-version": {
+                    "type": "string"
+                },
+                "content-type": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "date": {
                     "type": "string"
                 }
             },
             "required": [
-                "content-type",
-                "date",
-                "mime-version",
-                "subject",
+                "from",
                 "message-id",
-                "from"
+                "mime-version",
+                "content-type",
+                "to",
+                "date"
             ]
         },
         "text": {
