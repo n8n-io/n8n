@@ -22,6 +22,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { v4 as uuid } from 'uuid';
 import Draggable from 'vuedraggable';
 
 interface Props {
@@ -45,12 +46,7 @@ const { debounce } = useDebounce();
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function createCondition(): FilterConditionValue {
-	return {
-		id: crypto.randomUUID(),
-		leftValue: '',
-		rightValue: '',
-		operator: DEFAULT_OPERATOR_VALUE,
-	};
+	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
 }
 
 const allowedCombinators = computed<FilterTypeCombinator[]>(
@@ -60,10 +56,7 @@ const allowedCombinators = computed<FilterTypeCombinator[]>(
 const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: {
 		options: props.value?.options ?? DEFAULT_FILTER_OPTIONS,
-		conditions: props.value?.conditions?.map((condition) => {
-			if (!condition.id) condition.id = crypto.randomUUID();
-			return condition;
-		}) ?? [createCondition()],
+		conditions: props.value?.conditions ?? [createCondition()],
 		combinator: props.value?.combinator ?? allowedCombinators.value[0],
 	},
 });
@@ -170,8 +163,8 @@ function getIssues(index: number): string[] {
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<Draggable
-					v-model="state.paramValue.conditions"
 					item-key="id"
+					v-model="state.paramValue.conditions"
 					handle=".drag-handle"
 					:drag-class="$style.dragging"
 					:ghost-class="$style.ghost"

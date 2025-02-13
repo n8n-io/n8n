@@ -8,6 +8,7 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { computed, reactive, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
@@ -34,11 +35,7 @@ const i18n = useI18n();
 
 const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: {
-		assignments:
-			props.value.assignments?.map((assignment) => {
-				if (!assignment.id) assignment.id = crypto.randomUUID();
-				return assignment;
-			}) ?? [],
+		assignments: props.value.assignments ?? [],
 	},
 });
 
@@ -78,17 +75,12 @@ watch(state.paramValue, (value) => {
 });
 
 function addAssignment(): void {
-	state.paramValue.assignments.push({
-		id: crypto.randomUUID(),
-		name: '',
-		value: '',
-		type: 'string',
-	});
+	state.paramValue.assignments.push({ id: uuid(), name: '', value: '', type: 'string' });
 }
 
 function dropAssignment(expression: string): void {
 	state.paramValue.assignments.push({
-		id: crypto.randomUUID(),
+		id: uuid(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
 		type: typeFromExpression(expression),
