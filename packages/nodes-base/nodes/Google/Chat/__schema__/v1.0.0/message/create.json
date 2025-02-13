@@ -19,7 +19,6 @@
             },
             "required": [
                 "name",
-                "displayName",
                 "type"
             ]
         },
@@ -83,12 +82,7 @@
                 }
             },
             "required": [
-                "name",
-                "type",
-                "spaceThreadingState",
-                "spaceType",
-                "spaceHistoryState",
-                "spaceUri"
+                "name"
             ]
         },
         "argumentText": {
