@@ -94,6 +94,28 @@
         "downs": {
             "type": "integer"
         },
+        "author_flair_richtext": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "string"
+                    },
+                    "u": {
+                        "type": "string"
+                    },
+                    "e": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "a",
+                    "u",
+                    "e"
+                ]
+            }
+        },
         "author_patreon_flair": {
             "type": "boolean"
         },
