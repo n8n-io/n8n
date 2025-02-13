@@ -10,6 +10,21 @@
         "subject": {
             "type": "string"
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "conversationId": {
+            "type": "string"
+        },
         "body": {
             "type": "object",
             "properties": {
@@ -23,29 +38,6 @@
             "required": [
                 "contentType",
                 "content"
-            ]
-        },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
             ]
         },
         "from": {
@@ -70,21 +62,9 @@
             "required": [
                 "emailAddress"
             ]
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "conversationId": {
-            "type": "string"
         }
-    }
+    },
+    "required": [
+        "id"
+    ]
 }
