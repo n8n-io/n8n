@@ -112,117 +112,6 @@
                 "footnotes"
             ]
         },
-        "class_list": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "_elementor_import_session_id": {
-            "type": "null"
-        },
-        "_elementor_edit_mode": {
-            "type": "string"
-        },
-        "_elementor_template_type": {
-            "type": "string"
-        },
-        "_elementor_version": {
-            "type": "string"
-        },
-        "_elementor_pro_version": {
-            "type": "string"
-        },
-        "_wp_page_template": {
-            "type": "string"
-        },
-        "_elementor_page_settings": {
-            "type": "null"
-        },
-        "_elementor_css": {
-            "type": "object",
-            "properties": {
-                "0": {
-                    "type": "string"
-                },
-                "time": {
-                    "type": "integer"
-                },
-                "fonts": {
-                    "type": "object",
-                    "properties": {
-                        "0": {
-                            "type": "string"
-                        },
-                        "1": {
-                            "type": "string"
-                        },
-                        "2": {
-                            "type": "string"
-                        },
-                        "6": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "0",
-                        "1",
-                        "2",
-                        "6"
-                    ]
-                },
-                "icons": {
-                    "type": "object",
-                    "properties": {
-                        "0": {
-                            "type": "string"
-                        },
-                        "1": {
-                            "type": "string"
-                        },
-                        "9": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "0",
-                        "1",
-                        "9"
-                    ]
-                },
-                "status": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "0",
-                "time",
-                "fonts",
-                "icons",
-                "dynamic_elements_ids",
-                "status"
-            ]
-        },
-        "_elementor_data": {
-            "type": "string"
-        },
-        "_elementor_page_assets": {
-            "type": "object",
-            "properties": {
-                "styles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            },
-            "required": [
-                "styles"
-            ]
-        },
-        "_elementor_element_cache": {
-            "type": "string"
-        },
         "_links": {
             "type": "object",
             "properties": {
@@ -401,6 +290,116 @@
                 "wp:attachment",
                 "curies"
             ]
+        },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "_elementor_import_session_id": {
+            "type": "null"
+        },
+        "_elementor_edit_mode": {
+            "type": "string"
+        },
+        "_elementor_template_type": {
+            "type": "string"
+        },
+        "_elementor_version": {
+            "type": "string"
+        },
+        "_elementor_pro_version": {
+            "type": "string"
+        },
+        "_wp_page_template": {
+            "type": "string"
+        },
+        "_elementor_page_settings": {
+            "type": "null"
+        },
+        "_elementor_css": {
+            "type": "object",
+            "properties": {
+                "0": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "fonts": {
+                    "type": "object",
+                    "properties": {
+                        "0": {
+                            "type": "string"
+                        },
+                        "1": {
+                            "type": "string"
+                        },
+                        "2": {
+                            "type": "string"
+                        },
+                        "6": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "0",
+                        "1",
+                        "2",
+                        "6"
+                    ]
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "0": {
+                            "type": "string"
+                        },
+                        "1": {
+                            "type": "string"
+                        },
+                        "9": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "0",
+                        "1"
+                    ]
+                },
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "0",
+                "time",
+                "fonts",
+                "icons",
+                "dynamic_elements_ids",
+                "status"
+            ]
+        },
+        "_elementor_data": {
+            "type": "string"
+        },
+        "_elementor_page_assets": {
+            "type": "object",
+            "properties": {
+                "styles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "styles"
+            ]
+        },
+        "_elementor_element_cache": {
+            "type": "string"
         }
     }
 }
