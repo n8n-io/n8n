@@ -31,9 +31,6 @@
         "updatedAt": {
             "type": "string"
         },
-        "indexVersion": {
-            "type": "integer"
-        },
         "contactId": {
             "type": "string"
         },
@@ -143,17 +140,20 @@
                     "utmSessionSource": {
                         "type": "string"
                     },
-                    "isFirst": {
-                        "type": "boolean"
-                    },
                     "medium": {
                         "type": "string"
+                    },
+                    "isFirst": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
                     "medium"
                 ]
             }
+        },
+        "indexVersion": {
+            "type": "integer"
         }
     },
     "required": [
