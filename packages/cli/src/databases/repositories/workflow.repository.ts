@@ -107,6 +107,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applySorting(qb, options.sortBy);
 		this.applyPagination(qb, options);
 
+		console.log('qb.getQuery()', qb.getQuery());
+
 		const [workflows, count] = (await qb.getManyAndCount()) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
@@ -180,13 +182,35 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			qb.innerJoin('workflow.shared', 'filterShared').andWhere(
-				'filterShared.projectId = :projectId',
-				{
-					projectId: filter.projectId,
-				},
-			);
+			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
+				projectId: filter.projectId,
+			});
 		}
+	}
+
+	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		// Check if 'shared' join already exists from project filter
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'shared')) {
+			qb.leftJoin('workflow.shared', 'shared');
+		}
+
+		// Add the necessary selects
+		qb.addSelect([
+			'shared.role',
+			'shared.createdAt',
+			'shared.updatedAt',
+			'shared.workflowId',
+			'shared.projectId',
+		])
+			.leftJoin('shared.project', 'project')
+			.addSelect([
+				'project.id',
+				'project.name',
+				'project.type',
+				'project.icon',
+				'project.createdAt',
+				'project.updatedAt',
+			]);
 	}
 
 	private applySelect(qb: SelectQueryBuilder<WorkflowEntity>, select?: Record<string, any>): void {
@@ -238,26 +262,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
 		qb.leftJoin('workflow.tags', 'tags').addSelect(['tags.id', 'tags.name']);
-	}
-
-	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		qb.leftJoin('workflow.shared', 'shared')
-			.addSelect([
-				'shared.role',
-				'shared.createdAt',
-				'shared.updatedAt',
-				'shared.workflowId',
-				'shared.projectId',
-			])
-			.leftJoin('shared.project', 'project')
-			.addSelect([
-				'project.id',
-				'project.name',
-				'project.type',
-				'project.icon',
-				'project.createdAt',
-				'project.updatedAt',
-			]);
 	}
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
