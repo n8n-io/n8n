@@ -31,5 +31,17 @@
         "content_hash": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "name",
+        "path_lower",
+        "path_display",
+        "id",
+        "client_modified",
+        "server_modified",
+        "rev",
+        "size",
+        "is_downloadable",
+        "content_hash"
+    ]
 }
