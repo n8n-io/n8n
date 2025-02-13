@@ -25,10 +25,7 @@
         "naming_series": {
             "type": "string"
         },
-        "customer_name": {
-            "type": "string"
-        },
-        "language": {
+        "company": {
             "type": "string"
         }
     },
