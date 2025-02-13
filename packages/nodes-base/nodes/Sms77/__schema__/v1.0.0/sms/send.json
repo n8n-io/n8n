@@ -1,0 +1,72 @@
+{
+	"type": "object",
+	"properties": {
+		"success": {
+			"type": "string"
+		},
+		"debug": {
+			"type": "string"
+		},
+		"sms_type": {
+			"type": "string"
+		},
+		"messages": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"sender": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"encoding": {
+						"type": "string"
+					},
+					"label": {
+						"type": "null"
+					},
+					"parts": {
+						"type": "integer"
+					},
+					"udh": {
+						"type": "null"
+					},
+					"is_binary": {
+						"type": "boolean"
+					},
+					"success": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id",
+					"sender",
+					"recipient",
+					"text",
+					"encoding",
+					"label",
+					"parts",
+					"udh",
+					"is_binary",
+					"price",
+					"success",
+					"error",
+					"error_text"
+				]
+			}
+		}
+	},
+	"required": [
+		"success",
+		"total_price",
+		"balance",
+		"debug",
+		"sms_type",
+		"messages"
+	]
+}
