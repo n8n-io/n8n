@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "text": {
+        "user": {
             "type": "string"
         },
         "type": {
@@ -10,8 +10,38 @@
         "ts": {
             "type": "string"
         },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
         "thread_ts": {
             "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "latest_reply": {
+            "type": "string"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "subscribed": {
+            "type": "boolean"
         },
         "blocks": {
             "type": "array",
@@ -62,13 +92,7 @@
                 ]
             }
         },
-        "user": {
-            "type": "string"
-        },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "team": {
+        "parent_user_id": {
             "type": "string"
         }
     }
