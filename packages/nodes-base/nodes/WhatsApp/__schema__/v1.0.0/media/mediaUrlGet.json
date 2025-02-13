@@ -21,11 +21,6 @@
         }
     },
     "required": [
-        "url",
-        "mime_type",
-        "sha256",
-        "file_size",
-        "id",
-        "messaging_product"
+        "id"
     ]
 }
