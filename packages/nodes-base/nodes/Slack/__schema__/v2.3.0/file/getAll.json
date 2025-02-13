@@ -64,6 +64,9 @@
         "url_private_download": {
             "type": "string"
         },
+        "media_display_type": {
+            "type": "string"
+        },
         "permalink": {
             "type": "string"
         },
@@ -81,9 +84,6 @@
         },
         "comments_count": {
             "type": "integer"
-        },
-        "media_display_type": {
-            "type": "string"
         }
     },
     "required": [
