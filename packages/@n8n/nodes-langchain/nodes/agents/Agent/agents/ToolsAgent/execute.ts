@@ -1,4 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -273,7 +274,7 @@ export const getAgentStepsParser =
  * @param ctx - The execution context
  * @returns The validated chat model
  */
-export async function retrieveChatModel(ctx: IExecuteFunctions) {
+export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
 	const model = await ctx.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
@@ -285,12 +286,14 @@ export async function retrieveChatModel(ctx: IExecuteFunctions) {
 }
 
 /**
- * Retrieves the memory instance from the input connection.
+ * Retrieves the memory instance from the input connection if it is connected
  *
  * @param ctx - The execution context
  * @returns The connected memory (if any)
  */
-export async function retrieveMemory(ctx: IExecuteFunctions): Promise<BaseChatMemory | undefined> {
+export async function getOptionalMemory(
+	ctx: IExecuteFunctions,
+): Promise<BaseChatMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
@@ -304,7 +307,7 @@ export async function retrieveMemory(ctx: IExecuteFunctions): Promise<BaseChatMe
  * @param outputParser - The optional output parser
  * @returns The array of connected tools
  */
-export async function retrieveTools(
+export async function getTools(
 	ctx: IExecuteFunctions,
 	outputParser?: N8nOutputParser,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
@@ -343,21 +346,21 @@ export async function prepareMessages(
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
-	// Start with system, chat history, and human messages.
 	const messages: BaseMessagePromptTemplateLike[] = [
 		['system', `{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
 	];
 
-	// If there is binary data and the node option permits it, add a binary message.
+	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && options.passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
 		messages.push(binaryMessage);
 	}
 
-	// Add the agent scratchpad at the end.
+	// We add the agent scratchpad last, so that the agent will not run in loops
+	// by adding binary messages between each interaction
 	messages.push(['placeholder', '{agent_scratchpad}']);
 	return messages;
 }
@@ -391,14 +394,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			// Retrieve model and memory; throw immediately if the model is invalid.
-			const model = await retrieveChatModel(this);
-			const memory = await retrieveMemory(this);
-
-			// Retrieve the output parser (if any) and tools.
+			const model = await getChatModel(this);
+			const memory = await getOptionalMemory(this);
 			const outputParsers = await getOptionalOutputParsers(this);
 			const outputParser = outputParsers?.[0];
-			const tools = await retrieveTools(this, outputParser);
+			const tools = await getTools(this, outputParser);
 
 			const input = getPromptInputByType({
 				ctx: this,
@@ -410,7 +410,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
 			}
 
-			// Retrieve node options.
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
 				systemMessage?: string;
 				maxIterations?: number;

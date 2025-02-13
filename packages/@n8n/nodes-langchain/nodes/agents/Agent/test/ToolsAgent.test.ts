@@ -21,11 +21,11 @@ import {
 	extractBinaryMessages,
 	fixEmptyContentMessage,
 	handleParsedStepOutput,
-	retrieveChatModel,
-	retrieveMemory,
-	retrieveTools,
+	getChatModel,
+	getOptionalMemory,
 	prepareMessages,
 	preparePrompt,
+	getTools,
 } from '../agents/ToolsAgent/execute';
 
 // We need to override the imported getConnectedTools so that we control its output.
@@ -167,7 +167,7 @@ describe('handleParsedStepOutput', () => {
 	});
 });
 
-describe('retrieveChatModel', () => {
+describe('getChatModel', () => {
 	it('should return the model if it is a valid chat model', async () => {
 		// Cast fakeChatModel as any
 		const fakeChatModel = mock<BaseChatModel>();
@@ -177,7 +177,7 @@ describe('retrieveChatModel', () => {
 		const ctx = createFakeExecuteFunctions({
 			getInputConnectionData: jest.fn().mockResolvedValue(fakeChatModel),
 		});
-		const model = await retrieveChatModel(ctx);
+		const model = await getChatModel(ctx);
 		expect(model).toEqual(fakeChatModel);
 	});
 
@@ -188,25 +188,25 @@ describe('retrieveChatModel', () => {
 			getInputConnectionData: jest.fn().mockResolvedValue(fakeInvalidModel),
 			getNode: jest.fn().mockReturnValue({}),
 		});
-		await expect(retrieveChatModel(ctx)).rejects.toThrow(NodeOperationError);
+		await expect(getChatModel(ctx)).rejects.toThrow(NodeOperationError);
 	});
 });
 
-describe('retrieveMemory', () => {
+describe('getOptionalMemory', () => {
 	it('should return the memory if available', async () => {
 		const fakeMemory = { some: 'memory' };
 		const ctx = createFakeExecuteFunctions({
 			getInputConnectionData: jest.fn().mockResolvedValue(fakeMemory),
 		});
-		const memory = await retrieveMemory(ctx);
+		const memory = await getOptionalMemory(ctx);
 		expect(memory).toEqual(fakeMemory);
 	});
 });
 
-describe('retrieveTools', () => {
+describe('getTools', () => {
 	it('should retrieve tools without appending if outputParser is not provided', async () => {
 		const ctx = createFakeExecuteFunctions();
-		const tools = await retrieveTools(ctx);
+		const tools = await getTools(ctx);
 
 		expect(tools.length).toEqual(1);
 	});
@@ -214,7 +214,7 @@ describe('retrieveTools', () => {
 	it('should retrieve tools and append the structured output parser tool if outputParser is provided', async () => {
 		const fakeOutputParser = getFakeOutputParser(z.object({ text: z.string() }));
 		const ctx = createFakeExecuteFunctions();
-		const tools = await retrieveTools(ctx, fakeOutputParser);
+		const tools = await getTools(ctx, fakeOutputParser);
 		// Our fake getConnectedTools returns one tool; with outputParser, one extra is appended.
 		expect(tools.length).toEqual(2);
 		const dynamicTool = tools.find((t) => t.name === 'format_final_response');
