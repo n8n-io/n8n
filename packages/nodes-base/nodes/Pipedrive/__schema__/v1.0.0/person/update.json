@@ -186,6 +186,12 @@
         "postal_address_subpremise": {
             "type": "null"
         },
+        "marketing_status": {
+            "type": "string"
+        },
+        "doi_status": {
+            "type": "integer"
+        },
         "owner_name": {
             "type": "string"
         },
@@ -194,12 +200,6 @@
         },
         "cc_email": {
             "type": "string"
-        },
-        "marketing_status": {
-            "type": "string"
-        },
-        "doi_status": {
-            "type": "integer"
         }
     }
 }
