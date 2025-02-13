@@ -19,28 +19,10 @@
         "locationId": {
             "type": "string"
         },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
         },
         "emailLowerCase": {
-            "type": "string"
-        },
-        "phone": {
             "type": "string"
         },
         "country": {
@@ -91,6 +73,24 @@
                     "id"
                 ]
             }
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
         }
     }
 }
