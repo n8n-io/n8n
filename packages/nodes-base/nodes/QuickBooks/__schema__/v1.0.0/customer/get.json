@@ -16,10 +16,33 @@
                 "City": {
                     "type": "string"
                 },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
                 "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
                     "type": "string"
                 },
                 "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
                     "type": "string"
                 }
             },
@@ -78,6 +101,9 @@
                 "LastUpdatedTime"
             ]
         },
+        "GivenName": {
+            "type": "string"
+        },
         "FullyQualifiedName": {
             "type": "string"
         },
@@ -92,6 +118,17 @@
         },
         "Active": {
             "type": "boolean"
+        },
+        "PrimaryPhone": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FreeFormNumber"
+            ]
         },
         "PrimaryEmailAddr": {
             "type": "object",
@@ -114,12 +151,6 @@
             "required": [
                 "value"
             ]
-        },
-        "GivenName": {
-            "type": "string"
-        },
-        "FamilyName": {
-            "type": "string"
         }
     },
     "required": [
