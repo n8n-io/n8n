@@ -4,6 +4,9 @@
         "name": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "rev": {
             "type": "string"
         }
