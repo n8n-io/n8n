@@ -21,9 +21,6 @@
                 },
                 "slug": {
                     "type": "string"
-                },
-                "body": {
-                    "type": "string"
                 }
             },
             "required": [
