@@ -55,7 +55,7 @@
                         "value"
                     ]
                 },
-                "lastname": {
+                "company": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -66,7 +66,7 @@
                         "value"
                     ]
                 },
-                "company": {
+                "lastname": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -198,9 +198,6 @@
                     "entity-id": {
                         "type": "string"
                     },
-                    "user-id": {
-                        "type": "integer"
-                    },
                     "num-properties-moved": {
                         "type": "integer"
                     },
@@ -240,6 +237,15 @@
                             "data-sensitivity",
                             "is-encrypted"
                         ]
+                    },
+                    "first-name": {
+                        "type": "string"
+                    },
+                    "last-name": {
+                        "type": "string"
+                    },
+                    "user-id": {
+                        "type": "integer"
                     },
                     "merged_from_email": {
                         "type": "object",
@@ -283,12 +289,6 @@
                             "data-sensitivity",
                             "is-encrypted"
                         ]
-                    },
-                    "first-name": {
-                        "type": "string"
-                    },
-                    "last-name": {
-                        "type": "string"
                     }
                 },
                 "required": [
