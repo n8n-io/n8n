@@ -7,21 +7,6 @@
         "name": {
             "type": "string"
         },
-        "hourlyRate": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "amount",
-                "currency"
-            ]
-        },
         "clientId": {
             "type": "string"
         },
@@ -68,59 +53,14 @@
         "color": {
             "type": "string"
         },
-        "estimate": {
-            "type": "object",
-            "properties": {
-                "estimate": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "estimate",
-                "type"
-            ]
-        },
         "archived": {
             "type": "boolean"
-        },
-        "duration": {
-            "type": "string"
         },
         "clientName": {
             "type": "string"
         },
         "note": {
             "type": "string"
-        },
-        "timeEstimate": {
-            "type": "object",
-            "properties": {
-                "estimate": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "resetOption": {
-                    "type": "null"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "includeNonBillable": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "estimate",
-                "type",
-                "resetOption",
-                "active",
-                "includeNonBillable"
-            ]
         },
         "estimateReset": {
             "type": "null"
