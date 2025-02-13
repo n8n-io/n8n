@@ -107,17 +107,8 @@
         "flagged": {
             "type": "boolean"
         },
-        "average_cadence": {
-            "type": "number"
-        },
-        "max_watts": {
+        "average_temp": {
             "type": "integer"
-        },
-        "weighted_average_watts": {
-            "type": "integer"
-        },
-        "device_watts": {
-            "type": "boolean"
         },
         "has_heartrate": {
             "type": "boolean"
@@ -152,8 +143,14 @@
         "suffer_score": {
             "type": "integer"
         },
-        "average_temp": {
+        "max_watts": {
             "type": "integer"
+        },
+        "weighted_average_watts": {
+            "type": "integer"
+        },
+        "device_watts": {
+            "type": "boolean"
         }
     },
     "required": [
