@@ -69,9 +69,6 @@
             "properties": {
                 "Telefone": {
                     "type": "string"
-                },
-                "Pais": {
-                    "type": "string"
                 }
             }
         },
