@@ -171,7 +171,9 @@
                 "required": [
                     "id",
                     "idBoard",
+                    "idOrganization",
                     "name",
+                    "nodeId",
                     "color",
                     "uses"
                 ]
@@ -230,6 +232,9 @@
             "type": "boolean"
         },
         "cardRole": {
+            "type": "null"
+        },
+        "mirrorSourceId": {
             "type": "null"
         }
     },
