@@ -4,10 +4,10 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "url": {
             "type": "string"
         },
-        "url": {
+        "name": {
             "type": "string"
         }
     }
