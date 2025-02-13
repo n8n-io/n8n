@@ -99,9 +99,9 @@ export const projectsRoutes: RouteRecordRaw[] = [
 							meta: {
 								middleware: ['authenticated', 'custom'],
 								middlewareOptions: {
-									custom: (args) => {
+									custom: (options) => {
 										const project = useProjectsStore().myProjects.find(
-											(p) => p.id === args?.to.params.projectId,
+											(p) => p.id === options?.to.params.projectId,
 										);
 										return !!getResourcePermissions(project?.scopes).project.update;
 									},
