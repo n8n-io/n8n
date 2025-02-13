@@ -13,5 +13,10 @@
                 "type": "string"
             }
         }
-    }
+    },
+    "required": [
+        "id",
+        "threadId",
+        "labelIds"
+    ]
 }
