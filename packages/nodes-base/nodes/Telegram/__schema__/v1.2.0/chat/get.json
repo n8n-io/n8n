@@ -10,9 +10,6 @@
                 "id": {
                     "type": "integer"
                 },
-                "first_name": {
-                    "type": "string"
-                },
                 "username": {
                     "type": "string"
                 },
@@ -25,11 +22,17 @@
                         "type": "string"
                     }
                 },
+                "can_send_gift": {
+                    "type": "boolean"
+                },
                 "max_reaction_count": {
                     "type": "integer"
                 },
                 "accent_color_id": {
                     "type": "integer"
+                },
+                "first_name": {
+                    "type": "string"
                 }
             },
             "required": [
