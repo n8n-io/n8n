@@ -19,24 +19,26 @@
         "notes": {
             "type": "string"
         },
-        "assignee": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
+        "start_at": {
+            "type": "null"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "completed_at": {
+            "type": "null"
+        },
+        "assignee_status": {
+            "type": "string"
+        },
+        "completed": {
+            "type": "boolean"
         },
         "actual_time_minutes": {
             "type": "integer"
@@ -60,79 +62,17 @@
                 "name"
             ]
         },
-        "start_on": {
-            "type": "null"
-        },
-        "resource_subtype": {
-            "type": "string"
-        },
-        "due_at": {
-            "type": "null"
-        },
-        "completed_at": {
-            "type": "null"
-        },
-        "assignee_status": {
-            "type": "string"
-        },
-        "completed": {
-            "type": "boolean"
-        },
         "num_hearts": {
             "type": "integer"
         },
         "num_likes": {
             "type": "integer"
         },
-        "start_at": {
-            "type": "null"
-        },
-        "liked": {
-            "type": "boolean"
-        },
         "hearted": {
             "type": "boolean"
         },
-        "assignee_section": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
+        "liked": {
+            "type": "boolean"
         },
         "parent": {
             "type": "object",
@@ -159,6 +99,128 @@
         },
         "permalink_url": {
             "type": "string"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "name"
+                ]
+            }
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "is_formula_field": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "resource_subtype": {
+                        "type": "string"
+                    },
+                    "enum_value": {
+                        "type": "null"
+                    },
+                    "display_value": {
+                        "type": "null"
+                    },
+                    "enum_options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "color": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "gid",
+                                "resource_type",
+                                "enabled",
+                                "name",
+                                "color"
+                            ]
+                        }
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "resource_type",
+                            "name"
+                        ]
+                    },
+                    "precision": {
+                        "type": "integer"
+                    },
+                    "number_value": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "enabled",
+                    "name",
+                    "type",
+                    "resource_subtype",
+                    "display_value",
+                    "created_by"
+                ]
+            }
         }
     },
     "required": [
@@ -171,8 +233,8 @@
         "name",
         "notes",
         "assignee",
-        "actual_time_minutes",
-        "workspace",
+        "tags",
+        "start_at",
         "start_on",
         "resource_subtype",
         "due_at",
@@ -180,16 +242,16 @@
         "completed_at",
         "assignee_status",
         "completed",
+        "actual_time_minutes",
+        "workspace",
         "num_hearts",
-        "tags",
         "num_likes",
-        "start_at",
-        "liked",
-        "likes",
         "hearted",
+        "liked",
         "hearts",
-        "followers",
+        "likes",
         "parent",
-        "permalink_url"
+        "permalink_url",
+        "followers"
     ]
 }
