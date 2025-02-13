@@ -1,13 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "id": {
+            "type": "string"
+        },
+        "conversationId": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "bodyPreview": {
             "type": "string"
         },
         "categories": {
@@ -16,19 +19,16 @@
                 "type": "string"
             }
         },
-        "receivedDateTime": {
-            "type": "string"
-        },
         "hasAttachments": {
             "type": "boolean"
         },
-        "subject": {
+        "@odata.context": {
             "type": "string"
         },
-        "bodyPreview": {
+        "@odata.etag": {
             "type": "string"
         },
-        "conversationId": {
+        "internetMessageId": {
             "type": "string"
         },
         "body": {
@@ -45,81 +45,6 @@
                 "contentType",
                 "content"
             ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
-        },
-        "ccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
         }
     },
     "required": [
