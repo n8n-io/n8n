@@ -19,16 +19,10 @@
                 "ts": {
                     "type": "string"
                 },
-                "client_msg_id": {
-                    "type": "string"
-                },
                 "text": {
                     "type": "string"
                 },
                 "team": {
-                    "type": "string"
-                },
-                "thread_ts": {
                     "type": "string"
                 },
                 "blocks": {
@@ -58,39 +52,8 @@
                                                     "type": {
                                                         "type": "string"
                                                     },
-                                                    "user_id": {
-                                                        "type": "string"
-                                                    },
                                                     "text": {
                                                         "type": "string"
-                                                    },
-                                                    "elements": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "type": {
-                                                                    "type": "string"
-                                                                },
-                                                                "text": {
-                                                                    "type": "string"
-                                                                },
-                                                                "style": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "bold": {
-                                                                            "type": "boolean"
-                                                                        }
-                                                                    },
-                                                                    "required": [
-                                                                        "bold"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "type"
-                                                            ]
-                                                        }
                                                     },
                                                     "url": {
                                                         "type": "string"
@@ -113,6 +76,9 @@
                             "block_id"
                         ]
                     }
+                },
+                "permalink": {
+                    "type": "string"
                 },
                 "reactions": {
                     "type": "array",
@@ -139,7 +105,10 @@
                         ]
                     }
                 },
-                "permalink": {
+                "client_msg_id": {
+                    "type": "string"
+                },
+                "thread_ts": {
                     "type": "string"
                 }
             },
@@ -147,18 +116,11 @@
                 "type",
                 "ts",
                 "text",
-                "blocks",
-                "reactions"
+                "blocks"
             ]
         },
         "channel": {
             "type": "string"
         }
-    },
-    "required": [
-        "ok",
-        "type",
-        "message",
-        "channel"
-    ]
+    }
 }
