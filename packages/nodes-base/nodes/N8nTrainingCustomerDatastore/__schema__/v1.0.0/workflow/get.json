@@ -29,23 +29,23 @@
                             }
                         }
                     },
+                    "type": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
                     }
                 },
                 "required": [
                     "parameters",
-                    "id",
-                    "name",
                     "type",
                     "typeVersion",
-                    "position"
+                    "position",
+                    "id",
+                    "name"
                 ]
             }
         },
