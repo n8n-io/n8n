@@ -67,7 +67,6 @@
                         "required": [
                             "scaleX",
                             "scaleY",
-                            "translateX",
                             "unit"
                         ]
                     },
@@ -77,12 +76,109 @@
                             "shapeType": {
                                 "type": "string"
                             },
+                            "text": {
+                                "type": "object",
+                                "properties": {
+                                    "textElements": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "endIndex": {
+                                                    "type": "integer"
+                                                },
+                                                "paragraphMarker": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "style": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "direction": {
+                                                                    "type": "string"
+                                                                },
+                                                                "indentStart": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "unit"
+                                                                    ]
+                                                                },
+                                                                "indentFirstLine": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "unit"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "direction"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "style"
+                                                    ]
+                                                },
+                                                "textRun": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "content": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "content",
+                                                        "style"
+                                                    ]
+                                                },
+                                                "startIndex": {
+                                                    "type": "integer"
+                                                },
+                                                "autoText": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "type": {
+                                                            "type": "string"
+                                                        },
+                                                        "content": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "type",
+                                                        "content",
+                                                        "style"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "endIndex"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "textElements"
+                                ]
+                            },
                             "shapeProperties": {
                                 "type": "object",
                                 "properties": {
                                     "shapeBackgroundFill": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "solidFill": {
                                                 "type": "object",
                                                 "properties": {
@@ -108,6 +204,9 @@
                                     "outline": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "outlineFill": {
                                                 "type": "object",
                                                 "properties": {
@@ -227,10 +326,24 @@
                                     "shadow",
                                     "autofit"
                                 ]
+                            },
+                            "placeholder": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "parentObjectId": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "parentObjectId"
+                                ]
                             }
                         },
                         "required": [
-                            "shapeType",
                             "shapeProperties"
                         ]
                     },
@@ -246,6 +359,9 @@
                                     "outline": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "outlineFill": {
                                                 "type": "object",
                                                 "properties": {
@@ -294,21 +410,18 @@
                                             },
                                             "dashStyle": {
                                                 "type": "string"
-                                            },
-                                            "propertyState": {
-                                                "type": "string"
                                             }
                                         },
                                         "required": [
-                                            "outlineFill",
-                                            "weight",
-                                            "dashStyle",
                                             "propertyState"
                                         ]
                                     },
                                     "shadow": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "type": {
                                                 "type": "string"
                                             },
@@ -350,19 +463,9 @@
                                             },
                                             "rotateWithShape": {
                                                 "type": "boolean"
-                                            },
-                                            "propertyState": {
-                                                "type": "string"
                                             }
                                         },
                                         "required": [
-                                            "type",
-                                            "transform",
-                                            "alignment",
-                                            "blurRadius",
-                                            "color",
-                                            "alpha",
-                                            "rotateWithShape",
                                             "propertyState"
                                         ]
                                     }
@@ -459,12 +562,6 @@
                                             },
                                             "scaleY": {
                                                 "type": "number"
-                                            },
-                                            "translateX": {
-                                                "type": "integer"
-                                            },
-                                            "translateY": {
-                                                "type": "integer"
                                             },
                                             "unit": {
                                                 "type": "string"
@@ -624,10 +721,7 @@
                         "propertyState": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "propertyState"
-                    ]
+                    }
                 }
             },
             "required": [
@@ -637,7 +731,6 @@
     },
     "required": [
         "objectId",
-        "pageElements",
         "slideProperties",
         "pageProperties"
     ]
