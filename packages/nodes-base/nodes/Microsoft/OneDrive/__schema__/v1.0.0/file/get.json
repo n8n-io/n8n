@@ -7,6 +7,30 @@
         "@microsoft.graph.downloadUrl": {
             "type": "string"
         },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
         "createdBy": {
             "type": "object",
             "properties": {
@@ -32,15 +56,6 @@
                 "user"
             ]
         },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "eTag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
         "lastModifiedBy": {
             "type": "object",
             "properties": {
@@ -65,12 +80,6 @@
             "required": [
                 "user"
             ]
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
         },
         "parentReference": {
             "type": "object",
@@ -99,15 +108,12 @@
                 "driveId"
             ]
         },
-        "webUrl": {
-            "type": "string"
-        },
-        "cTag": {
-            "type": "string"
-        },
         "file": {
             "type": "object",
             "properties": {
+                "mimeType": {
+                    "type": "string"
+                },
                 "hashes": {
                     "type": "object",
                     "properties": {
@@ -118,14 +124,11 @@
                     "required": [
                         "quickXorHash"
                     ]
-                },
-                "mimeType": {
-                    "type": "string"
                 }
             },
             "required": [
-                "hashes",
-                "mimeType"
+                "mimeType",
+                "hashes"
             ]
         },
         "fileSystemInfo": {
@@ -143,9 +146,6 @@
                 "lastModifiedDateTime"
             ]
         },
-        "size": {
-            "type": "integer"
-        },
         "shared": {
             "type": "object",
             "properties": {
@@ -159,13 +159,14 @@
         }
     },
     "required": [
+        "@odata.context",
         "createdDateTime",
         "id",
         "lastModifiedDateTime",
         "name",
-        "parentReference",
         "webUrl",
-        "fileSystemInfo",
-        "size"
+        "size",
+        "parentReference",
+        "fileSystemInfo"
     ]
 }
