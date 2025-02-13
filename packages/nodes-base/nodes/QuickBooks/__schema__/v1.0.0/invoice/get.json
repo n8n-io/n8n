@@ -173,6 +173,18 @@
                 "name"
             ]
         },
+        "DueDate": {
+            "type": "string"
+        },
+        "ApplyTaxAfterDiscount": {
+            "type": "boolean"
+        },
+        "PrintStatus": {
+            "type": "string"
+        },
+        "EmailStatus": {
+            "type": "string"
+        },
         "BillAddr": {
             "type": "object",
             "properties": {
@@ -187,36 +199,59 @@
                 },
                 "PostalCode": {
                     "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
                 }
             },
             "required": [
                 "Id"
             ]
         },
-        "DueDate": {
-            "type": "string"
-        },
-        "ApplyTaxAfterDiscount": {
-            "type": "boolean"
-        },
-        "PrintStatus": {
-            "type": "string"
-        },
-        "EmailStatus": {
-            "type": "string"
-        },
-        "BillEmail": {
+        "TxnTaxDetail": {
             "type": "object",
             "properties": {
-                "Address": {
-                    "type": "string"
+                "TaxLine": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "DetailType": {
+                                "type": "string"
+                            },
+                            "TaxLineDetail": {
+                                "type": "object",
+                                "properties": {
+                                    "TaxRateRef": {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "value"
+                                        ]
+                                    },
+                                    "PercentBased": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "TaxRateRef",
+                                    "PercentBased",
+                                    "TaxPercent",
+                                    "NetAmountTaxable"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "Amount",
+                            "DetailType",
+                            "TaxLineDetail"
+                        ]
+                    }
                 }
             },
             "required": [
-                "Address"
+                "TotalTax"
             ]
         }
     },
