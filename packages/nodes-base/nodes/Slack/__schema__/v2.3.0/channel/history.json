@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "user": {
+        "text": {
             "type": "string"
         },
-        "text": {
+        "user": {
             "type": "string"
         },
         "type": {
@@ -12,30 +12,6 @@
         },
         "ts": {
             "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
-            "type": "string"
-        },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
         },
         "blocks": {
             "type": "array",
