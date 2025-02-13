@@ -110,12 +110,6 @@
                 "creator",
                 "last_set"
             ]
-        },
-        "previous_names": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
         }
     }
 }
