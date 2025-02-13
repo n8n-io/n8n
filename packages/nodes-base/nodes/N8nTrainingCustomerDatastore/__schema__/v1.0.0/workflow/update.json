@@ -21,6 +21,17 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "resource": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -30,20 +41,13 @@
                             "type": "integer"
                         }
                     },
-                    "id": {
-                        "type": "string"
-                    },
                     "name": {
-                        "type": "string"
-                    },
-                    "webhookId": {
                         "type": "string"
                     }
                 },
                 "required": [
                     "parameters",
-                    "id",
-                    "name"
+                    "id"
                 ]
             }
         },
@@ -56,6 +60,17 @@
             },
             "required": [
                 "executionOrder"
+            ]
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "templateCredsSetupCompleted"
             ]
         },
         "versionId": {
