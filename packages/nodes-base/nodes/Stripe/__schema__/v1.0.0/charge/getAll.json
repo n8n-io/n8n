@@ -76,12 +76,6 @@
         "paid": {
             "type": "boolean"
         },
-        "payment_intent": {
-            "type": "string"
-        },
-        "payment_method": {
-            "type": "string"
-        },
         "payment_method_details": {
             "type": "object",
             "properties": {
