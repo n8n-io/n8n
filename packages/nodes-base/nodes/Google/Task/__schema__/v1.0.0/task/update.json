@@ -28,13 +28,13 @@
         "status": {
             "type": "string"
         },
-        "due": {
-            "type": "string"
-        },
         "webViewLink": {
             "type": "string"
         },
         "completed": {
+            "type": "string"
+        },
+        "due": {
             "type": "string"
         }
     }
