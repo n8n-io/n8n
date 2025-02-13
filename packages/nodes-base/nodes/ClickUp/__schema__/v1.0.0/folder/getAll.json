@@ -81,12 +81,6 @@
                     "orderindex": {
                         "type": "integer"
                     },
-                    "content": {
-                        "type": "string"
-                    },
-                    "priority": {
-                        "type": "null"
-                    },
                     "task_count": {
                         "type": "integer"
                     },
@@ -147,6 +141,9 @@
                         }
                     },
                     "permission_level": {
+                        "type": "string"
+                    },
+                    "content": {
                         "type": "string"
                     }
                 },
