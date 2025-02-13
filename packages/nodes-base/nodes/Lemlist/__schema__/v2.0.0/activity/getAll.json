@@ -7,19 +7,16 @@
         "type": {
             "type": "string"
         },
-        "createdAt": {
+        "teamId": {
             "type": "string"
         },
         "isFirst": {
             "type": "boolean"
         },
-        "stopped": {
-            "type": "boolean"
-        },
         "bot": {
             "type": "boolean"
         },
-        "teamId": {
+        "createdAt": {
             "type": "string"
         },
         "leadId": {
@@ -58,10 +55,16 @@
         "leadEmail": {
             "type": "string"
         },
+        "leadPhone": {
+            "type": "string"
+        },
         "leadCompanyName": {
             "type": "string"
         },
         "contactId": {
+            "type": "string"
+        },
+        "relatedSentAt": {
             "type": "string"
         },
         "metaData": {
@@ -94,19 +97,22 @@
                 "createdBy"
             ]
         },
+        "email": {
+            "type": "string"
+        },
         "firstName": {
             "type": "string"
         },
         "lastName": {
             "type": "string"
         },
+        "phone": {
+            "type": "string"
+        },
         "linkedinUrl": {
             "type": "string"
         },
         "companyName": {
-            "type": "string"
-        },
-        "email": {
             "type": "string"
         },
         "campaignName": {
@@ -117,14 +123,17 @@
         },
         "emailTemplateName": {
             "type": "string"
+        },
+        "stopped": {
+            "type": "boolean"
         }
     },
     "required": [
         "_id",
         "type",
-        "createdAt",
-        "bot",
         "teamId",
+        "bot",
+        "createdAt",
         "leadId",
         "campaignId",
         "createdBy",
