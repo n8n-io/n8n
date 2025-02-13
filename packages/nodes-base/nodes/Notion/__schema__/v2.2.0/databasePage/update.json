@@ -9,9 +9,10 @@
         },
         "url": {
             "type": "string"
-        },
-        "property_status": {
-            "type": "string"
         }
-    }
+    },
+    "required": [
+        "id",
+        "url"
+    ]
 }
