@@ -31,8 +31,20 @@
                 "name"
             ]
         },
-        "PurchaseCost": {
-            "type": "integer"
+        "ExpenseAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
         },
         "TrackQtyOnHand": {
             "type": "boolean"
@@ -62,21 +74,6 @@
             "required": [
                 "CreateTime",
                 "LastUpdatedTime"
-            ]
-        },
-        "ExpenseAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
             ]
         }
     },
