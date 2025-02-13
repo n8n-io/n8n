@@ -52,6 +52,49 @@
         "policyViolation": {
             "type": "null"
         },
+        "from": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "null"
+                },
+                "device": {
+                    "type": "null"
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "@odata.type": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "userIdentityType": {
+                            "type": "string"
+                        },
+                        "tenantId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "@odata.type",
+                        "id",
+                        "displayName",
+                        "userIdentityType",
+                        "tenantId"
+                    ]
+                }
+            },
+            "required": [
+                "application",
+                "device",
+                "user"
+            ]
+        },
         "body": {
             "type": "object",
             "properties": {
@@ -168,6 +211,72 @@
                     "id",
                     "mentionText",
                     "mentioned"
+                ]
+            }
+        },
+        "reactions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "reactionType": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "reactionContentUrl": {
+                        "type": "null"
+                    },
+                    "createdDateTime": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "application": {
+                                "type": "null"
+                            },
+                            "device": {
+                                "type": "null"
+                            },
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "null"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@odata.type",
+                                    "id",
+                                    "displayName",
+                                    "userIdentityType"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "application",
+                            "device",
+                            "user"
+                        ]
+                    }
+                },
+                "required": [
+                    "reactionType",
+                    "displayName",
+                    "reactionContentUrl",
+                    "createdDateTime",
+                    "user"
                 ]
             }
         }
