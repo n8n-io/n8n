@@ -1,24 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "communication_disabled_until": {
-            "type": "null"
-        },
-        "flags": {
-            "type": "integer"
-        },
-        "joined_at": {
-            "type": "string"
-        },
-        "pending": {
-            "type": "boolean"
-        },
-        "roles": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "user": {
             "type": "object",
             "properties": {
@@ -65,6 +47,24 @@
                 "clan"
             ]
         },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "communication_disabled_until": {
+            "type": "null"
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "joined_at": {
+            "type": "string"
+        },
+        "pending": {
+            "type": "boolean"
+        },
         "mute": {
             "type": "boolean"
         },
@@ -73,7 +73,7 @@
         }
     },
     "required": [
-        "roles",
-        "user"
+        "user",
+        "roles"
     ]
 }
