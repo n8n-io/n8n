@@ -13,9 +13,6 @@
                 "displayName": {
                     "type": "string"
                 },
-                "familyName": {
-                    "type": "string"
-                },
                 "givenName": {
                     "type": "string"
                 },
@@ -24,11 +21,31 @@
                 },
                 "unstructuredName": {
                     "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
                 }
-            }
+            },
+            "required": [
+                "displayName",
+                "givenName",
+                "displayNameLastFirst",
+                "unstructuredName"
+            ]
         },
         "contactId": {
             "type": "string"
+        },
+        "emailAddresses": {
+            "type": "object",
+            "properties": {
+                "work": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "phoneNumbers": {
             "type": "object",
