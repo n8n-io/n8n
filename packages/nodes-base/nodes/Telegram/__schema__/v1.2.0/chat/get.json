@@ -30,6 +30,9 @@
                 },
                 "accent_color_id": {
                     "type": "integer"
+                },
+                "can_send_gift": {
+                    "type": "boolean"
                 }
             },
             "required": [
