@@ -16,6 +16,47 @@
         "fields": {
             "type": "object",
             "properties": {
+                "summary": {
+                    "type": "string"
+                },
+                "issuetype": {
+                    "type": "object",
+                    "properties": {
+                        "self": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "subtask": {
+                            "type": "boolean"
+                        },
+                        "avatarId": {
+                            "type": "integer"
+                        },
+                        "hierarchyLevel": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "self",
+                        "id",
+                        "description",
+                        "iconUrl",
+                        "name",
+                        "subtask",
+                        "hierarchyLevel"
+                    ]
+                },
                 "priority": {
                     "type": "object",
                     "properties": {
@@ -115,67 +156,6 @@
                             "name"
                         ]
                     }
-                },
-                "summary": {
-                    "type": "string"
-                },
-                "reporter": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "emailAddress": {
-                            "type": "string"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "48x48": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "48x48",
-                                "24x24",
-                                "16x16",
-                                "32x32"
-                            ]
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "accountId",
-                        "avatarUrls",
-                        "displayName",
-                        "active",
-                        "timeZone",
-                        "accountType"
-                    ]
                 }
             }
         }
