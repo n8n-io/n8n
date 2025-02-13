@@ -23,6 +23,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
+	AddedNode,
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
@@ -112,6 +113,7 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -159,6 +161,7 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 const posthogStore = usePostHog();
+const assistantStore = useAssistantStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1271,6 +1274,37 @@ async function onOpenChat() {
 }
 
 /**
+ * Explain
+ */
+const isExplaining = ref(false);
+
+async function onExplain() {
+	isExplaining.value = true;
+
+	try {
+		const res = await assistantStore.initExplainWorkflow();
+
+		if (res.messages?.length > 0 && res.messages[0].clusters?.length > 0) {
+			const nodes: AddedNode[] = res.messages[0].clusters.map((cluster) => ({
+				type: 'n8n-nodes-base.stickyNote',
+				parameters: {
+					content: `## ${cluster.title}\n\n${cluster.description}`,
+					height: 260,
+					width: 340,
+				},
+			}));
+
+			const addedNodes = await addNodes(nodes, {});
+		}
+	} catch (e) {
+		console.error(e);
+	} finally {
+		isExplaining.value = false;
+	}
+	// console.log({ addedNodes });
+}
+
+/**
  * History events
  */
 
@@ -1744,6 +1778,7 @@ onBeforeUnmount(() => {
 				v-if="isClearExecutionButtonVisible"
 				@click="onClearExecutionData"
 			/>
+			<CanvasExplainButton @click="onExplain" :loading="isExplaining" />
 		</div>
 
 		<N8nCallout

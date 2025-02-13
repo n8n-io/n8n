@@ -7,7 +7,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
 } from '@/constants';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
@@ -31,6 +31,7 @@ import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -461,6 +462,36 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 	}
 
+	async function initExplainWorkflow() {
+		const activeNode = workflowsStore.activeNode() as INode;
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+		const userContext = getVisualContext(nodeInfo);
+
+		const id = getRandomId();
+
+		return await new Promise((resolve, reject) => {
+			let lastMessage;
+
+			chatWithAssistant(
+				rootStore.restApiContext,
+				{
+					payload: {
+						role: 'user',
+						type: 'init-explain',
+						context: userContext,
+					},
+					sessionId: currentSessionId.value,
+				},
+				(msg) => {
+					console.log({ msg });
+					lastMessage = msg;
+				},
+				() => resolve(lastMessage),
+				(e) => reject(e, id),
+			);
+		});
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
 		if (chatSessionError.value) {
@@ -848,5 +879,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		initExplainWorkflow,
 	};
 });

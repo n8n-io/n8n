@@ -63,3 +63,13 @@ export async function claimFreeAiCredits(
 		projectId,
 	} as IDataObject);
 }
+
+export async function explainWorkflow(
+	ctx: IRestApiContext,
+	{ workflow, context }: AskAiRequest.RequestPayload,
+) {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/chat/explain-workflow', {
+		workflow,
+		context,
+	} as IDataObject);
+}

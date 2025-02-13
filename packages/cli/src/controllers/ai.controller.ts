@@ -46,6 +46,7 @@ export class AiController {
 				res.end();
 			}
 		} catch (e) {
+			console.error(e);
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
