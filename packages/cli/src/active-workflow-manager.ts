@@ -434,12 +434,8 @@ export class ActiveWorkflowManager {
 		this.logger.debug('Finished activating workflows (startup)');
 	}
 
-	private async activateWorkflow(
-		dbWorkflowId: string,
-		activationMode: 'init' | 'leadershipChange',
-	) {
-		const dbWorkflow = await this.workflowRepository.findById(dbWorkflowId);
-
+	private async activateWorkflow(workflowId: string, activationMode: 'init' | 'leadershipChange') {
+		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
 		try {
