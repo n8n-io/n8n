@@ -12,15 +12,11 @@
                 }
             },
             "required": [
-                "type",
-                "url"
+                "type"
             ]
         },
         "Id": {
             "type": "string"
         }
-    },
-    "required": [
-        "attributes"
-    ]
+    }
 }
