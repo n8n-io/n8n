@@ -257,7 +257,8 @@ const createFields: INodeProperties[] = [
 		displayName: 'User Name',
 		name: 'UsernameNew',
 		default: '',
-		description: 'The username of the new user to create. No whitespace is allowed.',
+		description:
+			'Depending on the user pool settings, this parameter requires the username, the email, or the phone number. No whitespace is allowed.',
 		placeholder: 'e.g. JohnSmith',
 		displayOptions: {
 			show: {
