@@ -25,12 +25,6 @@
         "hasAttachments": {
             "type": "boolean"
         },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "id": {
             "type": "string"
         },
