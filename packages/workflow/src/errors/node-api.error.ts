@@ -18,6 +18,7 @@ import type {
 	IDataObject,
 	IStatusCodeMessages,
 	Functionality,
+	RelatedExecution,
 } from '../Interfaces';
 import { removeCircularRefs } from '../utils';
 
@@ -30,6 +31,10 @@ export interface NodeOperationErrorOptions {
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
 	type?: string;
+	metadata?: {
+		subExecution?: RelatedExecution;
+		parentExecution?: RelatedExecution;
+	};
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
