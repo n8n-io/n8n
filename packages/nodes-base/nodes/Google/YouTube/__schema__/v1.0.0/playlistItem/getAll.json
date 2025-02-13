@@ -170,9 +170,7 @@
                 "channelTitle",
                 "playlistId",
                 "position",
-                "resourceId",
-                "videoOwnerChannelTitle",
-                "videoOwnerChannelId"
+                "resourceId"
             ]
         },
         "contentDetails": {
