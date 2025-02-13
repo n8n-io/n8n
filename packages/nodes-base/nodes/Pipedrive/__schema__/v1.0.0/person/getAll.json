@@ -171,6 +171,12 @@
                 ]
             }
         },
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
+        },
         "postal_address_subpremise": {
             "type": "null"
         },
@@ -188,12 +194,6 @@
         },
         "cc_email": {
             "type": "string"
-        },
-        "postal_address_lat": {
-            "type": "null"
-        },
-        "postal_address_long": {
-            "type": "null"
         }
     },
     "required": [
