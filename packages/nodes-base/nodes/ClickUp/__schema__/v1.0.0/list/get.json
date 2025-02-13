@@ -10,9 +10,6 @@
         "deleted": {
             "type": "boolean"
         },
-        "orderindex": {
-            "type": "integer"
-        },
         "content": {
             "type": "string"
         },
@@ -20,12 +17,6 @@
             "type": "null"
         },
         "assignee": {
-            "type": "null"
-        },
-        "due_date": {
-            "type": "null"
-        },
-        "start_date": {
             "type": "null"
         },
         "folder": {
