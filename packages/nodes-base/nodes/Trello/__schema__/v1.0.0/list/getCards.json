@@ -65,6 +65,9 @@
                 },
                 "lastUpdatedByAi": {
                     "type": "boolean"
+                },
+                "start": {
+                    "type": "null"
                 }
             },
             "required": [
@@ -200,6 +203,9 @@
         "shortUrl": {
             "type": "string"
         },
+        "start": {
+            "type": "null"
+        },
         "subscribed": {
             "type": "boolean"
         },
@@ -236,6 +242,9 @@
         },
         "isTemplate": {
             "type": "boolean"
+        },
+        "mirrorSourceId": {
+            "type": "null"
         }
     },
     "required": [
