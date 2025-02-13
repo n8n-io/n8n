@@ -117,9 +117,6 @@
                     },
                     "thumbnailUrl": {
                         "type": "null"
-                    },
-                    "teamsAppId": {
-                        "type": "null"
                     }
                 },
                 "required": [
@@ -222,8 +219,7 @@
                                     "@odata.type",
                                     "id",
                                     "displayName",
-                                    "userIdentityType",
-                                    "tenantId"
+                                    "userIdentityType"
                                 ]
                             }
                         },
