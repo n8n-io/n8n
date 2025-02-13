@@ -168,9 +168,6 @@
                 ]
             }
         },
-        "next_cursor": {
-            "type": "null"
-        },
         "has_more": {
             "type": "boolean"
         },
