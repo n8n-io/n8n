@@ -55,6 +55,9 @@
         "date_updated": {
             "type": "string"
         },
+        "date_closed": {
+            "type": "null"
+        },
         "date_done": {
             "type": "null"
         },
@@ -301,6 +304,9 @@
                 "name": {
                     "type": "string"
                 },
+                "hidden": {
+                    "type": "boolean"
+                },
                 "access": {
                     "type": "boolean"
                 }
@@ -320,6 +326,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "hidden": {
+                    "type": "boolean"
                 },
                 "access": {
                     "type": "boolean"
