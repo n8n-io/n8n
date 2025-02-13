@@ -7,12 +7,6 @@
         "name": {
             "type": "string"
         },
-        "orderindex": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
-        },
         "task_count": {
             "type": "integer"
         },
@@ -62,6 +56,9 @@
             "type": "boolean"
         },
         "permission_level": {
+            "type": "string"
+        },
+        "content": {
             "type": "string"
         }
     },
