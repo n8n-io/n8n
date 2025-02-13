@@ -4,14 +4,15 @@
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
         "url": {
             "type": "string"
         },
-        "property_status": {
+        "name": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "id",
+        "url"
+    ]
 }
