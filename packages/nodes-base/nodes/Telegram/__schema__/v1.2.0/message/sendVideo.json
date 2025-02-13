@@ -39,10 +39,10 @@
                         "id": {
                             "type": "integer"
                         },
-                        "type": {
+                        "first_name": {
                             "type": "string"
                         },
-                        "first_name": {
+                        "type": {
                             "type": "string"
                         },
                         "username": {
@@ -56,9 +56,6 @@
                 },
                 "date": {
                     "type": "integer"
-                },
-                "caption": {
-                    "type": "string"
                 },
                 "video": {
                     "type": "object",
@@ -151,6 +148,9 @@
                         "file_unique_id",
                         "file_size"
                     ]
+                },
+                "caption": {
+                    "type": "string"
                 }
             },
             "required": [
