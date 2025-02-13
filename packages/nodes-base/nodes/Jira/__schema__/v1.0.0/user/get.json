@@ -10,6 +10,9 @@
         "accountType": {
             "type": "string"
         },
+        "emailAddress": {
+            "type": "string"
+        },
         "avatarUrls": {
             "type": "object",
             "properties": {
@@ -110,9 +113,6 @@
             ]
         },
         "expand": {
-            "type": "string"
-        },
-        "emailAddress": {
             "type": "string"
         }
     },
