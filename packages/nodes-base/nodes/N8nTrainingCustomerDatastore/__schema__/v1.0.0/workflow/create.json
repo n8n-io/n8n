@@ -9,6 +9,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -20,9 +23,6 @@
                         "items": {
                             "type": "integer"
                         }
-                    },
-                    "id": {
-                        "type": "string"
                     },
                     "credentials": {
                         "type": "object",
@@ -47,11 +47,11 @@
                 },
                 "required": [
                     "parameters",
+                    "id",
                     "name",
                     "type",
-                    "typeVersion",
                     "position",
-                    "id"
+                    "typeVersion"
                 ]
             }
         },
@@ -79,20 +79,5 @@
         "triggerCount": {
             "type": "integer"
         }
-    },
-    "required": [
-        "name",
-        "nodes",
-        "settings",
-        "connections",
-        "staticData",
-        "active",
-        "versionId",
-        "id",
-        "meta",
-        "pinData",
-        "createdAt",
-        "updatedAt",
-        "triggerCount"
-    ]
+    }
 }
