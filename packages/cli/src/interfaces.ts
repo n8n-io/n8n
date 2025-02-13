@@ -90,6 +90,7 @@ export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
+	triggerCount: number;
 	tags?: TagEntity[];
 }
 

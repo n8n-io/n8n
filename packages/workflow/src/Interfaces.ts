@@ -2196,6 +2196,8 @@ export interface IWaitingForExecutionSource {
 	};
 }
 
+export type WorkflowId = IWorkflowBase['id'];
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;

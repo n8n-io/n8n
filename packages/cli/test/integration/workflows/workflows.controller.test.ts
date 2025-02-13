@@ -1,11 +1,10 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
@@ -519,7 +518,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -546,7 +545,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -579,7 +578,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -1205,7 +1204,7 @@ describe('PATCH /workflows/:workflowId', () => {
 describe('POST /workflows/:workflowId/run', () => {
 	let sharingSpy: jest.SpyInstance;
 	let tamperingSpy: jest.SpyInstance;
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 
 	beforeAll(() => {
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
