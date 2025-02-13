@@ -22,12 +22,36 @@ const locale = useI18n();
 const navigateToRunDetail = (run: TestRunRecord) => emit('getRunDetail', run);
 const selectedRows = ref<TestRunRecord[]>([]);
 
+// Combine test run statuses and finalResult to get the final status
+const runSummaries = computed(() => {
+	return props.runs.map(({ status, finalResult, ...run }) => {
+		if (status === 'completed' && finalResult) {
+			return { ...run, status: finalResult };
+		}
+
+		return { ...run, status };
+	});
+});
+
 const metrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
 		const metricKeys = Object.keys(run.metrics ?? {});
 		return [...new Set([...acc, ...metricKeys])];
 	}, [] as string[]);
 });
+
+const getErrorTooltipLinkRoute = (row: TestRunRecord) => {
+	if (row.errorCode === 'EVALUATION_WORKFLOW_NOT_FOUND') {
+		return {
+			name: VIEWS.TEST_DEFINITION_EDIT,
+			params: {
+				testId: row.testDefinitionId,
+			},
+		};
+	}
+
+	return undefined;
+};
 
 const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 	return [
@@ -57,9 +81,10 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 			prop: 'date',
 			label: locale.baseText('testDefinition.listRuns.runDate'),
 			sortable: true,
-			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
+			formatter: (row: TestRunRecord) =>
+				convertToDisplayDate(new Date(row.runAt ?? row.createdAt).getTime()),
 			sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
-				new Date(a.runAt).getTime() - new Date(b.runAt).getTime(),
+				new Date(a.runAt ?? a.createdAt).getTime() - new Date(b.runAt ?? b.createdAt).getTime(),
 		},
 
 		...metrics.value.map((metric) => ({
@@ -105,7 +130,7 @@ async function deleteRuns() {
 		</div>
 
 		<TestTableBase
-			:data="runs"
+			:data="runSummaries"
 			:columns="columns"
 			selectable
 			@row-click="navigateToRunDetail"

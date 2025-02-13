@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends object">
 import type { RouteLocationRaw } from 'vue-router';
 import TableCell from './TableCell.vue';
+import TableStatusCell from './TableStatusCell.vue';
 import { ElTable, ElTableColumn } from 'element-plus';
 import { ref, watch, nextTick } from 'vue';
 import type { TableInstance } from 'element-plus';
@@ -23,12 +24,15 @@ export type TestTableColumn<TRow> = {
 	filters?: Array<{ text: string; value: string }>;
 	filterMethod?: (value: string, row: TRow) => boolean;
 	route?: (row: TRow) => RouteLocationRaw | undefined;
+	errorRoute?: (row: TRow) => RouteLocationRaw | undefined;
 	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
 };
 
 type TableRow = T & { id: string };
+
+type TableRowWithStatus = TableRow & { status: string };
 
 const MIN_TABLE_HEIGHT = 350;
 const MAX_TABLE_HEIGHT = 1400;
@@ -157,8 +161,14 @@ const handleColumnResize = (
 				</N8nTooltip>
 			</template>
 			<template #default="{ row }">
+				<TableStatusCell
+					v-if="column.prop === 'status' && hasStatus(row)"
+					:column="column"
+					:row="row"
+				/>
 				<TableCell
-					:key="row.status"
+					v-else
+					:key="row.id + column.prop"
 					:column="column"
 					:row="row"
 					:class="$style.cell"

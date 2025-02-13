@@ -330,7 +330,7 @@ export = {
 				}
 
 				// change the status to active in the DB
-				await setWorkflowAsActive(workflow);
+				await setWorkflowAsActive(workflow.id);
 
 				workflow.active = true;
 
@@ -363,7 +363,7 @@ export = {
 			if (workflow.active) {
 				await activeWorkflowManager.remove(workflow.id);
 
-				await setWorkflowAsInactive(workflow);
+				await setWorkflowAsInactive(workflow.id);
 
 				workflow.active = false;
 
