@@ -326,7 +326,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				routing: {
 					send: {
 						preSend: [
@@ -352,7 +352,7 @@ const createFields: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
@@ -449,7 +449,7 @@ const getFields: INodeProperties[] = [
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
@@ -587,7 +587,7 @@ const getAllFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];

@@ -771,7 +771,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add Metadata',
+				placeholder: 'Add metadata',
 				routing: {
 					send: {
 						preSend: [
@@ -837,7 +837,7 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				],
-				placeholder: 'Add Tag',
+				placeholder: 'Add tag',
 				routing: {
 					send: {
 						preSend: [
@@ -866,7 +866,7 @@ const createFields: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
@@ -967,7 +967,7 @@ const deleteFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
@@ -1109,7 +1109,7 @@ const getFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
@@ -1372,7 +1372,7 @@ const getAllFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 		],
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		type: 'collection',
 	},
 ];
