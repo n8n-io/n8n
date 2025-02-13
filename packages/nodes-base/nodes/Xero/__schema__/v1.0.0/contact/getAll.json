@@ -26,9 +26,6 @@
                     },
                     "PostalCode": {
                         "type": "string"
-                    },
-                    "AddressLine1": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -71,19 +68,5 @@
         "HasValidationErrors": {
             "type": "boolean"
         }
-    },
-    "required": [
-        "ContactID",
-        "ContactStatus",
-        "Name",
-        "Addresses",
-        "Phones",
-        "UpdatedDateUTC",
-        "ContactGroups",
-        "IsSupplier",
-        "IsCustomer",
-        "ContactPersons",
-        "HasAttachments",
-        "HasValidationErrors"
-    ]
+    }
 }
