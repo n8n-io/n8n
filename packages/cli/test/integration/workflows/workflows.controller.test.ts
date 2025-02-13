@@ -18,7 +18,7 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
 import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
-import { createTag } from '../shared/db/tags';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import {
 	createWorkflow,
@@ -646,15 +646,19 @@ describe('GET /workflows', () => {
 			});
 		});
 
-		test('should filter workflows by field: tags', async () => {
-			const workflow = await createWorkflow({ name: 'First' }, owner);
+		test('should filter workflows by field: tags using AND operator', async () => {
+			const workflow1 = await createWorkflow({ name: 'First' }, owner);
+			const workflow2 = await createWorkflow({ name: 'Second' }, owner);
 
-			await createTag({ name: 'A' }, workflow);
-			await createTag({ name: 'B' }, workflow);
+			await createTag({ name: 'A' }, workflow1);
+			await createTag({ name: 'B' }, workflow1);
+			const tagC = await createTag({ name: 'C' }, workflow2);
+
+			await assignTagToWorkflow(tagC, workflow2);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "tags": ["A"] }')
+				.query('filter={ "tags": ["A", "B"] }')
 				.expect(200);
 
 			expect(response.body).toEqual({

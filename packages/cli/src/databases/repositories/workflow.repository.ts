@@ -158,8 +158,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (isStringArray(filter?.tags) && filter.tags.length > 0) {
-			qb.innerJoin('workflow.tags', 'filterTag').andWhere('filterTag.name IN (:...tagNames)', {
+			// Subquery for filtering
+			const subQuery = qb
+				.subQuery()
+				.select('wt.workflowId')
+				.from('workflows_tags', 'wt')
+				.innerJoin('tag_entity', 'filter_tags', 'filter_tags.id = wt.tagId')
+				.where('filter_tags.name IN (:...tagNames)', { tagNames: filter.tags })
+				.groupBy('wt.workflowId')
+				.having('COUNT(DISTINCT filter_tags.name) = :tagCount', { tagCount: filter.tags.length });
+
+			qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`).setParameters({
 				tagNames: filter.tags,
+				tagCount: filter.tags.length,
 			});
 		}
 	}

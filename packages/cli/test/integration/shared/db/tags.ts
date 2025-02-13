@@ -25,3 +25,27 @@ export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: 
 
 	return tag;
 }
+
+export async function assignTagToWorkflow(tag: TagEntity, workflow: WorkflowEntity) {
+	const mappingRepository = Container.get(WorkflowTagMappingRepository);
+
+	// Check if mapping already exists
+	const existingMapping = await mappingRepository.findOne({
+		where: {
+			tagId: tag.id,
+			workflowId: workflow.id,
+		},
+	});
+
+	if (existingMapping) {
+		return existingMapping;
+	}
+
+	// Create new mapping
+	const mapping = mappingRepository.create({
+		tagId: tag.id,
+		workflowId: workflow.id,
+	});
+
+	return await mappingRepository.save(mapping);
+}
