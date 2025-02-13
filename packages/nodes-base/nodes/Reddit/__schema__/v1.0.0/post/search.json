@@ -122,6 +122,9 @@
                 ]
             }
         },
+        "content_categories": {
+            "type": "null"
+        },
         "is_self": {
             "type": "boolean"
         },
@@ -148,6 +151,9 @@
         },
         "allow_live_comments": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "null"
         },
         "banned_at_utc": {
             "type": "null"
@@ -251,16 +257,5 @@
         "is_video": {
             "type": "boolean"
         }
-    },
-    "required": [
-        "title",
-        "name",
-        "quarantine",
-        "subreddit_type",
-        "created",
-        "wls",
-        "id",
-        "url",
-        "created_utc"
-    ]
+    }
 }
