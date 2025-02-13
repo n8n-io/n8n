@@ -118,9 +118,6 @@
         "assigned_to_user_id": {
             "type": "integer"
         },
-        "type_name": {
-            "type": "string"
-        },
         "lead": {
             "type": "null"
         }
