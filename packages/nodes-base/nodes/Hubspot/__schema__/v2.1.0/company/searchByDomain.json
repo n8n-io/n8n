@@ -77,7 +77,10 @@
                         "versions"
                     ]
                 }
-            }
+            },
+            "required": [
+                "domain"
+            ]
         },
         "additionalDomains": {
             "type": "array",
