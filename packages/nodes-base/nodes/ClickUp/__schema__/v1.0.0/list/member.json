@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "username": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
         },
