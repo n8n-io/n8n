@@ -78,20 +78,6 @@
                 "isPrivate",
                 "calendarEventId"
             ]
-        },
-        "media": {
-            "type": "object",
-            "properties": {
-                "audioUrl": {
-                    "type": "string"
-                },
-                "videoUrl": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "audioUrl"
-            ]
         }
     },
     "required": [
