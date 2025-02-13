@@ -19,8 +19,6 @@
     },
     "required": [
         "kind",
-        "id",
-        "type",
-        "role"
+        "id"
     ]
 }
