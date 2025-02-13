@@ -65,6 +65,7 @@
         "bucket",
         "generation",
         "metageneration",
+        "contentType",
         "storageClass",
         "size",
         "md5Hash",
@@ -72,6 +73,7 @@
         "etag",
         "timeCreated",
         "updated",
-        "timeStorageClassUpdated"
+        "timeStorageClassUpdated",
+        "timeFinalized"
     ]
 }
