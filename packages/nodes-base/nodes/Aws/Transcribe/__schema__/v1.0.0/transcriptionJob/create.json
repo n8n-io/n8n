@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "CreationTime": {
-            "type": "number"
-        },
-        "IdentifyLanguage": {
-            "type": "boolean"
-        },
         "Media": {
             "type": "object",
             "properties": {
@@ -23,6 +17,9 @@
         },
         "TranscriptionJobStatus": {
             "type": "string"
+        },
+        "IdentifyLanguage": {
+            "type": "boolean"
         }
     }
 }
