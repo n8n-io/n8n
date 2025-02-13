@@ -7,14 +7,14 @@
         "threadId": {
             "type": "string"
         },
-        "sizeEstimate": {
-            "type": "integer"
-        },
         "labelIds": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "sizeEstimate": {
+            "type": "integer"
         },
         "headers": {
             "type": "object",
@@ -23,9 +23,6 @@
                     "type": "string"
                 },
                 "received": {
-                    "type": "string"
-                },
-                "x-google-smtp-source": {
                     "type": "string"
                 },
                 "x-received": {
@@ -52,35 +49,39 @@
                 "dkim-signature": {
                     "type": "string"
                 },
-                "content-type": {
-                    "type": "string"
-                },
-                "date": {
+                "x-google-smtp-source": {
                     "type": "string"
                 },
                 "mime-version": {
                     "type": "string"
                 },
-                "to": {
+                "from": {
                     "type": "string"
                 },
-                "subject": {
+                "date": {
                     "type": "string"
                 },
                 "message-id": {
                     "type": "string"
                 },
-                "from": {
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "content-type": {
                     "type": "string"
                 }
             },
             "required": [
-                "content-type",
-                "date",
                 "mime-version",
-                "subject",
+                "from",
+                "date",
                 "message-id",
-                "from"
+                "subject",
+                "to",
+                "content-type"
             ]
         },
         "text": {
