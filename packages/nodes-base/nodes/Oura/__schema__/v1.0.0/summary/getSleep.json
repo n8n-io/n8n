@@ -1,0 +1,59 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"contributors": {
+			"type": "object",
+			"properties": {
+				"deep_sleep": {
+					"type": "integer"
+				},
+				"efficiency": {
+					"type": "integer"
+				},
+				"latency": {
+					"type": "integer"
+				},
+				"rem_sleep": {
+					"type": "integer"
+				},
+				"restfulness": {
+					"type": "integer"
+				},
+				"timing": {
+					"type": "integer"
+				},
+				"total_sleep": {
+					"type": "integer"
+				}
+			},
+			"required": [
+				"deep_sleep",
+				"efficiency",
+				"latency",
+				"rem_sleep",
+				"restfulness",
+				"timing",
+				"total_sleep"
+			]
+		},
+		"day": {
+			"type": "string"
+		},
+		"score": {
+			"type": "integer"
+		},
+		"timestamp": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"contributors",
+		"day",
+		"score",
+		"timestamp"
+	]
+}
