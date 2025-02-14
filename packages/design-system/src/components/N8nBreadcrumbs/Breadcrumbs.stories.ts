@@ -8,6 +8,7 @@ import type { PathItem } from './Breadcrumbs.vue';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import Tags from '../N8nTags/Tags.vue';
 
+// TODO: Implement controls
 export default {
 	title: 'Atoms/Breadcrumbs',
 	component: Breadcrumbs,
@@ -64,7 +65,10 @@ const testActions: UserAction[] = [
 	{ label: 'Create Workflow', value: 'action2', disabled: false },
 	{ label: 'Rename', value: 'action3', disabled: false },
 ];
-const testTags: Array<{ id: string; name: string }> = [{ id: '1', name: 'test' }];
+const testTags: Array<{ id: string; name: string }> = [
+	{ id: '1', name: 'tag1' },
+	{ id: '2', name: 'tag2' },
+];
 const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args, testActions, testTags }),
 	components: { Breadcrumbs, ActionToggle, Tags },

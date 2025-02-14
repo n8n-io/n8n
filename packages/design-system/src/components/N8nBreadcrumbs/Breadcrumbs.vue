@@ -10,6 +10,8 @@ export type PathItem = {
 type Props = {
 	items: PathItem[];
 	hasHiddenItems?: boolean;
+	// For mvp decided to go with string here
+	// but can be changed to PathItem[] if we want to have more control in the future
 	hiddenItemsTooltip: string;
 	theme: 'small' | 'medium';
 	showBorder?: boolean;
@@ -69,7 +71,7 @@ const handleTooltipClose = () => {
 			</li>
 			<li v-if="props.hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
 			<template v-for="(item, index) in items" :key="item.id">
-				<li>
+				<li :class="$style.item">
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
 				</li>
@@ -93,13 +95,33 @@ const handleTooltipClose = () => {
 	margin: 0;
 
 	li {
-		color: var(--color-text-base);
 		padding: var(--spacing-5xs);
+	}
+
+	.item,
+	.item * {
+		color: var(--color-text-light);
+		font-size: var(--font-size-m);
+	}
+
+	.item a:hover * {
+		color: var(--color-text-base);
 	}
 }
 
-.ellipsis.clickable {
-	cursor: pointer;
+.separator {
+	font-size: var(--font-size-xl);
+	color: var(--prim-gray-670);
+}
+
+.ellipsis {
+	color: var(--color-text-light);
+	&:hover {
+		color: var(--color-text-base);
+	}
+	&.clickable {
+		cursor: pointer;
+	}
 }
 
 .hidden-items {
@@ -108,10 +130,20 @@ const handleTooltipClose = () => {
 }
 
 .tooltip {
+	padding: var(--spacing-m) var(--spacing-s) !important;
 	& > div {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-3xs);
+		gap: var(--spacing-xs);
+
+		* {
+			color: var(--color-text-light);
+			font-size: var(--font-size-s);
+
+			&:hover {
+				color: var(--color-text-lighter);
+			}
+		}
 	}
 }
 </style>
