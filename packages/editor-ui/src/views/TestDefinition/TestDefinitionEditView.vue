@@ -14,11 +14,10 @@ import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IPinData } from 'n8n-workflow';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import { useDocumentVisibility } from '@vueuse/core';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId: string;
@@ -32,7 +31,6 @@ const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
-const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
 
 const visibility = useDocumentVisibility();
@@ -130,22 +128,16 @@ async function renameTag(newName: string) {
 }
 
 async function getExamplePinnedDataForTags() {
-	const evaluationWorkflowExecutions = await executionsStore.fetchExecutions({
-		workflowId: currentWorkflowId.value,
-		annotationTags: state.value.tags.value,
-	});
-	if (evaluationWorkflowExecutions.count > 0) {
-		const firstExecution = evaluationWorkflowExecutions.results[0];
-		const executionData = await executionsStore.fetchExecution(firstExecution.id);
-		const resultData = executionData?.data?.resultData.runData;
+	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(
+		props.testId,
+		state.value.tags.value[0],
+	);
 
+	if (exampleInput !== null) {
 		examplePinnedData.value = {
 			'When called by a test run': [
 				{
-					json: {
-						originalExecution: resultData,
-						newExecution: resultData,
-					},
+					json: exampleInput as IDataObject,
 				},
 			],
 		};
