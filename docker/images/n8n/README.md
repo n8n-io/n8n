@@ -14,8 +14,6 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 - **Enterprise-Ready**: Advanced permissions, SSO, and air-gapped deployments
 - **Active Community**: 400+ integrations and 900+ ready-to-use [templates](https://n8n.io/workflows)
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
-
 ## Contents
 
 - [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
