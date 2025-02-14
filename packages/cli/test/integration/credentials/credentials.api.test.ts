@@ -374,7 +374,7 @@ describe('GET /credentials', () => {
 		expect(teamCredAsViewer.data).toBeDefined();
 		expect(
 			(teamCredAsViewer.data as unknown as ICredentialDataDecryptedObject).oauthTokenData,
-		).toBeDefined();
+		).toBe(true);
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
 				'credential:move',
@@ -1327,6 +1327,22 @@ describe('GET /credentials/:id', () => {
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
 		expect(redactSpy).toHaveBeenCalled();
+	});
+
+	test('should omit oauth data when `includeData:true` is passed', async () => {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
 	});
 
 	test('should retrieve owned cred for member', async () => {

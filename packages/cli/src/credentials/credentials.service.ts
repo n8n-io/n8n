@@ -113,8 +113,11 @@ export class CredentialsService {
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
 					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
-					// We never want to expose the oauthTokenData to the frontend.
-					delete data?.oauthTokenData;
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (data?.oauthTokenData) {
+						data.oauthTokenData = true;
+					}
 
 					return {
 						...c,
@@ -573,8 +576,11 @@ export class CredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
-			// We never want to expose the oauthTokenData to the frontend.
-			delete decryptedData.oauthTokenData;
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };
