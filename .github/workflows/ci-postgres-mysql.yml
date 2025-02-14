@@ -83,10 +83,13 @@ jobs:
         run: pnpm jest
 
   mariadb:
-    name: MariaDB
+    name: MariaDB (${{ matrix.database }})
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
+    strategy:
+      matrix:
+        service-name: [ 'mariadb', 'mariadb-11' ]
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
@@ -117,17 +120,20 @@ jobs:
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
-            mariadb
+            ${{ matrix.service-name }}
 
       - name: Test MariaDB
         working-directory: packages/cli
         run: pnpm test:mariadb --testTimeout 30000
 
   mysql:
-    name: MySQL
+    name: MySQL (${{ matrix.database }})
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
+    strategy:
+      matrix:
+        service-name: [ 'mysql', 'mysql-8.4' ]
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
@@ -158,7 +164,7 @@ jobs:
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
-            mysql-8.4
+            ${{ matrix.service-name }}
 
       - name: Test MySQL
         working-directory: packages/cli
