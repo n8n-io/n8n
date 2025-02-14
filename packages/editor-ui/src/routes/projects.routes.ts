@@ -1,4 +1,4 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
@@ -6,6 +6,15 @@ const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+import { useProjectsStore } from '@/stores/projects.store';
+
+const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
+	if (!to?.params.projectId) {
+		return true;
+	}
+	const project = useProjectsStore().myProjects.find((p) => to?.params.projectId === p.id);
+	return !!project;
+};
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
@@ -15,7 +24,10 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
 		},
 	},
 	{
@@ -26,7 +38,10 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
 		},
 	},
 	{
@@ -36,7 +51,10 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
 		},
 	},
 ];

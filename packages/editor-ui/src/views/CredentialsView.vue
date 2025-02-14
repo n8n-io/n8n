@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
@@ -119,23 +119,6 @@ listenForModalChanges({
 	},
 });
 
-watch(
-	() => props.credentialId,
-	(id) => {
-		if (!id) return;
-
-		if (id === 'create') {
-			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
-			return;
-		}
-
-		uiStore.openExistingCredential(id);
-	},
-	{
-		immediate: true,
-	},
-);
-
 const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
 	const iResource = resource as ICredentialsResponse & { needsSetup: boolean };
 	const filtersToApply = newFilters as Filters;
@@ -159,6 +142,25 @@ const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): 
 	return matches;
 };
 
+const maybeCreateCredential = () => {
+	if (props.credentialId === 'create') {
+		if (projectPermissions.value.credential.create) {
+			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+		} else {
+		}
+	}
+};
+
+const maybeEditCredential = () => {
+	if (!!props.credentialId && props.credentialId !== 'create') {
+		const credential = credentialsStore.getCredentialById(props.credentialId);
+		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
+		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
+			uiStore.openExistingCredential(props.credentialId);
+		}
+	}
+};
+
 const initialize = async () => {
 	loading.value = true;
 	const isVarsEnabled =
@@ -174,6 +176,8 @@ const initialize = async () => {
 
 	await Promise.all(loadPromises);
 	loading.value = false;
+	maybeCreateCredential();
+	maybeEditCredential();
 };
 
 credentialsStore.$onAction(({ name, after }) => {
@@ -192,6 +196,14 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 watch(() => route?.params?.projectId, initialize);
+
+watch(
+	() => props.credentialId,
+	() => {
+		maybeCreateCredential();
+		maybeEditCredential();
+	},
+);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('credentials.heading'));
