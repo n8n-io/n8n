@@ -31,17 +31,17 @@ n8n is an extendable workflow automation tool. With a [fair-code](https://fairco
 
 ## Demo
 
-[:tv: A short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of creating workflows in n8n.
+This [:tv: short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok)  goes over key concepts of creating workflows in n8n.
 
 ## Available integrations
 
-n8n has 200+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
+n8n has 200+ different nodes to automate workflows. A full list can be found at [https://n8n.io/nodes](https://n8n.io/nodes).
 
 ## Documentation
 
-The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+The official n8n documentation can be found at [https://docs.n8n.io](https://docs.n8n.io).
 
-Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
+Additional information and example workflows are available on the n8n.io website at [https://n8n.io](https://n8n.io).
 
 ## Start n8n in Docker
 
@@ -58,12 +58,9 @@ You can then access n8n by opening:
 
 ## Start with tunnel
 
-> **WARNING**: This is only meant for local development and testing. Should not be used in production!
+> **WARNING**: This is only meant for local development and testing and should **NOT** be used in production!
 
-To be able to use webhooks which all triggers of external services like Github
-rely on n8n has to be reachable from the web. To make that easy n8n has a
-special tunnel service (uses this code: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)) which redirects requests from our servers to your local
-n8n instance.
+n8n must be reachable from the internet to make use of webhooks - essential for triggering workflows from external web-based services such as GitHub. To make this easier, n8n has a special tunnel service which redirects requests from our servers to your local n8n instance. You can inspect the code running this service here: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)
 
 To use it simply start n8n with `--tunnel`
 
@@ -78,9 +75,8 @@ docker run -it --rm \
 
 ## Persist data
 
-The workflow data gets by default saved in an SQLite database in the user
-folder (`/home/node/.n8n`). That folder also additionally contains the
-settings like webhook URL and encryption key.
+By default the workflow data gets saved in an SQLite database in the user folder (`/home/node/.n8n`). The folder also contains important data like the webhook URL and encryption key used for securing credentials.
+
 Note that the folder needs to be writable by user with UID/GID 1000.
 
 ```bash
@@ -91,17 +87,16 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-### Start with other Database
+### Start with a different database
 
-By default n8n uses SQLite to save credentials, past executions and workflows.
-n8n however also supports PostgresDB.
+By default n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgresDB.
 
-It is important to still persist the data in the `/home/node/.n8n` folder. The reason
-is that it contains n8n user data. That is the name of the webhook
-(in case) the n8n tunnel gets used and even more important the encryption key
-for the credentials. If none gets found n8n creates automatically one on
-startup. In case credentials are already saved with a different encryption key
-it can not be used anymore as encrypting it is not possible anymore.
+Note that even when using a different database, it is still important to
+persist the `/home/node/.n8n` folder, which also contains essential n8n
+user data. This includes the name of the webhook (in case) the n8n tunnel gets
+used and even more importantly the encryption key for the credentials.
+If this data can't be found at startup n8n automatically creates a new key and
+any existing credentials can no longer be decrypted.
 
 #### Use with PostgresDB
 
@@ -129,14 +124,11 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md)
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md).
 
-## Passing Sensitive Data via File
+## Passing sensitive data using file 
 
-To avoid passing sensitive information via environment variables "\_FILE" may be
-appended to some environment variables. It will then load the data from a file
-with the given name. That makes it possible to load data easily from
-Docker and Kubernetes secrets.
+To avoid passing sensitive information via environment variables "\_FILE" may be appended to some environment variables. n8n will then load the data from a file with the given name. This makes it possible to load data easily from Docker and Kubernetes secrets.
 
 The following environment variables support file input:
 
@@ -147,10 +139,9 @@ The following environment variables support file input:
 - DB_POSTGRESDB_USER_FILE
 - DB_POSTGRESDB_SCHEMA_FILE
 
-## Example Setup with Lets Encrypt
+## Example setup with Lets Encrypt
 
-A basic step by step example setup of n8n with docker-compose and Lets Encrypt is available on the
-[Server Setup](https://docs.n8n.io/#/server-setup) page.
+Example server setups for a range of cloud providers and scenarios can be found in the [Server Setup documentation](https://docs.n8n.io/hosting/installation/server-setups/).
 
 ## Updating a running docker-compose instance
 
@@ -170,14 +161,15 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 
    `sudo docker-compose up -d`
 
-## Setting Timezone
+## Setting the timezone
 
-To define the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
-be set. One instance where this variable is implemented is in the Schedule node. Furthermore, the system's timezone can be set separately,
-which controls the output of certain scripts and commands such as `$ date`. The system timezone can be set via
-the environment variable `TZ`.
+To specify the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
+be set. One instance where this variable is implemented is in the Schedule node.
 
-Example to use the same timezone for both:
+The system's timezone can be set separately with the environment variable `TZ`.
+This controls the output of certain scripts and commands such as `$ date`.
+
+For example, to use the same timezone for both:
 
 ```bash
 docker run -it --rm \
@@ -214,14 +206,11 @@ did not hear anybody complain there. So I guess it should be ok.
 
 ## Support
 
-If you have problems or questions go to our forum, we will then try to help you asap:
-
-[https://community.n8n.io](https://community.n8n.io)
+If you need more help with n8n, you can ask for support in the [n8n community forum](https://community.n8n.io). This is the best source of answers, as both the n8n support team and community members can help.
 
 ## Jobs
 
-If you are interested in working for n8n and so shape the future of the project
-check out our [job posts](https://apply.workable.com/n8n/)
+If you are interested in working for n8n and so shape the future of the project check out our [job posts](https://jobs.ashbyhq.com/n8n).
 
 ## Upgrading
 
@@ -230,4 +219,4 @@ Before you upgrade to the latest version make sure to check here if there are an
 
 ## License
 
-You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license).
