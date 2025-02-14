@@ -65,7 +65,9 @@ onMounted(() => {
 	<div :class="containerClasses" data-test-id="n8n-logo">
 		<LogoIcon :class="$style.logo" ref="logo" />
 		<LogoText v-if="showLogoText" :class="$style.logoText" />
-		<div v-if="showReleaseChannelTag" round :class="$style.releaseChannelTag">development</div>
+		<div v-if="showReleaseChannelTag" round :class="$style.releaseChannelTag">
+			{{ releaseChannel }}
+		</div>
 		<slot />
 	</div>
 </template>

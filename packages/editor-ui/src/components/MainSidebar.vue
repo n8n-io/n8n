@@ -323,7 +323,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
 			>
-				<N8nTooltip placement="bottom">
+				<N8nTooltip
+					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
+					placement="bottom"
+				>
 					<template #content>
 						<i18n-t keypath="readOnlyEnv.tooltip">
 							<template #link>
