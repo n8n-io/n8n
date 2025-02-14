@@ -52,7 +52,7 @@ export class GSuiteAdmin implements INodeType {
 						value: 'user',
 					},
 					{
-						name: 'Device',
+						name: 'ChromeOS Device',
 						value: 'device',
 					},
 				],
