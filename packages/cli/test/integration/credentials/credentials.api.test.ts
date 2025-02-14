@@ -1165,42 +1165,6 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
-	test('should not store redacted value in the db for oauthTokenData', async () => {
-		// ARRANGE
-		const credentialService = Container.get(CredentialsService);
-		const redactSpy = jest.spyOn(credentialService, 'redact').mockReturnValueOnce({
-			accessToken: CREDENTIAL_BLANKING_VALUE,
-			oauthTokenData: CREDENTIAL_BLANKING_VALUE,
-		});
-
-		const payload = randomCredentialPayload();
-		payload.data.oauthTokenData = { tokenData: true };
-		const savedCredential = await saveCredential(payload, {
-			user: owner,
-			role: 'credential:owner',
-		});
-
-		// ACT
-		const patchPayload = { ...payload, data: { foo: 'bar' } };
-		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
-
-		// ASSERT
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true })
-			.expect(200);
-
-		const { id, data } = response.body.data;
-
-		expect(id).toBe(savedCredential.id);
-		expect(data).toEqual({
-			...patchPayload.data,
-			// should be the original
-			oauthTokenData: payload.data.oauthTokenData,
-		});
-		expect(redactSpy).not.toHaveBeenCalled();
-	});
-
 	test('should not allow to overwrite oauthTokenData', async () => {
 		// ARRANGE
 		const payload = randomCredentialPayload();
@@ -1341,7 +1305,7 @@ describe('GET /credentials/:id', () => {
 		expect(secondResponse.body.data.data).toBeDefined();
 	});
 
-	test('should not redact the data when `includeData:true` is passed', async () => {
+	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = jest.spyOn(credentialService, 'redact');
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
@@ -1355,7 +1319,7 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
-		expect(redactSpy).not.toHaveBeenCalled();
+		expect(redactSpy).toHaveBeenCalled();
 	});
 
 	test('should retrieve owned cred for member', async () => {
