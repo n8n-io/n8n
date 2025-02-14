@@ -10,6 +10,7 @@ import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
+import { Folder } from './folder';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
@@ -20,6 +21,7 @@ import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
+import { TestCaseExecution } from './test-case-execution.ee';
 import { TestDefinition } from './test-definition.ee';
 import { TestMetric } from './test-metric.ee';
 import { TestRun } from './test-run.ee';
@@ -64,4 +66,6 @@ export const entities = {
 	TestDefinition,
 	TestMetric,
 	TestRun,
+	TestCaseExecution,
+	Folder,
 };

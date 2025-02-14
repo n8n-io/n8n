@@ -1,0 +1,81 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "content",
+                "contentType"
+            ]
+        },
+        "completedDateTime": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dateTime",
+                "timeZone"
+            ]
+        }
+    },
+    "required": [
+        "@odata.etag",
+        "importance",
+        "isReminderOn",
+        "status",
+        "title",
+        "createdDateTime",
+        "lastModifiedDateTime",
+        "hasAttachments",
+        "categories",
+        "id",
+        "body"
+    ]
+}

@@ -41,11 +41,6 @@ on:
         description: 'PR number to run tests for.'
         required: false
         type: number
-      node_view_version:
-        description: 'Node View version to run tests with.'
-        required: false
-        default: '1'
-        type: string
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
@@ -104,7 +99,7 @@ jobs:
         run: pnpm cypress:install
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: |
             /github/home/.cache
@@ -138,7 +133,7 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: |
             /github/home/.cache
@@ -165,7 +160,7 @@ jobs:
           spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
-          CYPRESS_NODE_VIEW_VERSION: ${{ inputs.node_view_version }}
+          CYPRESS_NODE_VIEW_VERSION: 2
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true

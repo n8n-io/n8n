@@ -38,7 +38,6 @@ import {
 	validateCredentials,
 } from './GenericFunctions';
 import { ticketFields, ticketOperations } from './TicketDescription';
-import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -52,6 +51,7 @@ export class HubspotV2 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			credentials: [
@@ -1184,12 +1184,7 @@ export class HubspotV2 implements INodeType {
 					);
 				}
 
-				const itemData = generatePairedItemData(items.length);
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData },
-				);
+				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {

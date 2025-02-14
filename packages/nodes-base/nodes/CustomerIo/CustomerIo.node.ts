@@ -25,6 +25,7 @@ export class CustomerIo implements INodeType {
 		defaults: {
 			name: 'Customer.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

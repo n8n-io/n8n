@@ -266,6 +266,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 			</div>
 		</div>
 		<WorkflowPreview
+			:key="executionId"
 			mode="execution"
 			loader-type="spinner"
 			:execution-id="executionId"

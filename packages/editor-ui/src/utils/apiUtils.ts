@@ -131,6 +131,31 @@ export async function request(config: {
 	}
 }
 
+/**
+ * Sends a request to the API and returns the response without extracting the data key.
+ * @param context Rest API context
+ * @param method HTTP method
+ * @param endpoint relative path to the API endpoint
+ * @param data request data
+ * @returns data and total count
+ */
+export async function getFullApiResponse<T>(
+	context: IRestApiContext,
+	method: Method,
+	endpoint: string,
+	data?: GenericValue | GenericValue[],
+) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: { 'push-ref': context.pushRef },
+		data,
+	});
+
+	return response as { count: number; data: T };
+}
+
 export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
@@ -198,7 +223,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	return returnData;
 }
 
-export async function streamRequest<T>(
+export async function streamRequest<T extends object>(
 	context: IRestApiContext,
 	apiEndpoint: string,
 	payload: object,
@@ -220,7 +245,7 @@ export async function streamRequest<T>(
 	try {
 		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
 
-		if (response.ok && response.body) {
+		if (response.body) {
 			// Handle the streaming response
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder('utf-8');
@@ -252,7 +277,18 @@ export async function streamRequest<T>(
 						}
 
 						try {
-							onChunk?.(data);
+							if (response.ok) {
+								// Call chunk callback if request was successful
+								onChunk?.(data);
+							} else {
+								// Otherwise, call error callback
+								const message = 'message' in data ? data.message : response.statusText;
+								onError?.(
+									new ResponseError(String(message), {
+										httpStatusCode: response.status,
+									}),
+								);
+							}
 						} catch (e: unknown) {
 							if (e instanceof Error) {
 								onError?.(e);

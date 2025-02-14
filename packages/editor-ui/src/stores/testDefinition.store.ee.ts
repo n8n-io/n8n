@@ -2,7 +2,11 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import type {
+	TestCaseExecutionRecord,
+	TestDefinitionRecord,
+	TestRunRecord,
+} from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { useAnnotationTagsStore } from './tags.store';
@@ -19,6 +23,7 @@ export const useTestDefinitionStore = defineStore(
 		const fetchedAll = ref(false);
 		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
+		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
 		const fieldsIssues = ref<Record<string, FieldIssue[]>>({});
 
@@ -167,6 +172,20 @@ export const useTestDefinitionStore = defineStore(
 			return testDefinition;
 		};
 
+		const fetchTestCaseExecutions = async (params: { testDefinitionId: string; runId: string }) => {
+			const testCaseExecutions = await testDefinitionsApi.getTestCaseExecutions(
+				rootStore.restApiContext,
+				params.testDefinitionId,
+				params.runId,
+			);
+
+			testCaseExecutions.forEach((testCaseExecution) => {
+				testCaseExecutionsById.value[testCaseExecution.id] = testCaseExecution;
+			});
+
+			return testCaseExecutions;
+		};
+
 		/**
 		 * Fetches all test definitions from the API.
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
@@ -200,6 +219,14 @@ export const useTestDefinitionStore = defineStore(
 			} finally {
 				loading.value = false;
 			}
+		};
+
+		const fetchExampleEvaluationInput = async (testId: string, annotationTagId: string) => {
+			return await testDefinitionsApi.getExampleEvaluationInput(
+				rootStore.restApiContext,
+				testId,
+				annotationTagId,
+			);
 		};
 
 		/**
@@ -421,6 +448,7 @@ export const useTestDefinitionStore = defineStore(
 			fetchedAll,
 			testDefinitionsById,
 			testRunsById,
+			testCaseExecutionsById,
 
 			// Computed
 			allTestDefinitions,
@@ -435,7 +463,9 @@ export const useTestDefinitionStore = defineStore(
 
 			// Methods
 			fetchTestDefinition,
+			fetchTestCaseExecutions,
 			fetchAll,
+			fetchExampleEvaluationInput,
 			create,
 			update,
 			deleteById,

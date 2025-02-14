@@ -60,6 +60,7 @@ export class Pipedrive implements INodeType {
 		defaults: {
 			name: 'Pipedrive',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

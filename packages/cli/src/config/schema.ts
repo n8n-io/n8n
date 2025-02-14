@@ -189,13 +189,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	externalHookFiles: {
-		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_HOOK_FILES',
-	},
-
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
@@ -376,14 +369,5 @@ export const schema = {
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
-	},
-
-	featureFlags: {
-		partialExecutionVersionDefault: {
-			format: String,
-			default: '0',
-			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
-			doc: 'Set this to 1 to enable the new partial execution logic by default.',
-		},
 	},
 };

@@ -24,6 +24,7 @@ export class AwsLambda implements INodeType {
 		defaults: {
 			name: 'AWS Lambda',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

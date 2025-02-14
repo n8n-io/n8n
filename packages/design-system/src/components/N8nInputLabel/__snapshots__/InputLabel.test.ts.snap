@@ -6,25 +6,39 @@ exports[`component > Text overflow behavior > displays ellipsis with options 1`]
     class="container"
     data-test-id="input-label"
   >
-    <label
-      class="n8n-input-label inputLabel heading medium"
+    <div
+      class="labelRow"
     >
-      <div
-        class="title"
+      <label
+        class="n8n-input-label inputLabel heading medium"
       >
-        <span
-          class="n8n-text size-medium bold textEllipses textEllipses"
+        <div
+          class="main-content"
         >
-          
-          a label 
+          <div
+            class="title"
+          >
+            <span
+              class="n8n-text size-medium bold textEllipses textEllipses"
+            >
+              
+              a label 
+              <!--v-if-->
+              
+            </span>
+          </div>
           <!--v-if-->
-          
-        </span>
-      </div>
+        </div>
+        <div
+          class="trailing-content"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+        </div>
+      </label>
       <!--v-if-->
-      <!--v-if-->
-      <!--v-if-->
-    </label>
+    </div>
     
     
   </div>
@@ -37,25 +51,39 @@ exports[`component > Text overflow behavior > displays full text without options
     class="container"
     data-test-id="input-label"
   >
-    <label
-      class="n8n-input-label inputLabel heading medium"
+    <div
+      class="labelRow"
     >
-      <div
-        class="title"
+      <label
+        class="n8n-input-label inputLabel heading medium"
       >
-        <span
-          class="n8n-text size-medium bold"
+        <div
+          class="main-content"
         >
-          
-          a label 
+          <div
+            class="title"
+          >
+            <span
+              class="n8n-text size-medium bold"
+            >
+              
+              a label 
+              <!--v-if-->
+              
+            </span>
+          </div>
           <!--v-if-->
-          
-        </span>
-      </div>
+        </div>
+        <div
+          class="trailing-content"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+        </div>
+      </label>
       <!--v-if-->
-      <!--v-if-->
-      <!--v-if-->
-    </label>
+    </div>
     
     
   </div>

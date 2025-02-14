@@ -67,6 +67,13 @@ export function getInputPlusHandleByType(nodeName: string, endpointType: Endpoin
 	);
 }
 
+export function getOutputHandle(nodeName: string) {
+	return cy.ifCanvasVersion(
+		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
+		() => cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"]`),
+	);
+}
+
 export function getOutputPlusHandle(nodeName: string) {
 	return cy.ifCanvasVersion(
 		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
@@ -94,8 +101,8 @@ export function getNodeCreatorItems() {
 	return cy.getByTestId('item-iterator-item');
 }
 
-export function getExecuteWorkflowButton() {
-	return cy.getByTestId('execute-workflow-button');
+export function getExecuteWorkflowButton(triggerNodeName?: string) {
+	return cy.getByTestId(`execute-workflow-button${triggerNodeName ? `-${triggerNodeName}` : ''}`);
 }
 
 export function getManualChatButton() {
@@ -287,8 +294,8 @@ export function addRetrieverNodeToParent(nodeName: string, parentNodeName: strin
 	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
 }
 
-export function clickExecuteWorkflowButton() {
-	getExecuteWorkflowButton().click();
+export function clickExecuteWorkflowButton(triggerNodeName?: string) {
+	getExecuteWorkflowButton(triggerNodeName).click();
 }
 
 export function clickManualChatButton() {

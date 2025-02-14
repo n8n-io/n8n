@@ -190,8 +190,9 @@ describe('FormTrigger', () => {
 			);
 
 			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
 					node: {
+						typeVersion: 2.1,
 						parameters: {
 							responseMode: 'onReceived',
 						},

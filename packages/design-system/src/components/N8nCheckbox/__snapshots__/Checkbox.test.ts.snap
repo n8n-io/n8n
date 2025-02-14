@@ -31,25 +31,39 @@ exports[`components > N8nCheckbox > should render with both child and label 1`] 
         class="container"
         data-test-id="input-label"
       >
-        <label
-          class="n8n-input-label inputLabel heading medium"
+        <div
+          class="labelRow"
         >
-          <div
-            class="title"
+          <label
+            class="n8n-input-label inputLabel heading medium"
           >
-            <span
-              class="n8n-text size-medium regular"
+            <div
+              class="main-content"
             >
-              
-              Checkbox 
+              <div
+                class="title"
+              >
+                <span
+                  class="n8n-text size-medium regular"
+                >
+                  
+                  Checkbox 
+                  <!--v-if-->
+                  
+                </span>
+              </div>
               <!--v-if-->
-              
-            </span>
-          </div>
+            </div>
+            <div
+              class="trailing-content"
+            >
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+          </label>
           <!--v-if-->
-          <!--v-if-->
-          <!--v-if-->
-        </label>
+        </div>
         
         
       </div>
@@ -122,25 +136,39 @@ exports[`components > N8nCheckbox > should render with label 1`] = `
         class="container"
         data-test-id="input-label"
       >
-        <label
-          class="n8n-input-label inputLabel heading medium"
+        <div
+          class="labelRow"
         >
-          <div
-            class="title"
+          <label
+            class="n8n-input-label inputLabel heading medium"
           >
-            <span
-              class="n8n-text size-medium regular"
+            <div
+              class="main-content"
             >
-              
-              Checkbox 
+              <div
+                class="title"
+              >
+                <span
+                  class="n8n-text size-medium regular"
+                >
+                  
+                  Checkbox 
+                  <!--v-if-->
+                  
+                </span>
+              </div>
               <!--v-if-->
-              
-            </span>
-          </div>
+            </div>
+            <div
+              class="trailing-content"
+            >
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+          </label>
           <!--v-if-->
-          <!--v-if-->
-          <!--v-if-->
-        </label>
+        </div>
         
         
       </div>

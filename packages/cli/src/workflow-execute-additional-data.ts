@@ -37,8 +37,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-import { getWorkflowHooksIntegrated } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExternalHooks } from '@/external-hooks';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -182,12 +181,8 @@ async function startExecution(
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
 ): Promise<ExecuteWorkflowData> {
-	const externalHooks = Container.get(ExternalHooks);
-	await externalHooks.init();
-
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
-	const eventService = Container.get(EventService);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowName = workflowData ? workflowData.name : undefined;
@@ -209,8 +204,6 @@ async function startExecution(
 	 */
 	await executionRepository.setRunning(executionId);
 
-	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
-
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
@@ -224,10 +217,11 @@ async function startExecution(
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
 		const additionalDataIntegrated = await getBase();
-		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
+		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
 			workflowData,
+			additionalData.userId,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
@@ -301,21 +295,14 @@ async function startExecution(
 		throw objectToError(
 			{
 				...executionError,
+				executionId,
+				workflowId: workflowData.id,
 				stack: executionError?.stack,
 				message: executionError?.message,
 			},
 			workflow,
 		);
 	}
-
-	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
-
-	eventService.emit('workflow-post-execute', {
-		workflow: workflowData,
-		executionId,
-		userId: additionalData.userId,
-		runData: data,
-	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	if (data.finished === true || data.status === 'waiting') {
@@ -337,6 +324,8 @@ async function startExecution(
 	throw objectToError(
 		{
 			...error,
+			executionId,
+			workflowId: workflowData.id,
 			stack: error?.stack,
 		},
 		workflow,
