@@ -1,33 +1,45 @@
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-# n8n - Workflow automation tool
+# n8n - Secure Workflow Automation for Technical Teams
 
-n8n is an extendable workflow automation tool. With a [fair-code](https://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
+n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
+
+![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
+
+## Key Capabilities
+
+- **Code When You Need It**: Write JavaScript/Python, add npm packages, or use the visual interface
+- **AI-Native Platform**: Build AI agent workflows based on LangChain with your own data and models
+- **Full Control**: Self-host with our fair-code license or use our [cloud offering](https://app.n8n.cloud/login)
+- **Enterprise-Ready**: Advanced permissions, SSO, and air-gapped deployments
+- **Active Community**: 400+ integrations and 900+ ready-to-use [templates](https://n8n.io/workflows)
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
 - [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
-	- [Contents](#contents)
-	- [Demo](#demo)
-	- [Available integrations](#available-integrations)
-	- [Documentation](#documentation)
-	- [Start n8n in Docker](#start-n8n-in-docker)
-	- [Start with tunnel](#start-with-tunnel)
-	- [Persist data](#persist-data)
-		- [Start with other Database](#start-with-other-database)
-			- [Use with PostgresDB](#use-with-postgresdb)
-	- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-	- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-	- [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
-	- [Setting Timezone](#setting-timezone)
-	- [Build Docker-Image](#build-docker-image)
-	- [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-	- [Support](#support)
-	- [Jobs](#jobs)
-	- [Upgrading](#upgrading)
-	- [License](#license)
+  - [Key Capabilities](#key-capabilities)
+  - [Contents](#contents)
+  - [Demo](#demo)
+  - [Available integrations](#available-integrations)
+  - [Documentation](#documentation)
+  - [Start n8n in Docker](#start-n8n-in-docker)
+  - [Start n8n with tunnel](#start-n8n-with-tunnel)
+  - [Use with PostgreSQL](#use-with-postgresql)
+  - [Passing sensitive data using files](#passing-sensitive-data-using-files)
+  - [Example server setups](#example-server-setups)
+  - [Updating](#updating)
+    - [Pull latest (stable) version](#pull-latest-stable-version)
+    - [Pull specific version](#pull-specific-version)
+    - [Pull next (unstable) version](#pull-next-unstable-version)
+    - [Updating with Docker Compose](#updating-with-docker-compose)
+  - [Setting Timezone](#setting-timezone)
+  - [Build Docker-Image](#build-docker-image)
+  - [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+  - [Support](#support)
+  - [Jobs](#jobs)
+  - [License](#license)
 
 ## Demo
 
@@ -41,22 +53,31 @@ n8n has 200+ different nodes to automate workflows. A full list can be found at 
 
 The official n8n documentation can be found at [https://docs.n8n.io](https://docs.n8n.io).
 
-Additional information and example workflows are available on the n8n.io website at [https://n8n.io](https://n8n.io).
+Additional information and example workflows are available on the website at [https://n8n.io](https://n8n.io).
 
 ## Start n8n in Docker
 
+In the terminal, enter the following:
+
 ```bash
+docker volume create n8n_data
+
 docker run -it --rm \
  --name n8n \
  -p 5678:5678 \
- -v ~/.n8n:/home/node/.n8n \
+ -v n8n_data:/home/node/.n8n \
  docker.n8n.io/n8nio/n8n
 ```
 
+This command will download all required n8n images and start your container.
 You can then access n8n by opening:
 [http://localhost:5678](http://localhost:5678)
 
-## Start with tunnel
+To save your work between container restarts, it also mounts a docker volume, `n8n_data`. The workflow data gets saved in an SQLite database in the user folder (`/home/node/.n8n`). This folder also contains important data like the webhook URL and the encryption key used for securing credentials.
+
+If this data can't be found at startup n8n automatically creates a new key and any existing credentials can no longer be decrypted.
+
+## Start n8n with tunnel
 
 > **WARNING**: This is only meant for local development and testing and should **NOT** be used in production!
 
@@ -65,42 +86,25 @@ n8n must be reachable from the internet to make use of webhooks - essential for 
 To use it simply start n8n with `--tunnel`
 
 ```bash
+docker volume create n8n_data
+
 docker run -it --rm \
  --name n8n \
  -p 5678:5678 \
- -v ~/.n8n:/home/node/.n8n \
+ -v n8n_data:/home/node/.n8n \
  docker.n8n.io/n8nio/n8n \
  start --tunnel
 ```
 
-## Persist data
+## Use with PostgreSQL
 
-By default the workflow data gets saved in an SQLite database in the user folder (`/home/node/.n8n`). The folder also contains important data like the webhook URL and encryption key used for securing credentials.
-
-Note that the folder needs to be writable by user with UID/GID 1000.
-
-```bash
-docker run -it --rm \
- --name n8n \
- -p 5678:5678 \
- -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n
-```
-
-### Start with a different database
-
-By default n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgresDB.
+By default, n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgresDB.
 
 Note that even when using a different database, it is still important to
 persist the `/home/node/.n8n` folder, which also contains essential n8n
-user data. This includes the name of the webhook (in case) the n8n tunnel gets
-used and even more importantly the encryption key for the credentials.
-If this data can't be found at startup n8n automatically creates a new key and
-any existing credentials can no longer be decrypted.
+user data including the encryption key for the credentials.
 
-#### Use with PostgresDB
-
-Replace the following placeholders with the actual data:
+In the following commands, replace these placeholders with the actual data:
 
 - POSTGRES_DATABASE
 - POSTGRES_HOST
@@ -110,6 +114,8 @@ Replace the following placeholders with the actual data:
 - POSTGRES_SCHEMA
 
 ```bash
+docker volume create n8n_data
+
 docker run -it --rm \
  --name n8n \
  -p 5678:5678 \
@@ -120,15 +126,15 @@ docker run -it --rm \
  -e DB_POSTGRESDB_USER=<POSTGRES_USER> \
  -e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
  -e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
- -v ~/.n8n:/home/node/.n8n \
+ -v n8n_data:/home/node/.n8n \
  docker.n8n.io/n8nio/n8n
 ```
 
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md).
 
-## Passing sensitive data using file 
+## Passing sensitive data using files
 
-To avoid passing sensitive information via environment variables "\_FILE" may be appended to some environment variables. n8n will then load the data from a file with the given name. This makes it possible to load data easily from Docker and Kubernetes secrets.
+To avoid passing sensitive information via environment variables, "\_FILE" may be appended to some environment variable names. n8n will then load the data from a file with the given name. This makes it possible to load data easily from Docker and Kubernetes secrets.
 
 The following environment variables support file input:
 
@@ -139,27 +145,77 @@ The following environment variables support file input:
 - DB_POSTGRESDB_USER_FILE
 - DB_POSTGRESDB_SCHEMA_FILE
 
-## Example setup with Lets Encrypt
+## Example server setups
 
 Example server setups for a range of cloud providers and scenarios can be found in the [Server Setup documentation](https://docs.n8n.io/hosting/installation/server-setups/).
 
-## Updating a running docker-compose instance
+## Updating
 
-1. Pull the latest version from the registry
+Before you upgrade to the latest version make sure to check here if there are any breaking changes which may affect you: [Breaking Changes](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md)
 
-   `docker pull docker.n8n.io/n8nio/n8n`
+From your Docker Desktop, navigate to the Images tab and select Pull from the context menu to download the latest n8n image.
 
-2. Stop the current setup
+You can also use the command line to pull the latest, or a specific version:
 
-   `sudo docker-compose stop`
+### Pull latest (stable) version
 
-3. Delete it (will only delete the docker-containers, data is stored separately)
+```bash
+docker pull docker.n8n.io/n8nio/n8n
+```
 
-   `sudo docker-compose rm`
+### Pull specific version
 
-4. Then start it again
+```bash
+docker pull docker.n8n.io/n8nio/n8n:0.220.1
+```
 
-   `sudo docker-compose up -d`
+### Pull next (unstable) version
+
+```bash
+docker pull docker.n8n.io/n8nio/n8n:next
+```
+
+Stop the container and start it again:
+
+1. Get the container ID:
+
+```bash
+docker ps -a
+```
+
+2. Stop the container with ID container_id:
+
+```bash
+docker stop [container_id]
+```
+
+3. Remove the container with ID container_id:
+
+
+```bash
+docker rm [container_id]
+```
+
+4. Start the new container:
+
+```bash
+docker run --name=[container_name] [options] -d docker.n8n.io/n8nio/n8n
+```
+
+### Updating with Docker Compose
+
+If you run n8n using a Docker Compose file, follow these steps to update n8n:
+
+```bash
+# Pull latest version
+docker compose pull
+
+# Stop and remove older version
+docker compose down
+
+# Start the container
+docker compose up -d
+```
 
 ## Setting the timezone
 
@@ -180,6 +236,8 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
+For more information on configuration, please see the (https://docs.n8n.io/hosting/configuration/environment-variables/)
+
 ## Build Docker-Image
 
 ```bash
@@ -193,16 +251,8 @@ docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=1
 
 **Short answer:** It means "nodemation" and it is pronounced as n-eight-n.
 
-**Long answer:** I get that question quite often (more often than I expected)
-so I decided it is probably best to answer it here. While looking for a
-good name for the project with a free domain I realized very quickly that all the
-good ones I could think of were already taken. So, in the end, I chose
-nodemation. "node-" in the sense that it uses a Node-View and that it uses
-Node.js and "-mation" for "automation" which is what the project is supposed to help with.
-However, I did not like how long the name was and I could not imagine writing
-something that long every time in the CLI. That is when I then ended up on
-"n8n". Sure does not work perfectly but does neither for Kubernetes (k8s) and
-did not hear anybody complain there. So I guess it should be ok.
+**Long answer:** I get that question quite often (more often than I expected) so I decided it is probably best to answer it here. While looking for a good name for the project with a free domain I realized very quickly that all the good ones I could think of were already taken. So, in the end, I chose nodemation. "node-" in the sense that it uses a Node-View and that it uses Node.js and "-mation" for "automation" which is what the project is supposed to help with.
+However, I did not like how long the name was and I could not imagine writing something that long every time in the CLI. That is when I then ended up on "n8n". Sure it does not work perfectly but neither does it for Kubernetes (k8s) and I did not hear anybody complain there. So I guess it should be ok.
 
 ## Support
 
@@ -211,11 +261,6 @@ If you need more help with n8n, you can ask for support in the [n8n community fo
 ## Jobs
 
 If you are interested in working for n8n and so shape the future of the project check out our [job posts](https://jobs.ashbyhq.com/n8n).
-
-## Upgrading
-
-Before you upgrade to the latest version make sure to check here if there are any breaking changes which concern you:
-[Breaking Changes](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md)
 
 ## License
 
