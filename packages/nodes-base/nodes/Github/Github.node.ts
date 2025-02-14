@@ -416,7 +416,7 @@ export class Github implements INodeType {
 						action: 'Disable a workflow',
 					},
 					{
-						name: 'Dispatch',
+						name: 'Dispatch Workflow Event',
 						value: 'dispatch',
 						description: 'Dispatch a workflow event',
 						action: 'Dispatch a workflow event',
@@ -2500,7 +2500,14 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+
+						if (!workflowId) {
+							throw new NodeOperationError(this.getNode(), 'Workflow ID is missing.', {
+								itemIndex: i,
+							});
+						}
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 						body.ref = this.getNodeParameter('ref', i) as string;
