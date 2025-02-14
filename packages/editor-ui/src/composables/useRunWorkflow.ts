@@ -216,7 +216,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
 			const version = settingsStore.partialExecutionVersion;
-			debugger;
 			const startNodes: StartNodeData[] =
 				isPartialExecution && version === 2
 					? []
