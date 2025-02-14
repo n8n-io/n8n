@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 	theme: 'medium',
 	hasHiddenItems: false,
 	hiddenItemsTooltip: '',
-	showBorder: true,
+	showBorder: false,
 });
 
 const tooltipText = computed(() => {
@@ -49,7 +49,13 @@ const handleTooltipClose = () => {
 };
 </script>
 <template>
-	<div :class="$style.container">
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.border]: props.showBorder,
+			[$style[props.theme]]: true,
+		}"
+	>
 		<slot name="prepend"></slot>
 		<ul :class="$style.list">
 			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">/</li>
@@ -60,7 +66,7 @@ const handleTooltipClose = () => {
 			>
 				<n8n-tooltip
 					:content="tooltipText"
-					:popper-class="$style.tooltip"
+					:popper-class="[$style.tooltip, $style[props.theme]]"
 					:disabled="!tooltipText"
 					@show="handleTooltipShow"
 					@before-show="handleBeforeTooltipShow"
@@ -86,16 +92,59 @@ const handleTooltipClose = () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-5xs);
+
+	&.small {
+		display: inline-flex;
+		padding: var(--spacing-4xs) var(--spacing-2xs);
+	}
+
+	&.border {
+		border: var(--border-base);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .list {
 	display: flex;
 	list-style: none;
-	padding: 0;
-	margin: 0;
+}
 
+.ellipsis {
+	&.clickable {
+		cursor: pointer;
+	}
+}
+
+.hidden-items {
+	display: flex;
+	align-items: center;
+}
+
+.small {
+	.list {
+		gap: var(--spacing-5xs);
+	}
+
+	.item,
+	.item * {
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+		font-weight: 600;
+	}
+
+	.item a:hover * {
+		color: var(--color-text-dark);
+	}
+
+	.separator {
+		font-size: var(--font-size-m);
+		color: var(--color-text-base);
+	}
+}
+
+.medium {
 	li {
-		padding: var(--spacing-5xs);
+		padding: var(--spacing-4xs);
 	}
 
 	.item,
@@ -107,41 +156,49 @@ const handleTooltipClose = () => {
 	.item a:hover * {
 		color: var(--color-text-base);
 	}
-}
 
-.separator {
-	font-size: var(--font-size-xl);
-	color: var(--prim-gray-670);
-}
-
-.ellipsis {
-	color: var(--color-text-light);
-	&:hover {
-		color: var(--color-text-base);
+	.ellipsis {
+		color: var(--color-text-light);
+		&:hover {
+			color: var(--color-text-base);
+		}
 	}
-	&.clickable {
-		cursor: pointer;
-	}
-}
 
-.hidden-items {
-	display: flex;
-	align-items: center;
+	.separator {
+		font-size: var(--font-size-xl);
+		color: var(--prim-gray-670);
+	}
 }
 
 .tooltip {
-	padding: var(--spacing-m) var(--spacing-s) !important;
 	& > div {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-xs);
-
 		* {
 			color: var(--color-text-light);
-			font-size: var(--font-size-s);
 
 			&:hover {
 				color: var(--color-text-lighter);
+			}
+		}
+	}
+	&.medium {
+		padding: var(--spacing-m) var(--spacing-s) !important;
+		& > div {
+			gap: var(--spacing-xs);
+
+			* {
+				font-size: var(--font-size-s);
+			}
+		}
+	}
+	&.small {
+		padding: var(--spacing-xs) var(--spacing-2xs) !important;
+		& > div {
+			gap: var(--spacing-2xs);
+
+			* {
+				font-size: var(--font-size-2xs);
 			}
 		}
 	}

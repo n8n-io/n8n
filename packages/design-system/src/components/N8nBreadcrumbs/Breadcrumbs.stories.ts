@@ -75,7 +75,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	template: `<Breadcrumbs v-bind="args">
     <template #prepend>
-      <div style="display: flex; align-items: center; gap: 4px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
         <n8n-icon icon="layer-group"/>
         <n8n-text>My Project</n8n-text>
       </div>
@@ -90,6 +90,41 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 });
 export const WithSlots = withSlotsTemplate.bind({});
 WithSlots.args = {
+	items: items.slice(2),
+	hasHiddenItems: true,
+	hiddenItemsTooltip: '<a href="#">Parent 1</a><a href="#">Parent 2</a>',
+};
+
+const smallVersionTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: '<Breadcrumbs v-bind="args" />',
+});
+export const SmallVersion = smallVersionTemplate.bind({});
+SmallVersion.args = {
+	items,
+	theme: 'small',
+	showBorder: true,
+};
+
+const smallWithSlotsTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: `<Breadcrumbs v-bind="args">
+	<template #prepend>
+		<div style="display: flex; align-items: center; gap: 4px; font-size: 10px">
+			<n8n-icon icon="user"/>
+			<n8n-text>Personal</n8n-text>
+		</div>
+	</template>
+</Breadcrumbs>`,
+});
+export const SmallWithSlots = smallWithSlotsTemplate.bind({});
+SmallWithSlots.args = {
+	theme: 'small',
+	showBorder: true,
 	items: items.slice(2),
 	hasHiddenItems: true,
 	hiddenItemsTooltip: '<a href="#">Parent 1</a><a href="#">Parent 2</a>',
