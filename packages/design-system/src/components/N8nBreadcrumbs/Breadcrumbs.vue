@@ -48,11 +48,18 @@ const handleTooltipClose = () => {
 </script>
 <template>
 	<div :class="$style.container">
+		<slot name="prepend"></slot>
 		<ul :class="$style.list">
-			<li v-if="props.hasHiddenItems" :class="$style.ellipsis" aria-hidden="true">
+			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">/</li>
+			<li
+				v-if="props.hasHiddenItems"
+				:class="{ [$style.ellipsis]: true, [$style.clickable]: tooltipText !== '' }"
+				aria-hidden="true"
+			>
 				<n8n-tooltip
 					:content="tooltipText"
 					:popper-class="$style.tooltip"
+					:disabled="!tooltipText"
 					@show="handleTooltipShow"
 					@before-show="handleBeforeTooltipShow"
 					@hide="handleTooltipClose"
@@ -60,20 +67,23 @@ const handleTooltipClose = () => {
 					<span>...</span>
 				</n8n-tooltip>
 			</li>
-			<li v-if="props.hasHiddenItems" class="separator" aria-hidden="true">/</li>
+			<li v-if="props.hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
 			<template v-for="(item, index) in items" :key="item.id">
 				<li>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
 				</li>
-				<li v-if="index !== items.length - 1" class="separator" aria-hidden="true">/</li>
+				<li v-if="index !== items.length - 1" :class="$style.separator" aria-hidden="true">/</li>
 			</template>
 		</ul>
+		<slot name="append"></slot>
 	</div>
 </template>
 <style lang="scss" module>
 .container {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing-5xs);
 }
 
 .list {
@@ -88,11 +98,11 @@ const handleTooltipClose = () => {
 	}
 }
 
-.ellipsis {
+.ellipsis.clickable {
 	cursor: pointer;
 }
 
-.hiddenItems {
+.hidden-items {
 	display: flex;
 	align-items: center;
 }
