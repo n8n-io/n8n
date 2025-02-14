@@ -109,9 +109,11 @@ export class EnterpriseCredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
-			// We never want to expose the oauthTokenData to the frontend.
-			delete decryptedData.oauthTokenData;
-
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 
