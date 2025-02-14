@@ -1,5 +1,5 @@
 services:
-  mariadb:
+  mariadb-10.5:
     image: mariadb:10.5
     environment:
       - MARIADB_DATABASE=n8n
@@ -21,8 +21,8 @@ services:
     tmpfs:
       - /var/lib/mysql
 
-  mysql:
-    image: mysql:8.0.29
+  mysql-8.0.13:
+    image: mysql:8.0.13
     environment:
       - MYSQL_DATABASE=n8n
       - MYSQL_ROOT_PASSWORD=password

@@ -83,13 +83,13 @@ jobs:
         run: pnpm jest
 
   mariadb:
-    name: MariaDB (${{ matrix.database }})
+    name: MariaDB (${{ matrix.service-name }})
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
     strategy:
       matrix:
-        service-name: [ 'mariadb', 'mariadb-11' ]
+        service-name: [ 'mariadb-10.5', 'mariadb-11' ]
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
@@ -127,13 +127,13 @@ jobs:
         run: pnpm test:mariadb --testTimeout 30000
 
   mysql:
-    name: MySQL (${{ matrix.database }})
+    name: MySQL (${{ matrix.service-name }})
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
     strategy:
       matrix:
-        service-name: [ 'mysql', 'mysql-8.4' ]
+        service-name: [ 'mysql-8.0.13', 'mysql-8.4' ]
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
