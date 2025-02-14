@@ -185,12 +185,11 @@ const onFiltersUpdated = async () => {
 };
 
 const onSearchUpdated = async (search: string) => {
+	currentPage.value = 1;
+	saveFiltersOnQueryString();
 	if (search) {
-		currentPage.value = 1;
-		saveFiltersOnQueryString();
 		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
 	} else {
-		currentPage.value = 1;
 		// No need to debounce when clearing search
 		await fetchWorkflows();
 	}
@@ -306,20 +305,25 @@ function isValidProjectId(projectId: string) {
 }
 
 const setFiltersFromQueryString = async () => {
+	// Start with all existing query parameters
+	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort } = route.query ?? {};
-	const newQuery: LocationQueryRaw = {};
 
 	if (homeProject && typeof homeProject === 'string') {
 		await projectsStore.getAvailableProjects();
 		if (isValidProjectId(homeProject)) {
 			newQuery.homeProject = homeProject;
 			filters.value.homeProject = homeProject;
+		} else {
+			delete newQuery.homeProject; // Remove invalid project
 		}
 	}
 
 	if (search && typeof search === 'string') {
 		newQuery.search = search;
 		filters.value.search = search;
+	} else {
+		delete newQuery.search;
 	}
 
 	if (tags && typeof tags === 'string') {
@@ -330,6 +334,8 @@ const setFiltersFromQueryString = async () => {
 		if (validTags.length) {
 			newQuery.tags = validTags.join(',');
 			filters.value.tags = validTags;
+		} else {
+			delete newQuery.tags;
 		}
 	}
 
@@ -340,12 +346,16 @@ const setFiltersFromQueryString = async () => {
 	) {
 		newQuery.status = status; // Keep as string in URL
 		filters.value.status = status === 'true'; // Convert to boolean for filters
+	} else {
+		delete newQuery.status;
 	}
 
 	if (sort && typeof sort === 'string') {
 		const newSort = WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 		newQuery.sort = sort;
 		currentSort.value = newSort;
+	} else {
+		delete newQuery.sort;
 	}
 
 	void router.replace({ query: newQuery });
