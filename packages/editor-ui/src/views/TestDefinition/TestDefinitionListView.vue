@@ -1,113 +1,75 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue';
+import { computed, h } from 'vue';
 import { useRouter, RouterLink } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import EmptyState from '@/components/TestDefinition/ListDefinition/EmptyState.vue';
-import TestsList from '@/components/TestDefinition/ListDefinition/TestsList.vue';
-import type {
-	TestExecution,
-	TestItemAction,
-	TestListItem,
-} from '@/components/TestDefinition/types';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import TestItem from '@/components/TestDefinition/ListDefinition/TestItem.vue';
 import { useMessage } from '@/composables/useMessage';
+import {
+	N8nLoading,
+	N8nIconButton,
+	N8nButton,
+	N8nHeading,
+	N8nActionToggle,
+} from 'n8n-design-system';
+import { useAsyncState } from '@vueuse/core';
+import { orderBy } from 'lodash-es';
+
+const props = defineProps<{
+	name: string;
+}>();
 
 const router = useRouter();
-const tagsStore = useAnnotationTagsStore();
 const testDefinitionStore = useTestDefinitionStore();
-const isLoading = ref(false);
 const toast = useToast();
 const locale = useI18n();
 const { confirm } = useMessage();
 
-const actions = computed<TestItemAction[]>(() => [
+const { state: tests, isLoading } = useAsyncState(
+	async () => {
+		await testDefinitionStore.fetchAll({ workflowId: props.name });
+
+		return testDefinitionStore.allTestDefinitionsByWorkflowId[props.name];
+	},
+	[],
+	{ onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')) },
+);
+
+const listItems = computed(() =>
+	orderBy(tests.value, [(test) => new Date(test.updatedAt ?? test.createdAt)], ['desc']).map(
+		(test) => ({
+			...test,
+			testCases: (testDefinitionStore.testRunsByTestId[test.id] || []).length,
+			lastExecution: testDefinitionStore.lastRunByTestId[test.id] ?? undefined,
+		}),
+	),
+);
+
+const commands = {
+	delete: onDeleteTest,
+	edit: onEditTest,
+} as const;
+
+type Action = { label: string; value: keyof typeof commands; disabled: boolean };
+
+const actions = computed<Action[]>(() => [
 	{
-		icon: 'play',
-		id: 'run',
-		event: onRunTest,
-		disabled: isRunDisabled,
-		show: (testId) => !isTestRunning(testId),
-		tooltip: (testId) =>
-			isRunDisabled(testId)
-				? getDisabledRunTooltip(testId)
-				: locale.baseText('testDefinition.runTest'),
+		label: 'Edit test',
+		value: 'edit',
+		disabled: false,
 	},
 	{
-		icon: 'stop',
-		id: 'cancel',
-		event: onCancelTestRun,
-		tooltip: () => locale.baseText('testDefinition.cancelTestRun'),
-		show: (testId) => isTestRunning(testId),
-	},
-	{
-		icon: 'trash',
-		id: 'delete',
-		event: onDeleteTest,
-		tooltip: () => locale.baseText('testDefinition.deleteTest'),
+		label: 'Delete',
+		value: 'delete',
+		disabled: false,
 	},
 ]);
 
-const tests = computed<TestListItem[]>(() => {
-	return (
-		testDefinitionStore.allTestDefinitionsByWorkflowId[
-			router.currentRoute.value.params.name as string
-		] ?? []
-	)
-		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
-		.sort((a, b) => new Date(b?.updatedAt ?? '').getTime() - new Date(a?.updatedAt ?? '').getTime())
-		.map((test) => ({
-			id: test.id,
-			name: test.name ?? '',
-			tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
-			testCases: testDefinitionStore.testRunsByTestId[test.id]?.length ?? 0,
-			execution: getTestExecution(test.id),
-			fieldsIssues: testDefinitionStore.getFieldIssues(test.id),
-		}));
-});
-
-const hasTests = computed(() => tests.value.length > 0);
-const allTags = computed(() => tagsStore.allTags);
-
-function getTagName(tagId: string) {
-	const matchingTag = allTags.value.find((t) => t.id === tagId);
-
-	return matchingTag?.name ?? '';
-}
-function getDisabledRunTooltip(testId: string) {
-	const issues = testDefinitionStore
-		.getFieldIssues(testId)
-		?.map((i) => i.message)
-		.join('<br />- ');
-
-	return `${locale.baseText('testDefinition.completeConfig')} <br /> - ${issues}`;
-}
-
-function getTestExecution(testId: string): TestExecution {
-	const lastRun = testDefinitionStore.lastRunByTestId[testId];
-	if (!lastRun) {
-		return {
-			id: null,
-			lastRun: null,
-			errorRate: 0,
-			metrics: {},
-			status: 'new',
-		};
-	}
-
-	const mockExecutions = {
-		id: lastRun.id,
-		lastRun: lastRun.updatedAt ?? '',
-		errorRate: 0,
-		metrics: lastRun.metrics ?? {},
-		status: lastRun.status ?? 'running',
-	};
-
-	return mockExecutions;
-}
+const handleAction = async (action: string, testId: string) =>
+	await commands[action as Action['value']](testId);
 
 function isTestRunning(testId: string) {
 	return testDefinitionStore.lastRunByTestId[testId]?.status === 'running';
@@ -116,7 +78,7 @@ function isTestRunning(testId: string) {
 function isRunDisabled(testId: string) {
 	return testDefinitionStore.getFieldIssues(testId)?.length > 0;
 }
-// Action handlers
+// // Action handlers
 function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
 }
@@ -197,61 +159,86 @@ async function onDeleteTest(testId: string) {
 	});
 }
 
-// Load initial data
-async function loadInitialData() {
-	if (!isLoading.value) {
-		// Add guard to prevent multiple loading states
-		isLoading.value = true;
-		try {
-			await testDefinitionStore.fetchAll({
-				workflowId: router.currentRoute.value.params.name as string,
-			});
-			isLoading.value = false;
-		} catch (error) {
-			toast.showError(error, locale.baseText('testDefinition.list.loadError'));
-		} finally {
-			isLoading.value = false;
-		}
-	}
-}
+// onMounted(async () => {
+// 	if (!testDefinitionStore.isFeatureEnabled) {
+// 		toast.showMessage({
+// 			title: locale.baseText('testDefinition.notImplemented'),
+// 			type: 'warning',
+// 		});
 
-onMounted(async () => {
-	if (!testDefinitionStore.isFeatureEnabled) {
-		toast.showMessage({
-			title: locale.baseText('testDefinition.notImplemented'),
-			type: 'warning',
-		});
-
-		void router.push({
-			name: VIEWS.WORKFLOW,
-			params: { name: router.currentRoute.value.params.name },
-		});
-		return; // Add early return to prevent loading if feature is disabled
-	}
-	await loadInitialData();
-	tests.value.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
-});
+// 		void router.push({
+// 			name: VIEWS.WORKFLOW,
+// 			params: { name: router.currentRoute.value.params.name },
+// 		});
+// 		return; // Add early return to prevent loading if feature is disabled
+// 	}
+// 	await loadInitialData();
+// 	tests.value.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
+// });
 </script>
 
 <template>
 	<div :class="$style.container">
-		<div v-if="isLoading" :class="$style.loading">
-			<n8n-loading :loading="true" :rows="3" />
-		</div>
-
+		<N8nLoading v-if="isLoading" loading :rows="3"></N8nLoading>
+		<EmptyState
+			v-else-if="!listItems.length"
+			data-test-id="test-definition-empty-state"
+			@create-test="onCreateTest"
+		/>
 		<template v-else>
-			<EmptyState
-				v-if="!hasTests"
-				data-test-id="test-definition-empty-state"
-				@create-test="onCreateTest"
-			/>
-			<TestsList
-				v-else
-				:tests="tests"
-				:actions="actions"
-				@view-details="onEditTest"
-				@create-test="onCreateTest"
-			/>
+			<div :class="$style.header">
+				<N8nHeading size="xlarge" color="text-dark" bold>{{
+					locale.baseText('testDefinition.list.tests')
+				}}</N8nHeading>
+				<div>
+					<N8nButton
+						:label="locale.baseText('testDefinition.list.createNew')"
+						class="mr-xs"
+						@click="onCreateTest"
+					/>
+					<N8nButton label="Run all evaluations" disabled type="secondary" />
+				</div>
+			</div>
+			<div :class="$style.testList">
+				<TestItem
+					v-for="item in listItems"
+					:key="item.id"
+					:name="item.name"
+					:test-cases="item.testCases"
+					:execution="item.lastExecution"
+					@click="onEditTest(item.id)"
+				>
+					<template #prepend>
+						<div @click.stop>
+							<N8nIconButton
+								v-if="isTestRunning(item.id)"
+								icon="stop"
+								type="secondary"
+								size="mini"
+								@click="onCancelTestRun(item.id)"
+							/>
+							<N8nIconButton
+								v-else
+								icon="play"
+								type="secondary"
+								size="mini"
+								:disabled="isRunDisabled(item.id)"
+								@click="onRunTest(item.id)"
+							/>
+						</div>
+					</template>
+					<template #append>
+						<div @click.stop>
+							<N8nActionToggle
+								:actions="actions"
+								icon-orientation="horizontal"
+								@action="(action) => handleAction(action, item.id)"
+							>
+							</N8nActionToggle>
+						</div>
+					</template>
+				</TestItem>
+			</div>
 		</template>
 	</div>
 </template>
@@ -268,5 +255,17 @@ onMounted(async () => {
 	justify-content: center;
 	align-items: center;
 	height: 200px;
+}
+
+.testList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 20px;
 }
 </style>

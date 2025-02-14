@@ -1,12 +1,12 @@
 <script setup lang="ts" generic="T extends object">
+import type { TableInstance } from 'element-plus';
+import { ElTable, ElTableColumn } from 'element-plus';
+import { isEqual } from 'lodash-es';
+import { N8nIcon, N8nTooltip } from 'n8n-design-system';
+import { nextTick, ref, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import TableCell from './TableCell.vue';
 import TableStatusCell from './TableStatusCell.vue';
-import { ElTable, ElTableColumn } from 'element-plus';
-import { ref, watch, nextTick } from 'vue';
-import type { TableInstance } from 'element-plus';
-import { isEqual } from 'lodash-es';
-import { N8nIcon, N8nTooltip } from 'n8n-design-system';
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
@@ -19,6 +19,7 @@ import { N8nIcon, N8nTooltip } from 'n8n-design-system';
 export type TestTableColumn<TRow> = {
 	prop: string;
 	label: string;
+	showHeaderTooltip?: boolean;
 	width?: number;
 	sortable?: boolean;
 	filters?: Array<{ text: string; value: string }>;
@@ -122,6 +123,7 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
+		@row-click="(row) => $emit('rowClick', row)"
 	>
 		<ElTableColumn
 			v-if="selectable"
@@ -146,7 +148,7 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 				<N8nTooltip
 					:content="headerProps.column.label"
 					placement="top"
-					:disabled="['runNumber', 'status', 'date'].includes(headerProps.column.property)"
+					:disabled="!column.showHeaderTooltip"
 				>
 					<div :class="$style.customHeaderCell">
 						<div :class="$style.customHeaderCellLabel">
@@ -199,6 +201,7 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 }
 
 .customRow {
+	cursor: pointer;
 	&:hover {
 		& > .customCell {
 			background-color: var(--color-background-light);

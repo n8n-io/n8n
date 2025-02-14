@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useRouter } from 'vue-router';
-import { convertToDisplayDate } from '@/utils/typesUtils';
-import { useI18n } from '@/composables/useI18n';
-import { N8nCard, N8nText } from 'n8n-design-system';
-import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue';
-import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
-import { VIEWS } from '@/constants';
-import { useToast } from '@/composables/useToast';
 import type { TestCaseExecutionRecord } from '@/api/testDefinition.ee';
+import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
+import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { VIEWS } from '@/constants';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { convertToDisplayDate } from '@/utils/typesUtils';
+import { N8nText } from 'n8n-design-system';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const toast = useToast();
@@ -27,6 +27,10 @@ const test = computed(() => testDefinitionStore.testDefinitionsById[testId.value
 const filteredTestCases = computed(() => {
 	return testCases.value;
 });
+
+const formatedTime = computed(() =>
+	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
+);
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	if (row.errorCode === 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW') {
@@ -94,38 +98,18 @@ const columns = computed(
 			width: 200,
 			label: locale.baseText('testDefinition.runDetail.testCase'),
 			sortable: true,
-			route: (row: TestCaseExecutionRecord) => {
-				if (test.value?.evaluationWorkflowId && row.evaluationExecutionId) {
-					return {
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: {
-							name: test.value?.evaluationWorkflowId,
-							executionId: row.evaluationExecutionId,
-						},
-					};
-				}
-
-				return undefined;
-			},
 			formatter: (row: TestCaseExecutionRecord) => `${row.id}`,
-			openInNewTab: true,
 		},
 		{
 			prop: 'status',
 			label: locale.baseText('testDefinition.listRuns.status'),
-			// filters: [
-			// 	{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
-			// 	{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
-			// 	{ text: locale.baseText('testDefinition.listRuns.status.success'), value: 'success' },
-			// 	{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
-			// ],
-			// filterMethod: (value: string, row: TestCaseExecutionRecord) => row.status === value,
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
 			prop: `metrics.${metric}`,
 			label: metric,
 			sortable: true,
 			filter: true,
+			showHeaderTooltip: true,
 			formatter: (row: TestCaseExecutionRecord) => row.metrics?.[metric]?.toFixed(2) ?? '-',
 		})),
 	],
@@ -176,30 +160,27 @@ onMounted(async () => {
 				>
 			</button>
 		</div>
-
-		<div :class="$style.cardGrid">
-			<N8nCard :class="$style.summaryCard">
-				<div :class="$style.stat">
+		<el-scrollbar always :wrap-class="$style.scrollableSummary" class="mb-m">
+			<div style="display: flex">
+				<div :class="$style.summaryCard">
 					<N8nText size="small">
 						{{ locale.baseText('testDefinition.runDetail.totalCases') }}
 					</N8nText>
-					<N8nText size="large">{{ testCases.length }}</N8nText>
+					<N8nText size="xlarge" style="font-size: 32px" bold>{{ testCases.length }}</N8nText>
 				</div>
-			</N8nCard>
 
-			<N8nCard :class="$style.summaryCard">
-				<div :class="$style.stat">
+				<div :class="$style.summaryCard">
 					<N8nText size="small">
 						{{ locale.baseText('testDefinition.runDetail.ranAt') }}
 					</N8nText>
-					<N8nText size="medium">{{
-						convertToDisplayDate(new Date(run?.runAt).getTime())
-					}}</N8nText>
+					<div>
+						<N8nText v-for="item in formatedTime" :key="item" size="medium" tag="div">{{
+							item
+						}}</N8nText>
+					</div>
 				</div>
-			</N8nCard>
 
-			<N8nCard :class="$style.summaryCard">
-				<div :class="$style.stat">
+				<div :class="$style.summaryCard">
 					<N8nText size="small">
 						{{ locale.baseText('testDefinition.listRuns.status') }}
 					</N8nText>
@@ -207,27 +188,29 @@ onMounted(async () => {
 						{{ run?.status }}
 					</N8nText>
 				</div>
-			</N8nCard>
 
-			<N8nCard v-for="(value, key) in metrics" :key="key" :class="$style.summaryCard">
-				<div :class="$style.stat">
-					<N8nText size="small">{{ key }}</N8nText>
-					<N8nText size="large">{{ value.toFixed(2) }}</N8nText>
+				<div v-for="(value, key) in metrics" :key="key" :class="$style.summaryCard">
+					<N8nTooltip :content="key" placement="top">
+						<N8nText size="small" style="text-overflow: ellipsis; overflow: hidden">{{
+							key
+						}}</N8nText>
+					</N8nTooltip>
+
+					<N8nText size="xlarge" style="font-size: 32px" bold>{{ value.toFixed(2) }}</N8nText>
 				</div>
-			</N8nCard>
+			</div>
+		</el-scrollbar>
+		<pre>{{ testCases }}</pre>
+		<div v-if="isLoading" :class="$style.loading">
+			<n8n-loading :loading="true" :rows="5" />
 		</div>
 
-		<N8nCard>
-			<div v-if="isLoading" :class="$style.loading">
-				<n8n-loading :loading="true" :rows="5" />
-			</div>
-			<TestTableBase
-				v-else
-				:data="filteredTestCases"
-				:columns="columns"
-				:default-sort="{ prop: 'id', order: 'descending' }"
-			/>
-		</N8nCard>
+		<TestTableBase
+			v-else
+			:data="filteredTestCases"
+			:columns="columns"
+			:default-sort="{ prop: 'id', order: 'descending' }"
+		/>
 	</div>
 </template>
 
@@ -292,25 +275,77 @@ onMounted(async () => {
 	height: 200px;
 }
 
-.cardGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
-	gap: var(--spacing-xs);
-	margin-bottom: var(--spacing-m);
+.scrollableSummary {
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-radius: 5px;
+	background-color: var(--color-background-xlight);
 }
 
-:global {
-	.new {
-		color: var(--color-info);
+.cardGrid {
+	// display: grid;
+	// grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+	// gap: var(--spacing-xs);
+	// margin-bottom: var(--spacing-m);
+	// display: flex;
+	// border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	// border-radius: 6px;
+	// overflow-x: auto;
+	// scrollbar-color: var(--color-foreground-base) transparent;
+	// min-height: 94px;
+	// &::-webkit-scrollbar {
+	// 	height: 8px;
+	// }
+	// &::-webkit-scrollbar-thumb {
+	// 	background: rgba(0, 0, 0, 0.5);
+	// 	// border-radius: 4px;
+	// }
+	// &::-webkit-scrollbar-track {
+	// 	background: transparent;
+	// }
+}
+
+.summaryCard {
+	padding: var(--spacing-s);
+	/*border-top: 0;
+	border-bottom: 0;
+	border-left: 0;
+	border-radius: 0;*/
+	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	flex-basis: 169px;
+	flex-shrink: 0;
+	// background-color: transparent;
+	max-width: 170px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+
+	&:first-child {
+		border-top-left-radius: inherit;
+		border-bottom-left-radius: inherit;
 	}
-	.running {
-		color: var(--color-warning);
-	}
-	.completed {
-		color: var(--color-success);
-	}
-	.error {
-		color: var(--color-danger);
+}
+
+// :global {
+// 	.new {
+// 		color: var(--color-info);
+// 	}
+// 	.running {
+// 		color: var(--color-warning);
+// 	}
+// 	.completed {
+// 		color: var(--color-success);
+// 	}
+// 	.error {
+// 		color: var(--color-danger);
+// 	}
+// }
+:global(.el-scrollbar__bar) {
+	opacity: 1;
+}
+:global(.el-scrollbar__thumb) {
+	background-color: var(--color-foreground-base);
+	&:hover {
+		background-color: var(--color-foreground-dark);
 	}
 }
 </style>

@@ -9,7 +9,7 @@ export interface TestDefinitionRecord {
 	annotationTagId?: string | null;
 	description?: string | null;
 	updatedAt?: string;
-	createdAt?: string;
+	createdAt: string;
 	annotationTag?: string | null;
 	mockedNodes?: Array<{ name: string; id: string }>;
 }

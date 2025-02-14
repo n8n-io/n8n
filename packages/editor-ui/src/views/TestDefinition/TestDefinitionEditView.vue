@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
+import { useDebounce } from '@/composables/useDebounce';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
+import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { N8nIconButton, N8nText, N8nButton } from 'n8n-design-system';
-import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
-import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import { useDocumentVisibility } from '@vueuse/core';
+import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IDataObject, IPinData } from 'n8n-workflow';
+import { N8nButton, N8nIconButton, N8nText } from 'n8n-design-system';
 
 const props = defineProps<{
 	testId: string;
@@ -206,56 +206,58 @@ const updateDescription = (value: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div :class="$style.description">
-			<InlineNameEdit
-				:model-value="state.description.value"
-				placeholder="Add a description..."
-				:required="false"
-				:autosize="{ minRows: 1, maxRows: 3 }"
-				input-type="textarea"
-				:maxlength="260"
-				max-height="none"
-				type="Test description"
-				:class="$style.editDescription"
-				@update:model-value="updateDescription"
-			>
-				<N8nText size="small" color="text-base">{{ state.description.value }}</N8nText>
-			</InlineNameEdit>
-		</div>
+		<div :class="$style.wrapper">
+			<div :class="$style.description">
+				<InlineNameEdit
+					:model-value="state.description.value"
+					placeholder="Add a description..."
+					:required="false"
+					:autosize="{ minRows: 1, maxRows: 3 }"
+					input-type="textarea"
+					:maxlength="260"
+					max-height="none"
+					type="Test description"
+					:class="$style.editDescription"
+					@update:model-value="updateDescription"
+				>
+					<N8nText size="small" color="text-base">{{ state.description.value }}</N8nText>
+				</InlineNameEdit>
+			</div>
 
-		<div :class="$style.content">
-			<RunsSection
-				v-if="runs.length > 0"
-				v-model:selectedMetric="selectedMetric"
-				:runs="runs"
-				:test-id="testId"
-				:applied-theme="appliedTheme"
-				@delete-runs="onDeleteRuns"
-			/>
+			<div :class="$style.content">
+				<RunsSection
+					v-if="runs.length > 0"
+					v-model:selectedMetric="selectedMetric"
+					:runs="runs"
+					:test-id="testId"
+					:applied-theme="appliedTheme"
+					@delete-runs="onDeleteRuns"
+				/>
 
-			<ConfigSection
-				v-model:tags="state.tags"
-				v-model:evaluationWorkflow="state.evaluationWorkflow"
-				v-model:metrics="state.metrics"
-				v-model:mockedNodes="state.mockedNodes"
-				:cancel-editing="cancelEditing"
-				:show-config="showConfig"
-				:tags-by-id="tagsById"
-				:is-loading="isLoading"
-				:get-field-issues="getFieldIssues"
-				:start-editing="startEditing"
-				:save-changes="saveChanges"
-				:has-runs="hasRuns"
-				:example-pinned-data="examplePinnedData"
-				:sample-workflow-name="workflowName"
-				@rename-tag="renameTag"
-				@update:metrics="() => handleUpdateMetricsDebounced(testId)"
-				@update:evaluation-workflow="handleUpdateTestDebounced"
-				@update:mocked-nodes="handleUpdateTestDebounced"
-				@open-pinning-modal="openPinningModal"
-				@delete-metric="onDeleteMetric"
-				@open-executions-view-for-tag="openExecutionsViewForTag"
-			/>
+				<ConfigSection
+					v-model:tags="state.tags"
+					v-model:evaluationWorkflow="state.evaluationWorkflow"
+					v-model:metrics="state.metrics"
+					v-model:mockedNodes="state.mockedNodes"
+					:cancel-editing="cancelEditing"
+					:show-config="showConfig"
+					:tags-by-id="tagsById"
+					:is-loading="isLoading"
+					:get-field-issues="getFieldIssues"
+					:start-editing="startEditing"
+					:save-changes="saveChanges"
+					:has-runs="hasRuns"
+					:example-pinned-data="examplePinnedData"
+					:sample-workflow-name="workflowName"
+					@rename-tag="renameTag"
+					@update:metrics="() => handleUpdateMetricsDebounced(testId)"
+					@update:evaluation-workflow="handleUpdateTestDebounced"
+					@update:mocked-nodes="handleUpdateTestDebounced"
+					@open-pinning-modal="openPinningModal"
+					@delete-metric="onDeleteMetric"
+					@open-executions-view-for-tag="openExecutionsViewForTag"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -264,7 +266,7 @@ const updateDescription = (value: string) => {
 .content {
 	display: flex;
 	justify-content: center;
-	padding: 0 var(--spacing-l);
+
 	gap: var(--spacing-m);
 }
 
@@ -282,10 +284,14 @@ const updateDescription = (value: string) => {
 	z-index: 2;
 }
 
+.wrapper {
+	padding: 0 var(--spacing-l);
+	padding-left: 58px;
+}
+
 .description {
 	max-width: 600px;
-	margin-left: 58px;
-	margin-bottom: 10px;
+	margin-bottom: 20px;
 }
 
 .arrowBack {

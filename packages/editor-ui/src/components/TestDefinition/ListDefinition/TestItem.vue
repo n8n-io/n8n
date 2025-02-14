@@ -1,139 +1,92 @@
 <script setup lang="ts">
-import type { TestListItem, TestItemAction } from '@/components/TestDefinition/types';
 import TimeAgo from '@/components/TimeAgo.vue';
-import { useI18n } from '@/composables/useI18n';
-import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
-import { computed } from 'vue';
+// import { useI18n } from '@/composables/useI18n';
+import type { TestRunRecord } from '@/api/testDefinition.ee';
+import { N8nText, N8nIcon } from 'n8n-design-system';
 
-export interface TestItemProps {
-	test: TestListItem;
-	actions: TestItemAction[];
-}
-
-const props = defineProps<TestItemProps>();
-const locale = useI18n();
-
-defineEmits<{
-	'view-details': [testId: string];
+defineProps<{
+	name: string;
+	testCases: number;
+	execution?: TestRunRecord;
 }>();
-
-const visibleActions = computed(() =>
-	props.actions.filter((action) => action.show?.(props.test.id) ?? true),
-);
+// const locale = useI18n();
 </script>
 
 <template>
-	<div
-		:class="$style.testItem"
-		:data-test-id="`test-item-${test.id}`"
-		@click="$emit('view-details', test.id)"
-	>
-		<div :class="$style.testInfo">
-			<div :class="$style.testName">
-				{{ test.name }}
+	<div :class="$style.testCard">
+		<slot name="prepend"></slot>
+		<div :class="$style.testCardContent">
+			<div>
+				<N8nText bold tag="div">{{ name }}</N8nText>
+				<N8nText tag="div" color="text-base" size="small"> {{ testCases }} test cases </N8nText>
 			</div>
-			<div :class="$style.testCases">
-				<n8n-text size="small">
-					{{ locale.baseText('testDefinition.list.testRuns', { adjustToNumber: test.testCases }) }}
-				</n8n-text>
-				<template v-if="test.execution.status === 'running'">
-					{{ locale.baseText('testDefinition.list.running') }}
-					<n8n-spinner />
+
+			<div>
+				<template v-if="execution">
+					<div>
+						<N8nIcon icon="check-circle" color="success"></N8nIcon>
+						<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
+						<N8nIcon icon="spinner" spin color="warning"></N8nIcon>
+						<N8nText size="small">
+							{{ execution.status }}
+						</N8nText>
+					</div>
+					<N8nText tag="div" color="text-base" size="small">
+						<TimeAgo :date="execution.updatedAt" />
+					</N8nText>
 				</template>
-				<span v-else-if="test.execution.lastRun">
-					{{ locale.baseText('testDefinition.list.lastRun') }}
-					<TimeAgo :date="test.execution.lastRun" />
-				</span>
+				<template v-else>
+					<N8nText tag="div" color="text-base" size="small"> Never run </N8nText>
+				</template>
+			</div>
+
+			<div :class="$style.metrics">
+				<template v-if="execution?.metrics">
+					<template v-for="[key, value] in Object.entries(execution.metrics)" :key>
+						<N8nText
+							color="text-base"
+							size="small"
+							style="overflow: hidden; text-overflow: ellipsis"
+						>
+							{{ key }}
+						</N8nText>
+						<N8nText color="text-base" size="small" bold style="text-align: right">
+							{{ value }}
+						</N8nText>
+					</template>
+				</template>
 			</div>
 		</div>
 
-		<div :class="$style.metrics">
-			<div :class="$style.metric">
-				{{
-					locale.baseText('testDefinition.list.errorRate', {
-						interpolate: { errorRate: test.execution.errorRate ?? '-' },
-					})
-				}}
-			</div>
-			<div v-for="(value, key) in test.execution.metrics" :key="key" :class="$style.metric">
-				{{ key }}: {{ value.toFixed(2) ?? '-' }}
-			</div>
-		</div>
-
-		<div :class="$style.actions">
-			<n8n-tooltip
-				v-for="action in visibleActions"
-				:key="action.icon"
-				placement="top"
-				:show-after="1000"
-				:content="action.tooltip(test.id)"
-			>
-				<component
-					:is="n8nIconButton"
-					:icon="action.icon"
-					:data-test-id="`${action.id}-test-button-${test.id}`"
-					type="tertiary"
-					size="mini"
-					:disabled="action?.disabled ? action.disabled(test.id) : false"
-					@click.stop="action.event(test.id)"
-				/>
-			</n8n-tooltip>
-		</div>
+		<slot name="append"></slot>
 	</div>
 </template>
 
 <style module lang="scss">
-.testItem {
+.testCard {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-xl);
+	background-color: var(--color-background-xlight);
 	border: 1px solid var(--color-foreground-base);
+	padding: var(--spacing-xs) 20px var(--spacing-xs) var(--spacing-m);
+	gap: 16px;
 	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
 	cursor: pointer;
-
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color-background-light);
 	}
 }
 
-.testInfo {
-	display: flex;
+.testCardContent {
+	display: grid;
+	grid-template-columns: 1fr 1fr 150px;
+	align-items: center;
 	flex: 1;
-	gap: var(--spacing-2xs);
-}
-
-.testName {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-}
-
-.testCases {
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
 }
 
 .metrics {
-	display: flex;
-	gap: var(--spacing-l);
-	margin: 0 var(--spacing-l);
-}
-
-.metric {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
-	white-space: nowrap;
-}
-
-.actions {
-	display: flex;
-	gap: var(--spacing-xs);
-	--color-button-secondary-font: var(--color-callout-info-icon);
+	display: grid;
+	grid-template-columns: 84px 1fr;
+	column-gap: 18px;
 }
 </style>
