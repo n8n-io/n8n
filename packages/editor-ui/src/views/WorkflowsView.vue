@@ -305,31 +305,40 @@ function isValidProjectId(projectId: string) {
 }
 
 const setFiltersFromQueryString = async () => {
-	// Start with all existing query parameters
 	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort } = route.query ?? {};
 
-	if (homeProject && typeof homeProject === 'string') {
+	// Helper to check if string value is not empty
+	const isValidString = (value: unknown): value is string =>
+		typeof value === 'string' && value.trim().length > 0;
+
+	// Handle home project
+	if (isValidString(homeProject)) {
 		await projectsStore.getAvailableProjects();
 		if (isValidProjectId(homeProject)) {
 			newQuery.homeProject = homeProject;
 			filters.value.homeProject = homeProject;
 		} else {
-			delete newQuery.homeProject; // Remove invalid project
+			delete newQuery.homeProject;
 		}
+	} else {
+		delete newQuery.homeProject;
 	}
 
-	if (search && typeof search === 'string') {
+	// Handle search
+	if (isValidString(search)) {
 		newQuery.search = search;
 		filters.value.search = search;
 	} else {
 		delete newQuery.search;
 	}
 
-	if (tags && typeof tags === 'string') {
+	// Handle tags
+	if (isValidString(tags)) {
 		await tagsStore.fetchAll();
-		const currentTags = tagsStore.allTags.map((tag) => tag.id);
-		const validTags = tags.split(',').filter((tag) => currentTags.includes(tag));
+		const validTags = tags
+			.split(',')
+			.filter((tag) => tagsStore.allTags.map((t) => t.id).includes(tag));
 
 		if (validTags.length) {
 			newQuery.tags = validTags.join(',');
@@ -337,20 +346,21 @@ const setFiltersFromQueryString = async () => {
 		} else {
 			delete newQuery.tags;
 		}
+	} else {
+		delete newQuery.tags;
 	}
 
-	if (
-		status &&
-		typeof status === 'string' &&
-		[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
-	) {
-		newQuery.status = status; // Keep as string in URL
-		filters.value.status = status === 'true'; // Convert to boolean for filters
+	// Handle status
+	const validStatusValues = [StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()];
+	if (isValidString(status) && validStatusValues.includes(status)) {
+		newQuery.status = status;
+		filters.value.status = status === 'true';
 	} else {
 		delete newQuery.status;
 	}
 
-	if (sort && typeof sort === 'string') {
+	// Handle sort
+	if (isValidString(sort)) {
 		const newSort = WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 		newQuery.sort = sort;
 		currentSort.value = newSort;
