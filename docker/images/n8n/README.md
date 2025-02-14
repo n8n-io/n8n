@@ -236,7 +236,7 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-For more information on configuration, please see the (https://docs.n8n.io/hosting/configuration/environment-variables/)
+For more information on configuration and environment variables, please see the [n8n documentation](https://docs.n8n.io/hosting/configuration/environment-variables/).
 
 ## Build Docker-Image
 
