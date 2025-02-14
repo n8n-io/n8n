@@ -85,7 +85,7 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
+import { clearPopupWindowState } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
@@ -1308,19 +1308,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function getFormResumeUrl(node: INode, executionId: string) {
-		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
-		return testUrl;
-	}
-
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
 
-		const { nodeName, data, executionId } = pushData;
+		const { nodeName, data } = pushData;
 		const isNodeWaiting = data.executionStatus === 'waiting';
 		const node = getNodeByName(nodeName);
 		if (!node) return;
@@ -1344,13 +1337,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
-			if (
-				node.type === FORM_NODE_TYPE ||
-				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
-			) {
-				const testUrl = getFormResumeUrl(node, executionId);
-				openFormPopupWindow(testUrl);
-			}
 		} else {
 			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
 				tasksData.splice(tasksData.length - 1, 1, data);
