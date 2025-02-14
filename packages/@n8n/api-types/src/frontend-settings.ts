@@ -182,7 +182,7 @@ export interface FrontendSettings {
 		version: 1 | 2;
 		enforce: boolean;
 	};
-	webhookQueue?: {
+	webhookProxy?: {
 		url: string;
 	};
 }

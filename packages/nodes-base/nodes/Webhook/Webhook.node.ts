@@ -163,7 +163,7 @@ export class Webhook extends Node {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Use n8n Webhook Proxy Service',
+				displayName: 'Use n8n Webhook Proxy Service [BETA]',
 				name: 'useQueue',
 				type: 'boolean',
 				displayOptions: {
@@ -174,7 +174,7 @@ export class Webhook extends Node {
 				},
 				default: false,
 				description:
-					'Whether to use the n8n Webhook Proxy Service which automatically queues requests if the n8n instance is not available and retries',
+					'Whether to use the n8n Webhook Proxy Service, which automatically retries webhook delivery if the n8n instance is temporarily unavailable. NOTE: Enabling this option changes the webhook\'s Production URL. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#proxy" target="_blank">More details</a>',
 			},
 			{
 				...responseCodeProperty,

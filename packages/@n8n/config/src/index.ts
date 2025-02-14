@@ -24,7 +24,7 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
-import { WebhookQueueConfig } from './configs/webhook-queue.config';
+import { WebhookProxyConfig } from './configs/webhook-proxy.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
@@ -142,5 +142,5 @@ export class GlobalConfig {
 	partialExecutions: PartialExecutionsConfig;
 
 	@Nested
-	webhookQueue: WebhookQueueConfig;
+	webhookProxy: WebhookProxyConfig;
 }

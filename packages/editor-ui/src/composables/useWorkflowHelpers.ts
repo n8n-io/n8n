@@ -704,7 +704,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				}
 
 				if (useQueue) {
-					baseUrl = useSettingsStore().webhookQueueUrl;
+					baseUrl = useSettingsStore().webhookProxyUrl;
 				} else {
 					baseUrl = rootStore.webhookUrl;
 				}

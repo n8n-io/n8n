@@ -235,8 +235,8 @@ export class FrontendService {
 			betaFeatures: this.frontendConfig.betaFeatures,
 			easyAIWorkflowOnboarded: false,
 			partialExecution: this.globalConfig.partialExecutions,
-			webhookQueue: {
-				url: this.globalConfig.webhookQueue?.url as string,
+			webhookProxy: {
+				url: this.globalConfig.webhookProxy?.url as string,
 			},
 		};
 	}

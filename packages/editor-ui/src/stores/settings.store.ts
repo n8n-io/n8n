@@ -97,7 +97,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
-	const webhookQueueUrl = computed(() => settings.value.webhookQueue?.url);
+	const webhookProxyUrl = computed(() => settings.value.webhookProxy?.url);
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
@@ -410,7 +410,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSamlLoginEnabled,
 		showSetupPage,
 		deploymentType,
-		webhookQueueUrl,
+		webhookProxyUrl,
 		isCloudDeployment,
 		isSmtpSetup,
 		isPersonalizationSurveyEnabled,
