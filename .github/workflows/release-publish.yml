@@ -43,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -144,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -164,6 +164,14 @@ jobs:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
           version: ${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
+
+      - name: Create a task runner release
+        uses: getsentry/action-release@v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: ${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist packages/@n8n/task-runner/dist
 
   trigger-release-note:
     name: Trigger a release note

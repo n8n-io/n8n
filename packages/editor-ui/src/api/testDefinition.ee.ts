@@ -43,12 +43,15 @@ export interface UpdateTestResponse {
 export interface TestRunRecord {
 	id: string;
 	testDefinitionId: string;
-	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled';
+	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number>;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;
 	completedAt: string;
+	errorCode?: string;
+	errorDetails?: Record<string, unknown>;
+	finalResult?: 'success' | 'error' | 'warning';
 }
 
 interface GetTestRunParams {
@@ -121,6 +124,18 @@ export async function updateTestDefinition(
 
 export async function deleteTestDefinition(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
+}
+
+export async function getExampleEvaluationInput(
+	context: IRestApiContext,
+	testDefinitionId: string,
+	annotationTagId: string,
+) {
+	return await makeRestApiRequest<Record<string, unknown> | null>(
+		context,
+		'GET',
+		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
+	);
 }
 
 // Metrics

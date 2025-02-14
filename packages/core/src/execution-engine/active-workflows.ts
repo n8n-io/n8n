@@ -1,7 +1,5 @@
 import { Service } from '@n8n/di';
 import type {
-	IGetExecutePollFunctions,
-	IGetExecuteTriggerFunctions,
 	INode,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -22,6 +20,7 @@ import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
 import { Logger } from '@/logging/logger';
 
+import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
