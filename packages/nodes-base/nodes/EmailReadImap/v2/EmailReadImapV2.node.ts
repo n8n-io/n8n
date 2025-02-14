@@ -1,6 +1,5 @@
 import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
-import { connect as imapConnect, getParts } from '@n8n/imap';
-import find from 'lodash/find';
+import { connect as imapConnect } from '@n8n/imap';
 import isEmpty from 'lodash/isEmpty';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
