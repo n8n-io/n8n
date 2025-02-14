@@ -26,11 +26,7 @@ function markDownstreamDirtyRecursively(
 
 	visitedNodes.add(nodeName);
 
-	for (const [type, inputConnections] of Object.entries(getOutgoingConnections(nodeName))) {
-		if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
-			continue;
-		}
-
+	for (const inputConnections of Object.values(getOutgoingConnections(nodeName))) {
 		for (const connections of inputConnections) {
 			for (const { node } of connections ?? []) {
 				const hasRunData = (runDataByNode[node] ?? []).length > 0;
@@ -136,9 +132,19 @@ export function useNodeDirtiness() {
 			);
 		}
 
+		function getRunAt(nodeName: string): number {
+			return Math.max(
+				...Object.entries(workflowsStore.outgoingConnectionsByNodeName(nodeName))
+					.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionType.Main)
+					.flatMap(([, conn]) => conn.flat())
+					.map((conn) => (conn ? getRunAt(conn.node) : 0)),
+				runDataByNode[nodeName]?.[0]?.startTime ?? 0,
+			);
+		}
+
 		for (const node of workflowsStore.allNodes) {
 			const nodeName = node.name;
-			const runAt = runDataByNode[nodeName]?.[0]?.startTime ?? 0;
+			const runAt = getRunAt(nodeName);
 
 			if (!runAt) {
 				continue;

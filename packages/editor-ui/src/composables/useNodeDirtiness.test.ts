@@ -4,13 +4,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type FrontendSettings } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { uniqBy } from 'lodash-es';
 import { NodeConnectionType, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import {
@@ -130,6 +130,16 @@ describe(useNodeDirtiness, () => {
 			expect(dirtinessByName.value).toEqual({
 				b: 'parameters-updated',
 			});
+		});
+
+		it("should not update dirtiness if the node hasn't run yet", () => {
+			setupTestWorkflow('a✅, b, c✅');
+
+			canvasOperations.setNodeParameters('b', { foo: 1 });
+
+			const { dirtinessByName } = useNodeDirtiness();
+
+			expect(dirtinessByName.value).toEqual({});
 		});
 
 		it("should mark all downstream nodes with data as 'upstream-dirty' if a node upstream got an updated parameter", () => {
@@ -256,64 +266,88 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
+	describe('sub-nodes', () => {
+		it('should mark its root node as dirty when parameters of a sub node has changed', () => {
+			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f🧠 -> b');
+
+			canvasOperations.setNodeParameters('e', { foo: 1 });
+
+			const { dirtinessByName } = useNodeDirtiness();
+
+			expect(dirtinessByName.value).toEqual({
+				b: 'upstream-dirty',
+				c: 'upstream-dirty',
+				e: 'parameters-updated',
+			});
+		});
+	});
+
 	function setupTestWorkflow(diagram: string) {
-		interface NodeSpec {
-			name: string;
-			disabled: boolean;
-			hasData: boolean;
-			isPinned: boolean;
+		const nodeNamesWithPinnedData = new Set<string>();
+		const nodes: Record<string, INodeUi> = {};
+		const connections: IConnections = {};
+		const runData: IRunData = {};
+
+		for (const subGraph of diagram.split(/\n|,/).filter((line) => line.trim() !== '')) {
+			const elements = subGraph.split(/(->)/).map((s) => s.trim());
+
+			elements.forEach((element, i, arr) => {
+				if (element === '->') {
+					const from = arr[i - 1].slice(0, 1);
+					const to = arr[i + 1].slice(0, 1);
+					const type = arr[i - 1].includes('🧠')
+						? NodeConnectionType.AiAgent
+						: NodeConnectionType.Main;
+
+					const conns = connections[from]?.[type]?.[0] ?? [];
+
+					connections[from] = {
+						...connections[from],
+						[type]: [
+							[...conns, { node: to, type, index: conns.length }],
+							...(connections[from]?.Main?.slice(1) ?? []),
+						],
+					};
+					return;
+				}
+
+				const [name, ...attributes] = element.trim();
+
+				nodes[name] =
+					nodes[name] ??
+					createTestNode({
+						id: name,
+						name,
+						disabled: attributes.includes('🚫'),
+					});
+
+				if (attributes.includes('✅')) {
+					runData[name] = [
+						{
+							startTime: +new Date('2025-01-01'),
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+						},
+					];
+				}
+
+				if (attributes.includes('📌')) {
+					nodeNamesWithPinnedData.add(name);
+				}
+			});
 		}
 
-		const lines = diagram
-			.split(/\n|,/)
-			.filter((line) => line.trim() !== '')
-			.map((line) =>
-				line.split('->').flatMap<NodeSpec>((node) => {
-					const [name, ...attributes] = node.trim();
-
-					return name
-						? [
-								{
-									id: name,
-									name,
-									hasData: attributes.includes('✅'),
-									disabled: attributes.includes('🚫'),
-									isPinned: attributes.includes('📌'),
-								},
-							]
-						: [];
-				}),
-			);
-		const nodes = uniqBy(lines?.flat() ?? [], ({ name }) => name).map(createTestNode);
-		const connections = lines?.reduce<IConnections>((conn, nodesInLine) => {
-			for (let i = 0; i < nodesInLine.length - 1; i++) {
-				const from = nodesInLine[i];
-				const to = nodesInLine[i + 1];
-
-				const conns = conn[from.name]?.[NodeConnectionType.Main]?.[0] ?? [];
-
-				conn[from.name] = {
-					...conn[from.name],
-					[NodeConnectionType.Main]: [
-						[...conns, { node: to.name, type: NodeConnectionType.Main, index: conns.length }],
-						...(conn[from.name]?.Main?.slice(1) ?? []),
-					],
-				};
-			}
-			return conn;
-		}, {});
-		const workflow = createTestWorkflow({ nodes, connections });
+		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
 		workflowsStore.setNodes(workflow.nodes);
 		workflowsStore.setConnections(workflow.connections);
 
-		for (const node of lines.flat()) {
-			if (node.isPinned) {
-				workflowsStore.pinData({
-					node: workflowsStore.nodesByName[node.name],
-					data: [{ json: {} }],
-				});
-			}
+		for (const name of nodeNamesWithPinnedData) {
+			workflowsStore.pinData({
+				node: workflowsStore.nodesByName[name],
+				data: [{ json: {} }],
+			});
 		}
 
 		workflowsStore.setWorkflowExecutionData({
@@ -324,26 +358,7 @@ describe(useNodeDirtiness, () => {
 			workflowData: workflow,
 			startedAt: new Date(0),
 			createdAt: new Date(0),
-			data: {
-				resultData: {
-					runData: workflow.nodes.reduce<IRunData>((acc, node) => {
-						if (!lines.some((c) => c.some((n) => n.name === node.name && n.hasData))) {
-							return acc;
-						}
-
-						acc[node.name] = [
-							{
-								startTime: +new Date('2025-01-01'),
-								executionTime: 0,
-								executionStatus: 'success',
-								source: [],
-							},
-						];
-
-						return acc;
-					}, {}),
-				},
-			},
+			data: { resultData: { runData } },
 		});
 
 		vi.setSystemTime(new Date('2025-01-02')); // after execution
