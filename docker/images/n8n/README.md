@@ -98,7 +98,7 @@ docker run -it --rm \
 
 ## Use with PostgreSQL
 
-By default, n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgresDB.
+By default, n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgreSQL.
 
 Note that even when using a different database, it is still important to
 persist the `/home/node/.n8n` folder, which also contains essential n8n
