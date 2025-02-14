@@ -112,9 +112,13 @@ export class CredentialsService {
 
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+					// We never want to expose the oauthTokenData to the frontend.
+					delete data?.oauthTokenData;
+
 					return {
 						...c,
-						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+						data,
 					} as unknown as CredentialsEntity;
 				});
 			}
@@ -569,6 +573,8 @@ export class CredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
+			// We never want to expose the oauthTokenData to the frontend.
+			delete decryptedData.oauthTokenData;
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };

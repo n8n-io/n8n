@@ -2,9 +2,9 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -14,6 +14,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/shared-cre
 import type { ListQuery } from '@/requests';
 
 import {
+	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
@@ -23,6 +24,7 @@ import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
 	randomName,
 } from '../shared/random';
 import * as testDb from '../shared/test-db';
@@ -319,7 +321,7 @@ describe('GET /credentials', () => {
 		] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
 			saveCredential(randomCredentialPayload(), { user: member, role: 'credential:owner' }),
-			saveCredential(randomCredentialPayload(), {
+			saveCredential(randomCredentialPayloadWithOauthTokenData(), {
 				project: teamProjectViewer,
 				role: 'credential:owner',
 			}),
@@ -370,6 +372,9 @@ describe('GET /credentials', () => {
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).toBeDefined();
+		expect(
+			(teamCredAsViewer.data as unknown as ICredentialDataDecryptedObject).oauthTokenData,
+		).toBeDefined();
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
 				'credential:move',
@@ -1167,17 +1172,17 @@ describe('PATCH /credentials/:id', () => {
 
 	test('should not allow to overwrite oauthTokenData', async () => {
 		// ARRANGE
-		const payload = randomCredentialPayload();
-		payload.data.oauthTokenData = { tokenData: true };
-		const savedCredential = await saveCredential(payload, {
+		const credential = randomCredentialPayload();
+		credential.data.oauthTokenData = { access_token: 'foo' };
+		const savedCredential = await saveCredential(credential, {
 			user: owner,
 			role: 'credential:owner',
 		});
 
 		// ACT
 		const patchPayload = {
-			...payload,
-			data: { accessToken: 'new', oauthTokenData: { tokenData: false } },
+			...credential,
+			data: { accessToken: 'new', oauthTokenData: { access_token: 'bar' } },
 		};
 		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
 
@@ -1193,7 +1198,9 @@ describe('PATCH /credentials/:id', () => {
 		// was overwritten
 		expect(data.accessToken).toBe(patchPayload.data.accessToken);
 		// was not overwritten
-		expect(data.oauthTokenData).toEqual(payload.data.oauthTokenData);
+		const dbCredential = await getCredentialById(savedCredential.id);
+		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
+		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 	});
 
 	test('should fail with invalid inputs', async () => {

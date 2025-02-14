@@ -176,18 +176,22 @@ export class CredentialsController {
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
-		const { credentialId } = req.params;
+		const {
+			body,
+			user,
+			params: { credentialId },
+		} = req;
 
 		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
-			req.user,
+			user,
 			['credential:update'],
 		);
 
 		if (!credential) {
 			this.logger.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
-				userId: req.user.id,
+				userId: user.id,
 			});
 			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
@@ -199,6 +203,8 @@ export class CredentialsController {
 		}
 
 		const decryptedData = this.credentialsService.decrypt(credential, true);
+		// We never want to allow users to change the oauthTokenData
+		delete body.data?.oauthTokenData;
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
