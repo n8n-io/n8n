@@ -6,7 +6,7 @@
     "node": ">=20.15",
     "pnpm": ">=10.2.1"
   },
-  "packageManager": "pnpm@10.2.1",
+  "packageManager": "pnpm@8.6.5",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
