@@ -43,7 +43,7 @@ export const renderFormNode = async (
 			) as string) || 'Submit';
 	}
 
-	const responseMode = 'responseNode';
+	let responseMode = 'onReceived';
 
 	let redirectUrl;
 
@@ -54,7 +54,8 @@ export const renderFormNode = async (
 	);
 
 	if (hasNextPage) {
-		redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
+		redirectUrl = undefined;
+		responseMode = 'responseNode';
 	}
 
 	const appendAttribution = context.evaluateExpression(
@@ -69,7 +70,7 @@ export const renderFormNode = async (
 		formFields: fields,
 		responseMode,
 		mode,
-		redirectUrl: undefined,
+		redirectUrl,
 		appendAttribution,
 		buttonLabel,
 	});

@@ -156,7 +156,7 @@ export async function executeWebhook(
 
 	// if this is n8n FormTrigger node, check if there is a Form node in child nodes,
 	// if so, set 'responseMode' to 'formPage' to redirect to URL of that Form later
-	if (nodeType.description.name === 'formTrigger') {
+	if (['form', 'formTrigger'].includes(nodeType.description.name) && req.method === 'POST') {
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 		let hasNextPage = false;
 		for (const nodeName of connectedNodes) {
@@ -168,7 +168,11 @@ export async function executeWebhook(
 		}
 
 		if (hasNextPage) {
-			responseMode = 'formPage';
+			responseMode = 'responseNode';
+		} else {
+			if (nodeType.description.name === 'form') {
+				responseMode = 'onReceived';
+			}
 		}
 	}
 
