@@ -6,6 +6,7 @@ import AsyncLoadingDemo from './AsyncLoadingDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
+import Tags from '../N8nTags/Tags.vue';
 
 export default {
 	title: 'Atoms/Breadcrumbs',
@@ -63,9 +64,10 @@ const testActions: UserAction[] = [
 	{ label: 'Create Workflow', value: 'action2', disabled: false },
 	{ label: 'Rename', value: 'action3', disabled: false },
 ];
+const testTags: Array<{ id: string; name: string }> = [{ id: '1', name: 'test' }];
 const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args, testActions }),
-	components: { Breadcrumbs, ActionToggle },
+	setup: () => ({ args, testActions, testTags }),
+	components: { Breadcrumbs, ActionToggle, Tags },
 	props: Object.keys(argTypes),
 	template: `<Breadcrumbs v-bind="args">
     <template #prepend>
@@ -76,7 +78,8 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
     </template>
     <template #append>
       <div style="display: flex; align-items: center;">
-        <action-toggle size="small" :actions="testActions" />
+				<n8n-tags :tags="testTags" />
+        <n8n-action-toggle size="small" :actions="testActions" />
       </div>
     </template>
   </Breadcrumbs>`,
