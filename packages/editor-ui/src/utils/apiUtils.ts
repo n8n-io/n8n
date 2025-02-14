@@ -131,6 +131,31 @@ export async function request(config: {
 	}
 }
 
+/**
+ * Sends a request to the API and returns the response without extracting the data key.
+ * @param context Rest API context
+ * @param method HTTP method
+ * @param endpoint relative path to the API endpoint
+ * @param data request data
+ * @returns data and total count
+ */
+export async function getFullApiResponse<T>(
+	context: IRestApiContext,
+	method: Method,
+	endpoint: string,
+	data?: GenericValue | GenericValue[],
+) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: { 'push-ref': context.pushRef },
+		data,
+	});
+
+	return response as { count: number; data: T };
+}
+
 export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
