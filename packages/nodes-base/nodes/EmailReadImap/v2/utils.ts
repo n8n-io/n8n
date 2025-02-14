@@ -1,9 +1,50 @@
-import { getParts, ImapSimple, Message, MessagePart } from '@n8n/imap';
-
-import { IBinaryData, IDataObject, ITriggerFunctions, NodeOperationError } from 'n8n-workflow';
+import { getParts, type ImapSimple, type Message, type MessagePart } from '@n8n/imap';
 import { find } from 'lodash';
-import { INodeExecutionData } from 'n8n-workflow';
-import { parseRawEmail } from './EmailReadImapV2.node';
+import { simpleParser, type Source as ParserSource } from 'mailparser';
+import {
+	type IBinaryData,
+	type INodeExecutionData,
+	type IDataObject,
+	type ITriggerFunctions,
+	NodeOperationError,
+	type IBinaryKeyData,
+} from 'n8n-workflow';
+
+async function parseRawEmail(
+	this: ITriggerFunctions,
+	messageEncoded: ParserSource,
+	dataPropertyNameDownload: string,
+): Promise<INodeExecutionData> {
+	const responseData = await simpleParser(messageEncoded);
+	const headers: IDataObject = {};
+	const additionalData: IDataObject = {};
+
+	for (const header of responseData.headerLines) {
+		headers[header.key] = header.line;
+	}
+
+	additionalData.headers = headers;
+	additionalData.headerLines = undefined;
+
+	const binaryData: IBinaryKeyData = {};
+	if (responseData.attachments) {
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+				attachment.content,
+				attachment.filename,
+				attachment.contentType,
+			);
+		}
+
+		additionalData.attachments = undefined;
+	}
+
+	return {
+		json: { ...responseData, ...additionalData },
+		binary: Object.keys(binaryData).length ? binaryData : undefined,
+	} as INodeExecutionData;
+}
 
 export async function getNewEmails(
 	this: ITriggerFunctions,

@@ -1,17 +1,13 @@
 import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
 import { connect as imapConnect } from '@n8n/imap';
 import isEmpty from 'lodash/isEmpty';
-import type { Source as ParserSource } from 'mailparser';
-import { simpleParser } from 'mailparser';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
-	IBinaryKeyData,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeCredentialTestResult,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
@@ -21,45 +17,9 @@ import type {
 import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
 
+import { getNewEmails } from './utils';
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
-import { getNewEmails } from './utils';
-
-export async function parseRawEmail(
-	this: ITriggerFunctions,
-	messageEncoded: ParserSource,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
-	const responseData = await simpleParser(messageEncoded);
-	const headers: IDataObject = {};
-	const additionalData: IDataObject = {};
-
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
-	}
-
-	additionalData.headers = headers;
-	additionalData.headerLines = undefined;
-
-	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-
-		additionalData.attachments = undefined;
-	}
-
-	return {
-		json: { ...responseData, ...additionalData },
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
-}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',

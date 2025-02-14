@@ -1,7 +1,8 @@
-import { IDataObject, ITriggerFunctions } from 'n8n-workflow';
+import { type ImapSimple } from '@n8n/imap';
 import { mock } from 'jest-mock-extended';
-import { ImapSimple } from '@n8n/imap';
 import { returnJsonArray } from 'n8n-core';
+import { type IDataObject, type ITriggerFunctions } from 'n8n-workflow';
+
 import { getNewEmails } from '../../v2/utils';
 
 describe('Test IMap V2 utils', () => {
@@ -83,7 +84,7 @@ describe('Test IMap V2 utils', () => {
 					getAttachment,
 				);
 
-				expect(result).resolves.toEqual([expectedResult.expected]);
+				await expect(result).resolves.toEqual([expectedResult.expected]);
 			});
 		});
 	});
