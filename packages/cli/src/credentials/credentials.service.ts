@@ -44,6 +44,14 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
+export type CreateCredentialOptions = {
+	name: string;
+	type: string;
+	data: ICredentialDataDecryptedObject;
+	projectId?: string;
+	isManaged?: boolean;
+};
+
 @Service()
 export class CredentialsService {
 	constructor(
@@ -280,20 +288,6 @@ export class CredentialsService {
 		});
 	}
 
-	async prepareCreateData(
-		data: CredentialRequest.CredentialProperties,
-	): Promise<CredentialsEntity> {
-		const { id, ...rest } = data;
-
-		// This saves us a merge but requires some type casting. These
-		// types are compatible for this case.
-		const newCredentials = this.credentialsRepository.create(rest as ICredentialsDb);
-
-		await validateEntity(newCredentials);
-
-		return newCredentials;
-	}
-
 	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
@@ -318,10 +312,18 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
-		const credentials = new Credentials({ id: credentialId, name: data.name }, data.type);
+	createEncryptedData(credential: {
+		id: string | null;
+		name: string;
+		type: string;
+		data: ICredentialDataDecryptedObject;
+	}): ICredentialsDb {
+		const credentials = new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
+		credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -673,16 +675,24 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createCredential(credentialsData: CredentialRequest.CredentialProperties, user: User) {
-		const newCredential = await this.prepareCreateData(credentialsData);
+	async createCredential(createOpts: CreateCredentialOptions, user: User) {
+		const encryptedCredential = this.createEncryptedData({
+			id: null,
+			name: createOpts.name,
+			type: createOpts.type,
+			data: createOpts.data,
+		});
 
-		const encryptedData = this.createEncryptedData(null, newCredential);
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: createOpts.isManaged,
+		});
 
 		const { shared, ...credential } = await this.save(
-			newCredential,
-			encryptedData,
+			credentialEntity,
+			encryptedCredential,
 			user,
-			credentialsData.projectId,
+			createOpts.projectId,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);

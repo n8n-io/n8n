@@ -11,10 +11,10 @@ import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
+import type { CreateCredentialOptions } from '@/credentials/credentials.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { CredentialRequest } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
@@ -84,7 +84,7 @@ export class AiController {
 		try {
 			const aiCredits = await this.aiService.createFreeAiCredits(req.user);
 
-			const credentialProperties: CredentialRequest.CredentialProperties = {
+			const credentialProperties: CreateCredentialOptions = {
 				name: FREE_AI_CREDITS_CREDENTIAL_NAME,
 				type: OPEN_AI_API_CREDENTIAL_TYPE,
 				data: {
