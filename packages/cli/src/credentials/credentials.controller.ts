@@ -130,7 +130,7 @@ export class CredentialsController {
 		}
 
 		const mergedCredentials = deepCopy(credentials);
-		const decryptedData = this.credentialsService.decrypt(storedCredential);
+		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
 
 		// When a sharee (or project viewer) opens a credential, the fields and the
 		// credential data are missing so the payload will be empty
@@ -143,14 +143,14 @@ export class CredentialsController {
 			mergedCredentials,
 		);
 
-		if (mergedCredentials.data && storedCredential) {
+		if (mergedCredentials.data) {
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
 			);
 		}
 
-		return await this.credentialsService.test(req.user, mergedCredentials);
+		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
 	@Post('/')

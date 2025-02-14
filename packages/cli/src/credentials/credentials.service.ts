@@ -448,8 +448,8 @@ export class CredentialsService {
 		await this.credentialsRepository.remove(credential);
 	}
 
-	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
+	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
+		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.

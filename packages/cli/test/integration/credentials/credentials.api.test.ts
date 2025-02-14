@@ -1,10 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
+import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -12,6 +14,7 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	getCredentialById,
@@ -1409,6 +1412,73 @@ describe('GET /credentials/:id', () => {
 
 		const responseAbc = await authOwnerAgent.get('/credentials/abc');
 		expect(responseAbc.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test a credential with unredacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
+	});
+
+	test('should test a credential with redacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: {
+					accessToken: CREDENTIAL_BLANKING_VALUE,
+				},
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
 	});
 });
 
