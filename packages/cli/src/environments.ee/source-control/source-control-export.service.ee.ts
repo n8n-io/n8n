@@ -6,12 +6,13 @@ import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workf
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowDb } from '@/interfaces';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -84,7 +85,7 @@ export class SourceControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(
-		workflowsToBeExported: WorkflowEntity[],
+		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, ResourceOwner>,
 	) {
 		await Promise.all(
@@ -119,7 +120,9 @@ export class SourceControlExportService {
 				const project = sharedWorkflow.project;
 
 				if (!project) {
-					throw new ApplicationError(`Workflow ${sharedWorkflow.workflow.display()} has no owner`);
+					throw new ApplicationError(
+						`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
+					);
 				}
 
 				if (project.type === 'personal') {
@@ -128,7 +131,7 @@ export class SourceControlExportService {
 					);
 					if (!ownerRelation) {
 						throw new ApplicationError(
-							`Workflow ${sharedWorkflow.workflow.display()} has no owner`,
+							`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
 						);
 					}
 					owners[sharedWorkflow.workflowId] = {

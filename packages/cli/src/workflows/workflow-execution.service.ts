@@ -12,6 +12,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
@@ -20,7 +21,7 @@ import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { CreateExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
+import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
@@ -44,7 +45,7 @@ export class WorkflowExecutionService {
 	) {}
 
 	async runWorkflow(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		node: INode,
 		data: INodeExecutionData[][],
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -346,7 +347,7 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(workflow: IWorkflowBase, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
@@ -385,7 +386,7 @@ export class WorkflowExecutionService {
 		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
 	}
 
-	private findAllPinnedActivators(workflow: IWorkflowDb, pinData?: IPinData) {
+	private findAllPinnedActivators(workflow: IWorkflowBase, pinData?: IPinData) {
 		return workflow.nodes
 			.filter(
 				(node) =>

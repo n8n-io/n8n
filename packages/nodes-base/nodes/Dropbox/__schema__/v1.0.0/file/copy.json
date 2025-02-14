@@ -1,0 +1,72 @@
+{
+	"type": "object",
+	"properties": {
+		"metadata": {
+			"type": "object",
+			"properties": {
+				".tag": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"path_lower": {
+					"type": "string"
+				},
+				"path_display": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"client_modified": {
+					"type": "string"
+				},
+				"server_modified": {
+					"type": "string"
+				},
+				"rev": {
+					"type": "string"
+				},
+				"size": {
+					"type": "integer"
+				},
+				"is_downloadable": {
+					"type": "boolean"
+				},
+				"content_hash": {
+					"type": "string"
+				},
+				"parent_shared_folder_id": {
+					"type": "string"
+				},
+				"sharing_info": {
+					"type": "object",
+					"properties": {
+						"read_only": {
+							"type": "boolean"
+						},
+						"parent_shared_folder_id": {
+							"type": "string"
+						},
+						"modified_by": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"read_only",
+						"parent_shared_folder_id",
+						"modified_by"
+					]
+				}
+			},
+			"required": [
+				".tag",
+				"name",
+				"path_lower",
+				"path_display",
+				"id"
+			]
+		}
+	}
+}
