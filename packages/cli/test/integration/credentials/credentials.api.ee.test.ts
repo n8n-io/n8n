@@ -28,7 +28,10 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import { randomCredentialPayload } from '../shared/random';
+import {
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+} from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
@@ -556,10 +559,11 @@ describe('GET /credentials/:id', () => {
 		expect(secondCredential.data).toBeDefined();
 	});
 
-	test('should not redact the data when `includeData:true` is passed', async () => {
+	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = jest.spyOn(credentialService, 'redact');
-		const savedCredential = await saveCredential(randomCredentialPayload(), {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
 			user: owner,
 		});
 
@@ -569,7 +573,8 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
-		expect(redactSpy).not.toHaveBeenCalled();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
+		expect(redactSpy).toHaveBeenCalled();
 	});
 
 	test('should retrieve non-owned cred for owner', async () => {
