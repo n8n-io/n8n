@@ -1,19 +1,18 @@
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
+import type { Folder } from '@/databases/entities/folder';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { createFolder } from '@test-integration/db/folders';
 import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../../../../test/integration/shared/test-db';
 import { FolderRepository } from '../folder.repository';
-import { createWorkflow } from '@test-integration/db/workflows';
-import { Workflow } from 'n8n-workflow';
-import { Folder } from '@/databases/entities/folder';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 describe('FolderRepository', () => {
 	let folderRepository: FolderRepository;
