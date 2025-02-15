@@ -29,6 +29,7 @@ import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
+import { DateTime } from 'luxon';
 
 let owner: User;
 let member: User;
@@ -649,8 +650,11 @@ describe('GET /workflows', () => {
 			const workflow1 = await createWorkflow({ name: 'First' }, owner);
 			const workflow2 = await createWorkflow({ name: 'Second' }, owner);
 
-			await createTag({ name: 'A' }, workflow1);
-			await createTag({ name: 'B' }, workflow1);
+			await createTag({ name: 'A', createdAt: DateTime.now().toJSDate() }, workflow1);
+			await createTag(
+				{ name: 'B', createdAt: DateTime.now().plus({ day: 1 }).toJSDate() },
+				workflow1,
+			);
 			const tagC = await createTag({ name: 'C' }, workflow2);
 
 			await assignTagToWorkflow(tagC, workflow2);

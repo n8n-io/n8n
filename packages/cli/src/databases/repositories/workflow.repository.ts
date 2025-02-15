@@ -262,7 +262,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		qb.leftJoin('workflow.tags', 'tags').addSelect(['tags.id', 'tags.name']);
+		qb.leftJoin('workflow.tags', 'tags')
+			.addSelect(['tags.id', 'tags.name'])
+			.addOrderBy('tags.createdAt', 'ASC');
 	}
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
