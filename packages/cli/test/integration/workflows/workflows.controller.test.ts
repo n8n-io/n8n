@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { DateTime } from 'luxon';
 import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -29,7 +30,6 @@ import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-import { DateTime } from 'luxon';
 
 let owner: User;
 let member: User;
