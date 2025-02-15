@@ -1,3 +1,12 @@
+## [1.78.1](https://github.com/n8n-io/n8n/compare/n8n@1.78.0...n8n@1.78.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* **core:** Redact credentials ([#13263](https://github.com/n8n-io/n8n/issues/13263)) ([1756097](https://github.com/n8n-io/n8n/commit/17560979cdb12e71a74c9fb41abceed3c6bee0c2))
+
+
+
 # [1.78.0](https://github.com/n8n-io/n8n/compare/n8n@1.77.0...n8n@1.78.0) (2025-02-06)
 
 
