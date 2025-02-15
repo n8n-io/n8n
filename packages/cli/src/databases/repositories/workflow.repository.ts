@@ -293,7 +293,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		direction: 'ASC' | 'DESC',
 	): void {
 		if (column === 'name') {
-			// First add the LOWER expression as a selection with a fixed alias
 			qb.addSelect('LOWER(workflow.name)', 'workflow_name_lower').orderBy(
 				'workflow_name_lower',
 				direction,

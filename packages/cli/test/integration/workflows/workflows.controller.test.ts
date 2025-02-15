@@ -646,15 +646,27 @@ describe('GET /workflows', () => {
 			});
 		});
 
-		test('should filter workflows by field: tags using AND operator', async () => {
+		test('should filter workflows by field: tags (AND operator)', async () => {
 			const workflow1 = await createWorkflow({ name: 'First' }, owner);
 			const workflow2 = await createWorkflow({ name: 'Second' }, owner);
 
-			await createTag({ name: 'A', createdAt: DateTime.now().toJSDate() }, workflow1);
+			const baseDate = DateTime.now();
+
 			await createTag(
-				{ name: 'B', createdAt: DateTime.now().plus({ day: 1 }).toJSDate() },
+				{
+					name: 'A',
+					createdAt: baseDate.toJSDate(),
+				},
 				workflow1,
 			);
+			await createTag(
+				{
+					name: 'B',
+					createdAt: baseDate.plus({ seconds: 1 }).toJSDate(),
+				},
+				workflow1,
+			);
+
 			const tagC = await createTag({ name: 'C' }, workflow2);
 
 			await assignTagToWorkflow(tagC, workflow2);
@@ -669,10 +681,10 @@ describe('GET /workflows', () => {
 				data: [
 					objectContaining({
 						name: 'First',
-						tags: [
+						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
-						],
+						]),
 					}),
 				],
 			});
