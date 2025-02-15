@@ -266,23 +266,35 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
-		if (sortBy) {
-			const [column, order] = sortBy.split(':');
-			const direction = order.toUpperCase() as 'ASC' | 'DESC';
-
-			if (column === 'name') {
-				// SQLite-compatible case-insensitive sorting
-				qb.addSelect('LOWER(workflow.name)', 'workflowNameLower').orderBy(
-					'workflowNameLower',
-					direction,
-					'NULLS LAST',
-				);
-			} else {
-				qb.orderBy(`workflow.${column}`, direction, 'NULLS LAST');
-			}
-		} else {
-			qb.orderBy('workflow.updatedAt', 'ASC', 'NULLS LAST');
+		if (!sortBy) {
+			this.applyDefaultSorting(qb);
+			return;
 		}
+
+		const [column, direction] = this.parseSortingParams(sortBy);
+		this.applySortingByColumn(qb, column, direction);
+	}
+
+	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
+		const [column, order] = sortBy.split(':');
+		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
+	}
+
+	private applyDefaultSorting(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		qb.orderBy('workflow.updatedAt', 'ASC');
+	}
+
+	private applySortingByColumn(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		column: string,
+		direction: 'ASC' | 'DESC',
+	): void {
+		if (column === 'name') {
+			qb.addSelect('LOWER(workflow.name)', 'nameSort').orderBy('nameSort', direction);
+			return;
+		}
+
+		qb.orderBy(`workflow.${column}`, direction);
 	}
 
 	private applyPagination(
