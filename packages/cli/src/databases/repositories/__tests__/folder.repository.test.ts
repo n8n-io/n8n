@@ -10,6 +10,10 @@ import { createMember, createOwner } from '@test-integration/db/users';
 
 import * as testDb from '../../../../test/integration/shared/test-db';
 import { FolderRepository } from '../folder.repository';
+import { createWorkflow } from '@test-integration/db/workflows';
+import { Workflow } from 'n8n-workflow';
+import { Folder } from '@/databases/entities/folder';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 describe('FolderRepository', () => {
 	let folderRepository: FolderRepository;
@@ -150,7 +154,7 @@ describe('FolderRepository', () => {
 				expect(folders[0].tags[0].name).toBe('important');
 			});
 
-			it('should filter folders by multiple tags', async () => {
+			it('should filter folders by multiple tags (AND operator)', async () => {
 				const tag1 = await createTag({ name: 'important' });
 				const tag2 = await createTag({ name: 'active' });
 				const tag3 = await createTag({ name: 'archived' });
@@ -172,9 +176,8 @@ describe('FolderRepository', () => {
 					filter: { tags: ['important', 'active'] },
 				});
 
-				expect(folders).toHaveLength(2);
-				expect(folders[1].name).toBe('Folder 1');
-				expect(folders[0].name).toBe('Folder 2');
+				expect(folders).toHaveLength(1);
+				expect(folders[0].name).toBe('Folder 1');
 			});
 
 			it('should apply multiple filters together', async () => {
@@ -214,14 +217,18 @@ describe('FolderRepository', () => {
 		});
 
 		describe('select', () => {
+			let testFolder: Folder;
+			let workflowWithTestFolder: WorkflowEntity;
+
 			beforeEach(async () => {
 				const parentFolder = await createFolder(project, { name: 'Parent Folder' });
 				const tag = await createTag({ name: 'test-tag' });
-				await createFolder(project, {
+				testFolder = await createFolder(project, {
 					name: 'Test Folder',
 					parentFolder,
 					tags: [tag],
 				});
+				workflowWithTestFolder = await createWorkflow({ parentFolder: testFolder });
 			});
 
 			it('should select only id and name when specified', async () => {
@@ -347,9 +354,13 @@ describe('FolderRepository', () => {
 							type: expect.any(String),
 							icon: null,
 						},
+						workflows: expect.any(Array),
 						tags: expect.any(Array),
 					});
 				});
+
+				expect(folders[0].workflows).toHaveLength(1);
+				expect(folders[0].workflows[0].id).toBe(workflowWithTestFolder.id);
 			});
 		});
 
