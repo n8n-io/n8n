@@ -446,6 +446,13 @@ export class GmailV2 implements INodeType {
 
 						responseData = { success: true };
 					}
+					if (operation === 'trash') {
+						// https://developers.google.com/gmail/api/v1/reference/users/messages/trash
+						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/messages/${id}/trash`;
+
+						responseData = await googleApiRequest.call(this, 'POST', endpoint);
+					}
 					if (operation === 'markAsRead') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
 						const id = this.getNodeParameter('messageId', i);
