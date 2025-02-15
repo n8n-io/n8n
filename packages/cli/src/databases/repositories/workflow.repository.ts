@@ -13,8 +13,10 @@ import type {
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
+import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
+import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
@@ -158,12 +160,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (isStringArray(filter?.tags) && filter.tags.length > 0) {
-			// Subquery for filtering
 			const subQuery = qb
 				.subQuery()
 				.select('wt.workflowId')
-				.from('workflows_tags', 'wt')
-				.innerJoin('tag_entity', 'filter_tags', 'filter_tags.id = wt.tagId')
+				.from(WorkflowTagMapping, 'wt')
+				.innerJoin(TagEntity, 'filter_tags', 'filter_tags.id = wt.tagId')
 				.where('filter_tags.name IN (:...tagNames)', { tagNames: filter.tags })
 				.groupBy('wt.workflowId')
 				.having('COUNT(DISTINCT filter_tags.name) = :tagCount', { tagCount: filter.tags.length });
@@ -292,7 +293,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		direction: 'ASC' | 'DESC',
 	): void {
 		if (column === 'name') {
-			qb.addSelect('LOWER(workflow.name)', 'nameSort').orderBy('nameSort', direction);
+			// First add the LOWER expression as a selection with a fixed alias
+			qb.addSelect('LOWER(workflow.name)', 'workflow_name_lower').orderBy(
+				'workflow_name_lower',
+				direction,
+			);
 			return;
 		}
 
