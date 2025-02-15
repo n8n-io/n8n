@@ -2168,7 +2168,7 @@
 	"ndv.search.items": "{matched} of {total} item | {matched} of {total} items",
 	"updatesPanel.andIs": "and is",
 	"updatesPanel.behindTheLatest": "behind the latest and greatest n8n",
-	"updatesPanel.howToUpdateYourN8nVersion": "How to update your n8n version",
+	"updatesPanel.clickHereToUpdateYourN8nVersion": "Click here to update your n8n version",
 	"updatesPanel.version": "{numberOfVersions} version{howManySuffix}",
 	"updatesPanel.weVeBeenBusy": "We’ve been busy ✨",
 	"updatesPanel.youReOnVersion": "You’re on {currentVersionName}, which was released",
