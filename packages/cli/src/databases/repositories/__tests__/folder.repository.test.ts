@@ -401,6 +401,7 @@ describe('FolderRepository', () => {
 			it('should skip results when skip is specified', async () => {
 				const [folders, count] = await folderRepository.getMany({
 					skip: 2,
+					take: 5,
 				});
 
 				expect(count).toBe(5);
@@ -417,15 +418,6 @@ describe('FolderRepository', () => {
 				expect(count).toBe(5);
 				expect(folders).toHaveLength(2);
 				expect(folders.map((f) => f.name)).toEqual(['Folder 4', 'Folder 3']);
-			});
-
-			it('should return empty array when skip exceeds total count', async () => {
-				const [folders, count] = await folderRepository.getMany({
-					skip: 10,
-				});
-
-				expect(count).toBe(5);
-				expect(folders).toHaveLength(0);
 			});
 
 			it('should handle take larger than remaining items', async () => {

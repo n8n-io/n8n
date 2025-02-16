@@ -20,7 +20,7 @@ export class FolderRepository extends Repository<Folder> {
 		this.applySelections(query, options.select);
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
-		this.applyPagination(query, options.skip, options.take);
+		this.applyPagination(query, options);
 
 		return await query.getManyAndCount();
 	}
@@ -192,8 +192,9 @@ export class FolderRepository extends Repository<Folder> {
 		}
 	}
 
-	private applyPagination(query: SelectQueryBuilder<Folder>, skip?: number, take?: number): void {
-		if (skip) query.skip(skip);
-		if (take) query.take(take);
+	private applyPagination(query: SelectQueryBuilder<Folder>, options: ListQuery.Options): void {
+		if (options?.take) {
+			query.skip(options.skip ?? 0).take(options.take);
+		}
 	}
 }
