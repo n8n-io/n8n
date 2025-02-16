@@ -93,7 +93,7 @@ export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
-	parentFolder?: Folder;
+	parentFolder?: Folder | null;
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
