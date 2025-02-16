@@ -72,31 +72,62 @@ export class WorkflowService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
-				const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(
-					workflows.map((c) => c.id),
-				);
-				workflows.forEach((c) => {
-					c.shared = relations.filter((r) => r.workflowId === c.id);
-				});
-			}
-
-			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
+			workflows = await this.processSharedWorkflows(workflows, options);
 		}
 
 		if (includeScopes) {
-			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			workflows = workflows.map((w) => this.roleService.addScopes(w, user, projectRelations));
+			workflows = await this.addUserScopes(workflows, user);
 		}
 
-		workflows.forEach((w) => {
-			// This is to emulate the old behaviour of removing the shared field as
-			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
-			delete w.shared;
-		});
+		this.cleanupSharedField(workflows);
 
-		return { workflows, count };
+		return {
+			workflows,
+			count,
+		};
+	}
+
+	private async processSharedWorkflows(
+		workflows: ListQuery.Workflow.WithSharing[],
+		options?: ListQuery.Options,
+	) {
+		const projectId = options?.filter?.projectId;
+
+		const shouldAddProjectRelations = typeof projectId === 'string' && projectId !== '';
+
+		if (shouldAddProjectRelations) {
+			await this.addSharedRelation(workflows);
+		}
+
+		return workflows.map((workflow) => this.ownershipService.addOwnedByAndSharedWith(workflow));
+	}
+
+	private async addSharedRelation(workflows: ListQuery.Workflow.WithSharing[]): Promise<void> {
+		const workflowIds = workflows.map((workflow) => workflow.id);
+		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
+
+		workflows.forEach((workflow) => {
+			workflow.shared = relations.filter((relation) => relation.workflowId === workflow.id);
+		});
+	}
+
+	private async addUserScopes(
+		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		user: User,
+	) {
+		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+
+		return workflows.map((workflow) =>
+			this.roleService.addScopes(workflow, user, projectRelations),
+		);
+	}
+
+	private cleanupSharedField(
+		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+	): void {
+		workflows.forEach((workflow) => {
+			delete workflow.shared;
+		});
 	}
 
 	// eslint-disable-next-line complexity
