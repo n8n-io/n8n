@@ -362,9 +362,8 @@ const resetFilters = async () => {
 		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
 	});
 
-	// Reset the pagination
+	// Reset the current page
 	await setCurrentPage(1);
-	await setRowsPerPage(props.customPageSize);
 
 	resettingFilters.value = true;
 	hasFilters.value = false;
@@ -558,6 +557,7 @@ const loadPaginationFromQueryString = async () => {
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
+					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
 				>
 					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
@@ -589,6 +589,7 @@ const loadPaginationFromQueryString = async () => {
 								:total="totalItems"
 								:page-sizes="availablePageSizeOptions"
 								layout="total, prev, pager, next, sizes"
+								data-test-id="resources-list-pagination"
 								@update:current-page="setCurrentPage"
 								@size-change="setRowsPerPage"
 							></el-pagination>
