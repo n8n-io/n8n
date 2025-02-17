@@ -461,7 +461,7 @@ export class WorkflowsController {
 				projectId: In(toUnshare),
 			});
 
-			await this.enterpriseWorkflowService.shareWithProjects(workflow, toShare, trx);
+			await this.enterpriseWorkflowService.shareWithProjects(workflow.id, toShare, trx);
 
 			newShareeIds = toShare;
 		});

@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { Logger } from 'n8n-core';
+import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -12,7 +13,6 @@ import type { CredentialsEntity } from '@/databases/entities/credentials-entity'
 import { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -44,7 +44,7 @@ export class EnterpriseWorkflowService {
 	) {}
 
 	async shareWithProjects(
-		workflow: WorkflowEntity,
+		workflowId: WorkflowId,
 		shareWithIds: string[],
 		entityManager: EntityManager,
 	) {
@@ -67,7 +67,7 @@ export class EnterpriseWorkflowService {
 			// always only be one owner.
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
-					workflowId: workflow.id,
+					workflowId,
 					role: 'workflow:editor',
 					projectId: project.id,
 				}),
@@ -130,7 +130,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	validateCredentialPermissionsToUser(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		allowedCredentials: CredentialsEntity[],
 	) {
 		workflow.nodes.forEach((node) => {
@@ -150,7 +150,7 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
-	async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
+	async preventTampering<T extends IWorkflowBase>(workflow: T, workflowId: string, user: User) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
 		if (!previousVersion) {
@@ -174,9 +174,9 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
-	validateWorkflowCredentialUsage(
-		newWorkflowVersion: WorkflowEntity,
-		previousWorkflowVersion: WorkflowEntity,
+	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
+		newWorkflowVersion: T,
+		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
@@ -244,7 +244,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	/** Get all nodes in a workflow where the node credential is not accessible to the user. */
-	getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
+	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: string[]) {
 		if (!workflow.nodes) {
 			return [];
 		}

@@ -126,13 +126,10 @@ export class TestDefinitionService {
 			);
 			const existingNodeIds = new Map(existingTestDefinition.workflow.nodes.map((n) => [n.id, n]));
 
-			attrs.mockedNodes.forEach((node) => {
-				if (!existingNodeIds.has(node.id) || (node.name && !existingNodeNames.has(node.name))) {
-					throw new BadRequestError(
-						`Pinned node not found in the workflow: ${node.id} (${node.name})`,
-					);
-				}
-			});
+			// If some node was previously mocked and then removed from the workflow, it should be removed from the mocked nodes
+			attrs.mockedNodes = attrs.mockedNodes.filter(
+				(node) => existingNodeIds.has(node.id) || (node.name && existingNodeNames.has(node.name)),
+			);
 
 			// Update the node names OR node ids if they are not provided
 			attrs.mockedNodes = attrs.mockedNodes.map((node) => {

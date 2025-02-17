@@ -9,10 +9,10 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 	NodeOperationError,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
@@ -103,7 +103,7 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 /**
  * Set node ids if not already set
  */
-export function addNodeIds(workflow: WorkflowEntity) {
+export function addNodeIds(workflow: IWorkflowBase) {
 	const { nodes } = workflow;
 	if (!nodes) return;
 
@@ -115,7 +115,7 @@ export function addNodeIds(workflow: WorkflowEntity) {
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
-export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promise<WorkflowEntity> {
+export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflow: T): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
 

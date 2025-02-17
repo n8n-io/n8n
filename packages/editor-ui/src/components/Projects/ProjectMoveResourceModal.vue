@@ -15,6 +15,7 @@ import ProjectMoveResourceModalCredentialsList from '@/components/Projects/Proje
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
+import type { EventBus } from 'n8n-design-system/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
@@ -24,6 +25,7 @@ const props = defineProps<{
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: ResourceType;
 		resourceTypeLabel: string;
+		eventBus?: EventBus;
 	};
 }>();
 
@@ -144,6 +146,13 @@ const moveResource = async () => {
 			type: 'success',
 			duration: 8000,
 		});
+		if (props.data.eventBus) {
+			props.data.eventBus.emit('resource-moved', {
+				resourceId: props.data.resource.id,
+				resourceType: props.data.resourceType,
+				targetProjectId: selectedProject.value.id,
+			});
+		}
 	} catch (error) {
 		toast.showError(
 			error.message,
