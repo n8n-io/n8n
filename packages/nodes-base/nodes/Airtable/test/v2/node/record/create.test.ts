@@ -54,6 +54,7 @@ describe('Test AirtableV2, create operation', () => {
 				],
 			},
 			options: {
+				returnFieldsByFieldId: true,
 				typecast: true,
 				ignoreFields: 'spam',
 			},
@@ -89,6 +90,7 @@ describe('Test AirtableV2, create operation', () => {
 				foo: 'foo 1',
 				bar: 'bar 1',
 			},
+			returnFieldsByFieldId: true,
 			typecast: true,
 		});
 		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
@@ -96,6 +98,7 @@ describe('Test AirtableV2, create operation', () => {
 				foo: 'foo 2',
 				bar: 'bar 2',
 			},
+			returnFieldsByFieldId: true,
 			typecast: true,
 		});
 	});
@@ -151,6 +154,7 @@ describe('Test AirtableV2, create operation', () => {
 				foo: 'foo 1',
 				bar: 'bar 1',
 			},
+			returnFieldsByFieldId: false,
 			typecast: false,
 		});
 	});

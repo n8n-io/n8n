@@ -44,6 +44,14 @@ const properties: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description: "The fields of type 'attachment' that should be downloaded",
 			},
+			{
+				displayName: 'Return Fields By Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return fields keyed by field ID instead of field name in the response',
+			},
 		],
 	},
 ];
@@ -69,10 +77,13 @@ export async function execute(
 		let id;
 		try {
 			id = this.getNodeParameter('id', i) as string;
+			const options = this.getNodeParameter('options', i, {});
 
-			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
+			const query: IDataObject = {
+				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
+			};
 
-			const options = this.getNodeParameter('options', 0, {});
+			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`, {}, query);
 
 			if (options.downloadFields) {
 				const itemWithAttachments = await downloadRecordAttachments.call(
