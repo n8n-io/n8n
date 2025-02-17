@@ -62,7 +62,6 @@ const handleBeforeTooltipShow = async () => {
 		isLoadingHiddenItems.value = false;
 	}
 };
-
 const handleTooltipShow = () => {
 	emit('tooltipOpened');
 };
@@ -89,7 +88,6 @@ const handleTooltipClose = () => {
 			>
 				<n8n-tooltip
 					:popper-class="[$style.tooltip, $style[props.theme]]"
-					trigger="click"
 					@show="handleTooltipShow"
 					@before-show="handleBeforeTooltipShow"
 					@hide="handleTooltipClose"
@@ -97,7 +95,7 @@ const handleTooltipClose = () => {
 					<template #content>
 						<div v-if="isLoadingHiddenItems" :class="$style['tooltip-loading']">
 							<N8nLoading
-								:rows="3"
+								:rows="props.theme === 'small' ? 1 : 3"
 								:loading="isLoadingHiddenItems"
 								animated
 								variant="p"
@@ -105,7 +103,16 @@ const handleTooltipClose = () => {
 							/>
 						</div>
 						<div v-else :class="$style.tooltipContent">
-							<div v-for="item in loadedHiddenItems" :key="item.id" :class="$style.tooltipItem">
+							<!-- For small theme, just render labels separated by slash -->
+							<div v-if="props.theme === 'small'">
+								<n8n-text>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</n8n-text>
+							</div>
+							<div
+								v-for="item in loadedHiddenItems"
+								v-else
+								:key="item.id"
+								:class="$style.tooltipItem"
+							>
 								<n8n-link v-if="item.href" :href="item.href" theme="text">
 									{{ item.label }}
 								</n8n-link>
@@ -162,7 +169,7 @@ const handleTooltipClose = () => {
 }
 
 .tooltip-loading {
-	min-width: 100px;
+	min-width: var(--spacing-3xl);
 	width: 100%;
 
 	:global(.n8n-loading) > div {
@@ -231,11 +238,7 @@ const handleTooltipClose = () => {
 		display: flex;
 		flex-direction: column;
 		* {
-			color: var(--color-text-light);
-
-			&:hover {
-				color: var(--color-text-lighter);
-			}
+			color: var(--color-text-lighter);
 		}
 	}
 	&.medium {
@@ -245,6 +248,10 @@ const handleTooltipClose = () => {
 
 			* {
 				font-size: var(--font-size-s);
+
+				&:hover {
+					color: var(--color-text-xlight);
+				}
 			}
 		}
 	}
@@ -254,8 +261,13 @@ const handleTooltipClose = () => {
 			gap: var(--spacing-2xs);
 
 			* {
+				color: var(--color-text-lighter);
 				font-size: var(--font-size-2xs);
 			}
+		}
+
+		.tooltip-loading {
+			min-width: var(--spacing-4xl);
 		}
 	}
 }

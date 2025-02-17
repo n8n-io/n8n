@@ -147,3 +147,19 @@ SmallWithSlots.args = {
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
 };
+
+const smallAsyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: '<Breadcrumbs v-bind="args" />',
+});
+
+export const SmallAsyncLoading = smallAsyncLoadingTemplate.bind({});
+SmallAsyncLoading.args = {
+	items: items.slice(2),
+	hasHiddenItems: true,
+	hiddenItemsSource: fetchHiddenItemsAsync,
+	theme: 'small',
+	showBorder: true,
+};
