@@ -166,13 +166,13 @@ function onTagsUpdated(selected: string[]) {
 }
 
 function focusFirstOption() {
-	// focus on create option
-	if (createRef.value?.$el) {
-		createRef.value.$el.dispatchEvent(new Event('mouseenter'));
-	}
 	// focus on top option after filter
-	else if (tagRefs.value?.[0]?.$el) {
+	if (tagRefs.value?.[0]?.$el) {
 		tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
+	}
+	// focus on create option
+	else if (createRef.value?.$el) {
+		createRef.value.$el.dispatchEvent(new Event('mouseenter'));
 	}
 }
 
@@ -228,7 +228,16 @@ onClickOutside(
 			@remove-tag="onRemoveTag"
 		>
 			<N8nOption
-				v-if="createEnabled && options.length === 0 && filter"
+				v-for="(tag, i) in options"
+				:key="tag.id + '_' + i"
+				ref="tagRefs"
+				:value="tag.id"
+				:label="tag.name"
+				class="tag"
+				data-test-id="tag"
+			/>
+			<N8nOption
+				v-if="createEnabled && filter && !options.some((x) => x.name === filter.trim())"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -246,17 +255,6 @@ onClickOutside(
 				}}</span>
 				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</N8nOption>
-
-			<N8nOption
-				v-for="(tag, i) in options"
-				:key="tag.id + '_' + i"
-				ref="tagRefs"
-				:value="tag.id"
-				:label="tag.name"
-				class="tag"
-				data-test-id="tag"
-			/>
-
 			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
