@@ -362,9 +362,8 @@ const resetFilters = async () => {
 		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
 	});
 
-	// Reset the pagination
+	// Reset the current page
 	await setCurrentPage(1);
-	await setRowsPerPage(props.customPageSize);
 
 	resettingFilters.value = true;
 	hasFilters.value = false;
