@@ -97,6 +97,9 @@ catalogs:
     '@vue/tsconfig':
       specifier: ^0.7.0
       version: 0.7.0
+    '@vueuse/core':
+      specifier: ^10.11.0
+      version: 10.11.0
     highlight.js:
       specifier: ^11.8.0
       version: 11.9.0
@@ -1490,7 +1493,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       '@vueuse/core':
-        specifier: ^10.11.0
+        specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
@@ -1702,10 +1705,6 @@ importers:
         version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/frontend/@n8n/composables:
-    dependencies:
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.13(typescript@5.7.2)
     devDependencies:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
@@ -1731,6 +1730,9 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       tsup:
         specifier: catalog:frontend
         version: 8.3.6(@microsoft/api-extractor@7.48.0(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.4.49)(typescript@5.7.2)
@@ -1746,6 +1748,9 @@ importers:
       vitest:
         specifier: catalog:frontend
         version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.7.2)
       vue-tsc:
         specifier: ^2.1.10
         version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
@@ -13329,8 +13334,8 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
-  vue-component-type-helpers@2.2.0:
-    resolution: {integrity: sha512-cYrAnv2me7bPDcg9kIcGwjJiSB6Qyi08+jLDo9yuvoFQjzHiPTzML7RnkJB1+3P6KMsX/KbCD4QE3Tv/knEllw==}
+  vue-component-type-helpers@2.2.2:
+    resolution: {integrity: sha512-6lLY+n2xz2kCYshl59mL6gy8OUUTmkscmDFMO8i7Lj+QKwgnIFUZmM1i/iTYObtrczZVdw7UakPqDTGwVSGaRg==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -18482,7 +18487,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.7.2)
-      vue-component-type-helpers: 2.2.0
+      vue-component-type-helpers: 2.2.2
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -19509,7 +19514,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.2.0
+      vue-component-type-helpers: 2.2.2
 
   '@vue/tsconfig@0.7.0(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))':
     optionalDependencies:
@@ -27795,7 +27800,7 @@ snapshots:
 
   vue-component-type-helpers@2.1.10: {}
 
-  vue-component-type-helpers@2.2.0: {}
+  vue-component-type-helpers@2.2.2: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.7.2)):
     dependencies:
