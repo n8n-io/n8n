@@ -368,7 +368,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 				newName =
 					newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 			}
-			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, newName);
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, {
+				name: newName,
+			});
 			return res.name;
 		} catch (e) {
 			return DEFAULT_CREDENTIAL_NAME;

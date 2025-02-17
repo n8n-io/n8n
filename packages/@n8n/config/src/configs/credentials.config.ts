@@ -16,10 +16,6 @@ class CredentialsOverwrite {
 
 @Config
 export class CredentialsConfig {
-	/** Default name for credentials */
-	@Env('CREDENTIALS_DEFAULT_NAME')
-	defaultName: string = 'My credentials';
-
 	@Nested
 	overwrite: CredentialsOverwrite;
 }

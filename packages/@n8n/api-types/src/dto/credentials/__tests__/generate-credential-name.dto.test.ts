@@ -2,15 +2,6 @@ import { GenerateCredentialNameRequestQuery } from '../generate-credential-name.
 
 describe('GenerateCredentialNameRequestQuery', () => {
 	describe('should pass validation', () => {
-		it('with empty object', () => {
-			const data = {};
-
-			const result = GenerateCredentialNameRequestQuery.safeParse(data);
-
-			expect(result.success).toBe(true);
-			expect(result.data?.name).toBeUndefined();
-		});
-
 		it('with valid name', () => {
 			const data = { name: 'My Credential' };
 
@@ -23,17 +14,19 @@ describe('GenerateCredentialNameRequestQuery', () => {
 
 	describe('should fail validation', () => {
 		test.each([
-			{ field: 'name', value: 123 },
-			{ field: 'name', value: true },
-			{ field: 'name', value: {} },
-			{ field: 'name', value: [] },
-		])('with invalid value $value for $field', ({ field, value }) => {
-			const data = { [field]: value };
+			{ value: null },
+			{ value: undefined },
+			{ value: 123 },
+			{ value: true },
+			{ value: {} },
+			{ value: [] },
+		])('with invalid value $value', ({ value }) => {
+			const data = { name: value };
 
 			const result = GenerateCredentialNameRequestQuery.safeParse(data);
 
 			expect(result.success).toBe(false);
-			expect(result.error?.issues[0].path[0]).toBe(field);
+			expect(result.error?.issues[0].path[0]).toBe('name');
 		});
 	});
 });

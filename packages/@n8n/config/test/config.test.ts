@@ -68,7 +68,6 @@ describe('GlobalConfig', () => {
 			type: 'sqlite',
 		},
 		credentials: {
-			defaultName: 'My credentials',
 			overwrite: {
 				data: '{}',
 				endpoint: '',
