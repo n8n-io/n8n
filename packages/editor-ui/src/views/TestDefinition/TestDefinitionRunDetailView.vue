@@ -5,9 +5,10 @@ import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue'
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { convertToDisplayDate } from '@/utils/typesUtils';
-import { N8nText } from 'n8n-design-system';
+import { N8nActionToggle, N8nButton, N8nText, N8nTooltip } from 'n8n-design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -31,6 +32,54 @@ const filteredTestCases = computed(() => {
 const formatedTime = computed(() =>
 	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
 );
+
+type Action = { label: string; value: string; disabled: boolean };
+
+const rowActions = (row: TestCaseExecutionRecord): Action[] => {
+	return [
+		{
+			label: 'Original execution',
+			value: row.pastExecutionId,
+			disabled: !Boolean(row.pastExecutionId),
+		},
+		{
+			label: 'New Execution',
+			value: row.executionId,
+			disabled: !Boolean(row.executionId),
+		},
+		{
+			label: 'Evaluation Execution',
+			value: row.evaluationExecutionId,
+			disabled: !Boolean(row.evaluationExecutionId),
+		},
+	];
+};
+
+const gotToExecution = (executionId: string) => {
+	const { href } = router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: {
+			name: test.value?.workflowId,
+			executionId,
+		},
+	});
+	window.open(href, '_blank');
+};
+
+const errorTooltipMap: Record<string, BaseTextKey> = {
+	// Test case errors
+	MOCKED_NODE_DOES_NOT_EXIST: 'testDefinition.runDetail.error.mockedNodeMissing',
+	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
+	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
+	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
+	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
+	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
+	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
+
+	// Test run errors
+	PAST_EXECUTIONS_NOT_FOUND: 'testDefinition.listRuns.error.noPastExecutions',
+	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
+};
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	if (row.errorCode === 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW') {
@@ -95,7 +144,7 @@ const columns = computed(
 	(): Array<TestTableColumn<TestCaseExecutionRecord>> => [
 		{
 			prop: 'id',
-			width: 200,
+			width: 250,
 			label: locale.baseText('testDefinition.runDetail.testCase'),
 			sortable: true,
 			formatter: (row: TestCaseExecutionRecord) => `${row.id}`,
@@ -200,7 +249,6 @@ onMounted(async () => {
 				</div>
 			</div>
 		</el-scrollbar>
-		<pre>{{ testCases }}</pre>
 		<div v-if="isLoading" :class="$style.loading">
 			<n8n-loading :loading="true" :rows="5" />
 		</div>
@@ -210,7 +258,48 @@ onMounted(async () => {
 			:data="filteredTestCases"
 			:columns="columns"
 			:default-sort="{ prop: 'id', order: 'descending' }"
-		/>
+		>
+			<template #id="{ row }">
+				<div style="display: flex; justify-content: space-between; gap: 10px">
+					{{ row.id }}
+					<N8nActionToggle
+						:actions="rowActions(row)"
+						icon-orientation="horizontal"
+						@action="gotToExecution"
+					>
+						<N8nButton type="secondary">View</N8nButton>
+					</N8nActionToggle>
+				</div>
+			</template>
+			<template #status="{ row }">
+				<template v-if="row.status === 'error'">
+					<N8nTooltip placement="right" :show-after="300">
+						<template #content>
+							<i18n-t :keypath="errorTooltipMap[row.errorCode]">
+								<template #link>
+									<RouterLink :to="getErrorTooltipLinkRoute(row)" target="_blank">
+										{{ locale.baseText(`${errorTooltipMap[row.errorCode]}.solution`) }}
+									</RouterLink>
+									<!-- <N8nLink
+										:to="getErrorTooltipLinkRoute(row)"
+										size="small"
+										style="white-space: nowrap"
+									>
+										{{ locale.baseText(`${errorTooltipMap[row.errorCode]}.solution`) }}
+									</N8nLink> -->
+								</template>
+							</i18n-t>
+						</template>
+						<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
+							<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
+							<N8nText size="small" color="danger">
+								{{ row.status }}
+							</N8nText>
+						</div>
+					</N8nTooltip>
+				</template>
+			</template>
+		</TestTableBase>
 	</div>
 </template>
 

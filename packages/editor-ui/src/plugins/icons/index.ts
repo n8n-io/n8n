@@ -29,6 +29,7 @@ import {
 	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
+	faCircle,
 	faChevronLeft,
 	faChevronRight,
 	faCode,
@@ -206,6 +207,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faChevronRight);
 		addIcon(faChevronDown);
 		addIcon(faChevronUp);
+		addIcon(faCircle);
 		addIcon(faCode);
 		addIcon(faCodeBranch);
 		addIcon(faCog);

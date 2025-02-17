@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { computed, h } from 'vue';
-import { useRouter, RouterLink } from 'vue-router';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
 import EmptyState from '@/components/TestDefinition/ListDefinition/EmptyState.vue';
 import TestItem from '@/components/TestDefinition/ListDefinition/TestItem.vue';
+import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
-import {
-	N8nLoading,
-	N8nIconButton,
-	N8nButton,
-	N8nHeading,
-	N8nActionToggle,
-} from 'n8n-design-system';
+import { useToast } from '@/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
+import {
+	N8nActionToggle,
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nLoading,
+} from 'n8n-design-system';
+import { computed, h } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
@@ -76,7 +76,12 @@ function isTestRunning(testId: string) {
 }
 
 function isRunDisabled(testId: string) {
-	return testDefinitionStore.getFieldIssues(testId)?.length > 0;
+	const test = testDefinitionStore.getFieldIssues(testId);
+	if (testId === 'gfvRDquclwBWbGVY') {
+		console.log(testId, test);
+	}
+
+	return test.length > 0;
 }
 // // Action handlers
 function onCreateTest() {
@@ -260,7 +265,9 @@ async function onDeleteTest(testId: string) {
 .testList {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	// gap: 8px;
 }
 
 .header {

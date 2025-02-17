@@ -87,17 +87,13 @@ const handleDefineEvaluation = async () => {
 };
 </script>
 <template>
-	<div>
-		<n8n-input-label
-			:label="locale.baseText('testDefinition.edit.workflowSelectorLabel')"
-			:bold="false"
-		/>
+	<div class="mt-xs">
 		<template v-if="!modelValue.value">
-			<N8nButton icon="plus" block class="mb-xs" @click="handleDefineEvaluation">
-				Define evaluation logic
+			<N8nButton type="secondary" class="mb-xs" @click="handleDefineEvaluation">
+				Create new evaluation workflow
 			</N8nButton>
 			<N8nLink class="mb-xs" style="display: block" @click="selectorVisible = !selectorVisible">
-				Select existing evaluation sub-workflow
+				or use existing evaluation sub-workflow
 			</N8nLink>
 		</template>
 

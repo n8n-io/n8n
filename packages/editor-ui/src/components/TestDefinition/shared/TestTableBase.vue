@@ -5,8 +5,6 @@ import { isEqual } from 'lodash-es';
 import { N8nIcon, N8nTooltip } from 'n8n-design-system';
 import { nextTick, ref, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import TableCell from './TableCell.vue';
-import TableStatusCell from './TableStatusCell.vue';
 /**
  * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
@@ -20,6 +18,7 @@ export type TestTableColumn<TRow> = {
 	prop: string;
 	label: string;
 	showHeaderTooltip?: boolean;
+	showOverflowTooltip?: boolean;
 	width?: number;
 	sortable?: boolean;
 	filters?: Array<{ text: string; value: string }>;
@@ -108,6 +107,11 @@ const handleColumnResize = (
 function hasStatus(row: unknown): row is TableRowWithStatus {
 	return typeof row === 'object' && row !== null && 'status' in row;
 }
+
+defineSlots<{
+	id(props: { row: TableRow }): unknown;
+	status(props: { row: TableRow }): unknown;
+}>();
 </script>
 
 <template>
@@ -117,7 +121,6 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 		:default-sort="defaultSort"
 		:data="localData"
 		:border="true"
-		resizable
 		:cell-class-name="$style.customCell"
 		:row-class-name="$style.customRow"
 		scrollbar-always-on
@@ -140,9 +143,7 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 			v-bind="column"
 			:resizable="true"
 			data-test-id="table-column"
-			:min-width="100"
-			:width="175"
-			show-overflow-tooltip
+			:min-width="125"
 		>
 			<template #header="headerProps">
 				<N8nTooltip
@@ -167,20 +168,8 @@ function hasStatus(row: unknown): row is TableRowWithStatus {
 				</N8nTooltip>
 			</template>
 			<template #default="{ row }">
-				<TableStatusCell
-					v-if="column.prop === 'status' && hasStatus(row)"
-					:column="column"
-					:row="row"
-				/>
-				<TableCell
-					v-else
-					:key="row.id + column.prop"
-					:column="column"
-					:row="row"
-					:class="$style.cell"
-					data-test-id="table-cell"
-					@click="$emit('rowClick', row)"
-				/>
+				<slot v-if="column.prop === 'id'" name="id" v-bind="{ row }"></slot>
+				<slot v-if="column.prop === 'status'" name="status" v-bind="{ row }"></slot>
 			</template>
 		</ElTableColumn>
 	</ElTable>

@@ -51,11 +51,13 @@ const columns = computed(() => [
 		prop: 'runNumber',
 		label: locale.baseText('testDefinition.listRuns.runNumber'),
 		formatter: (row: TestRunRecord) => `${row.id}`,
+		showOverflowTooltip: true,
 	},
 	{
 		prop: 'runAt',
 		label: 'Run at',
 		sortable: true,
+		showOverflowTooltip: true,
 		sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
 			new Date(a.runAt ?? a.createdAt).getTime() - new Date(b.runAt ?? b.createdAt).getTime(),
 	},
@@ -101,8 +103,7 @@ const handleRowClick = (row: TestRunRecord) => {
 	flex-direction: column;
 	gap: var(--spacing-m);
 	flex: 1;
-	// padding-top: var(--spacing-3xs);
 	overflow: auto;
-	// margin-bottom: 20px;
+	margin-bottom: 20px;
 }
 </style>

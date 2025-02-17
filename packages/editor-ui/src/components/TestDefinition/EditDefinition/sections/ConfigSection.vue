@@ -207,6 +207,7 @@ function hideTooltip() {
 			<EvaluationStep
 				:class="$style.step"
 				:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
+				:description="locale.baseText('testDefinition.edit.workflowSelectorLabel')"
 				:issues="getFieldIssues('evaluationWorkflow')"
 				:tooltip="
 					hasRuns
@@ -372,6 +373,8 @@ function hideTooltip() {
 .tagInputTag {
 	display: flex;
 	gap: var(--spacing-3xs);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 }
 .tagInputControls {
 	display: flex;

@@ -2,7 +2,7 @@
 import TimeAgo from '@/components/TimeAgo.vue';
 // import { useI18n } from '@/composables/useI18n';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-import { N8nText, N8nIcon } from 'n8n-design-system';
+import { N8nIcon, N8nText } from 'n8n-design-system';
 
 defineProps<{
 	name: string;
@@ -10,11 +10,20 @@ defineProps<{
 	execution?: TestRunRecord;
 }>();
 // const locale = useI18n();
+
+const statusesColorDictionary: Record<TestRunRecord['status'], string> = {
+	new: 'var(--color-primary)',
+	running: 'var(--color-secondary)',
+	completed: 'var(--color-success)',
+	error: 'var(--color-danger)',
+	cancelled: 'var(--color-foreground-dark)',
+	warning: 'var(--color-warning)',
+	success: 'var(--color-success)',
+};
 </script>
 
 <template>
 	<div :class="$style.testCard">
-		<slot name="prepend"></slot>
 		<div :class="$style.testCardContent">
 			<div>
 				<N8nText bold tag="div">{{ name }}</N8nText>
@@ -23,14 +32,19 @@ defineProps<{
 
 			<div>
 				<template v-if="execution">
-					<div>
-						<N8nIcon icon="check-circle" color="success"></N8nIcon>
-						<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
-						<N8nIcon icon="spinner" spin color="warning"></N8nIcon>
-						<N8nText size="small">
+					<div
+						style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
+					>
+						<N8nIcon
+							icon="circle"
+							size="xsmall"
+							:style="{ color: statusesColorDictionary[execution.status] }"
+						></N8nIcon>
+						<N8nText size="small" bold color="text-base">
 							{{ execution.status }}
 						</N8nText>
 					</div>
+
 					<N8nText tag="div" color="text-base" size="small">
 						<TimeAgo :date="execution.updatedAt" />
 					</N8nText>
@@ -50,7 +64,7 @@ defineProps<{
 						>
 							{{ key }}
 						</N8nText>
-						<N8nText color="text-base" size="small" bold style="text-align: right">
+						<N8nText color="text-base" size="small" bold>
 							{{ value }}
 						</N8nText>
 					</template>
@@ -58,6 +72,7 @@ defineProps<{
 			</div>
 		</div>
 
+		<slot name="prepend"></slot>
 		<slot name="append"></slot>
 	</div>
 </template>
@@ -67,11 +82,21 @@ defineProps<{
 	display: flex;
 	align-items: center;
 	background-color: var(--color-background-xlight);
-	border: 1px solid var(--color-foreground-base);
 	padding: var(--spacing-xs) 20px var(--spacing-xs) var(--spacing-m);
 	gap: 16px;
-	border-radius: var(--border-radius-base);
+	border-bottom: 1px solid var(--color-foreground-base);
 	cursor: pointer;
+
+	&:first-child {
+		border-top-left-radius: inherit;
+		border-top-right-radius: inherit;
+	}
+	&:last-child {
+		border-bottom-color: transparent;
+		border-bottom-left-radius: inherit;
+		border-bottom-right-radius: inherit;
+	}
+
 	&:hover {
 		background-color: var(--color-background-light);
 	}
@@ -79,14 +104,15 @@ defineProps<{
 
 .testCardContent {
 	display: grid;
-	grid-template-columns: 1fr 1fr 150px;
+	grid-template-columns: 2fr 1fr 1fr;
 	align-items: center;
 	flex: 1;
+	gap: var(--spacing-xs);
 }
 
 .metrics {
 	display: grid;
-	grid-template-columns: 84px 1fr;
+	grid-template-columns: 120px 1fr;
 	column-gap: 18px;
 }
 </style>

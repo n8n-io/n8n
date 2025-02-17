@@ -9,15 +9,15 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
-import { useDocumentVisibility } from '@vueuse/core';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IDataObject, IPinData } from 'n8n-workflow';
+import { useDocumentVisibility } from '@vueuse/core';
 import { N8nButton, N8nIconButton, N8nText } from 'n8n-design-system';
+import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId: string;
@@ -77,7 +77,13 @@ const handleUpdateTest = async () => {
 };
 
 const handleUpdateTestDebounced = debounce(handleUpdateTest, { debounceTime: 400, trailing: true });
-const handleUpdateMetricsDebounced = debounce(updateMetrics, { debounceTime: 400, trailing: true });
+const handleUpdateMetricsDebounced = debounce(
+	async (testId: string) => {
+		await updateMetrics(testId);
+		testDefinitionStore.updateRunFieldIssues(testId);
+	},
+	{ debounceTime: 400, trailing: true },
+);
 
 function getFieldIssues(key: string) {
 	return fieldsIssues.value.filter((issue) => issue.field === key);
@@ -225,6 +231,7 @@ const updateDescription = (value: string) => {
 			</div>
 
 			<div :class="$style.content">
+				<!-- <pre>{{ runs }}</pre> -->
 				<RunsSection
 					v-if="runs.length > 0"
 					v-model:selectedMetric="selectedMetric"
