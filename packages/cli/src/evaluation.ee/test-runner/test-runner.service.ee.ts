@@ -1,3 +1,8 @@
+import {
+	TEST_CASE_EXECUTION_ERROR_CODE,
+	TEST_RUN_ERROR_CODES,
+	TEST_CASE_EXECUTION_STATUS,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import { ErrorReporter, Logger } from 'n8n-core';
@@ -114,7 +119,7 @@ export class TestRunnerService {
 		// Check the trigger is still present in the workflow
 		const triggerNode = workflowNodeNameById.get(pastExecutionTriggerNodeId);
 		if (!triggerNode) {
-			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
+			throw new TestCaseExecutionError(TEST_CASE_EXECUTION_ERROR_CODE.TRIGGER_NO_LONGER_EXISTS);
 		}
 
 		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
@@ -297,7 +302,7 @@ export class TestRunnerService {
 			// Get the evaluation workflow
 			const evaluationWorkflow = await this.workflowRepository.findById(test.evaluationWorkflowId);
 			if (!evaluationWorkflow) {
-				throw new TestRunError('EVALUATION_WORKFLOW_NOT_FOUND');
+				throw new TestRunError(TEST_RUN_ERROR_CODES.EVALUATION_WORKFLOW_NOT_FOUND);
 			}
 
 			///
@@ -319,7 +324,7 @@ export class TestRunnerService {
 			this.logger.debug('Found past executions', { count: pastExecutions.length });
 
 			if (pastExecutions.length === 0) {
-				throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
+				throw new TestRunError(TEST_RUN_ERROR_CODES.PAST_EXECUTIONS_NOT_FOUND);
 			}
 
 			// Add all past executions mappings to the test run.
@@ -488,7 +493,7 @@ export class TestRunnerService {
 							await this.testCaseExecutionRepository.markAsFailed({
 								testRunId: testRun.id,
 								pastExecutionId,
-								errorCode: 'UNKNOWN_ERROR',
+								errorCode: TEST_CASE_EXECUTION_ERROR_CODE.UNKNOWN_ERROR,
 								trx,
 							});
 
@@ -526,7 +531,7 @@ export class TestRunnerService {
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
 			} else {
-				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				await this.testRunRepository.markAsError(testRun.id, TEST_RUN_ERROR_CODES.UNKNOWN_ERROR);
 				throw e;
 			}
 		} finally {
@@ -539,7 +544,10 @@ export class TestRunnerService {
 	 * Checks if the test run in a cancellable state.
 	 */
 	canBeCancelled(testRun: TestRun) {
-		return testRun.status !== 'running' && testRun.status !== 'new';
+		return (
+			testRun.status !== TEST_CASE_EXECUTION_STATUS.running &&
+			testRun.status !== TEST_CASE_EXECUTION_STATUS.new
+		);
 	}
 
 	/**
