@@ -33,7 +33,7 @@ const items: PathItem[] = [
 	{ id: '1', label: 'Folder 1', href: '/folder1' },
 	{ id: '2', label: 'Folder 2', href: '/folder2' },
 	{ id: '3', label: 'Folder 3', href: '/folder3' },
-	{ id: '4', label: 'Current' },
+	{ id: '4', label: 'Current', current: true },
 ];
 
 const defaultTemplate: StoryFn = (args, { argTypes }) => ({
@@ -46,6 +46,12 @@ const defaultTemplate: StoryFn = (args, { argTypes }) => ({
 export const Default = defaultTemplate.bind({});
 Default.args = {
 	items,
+};
+
+export const CustomSeparator = defaultTemplate.bind({});
+CustomSeparator.args = {
+	items,
+	separator: '➮',
 };
 
 const withHiddenItemsTemplate: StoryFn = (args, { argTypes }) => ({

@@ -7,6 +7,7 @@ export type PathItem = {
 	id: string;
 	label: string;
 	href?: string;
+	current?: boolean;
 };
 
 // Items in the truncated path can be provided as an array or a function that returns a promise
@@ -20,6 +21,7 @@ type Props = {
 	showBorder?: boolean;
 	tooltipTrigger?: 'hover' | 'click';
 	loadingSkeletonRows?: number;
+	separator?: string;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -37,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showBorder: false,
 	tooltipTrigger: 'hover',
 	loadingSkeletonRows: 3,
+	separator: '/',
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -94,7 +97,7 @@ onMounted(() => {
 	>
 		<slot name="prepend"></slot>
 		<ul :class="$style.list">
-			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">/</li>
+			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
 			<li
 				v-if="hasHiddenItems"
 				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
@@ -140,13 +143,18 @@ onMounted(() => {
 					<span>...</span>
 				</n8n-tooltip>
 			</li>
-			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
+			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
 			<template v-for="(item, index) in items" :key="item.id">
-				<li :class="$style.item" data-test-id="breadcrumbs-item">
+				<li
+					:class="{ [$style.item]: true, [$style.current]: item.current }"
+					data-test-id="breadcrumbs-item"
+				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
 				</li>
-				<li v-if="index !== items.length - 1" :class="$style.separator" aria-hidden="true">/</li>
+				<li v-if="index !== items.length - 1" :class="$style.separator" aria-hidden="true">
+					{{ separator }}
+				</li>
 			</template>
 		</ul>
 		<slot name="append"></slot>
@@ -172,6 +180,10 @@ onMounted(() => {
 .list {
 	display: flex;
 	list-style: none;
+}
+
+.item.current * {
+	font-weight: bold;
 }
 
 .ellipsis {
