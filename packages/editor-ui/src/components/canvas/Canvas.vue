@@ -176,7 +176,6 @@ onKeyUp(panningKeyCode.value, () => {
  */
 
 const renameKeyCode = ' ';
-const isRenameKeyCodeDisabled = toRef(props, 'readOnly');
 
 useShortKeyPress(
 	renameKeyCode,
@@ -186,7 +185,7 @@ useShortKeyPress(
 		}
 	},
 	{
-		disabled: isRenameKeyCodeDisabled,
+		disabled: toRef(props, 'readOnly'),
 	},
 );
 
