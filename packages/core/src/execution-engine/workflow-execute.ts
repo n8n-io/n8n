@@ -37,7 +37,6 @@ import type {
 	CloseFunction,
 	StartNodeData,
 	NodeExecutionHint,
-	NodeInputConnections,
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
@@ -1375,59 +1374,10 @@ export class WorkflowExecute {
 						continue;
 					}
 
-					// Check if all the data which is needed to run the node is available
-					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
-						// Check if the node has incoming connections
-						if (workflow.connectionsByDestinationNode[executionNode.name].hasOwnProperty('main')) {
-							let inputConnections: NodeInputConnections;
-							let connectionIndex: number;
-
-							// eslint-disable-next-line prefer-const
-							inputConnections = workflow.connectionsByDestinationNode[executionNode.name].main;
-
-							for (
-								connectionIndex = 0;
-								connectionIndex < inputConnections.length;
-								connectionIndex++
-							) {
-								if (
-									workflow.getHighestNode(
-										executionNode.name,
-										NodeConnectionType.Main,
-										connectionIndex,
-									).length === 0
-								) {
-									// If there is no valid incoming node (if all are disabled)
-									// then ignore that it has inputs and simply execute it as it is without
-									// any data
-									continue;
-								}
-
-								if (!executionData.data.hasOwnProperty('main')) {
-									// ExecutionData does not even have the connection set up so can
-									// not have that data, so add it again to be executed later
-									this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
-									lastExecutionTry = currentExecutionTry;
-									continue executionLoop;
-								}
-
-								if (forceInputNodeExecution) {
-									// Check if it has the data for all the inputs
-									// The most nodes just have one but merge node for example has two and data
-									// of both inputs has to be available to be able to process the node.
-									if (
-										executionData.data.main.length < connectionIndex ||
-										executionData.data.main[connectionIndex] === null
-									) {
-										// Does not have the data of the connections so add back to stack
-										this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
-										lastExecutionTry = currentExecutionTry;
-
-										continue executionLoop;
-									}
-								}
-							}
-						}
+					const hasInputData = this.ensureInputData(workflow, executionNode, executionData);
+					if (!hasInputData) {
+						lastExecutionTry = currentExecutionTry;
+						continue executionLoop;
 					}
 
 					startTime = new Date().getTime();
@@ -2037,6 +1987,46 @@ export class WorkflowExecute {
 
 			return await returnPromise.then(resolve);
 		});
+	}
+
+	/** Check if all the data which is needed to run the node is available */
+	ensureInputData(workflow: Workflow, executionNode: INode, executionData: IExecuteData): boolean {
+		const inputConnections = workflow.connectionsByDestinationNode[executionNode.name]?.main ?? [];
+		for (let connectionIndex = 0; connectionIndex < inputConnections.length; connectionIndex++) {
+			const highestNodes = workflow.getHighestNode(
+				executionNode.name,
+				NodeConnectionType.Main,
+				connectionIndex,
+			);
+			if (highestNodes.length === 0) {
+				// If there is no valid incoming node (if all are disabled)
+				// then ignore that it has inputs and simply execute it as it is without
+				// any data
+				return true;
+			}
+
+			if (!executionData.data.hasOwnProperty('main')) {
+				// ExecutionData does not even have the connection set up so can
+				// not have that data, so add it again to be executed later
+				this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
+				return false;
+			}
+
+			if (this.forceInputNodeExecution(workflow)) {
+				// Check if it has the data for all the inputs
+				// The most nodes just have one but merge node for example has two and data
+				// of both inputs has to be available to be able to process the node.
+				if (
+					executionData.data.main.length < connectionIndex ||
+					executionData.data.main[connectionIndex] === null
+				) {
+					// Does not have the data of the connections so add back to stack
+					this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	/**
