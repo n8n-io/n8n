@@ -15,6 +15,7 @@ type ErrorReporterInitOptions = {
 	release: string;
 	environment: string;
 	serverName: string;
+	releaseDate?: Date;
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -22,8 +23,14 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
+const SIX_WEEKS_IN_MS = 6 * 7 * 24 * 60 * 60 * 1000;
+const RELEASE_EXPIRATION_WARNING =
+	'Error tracking disabled because this release is older than 6 weeks.';
+
 @Service()
 export class ErrorReporter {
+	private enabled = true;
+
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
@@ -66,10 +73,24 @@ export class ErrorReporter {
 		release,
 		environment,
 		serverName,
+		releaseDate,
 	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
+
+		if (releaseDate) {
+			const releaseExpiresInMs = releaseDate.getTime() + SIX_WEEKS_IN_MS - Date.now();
+			if (releaseExpiresInMs <= 0) {
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				return;
+			}
+			// Once this release expires, reject all events
+			setTimeout(() => {
+				this.enabled = false;
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+			}, releaseExpiresInMs);
+		}
 
 		if (!dsn) return;
 
@@ -118,6 +139,8 @@ export class ErrorReporter {
 	}
 
 	async beforeSend(event: ErrorEvent, hint: EventHint) {
+		if (!this.enabled) return null;
+
 		let { originalException } = hint;
 
 		if (!originalException) return null;

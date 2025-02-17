@@ -103,6 +103,7 @@ jobs:
           context: ./docker/images/n8n
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+            N8N_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true
