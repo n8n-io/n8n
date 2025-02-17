@@ -181,9 +181,9 @@ const isRenameKeyCodeDisabled = computed(() => !lastSelectedNode.value || props.
 useShortKeyPress(
 	renameKeyCode,
 	() => {
-		if (!lastSelectedNode.value || props.readOnly) return;
-
-		emit('update:node:name', lastSelectedNode.value.id);
+		if (lastSelectedNode.value) {
+			emit('update:node:name', lastSelectedNode.value.id);
+		}
 	},
 	{
 		disabled: isRenameKeyCodeDisabled,
