@@ -803,7 +803,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			payload.data = [payload.data];
 		}
 
-		if ((workflow.value.pinData?.[nodeName] ?? []).length > 0) {
+		if ((workflow.value.pinData?.[nodeName] ?? []).length > 0 && nodeMetadata.value[nodeName]) {
 			// Updating existing pinned data
 			nodeMetadata.value[nodeName].pinnedDataUpdatedAt = Date.now();
 		}
@@ -838,7 +838,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...workflow.value,
 			pinData,
 		};
-		nodeMetadata.value[nodeName].pinnedDataUpdatedAt = Date.now();
+
+		if (nodeMetadata.value[nodeName]) {
+			nodeMetadata.value[nodeName].pinnedDataUpdatedAt = Date.now();
+		}
 
 		uiStore.stateIsDirty = true;
 		updateCachedWorkflow();
