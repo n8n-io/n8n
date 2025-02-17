@@ -466,11 +466,11 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
 	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks);
+	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

@@ -110,7 +110,7 @@ describe('Execution Lifecycle Hooks', () => {
 		};
 	});
 
-	const workflowEventTests = () => {
+	const workflowEventTests = (userId?: string) => {
 		describe('workflowExecuteBefore', () => {
 			it('should emit workflow-pre-execute events', async () => {
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
@@ -130,6 +130,7 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					runData: successfulRun,
 					workflow: workflowData,
+					userId,
 				});
 			});
 
@@ -212,9 +213,10 @@ describe('Execution Lifecycle Hooks', () => {
 	};
 
 	describe('getLifecycleHooksForRegularMain', () => {
+		const userId = 'test-user-id';
 		const createHooks = (executionMode: WorkflowExecuteMode = 'manual') =>
 			getLifecycleHooksForRegularMain(
-				{ executionMode, workflowData, pushRef, retryOf },
+				{ executionMode, workflowData, pushRef, retryOf, userId },
 				executionId,
 			);
 
@@ -222,7 +224,7 @@ describe('Execution Lifecycle Hooks', () => {
 			lifecycleHooks = createHooks();
 		});
 
-		workflowEventTests();
+		workflowEventTests(userId);
 		nodeEventsTests();
 		externalHooksTests();
 		statisticsTests();
