@@ -1493,7 +1493,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       '@vueuse/core':
-        specifier: ^10.11.0
+        specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
