@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 
+import type { UserAction } from 'n8n-design-system/types';
+
 import N8nLoading from '../N8nLoading';
 
 export type PathItem = {
@@ -50,6 +52,20 @@ const hasHiddenItems = computed(() => {
 		? props.hiddenItemsSource.length > 0
 		: !!props.hiddenItemsSource;
 });
+
+const hiddenItemActions = computed((): UserAction[] => {
+	return loadedHiddenItems.value.map((item) => ({
+		value: item.id,
+		label: item.label,
+		disabled: false,
+	}));
+});
+
+const onHiddenMenuVisibleChange = async (visible: boolean) => {
+	if (visible) {
+		await handleBeforeTooltipShow();
+	}
+};
 
 const handleBeforeTooltipShow = async () => {
 	emit('beforeTooltipOpen');
@@ -104,7 +120,20 @@ onMounted(() => {
 				aria-hidden="true"
 				data-test-id="ellipsis"
 			>
+				<div v-if="props.theme !== 'small'" :class="$style['hidden-items-menu']">
+					<n8n-action-toggle
+						:actions="hiddenItemActions"
+						:loading="isLoadingHiddenItems"
+						:loading-row-count="loadingSkeletonRows"
+						theme="dark"
+						placement="bottom"
+						size="small"
+						icon-orientation="horizontal"
+						@visible-change="onHiddenMenuVisibleChange"
+					/>
+				</div>
 				<n8n-tooltip
+					v-else
 					:popper-class="[$style.tooltip, $style[props.theme]]"
 					:trigger="tooltipTrigger"
 					@show="handleTooltipShow"
@@ -122,21 +151,8 @@ onMounted(() => {
 							/>
 						</div>
 						<div v-else :class="$style.tooltipContent">
-							<!-- For small theme, just render labels separated by slash -->
-							<div v-if="props.theme === 'small'">
+							<div>
 								<n8n-text>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</n8n-text>
-							</div>
-							<div
-								v-for="item in loadedHiddenItems"
-								v-else
-								:key="item.id"
-								:class="$style.tooltipItem"
-								data-test-id="breadcrumbs-item-hidden"
-							>
-								<n8n-link v-if="item.href" :href="item.href" theme="text">
-									{{ item.label }}
-								</n8n-link>
-								<n8n-text v-else>{{ item.label }}</n8n-text>
 							</div>
 						</div>
 					</template>
@@ -195,6 +211,12 @@ onMounted(() => {
 .hidden-items {
 	display: flex;
 	align-items: center;
+}
+
+.hidden-items-menu {
+	display: flex;
+	position: relative;
+	top: var(--spacing-5xs);
 }
 
 .tooltip-loading {

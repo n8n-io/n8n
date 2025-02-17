@@ -134,7 +134,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
     <template #append>
       <div style="display: flex; align-items: center;">
 				<n8n-tags :tags="testTags" />
-        <n8n-action-toggle size="small" :actions="testActions" />
+        <n8n-action-toggle size="small" :actions="testActions" theme="dark"/>
       </div>
     </template>
   </Breadcrumbs>`,
