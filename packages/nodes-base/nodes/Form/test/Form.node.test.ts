@@ -226,6 +226,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '',
 					},
@@ -238,6 +239,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '<div>hey</div>',
 					},
@@ -250,6 +252,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: 'my text over here',
 					},
@@ -336,9 +339,14 @@ describe('Form Node', () => {
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponseObject.send).toHaveBeenCalledWith(
-				'<html><head><meta http-equiv="refresh" content="0; url=https://n8n.io"></head></html>',
-			);
+			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: 'test',
+				formTitle: 'test',
+				message: 'Test Message',
+				redirectUrl: 'https://n8n.io',
+				responseText: '',
+				title: 'Test Title',
+			});
 		});
 	});
 });
