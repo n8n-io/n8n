@@ -58,7 +58,7 @@ export class EnterpriseWorkflowService {
 		projects = projects.filter(
 			(p) =>
 				!p.sharedWorkflows.some(
-					(swf) => swf.workflowId === workflow.id && swf.role === 'workflow:owner',
+					(swf) => swf.workflowId === workflowId && swf.role === 'workflow:owner',
 				),
 		);
 
