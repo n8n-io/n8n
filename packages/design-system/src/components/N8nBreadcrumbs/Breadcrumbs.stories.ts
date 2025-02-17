@@ -89,6 +89,21 @@ AsyncLoading.args = {
 	loadingSkeletonRows: 2,
 };
 
+const asyncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: '<Breadcrumbs v-bind="args" />',
+});
+
+export const AsyncLoadingNoCache = asyncLoadingNoCacheTemplate.bind({});
+AsyncLoadingNoCache.args = {
+	items: items.slice(2),
+	hiddenItemsSource: fetchHiddenItemsAsync,
+	loadingSkeletonRows: 2,
+	cacheHiddenItems: false,
+};
+
 const testActions: UserAction[] = [
 	{ label: 'Create Folder', value: 'action1', disabled: false },
 	{ label: 'Create Workflow', value: 'action2', disabled: false },

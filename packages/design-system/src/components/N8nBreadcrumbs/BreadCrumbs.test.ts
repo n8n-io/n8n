@@ -1,8 +1,7 @@
-import userEvent from '@testing-library/user-event';
-import { fireEvent, render, screen } from '@testing-library/vue';
+import { fireEvent, render } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import Breadcrumbs from '.';
-import { nextTick } from 'vue';
 
 describe('Breadcrumbs', () => {
 	it('renders default version correctly', () => {

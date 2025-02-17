@@ -15,6 +15,7 @@ type HiddenItemsSource = PathItem[] | (() => Promise<PathItem[]>);
 type Props = {
 	items: PathItem[];
 	hiddenItemsSource?: HiddenItemsSource;
+	cacheHiddenItems?: boolean;
 	theme?: 'small' | 'medium';
 	showBorder?: boolean;
 	tooltipTrigger?: 'hover' | 'click';
@@ -30,9 +31,10 @@ const emit = defineEmits<{
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
+	hiddenItemsSource: () => [],
+	cacheHiddenItems: true,
 	theme: 'medium',
 	showBorder: false,
-	hiddenItemsSource: () => [],
 	tooltipTrigger: 'hover',
 	loadingSkeletonRows: 3,
 });
@@ -49,6 +51,10 @@ const hasHiddenItems = computed(() => {
 const handleBeforeTooltipShow = async () => {
 	emit('beforeTooltipOpen');
 	if (typeof props.hiddenItemsSource !== 'function') {
+		return;
+	}
+	// If hidden items are already loaded, do not fetch them again
+	if (props.cacheHiddenItems && loadedHiddenItems.value.length > 0) {
 		return;
 	}
 
@@ -72,6 +78,7 @@ const handleTooltipClose = () => {
 };
 
 onMounted(() => {
+	// If hidden items are provided as an array, set them right away
 	if (Array.isArray(props.hiddenItemsSource)) {
 		loadedHiddenItems.value = props.hiddenItemsSource;
 	}
@@ -193,56 +200,6 @@ onMounted(() => {
 	}
 }
 
-.small {
-	.list {
-		gap: var(--spacing-5xs);
-	}
-
-	.item,
-	.item * {
-		color: var(--color-text-base);
-		font-size: var(--font-size-2xs);
-		font-weight: 600;
-	}
-
-	.item a:hover * {
-		color: var(--color-text-dark);
-	}
-
-	.separator {
-		font-size: var(--font-size-m);
-		color: var(--color-text-base);
-	}
-}
-
-.medium {
-	li {
-		padding: var(--spacing-4xs);
-	}
-
-	.item,
-	.item * {
-		color: var(--color-text-light);
-		font-size: var(--font-size-m);
-	}
-
-	.item a:hover * {
-		color: var(--color-text-base);
-	}
-
-	.ellipsis {
-		color: var(--color-text-light);
-		&:hover {
-			color: var(--color-text-base);
-		}
-	}
-
-	.separator {
-		font-size: var(--font-size-xl);
-		color: var(--prim-gray-670);
-	}
-}
-
 .tooltip {
 	& > div {
 		display: flex;
@@ -279,6 +236,58 @@ onMounted(() => {
 		.tooltip-loading {
 			min-width: var(--spacing-4xl);
 		}
+	}
+}
+
+// Small theme overrides
+.small {
+	.list {
+		gap: var(--spacing-5xs);
+	}
+
+	.item,
+	.item * {
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+		font-weight: 600;
+	}
+
+	.item a:hover * {
+		color: var(--color-text-dark);
+	}
+
+	.separator {
+		font-size: var(--font-size-m);
+		color: var(--color-text-base);
+	}
+}
+
+// Medium theme overrides
+.medium {
+	li {
+		padding: var(--spacing-4xs);
+	}
+
+	.item,
+	.item * {
+		color: var(--color-text-light);
+		font-size: var(--font-size-m);
+	}
+
+	.item a:hover * {
+		color: var(--color-text-base);
+	}
+
+	.ellipsis {
+		color: var(--color-text-light);
+		&:hover {
+			color: var(--color-text-base);
+		}
+	}
+
+	.separator {
+		font-size: var(--font-size-xl);
+		color: var(--prim-gray-670);
 	}
 }
 </style>
