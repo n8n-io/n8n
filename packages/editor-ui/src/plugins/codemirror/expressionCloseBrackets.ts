@@ -1,6 +1,7 @@
 import {
 	closeBrackets,
 	closeBracketsKeymap,
+	startCompletion,
 	type CloseBracketConfig,
 } from '@codemirror/autocomplete';
 import { EditorSelection, Text } from '@codemirror/state';
@@ -21,6 +22,7 @@ const expressionBracketSpacing = EditorView.updateListener.of((update) => {
 				changes: [{ from: fromB + 1, insert: '  ' }],
 				selection: EditorSelection.cursor(toB),
 			});
+			startCompletion(update.view);
 		}
 	});
 });

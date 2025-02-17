@@ -1,5 +1,7 @@
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
+import { useProjectsStore } from '@/stores/projects.store';
+import { getResourcePermissions } from '@/permissions';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
@@ -113,7 +115,15 @@ export const projectsRoutes: RouteRecordRaw[] = [
 								sidebar: MainSidebar,
 							},
 							meta: {
-								middleware: ['authenticated'],
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => {
+										const project = useProjectsStore().myProjects.find(
+											(p) => p.id === options?.to.params.projectId,
+										);
+										return !!getResourcePermissions(project?.scopes).project.update;
+									},
+								},
 							},
 						},
 					]),
