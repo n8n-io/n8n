@@ -1,0 +1,127 @@
+[
+	{
+		"kind": "youtube#video",
+		"etag": "XXXXXXX",
+		"id": "VIDEO_ID_1",
+		"snippet": {
+			"publishedAt": "2025-02-14T13:05:34Z",
+			"channelId": "CHANNEL_ID_1",
+			"title": "Exploring AI for Business Growth",
+			"description": "Discover how AI-powered tools can help entrepreneurs identify market trends and business opportunities. In this episode, our expert guest shares insights on automating research and leveraging AI for strategic decision-making.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default1.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/medium1.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/high1.jpg", "width": 480, "height": 360 }
+			},
+			"channelTitle": "Tech Insights",
+			"tags": ["AI", "Business", "Automation"],
+			"categoryId": "28",
+			"liveBroadcastContent": "none"
+		},
+		"statistics": {
+			"viewCount": "1000",
+			"likeCount": "150",
+			"commentCount": "12"
+		}
+	},
+	{
+		"kind": "youtube#video",
+		"etag": "XXXXXXX",
+		"id": "VIDEO_ID_2",
+		"snippet": {
+			"publishedAt": "2025-01-31T14:57:48Z",
+			"channelId": "CHANNEL_ID_2",
+			"title": "AI Automation for Beginners",
+			"description": "A beginner-friendly guide to setting up automation workflows with AI tools. Learn how to optimize your daily tasks and improve efficiency.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default2.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/medium2.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/high2.jpg", "width": 480, "height": 360 }
+			},
+			"channelTitle": "AI Academy",
+			"tags": ["AI", "Automation", "Productivity"],
+			"categoryId": "28",
+			"liveBroadcastContent": "none"
+		},
+		"statistics": {
+			"viewCount": "2500",
+			"likeCount": "300",
+			"commentCount": "25"
+		}
+	},
+	{
+		"kind": "youtube#video",
+		"etag": "XXXXXXX",
+		"id": "VIDEO_ID_3",
+		"snippet": {
+			"publishedAt": "2025-02-12T15:00:07Z",
+			"channelId": "CHANNEL_ID_3",
+			"title": "Mastering AI Research Automation",
+			"description": "In this tutorial, we explore how AI agents can automate data collection and analysis to generate insightful reports. Perfect for researchers and analysts.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default3.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/medium3.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/high3.jpg", "width": 480, "height": 360 }
+			},
+			"channelTitle": "Data Science Hub",
+			"tags": ["AI Research", "Automation", "Data Analysis"],
+			"categoryId": "28",
+			"liveBroadcastContent": "none"
+		},
+		"statistics": {
+			"viewCount": "1800",
+			"likeCount": "220",
+			"commentCount": "18"
+		}
+	},
+	{
+		"kind": "youtube#video",
+		"etag": "XXXXXXX",
+		"id": "VIDEO_ID_4",
+		"snippet": {
+			"publishedAt": "2023-04-10T14:00:35Z",
+			"channelId": "CHANNEL_ID_4",
+			"title": "Low-Code AI Automation Guide",
+			"description": "Learn how to set up automation workflows without coding using AI-powered tools. This guide is perfect for beginners looking to streamline their processes.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default4.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/medium4.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/high4.jpg", "width": 480, "height": 360 }
+			},
+			"channelTitle": "No-Code AI",
+			"tags": ["Low-Code", "AI", "Automation"],
+			"categoryId": "28",
+			"liveBroadcastContent": "none"
+		},
+		"statistics": {
+			"viewCount": "3200",
+			"likeCount": "500",
+			"commentCount": "40"
+		}
+	},
+	{
+		"kind": "youtube#video",
+		"etag": "XXXXXXX",
+		"id": "VIDEO_ID_5",
+		"snippet": {
+			"publishedAt": "2019-06-27T16:20:19Z",
+			"channelId": "CHANNEL_ID_5",
+			"title": "Introduction to AI Workflow Automation",
+			"description": "An introduction to AI-driven workflow automation, covering key concepts and use cases for businesses and individuals.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/default5.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/medium5.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/high5.jpg", "width": 480, "height": 360 }
+			},
+			"channelTitle": "AI Simplified",
+			"tags": ["AI", "Workflow", "Automation"],
+			"categoryId": "28",
+			"liveBroadcastContent": "none"
+		},
+		"statistics": {
+			"viewCount": "5000",
+			"likeCount": "700",
+			"commentCount": "60"
+		}
+	}
+]
