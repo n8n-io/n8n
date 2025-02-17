@@ -745,6 +745,9 @@ function onRenameNode(parameterData: IUpdateInformation) {
 
 async function onOpenRenameNodeModal(id: string) {
 	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+
+	if (!keyBindingsEnabled.value || document.querySelector('.rename-prompt')) return;
+
 	try {
 		const promptResponsePromise = message.prompt(
 			i18n.baseText('nodeView.prompt.newName') + ':',
