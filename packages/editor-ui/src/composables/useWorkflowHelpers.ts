@@ -70,7 +70,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
-type ResolveParameterOptions = {
+export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
 	inputNodeName?: string;
 	inputRunIndex?: number;

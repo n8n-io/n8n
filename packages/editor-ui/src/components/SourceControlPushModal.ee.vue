@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
-import { computed, onMounted, ref, toRaw } from 'vue';
+import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
@@ -37,6 +37,7 @@ import {
 } from '@n8n/api-types';
 import { orderBy, groupBy } from 'lodash-es';
 import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlledFile[] };
@@ -48,6 +49,7 @@ const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
+const telemetry = useTelemetry();
 
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
@@ -191,16 +193,12 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		if (filters.value.status && filters.value.status !== workflow.status) {
-			return false;
-		}
-
-		return true;
+		return !(filters.value.status && filters.value.status !== workflow.status);
 	});
 });
 
-const sortedWorkflows = computed(() => {
-	const sorted = orderBy(
+const sortedWorkflows = computed(() =>
+	orderBy(
 		filteredWorkflows.value,
 		[
 			// keep the current workflow at the top of the list
@@ -209,10 +207,8 @@ const sortedWorkflows = computed(() => {
 			'updatedAt',
 		],
 		['desc', 'asc', 'desc'],
-	);
-
-	return sorted;
-});
+	),
+);
 
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
@@ -225,11 +221,8 @@ const isSubmitDisabled = computed(() => {
 		changes.value.tags.length +
 		changes.value.variables.length +
 		selectedChanges.value.size;
-	if (toBePushed <= 0) {
-		return true;
-	}
 
-	return false;
+	return toBePushed <= 0;
 });
 
 const sortedWorkflowsSet = computed(() => new Set(sortedWorkflows.value.map(({ id }) => id)));
@@ -354,6 +347,16 @@ async function commitAndPush() {
 }
 
 const modalHeight = computed(() => (changes.value.workflows.length ? 'min(80vh, 850px)' : 'auto'));
+
+watch(
+	() => filters.value.status,
+	(status) => {
+		telemetry.track('User filtered by status in commit modal', { status });
+	},
+);
+watch(refDebounced(search, 500), (term) => {
+	telemetry.track('User searched workflows in commit modal', { search: term });
+});
 </script>
 
 <template>

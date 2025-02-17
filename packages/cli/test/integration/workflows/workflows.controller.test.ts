@@ -1,11 +1,10 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
@@ -519,7 +518,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -546,7 +545,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -579,7 +578,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -854,6 +853,97 @@ describe('GET /workflows', () => {
 			});
 		});
 	});
+
+	describe('sortBy', () => {
+		test('should fail when trying to sort by non sortable column', async () => {
+			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(500);
+		});
+
+		test('should sort by createdAt column', async () => {
+			await createWorkflow({ name: 'First' }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response = await authOwnerAgent
+				.get('/workflows')
+				.query('sortBy=createdAt:asc')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=createdAt:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+		});
+
+		test('should sort by name column', async () => {
+			await createWorkflow({ name: 'a' }, owner);
+			await createWorkflow({ name: 'b' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'a' }),
+					expect.objectContaining({ name: 'b' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'b' }),
+					expect.objectContaining({ name: 'a' }),
+				]),
+			});
+		});
+
+		test('should sort by updatedAt column', async () => {
+			const futureDate = new Date();
+			futureDate.setDate(futureDate.getDate() + 10);
+
+			await createWorkflow({ name: 'First', updatedAt: futureDate }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=updatedAt:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+		});
+	});
 });
 
 describe('PATCH /workflows/:workflowId', () => {
@@ -1033,7 +1123,7 @@ describe('PATCH /workflows/:workflowId', () => {
 describe('POST /workflows/:workflowId/run', () => {
 	let sharingSpy: jest.SpyInstance;
 	let tamperingSpy: jest.SpyInstance;
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 
 	beforeAll(() => {
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);

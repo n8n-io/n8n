@@ -1,3 +1,4 @@
+import { isNaN } from 'lodash';
 import get from 'lodash/get';
 import {
 	type IDataObject,
@@ -171,7 +172,7 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return min !== undefined ? min : null;
+			return min ?? null;
 		case 'max':
 			let max;
 			for (const item of data) {
@@ -182,15 +183,22 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return max !== undefined ? max : null;
+			return max ?? null;
 
 		//count operations
 		case 'countUnique':
-			return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
-				.size;
+			if (!entry.includeEmpty) {
+				return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
+					.size;
+			}
+			return new Set(data.map((item) => getValue(item, field))).size;
+
 		default:
 			//count by default
-			return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			if (!entry.includeEmpty) {
+				return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			}
+			return data.length;
 	}
 }
 
@@ -281,6 +289,41 @@ export function aggregationToArray(
 				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
 					[splitFieldName]: key,
+				}),
+			);
+		}
+		return returnData;
+	}
+}
+
+const getOriginalFieldValue = (field: string | number) =>
+	field === 'null' ? null : isNaN(Number(field)) ? field : Number(field);
+
+export function aggregationToArrayWithOriginalTypes(
+	aggregationResult: IDataObject,
+	fieldsToSplitBy: string[],
+	previousStage: IDataObject = {},
+) {
+	const returnData: IDataObject[] = [];
+	fieldsToSplitBy = parseFieldName(fieldsToSplitBy);
+	const splitFieldName = fieldsToSplitBy[0];
+	const isNext = fieldsToSplitBy[1];
+
+	if (isNext === undefined) {
+		for (const fieldName of Object.keys(aggregationResult)) {
+			returnData.push({
+				...previousStage,
+				[splitFieldName]: getOriginalFieldValue(fieldName),
+				...(aggregationResult[fieldName] as IDataObject),
+			});
+		}
+		return returnData;
+	} else {
+		for (const key of Object.keys(aggregationResult)) {
+			returnData.push(
+				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+					...previousStage,
+					[splitFieldName]: getOriginalFieldValue(key),
 				}),
 			);
 		}

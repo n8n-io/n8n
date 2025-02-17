@@ -11,7 +11,14 @@ import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IExecutionResponse,
+	INodeUi,
+	IWorkflowDb,
+	IWorkflowTemplate,
+	IWorkflowTemplateNode,
+} from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -43,6 +50,7 @@ import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { nextTick } from 'vue';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2820,6 +2828,98 @@ describe('useCanvasOperations', () => {
 			connectAdjacentNodes(nodeB.id);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toggleChatOpen', () => {
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `true` if the chat panel is closed', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = false;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', true);
+		});
+
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `false` if the chat panel is open', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = true;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', false);
+		});
+	});
+
+	describe('importTemplate', () => {
+		it('should import template to canvas', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProjectId = 'test-project-id';
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.convertTemplateNodeToNodeUi.mockImplementation((node) => ({
+				...node,
+				credentials: {},
+			}));
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			// Create nodes: A -> B (no outgoing from B)
+			const nodeA: IWorkflowTemplateNode = createTestNode({
+				id: 'X',
+				name: 'Node X',
+				position: [80, 80],
+			});
+			const nodeB: IWorkflowTemplateNode = createTestNode({
+				id: 'Y',
+				name: 'Node Y',
+				position: [180, 80],
+			});
+
+			const workflow: IWorkflowTemplate['workflow'] = {
+				nodes: [nodeA, nodeB],
+				connections: {
+					[nodeA.name]: {
+						main: [[{ node: nodeB.name, type: NodeConnectionType.Main, index: 0 }]],
+					},
+				},
+			};
+
+			const { importTemplate } = useCanvasOperations({ router });
+
+			const templateId = 'template-id';
+			const templateName = 'template name';
+			await importTemplate({
+				id: templateId,
+				name: templateName,
+				workflow,
+			});
+
+			expect(workflowsStore.setConnections).toHaveBeenCalledWith(workflow.connections);
+			expect(workflowsStore.addNode).toHaveBeenCalledWith({
+				...nodeA,
+				credentials: {},
+				disabled: false,
+			});
+			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeA.name, true);
+			expect(workflowsStore.addNode).toHaveBeenCalledWith({
+				...nodeB,
+				credentials: {},
+				disabled: false,
+			});
+			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
+			expect(workflowsStore.getNewWorkflowData).toHaveBeenCalledWith(
+				templateName,
+				projectsStore.currentProjectId,
+			);
+			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({ templateId });
 		});
 	});
 });

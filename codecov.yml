@@ -46,6 +46,7 @@ component_management:
         - packages/@n8n/codemirror-lang/**
         - packages/design-system/**
         - packages/editor-ui/**
+        - packages/frontend/**
     - component_id: nodes_packages
       name: Nodes
       paths:

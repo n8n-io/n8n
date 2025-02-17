@@ -37,11 +37,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getAllActive() {
-		return await this.find({
+	async getAllActiveIds() {
+		const result = await this.find({
+			select: { id: true },
 			where: { active: true },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
+
+		return result.map(({ id }) => id);
 	}
 
 	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
@@ -156,6 +159,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (isDefaultSelect || options?.select?.updatedAt === true) {
 			findManyOptions.order = { updatedAt: 'ASC' };
+		}
+
+		if (options.sortBy) {
+			const [column, order] = options.sortBy.split(':');
+			findManyOptions.order = { [column]: order };
 		}
 
 		if (relations.length > 0) {

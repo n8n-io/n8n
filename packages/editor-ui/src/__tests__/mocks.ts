@@ -54,7 +54,7 @@ export const mockNodeTypeDescription = ({
 	credentials = [],
 	inputs = [NodeConnectionType.Main],
 	outputs = [NodeConnectionType.Main],
-	codex = {},
+	codex = undefined,
 	properties = [],
 }: {
 	name?: INodeTypeDescription['name'];

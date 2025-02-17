@@ -1,8 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useNodeCreatorStore } from './nodeCreator.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { CUSTOM_API_CALL_KEY, REGULAR_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	AI_UNCATEGORIZED_CATEGORY,
+	CUSTOM_API_CALL_KEY,
+	REGULAR_NODE_CREATOR_VIEW,
+} from '@/constants';
 import type { INodeCreateElement } from '@/Interface';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { NodeConnectionType } from 'n8n-workflow';
+import { CanvasConnectionMode } from '@/types';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -11,6 +18,7 @@ const mode = 'mode';
 const now = 1717602004819;
 const now1 = 1718602004819;
 const node_type = 'node-type';
+const node_id = 'node-id';
 const node_version = 1;
 const input_node_type = 'input-node-type';
 const action = 'action';
@@ -26,6 +34,31 @@ vi.mock('@/composables/useTelemetry', () => {
 				track,
 			};
 		},
+	};
+});
+
+// Mock the workflows store so that getNodeById returns a dummy node.
+vi.mock('@/stores/workflows.store', () => {
+	return {
+		useWorkflowsStore: () => ({
+			getNodeById: vi.fn((id?: string) => {
+				return id ? { id, name: 'Test Node' } : null;
+			}),
+			workflowTriggerNodes: [],
+			workflowId: 'dummy-workflow-id',
+			getCurrentWorkflow: vi.fn(() => ({
+				getNode: vi.fn(() => ({
+					type: 'n8n-node.example',
+					typeVersion: 1,
+				})),
+			})),
+		}),
+	};
+});
+
+vi.mock('@/utils/canvasUtilsV2', () => {
+	return {
+		parseCanvasConnectionHandleString: vi.fn(),
 	};
 });
 
@@ -132,6 +165,7 @@ describe('useNodeCreatorStore', () => {
 			workflow_id,
 		});
 		nodeCreatorStore.onNodeAddedToCanvas({
+			node_id,
 			node_type,
 			node_version,
 			is_auto_add: true,
@@ -143,6 +177,7 @@ describe('useNodeCreatorStore', () => {
 		expect(useTelemetry().track).toHaveBeenCalledWith(
 			'User added node to workflow canvas',
 			{
+				node_id,
 				node_type,
 				node_version,
 				is_auto_add: true,
@@ -289,6 +324,69 @@ describe('useNodeCreatorStore', () => {
 				withPostHog: false,
 			},
 		);
+	});
+	describe('selective connection view', () => {
+		const mockedParseCanvasConnectionHandleString = vi.mocked(
+			parseCanvasConnectionHandleString,
+			true,
+		);
+
+		it('sets nodeCreatorView to AI_UNCATEGORIZED_CATEGORY when connection type is not Main', async () => {
+			mockedParseCanvasConnectionHandleString.mockReturnValue({
+				type: NodeConnectionType.AiLanguageModel, // any value that is not NodeConnectionType.Main
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+
+			const connection = {
+				source: 'node-1',
+				sourceHandle: 'fake-handle',
+			};
+
+			nodeCreatorStore.openNodeCreatorForConnectingNode({
+				connection,
+				eventSource: 'plus_endpoint',
+				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+			});
+
+			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
+		});
+
+		it('uses the provided nodeCreatorView when connection type is Main', async () => {
+			mockedParseCanvasConnectionHandleString.mockReturnValue({
+				type: NodeConnectionType.Main,
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+
+			const connection = {
+				source: 'node-2',
+				sourceHandle: 'fake-handle-main',
+			};
+
+			nodeCreatorStore.openNodeCreatorForConnectingNode({
+				connection,
+				eventSource: 'plus_endpoint',
+				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+			});
+
+			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
+		});
+
+		it('does not update state if no source node is found', async () => {
+			const connection = {
+				source: '',
+				sourceHandle: 'any-handle',
+			};
+
+			nodeCreatorStore.openNodeCreatorForConnectingNode({
+				connection,
+				eventSource: 'plus_endpoint',
+				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+			});
+
+			expect(nodeCreatorStore.selectedView).not.toEqual(REGULAR_NODE_CREATOR_VIEW);
+		});
 	});
 });
 

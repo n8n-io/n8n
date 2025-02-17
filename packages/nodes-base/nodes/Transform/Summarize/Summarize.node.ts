@@ -5,8 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeExecutionOutput,
 	type NodeExecutionHint,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -14,6 +14,7 @@ import {
 	NUMERICAL_AGGREGATIONS,
 	type SummarizeOptions,
 	aggregationToArray,
+	aggregationToArrayWithOriginalTypes,
 	checkIfFieldExists,
 	fieldValueGetter,
 	splitData,
@@ -145,7 +146,7 @@ export class Summarize implements INodeType {
 								default: false,
 								displayOptions: {
 									show: {
-										aggregation: ['append', 'concatenate'],
+										aggregation: ['append', 'concatenate', 'count', 'countUnique'],
 									},
 								},
 							},
@@ -343,6 +344,10 @@ export class Summarize implements INodeType {
 			}
 		}
 
+		if (fieldsNotFound.length) {
+			this.addExecutionHints(...fieldsNotFound);
+		}
+
 		if (options.outputFormat === 'singleItem') {
 			const executionData: INodeExecutionData = {
 				json: aggregationResult,
@@ -350,7 +355,7 @@ export class Summarize implements INodeType {
 					item: index,
 				})),
 			};
-			return new NodeExecutionOutput([[executionData]], fieldsNotFound);
+			return [[executionData]];
 		} else {
 			if (!fieldsToSplitBy.length) {
 				const { pairedItems, ...json } = aggregationResult;
@@ -360,9 +365,14 @@ export class Summarize implements INodeType {
 						item: index,
 					})),
 				};
-				return new NodeExecutionOutput([[executionData]], fieldsNotFound);
+				return [[executionData]];
 			}
-			const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
+			let returnData: IDataObject[] = [];
+			if (nodeVersion > 1) {
+				returnData = aggregationToArrayWithOriginalTypes(aggregationResult, fieldsToSplitBy);
+			} else {
+				returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
+			}
 			const executionData = returnData.map((item) => {
 				const { pairedItems, ...json } = item;
 				return {
@@ -372,7 +382,7 @@ export class Summarize implements INodeType {
 					})),
 				};
 			});
-			return new NodeExecutionOutput([executionData], fieldsNotFound);
+			return [executionData];
 		}
 	}
 }

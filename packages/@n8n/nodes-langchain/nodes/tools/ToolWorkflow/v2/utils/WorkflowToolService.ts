@@ -8,6 +8,7 @@ import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowI
 import type {
 	ExecuteWorkflowData,
 	ExecutionError,
+	FromAIArgument,
 	IDataObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -18,11 +19,15 @@ import type {
 	IWorkflowDataProxyData,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	generateZodSchema,
+	jsonParse,
+	NodeConnectionType,
+	NodeOperationError,
+	parseErrorMetadata,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { z } from 'zod';
-
-import type { FromAIArgument } from './FromAIParser';
-import { AIParametersParser } from './FromAIParser';
 
 /**
 	Main class for creating the Workflow tool
@@ -88,8 +93,13 @@ export class WorkflowToolService {
 			} catch (error) {
 				const executionError = error as ExecutionError;
 				const errorResponse = `There was an error: "${executionError.message}"`;
-				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError);
+
+				const metadata = parseErrorMetadata(error);
+				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 				return errorResponse;
+			} finally {
+				// @ts-expect-error this accesses a private member on the actual implementation to fix https://linear.app/n8n/issue/ADO-3186/bug-workflowtool-v2-always-uses-first-row-of-input-data
+				this.context.runIndex++;
 			}
 		};
 
@@ -275,8 +285,7 @@ export class WorkflowToolService {
 		description: string,
 		func: (query: string | IDataObject, runManager?: CallbackManagerForToolRun) => Promise<string>,
 	): Promise<DynamicStructuredTool | DynamicTool> {
-		const fromAIParser = new AIParametersParser(this.context);
-		const collectedArguments = await this.extractFromAIParameters(fromAIParser);
+		const collectedArguments = await this.extractFromAIParameters();
 
 		// If there are no `fromAI` arguments, fallback to creating a simple tool
 		if (collectedArguments.length === 0) {
@@ -284,15 +293,13 @@ export class WorkflowToolService {
 		}
 
 		// Otherwise, prepare Zod schema  and create a structured tool
-		const schema = this.createZodSchema(collectedArguments, fromAIParser);
+		const schema = this.createZodSchema(collectedArguments);
 		return new DynamicStructuredTool({ schema, name, description, func });
 	}
 
-	private async extractFromAIParameters(
-		fromAIParser: AIParametersParser,
-	): Promise<FromAIArgument[]> {
+	private async extractFromAIParameters(): Promise<FromAIArgument[]> {
 		const collectedArguments: FromAIArgument[] = [];
-		fromAIParser.traverseNodeParameters(this.context.getNode().parameters, collectedArguments);
+		traverseNodeParameters(this.context.getNode().parameters, collectedArguments);
 
 		const uniqueArgsMap = new Map<string, FromAIArgument>();
 		for (const arg of collectedArguments) {
@@ -302,9 +309,9 @@ export class WorkflowToolService {
 		return Array.from(uniqueArgsMap.values());
 	}
 
-	private createZodSchema(args: FromAIArgument[], parser: AIParametersParser): z.ZodObject<any> {
+	private createZodSchema(args: FromAIArgument[]): z.ZodObject<any> {
 		const schemaObj = args.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
-			acc[placeholder.key] = parser.generateZodSchema(placeholder);
+			acc[placeholder.key] = generateZodSchema(placeholder);
 			return acc;
 		}, {});
 

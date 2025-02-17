@@ -37,6 +37,7 @@ export class Chargebee implements INodeType {
 		defaults: {
 			name: 'Chargebee',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -12,7 +12,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useToast } from '@/composables/useToast';
 import { assert } from '@/utils/assert';

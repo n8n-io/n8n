@@ -2,6 +2,7 @@ import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
@@ -79,7 +80,6 @@ import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
-import { useLocalStorage } from '@vueuse/core';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -125,12 +125,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 
-	// -1 means the backend chooses the default
-	// 0 is the old flow
-	// 1 is the new flow
-	const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
-
+	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	// For paginated workflow lists
+	const totalWorkflowCount = ref(0);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const activeWorkflows = ref<string[]>([]);
@@ -480,12 +478,37 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	async function fetchWorkflowsPage(
+		projectId?: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		sortBy?: string,
+		filters: { name?: string; tags?: string[]; active?: boolean } = {},
+	): Promise<IWorkflowDb[]> {
+		const filter = { ...filters, projectId };
+		const options = {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+			sortBy,
+		};
+
+		const { count, data } = await workflowsApi.getWorkflows(
+			rootStore.restApiContext,
+			Object.keys(filter).length ? filter : undefined,
+			Object.keys(options).length ? options : undefined,
+		);
+
+		setWorkflows(data);
+		totalWorkflowCount.value = count;
+		return data;
+	}
+
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 		};
 
-		const workflows = await workflowsApi.getWorkflows(
+		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 		);
@@ -1474,7 +1497,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${partialExecutionVersion.value}`,
+				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
@@ -1680,6 +1703,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowFromUrl,
 		getActivationError,
 		fetchAllWorkflows,
+		fetchWorkflowsPage,
 		fetchWorkflow,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
@@ -1753,5 +1777,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		totalWorkflowCount,
 	};
 });

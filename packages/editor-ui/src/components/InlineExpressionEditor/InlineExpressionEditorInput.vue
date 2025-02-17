@@ -6,14 +6,14 @@ import { computed, ref, watch } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
-import { removeExpressionPrefix } from '@/utils/expressions';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
+import { onKeyStroke } from '@vueuse/core';
+import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
 
 type Props = {
 	modelValue: string;
@@ -44,11 +44,20 @@ const extensions = computed(() => [
 	history(),
 	mappingDropCursor(),
 	dropCursor(),
-	expressionInputHandler(),
+	expressionCloseBrackets(),
 	EditorView.lineWrapping,
 	infoBoxTooltips(),
 ]);
-const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+const editorValue = computed(() => props.modelValue);
+
+// Exit expression editor when pressing Backspace in empty field
+onKeyStroke(
+	'Backspace',
+	() => {
+		if (props.modelValue === '') emit('update:model-value', { value: '', segments: [] });
+	},
+	{ target: root },
+);
 
 const {
 	editor: editorRef,
@@ -66,13 +75,6 @@ const {
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
-
-watch(
-	() => props.modelValue,
-	(newValue) => {
-		editorValue.value = removeExpressionPrefix(newValue);
-	},
-);
 
 watch(segments.display, (newSegments) => {
 	emit('update:model-value', {
@@ -102,6 +104,11 @@ defineExpose({
 			setCursorPosition('lastExpression');
 			focus();
 		}
+	},
+	selectAll: () => {
+		editorRef.value?.dispatch({
+			selection: selection.value.extend(0, editorRef.value?.state.doc.length),
+		});
 	},
 });
 </script>
