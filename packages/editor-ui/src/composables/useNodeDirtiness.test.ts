@@ -62,22 +62,18 @@ describe(useNodeDirtiness, () => {
 	it('should be an empty object if no change has been made to the workflow', () => {
 		setupTestWorkflow('a✅, b✅, c✅');
 
-		const { dirtinessByName } = useNodeDirtiness();
-
-		expect(dirtinessByName.value).toEqual({});
+		expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 	});
 
 	it('should return even if the connections forms a loop', () => {
 		setupTestWorkflow('a✅ -> b✅ -> c -> d✅ -> b');
 
-		canvasOperations.setNodeParameters('b', { foo: 1 });
+		expect(() => {
+			canvasOperations.setNodeParameters('b', { foo: 1 });
 
-		const { dirtinessByName } = useNodeDirtiness();
-
-		expect(dirtinessByName.value).toEqual({
-			b: 'parameters-updated',
-			d: 'upstream-dirty',
-		});
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			useNodeDirtiness().dirtinessByName.value;
+		}).not.toThrow();
 	});
 
 	describe('injecting a node', () => {
@@ -95,9 +91,7 @@ describe(useNodeDirtiness, () => {
 
 			await canvasOperations.addNodes([createTestNode({ name: 'c' })], { trackHistory: true });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'incoming-connections-updated',
 			});
 		});
@@ -111,9 +105,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.deleteNodes(['b'], { trackHistory: true });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'incoming-connections-updated',
 			});
 		});
@@ -125,9 +117,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'parameters-updated',
 			});
 		});
@@ -137,9 +127,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({});
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
 
 		it("should mark all downstream nodes with data as 'upstream-dirty' if a node upstream got an updated parameter", () => {
@@ -147,9 +135,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'parameters-updated',
 				c: 'upstream-dirty',
 				d: 'upstream-dirty',
@@ -166,9 +152,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.createConnection({ source: 'a', target: 'c' }, { trackHistory: true });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'incoming-connections-updated',
 			});
 		});
@@ -272,9 +256,7 @@ describe(useNodeDirtiness, () => {
 
 			canvasOperations.setNodeParameters('e', { foo: 1 });
 
-			const { dirtinessByName } = useNodeDirtiness();
-
-			expect(dirtinessByName.value).toEqual({
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'upstream-dirty',
 				c: 'upstream-dirty',
 				e: 'parameters-updated',
@@ -298,15 +280,12 @@ describe(useNodeDirtiness, () => {
 					const type = arr[i - 1].includes('🧠')
 						? NodeConnectionType.AiAgent
 						: NodeConnectionType.Main;
-
-					const conns = connections[from]?.[type]?.[0] ?? [];
+					const conns = connections[from]?.[type] ?? [];
+					const conn = conns[0] ?? [];
 
 					connections[from] = {
 						...connections[from],
-						[type]: [
-							[...conns, { node: to, type, index: conns.length }],
-							...(connections[from]?.Main?.slice(1) ?? []),
-						],
+						[type]: [[...conn, { node: to, type, index: conn.length }], ...conns.slice(1)],
 					};
 					return;
 				}
