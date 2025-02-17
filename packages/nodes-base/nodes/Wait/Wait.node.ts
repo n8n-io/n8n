@@ -7,7 +7,12 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	NodeConnectionType,
+	WAIT_INDEFINITELY,
+	FORM_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../utils/utilities';
 import {
@@ -459,7 +464,25 @@ export class Wait extends Webhook {
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
-			return await this.configureAndPutToWait(context);
+			let hasFormTrigger = false;
+
+			if (resume === 'form') {
+				const parentNodes = context.getParentNodes(context.getNode().name);
+				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			}
+
+			const returnData = await this.configureAndPutToWait(context);
+
+			if (resume === 'form' && hasFormTrigger) {
+				context.sendResponse({
+					headers: {
+						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+					},
+					statusCode: 307,
+				});
+			}
+
+			return returnData;
 		}
 
 		let waitTill: Date;

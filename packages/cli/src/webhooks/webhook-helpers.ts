@@ -37,7 +37,9 @@ import {
 	createDeferredPromise,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
+	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 import { finished } from 'stream/promises';
@@ -101,6 +103,73 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
+/**
+ * Detect if response mode should be set automatically
+ */
+function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, method: string) {
+	// if this is n8n FormTrigger or Form node or Wait node(resume === form), check if there is a Form node in child nodes,
+	// if so, set 'responseMode' to 'responseNode' to send the response to this node from next Form node
+	// if this is last Form node - set 'responseMode' to 'onReceived'
+	// if this is last Wait node - use 'responseMode' from Wait node
+	if (
+		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
+		method === 'POST'
+	) {
+		if (
+			workflowStartNode.type === WAIT_NODE_TYPE &&
+			workflowStartNode.parameters.resume !== 'form'
+		) {
+			return undefined;
+		}
+
+		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+
+		for (const nodeName of connectedNodes) {
+			const node = workflow.nodes[nodeName];
+
+			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
+				continue;
+			}
+
+			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+				return 'responseNode';
+			}
+		}
+
+		if (workflowStartNode.type === FORM_NODE_TYPE) {
+			return 'onReceived';
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * for formTrigger and form nodes redirection has to be handled by sending redirectURL in response body
+ */
+const handleFormRedirectionCase = (
+	data: IWebhookResponseCallbackData,
+	workflowStartNode: INode,
+) => {
+	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
+		return data;
+	}
+
+	if (
+		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
+		(data?.headers as IDataObject)?.location &&
+		String(data?.responseCode).startsWith('3')
+	) {
+		data.responseCode = 200;
+		data.data = {
+			redirectURL: (data?.headers as IDataObject)?.location,
+		};
+		(data.headers as IDataObject).location = undefined;
+	}
+
+	return data;
+};
+
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
@@ -154,27 +223,8 @@ export async function executeWebhook(
 	// Get the responseMode
 	let responseMode;
 
-	// if this is n8n FormTrigger node, check if there is a Form node in child nodes,
-	// if so, set 'responseMode' to 'formPage' to redirect to URL of that Form later
-	if (['form', 'formTrigger'].includes(nodeType.description.name) && req.method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
-		let hasNextPage = false;
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-			if (node.type === FORM_NODE_TYPE && !node.disabled) {
-				hasNextPage = true;
-				break;
-			}
-		}
-
-		if (hasNextPage) {
-			responseMode = 'responseNode';
-		} else {
-			if (nodeType.description.name === 'form') {
-				responseMode = 'onReceived';
-			}
-		}
-	}
+	//check if response mode should be set automatically, e.g. multipage form
+	responseMode = autoDetectResponseMode(workflowStartNode, workflow, req.method);
 
 	if (!responseMode) {
 		responseMode = workflow.expression.getSimpleParameterValue(
@@ -205,7 +255,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	);
 
-	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -501,28 +551,16 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
-						const headers = response.headers;
-						let responseCode = response.statusCode;
-						let data = response.body as IDataObject;
 
-						// for formTrigger node redirection has to be handled by sending redirectURL in response body
-						if (
-							['formTrigger', 'form'].includes(nodeType.description.name) &&
-							headers.location &&
-							String(responseCode).startsWith('3')
-						) {
-							responseCode = 200;
-							data = {
-								redirectURL: headers.location,
-							};
-							headers.location = undefined;
-						}
+						let data: IWebhookResponseCallbackData = {
+							data: response.body as IDataObject,
+							headers: response.headers,
+							responseCode: response.statusCode,
+						};
 
-						responseCallback(null, {
-							data,
-							headers,
-							responseCode,
-						});
+						data = handleFormRedirectionCase(data, workflowStartNode);
+
+						responseCallback(null, data);
 					}
 
 					process.nextTick(() => res.end());
@@ -555,12 +593,6 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
-
-		if (responseMode === 'formPage' && !didSendResponse) {
-			res.redirect(`${additionalData.formWaitingBaseUrl}/${executionId}`);
-			process.nextTick(() => res.end());
-			didSendResponse = true;
-		}
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
