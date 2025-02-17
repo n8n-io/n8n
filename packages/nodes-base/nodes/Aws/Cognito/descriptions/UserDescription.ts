@@ -4,6 +4,7 @@ import {
 	handleErrorPostReceive,
 	handlePagination,
 	presendFilters,
+	presendUserFields,
 	processAttributes,
 	simplifyData,
 } from '../GenericFunctions';
@@ -27,6 +28,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Add an existing user to a group',
 				action: 'Add user to group',
 				routing: {
+					send: {
+						preSend: [presendUserFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -53,6 +57,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Create a new user',
 				action: 'Create user',
 				routing: {
+					send: {
+						preSend: [presendUserFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -79,6 +86,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Delete a user',
 				action: 'Delete user',
 				routing: {
+					send: {
+						preSend: [presendUserFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -105,6 +115,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Retrieve information of a user',
 				action: 'Get user',
 				routing: {
+					send: {
+						preSend: [presendUserFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -150,6 +163,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Remove a user from a group',
 				action: 'Remove user from group',
 				routing: {
+					send: {
+						preSend: [presendUserFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -177,7 +193,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Update user',
 				routing: {
 					send: {
-						preSend: [processAttributes],
+						preSend: [processAttributes, presendUserFields],
 					},
 					request: {
 						method: 'POST',

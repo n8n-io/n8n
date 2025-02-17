@@ -4,6 +4,7 @@ import {
 	handleErrorPostReceive,
 	handlePagination,
 	presendAdditionalFields,
+	presendGroupFields,
 	presendVerifyPath,
 	processGroupsResponse,
 } from '../GenericFunctions';
@@ -26,6 +27,9 @@ export const groupOperations: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a new group',
 				routing: {
+					send: {
+						preSend: [presendGroupFields],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -202,7 +206,7 @@ const createFields: INodeProperties[] = [
 		displayName: 'Group Name',
 		name: 'NewGroupName',
 		default: '',
-		placeholder: 'e.g. My New Group',
+		placeholder: 'e.g. MyNewGroup',
 		description: 'The name of the new group to create',
 		displayOptions: {
 			show: {

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type {
@@ -38,10 +39,6 @@ type User = {
 	Username: string;
 };
 
-/*
- * Helper function which stringifies the body before sending the request.
- * It is added to the routing property in the "resource" parameter thus for all requests.
- */
 export async function presendStringifyBody(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -169,14 +166,23 @@ export async function processAttributes(
 		});
 	}
 
+	if (attributes.length === 0) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'No user attribute provided',
+			description: 'At least one attribute must be provided for the update.',
+		});
+	}
+
 	const processedAttributes = attributes
-		.filter(
-			(attribute) =>
-				attribute.Name &&
-				attribute.Value !== undefined &&
-				attribute.Value !== null &&
-				attribute.Value !== '',
-		)
+		.filter((attribute) => {
+			if (!attribute.Name || !attribute.Value) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Invalid User Attribute',
+					description: 'Both "Name" and "Value" are required for each attribute.',
+				});
+			}
+			return true;
+		})
 		.map((attribute) => ({
 			Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
 			Value: attribute.Value,
@@ -305,7 +311,8 @@ export async function handleErrorPostReceive(
 					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 							message: 'The user you are requesting could not be found.',
-							description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
+							description:
+								'Adjust the "User" parameter setting to add the user to the group correctly.',
 						});
 					}
 				} else if (errorType === 'ResourceNotFoundException') {
@@ -314,7 +321,8 @@ export async function handleErrorPostReceive(
 					if (typeof errorMessage === 'string' && errorMessage.includes(group)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 							message: 'The group you are requesting could not be found.',
-							description: 'Adjust the "Group" parameter setting to retrieve the post correctly.',
+							description:
+								'Adjust the "Group" parameter setting to add the user to the group correctly.',
 						});
 					}
 				}
@@ -322,14 +330,14 @@ export async function handleErrorPostReceive(
 				if (errorType === 'UserNotFoundException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 						message: 'The user you are requesting could not be found.',
-						description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
+						description: 'Adjust the "User" parameter setting to delete the user correctly.',
 					});
 				}
 			} else if (operation === 'get') {
 				if (errorType === 'UserNotFoundException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 						message: 'The user you are requesting could not be found.',
-						description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
+						description: 'Adjust the "User" parameter setting to retrieve the user correctly.',
 					});
 				}
 			} else if (operation === 'removeFromGroup') {
@@ -339,7 +347,8 @@ export async function handleErrorPostReceive(
 					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 							message: 'The user you are deleting could not be found.',
-							description: 'Adjust the "User" parameter setting to delete the user correctly.',
+							description:
+								'Adjust the "User" parameter setting to remove the user from group correctly.',
 						});
 					}
 				} else if (errorType === 'ResourceNotFoundException') {
@@ -460,13 +469,156 @@ export async function searchUserPools(
 	return { results, paginationToken: responseData.NextToken };
 }
 
+export async function getUserPoolConfigurationData(
+	this: ILoadOptionsFunctions,
+	userPoolId: string,
+): Promise<IDataObject> {
+	const opts: IHttpRequestOptions = {
+		url: '',
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
+		},
+		body: JSON.stringify({
+			UserPoolId: userPoolId,
+		}),
+	};
+
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+
+	return responseData;
+}
+
+export async function presendGroupFields(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const NewGroupName = this.getNodeParameter('NewGroupName', '') as string;
+
+	const groupNameRegex = /^[\p{L}\p{M}\p{S}\p{N}\p{P}]+$/u;
+	if (!groupNameRegex.test(NewGroupName)) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'Invalid format for Group Name',
+			description: 'Group Name should not contain spaces.',
+		});
+	}
+
+	return requestOptions;
+}
+
+function validateEmail(email: string): boolean {
+	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	return emailRegex.test(email);
+}
+
+function validatePhoneNumber(phoneNumber: string): boolean {
+	const phoneRegex = /^\+[1-9]\d{1,14}$/;
+	return phoneRegex.test(phoneNumber);
+}
+
+export async function presendUserFields(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+	paginationToken?: string,
+): Promise<IHttpRequestOptions> {
+	const UserNameRaw = this.getNodeParameter('Username', '') as { mode: string; value: string };
+	const UserName = UserNameRaw.value;
+
+	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as { mode: string; value: string };
+	const userPoolId = userPoolIdRaw.value;
+
+	const opts: IHttpRequestOptions = {
+		url: '',
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
+		},
+		body: JSON.stringify({
+			UserPoolId: userPoolId,
+			MaxResults: 60,
+			NextToken: paginationToken ?? undefined,
+		}),
+	};
+
+	const userAttributes = await getUserPoolConfigurationData.call(
+		this as unknown as ILoadOptionsFunctions,
+		userPoolId,
+	);
+	const userPool = userAttributes?.UserPool as { UsernameAttributes?: string[] } | undefined;
+	const usernameAttributes = userPool?.UsernameAttributes ?? [];
+
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+	const users = responseData.Users as IDataObject[] | undefined;
+
+	let finalUsername = '';
+	let finalUsernameNew = '';
+	if (users) {
+		users.forEach((user) => {
+			const username = user.Username as string;
+			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
+			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value ?? '';
+
+			if (usernameAttributes.includes('email') || usernameAttributes.includes('phone_number')) {
+				finalUsername = sub;
+			} else {
+				finalUsername = username;
+			}
+		});
+	}
+
+	if (this.getNodeParameter('operation') === 'create') {
+		const newUsername = this.getNodeParameter('UsernameNew') as string;
+		if (usernameAttributes.includes('email')) {
+			if (!validateEmail(newUsername)) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Invalid format for User Name',
+					description: 'Please provide a valid email address (e.g., name@gmail.com)',
+				});
+			}
+			finalUsernameNew = newUsername;
+		} else if (usernameAttributes.includes('phone_number')) {
+			if (!validatePhoneNumber(newUsername)) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Invalid format for User Name',
+					description:
+						'Use an international phone number format, starting with + and followed by 2 to 15 digits (e.g., +14155552671)',
+				});
+			}
+			finalUsernameNew = newUsername;
+		} else {
+			finalUsernameNew = UserName;
+		}
+	} else {
+		finalUsernameNew = finalUsername;
+	}
+
+	let body: IDataObject;
+	if (typeof requestOptions.body === 'string') {
+		try {
+			body = JSON.parse(requestOptions.body) as IDataObject;
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'Failed to parse requestOptions body');
+		}
+	} else {
+		body = (requestOptions.body as IDataObject) || {};
+	}
+
+	if (finalUsernameNew) {
+		requestOptions.body = JSON.stringify({
+			...body,
+			Username: finalUsernameNew,
+		});
+	}
+
+	return requestOptions;
+}
+
 export async function searchUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
-
 	const userPoolId = userPoolIdRaw.value as string;
 
 	if (!userPoolId) {
@@ -486,8 +638,11 @@ export async function searchUsers(
 		}),
 	};
 
-	const responseData: IDataObject = await awsRequest.call(this, opts);
+	const userPoolData: IDataObject = await getUserPoolConfigurationData.call(this, userPoolId);
+	const userPool = userPoolData?.UserPool as { UsernameAttributes?: string[] } | undefined;
+	const usernameAttributes = userPool?.UsernameAttributes ?? [];
 
+	const responseData: IDataObject = await awsRequest.call(this, opts);
 	const users = responseData.Users as IDataObject[] | undefined;
 
 	if (!users) {
@@ -497,13 +652,21 @@ export async function searchUsers(
 	const results: INodeListSearchItems[] = users
 		.map((user) => {
 			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
-
-			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
-			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
 			const username = user.Username as string;
+			const email = attributes?.find((attr) => attr.Name === 'email')?.Value ?? '';
+			const phoneNumber = attributes?.find((attr) => attr.Name === 'phone_number')?.Value ?? '';
+			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value ?? '';
 
-			const name = email ?? sub ?? username;
-			const value = username;
+			let name = '';
+			if (usernameAttributes.includes('email')) {
+				name = email;
+			} else if (usernameAttributes.includes('phone_number')) {
+				name = phoneNumber;
+			} else {
+				name = username;
+			}
+
+			const value = sub;
 
 			return { name, value };
 		})
@@ -513,9 +676,7 @@ export async function searchUsers(
 				user.name.toLowerCase().includes(filter.toLowerCase()) ||
 				user.value.toLowerCase().includes(filter.toLowerCase()),
 		)
-		.sort((a, b) => {
-			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-		});
+		.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
 	return { results, paginationToken: responseData.NextToken as string | undefined };
 }
