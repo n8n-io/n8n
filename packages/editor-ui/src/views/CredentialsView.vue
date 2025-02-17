@@ -12,6 +12,7 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	EnterpriseEditionFeature,
+	VIEWS,
 } from '@/constants';
 import { useUIStore, listenForModalChanges } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -151,6 +152,7 @@ const maybeCreateCredential = () => {
 		if (projectPermissions.value.credential.create) {
 			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
 		} else {
+			void router.replace({ name: VIEWS.HOMEPAGE });
 		}
 	}
 };
@@ -161,6 +163,8 @@ const maybeEditCredential = () => {
 		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
 		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
 			uiStore.openExistingCredential(props.credentialId);
+		} else {
+			void router.replace({ name: VIEWS.HOMEPAGE });
 		}
 	}
 };
