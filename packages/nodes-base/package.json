@@ -370,6 +370,7 @@
       "dist/credentials/UptimeRobotApi.credentials.js",
       "dist/credentials/UrlScanIoApi.credentials.js",
       "dist/credentials/VeroApi.credentials.js",
+      "dist/credentials/VerticaApi.credentials.js",
       "dist/credentials/VirusTotalApi.credentials.js",
       "dist/credentials/VonageApi.credentials.js",
       "dist/credentials/VenafiTlsProtectCloudApi.credentials.js",
