@@ -5,9 +5,9 @@ import type {
 	IRunData,
 	StartNodeData,
 	ITaskData,
+	IWorkflowBase,
 } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/interfaces';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
@@ -25,8 +25,8 @@ export declare namespace WorkflowRequest {
 	}>;
 
 	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
+		workflowData: IWorkflowBase;
+		runData?: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		dirtyNodeNames?: string[];
