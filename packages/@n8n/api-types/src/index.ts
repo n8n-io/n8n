@@ -27,3 +27,12 @@ export {
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
+
+export {
+	TEST_CASE_EXECUTION_ERROR_CODE,
+	TEST_RUN_ERROR_CODES,
+	TEST_CASE_EXECUTION_STATUS,
+	type TestCaseExecutionErrorCode,
+	type TestRunErrorCode,
+	type TestCaseExecutionStatus,
+} from './schemas/test-definition.schema';
