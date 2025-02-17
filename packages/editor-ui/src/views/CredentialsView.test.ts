@@ -105,7 +105,7 @@ describe('CredentialsView', () => {
 	});
 
 	describe('create credential', () => {
-		it('should show modal the on route if user has scope to create credential in the project', async () => {
+		it('should show the modal on the route if the user has the scope to create credentials in the project.', async () => {
 			const uiStore = mockedStore(useUIStore);
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.currentProject = createTestProject({ scopes: ['credential:create'] });
