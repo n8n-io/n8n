@@ -83,13 +83,10 @@ jobs:
         run: pnpm jest
 
   mariadb:
-    name: MariaDB (${{ matrix.service-name }})
+    name: MariaDB
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
-    strategy:
-      matrix:
-        service-name: [ 'mariadb-10.5', 'mariadb-11' ]
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
@@ -120,7 +117,7 @@ jobs:
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
-            ${{ matrix.service-name }}
+            mariadb
 
       - name: Test MariaDB
         working-directory: packages/cli

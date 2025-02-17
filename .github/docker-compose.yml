@@ -1,17 +1,6 @@
 services:
-  mariadb-10.5:
+  mariadb:
     image: mariadb:10.5
-    environment:
-      - MARIADB_DATABASE=n8n
-      - MARIADB_ROOT_PASSWORD=password
-      - MARIADB_MYSQL_LOCALHOST_USER=true
-    ports:
-      - 3306:3306
-    tmpfs:
-      - /var/lib/mysql
-
-  mariadb-11:
-    image: mariadb:11
     environment:
       - MARIADB_DATABASE=n8n
       - MARIADB_ROOT_PASSWORD=password
