@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+
+import N8nLoading from '../N8nLoading';
 
 export type PathItem = {
 	id: string;
@@ -7,15 +9,17 @@ export type PathItem = {
 	href?: string;
 };
 
+// Items in the truncated path can be provided as an array or a function that returns a promise
+type HiddenItemsSource = PathItem[] | (() => Promise<PathItem[]>);
+
 type Props = {
 	items: PathItem[];
-	hasHiddenItems?: boolean;
-	// For mvp decided to go with string here
-	// but can be changed to PathItem[] if we want to have more control in the future
-	hiddenItemsTooltip: string;
-	theme: 'small' | 'medium';
+	hiddenItemsSource?: HiddenItemsSource;
+	theme?: 'small' | 'medium';
 	showBorder?: boolean;
 };
+
+defineOptions({ name: 'N8nBreadcrumbs' });
 
 const emit = defineEmits<{
 	beforeTooltipOpen: [];
@@ -23,21 +27,40 @@ const emit = defineEmits<{
 	tooltipClosed: [];
 }>();
 
-defineOptions({ name: 'N8nBreadcrumbs' });
-
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'medium',
-	hasHiddenItems: false,
-	hiddenItemsTooltip: '',
 	showBorder: false,
+	hiddenItemsSource: () => [],
 });
 
-const tooltipText = computed(() => {
-	return props.hiddenItemsTooltip;
+const loadedHiddenItems = ref<PathItem[]>([]);
+const isLoadingHiddenItems = ref(false);
+
+const hasHiddenItems = computed(() => {
+	return Array.isArray(props.hiddenItemsSource)
+		? props.hiddenItemsSource.length > 0
+		: !!props.hiddenItemsSource;
 });
 
-const handleBeforeTooltipShow = () => {
+const handleBeforeTooltipShow = async () => {
 	emit('beforeTooltipOpen');
+
+	if (!hasHiddenItems.value) return;
+
+	if (Array.isArray(props.hiddenItemsSource)) {
+		loadedHiddenItems.value = props.hiddenItemsSource;
+		return;
+	}
+
+	isLoadingHiddenItems.value = true;
+	try {
+		const items = await props.hiddenItemsSource();
+		loadedHiddenItems.value = items;
+	} catch (error) {
+		loadedHiddenItems.value = [];
+	} finally {
+		isLoadingHiddenItems.value = false;
+	}
 };
 
 const handleTooltipShow = () => {
@@ -60,22 +83,40 @@ const handleTooltipClose = () => {
 		<ul :class="$style.list">
 			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">/</li>
 			<li
-				v-if="props.hasHiddenItems"
-				:class="{ [$style.ellipsis]: true, [$style.clickable]: tooltipText !== '' }"
+				v-if="hasHiddenItems"
+				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
 				aria-hidden="true"
 			>
 				<n8n-tooltip
-					:content="tooltipText"
 					:popper-class="[$style.tooltip, $style[props.theme]]"
-					:disabled="!tooltipText"
+					trigger="click"
 					@show="handleTooltipShow"
 					@before-show="handleBeforeTooltipShow"
 					@hide="handleTooltipClose"
 				>
+					<template #content>
+						<div v-if="isLoadingHiddenItems" :class="$style['tooltip-loading']">
+							<N8nLoading
+								:rows="3"
+								:loading="isLoadingHiddenItems"
+								animated
+								variant="p"
+								:shrink-last="false"
+							/>
+						</div>
+						<div v-else :class="$style.tooltipContent">
+							<div v-for="item in loadedHiddenItems" :key="item.id" :class="$style.tooltipItem">
+								<n8n-link v-if="item.href" :href="item.href" theme="text">
+									{{ item.label }}
+								</n8n-link>
+								<n8n-text v-else>{{ item.label }}</n8n-text>
+							</div>
+						</div>
+					</template>
 					<span>...</span>
 				</n8n-tooltip>
 			</li>
-			<li v-if="props.hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
+			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
 			<template v-for="(item, index) in items" :key="item.id">
 				<li :class="$style.item">
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
@@ -118,6 +159,21 @@ const handleTooltipClose = () => {
 .hidden-items {
 	display: flex;
 	align-items: center;
+}
+
+.tooltip-loading {
+	min-width: 100px;
+	width: 100%;
+
+	:global(.n8n-loading) > div {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	:global(.el-skeleton__item) {
+		margin: 0;
+	}
 }
 
 .small {

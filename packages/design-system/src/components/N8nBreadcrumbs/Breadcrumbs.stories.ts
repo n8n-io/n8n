@@ -2,7 +2,6 @@ import type { StoryFn } from '@storybook/vue3';
 
 import type { UserAction } from 'n8n-design-system/types';
 
-import AsyncLoadingDemo from './AsyncLoadingDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
@@ -44,20 +43,35 @@ const withHiddenItemsTemplate: StoryFn = (args, { argTypes }) => ({
 export const WithHiddenItems = withHiddenItemsTemplate.bind({});
 WithHiddenItems.args = {
 	items: items.slice(2),
-	hasHiddenItems: true,
-	hiddenItemsTooltip: '<a href="#">Parent 1</a><a href="#">Parent 2</a>',
+	hiddenItemsSource: [
+		{ id: '3', label: 'Parent 1', href: '/hidden1' },
+		{ id: '4', label: 'Parent 2', href: '/hidden2' },
+	],
 };
 
+// Async example
+const fetchHiddenItemsAsync = () => {
+	return new Promise<PathItem[]>((resolve) => {
+		setTimeout(() => {
+			resolve([
+				{ id: '3', label: 'Parent 1', href: '/hidden1' },
+				{ id: '4', label: 'Parent 2', href: '/hidden2' },
+			]);
+		}, 1000);
+	});
+};
 const asyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
-	components: { AsyncLoadingDemo },
+	components: { Breadcrumbs },
 	props: Object.keys(argTypes),
-	template: '<AsyncLoadingDemo v-bind="args" />',
+	template: '<Breadcrumbs v-bind="args" />',
 });
 
 export const AsyncLoading = asyncLoadingTemplate.bind({});
 AsyncLoading.args = {
 	items: items.slice(2),
+	hasHiddenItems: true,
+	hiddenItemsSource: fetchHiddenItemsAsync,
 };
 
 const testActions: UserAction[] = [
@@ -91,8 +105,10 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 export const WithSlots = withSlotsTemplate.bind({});
 WithSlots.args = {
 	items: items.slice(2),
-	hasHiddenItems: true,
-	hiddenItemsTooltip: '<a href="#">Parent 1</a><a href="#">Parent 2</a>',
+	hiddenItemsSource: [
+		{ id: '3', label: 'Parent 1', href: '/hidden1' },
+		{ id: '4', label: 'Parent 2', href: '/hidden2' },
+	],
 };
 
 const smallVersionTemplate: StoryFn = (args, { argTypes }) => ({
@@ -126,6 +142,8 @@ SmallWithSlots.args = {
 	theme: 'small',
 	showBorder: true,
 	items: items.slice(2),
-	hasHiddenItems: true,
-	hiddenItemsTooltip: '<a href="#">Parent 1</a><a href="#">Parent 2</a>',
+	hiddenItemsSource: [
+		{ id: '3', label: 'Parent 1', href: '/hidden1' },
+		{ id: '4', label: 'Parent 2', href: '/hidden2' },
+	],
 };
