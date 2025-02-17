@@ -76,12 +76,12 @@ const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: props.hovered ? 'var(--color-primary)' : edgeColor.value,
+	stroke: delayedHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
-	hovered: props.hovered,
+	hovered: delayedHovered.value,
 	'bring-to-front': props.bringToFront,
 }));
 
@@ -94,7 +94,7 @@ const isConnectorStraight = computed(() => renderData.value.isConnectorStraight)
 
 const edgeToolbarStyle = computed(() => ({
 	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
-	...(props.hovered ? { zIndex: 1 } : {}),
+	...(delayedHovered.value ? { zIndex: 1 } : {}),
 }));
 
 const edgeToolbarClasses = computed(() => ({
