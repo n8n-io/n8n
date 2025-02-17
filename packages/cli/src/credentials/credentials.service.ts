@@ -1,3 +1,4 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -44,12 +45,8 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
-export type CreateCredentialOptions = {
-	name: string;
-	type: string;
-	data: ICredentialDataDecryptedObject;
-	projectId?: string;
-	isManaged?: boolean;
+type CreateCredentialOptions = CreateCredentialDto & {
+	isManaged: boolean;
 };
 
 @Service()
@@ -675,24 +672,36 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createCredential(createOpts: CreateCredentialOptions, user: User) {
+	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: false }, user);
+	}
+
+	/**
+	 * Create a new managed credential in user's account and return it along the scopes.
+	 * Managed credentials are managed by n8n and cannot be edited by the user.
+	 */
+	async createManagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: true }, user);
+	}
+
+	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
-			name: createOpts.name,
-			type: createOpts.type,
-			data: createOpts.data,
+			name: opts.name,
+			type: opts.type,
+			data: opts.data,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
-			isManaged: createOpts.isManaged,
+			isManaged: opts.isManaged,
 		});
 
 		const { shared, ...credential } = await this.save(
 			credentialEntity,
 			encryptedCredential,
 			user,
-			createOpts.projectId,
+			opts.projectId,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);

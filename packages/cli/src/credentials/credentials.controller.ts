@@ -164,7 +164,10 @@ export class CredentialsController {
 		_: Response,
 		@Body payload: CreateCredentialDto,
 	) {
-		const newCredential = await this.credentialsService.createCredential(payload, req.user);
+		const newCredential = await this.credentialsService.createUnmanagedCredential(
+			payload,
+			req.user,
+		);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			newCredential.id,

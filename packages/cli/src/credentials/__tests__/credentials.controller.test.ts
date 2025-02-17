@@ -49,7 +49,7 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
-			credentialsService.createCredential.mockResolvedValue(createdCredentials);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
 				projectOwningCredentialData,
@@ -65,7 +65,7 @@ describe('CredentialsController', () => {
 
 			// Assert
 
-			expect(credentialsService.createCredential).toHaveBeenCalledWith(
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 				newCredentialsPayload,
 				req.user,
 			);
