@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import { mock } from 'jest-mock-extended';
@@ -1250,8 +1249,8 @@ describe('PATCH /credentials/:id', () => {
 });
 
 describe('GET /credentials/new', () => {
-	test('should return default name for new credential or its increment', async () => {
-		const name = Container.get(GlobalConfig).credentials.defaultName;
+	test('should return given name for new credential or its increment', async () => {
+		const name = 'special credential name';
 		let tempName = name;
 
 		for (let i = 0; i < 4; i++) {

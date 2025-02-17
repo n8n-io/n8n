@@ -3,7 +3,6 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Logger } from 'n8n-core';
@@ -42,7 +41,6 @@ import { EnterpriseCredentialsService } from './credentials.service.ee';
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
-		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
