@@ -8,7 +8,6 @@ const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
-import { useProjectsStore } from '@/stores/projects.store';
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {
