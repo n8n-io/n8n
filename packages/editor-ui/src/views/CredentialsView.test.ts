@@ -114,7 +114,7 @@ describe('CredentialsView', () => {
 			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
 		});
 
-		it('should not show the modal on route if user has no scope to create credential in the project', async () => {
+		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {
 			const uiStore = mockedStore(useUIStore);
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.currentProject = createTestProject({ scopes: ['credential:read'] });
@@ -125,7 +125,7 @@ describe('CredentialsView', () => {
 	});
 
 	describe('open existing credential', () => {
-		it('should show modal on route param if the user has permission to read or update', async () => {
+		it('should show the modal on the route if the user has permission to read or update', async () => {
 			const uiStore = mockedStore(useUIStore);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.getCredentialById = vi.fn().mockImplementation(() => ({
@@ -141,7 +141,7 @@ describe('CredentialsView', () => {
 			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
 		});
 
-		it('should not show modal on route param if the user has no permission to read or update', async () => {
+		it('should not show the modal on the route if the user has no permission to read or update', async () => {
 			const uiStore = mockedStore(useUIStore);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.getCredentialById = vi.fn().mockImplementation(() => ({
