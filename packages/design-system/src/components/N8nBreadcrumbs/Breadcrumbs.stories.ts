@@ -65,6 +65,7 @@ WithHiddenItems.args = {
 };
 
 // Async example
+// eslint-disable-next-line @typescript-eslint/promise-function-async
 const fetchHiddenItemsAsync = () => {
 	return new Promise<PathItem[]>((resolve) => {
 		setTimeout(() => {
