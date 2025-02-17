@@ -7,11 +7,26 @@ import type { PathItem } from './Breadcrumbs.vue';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import Tags from '../N8nTags/Tags.vue';
 
-// TODO: Implement controls
 export default {
 	title: 'Atoms/Breadcrumbs',
 	component: Breadcrumbs,
-	argTypes: {},
+	argTypes: {
+		items: { control: 'object' },
+		hiddenItemsSource: { control: 'object' },
+		theme: {
+			control: {
+				type: 'select',
+			},
+			options: ['medium', 'small'],
+		},
+		showBorder: { control: 'boolean' },
+		tooltipTrigger: {
+			control: {
+				type: 'select',
+			},
+			options: ['hover', 'click'],
+		},
+	},
 };
 
 const items: PathItem[] = [
@@ -70,8 +85,8 @@ const asyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 export const AsyncLoading = asyncLoadingTemplate.bind({});
 AsyncLoading.args = {
 	items: items.slice(2),
-	hasHiddenItems: true,
 	hiddenItemsSource: fetchHiddenItemsAsync,
+	loadingSkeletonRows: 2,
 };
 
 const testActions: UserAction[] = [
@@ -158,7 +173,6 @@ const smallAsyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 export const SmallAsyncLoading = smallAsyncLoadingTemplate.bind({});
 SmallAsyncLoading.args = {
 	items: items.slice(2),
-	hasHiddenItems: true,
 	hiddenItemsSource: fetchHiddenItemsAsync,
 	theme: 'small',
 	showBorder: true,

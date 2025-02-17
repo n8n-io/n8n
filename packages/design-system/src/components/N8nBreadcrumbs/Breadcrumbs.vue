@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import N8nLoading from '../N8nLoading';
 
@@ -17,6 +17,8 @@ type Props = {
 	hiddenItemsSource?: HiddenItemsSource;
 	theme?: 'small' | 'medium';
 	showBorder?: boolean;
+	tooltipTrigger?: 'hover' | 'click';
+	loadingSkeletonRows?: number;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -31,6 +33,8 @@ const props = withDefaults(defineProps<Props>(), {
 	theme: 'medium',
 	showBorder: false,
 	hiddenItemsSource: () => [],
+	tooltipTrigger: 'hover',
+	loadingSkeletonRows: 3,
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -44,11 +48,7 @@ const hasHiddenItems = computed(() => {
 
 const handleBeforeTooltipShow = async () => {
 	emit('beforeTooltipOpen');
-
-	if (!hasHiddenItems.value) return;
-
-	if (Array.isArray(props.hiddenItemsSource)) {
-		loadedHiddenItems.value = props.hiddenItemsSource;
+	if (typeof props.hiddenItemsSource !== 'function') {
 		return;
 	}
 
@@ -62,6 +62,7 @@ const handleBeforeTooltipShow = async () => {
 		isLoadingHiddenItems.value = false;
 	}
 };
+
 const handleTooltipShow = () => {
 	emit('tooltipOpened');
 };
@@ -69,6 +70,12 @@ const handleTooltipShow = () => {
 const handleTooltipClose = () => {
 	emit('tooltipClosed');
 };
+
+onMounted(() => {
+	if (Array.isArray(props.hiddenItemsSource)) {
+		loadedHiddenItems.value = props.hiddenItemsSource;
+	}
+});
 </script>
 <template>
 	<div
@@ -85,9 +92,11 @@ const handleTooltipClose = () => {
 				v-if="hasHiddenItems"
 				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
 				aria-hidden="true"
+				data-test-id="ellipsis"
 			>
 				<n8n-tooltip
 					:popper-class="[$style.tooltip, $style[props.theme]]"
+					:trigger="tooltipTrigger"
 					@show="handleTooltipShow"
 					@before-show="handleBeforeTooltipShow"
 					@hide="handleTooltipClose"
@@ -95,7 +104,7 @@ const handleTooltipClose = () => {
 					<template #content>
 						<div v-if="isLoadingHiddenItems" :class="$style['tooltip-loading']">
 							<N8nLoading
-								:rows="props.theme === 'small' ? 1 : 3"
+								:rows="props.theme === 'small' ? 1 : props.loadingSkeletonRows"
 								:loading="isLoadingHiddenItems"
 								animated
 								variant="p"
@@ -112,6 +121,7 @@ const handleTooltipClose = () => {
 								v-else
 								:key="item.id"
 								:class="$style.tooltipItem"
+								data-test-id="breadcrumbs-item-hidden"
 							>
 								<n8n-link v-if="item.href" :href="item.href" theme="text">
 									{{ item.label }}
@@ -125,7 +135,7 @@ const handleTooltipClose = () => {
 			</li>
 			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">/</li>
 			<template v-for="(item, index) in items" :key="item.id">
-				<li :class="$style.item">
+				<li :class="$style.item" data-test-id="breadcrumbs-item">
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
 				</li>
