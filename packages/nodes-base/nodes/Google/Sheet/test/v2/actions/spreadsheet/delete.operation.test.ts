@@ -42,7 +42,6 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 			expectedUrl,
 		);
 		expect(result).toHaveLength(1);
-		// Could this be a bug?
 		expect(result).toEqual([[{ json: { success: true } }]]);
 	});
 
