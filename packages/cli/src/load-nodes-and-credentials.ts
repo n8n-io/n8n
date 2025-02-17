@@ -38,6 +38,7 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
+import _ from 'lodash';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -312,11 +313,13 @@ export class LoadNodesAndCredentials {
 	 */
 	createAiTools() {
 		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+			this.types.nodes.filter((nodetype) => nodetype.usableAsTool);
 
 		for (const usableNode of usableNodes) {
 			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
+				usableNode.usableAsTool === true
+					? structuredClone(usableNode)
+					: _.merge({}, usableNode, usableNode.usableAsTool);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);

@@ -1707,8 +1707,11 @@ export interface INodeTypeBaseDescription {
 	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents
 	 */
-	usableAsTool?: true;
+	usableAsTool?: true | AsToolProps;
 }
+
+// Properties that are merged (objects) or replaced (values) if the node is used as a tool
+export type AsToolProps = Partial<INodeTypeBaseDescription>;
 
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
