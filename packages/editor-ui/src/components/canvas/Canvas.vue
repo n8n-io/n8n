@@ -22,6 +22,7 @@ import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, wa
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -175,29 +176,19 @@ onKeyUp(panningKeyCode.value, () => {
  */
 
 const renameKeyCode = ' ';
-const renameKeyDownTime = ref<number | null>(null);
-const renameKeyDownThreshold = 300;
+const isRenameKeyCodeDisabled = computed(() => !lastSelectedNode.value || props.readOnly);
 
-onKeyDown(
+useShortKeyPress(
 	renameKeyCode,
 	() => {
 		if (!lastSelectedNode.value || props.readOnly) return;
 
-		renameKeyDownTime.value = Date.now();
+		emit('update:node:name', lastSelectedNode.value.id);
 	},
 	{
-		dedupe: true,
+		disabled: isRenameKeyCodeDisabled,
 	},
 );
-
-onKeyUp(renameKeyCode, () => {
-	if (!lastSelectedNode.value || !renameKeyDownTime.value || props.readOnly) return;
-
-	const isShortPress = Date.now() - renameKeyDownTime.value < renameKeyDownThreshold;
-	if (isShortPress) {
-		emit('update:node:name', lastSelectedNode.value.id);
-	}
-});
 
 /**
  * Key bindings
