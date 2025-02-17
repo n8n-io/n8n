@@ -99,7 +99,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
-	const partialExecutionVersion = computed(() => {
+	const partialExecutionVersion = computed<1 | 2>(() => {
 		const defaultVersion = settings.value.partialExecution?.version ?? 1;
 		const enforceVersion = settings.value.partialExecution?.enforce ?? false;
 		// -1 means we pick the defaultVersion
@@ -118,7 +118,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			return 1;
 		}
 
-		return version;
+		return version as 1 | 2;
 	});
 
 	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);

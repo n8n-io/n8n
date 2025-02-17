@@ -21,6 +21,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from 'n8n-design-system';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 
 // Types
 
@@ -75,6 +77,8 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
+const settings = useSettingsStore();
+const { dirtinessByName } = useNodeDirtiness();
 
 // Composables
 
@@ -201,6 +205,11 @@ const staleData = computed(() => {
 	if (!node.value) {
 		return false;
 	}
+
+	if (settings.partialExecutionVersion === 2) {
+		return dirtinessByName.value[node.value.name] === 'parameters-updated';
+	}
+
 	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
 	if (!updatedAt || !runTaskData.value) {
 		return false;
@@ -352,7 +361,7 @@ const activatePane = () => {
 					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
-					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
+					v-if="staleData || (hasNodeRun && !pinnedData.hasData.value && runsCount === 1)"
 					v-show="!outputPanelEditMode.enabled"
 					:task-data="runTaskData"
 					:has-stale-data="staleData"
