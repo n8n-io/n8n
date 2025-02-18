@@ -216,27 +216,26 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
 			const version = settingsStore.partialExecutionVersion;
-			const startNodes: StartNodeData[] =
-				isPartialExecution && version === 2
-					? []
-					: startNodeNames.map((name) => {
-							// Find for each start node the source data
-							let sourceData = get(runData, [name, 0, 'source', 0], null);
-							if (sourceData === null) {
-								const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
-								const executeData = workflowHelpers.executeData(
-									parentNodes,
-									name,
-									NodeConnectionType.Main,
-									0,
-								);
-								sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
-							}
-							return {
-								name,
-								sourceData,
-							};
-						});
+
+			// TODO: this will be redundant once we cleanup the partial execution v1
+			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
+				// Find for each start node the source data
+				let sourceData = get(runData, [name, 0, 'source', 0], null);
+				if (sourceData === null) {
+					const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+					const executeData = workflowHelpers.executeData(
+						parentNodes,
+						name,
+						NodeConnectionType.Main,
+						0,
+					);
+					sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+				}
+				return {
+					name,
+					sourceData,
+				};
+			});
 
 			const singleWebhookTrigger = triggers.find((node) =>
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
