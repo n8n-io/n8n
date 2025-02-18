@@ -95,12 +95,11 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getNodeViewTab } from '@/utils/canvasUtils';
+import { getFixedNodesList, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
-import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus, N8nCallout } from 'n8n-design-system';
@@ -902,7 +901,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 	initializeWorkspace({
 		...workflowData,
-		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
+		nodes: getFixedNodesList<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
 
 	fitView();
