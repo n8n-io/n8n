@@ -1,5 +1,5 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { MaybeRef, Ref } from 'vue';
 import { computed, unref } from 'vue';
 
@@ -102,8 +102,8 @@ export const useKeybindings = (
 	function toShortcutString(event: KeyboardEvent) {
 		const { shiftKey, altKey } = event;
 		const ctrlKey = isCtrlKeyPressed(event);
-		const keys = [event.key];
-		const codes = [keyboardEventCodeToKey(event.code)];
+		const keys = 'key' in event ? [event.key] : [];
+		const codes = 'code' in event ? [keyboardEventCodeToKey(event.code)] : [];
 		const modifiers: string[] = [];
 
 		if (shiftKey) {

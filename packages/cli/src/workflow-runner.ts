@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from '@n8n/di';
+import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -11,7 +12,6 @@ import type {
 	IPinData,
 	IRun,
 	WorkflowExecuteMode,
-	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
@@ -20,7 +20,13 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExternalHooks } from '@/external-hooks';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import {
+	getLifecycleHooksForRegularMain,
+	getLifecycleHooksForScalingWorker,
+	getLifecycleHooksForScalingMain,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
@@ -29,9 +35,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { ExecutionNotFoundError } from './errors/execution-not-found-error';
-import { EventService } from './events/event.service';
-import { ManualExecutionService } from './manual-execution.service';
+import { MaxStalledCountError } from './errors/max-stalled-count.error';
 
 @Service()
 export class WorkflowRunner {
@@ -44,11 +48,9 @@ export class WorkflowRunner {
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly externalHooks: ExternalHooks,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 	) {}
@@ -59,7 +61,7 @@ export class WorkflowRunner {
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
-		hooks?: WorkflowHooks,
+		hooks?: ExecutionLifecycleHooks,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -114,9 +116,7 @@ export class WorkflowRunner {
 		// set the execution to failed.
 		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		if (hooks) {
-			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
-		}
+		await hooks?.runHook('workflowExecuteAfter', [fullRunData]);
 	}
 
 	/** Run the workflow
@@ -138,12 +138,9 @@ export class WorkflowRunner {
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
-				undefined,
-				data.executionData,
-			]);
-			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+			await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
@@ -163,7 +160,6 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -174,35 +170,17 @@ export class WorkflowRunner {
 			data.executionMode === 'manual'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			postExecutePromise
-				.then(async (executionData) => {
-					this.eventService.emit('workflow-post-execute', {
-						workflow: data.workflowData,
-						executionId,
-						userId: data.userId,
-						runData: executionData,
-					});
-					if (this.externalHooks.exists('workflow.postExecute')) {
-						try {
-							await this.externalHooks.run('workflow.postExecute', [
-								executionData,
-								data.workflowData,
-								executionId,
-							]);
-						} catch (error) {
-							this.errorReporter.error(error);
-							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
-						}
-					}
-				})
-				.catch((error) => {
-					if (error instanceof ExecutionCancelledError) return;
-					this.errorReporter.error(error);
-					this.logger.error(
-						'There was a problem running internal hook "onWorkflowPostExecute"',
-						error,
-					);
+			postExecutePromise.catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				this.errorReporter.error(error, {
+					extra: { executionId, workflowId },
 				});
+				this.logger.error('There was an error in the post-execution promise', {
+					error,
+					executionId,
+					workflowId,
+				});
+			});
 		}
 
 		return executionId;
@@ -267,13 +245,12 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+			additionalData.hooks = lifecycleHooks;
 
-			additionalData.hooks.hookFunctions.sendResponse = [
-				async (response: IExecuteResponsePromiseData): Promise<void> => {
-					this.activeExecutions.resolveResponsePromise(executionId, response);
-				},
-			];
+			lifecycleHooks.addHandler('sendResponse', (response) => {
+				this.activeExecutions.resolveResponsePromise(executionId, response);
+			});
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
@@ -364,30 +341,20 @@ export class WorkflowRunner {
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
-		let hooks: WorkflowHooks;
+		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
-			);
+			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
+			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
-			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
-			);
-			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
+			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
+			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
 			throw error;
 		}
 
@@ -397,17 +364,17 @@ export class WorkflowRunner {
 				onCancel(async () => {
 					await this.scalingService.stopJob(job);
 
-					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
+					const error = new ExecutionCancelledError(executionId);
+					await this.processError(
+						error,
+						new Date(),
 						data.executionMode,
 						executionId,
-						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						lifecycleHooks,
 					);
-
-					const error = new ExecutionCancelledError(executionId);
-					await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
 
 					reject(error);
 				});
@@ -415,15 +382,24 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
-					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+					if (
+						error instanceof Error &&
+						error.message.includes('job stalled more than maxStalledCount')
+					) {
+						error = new MaxStalledCountError(error);
+					}
+
+					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
+
+					await this.processError(
+						error,
+						new Date(),
 						data.executionMode,
 						executionId,
-						data.workflowData,
-						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
+						lifecycleHooks,
 					);
-					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);
 				}
@@ -449,7 +425,7 @@ export class WorkflowRunner {
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
-				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 
 				resolve(runData);
 			},

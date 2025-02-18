@@ -9,9 +9,11 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -25,7 +27,9 @@ import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
+import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -62,6 +66,9 @@ export class SourceControlImportService {
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
+		private readonly workflowService: WorkflowService,
+		private readonly credentialsService: CredentialsService,
+		private readonly tagService: TagService,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -498,6 +505,30 @@ export class SourceControlImportService {
 		await this.variablesService.updateCache();
 
 		return result;
+	}
+
+	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.workflowService.delete(user, candidate.id);
+		}
+	}
+
+	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.credentialsService.delete(user, candidate.id);
+		}
+	}
+
+	async deleteVariablesNotInWorkfolder(candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.variablesService.delete(candidate.id);
+		}
+	}
+
+	async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.tagService.delete(candidate.id);
+		}
 	}
 
 	private async findOrCreateOwnerProject(owner: ResourceOwner): Promise<Project | null> {

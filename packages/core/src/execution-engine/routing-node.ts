@@ -6,24 +6,25 @@
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { NodeHelpers, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeApiError,
+	NodeOperationError,
+	sleep,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	DeclarativeRestApiSettings,
-	IRunExecutionData,
-	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	WorkflowExecuteMode,
 	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
@@ -33,70 +34,39 @@ import type {
 	NodeParameterValueType,
 	PostReceiveAction,
 	JsonObject,
-	CloseFunction,
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
-	Workflow,
 } from 'n8n-workflow';
 import url from 'node:url';
 
-import { ExecuteContext, ExecuteSingleContext } from './node-execution-context';
+import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 
 export class RoutingNode {
-	additionalData: IWorkflowExecuteAdditionalData;
-
-	connectionInputData: INodeExecutionData[];
-
-	node: INode;
-
-	mode: WorkflowExecuteMode;
-
-	runExecutionData: IRunExecutionData;
-
-	workflow: Workflow;
-
 	constructor(
-		workflow: Workflow,
-		node: INode,
-		connectionInputData: INodeExecutionData[],
-		runExecutionData: IRunExecutionData,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-	) {
-		this.additionalData = additionalData;
-		this.connectionInputData = connectionInputData;
-		this.runExecutionData = runExecutionData;
-		this.mode = mode;
-		this.node = node;
-		this.workflow = workflow;
-	}
+		private readonly context: ExecuteContext,
+		private readonly nodeType: INodeType,
+		private readonly credentialsDecrypted?: ICredentialsDecrypted,
+	) {}
 
 	// eslint-disable-next-line complexity
-	async runNode(
-		inputData: ITaskDataConnections,
-		runIndex: number,
-		nodeType: INodeType,
-		executeData: IExecuteData,
-		credentialsDecrypted?: ICredentialsDecrypted,
-		abortSignal?: AbortSignal,
-	): Promise<INodeExecutionData[][] | null | undefined> {
-		const items = inputData.main[0] as INodeExecutionData[];
-		const returnData: INodeExecutionData[] = [];
-
-		const closeFunctions: CloseFunction[] = [];
-		const executeFunctions = new ExecuteContext(
-			this.workflow,
-			this.node,
-			this.additionalData,
-			this.mode,
-			this.runExecutionData,
-			runIndex,
-			this.connectionInputData,
-			inputData,
+	async runNode(): Promise<INodeExecutionData[][] | undefined> {
+		const { context, nodeType, credentialsDecrypted } = this;
+		const {
+			additionalData,
 			executeData,
-			closeFunctions,
-			abortSignal,
-		);
+			inputData,
+			node,
+			workflow,
+			mode,
+			runIndex,
+			connectionInputData,
+			runExecutionData,
+		} = context;
+		const abortSignal = context.getExecutionCancelSignal();
+
+		const items = (inputData[NodeConnectionType.Main] ??
+			inputData[NodeConnectionType.AiTool])[0] as INodeExecutionData[];
+		const returnData: INodeExecutionData[] = [];
 
 		let credentialDescription: INodeCredentialDescription | undefined;
 
@@ -104,17 +74,14 @@ export class RoutingNode {
 			if (nodeType.description.credentials.length === 1) {
 				credentialDescription = nodeType.description.credentials[0];
 			} else {
-				const authenticationMethod = executeFunctions.getNodeParameter(
-					'authentication',
-					0,
-				) as string;
+				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
 				credentialDescription = nodeType.description.credentials.find((x) =>
 					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
 				);
 				if (!credentialDescription) {
 					throw new NodeOperationError(
-						this.node,
-						`Node type "${this.node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						node,
+						`Node type "${node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
 						{ level: 'warning' },
 					);
 				}
@@ -127,7 +94,7 @@ export class RoutingNode {
 		} else if (credentialDescription) {
 			try {
 				credentials =
-					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(
+					(await context.getCredentials<ICredentialDataDecryptedObject>(
 						credentialDescription.name,
 						0,
 					)) || {};
@@ -142,7 +109,7 @@ export class RoutingNode {
 			}
 		}
 
-		const { batching } = executeFunctions.getNodeParameter('requestOptions', 0, {}) as {
+		const { batching } = context.getNodeParameter('requestOptions', 0, {}) as {
 			batching: { batch: { batchSize: number; batchInterval: number } };
 		};
 
@@ -163,13 +130,13 @@ export class RoutingNode {
 			}
 
 			const thisArgs = new ExecuteSingleContext(
-				this.workflow,
-				this.node,
-				this.additionalData,
-				this.mode,
-				this.runExecutionData,
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
 				runIndex,
-				this.connectionInputData,
+				connectionInputData,
 				inputData,
 				itemIndex,
 				executeData,
@@ -214,7 +181,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeData,
-						{ $credentials: credentials, $version: this.node.typeVersion },
+						{ $credentials: credentials, $version: node.typeVersion },
 						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -223,14 +190,14 @@ export class RoutingNode {
 			}
 
 			for (const property of nodeType.description.properties) {
-				let value = get(this.node.parameters, property.name, []) as string | NodeParameterValue;
+				let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
 				// If the value is an expression resolve it
 				value = this.getParameterValue(
 					value,
 					itemIndex,
 					runIndex,
 					executeData,
-					{ $credentials: credentials, $version: this.node.typeVersion },
+					{ $credentials: credentials, $version: node.typeVersion },
 					false,
 				) as string | NodeParameterValue;
 
@@ -240,7 +207,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					'',
-					{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
+					{ $credentials: credentials, $value: value, $version: node.typeVersion },
 				);
 
 				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
@@ -255,7 +222,7 @@ export class RoutingNode {
 						!(property in proxyParsed) ||
 						proxyParsed[property as keyof typeof proxyParsed] === null
 					) {
-						throw new NodeOperationError(this.node, 'The proxy is not value', {
+						throw new NodeOperationError(node, 'The proxy is not value', {
 							runIndex,
 							itemIndex,
 							description: `The proxy URL does not contain a valid value for "${property}"`,
@@ -291,7 +258,7 @@ export class RoutingNode {
 			}
 
 			requestPromises.push(
-				this.makeRoutingRequest(
+				this.makeRequest(
 					itemContext[itemIndex].requestData,
 					itemContext[itemIndex].thisArgs,
 					itemIndex,
@@ -327,7 +294,7 @@ export class RoutingNode {
 					throw error;
 				}
 
-				throw new NodeApiError(this.node, error as JsonObject, {
+				throw new NodeApiError(node, error as JsonObject, {
 					runIndex,
 					itemIndex,
 					message: error?.message,
@@ -347,7 +314,7 @@ export class RoutingNode {
 		return [returnData];
 	}
 
-	mergeOptions(
+	private mergeOptions(
 		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
 		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
@@ -368,7 +335,7 @@ export class RoutingNode {
 		}
 	}
 
-	async runPostReceiveAction(
+	private async runPostReceiveAction(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		action: PostReceiveAction,
 		inputData: INodeExecutionData[],
@@ -380,6 +347,9 @@ export class RoutingNode {
 		if (typeof action === 'function') {
 			return await action.call(executeSingleFunctions, inputData, responseData);
 		}
+
+		const { node } = this.context;
+
 		if (action.type === 'rootProperty') {
 			try {
 				return inputData.flatMap((item) => {
@@ -395,13 +365,14 @@ export class RoutingNode {
 					});
 				});
 			} catch (error) {
-				throw new NodeOperationError(this.node, error as Error, {
+				throw new NodeOperationError(node, error as Error, {
 					runIndex,
 					itemIndex,
 					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
 				});
 			}
 		}
+
 		if (action.type === 'filter') {
 			const passValue = action.properties.pass;
 
@@ -416,7 +387,7 @@ export class RoutingNode {
 						$response: responseData,
 						$responseItem: item.json,
 						$value: parameterValue,
-						$version: this.node.typeVersion,
+						$version: node.typeVersion,
 					},
 					false,
 				) as boolean;
@@ -424,17 +395,19 @@ export class RoutingNode {
 
 			return inputData;
 		}
+
 		if (action.type === 'limit') {
 			const maxResults = this.getParameterValue(
 				action.properties.maxResults,
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
 		}
+
 		if (action.type === 'set') {
 			const { value } = action.properties;
 			// If the value is an expression resolve it
@@ -445,12 +418,13 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+						{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
 						false,
 					) as IDataObject,
 				},
 			];
 		}
+
 		if (action.type === 'sort') {
 			// Sort the returned options
 			const sortKey = action.properties.key;
@@ -468,6 +442,7 @@ export class RoutingNode {
 
 			return inputData;
 		}
+
 		if (action.type === 'setKeyValue') {
 			const returnData: INodeExecutionData[] = [];
 
@@ -491,7 +466,7 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
-							$version: this.node.typeVersion,
+							$version: node.typeVersion,
 						},
 						false,
 					) as string;
@@ -503,6 +478,7 @@ export class RoutingNode {
 
 			return returnData;
 		}
+
 		if (action.type === 'binaryData') {
 			const body = (responseData.body = Buffer.from(responseData.body as string));
 			let { destinationProperty } = action.properties;
@@ -512,7 +488,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
 				false,
 			) as string;
 
@@ -535,7 +511,7 @@ export class RoutingNode {
 		return [];
 	}
 
-	async postProcessResponseData(
+	private async postProcessResponseData(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		responseData: IN8nHttpFullResponse,
 		requestData: DeclarativeRestApiSettings.ResultOptions,
@@ -580,7 +556,7 @@ export class RoutingNode {
 		return returnData;
 	}
 
-	async rawRoutingRequest(
+	private async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		credentialType?: string,
@@ -604,7 +580,7 @@ export class RoutingNode {
 		return responseData;
 	}
 
-	async makeRoutingRequest(
+	private async makeRequest(
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
@@ -639,6 +615,7 @@ export class RoutingNode {
 			);
 		};
 
+		const { node } = this.context;
 		const executePaginationFunctions = Object.create(executeSingleFunctions, {
 			makeRoutingRequest: { value: makeRoutingRequest },
 		}) as IExecutePaginationFunctions;
@@ -669,7 +646,7 @@ export class RoutingNode {
 					const additionalKeys = {
 						$request: requestData.options,
 						$response: {} as IN8nHttpFullResponse,
-						$version: this.node.typeVersion,
+						$version: node.typeVersion,
 					};
 
 					do {
@@ -763,7 +740,7 @@ export class RoutingNode {
 								| undefined;
 							if (tempResponseValue === undefined) {
 								throw new NodeOperationError(
-									this.node,
+									node,
 									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
 									{ runIndex, itemIndex },
 								);
@@ -801,7 +778,7 @@ export class RoutingNode {
 		return responseData;
 	}
 
-	getParameterValue(
+	private getParameterValue(
 		parameterValue: NodeParameterValueType,
 		itemIndex: number,
 		runIndex: number,
@@ -813,14 +790,15 @@ export class RoutingNode {
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
 		) {
-			return this.workflow.expression.getParameterValue(
+			const { node, workflow, mode, connectionInputData, runExecutionData } = this.context;
+			return workflow.expression.getParameterValue(
 				parameterValue,
-				this.runExecutionData ?? null,
+				runExecutionData ?? null,
 				runIndex,
 				itemIndex,
-				this.node.name,
-				this.connectionInputData,
-				this.mode,
+				node.name,
+				connectionInputData,
+				mode,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,
@@ -851,14 +829,8 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		if (
-			!NodeHelpers.displayParameter(
-				this.node.parameters,
-				nodeProperties,
-				this.node,
-				this.node.parameters,
-			)
-		) {
+		const { node } = this.context;
+		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node, node.parameters)) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {
@@ -1032,7 +1004,7 @@ export class RoutingNode {
 		let value;
 		if (nodeProperties.type === 'options') {
 			const optionValue = NodeHelpers.getParameterValueByPath(
-				this.node.parameters,
+				node.parameters,
 				nodeProperties.name,
 				basePath.slice(0, -1),
 			);
@@ -1050,14 +1022,14 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: this.node.typeVersion },
+					{ $value: optionValue, $version: node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
 			}
 		} else if (nodeProperties.type === 'collection') {
 			value = NodeHelpers.getParameterValueByPath(
-				this.node.parameters,
+				node.parameters,
 				nodeProperties.name,
 				basePath.slice(0, -1),
 			);
@@ -1074,7 +1046,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
-						{ $version: this.node.typeVersion },
+						{ $version: node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1085,7 +1057,7 @@ export class RoutingNode {
 			for (const propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
 				// Check if the option got set and if not skip it
 				value = NodeHelpers.getParameterValueByPath(
-					this.node.parameters,
+					node.parameters,
 					propertyOptions.name,
 					basePath.slice(0, -1),
 				);

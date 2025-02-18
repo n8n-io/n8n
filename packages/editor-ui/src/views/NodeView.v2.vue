@@ -68,8 +68,8 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -166,7 +166,8 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
+const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebhook } =
+	useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -186,6 +187,7 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	importTemplate,
 	revertAddNode,
 	createConnection,
 	revertCreateConnection,
@@ -203,6 +205,7 @@ const {
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
+	toggleChatOpen,
 } = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
@@ -349,6 +352,10 @@ async function initializeRoute(force = false) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
 
+			if (!isDemoRoute.value) {
+				await loadCredentials();
+			}
+
 			// If there is no workflow id, treat it as a new workflow
 			if (isNewWorkflowRoute.value || !workflowId.value) {
 				if (route.meta?.nodeView === true) {
@@ -359,12 +366,8 @@ async function initializeRoute(force = false) {
 
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
-			await loadCredentials();
-
 			void nextTick(() => {
-				nodeHelpers.updateNodesInputIssues();
-				nodeHelpers.updateNodesCredentialsIssues();
-				nodeHelpers.updateNodesParameterIssues();
+				updateNodesIssues();
 			});
 		}
 
@@ -394,9 +397,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			trackOpenWorkflowFromOnboardingTemplate();
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
-			editableWorkflow.value.homeProject,
-		);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -407,6 +408,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
 	}
+}
+
+function updateNodesIssues() {
+	nodeHelpers.updateNodesInputIssues();
+	nodeHelpers.updateNodesCredentialsIssues();
+	nodeHelpers.updateNodesParameterIssues();
 }
 
 /**
@@ -470,16 +477,13 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	executionsStore.activeExecution = null;
 
 	isBlankRedirect.value = true;
+	const templateId = workflow.meta.templateId;
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId: workflow.meta.templateId },
+		query: { templateId },
 	});
 
-	const convertedNodes = workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
-
-	workflowsStore.setConnections(workflow.connections);
-	await addNodes(convertedNodes);
-	await workflowsStore.getNewWorkflowData(workflow.name, projectsStore.currentProjectId);
+	await importTemplate({ id: templateId, name: workflow.name, workflow });
 
 	uiStore.stateIsDirty = true;
 
@@ -520,12 +524,7 @@ async function openWorkflowTemplate(templateId: string) {
 	isBlankRedirect.value = true;
 	await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
-	const convertedNodes = data.workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
-
-	workflowsStore.setConnections(data.workflow.connections);
-	await addNodes(convertedNodes);
-	await workflowsStore.getNewWorkflowData(data.name, projectsStore.currentProjectId);
-	workflowsStore.addToWorkflowMetadata({ templateId });
+	await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
 
 	uiStore.stateIsDirty = true;
 
@@ -746,6 +745,9 @@ function onRenameNode(parameterData: IUpdateInformation) {
 
 async function onOpenRenameNodeModal(id: string) {
 	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+
+	if (!keyBindingsEnabled.value || document.querySelector('.rename-prompt')) return;
+
 	try {
 		const promptResponsePromise = message.prompt(
 			i18n.baseText('nodeView.prompt.newName') + ':',
@@ -820,8 +822,8 @@ function onClickNodeAdd(source: string, sourceHandle: string) {
 async function loadCredentials() {
 	let options: { workflowId: string } | { projectId: string };
 
-	if (editableWorkflow.value) {
-		options = { workflowId: editableWorkflow.value.id };
+	if (workflowId.value) {
+		options = { workflowId: workflowId.value };
 	} else {
 		const queryParam =
 			typeof route.query?.projectId === 'string' ? route.query?.projectId : undefined;
@@ -1100,29 +1102,6 @@ const isClearExecutionButtonVisible = computed(
 
 const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 
-async function onRunWorkflow() {
-	trackRunWorkflow();
-
-	void runWorkflow({});
-}
-
-function trackRunWorkflow() {
-	void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
-		const telemetryPayload = {
-			workflow_id: workflowId.value,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{ isCloudDeployment: settingsStore.isCloudDeployment },
-				).nodeGraph,
-			),
-		};
-		telemetry.track('User clicked execute workflow button', telemetryPayload);
-		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
-	});
-}
-
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
@@ -1154,6 +1133,10 @@ async function onOpenExecution(executionId: string) {
 	if (!data) {
 		return;
 	}
+
+	void nextTick(() => {
+		updateNodesIssues();
+	});
 
 	canvasStore.stopLoading();
 	fitView();
@@ -1280,14 +1263,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
-
-	const payload = {
-		workflow_id: workflowId.value,
-	};
-
-	void externalHooks.run('nodeView.onOpenChat', payload);
-	telemetry.track('User clicked chat open button', payload);
+	await toggleChatOpen('main');
 }
 
 /**
@@ -1736,7 +1712,6 @@ onBeforeUnmount(() => {
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
 		:executing="isWorkflowRunning"
-		:show-bug-reporting-button="!isDemoRoute || !!executionsStore.activeExecution"
 		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
@@ -1763,7 +1738,7 @@ onBeforeUnmount(() => {
 		@duplicate:nodes="onDuplicateNodes"
 		@copy:nodes="onCopyNodes"
 		@cut:nodes="onCutNodes"
-		@run:workflow="onRunWorkflow"
+		@run:workflow="runEntireWorkflow('main')"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
@@ -1780,12 +1755,12 @@ onBeforeUnmount(() => {
 				:executing="isWorkflowRunning"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
 				@mouseleave="onRunWorkflowButtonMouseLeave"
-				@click="onRunWorkflow"
+				@click="runEntireWorkflow('main')"
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
 				:type="isChatOpen ? 'tertiary' : 'primary'"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
 				@click="onOpenChat"
 			/>
 			<CanvasStopCurrentExecutionButton

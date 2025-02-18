@@ -43,14 +43,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
 	constructor(
-		protected readonly workflow: Workflow,
-		protected readonly node: INode,
-		protected readonly additionalData: IWorkflowExecuteAdditionalData,
-		protected readonly mode: WorkflowExecuteMode,
-		protected readonly runExecutionData: IRunExecutionData | null = null,
-		protected readonly runIndex = 0,
-		protected readonly connectionInputData: INodeExecutionData[] = [],
-		protected readonly executeData?: IExecuteData,
+		readonly workflow: Workflow,
+		readonly node: INode,
+		readonly additionalData: IWorkflowExecuteAdditionalData,
+		readonly mode: WorkflowExecuteMode,
+		readonly runExecutionData: IRunExecutionData | null = null,
+		readonly runIndex = 0,
+		readonly connectionInputData: INodeExecutionData[] = [],
+		readonly executeData?: IExecuteData,
 	) {}
 
 	@Memoized
@@ -79,18 +79,24 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.workflow.getStaticData(type, this.node);
 	}
 
-	getChildNodes(nodeName: string) {
+	getChildNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
 		const output: NodeTypeAndVersion[] = [];
 		const nodeNames = this.workflow.getChildNodes(nodeName);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
-			output.push({
+			const entry: NodeTypeAndVersion = {
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: node.disabled ?? false,
-			});
+			};
+
+			if (options?.includeNodeParameters) {
+				entry.parameters = node.parameters;
+			}
+
+			output.push(entry);
 		}
 		return output;
 	}

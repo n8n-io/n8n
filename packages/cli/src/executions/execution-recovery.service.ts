@@ -8,10 +8,9 @@ import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
-import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -25,7 +24,6 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -73,7 +71,7 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || execution.status === 'success') return null;
+		if (!execution || (execution.status === 'success' && execution.data)) return null;
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 
@@ -176,20 +174,14 @@ export class ExecutionRecoveryService {
 	private async runHooks(execution: IExecutionResponse) {
 		execution.data ??= { resultData: { runData: {} } };
 
-		this.eventService.emit('workflow-post-execute', {
-			workflow: execution.workflowData,
-			executionId: execution.id,
-			runData: execution,
-		});
-
-		const externalHooks = getWorkflowHooksMain(
+		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{
 				userId: '',
 				workflowData: execution.workflowData,
 				executionMode: execution.mode,
 				executionData: execution.data,
 				runData: execution.data.resultData.runData,
-				retryOf: execution.retryOf,
+				retryOf: execution.retryOf ?? undefined,
 			},
 			execution.id,
 		);
@@ -204,6 +196,6 @@ export class ExecutionRecoveryService {
 			status: execution.status,
 		};
 
-		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
+		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
 	}
 }

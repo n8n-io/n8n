@@ -2,7 +2,12 @@ import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { useTypescript } from '@/plugins/codemirror/typescript/client/useTypescript';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
-import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import {
+	closeBrackets,
+	closeBracketsKeymap,
+	closeCompletion,
+	completionStatus,
+} from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
@@ -154,10 +159,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		}
 	}
 
-	const emitChanges = debounce((update: ViewUpdate) => {
-		onChange(update);
-	}, 300);
-	const lastChange = ref<ViewUpdate>();
+	const emitChanges = debounce(onChange, 300);
 
 	function onEditorUpdate(update: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(update.view.state);
@@ -168,7 +170,6 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		);
 
 		if (update.docChanged && !shouldIgnoreUpdate) {
-			lastChange.value = update;
 			hasChanges.value = true;
 			emitChanges(update);
 		}
@@ -294,6 +295,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				},
 			}),
 			keymap.of(editorKeymap),
+			keymap.of(closeBracketsKeymap),
 		];
 
 		const parsedStoredState = jsonParse<IDataObject | null>(
@@ -375,9 +377,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				localStorage.removeItem(storedStateId.value);
 			}
 
-			if (lastChange.value) {
-				onChange(lastChange.value);
-			}
+			emitChanges.flush();
 			editor.value.destroy();
 		}
 	});

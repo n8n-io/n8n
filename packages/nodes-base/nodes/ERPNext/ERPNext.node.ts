@@ -27,6 +27,7 @@ export class ERPNext implements INodeType {
 		defaults: {
 			name: 'ERPNext',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

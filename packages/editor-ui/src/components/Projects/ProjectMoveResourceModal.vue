@@ -13,6 +13,7 @@ import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuc
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const props = defineProps<{
 	modalName: string;
@@ -20,6 +21,7 @@ const props = defineProps<{
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: ResourceType;
 		resourceTypeLabel: string;
+		eventBus?: EventBus;
 	};
 }>();
 
@@ -39,11 +41,13 @@ const availableProjects = computed(() =>
 		'name',
 		projectsStore.availableProjects.filter(
 			(p) =>
-				p.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				p.id !== props.data.resource.homeProject?.id &&
 				(!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create),
 		),
 	),
+);
+const filteredProjects = computed(() =>
+	availableProjects.value.filter((p) => p.name?.toLowerCase().includes(filter.value.toLowerCase())),
 );
 const selectedProject = computed(() =>
 	availableProjects.value.find((p) => p.id === projectId.value),
@@ -102,6 +106,13 @@ const moveResource = async () => {
 			type: 'success',
 			duration: 8000,
 		});
+		if (props.data.eventBus) {
+			props.data.eventBus.emit('resource-moved', {
+				resourceId: props.data.resource.id,
+				resourceType: props.data.resourceType,
+				targetProjectId: selectedProject.value.id,
+			});
+		}
 	} catch (error) {
 		toast.showError(
 			error.message,
@@ -169,7 +180,7 @@ onMounted(() => {
 						<N8nIcon icon="search" />
 					</template>
 					<N8nOption
-						v-for="p in availableProjects"
+						v-for="p in filteredProjects"
 						:key="p.id"
 						:value="p.id"
 						:label="p.name"

@@ -1,4 +1,4 @@
-import type { INode, IRunData } from 'n8n-workflow';
+import { NodeConnectionType, type INode, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 
@@ -16,10 +16,22 @@ export function cleanRunData(
 
 	for (const startNode of startNodes) {
 		delete newRunData[startNode.name];
-		const children = graph.getChildren(startNode);
 
-		for (const child of children) {
-			delete newRunData[child.name];
+		const children = graph.getChildren(startNode);
+		for (const node of [startNode, ...children]) {
+			delete newRunData[node.name];
+
+			// Delete runData for subNodes
+			const subNodeConnections = graph.getParentConnections(node);
+			for (const subNodeConnection of subNodeConnections) {
+				// Sub nodes never use the Main connection type, so this filters out
+				// the connection that goes upstream of the startNode.
+				if (subNodeConnection.type === NodeConnectionType.Main) {
+					continue;
+				}
+
+				delete newRunData[subNodeConnection.from.name];
+			}
 		}
 	}
 

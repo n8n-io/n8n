@@ -24,6 +24,7 @@ export class Drift implements INodeType {
 		defaults: {
 			name: 'Drift',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

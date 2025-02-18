@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -20,7 +21,7 @@ import type {
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
 import type { IDataObject, INodeInputConfiguration, NodeParameterValueType } from 'n8n-workflow';
-import { NodeConnectionType, nodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -121,10 +122,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		createNodeActive,
 		nodeCreatorView,
 	}: ToggleNodeCreatorOptions) {
-		if (createNodeActive === isCreateNodeActive.value) {
-			return;
-		}
-
 		if (!nodeCreatorView) {
 			nodeCreatorView =
 				workflowsStore.workflowTriggerNodes.length > 0
@@ -183,18 +180,16 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? null;
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
+		const isOutput = mode === CanvasConnectionMode.Output;
+		const isScopedConnection = type !== NodeConnectionType.Main;
 		setNodeCreatorState({
 			source: eventSource,
 			createNodeActive: true,
-			nodeCreatorView,
+			nodeCreatorView: isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView,
 		});
 
 		// TODO: The animation is a bit glitchy because we're updating view stack immediately
 		// after the node creator is opened
-		const isOutput = mode === CanvasConnectionMode.Output;
-		const isScopedConnection =
-			type !== NodeConnectionType.Main && nodeConnectionTypes.includes(type);
-
 		if (isScopedConnection) {
 			useViewStacks()
 				.gotoCompatibleConnectionView(type, isOutput, getNodeCreatorFilter(sourceNode.name, type))
@@ -360,6 +355,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function onNodeAddedToCanvas(properties: {
+		node_id: string;
 		node_type: string;
 		node_version: number;
 		is_auto_add?: boolean;

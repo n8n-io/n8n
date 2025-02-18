@@ -12,6 +12,8 @@ import type {
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
+	IWorkflowTemplate,
+	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -96,6 +98,7 @@ import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -135,6 +138,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
+	const projectsStore = useProjectsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -281,12 +285,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 								{
 									node: incomingConnection.node,
 									type,
-									index: 0,
+									index: incomingConnection.index,
 								},
 								{
 									node: outgoingConnection.node,
 									type,
-									index: 0,
+									index: outgoingConnection.index,
 								},
 							]),
 						);
@@ -297,11 +301,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						sourceHandle: createCanvasConnectionHandleString({
 							mode: CanvasConnectionMode.Output,
 							type,
+							index: incomingConnection.index,
 						}),
 						target: outgoingNodeId,
 						targetHandle: createCanvasConnectionHandleString({
 							mode: CanvasConnectionMode.Input,
 							type,
+							index: outgoingConnection.index,
 						}),
 					});
 				}
@@ -741,6 +747,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
 		nodeCreatorStore.onNodeAddedToCanvas({
+			node_id: nodeData.id,
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
@@ -1933,6 +1940,39 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
+	async function toggleChatOpen(source: 'node' | 'main') {
+		const workflow = workflowsStore.getCurrentWorkflow();
+
+		workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
+
+		const payload = {
+			workflow_id: workflow.id,
+			button_type: source,
+		};
+
+		void externalHooks.run('nodeView.onOpenChat', payload);
+		telemetry.track('User clicked chat open button', payload);
+	}
+
+	async function importTemplate({
+		id,
+		name,
+		workflow,
+	}: {
+		id: string | number;
+		name?: string;
+		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
+	}) {
+		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+		if (workflow.connections) {
+			workflowsStore.setConnections(workflow.connections);
+		}
+		await addNodes(convertedNodes ?? []);
+		await workflowsStore.getNewWorkflowData(name, projectsStore.currentProjectId);
+		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -1972,11 +2012,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revalidateNodeOutputConnections,
 		isConnectionAllowed,
 		filterConnectionsByNodes,
+		connectAdjacentNodes,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,
 		initializeWorkspace,
 		resolveNodeWebhook,
 		openExecution,
+		toggleChatOpen,
+		importTemplate,
 	};
 }

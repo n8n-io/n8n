@@ -1,3 +1,7 @@
+// Disable task runners until we have fixed the "run test workflows" test
+// to mock the Code Node execution
+process.env.N8N_RUNNERS_ENABLED = 'false';
+
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
 // If you update the tests, please update the diagrams as well.
 // If you add a test, please create a new diagram.
@@ -32,7 +36,6 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	NodeConnectionType,
-	NodeExecutionOutput,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
@@ -40,6 +43,7 @@ import {
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
+import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -239,18 +243,6 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}
-	});
-
-	test('WorkflowExecute, NodeExecutionOutput type test', () => {
-		//TODO Add more tests here when execution hints are added to some node types
-		const nodeExecutionOutput = new NodeExecutionOutput(
-			[[{ json: { data: 123 } }]],
-			[{ message: 'TEXT HINT' }],
-		);
-
-		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
-		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
-		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
 	});
 
 	describe('runPartialWorkflow2', () => {
@@ -1207,6 +1199,7 @@ describe('WorkflowExecute', () => {
 
 		let runExecutionData: IRunExecutionData;
 		let workflowExecute: WorkflowExecute;
+		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
 			runExecutionData = {
@@ -1220,9 +1213,12 @@ describe('WorkflowExecute', () => {
 					waitingExecutionSource: null,
 				},
 			};
-			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+			additionalData = mock();
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
-			jest.spyOn(workflowExecute, 'executeHook').mockResolvedValue(undefined);
+			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+
+			jest.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
 			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
 		});
 
@@ -1290,7 +1286,7 @@ describe('WorkflowExecute', () => {
 			// Verify static data handling
 			expect(result).toBeDefined();
 			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
-			expect(workflowExecute.executeHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
 				result,
 				workflow.staticData,
 			]);

@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "stage_id": {
+            "type": "integer"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "pipeline_id": {
+            "type": "integer"
+        },
+        "products_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "participants_count": {
+            "type": "integer"
+        },
+        "stage_order_nr": {
+            "type": "integer"
+        },
+        "next_activity_duration": {
+            "type": "null"
+        },
+        "formatted_value": {
+            "type": "string"
+        },
+        "formatted_weighted_value": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "org_hidden": {
+            "type": "boolean"
+        },
+        "person_hidden": {
+            "type": "boolean"
+        }
+    }
+}

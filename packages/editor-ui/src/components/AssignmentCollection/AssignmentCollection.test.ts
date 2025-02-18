@@ -107,6 +107,31 @@ describe('AssignmentCollection.vue', () => {
 		);
 	});
 
+	it('does not break with saved assignments that have no ID (legacy)', async () => {
+		const { findAllByTestId } = renderComponent({
+			props: {
+				value: {
+					assignments: [
+						{ name: 'key1', value: 'value1', type: 'string' },
+						{ name: 'key2', value: 'value2', type: 'string' },
+						{ name: 'key3', value: 'value3', type: 'string' },
+					],
+				},
+			},
+		});
+
+		let assignments = await findAllByTestId('assignment');
+
+		expect(assignments.length).toEqual(3);
+
+		// Remove 2nd assignment
+		await userEvent.click(within(assignments[1]).getByTestId('assignment-remove'));
+		assignments = await findAllByTestId('assignment');
+		expect(assignments.length).toEqual(2);
+		expect(getInput(within(assignments[0]).getByTestId('assignment-value'))).toHaveValue('value1');
+		expect(getInput(within(assignments[1]).getByTestId('assignment-value'))).toHaveValue('value3');
+	});
+
 	it('can add assignments by drag and drop (and infer type)', async () => {
 		const { getByTestId, findAllByTestId } = renderComponent();
 		const dropArea = getByTestId('drop-area');
