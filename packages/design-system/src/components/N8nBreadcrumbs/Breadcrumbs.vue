@@ -32,6 +32,7 @@ const emit = defineEmits<{
 	tooltipOpened: [];
 	tooltipClosed: [];
 	hiddenItemsLoadingError: [error: unknown];
+	itemSelected: [item: PathItem];
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -91,6 +92,14 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 	}
 };
 
+const emitItemSelected = (id: string) => {
+	const item = [...loadedHiddenItems.value, ...props.items].find((i) => i.id === id);
+	if (!item) {
+		return;
+	}
+	emit('itemSelected', item);
+};
+
 const handleTooltipShow = async () => {
 	await getHiddenItems();
 };
@@ -132,6 +141,7 @@ onMounted(() => {
 						size="small"
 						icon-orientation="horizontal"
 						@visible-change="onHiddenMenuVisibleChange"
+						@action="emitItemSelected"
 					/>
 				</div>
 				<n8n-tooltip
@@ -165,6 +175,7 @@ onMounted(() => {
 				<li
 					:class="{ [$style.item]: true, [$style.current]: item.current }"
 					data-test-id="breadcrumbs-item"
+					@click.prevent="emitItemSelected(item.id)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
