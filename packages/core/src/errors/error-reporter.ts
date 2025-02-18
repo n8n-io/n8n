@@ -40,12 +40,12 @@ export class ErrorReporter {
 		if (error instanceof Error) {
 			let e = error;
 
-			const { executionId } = options ?? {};
-			const context = executionId ? ` (execution ${executionId})` : '';
-
+			const { executionId, workflowId } = options ?? {};
+			const executionContext = executionId ? ` (execution ${executionId})` : '';
+			const workflowContext = workflowId ? ` (workflow ${workflowId})` : '';
 			do {
 				const msg = [
-					e.message + context,
+					e.message + executionContext + workflowContext,
 					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
 				].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;

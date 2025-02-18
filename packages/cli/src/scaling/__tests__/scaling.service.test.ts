@@ -232,7 +232,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
-			const jobData = mock<JobData>({ executionId: '123' });
+			const jobData = mock<JobData>({ executionId: '123', workflowId: '456' });
 			await scalingService.addJob(jobData, { priority: 100 });
 
 			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {

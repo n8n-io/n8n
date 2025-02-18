@@ -11,6 +11,7 @@ export type JobId = Job['id'];
 
 export type JobData = {
 	executionId: string;
+	workflowId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
 };
@@ -48,6 +49,7 @@ export type RespondToWebhookMessage = {
 export type JobFinishedMessage = {
 	kind: 'job-finished';
 	executionId: string;
+	workflowId: string;
 	workerId: string;
 };
 
@@ -55,6 +57,7 @@ export type JobFinishedMessage = {
 export type JobFailedMessage = {
 	kind: 'job-failed';
 	executionId: string;
+	workflowId: string;
 	workerId: string;
 	errorMsg: string;
 	errorStack: string;

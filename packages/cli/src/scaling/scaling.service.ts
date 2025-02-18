@@ -108,17 +108,22 @@ export class ScalingService {
 	}
 
 	private async reportJobProcessingError(error: Error, job: Job) {
-		const { executionId } = job.data;
+		const { executionId, workflowId } = job.data;
 
-		this.logger.error(`Worker errored while running execution ${executionId} (job ${job.id})`, {
-			error,
-			executionId,
-			jobId: job.id,
-		});
+		this.logger.error(
+			`Worker errored while running execution ${executionId} (job ${job.id}) (workflow ${workflowId})`,
+			{
+				error,
+				executionId,
+				workflowId,
+				jobId: job.id,
+			},
+		);
 
 		const msg: JobFailedMessage = {
 			kind: 'job-failed',
 			executionId,
+			workflowId,
 			workerId: this.instanceSettings.hostId,
 			errorMsg: error.message,
 			errorStack: error.stack ?? '',
@@ -126,7 +131,7 @@ export class ScalingService {
 
 		await job.progress(msg);
 
-		this.errorReporter.error(error, { executionId });
+		this.errorReporter.error(error, { executionId, workflowId });
 
 		throw error;
 	}
@@ -194,10 +199,14 @@ export class ScalingService {
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		const { executionId } = jobData;
+		const { executionId, workflowId } = jobData;
 		const jobId = job.id;
 
-		this.logger.info(`Enqueued execution ${executionId} (job ${jobId})`, { executionId, jobId });
+		this.logger.info(`Enqueued execution ${executionId} (job ${jobId}) (workflow ${workflowId})`, {
+			executionId,
+			jobId,
+			workflowId,
+		});
 
 		return job;
 	}
@@ -305,33 +314,47 @@ export class ScalingService {
 			// than natively provided by Bull in `global:completed` and `global:failed` events
 
 			switch (msg.kind) {
-				case 'respond-to-webhook':
+				case 'respond-to-webhook': {
 					const decodedResponse = this.decodeWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
-				case 'job-finished':
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
-						workerId: msg.workerId,
-						executionId: msg.executionId,
-						jobId,
-					});
-					break;
-				case 'job-failed':
-					this.logger.error(
-						[
-							`Execution ${msg.executionId} (job ${jobId}) failed`,
-							msg.errorStack ? `\n${msg.errorStack}\n` : '',
-						].join(''),
+				}
+
+				case 'job-finished': {
+					const { executionId, workflowId, workerId } = msg;
+					this.logger.info(
+						`Execution ${executionId} (job ${jobId}) (workflow ${workflowId}) finished successfully`,
 						{
-							workerId: msg.workerId,
-							errorMsg: msg.errorMsg,
-							executionId: msg.executionId,
+							workerId,
+							executionId,
+							workflowId,
 							jobId,
 						},
 					);
 					break;
+				}
+
+				case 'job-failed': {
+					const { executionId, workflowId, workerId, errorMsg, errorStack } = msg;
+					this.logger.error(
+						[
+							`Execution ${executionId} (job ${jobId}) (workflow ${workflowId}) failed`,
+							errorStack ? `\n${errorStack}\n` : '',
+						].join(''),
+						{
+							workerId,
+							errorMsg,
+							executionId,
+							workflowId,
+							jobId,
+						},
+					);
+					break;
+				}
+
 				case 'abort-job':
 					break; // only for worker
+
 				default:
 					assertNever(msg);
 			}

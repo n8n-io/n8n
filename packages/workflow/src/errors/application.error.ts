@@ -6,6 +6,7 @@ export type Level = 'warning' | 'error' | 'fatal' | 'info';
 export type ReportingOptions = {
 	level?: Level;
 	executionId?: string;
+	workflowId?: string;
 } & Pick<Event, 'tags' | 'extra'>;
 
 export class ApplicationError extends Error {
