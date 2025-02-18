@@ -3,7 +3,8 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
+import type { ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import type { InstanceType } from '@/instance-settings';
@@ -44,11 +45,15 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [
-					e.message + context,
-					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
-				].join('');
-				const meta = e instanceof ApplicationError ? e.extra : undefined;
+				let stack = '';
+				let meta = undefined;
+				if (e instanceof ApplicationError || e instanceof BaseError) {
+					if (e.level === 'error' && e.stack) {
+						stack = `\n${e.stack}\n`;
+					}
+					meta = e.extra;
+				}
+				const msg = [e.message + context, stack].join('');
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
@@ -137,11 +142,17 @@ export class ErrorReporter {
 
 		if (originalException instanceof AxiosError) return null;
 
+		if (originalException instanceof BaseError) {
+			if (!originalException.shouldReport) return null;
+
+			this.extractEventDetailsFromN8nError(event, originalException);
+		}
+
 		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (this.isApplicationError(originalException)) {
+		if (originalException instanceof ApplicationError) {
 			if (this.isIgnoredApplicationError(originalException)) return null;
 
-			this.extractEventDetailsFromApplicationError(event, originalException);
+			this.extractEventDetailsFromN8nError(event, originalException);
 		}
 
 		if (
@@ -193,17 +204,13 @@ export class ErrorReporter {
 		);
 	}
 
-	private isApplicationError(error: unknown): error is ApplicationError {
-		return error instanceof ApplicationError;
-	}
-
 	private isIgnoredApplicationError(error: ApplicationError) {
 		return error.level === 'warning';
 	}
 
-	private extractEventDetailsFromApplicationError(
+	private extractEventDetailsFromN8nError(
 		event: ErrorEvent,
-		originalException: ApplicationError,
+		originalException: ApplicationError | BaseError,
 	) {
 		const { level, extra, tags } = originalException;
 		event.level = level;
