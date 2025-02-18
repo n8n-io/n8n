@@ -951,6 +951,28 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
+	test('should ignore sharing with owner project', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+
+		// ACT
+		const response = await authOwnerAgent
+			.put(`/credentials/${credential.id}/share`)
+			.send({ shareWithIds: [project.id] });
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: credential.id },
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+
+		expect(sharedCredentials).toHaveLength(1);
+		expect(sharedCredentials[0].projectId).toBe(project.id);
+		expect(sharedCredentials[0].role).toBe('credential:owner');
+	});
+
 	test('should respond 400 if invalid payload is provided', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
