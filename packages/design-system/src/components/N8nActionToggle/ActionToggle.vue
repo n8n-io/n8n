@@ -16,8 +16,8 @@ interface ActionToggleProps {
 	iconSize?: IconSize;
 	theme?: (typeof THEME)[number];
 	iconOrientation?: IconOrientation;
-	loading: boolean;
-	loadingRowCount: number;
+	loading?: boolean;
+	loadingRowCount?: number;
 }
 
 defineOptions({ name: 'N8nActionToggle' });

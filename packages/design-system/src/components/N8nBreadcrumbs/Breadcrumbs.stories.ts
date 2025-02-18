@@ -95,7 +95,7 @@ export const AsyncLoadingCacheTest = asyncLoadingNoCacheTemplate.bind({});
 AsyncLoadingCacheTest.args = {
 	mode: 'async',
 	testCache: true,
-	title: 'This will bust the cache after hidden items are loaded 2 times',
+	title: '[Demo] This will bust the cache after hidden items are loaded 2 times',
 };
 
 const syncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
@@ -109,7 +109,7 @@ export const SyncLoadingCacheTest = syncLoadingNoCacheTemplate.bind({});
 SyncLoadingCacheTest.args = {
 	mode: 'sync',
 	testCache: true,
-	title: 'This will update the hidden items every time dropdown is opened',
+	title: '[Demo] This will update the hidden items every time dropdown is opened',
 };
 
 const testActions: UserAction[] = [
@@ -196,7 +196,7 @@ const smallAsyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 export const SmallAsyncLoading = smallAsyncLoadingTemplate.bind({});
 SmallAsyncLoading.args = {
 	mode: 'async',
-	title: 'Small version with async loading',
+	title: '[Demo] Small version with async loading',
 	theme: 'small',
 	showBorder: true,
 };

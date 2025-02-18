@@ -12,7 +12,7 @@ exports[`Breadcrumbs > renders custom separator correctly 1`] = `
     <li class="separator" aria-hidden="true">➮</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator" aria-hidden="true">➮</li>
-    <li class="item" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
@@ -30,7 +30,7 @@ exports[`Breadcrumbs > renders default version correctly 1`] = `
     <li class="separator" aria-hidden="true">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator" aria-hidden="true">/</li>
-    <li class="item" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
@@ -49,7 +49,7 @@ exports[`Breadcrumbs > renders slots correctly 1`] = `
     <li class="separator" aria-hidden="true">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator" aria-hidden="true">/</li>
-    <li class="item" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
   <div>[POST] Custom content</div>
@@ -68,7 +68,7 @@ exports[`Breadcrumbs > renders small version correctly 1`] = `
     <li class="separator" aria-hidden="true">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
     <li class="separator" aria-hidden="true">/</li>
-    <li class="item" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
