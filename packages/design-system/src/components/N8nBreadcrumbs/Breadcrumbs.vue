@@ -9,7 +9,6 @@ export type PathItem = {
 	id: string;
 	label: string;
 	href?: string;
-	current?: boolean;
 };
 
 // Items in the truncated path can be provided as an array or a function that returns a promise
@@ -23,6 +22,7 @@ type Props = {
 	showBorder?: boolean;
 	loadingSkeletonRows?: number;
 	separator?: string;
+	highlightLastItem?: boolean;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -41,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showBorder: false,
 	loadingSkeletonRows: 3,
 	separator: '/',
+	highlightLastItem: true,
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -173,7 +174,10 @@ onMounted(() => {
 			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
 			<template v-for="(item, index) in items" :key="item.id">
 				<li
-					:class="{ [$style.item]: true, [$style.current]: item.current }"
+					:class="{
+						[$style.item]: true,
+						[$style.current]: props.highlightLastItem && index === items.length - 1,
+					}"
 					data-test-id="breadcrumbs-item"
 					@click.prevent="emitItemSelected(item.id)"
 				>
