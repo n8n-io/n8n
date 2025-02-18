@@ -1881,6 +1881,64 @@ describe('PUT /:workflowId/transfer', () => {
 		);
 	});
 
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share all the credentials', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
+		const workflow = await createWorkflow({}, sourceProject);
+		const credential = await saveCredential(randomCredentialPayload(), { project: sourceProject });
+		const ownersCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const ownersPersonalProject = await getPersonalProject(owner);
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				shareCredentials: [credential.id, ownersCredential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const allWorkflowSharings = await getWorkflowSharing(workflow);
+		expect(allWorkflowSharings).toHaveLength(1);
+		expect(allWorkflowSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+
+		const ownerCredentialSharings = await getCredentialSharings(ownersCredential);
+		expect(ownerCredentialSharings).toHaveLength(1);
+		expect(ownerCredentialSharings).toEqual([
+			expect.objectContaining({
+				projectId: ownersPersonalProject.id,
+				credentialsId: ownersCredential.id,
+				role: 'credential:owner',
+			}),
+		]);
+	});
+
 	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
 		//
 		// ARRANGE
