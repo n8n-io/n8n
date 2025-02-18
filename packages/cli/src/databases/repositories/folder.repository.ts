@@ -8,13 +8,26 @@ import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
 import { TagEntity } from '../entities/tag-entity';
 
+export const isFolder = (item: unknown): item is Folder =>
+	typeof item === 'object' && item !== null && 'resource' in item && item.resource === 'folder';
+
 @Service()
 export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
 		super(Folder, dataSource.manager);
 	}
 
-	async getMany(options: ListQuery.Options = {}): Promise<[Folder[], number]> {
+	async getManyAndCount(options: ListQuery.Options = {}): Promise<[Folder[], number]> {
+		const query = this.getManyQuery(options);
+		return await query.getManyAndCount();
+	}
+
+	async getMany(options: ListQuery.Options = {}): Promise<Folder[]> {
+		const query = this.getManyQuery(options);
+		return await query.getMany();
+	}
+
+	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {
 		const query = this.createQueryBuilder('folder');
 
 		this.applySelections(query, options.select);
@@ -22,7 +35,7 @@ export class FolderRepository extends Repository<Folder> {
 		this.applySorting(query, options.sortBy);
 		this.applyPagination(query, options);
 
-		return await query.getManyAndCount();
+		return query;
 	}
 
 	private applySelections(

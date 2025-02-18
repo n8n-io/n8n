@@ -151,7 +151,12 @@ export declare namespace CredentialRequest {
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
+	> & {
 		listQueryOptions: ListQuery.Options;
 	};
 

@@ -17,8 +17,10 @@ import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { isFolder } from '@/databases/repositories/folder.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import type { WorkflowAndFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -58,13 +60,33 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+	async getMany(
+		user: User,
+		options?: ListQuery.Options,
+		includeScopes?: boolean,
+		includeFolders?: boolean,
+	) {
+		let count;
+		let workflows;
+		let workflowsAndFolders: WorkflowAndFolderUnionFull[] = [];
+
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
 
-		// eslint-disable-next-line prefer-const
-		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+		if (includeFolders) {
+			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
+				sharedWorkflowIds,
+				options,
+			);
+
+			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
+		} else {
+			({ workflows, count } = await this.workflowRepository.getManyAndCount(
+				sharedWorkflowIds,
+				options,
+			));
+		}
 
 		/*
 			Since we're filtering using project ID as part of the relation,
@@ -82,6 +104,11 @@ export class WorkflowService {
 		}
 
 		this.cleanupSharedField(workflows);
+
+		if (includeFolders) {
+			this.addWorkflowsCount(workflowsAndFolders);
+			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
+		}
 
 		return {
 			workflows,
@@ -135,6 +162,26 @@ export class WorkflowService {
 		workflows.forEach((workflow) => {
 			delete workflow.shared;
 		});
+	}
+
+	private addWorkflowsCount(workflowsAndFolders: WorkflowAndFolderUnionFull[]) {
+		workflowsAndFolders.forEach((wf) => {
+			if (isFolder(wf)) {
+				wf.workflowsCount = wf?.workflows?.length ?? 0;
+				delete wf?.workflows;
+			}
+		});
+	}
+
+	private mergeProcessedWorkflows(
+		workflowsAndFolders: WorkflowAndFolderUnionFull[],
+		processedWorkflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+	) {
+		const workflowMap = new Map(processedWorkflows.map((workflow) => [workflow.id, workflow]));
+
+		return workflowsAndFolders.map((item) =>
+			item.resource === 'workflow' ? (workflowMap.get(item.id) ?? item) : item,
+		);
 	}
 
 	// eslint-disable-next-line complexity

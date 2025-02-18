@@ -9,20 +9,42 @@ import type {
 	FindManyOptions,
 	FindOptionsRelations,
 } from '@n8n/typeorm';
+import { cloneDeep } from 'lodash';
 
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
+import { FolderRepository } from './folder.repository';
+import type { Folder } from '../entities/folder';
 import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
+
+type ResourceType = 'folder' | 'workflow';
+
+type WorkflowAndFolderUnion = {
+	id: string;
+	name: string;
+	resource: ResourceType;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+export type WorkflowAndFolderUnionFull = (
+	| ListQuery.Workflow.Plain
+	| ListQuery.Workflow.WithSharing
+	| (Folder & { workflowsCount?: number })
+) & {
+	resource: ResourceType;
+};
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderRepository: FolderRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
@@ -99,20 +121,147 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
+	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+		options.select = {
+			createdAt: true,
+			updatedAt: true,
+			id: true,
+			name: true,
+		};
+
+		const copyOptions = cloneDeep(options);
+
+		const columnNames = [...Object.keys(options.select), 'resource'];
+
+		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+			copyOptions.sortBy ?? 'updatedAt:asc',
+		);
+
+		delete copyOptions.sortBy;
+
+		const foldersQuery = this.folderRepository
+			.getManyQuery(copyOptions)
+			.addSelect("'folder'", 'resource');
+
+		const workflowsQuery = this.getManyQuery(workflowIds, copyOptions).addSelect(
+			"'workflow'",
+			'resource',
+		);
+
+		return {
+			baseQuery: this.createQueryBuilder()
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', {
+					columnNames,
+				})
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', {
+					columnNames,
+				})
+				.addCommonTableExpression(
+					'SELECT * FROM FOLDERS_QUERY UNION ALL SELECT * FROM WORKFLOWS_QUERY',
+					'RESULT_QUERY',
+				),
+			sortByColumn,
+			sortByDirection,
+		};
+	}
+
+	async getWorkflowsAndFoldersUnion(workflowIds: string[], options: ListQuery.Options = {}) {
+		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
+			workflowIds,
+			options,
+		);
+
+		const query = baseQuery
+			.select('RESULT.*')
+			.from('RESULT_QUERY', 'RESULT')
+			.orderBy(sortByColumn, sortByDirection)
+			.skip(options.skip ?? 0);
+
+		if (options.take) {
+			query.take(options.take);
+		}
+
+		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
+		return workflowsAndFolders.filter(
+			(item, index, self) => index === self.findIndex((obj) => obj.id === item.id),
+		);
+	}
+
+	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, options);
+
+		const response = await baseQuery
+			.select('COUNT(DISTINCT RESULT.id)', 'count')
+			.from('RESULT_QUERY', 'RESULT')
+			.getRawOne<{ count: number }>();
+
+		return response?.count ? response.count : 0;
+	}
+
+	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		const [workflowsAndFolders, count] = await Promise.all([
+			this.getWorkflowsAndFoldersUnion(workflowIds, options),
+			this.getWorkflowsAndFoldersCount(workflowIds, options),
+		]);
+
+		const { workflows, folders } = await this.fetchExtraData(workflowIds);
+
+		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
+			workflows,
+			folders,
+		});
+
+		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	private async fetchExtraData(workflowIds: string[]) {
+		const [workflows, folders] = await Promise.all([
+			this.getMany(workflowIds),
+			this.folderRepository.getMany(),
+		]);
+
+		return { workflows, folders };
+	}
+
+	private enrichDataWithExtras(
+		baseData: WorkflowAndFolderUnion[],
+		extraData: {
+			workflows: ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[];
+			folders: Folder[];
+		},
+	): WorkflowAndFolderUnionFull[] {
+		return baseData.map((item) => {
+			const extraItem =
+				item.resource === 'folder'
+					? extraData.folders.find((folder) => folder.id === item.id)
+					: extraData.workflows.find((workflow) => workflow.id === item.id);
+
+			return extraItem ? { ...item, ...extraItem } : item;
+		});
+	}
+
+	async getMany(workflowIds: string[], options: ListQuery.Options = {}) {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		const query = this.getManyQuery(workflowIds, options);
+
+		const workflows = (await query.getMany()) as
+			| ListQuery.Workflow.Plain[]
+			| ListQuery.Workflow.WithSharing[];
+
+		return workflows;
+	}
+
+	async getManyAndCount(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
 		if (sharedWorkflowIds.length === 0) {
 			return { workflows: [], count: 0 };
 		}
 
-		const qb = this.createBaseQuery(sharedWorkflowIds);
+		const query = this.getManyQuery(sharedWorkflowIds, options);
 
-		this.applyFilters(qb, options.filter);
-		this.applySelect(qb, options.select);
-		this.applyRelations(qb, options.select);
-		this.applySorting(qb, options.sortBy);
-		this.applyPagination(qb, options);
-
-		const [workflows, count] = (await qb.getManyAndCount()) as [
+		const [workflows, count] = (await query.getManyAndCount()) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
@@ -120,9 +269,21 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return { workflows, count };
 	}
 
-	private createBaseQuery(sharedWorkflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
-		return this.createQueryBuilder('workflow').where('workflow.id IN (:...sharedWorkflowIds)', {
-			sharedWorkflowIds,
+	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+		const qb = this.createBaseQuery(workflowIds);
+
+		this.applyFilters(qb, options.filter);
+		this.applySelect(qb, options.select);
+		this.applyRelations(qb, options.select);
+		this.applySorting(qb, options.sortBy);
+		this.applyPagination(qb, options);
+
+		return qb;
+	}
+
+	private createBaseQuery(workflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
+		return this.createQueryBuilder('workflow').where('workflow.id IN (:...workflowIds)', {
+			workflowIds,
 		});
 	}
 
@@ -219,12 +380,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		select?: Record<string, boolean>,
 	): void {
-		// Always start with workflow.id
-		qb.select(['workflow.id']);
-
 		if (!select) {
-			// Default select fields when no select option provided
-			qb.addSelect([
+			// Instead of selecting id first and then adding more fields,
+			// select all fields at once
+			qb.select([
+				'workflow.id',
 				'workflow.name',
 				'workflow.active',
 				'workflow.createdAt',
@@ -234,6 +394,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			return;
 		}
 
+		// For custom select, still start with ID but don't add it again
+		const fieldsToSelect = ['workflow.id'];
+
 		// Handle special fields separately
 		const regularFields = Object.entries(select).filter(
 			([field]) => !['ownedBy', 'tags'].includes(field),
@@ -241,10 +404,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		// Add regular fields
 		regularFields.forEach(([field, include]) => {
-			if (include) {
-				qb.addSelect(`workflow.${field}`);
+			if (include && field !== 'id') {
+				// Skip id since we already added it
+				fieldsToSelect.push(`workflow.${field}`);
 			}
 		});
+
+		qb.select(fieldsToSelect);
 	}
 
 	private applyRelations(
