@@ -23,6 +23,7 @@ import {
 	resolveCondition,
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
+import { completeExpressionSyntax } from '@/utils/expressions';
 
 interface Props {
 	path: string;
@@ -117,12 +118,12 @@ const rightParameter = computed<INodeProperties>(() => {
 const debouncedEmitUpdate = debounce(() => emit('update', condition.value), { debounceTime: 500 });
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
-	condition.value.leftValue = update.value as NodeParameterValue;
+	condition.value.leftValue = completeExpressionSyntax(update.value as NodeParameterValue);
 	debouncedEmitUpdate();
 };
 
 const onRightValueChange = (update: IUpdateInformation): void => {
-	condition.value.rightValue = update.value as NodeParameterValue;
+	condition.value.rightValue = completeExpressionSyntax(update.value as NodeParameterValue);
 	debouncedEmitUpdate();
 };
 

@@ -139,3 +139,11 @@ export const stringifyExpressionResult = (
 
 	return typeof result.result === 'string' ? result.result : String(result.result);
 };
+
+export const completeExpressionSyntax = <T>(value: T) => {
+	if (typeof value === 'string' && !value.startsWith('=') && value.endsWith('{{ ')) {
+		return '=' + value + ' }}';
+	}
+
+	return value;
+};
