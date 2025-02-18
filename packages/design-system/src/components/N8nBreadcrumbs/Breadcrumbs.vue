@@ -21,7 +21,6 @@ type Props = {
 	cacheHiddenItems?: boolean;
 	theme?: 'small' | 'medium';
 	showBorder?: boolean;
-	tooltipTrigger?: 'hover' | 'click';
 	loadingSkeletonRows?: number;
 	separator?: string;
 };
@@ -40,7 +39,6 @@ const props = withDefaults(defineProps<Props>(), {
 	cacheHiddenItems: true,
 	theme: 'medium',
 	showBorder: false,
-	tooltipTrigger: 'hover',
 	loadingSkeletonRows: 3,
 	separator: '/',
 });
@@ -131,6 +129,7 @@ onMounted(() => {
 				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
 				data-test-id="ellipsis"
 			>
+				<!-- Show interactive dropdown for larger versions -->
 				<div v-if="props.theme !== 'small'" :class="$style['hidden-items-menu']">
 					<n8n-action-toggle
 						:actions="hiddenItemActions"
@@ -144,10 +143,11 @@ onMounted(() => {
 						@action="emitItemSelected"
 					/>
 				</div>
+				<!-- Just a tooltip for smaller versions -->
 				<n8n-tooltip
 					v-else
-					:popper-class="[$style.tooltip, $style[props.theme]]"
-					:trigger="tooltipTrigger"
+					:popper-class="$style.tooltip"
+					trigger="click"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
@@ -210,8 +210,8 @@ onMounted(() => {
 	list-style: none;
 }
 
-.item.current * {
-	font-weight: bold;
+.item.current span {
+	color: var(--color-text-dark);
 }
 
 .ellipsis {
@@ -220,15 +220,11 @@ onMounted(() => {
 	}
 }
 
-.hidden-items {
-	display: flex;
-	align-items: center;
-}
-
 .hidden-items-menu {
 	display: flex;
 	position: relative;
 	top: var(--spacing-5xs);
+	color: var(--color-text-base);
 }
 
 .tooltip-loading {
@@ -247,41 +243,16 @@ onMounted(() => {
 }
 
 .tooltip {
+	padding: var(--spacing-xs) var(--spacing-2xs);
 	& > div {
-		display: flex;
-		flex-direction: column;
-		* {
-			color: var(--color-text-lighter);
+		color: var(--color-text-lighter);
+		span {
+			font-size: var(--font-size-2xs);
 		}
 	}
-	&.medium {
-		padding: var(--spacing-m) var(--spacing-s) !important;
-		& > div {
-			gap: var(--spacing-xs);
 
-			* {
-				font-size: var(--font-size-s);
-
-				&:hover {
-					color: var(--color-text-xlight);
-				}
-			}
-		}
-	}
-	&.small {
-		padding: var(--spacing-xs) var(--spacing-2xs) !important;
-		& > div {
-			gap: var(--spacing-2xs);
-
-			* {
-				color: var(--color-text-lighter);
-				font-size: var(--font-size-2xs);
-			}
-		}
-
-		.tooltip-loading {
-			min-width: var(--spacing-4xl);
-		}
+	.tooltip-loading {
+		min-width: var(--spacing-4xl);
 	}
 }
 
