@@ -36,6 +36,11 @@ type ChatMessage = {
 	sessionId: string;
 	action: string;
 	chatInput: string;
+	files?: Array<{
+		name: string;
+		type: string;
+		data: string;
+	}>;
 };
 
 function heartbeat(this: WebSocket) {
@@ -237,8 +242,18 @@ export class ChatService {
 	private async resumeExecution(executionId: string, data: RawData) {
 		const execution = await this.getExecution(executionId ?? '');
 
-		const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+		const buffer = Array.isArray(data)
+			? Buffer.concat(data.map((chunk) => Buffer.from(chunk)))
+			: Buffer.from(data);
+
 		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
+
+		if (message.files) {
+			message.files = message.files.map((file) => ({
+				...file,
+				data: file.data.includes('base64,') ? file.data.split('base64,')[1] : file.data,
+			}));
+		}
 
 		await Container.get(WorkflowRunner).run(
 			await this.getRunData(execution, message),

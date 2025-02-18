@@ -53,19 +53,19 @@ export class Chat implements INodeType {
 
 		if (files) {
 			for (const [index, file] of (files as IDataObject[]).entries()) {
-				const buffer = Buffer.from(file.data as unknown as string, BINARY_ENCODING);
+				const base64 = file.data as string;
+				const buffer = Buffer.from(base64, BINARY_ENCODING);
 				const binaryData = await context.helpers.prepareBinaryData(
 					buffer,
 					file.name as string,
 					file.type as string,
 				);
 
-				binaryData.data = file.data as string;
 				binary[`data_${index}`] = binaryData;
 			}
 		}
 
-		const returnData: INodeExecutionData = { json: { sessionId, action, chatInput, files } };
+		const returnData: INodeExecutionData = { json: { sessionId, action, chatInput } };
 		if (Object.keys(binary).length > 0) {
 			returnData.binary = binary;
 		}

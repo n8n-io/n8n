@@ -170,14 +170,17 @@ async function processFiles(data: File[] | undefined) {
 		// eslint-disable-next-line @typescript-eslint/return-await
 		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
 			const reader = new FileReader();
-			reader.readAsDataURL(file); // Convert file to Base64
+
 			reader.onload = () =>
 				resolve({
 					name: file.name,
 					type: file.type,
 					data: reader.result as string,
 				});
+
 			reader.onerror = (error) => reject(error);
+
+			reader.readAsDataURL(file);
 		});
 	});
 
