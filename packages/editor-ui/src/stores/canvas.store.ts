@@ -4,12 +4,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { useLoadingService } from '@/composables/useLoadingService';
 
-/**
- * @TODO Migrate loading service to ui store
- * @TODO Migrate panelHeight to ui store
- * @TODO Migrate aiNodes computed to ai store
- * @TODO Remove useCanvasStore
- */
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
 	const loadingService = useLoadingService();
