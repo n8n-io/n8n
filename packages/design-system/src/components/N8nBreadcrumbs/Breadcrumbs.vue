@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import type { UserAction } from 'n8n-design-system/types';
 
@@ -17,7 +17,7 @@ type HiddenItemsSource = PathItem[] | (() => Promise<PathItem[]>);
 type Props = {
 	items: PathItem[];
 	hiddenItemsSource?: HiddenItemsSource;
-	cacheHiddenItems?: boolean;
+	forceFetch?: boolean;
 	theme?: 'small' | 'medium';
 	showBorder?: boolean;
 	loadingSkeletonRows?: number;
@@ -36,7 +36,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsSource: () => [],
-	cacheHiddenItems: true,
+	forceFetch: false,
 	theme: 'medium',
 	showBorder: false,
 	loadingSkeletonRows: 3,
@@ -62,11 +62,13 @@ const hiddenItemActions = computed((): UserAction[] => {
 });
 
 const getHiddenItems = async () => {
-	if (typeof props.hiddenItemsSource !== 'function') {
+	if (Array.isArray(props.hiddenItemsSource)) {
+		loadedHiddenItems.value = props.hiddenItemsSource;
 		return;
 	}
-	// If hidden items are already loaded, do not fetch them again
-	if (props.cacheHiddenItems && loadedHiddenItems.value.length > 0) {
+
+	// If items are already loaded, use the cache
+	if (!props.forceFetch && loadedHiddenItems.value.length > 0) {
 		return;
 	}
 
@@ -81,6 +83,22 @@ const getHiddenItems = async () => {
 		isLoadingHiddenItems.value = false;
 	}
 };
+
+watch(
+	() => props.hiddenItemsSource,
+	async () => {
+		console.log('Hidden items source changed');
+
+		// Clear cache when source changes
+		loadedHiddenItems.value = [];
+
+		// Load immediately if it's a sync source
+		if (Array.isArray(props.hiddenItemsSource)) {
+			await getHiddenItems();
+		}
+	},
+	{ deep: true },
+);
 
 const onHiddenMenuVisibleChange = async (visible: boolean) => {
 	if (visible) {
@@ -106,13 +124,6 @@ const handleTooltipShow = async () => {
 const handleTooltipClose = () => {
 	emit('tooltipClosed');
 };
-
-onMounted(() => {
-	// If hidden items are provided as an array, set them right away
-	if (Array.isArray(props.hiddenItemsSource)) {
-		loadedHiddenItems.value = props.hiddenItemsSource;
-	}
-});
 </script>
 <template>
 	<div

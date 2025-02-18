@@ -2,6 +2,7 @@ import type { StoryFn } from '@storybook/vue3';
 
 import type { UserAction } from 'n8n-design-system/types';
 
+import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
@@ -98,17 +99,26 @@ AsyncLoading.args = {
 
 const asyncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
-	components: { Breadcrumbs },
+	components: { AsyncLoadingCacheDemo },
 	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
+	template: '<AsyncLoadingCacheDemo v-bind="args" />',
 });
 
-export const AsyncLoadingNoCache = asyncLoadingNoCacheTemplate.bind({});
-AsyncLoadingNoCache.args = {
-	items: items.slice(2),
-	hiddenItemsSource: fetchHiddenItemsAsync,
-	loadingSkeletonRows: 2,
-	cacheHiddenItems: false,
+export const AsyncLoadingCacheTest = asyncLoadingNoCacheTemplate.bind({});
+AsyncLoadingCacheTest.args = {
+	isAsync: true,
+};
+
+const syncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { AsyncLoadingCacheDemo },
+	props: Object.keys(argTypes),
+	template: '<AsyncLoadingCacheDemo v-bind="args" />',
+});
+
+export const SyncLoadingCacheTest = syncLoadingNoCacheTemplate.bind({});
+SyncLoadingCacheTest.args = {
+	isAsync: false,
 };
 
 const testActions: UserAction[] = [
