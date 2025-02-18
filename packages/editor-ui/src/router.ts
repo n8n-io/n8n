@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -269,7 +270,10 @@ export const routes: RouteRecordRaw[] = [
 		props: true,
 		meta: {
 			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => useTestDefinitionStore().isFeatureEnabled,
+			},
 		},
 		children: [
 			{
