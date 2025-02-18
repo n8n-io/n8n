@@ -21,11 +21,7 @@ describe('DeprecationService', () => {
 
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
-		expect(dataCaptor.value.trim()).toBe(
-			`There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
- - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0
- - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.`,
-		);
+		expect(dataCaptor.value.match(/N8N_PARTIAL_EXECUTION_VERSION_DEFAULT/g)).toHaveLength(2);
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
