@@ -186,7 +186,7 @@ async function getExamplePinnedDataForTags() {
 // Debounced watchers for auto-saving
 watch(
 	() => state.value.metrics,
-	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
+	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400, trailing: true }),
 	{ deep: true },
 );
 watch(() => state.value.tags.value, getExamplePinnedDataForTags);
