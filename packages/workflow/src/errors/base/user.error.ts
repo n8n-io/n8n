@@ -22,8 +22,3 @@ export class UserError extends BaseError {
 		super(message, opts);
 	}
 }
-
-/** Convenience function to check if an error is an instance of UserError */
-export function isUserError(error: Error): error is UserError {
-	return error instanceof UserError;
-}

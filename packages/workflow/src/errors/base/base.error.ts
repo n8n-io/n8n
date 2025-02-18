@@ -56,7 +56,3 @@ export abstract class BaseError extends Error {
 		} catch {}
 	}
 }
-
-export function isBaseError(error: unknown): error is BaseError {
-	return error instanceof BaseError;
-}

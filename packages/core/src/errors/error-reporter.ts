@@ -3,8 +3,8 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, isBaseError, ExecutionCancelledError } from 'n8n-workflow';
-import type { BaseError, ReportingOptions } from 'n8n-workflow';
+import type { ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import type { InstanceType } from '@/instance-settings';
@@ -47,7 +47,7 @@ export class ErrorReporter {
 			do {
 				let stack = '';
 				let meta = undefined;
-				if (e instanceof ApplicationError || isBaseError(e)) {
+				if (e instanceof ApplicationError || e instanceof BaseError) {
 					if (e.level === 'error' && e.stack) {
 						stack = `\n${e.stack}\n`;
 					}
@@ -142,14 +142,14 @@ export class ErrorReporter {
 
 		if (originalException instanceof AxiosError) return null;
 
-		if (isBaseError(originalException)) {
+		if (originalException instanceof BaseError) {
 			if (!originalException.shouldReport) return null;
 
 			this.extractEventDetailsFromN8nError(event, originalException);
 		}
 
 		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (this.isApplicationError(originalException)) {
+		if (originalException instanceof ApplicationError) {
 			if (this.isIgnoredApplicationError(originalException)) return null;
 
 			this.extractEventDetailsFromN8nError(event, originalException);
@@ -202,10 +202,6 @@ export class ErrorReporter {
 			error.name === 'QueryFailedError' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
 		);
-	}
-
-	private isApplicationError(error: unknown): error is ApplicationError {
-		return error instanceof ApplicationError;
 	}
 
 	private isIgnoredApplicationError(error: ApplicationError) {

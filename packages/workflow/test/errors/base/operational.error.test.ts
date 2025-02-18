@@ -1,5 +1,5 @@
 import { BaseError } from '@/errors/base/base.error';
-import { isOperationalError, OperationalError } from '@/errors/base/operational.error';
+import { OperationalError } from '@/errors/base/operational.error';
 
 describe('OperationalError', () => {
 	it('should be an instance of OperationalError', () => {
@@ -22,15 +22,5 @@ describe('OperationalError', () => {
 		const error = new OperationalError('test', { level: 'error', shouldReport: true });
 		expect(error.level).toBe('error');
 		expect(error.shouldReport).toBe(true);
-	});
-});
-
-describe('isOperationalError', () => {
-	it('should return true if the error is an instance of OperationalError', () => {
-		expect(isOperationalError(new OperationalError('test'))).toBe(true);
-	});
-
-	it('should return false if the error is not an instance of OperationalError', () => {
-		expect(isOperationalError(new Error('test'))).toBe(false);
 	});
 });

@@ -19,8 +19,3 @@ export class OperationalError extends BaseError {
 		super(message, opts);
 	}
 }
-
-/** Convenience function to check if an error is an instance of OperationalError */
-export function isOperationalError(error: Error): error is OperationalError {
-	return error instanceof OperationalError;
-}
