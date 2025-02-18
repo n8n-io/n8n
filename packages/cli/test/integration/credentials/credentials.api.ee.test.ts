@@ -702,7 +702,7 @@ describe('GET /credentials/:id', () => {
 		expect(responseAbc.statusCode).toBe(404);
 
 		// because EE router has precedence, check if forwards this route
-		const responseNew = await authOwnerAgent.get('/credentials/new?name=My Credential');
+		const responseNew = await authOwnerAgent.get('/credentials/new');
 		expect(responseNew.statusCode).toBe(200);
 	});
 });

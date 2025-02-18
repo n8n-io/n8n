@@ -15,6 +15,7 @@ describe('CredentialsController', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 
 	const credentialsController = new CredentialsController(
+		mock(),
 		credentialsService,
 		mock(),
 		mock(),
