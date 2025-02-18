@@ -40,7 +40,7 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
-import { debounce, delay } from 'lodash-es';
+import { debounce } from 'lodash-es';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
