@@ -57,7 +57,7 @@ export class EnterpriseCredentialsService {
 			],
 			relations: { sharedCredentials: true },
 		});
-		// filter out all projects that already own the workflow
+		// filter out all projects that already own the credential
 		projects = projects.filter(
 			(p) =>
 				!p.sharedCredentials.some(
