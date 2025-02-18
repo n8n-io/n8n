@@ -18,6 +18,11 @@ const props = defineProps<{
 	workflowId: string;
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
+
+const emit = defineEmits<{
+	'update:workflowActive': [value: { id: string; active: boolean }];
+}>();
+
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 
@@ -109,7 +114,11 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 });
 
 async function activeChanged(newActiveState: boolean) {
-	return await workflowActivate.updateWorkflowActivation(props.workflowId, newActiveState);
+	const newState = await workflowActivate.updateWorkflowActivation(
+		props.workflowId,
+		newActiveState,
+	);
+	emit('update:workflowActive', { id: props.workflowId, active: newState });
 }
 
 async function displayActivationError() {

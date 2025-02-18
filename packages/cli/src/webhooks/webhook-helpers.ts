@@ -29,6 +29,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -47,7 +48,6 @@ import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { IWorkflowDb } from '@/interfaces';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -111,7 +111,7 @@ const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 export async function executeWebhook(
 	workflow: Workflow,
 	webhookData: IWebhookData,
-	workflowData: IWorkflowDb,
+	workflowData: IWorkflowBase,
 	workflowStartNode: INode,
 	executionMode: WorkflowExecuteMode,
 	pushRef: string | undefined,

@@ -221,6 +221,7 @@ function openContextMenu(event: MouseEvent) {
 			position: relative;
 			margin-top: 0;
 			margin-left: var(--spacing-s);
+			margin-right: var(--spacing-s);
 			width: auto;
 			min-width: unset;
 			max-width: calc(
@@ -231,6 +232,10 @@ function openContextMenu(event: MouseEvent) {
 		}
 
 		.label {
+			text-align: left;
+		}
+
+		.subtitle {
 			text-align: left;
 		}
 
