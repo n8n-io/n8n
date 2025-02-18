@@ -26,12 +26,10 @@ export class EnterpriseCredentialsService {
 		private readonly roleService: RoleService,
 	) {}
 
-	// TODO: implement permission checks for the credential here
 	async shareWithProjects(
 		user: User,
 		credentialId: string,
 		shareWithIds: string[],
-		// TODO: rename to trx
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
