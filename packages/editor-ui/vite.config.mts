@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
@@ -66,8 +66,11 @@ const plugins = [
 	}),
 	viteStaticCopy({
 		targets: [
-			{ src: resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: '' },
-			{ src: resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'), dest: '' },
+			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				dest: 'public',
+			},
 		],
 	}),
 	vue(),
