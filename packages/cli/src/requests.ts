@@ -159,8 +159,6 @@ export declare namespace CredentialRequest {
 
 	type Update = AuthenticatedRequest<{ credentialId: string }, {}, CredentialProperties>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
-
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
 	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;

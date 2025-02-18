@@ -2,6 +2,7 @@ import {
 	CreateCredentialDto,
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
+	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -84,8 +85,12 @@ export class CredentialsController {
 	}
 
 	@Get('/new')
-	async generateUniqueName(req: CredentialRequest.NewName) {
-		const requestedName = req.query.name ?? this.globalConfig.credentials.defaultName;
+	async generateUniqueName(
+		_req: unknown,
+		_res: unknown,
+		@Query query: GenerateCredentialNameRequestQuery,
+	) {
+		const requestedName = query.name ?? this.globalConfig.credentials.defaultName;
 
 		return {
 			name: await this.namingService.getUniqueCredentialName(requestedName),
