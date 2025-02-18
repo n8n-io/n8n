@@ -38,9 +38,13 @@ let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
-
-const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['workflows'],
+	enabledFeatures: ['feat:sharing'],
+	quotas: {
+		'quota:maxTeamProjects': -1,
+	},
+});
 const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
@@ -48,9 +52,19 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
+let projectService: ProjectService;
 
-beforeAll(async () => {
+beforeEach(async () => {
+	await testDb.truncate([
+		'Workflow',
+		'SharedWorkflow',
+		'Tag',
+		'WorkflowHistory',
+		'Project',
+		'ProjectRelation',
+	]);
 	projectRepository = Container.get(ProjectRepository);
+	projectService = Container.get(ProjectService);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -58,9 +72,8 @@ beforeAll(async () => {
 	anotherMember = await createMember();
 });
 
-beforeEach(async () => {
-	jest.resetAllMocks();
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory']);
+afterEach(() => {
+	jest.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -271,7 +284,7 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:admin');
+		await projectService.addUser(project.id, owner.id, 'project:admin');
 
 		//
 		// ACT
@@ -345,7 +358,7 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, member.id, 'project:viewer');
+		await projectService.addUser(project.id, member.id, 'project:viewer');
 
 		//
 		// ACT
@@ -1307,5 +1320,53 @@ describe('DELETE /workflows/:workflowId', () => {
 
 		expect(workflowsInDb).toBeNull();
 		expect(sharedWorkflowsInDb).toHaveLength(0);
+	});
+});
+
+describe('PUT /workflows/:workflowId/share', () => {
+	test('should ignore sharing with owner project', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const workflow = await createWorkflow({ name: 'My workflow' }, project);
+
+		await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [project.id] })
+			.expect(200);
+
+		const sharedWorkflows = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(sharedWorkflows).toHaveLength(1);
+		expect(sharedWorkflows).toEqual([
+			expect.objectContaining({ projectId: project.id, role: 'workflow:owner' }),
+		]);
+	});
+
+	test('should ignore sharing with project that already has it shared', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const workflow = await createWorkflow({ name: 'My workflow' }, project);
+
+		const project2 = await projectService.createTeamProject(owner, { name: 'Team Project 2' });
+		await shareWorkflowWithProjects(workflow, [{ project: project2 }]);
+
+		await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [project2.id] })
+			.expect(200);
+
+		const sharedWorkflows = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(sharedWorkflows).toHaveLength(2);
+		expect(sharedWorkflows).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ projectId: project.id, role: 'workflow:owner' }),
+				expect.objectContaining({ projectId: project2.id, role: 'workflow:editor' }),
+			]),
+		);
 	});
 });

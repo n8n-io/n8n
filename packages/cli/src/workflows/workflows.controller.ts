@@ -25,6 +25,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	Licensed,
 	Param,
 	Patch,
 	Post,
@@ -416,11 +417,10 @@ export class WorkflowsController {
 		);
 	}
 
+	@Licensed('feat:sharing')
 	@Put('/:workflowId/share')
 	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
-		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
-
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
 
