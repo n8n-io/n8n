@@ -783,10 +783,11 @@
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
-								} else {
+									return;
+								} else if (text) {
 									document.body.innerHTML = text;
+									return;
 								}
-								return;
 							}
 
 							if (response.status === 200) {

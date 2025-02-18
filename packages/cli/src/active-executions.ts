@@ -170,6 +170,7 @@ export class ActiveExecutions {
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
+		execution?.responsePromise?.resolve({});
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });
 	}
