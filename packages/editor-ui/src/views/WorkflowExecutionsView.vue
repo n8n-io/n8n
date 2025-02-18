@@ -14,7 +14,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -26,8 +26,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const workflowHelpers = useWorkflowHelpers({ router });
-const nodeHelpers = useNodeHelpers();
+const { initializeWorkspace } = useCanvasOperations({ router });
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -139,9 +138,7 @@ async function fetchWorkflow() {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
-				workflowHelpers.initState(data);
-				// @TODO MIGRATION TO USECANVASOPERATIONS
-				await nodeHelpers.addNodes(data.nodes, data.connections);
+				initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 			}
