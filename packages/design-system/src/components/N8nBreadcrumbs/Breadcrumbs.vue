@@ -29,9 +29,9 @@ type Props = {
 defineOptions({ name: 'N8nBreadcrumbs' });
 
 const emit = defineEmits<{
-	beforeTooltipOpen: [];
 	tooltipOpened: [];
 	tooltipClosed: [];
+	hiddenItemsLoadingError: [error: unknown];
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,14 +61,7 @@ const hiddenItemActions = computed((): UserAction[] => {
 	}));
 });
 
-const onHiddenMenuVisibleChange = async (visible: boolean) => {
-	if (visible) {
-		await handleBeforeTooltipShow();
-	}
-};
-
-const handleBeforeTooltipShow = async () => {
-	emit('beforeTooltipOpen');
+const getHiddenItems = async () => {
 	if (typeof props.hiddenItemsSource !== 'function') {
 		return;
 	}
@@ -83,13 +76,23 @@ const handleBeforeTooltipShow = async () => {
 		loadedHiddenItems.value = items;
 	} catch (error) {
 		loadedHiddenItems.value = [];
+		emit('hiddenItemsLoadingError', error);
 	} finally {
 		isLoadingHiddenItems.value = false;
 	}
 };
 
-const handleTooltipShow = () => {
-	emit('tooltipOpened');
+const onHiddenMenuVisibleChange = async (visible: boolean) => {
+	if (visible) {
+		emit('tooltipOpened');
+		await getHiddenItems();
+	} else {
+		emit('tooltipClosed');
+	}
+};
+
+const handleTooltipShow = async () => {
+	await getHiddenItems();
 };
 
 const handleTooltipClose = () => {
@@ -117,7 +120,6 @@ onMounted(() => {
 			<li
 				v-if="hasHiddenItems"
 				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
-				aria-hidden="true"
 				data-test-id="ellipsis"
 			>
 				<div v-if="props.theme !== 'small'" :class="$style['hidden-items-menu']">
@@ -136,8 +138,7 @@ onMounted(() => {
 					v-else
 					:popper-class="[$style.tooltip, $style[props.theme]]"
 					:trigger="tooltipTrigger"
-					@show="handleTooltipShow"
-					@before-show="handleBeforeTooltipShow"
+					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
 					<template #content>
@@ -313,6 +314,8 @@ onMounted(() => {
 	}
 
 	.ellipsis {
+		padding-right: 0;
+		padding-left: 0;
 		color: var(--color-text-light);
 		&:hover {
 			color: var(--color-text-base);
