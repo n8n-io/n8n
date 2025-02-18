@@ -13,7 +13,7 @@ const nodeDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Scrape and control any site with AI-powered cloud browsers',
+	description: 'Scrape and control any site with Airtop',
 	defaults: {
 		name: 'Airtop',
 	},
