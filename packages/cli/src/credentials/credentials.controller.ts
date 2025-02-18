@@ -86,10 +86,12 @@ export class CredentialsController {
 	async generateUniqueName(
 		_req: unknown,
 		_res: unknown,
-		@Query { name }: GenerateCredentialNameRequestQuery,
+		@Query query: GenerateCredentialNameRequestQuery,
 	) {
+		const requestedName = query.name ?? this.globalConfig.credentials.defaultName;
+
 		return {
-			name: await this.namingService.getUniqueCredentialName(name),
+			name: await this.namingService.getUniqueCredentialName(requestedName),
 		};
 	}
 
