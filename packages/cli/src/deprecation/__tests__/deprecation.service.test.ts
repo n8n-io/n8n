@@ -1,10 +1,40 @@
+import { captor } from 'jest-mock-extended';
+
 import { mockLogger } from '@test/mocking';
 
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
-	const toTest = (envVar: string, value: string, mustWarn: boolean) => {
-		process.env[envVar] = value;
+	test('supports multiple warnings for the same environment variable', () => {
+		// ARRANGE
+		process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
+		const logger = mockLogger();
+		const deprecationService = new DeprecationService(logger);
+
+		const dataCaptor = captor();
+
+		// ACT
+		deprecationService.warn();
+
+		// ASSERT
+		expect(deprecationService.mustWarn('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT')).toBe(true);
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
+		expect(dataCaptor.value.trim()).toBe(
+			`There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+ - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0
+ - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.`,
+		);
+	});
+
+	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
+		if (value) {
+			process.env[envVar] = value;
+		} else {
+			delete process.env[envVar];
+		}
+
 		const deprecationService = new DeprecationService(mockLogger());
 
 		deprecationService.warn();
@@ -18,6 +48,12 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
+		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', 'true', true],
+		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', 'false', true],
+		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', undefined, false],
 	])('should detect when %s is in use', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
