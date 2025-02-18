@@ -127,10 +127,10 @@
                 "scoreValues": {
                     "type": "string"
                 },
-                "accountContacts": {
+                "automationEntryCounts": {
                     "type": "string"
                 },
-                "automationEntryCounts": {
+                "accountContacts": {
                     "type": "string"
                 }
             }
