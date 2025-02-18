@@ -551,7 +551,7 @@ const loadPaginationFromQueryString = async () => {
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading">
+				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
 					<n8n-loading :rows="rowsPerPage" :shrink-last="false" />
 				</div>
 				<div
@@ -733,6 +733,9 @@ const loadPaginationFromQueryString = async () => {
 			height: 69px;
 		}
 	}
+}
+.resource-list-loading-instant {
+	animation: 0.01s linear 0s forwards changeVisibility;
 }
 
 @keyframes changeVisibility {

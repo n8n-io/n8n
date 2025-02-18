@@ -40,6 +40,7 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
+import { debounce, delay } from 'lodash-es';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -238,7 +239,9 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	loading.value = true;
+	const markLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 
@@ -253,6 +256,7 @@ const fetchWorkflows = async () => {
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
 	);
+	markLoading.cancel();
 	workflows.value = fetchedWorkflows;
 	loading.value = false;
 	return fetchedWorkflows;
