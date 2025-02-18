@@ -107,10 +107,12 @@ export function getWorkflowWebhooks(
  * Detect if response mode should be set automatically
  */
 function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, method: string) {
-	// if this is n8n FormTrigger or Form node or Wait node(resume === form), check if there is a Form node in child nodes,
-	// if so, set 'responseMode' to 'responseNode' to send the response to this node from next Form node
-	// if this is last Form node - set 'responseMode' to 'onReceived'
-	// if this is last Wait node - use 'responseMode' from Wait node
+		if (
+			workflowStartNode.type === WAIT_NODE_TYPE &&
+			workflowStartNode.parameters.resume !== 'form'
+		) {
+			return undefined;
+		}
 	if (
 		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
 		method === 'POST'
