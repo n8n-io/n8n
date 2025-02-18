@@ -11,13 +11,9 @@ export type PathItem = {
 	href?: string;
 };
 
-// Items in the truncated path can be provided as an array or a function that returns a promise
-type HiddenItemsSource = PathItem[] | (() => Promise<PathItem[]>);
-
 type Props = {
 	items: PathItem[];
-	hiddenItemsSource?: HiddenItemsSource;
-	forceFetch?: boolean;
+	hiddenItems?: PathItem[] | Promise<PathItem[]>;
 	theme?: 'small' | 'medium';
 	showBorder?: boolean;
 	loadingSkeletonRows?: number;
@@ -35,8 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
-	hiddenItemsSource: () => [],
-	forceFetch: false,
+	hiddenItems: () => [],
 	theme: 'medium',
 	showBorder: false,
 	loadingSkeletonRows: 3,
@@ -46,11 +41,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const loadedHiddenItems = ref<PathItem[]>([]);
 const isLoadingHiddenItems = ref(false);
+const currentPromise = ref<Promise<PathItem[]> | null>(null);
 
 const hasHiddenItems = computed(() => {
-	return Array.isArray(props.hiddenItemsSource)
-		? props.hiddenItemsSource.length > 0
-		: !!props.hiddenItemsSource;
+	return Array.isArray(props.hiddenItems)
+		? props.hiddenItems.length > 0
+		: props.hiddenItems instanceof Promise;
 });
 
 const hiddenItemActions = computed((): UserAction[] => {
@@ -62,19 +58,22 @@ const hiddenItemActions = computed((): UserAction[] => {
 });
 
 const getHiddenItems = async () => {
-	if (Array.isArray(props.hiddenItemsSource)) {
-		loadedHiddenItems.value = props.hiddenItemsSource;
+	// If we already have items loaded and the source hasn't changed, use cache
+	if (loadedHiddenItems.value.length > 0 && props.hiddenItems === currentPromise.value) {
 		return;
 	}
 
-	// If items are already loaded, use the cache
-	if (!props.forceFetch && loadedHiddenItems.value.length > 0) {
+	// Handle synchronous array
+	if (Array.isArray(props.hiddenItems)) {
+		loadedHiddenItems.value = props.hiddenItems;
 		return;
 	}
 
 	isLoadingHiddenItems.value = true;
 	try {
-		const items = await props.hiddenItemsSource();
+		// Store the current promise for cache comparison
+		currentPromise.value = props.hiddenItems;
+		const items = await props.hiddenItems;
 		loadedHiddenItems.value = items;
 	} catch (error) {
 		loadedHiddenItems.value = [];
@@ -85,17 +84,9 @@ const getHiddenItems = async () => {
 };
 
 watch(
-	() => props.hiddenItemsSource,
-	async () => {
-		console.log('Hidden items source changed');
-
-		// Clear cache when source changes
-		loadedHiddenItems.value = [];
-
-		// Load immediately if it's a sync source
-		if (Array.isArray(props.hiddenItemsSource)) {
-			await getHiddenItems();
-		}
+	async () => await props.hiddenItems,
+	(_newValue: PathItem[] | Promise<PathItem[]>) => {
+		void getHiddenItems();
 	},
 	{ deep: true },
 );
@@ -118,6 +109,7 @@ const emitItemSelected = (id: string) => {
 };
 
 const handleTooltipShow = async () => {
+	emit('tooltipOpened');
 	await getHiddenItems();
 };
 
@@ -166,7 +158,7 @@ const handleTooltipClose = () => {
 					<template #content>
 						<div v-if="isLoadingHiddenItems" :class="$style['tooltip-loading']">
 							<N8nLoading
-								:rows="props.theme === 'small' ? 1 : props.loadingSkeletonRows"
+								:rows="1"
 								:loading="isLoadingHiddenItems"
 								animated
 								variant="p"

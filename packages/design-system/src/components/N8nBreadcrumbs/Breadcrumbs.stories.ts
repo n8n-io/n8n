@@ -65,36 +65,23 @@ const withHiddenItemsTemplate: StoryFn = (args, { argTypes }) => ({
 export const WithHiddenItems = withHiddenItemsTemplate.bind({});
 WithHiddenItems.args = {
 	items: items.slice(2),
-	hiddenItemsSource: [
+	hiddenItems: [
 		{ id: '3', label: 'Parent 1', href: '/hidden1' },
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
 };
 
-// Async example
-// eslint-disable-next-line @typescript-eslint/promise-function-async
-const fetchHiddenItemsAsync = () => {
-	return new Promise<PathItem[]>((resolve) => {
-		setTimeout(() => {
-			resolve([
-				{ id: '3', label: 'Parent 1', href: '/hidden1' },
-				{ id: '4', label: 'Parent 2', href: '/hidden2' },
-			]);
-		}, 1000);
-	});
-};
 const asyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
-	components: { Breadcrumbs },
+	components: { AsyncLoadingCacheDemo },
 	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
+	template: '<AsyncLoadingCacheDemo v-bind="args" />',
 });
 
 export const AsyncLoading = asyncLoadingTemplate.bind({});
 AsyncLoading.args = {
-	items: items.slice(2),
-	hiddenItemsSource: fetchHiddenItemsAsync,
-	loadingSkeletonRows: 2,
+	mode: 'async',
+	title: '[Demo] Async loading with cached items',
 };
 
 const asyncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
@@ -106,7 +93,9 @@ const asyncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const AsyncLoadingCacheTest = asyncLoadingNoCacheTemplate.bind({});
 AsyncLoadingCacheTest.args = {
-	isAsync: true,
+	mode: 'async',
+	testCache: true,
+	title: 'This will bust the cache after hidden items are loaded 2 times',
 };
 
 const syncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
@@ -118,7 +107,9 @@ const syncLoadingNoCacheTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const SyncLoadingCacheTest = syncLoadingNoCacheTemplate.bind({});
 SyncLoadingCacheTest.args = {
-	isAsync: false,
+	mode: 'sync',
+	testCache: true,
+	title: 'This will update the hidden items every time dropdown is opened',
 };
 
 const testActions: UserAction[] = [
@@ -152,7 +143,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 export const WithSlots = withSlotsTemplate.bind({});
 WithSlots.args = {
 	items: items.slice(2),
-	hiddenItemsSource: [
+	hiddenItems: [
 		{ id: '3', label: 'Parent 1', href: '/hidden1' },
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
@@ -189,7 +180,7 @@ SmallWithSlots.args = {
 	theme: 'small',
 	showBorder: true,
 	items: items.slice(2),
-	hiddenItemsSource: [
+	hiddenItems: [
 		{ id: '3', label: 'Parent 1', href: '/hidden1' },
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
@@ -197,15 +188,15 @@ SmallWithSlots.args = {
 
 const smallAsyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
-	components: { Breadcrumbs },
+	components: { AsyncLoadingCacheDemo },
 	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
+	template: '<AsyncLoadingCacheDemo v-bind="args" />',
 });
 
 export const SmallAsyncLoading = smallAsyncLoadingTemplate.bind({});
 SmallAsyncLoading.args = {
-	items: items.slice(2),
-	hiddenItemsSource: fetchHiddenItemsAsync,
+	mode: 'async',
+	title: 'Small version with async loading',
 	theme: 'small',
 	showBorder: true,
 };
