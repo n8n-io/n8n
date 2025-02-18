@@ -32,7 +32,10 @@ const { state: tests, isLoading } = useAsyncState(
 	async () => {
 		await testDefinitionStore.fetchAll({ workflowId: props.name });
 
-		return testDefinitionStore.allTestDefinitionsByWorkflowId[props.name];
+		const response = testDefinitionStore.allTestDefinitionsByWorkflowId[props.name] ?? [];
+		response.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
+
+		return response;
 	},
 	[],
 	{ onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')) },
@@ -76,12 +79,7 @@ function isTestRunning(testId: string) {
 }
 
 function isRunDisabled(testId: string) {
-	const test = testDefinitionStore.getFieldIssues(testId);
-	if (testId === 'gfvRDquclwBWbGVY') {
-		console.log(testId, test);
-	}
-
-	return test.length > 0;
+	return testDefinitionStore.getFieldIssues(testId).length > 0;
 }
 // // Action handlers
 function onCreateTest() {
@@ -163,23 +161,6 @@ async function onDeleteTest(testId: string) {
 		type: 'success',
 	});
 }
-
-// onMounted(async () => {
-// 	if (!testDefinitionStore.isFeatureEnabled) {
-// 		toast.showMessage({
-// 			title: locale.baseText('testDefinition.notImplemented'),
-// 			type: 'warning',
-// 		});
-
-// 		void router.push({
-// 			name: VIEWS.WORKFLOW,
-// 			params: { name: router.currentRoute.value.params.name },
-// 		});
-// 		return; // Add early return to prevent loading if feature is disabled
-// 	}
-// 	await loadInitialData();
-// 	tests.value.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
-// });
 </script>
 
 <template>

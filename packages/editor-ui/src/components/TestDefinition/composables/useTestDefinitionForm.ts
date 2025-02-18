@@ -86,6 +86,7 @@ export function useTestDefinitionForm() {
 				};
 				state.value.metrics = metrics;
 				state.value.mockedNodes = testDefinition.mockedNodes ?? [];
+				evaluationsStore.updateRunFieldIssues(testDefinition.id);
 			}
 		} catch (error) {
 			console.error('Failed to load test data', error);
