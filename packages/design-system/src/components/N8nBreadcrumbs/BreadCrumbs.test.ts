@@ -1,5 +1,4 @@
-import { fireEvent, render } from '@testing-library/vue';
-import { nextTick } from 'vue';
+import { render } from '@testing-library/vue';
 
 import Breadcrumbs from '.';
 
