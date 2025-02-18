@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "cdate": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -13,16 +16,67 @@
         "lastName": {
             "type": "string"
         },
-        "cdate": {
+        "orgid": {
+            "type": "string"
+        },
+        "orgname": {
+            "type": "string"
+        },
+        "segmentio_id": {
+            "type": "string"
+        },
+        "bounced_hard": {
+            "type": "string"
+        },
+        "bounced_soft": {
+            "type": "string"
+        },
+        "ip": {
+            "type": "string"
+        },
+        "hash": {
+            "type": "string"
+        },
+        "socialdata_lastcheck": {
+            "type": "null"
+        },
+        "email_local": {
+            "type": "string"
+        },
+        "email_domain": {
+            "type": "string"
+        },
+        "sentcnt": {
+            "type": "string"
+        },
+        "gravatar": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "string"
+        },
+        "anonymized": {
             "type": "string"
         },
         "udate": {
             "type": "string"
         },
-        "orgid": {
+        "deleted_at": {
+            "type": "null"
+        },
+        "created_utc_timestamp": {
             "type": "string"
         },
-        "orgname": {
+        "updated_utc_timestamp": {
+            "type": "string"
+        },
+        "created_timestamp": {
+            "type": "string"
+        },
+        "updated_timestamp": {
+            "type": "string"
+        },
+        "mpp_tracking": {
             "type": "string"
         },
         "links": {
@@ -76,10 +130,10 @@
                 "scoreValues": {
                     "type": "string"
                 },
-                "accountContacts": {
+                "automationEntryCounts": {
                     "type": "string"
                 },
-                "automationEntryCounts": {
+                "accountContacts": {
                     "type": "string"
                 }
             },
@@ -103,68 +157,14 @@
                 "automationEntryCounts"
             ]
         },
+        "id": {
+            "type": "string"
+        },
         "fieldValues": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "id": {
-            "type": "string"
-        },
-        "segmentio_id": {
-            "type": "string"
-        },
-        "bounced_hard": {
-            "type": "string"
-        },
-        "bounced_soft": {
-            "type": "string"
-        },
-        "ip": {
-            "type": "string"
-        },
-        "hash": {
-            "type": "string"
-        },
-        "socialdata_lastcheck": {
-            "type": "null"
-        },
-        "email_local": {
-            "type": "string"
-        },
-        "email_domain": {
-            "type": "string"
-        },
-        "sentcnt": {
-            "type": "string"
-        },
-        "gravatar": {
-            "type": "string"
-        },
-        "deleted": {
-            "type": "string"
-        },
-        "anonymized": {
-            "type": "string"
-        },
-        "deleted_at": {
-            "type": "null"
-        },
-        "created_utc_timestamp": {
-            "type": "string"
-        },
-        "updated_utc_timestamp": {
-            "type": "string"
-        },
-        "created_timestamp": {
-            "type": "string"
-        },
-        "updated_timestamp": {
-            "type": "string"
-        },
-        "mpp_tracking": {
-            "type": "string"
         }
     }
 }
