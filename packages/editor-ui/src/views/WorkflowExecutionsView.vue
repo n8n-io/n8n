@@ -13,7 +13,6 @@ import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 const executionsStore = useExecutionsStore();
