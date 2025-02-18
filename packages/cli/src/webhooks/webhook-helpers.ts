@@ -103,9 +103,6 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-/**
- * Detect if response mode should be set automatically
- */
 function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, method: string) {
 		if (
 			workflowStartNode.type === WAIT_NODE_TYPE &&
