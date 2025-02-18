@@ -52,6 +52,14 @@ export class Supabase implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				default: 'public',
+				description: 'Name of database schema to use for table',
+				noDataExpression: false,
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',

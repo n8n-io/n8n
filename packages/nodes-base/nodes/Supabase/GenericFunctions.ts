@@ -28,6 +28,13 @@ export async function supabaseApiRequest(
 		serviceRole: string;
 	}>('supabaseApi');
 
+	const schema = this.getNodeParameter('schema', 0) as string;
+	if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+		headers['Content-Profile'] = schema;
+	} else if (['GET', 'HEAD'].includes(method)) {
+		headers['Accept-Profile'] = schema;
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
@@ -35,13 +42,12 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.host}/rest/v1${resource}`,
+		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
+
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
+		options.headers = Object.assign({}, options.headers, headers);
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
