@@ -5,7 +5,7 @@ import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
 
@@ -472,7 +472,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new ApplicationError('Wrong execution status - cannot proceed');
+								throw new UnexpectedError('Wrong execution status - cannot proceed');
 							}
 						});
 					}

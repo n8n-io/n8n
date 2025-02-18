@@ -26,12 +26,7 @@ import type {
 	INodeType,
 	WorkflowId,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	WorkflowActivationError,
-	WebhookPathTakenError,
-	ApplicationError,
-} from 'n8n-workflow';
+import { Workflow, WorkflowActivationError, WebhookPathTakenError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -233,13 +228,9 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: WorkflowId) {
-		const workflowData = await this.workflowRepository.findOne({
+		const workflowData = await this.workflowRepository.findOneOrFail({
 			where: { id: workflowId },
 		});
-
-		if (workflowData === null) {
-			throw new ApplicationError('Could not find workflow', { extra: { workflowId } });
-		}
 
 		const workflow = new Workflow({
 			id: workflowId,
