@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
@@ -11,7 +11,6 @@ import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
-import { posix as pathPosix } from 'path';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
