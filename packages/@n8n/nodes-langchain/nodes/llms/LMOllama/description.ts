@@ -62,6 +62,19 @@ export const ollamaModel: INodeProperties = {
 	required: true,
 };
 
+export const showThinkingProcess: INodeProperties = {
+	displayName: 'Show Thinking Process',
+	name: 'showThinking',
+	type: 'boolean',
+	default: false,
+	description: "Whether to show the model's thinking process in the response",
+	displayOptions: {
+		show: {
+			model: ['deepseek-r1:latest', 'deepseek-r2:latest', 'deepseek-r3:latest'],
+		},
+	},
+};
+
 export const ollamaOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
