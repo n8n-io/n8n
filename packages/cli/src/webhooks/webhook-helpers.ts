@@ -103,18 +103,18 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, method: string) {
-		if (
-			workflowStartNode.type === WAIT_NODE_TYPE &&
-			workflowStartNode.parameters.resume !== 'form'
-		) {
-			return undefined;
-		}
+export function autoDetectResponseMode(
+	workflowStartNode: INode,
+	workflow: Workflow,
+	method: string,
+) {
+	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
+		return undefined;
+	}
 	if (
 		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
 		method === 'POST'
 	) {
-
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 
 		for (const nodeName of connectedNodes) {
@@ -140,7 +140,7 @@ function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, me
 /**
  * for formTrigger and form nodes redirection has to be handled by sending redirectURL in response body
  */
-const handleFormRedirectionCase = (
+export const handleFormRedirectionCase = (
 	data: IWebhookResponseCallbackData,
 	workflowStartNode: INode,
 ) => {
