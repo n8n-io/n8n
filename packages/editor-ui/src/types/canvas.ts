@@ -50,8 +50,7 @@ export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 export type CanvasNodeDirtiness =
 	| 'parameters-updated'
 	| 'incoming-connections-updated'
-	| 'pinned-data-updated'
-	| 'upstream-dirty';
+	| 'pinned-data-updated';
 
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;

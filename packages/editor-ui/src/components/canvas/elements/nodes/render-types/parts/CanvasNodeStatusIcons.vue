@@ -24,10 +24,8 @@ const {
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
-const isParameterChanged = computed(
-	() =>
-		render.value.type === CanvasNodeRenderType.Default &&
-		render.value.options.dirtiness === 'parameters-updated',
+const dirtiness = computed(() =>
+	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
 </script>
 
@@ -75,7 +73,7 @@ const isParameterChanged = computed(
 		<FontAwesomeIcon icon="sync-alt" spin />
 	</div>
 	<div
-		v-else-if="isParameterChanged"
+		v-else-if="dirtiness !== undefined"
 		data-test-id="canvas-node-status-warning"
 		:class="[$style.status, $style.warning]"
 	>
@@ -83,7 +81,7 @@ const isParameterChanged = computed(
 			<template #content>
 				{{ i18n.baseText('node.dirty') }}
 			</template>
-			<FontAwesomeIcon icon="exclamation-triangle" />
+			<FontAwesomeIcon size="xs" icon="circle" />
 		</N8nTooltip>
 	</div>
 	<div

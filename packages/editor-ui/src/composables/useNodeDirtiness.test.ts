@@ -129,19 +129,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
-
-		it("should mark all downstream nodes with data as 'upstream-dirty' if a node upstream got an updated parameter", () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅ -> d✅ -> e -> f✅');
-
-			canvasOperations.setNodeParameters('b', { foo: 1 });
-
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'parameters-updated',
-				c: 'upstream-dirty',
-				d: 'upstream-dirty',
-				f: 'upstream-dirty',
-			});
-		});
 	});
 
 	describe('adding a connection', () => {
@@ -168,7 +155,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'incoming-connections-updated',
-				d: 'upstream-dirty',
 			});
 		});
 
@@ -181,7 +167,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'incoming-connections-updated',
-				d: 'upstream-dirty',
 			});
 		});
 
@@ -217,7 +202,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'pinned-data-updated',
-				c: 'upstream-dirty',
 			});
 		});
 
@@ -233,7 +217,6 @@ describe(useNodeDirtiness, () => {
 
 				expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 					b: 'pinned-data-updated',
-					c: 'upstream-dirty',
 				});
 			},
 		);
@@ -245,7 +228,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				b: 'pinned-data-updated',
-				c: 'upstream-dirty',
 			});
 		});
 	});
@@ -257,8 +239,6 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.setNodeParameters('e', { foo: 1 });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'upstream-dirty',
-				c: 'upstream-dirty',
 				e: 'parameters-updated',
 			});
 		});

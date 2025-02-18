@@ -10,34 +10,8 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type CanvasNodeDirtiness } from '@/types';
-import { type ITaskData, type INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import { type INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
-
-function markDownstreamDirtyRecursively(
-	nodeName: string,
-	dirtiness: Record<string, CanvasNodeDirtiness | undefined>,
-	visitedNodes: Set<string>,
-	runDataByNode: Record<string, ITaskData[]>,
-	getOutgoingConnections: (nodeName: string) => INodeConnections,
-): void {
-	if (visitedNodes.has(nodeName)) {
-		return; // prevent infinite recursion
-	}
-
-	visitedNodes.add(nodeName);
-
-	for (const inputConnections of Object.values(getOutgoingConnections(nodeName))) {
-		for (const connections of inputConnections) {
-			for (const { node } of connections ?? []) {
-				const hasRunData = (runDataByNode[node] ?? []).length > 0;
-
-				if (hasRunData) {
-					dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
-				}
-			}
-		}
-	}
-}
 
 /**
  * Does the command make the given node dirty?
@@ -102,18 +76,7 @@ export function useNodeDirtiness() {
 		}
 
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
-		const visitedNodes: Set<string> = new Set();
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
-
-		function markDownstreamDirty(nodeName: string) {
-			markDownstreamDirtyRecursively(
-				nodeName,
-				dirtiness,
-				visitedNodes,
-				runDataByNode,
-				workflowsStore.outgoingConnectionsByNodeName,
-			);
-		}
 
 		function shouldMarkDirty(command: Undoable, nodeName: string, nodeLastRanAt: number) {
 			return shouldCommandMarkDirty(

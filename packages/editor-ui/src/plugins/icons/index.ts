@@ -21,6 +21,7 @@ import {
 	faBoxOpen,
 	faBug,
 	faBrain,
+	faCircle,
 	faCalculator,
 	faCalendar,
 	faChartBar,
@@ -198,6 +199,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faBrain);
 		addIcon(faCalculator);
 		addIcon(faCalendar);
+		addIcon(faCircle);
 		addIcon(faChartBar);
 		addIcon(faCheck);
 		addIcon(faCheckCircle);
