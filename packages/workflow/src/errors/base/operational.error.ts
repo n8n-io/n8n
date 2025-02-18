@@ -11,12 +11,10 @@ export type OperationalErrorOptions = Omit<BaseErrorOptions, 'level'> & {
  * transient by nature and should be handled gracefully.
  *
  * Default level: warning
- * Default shouldReport: false
  */
 export class OperationalError extends BaseError {
 	constructor(message: string, opts: OperationalErrorOptions = {}) {
 		opts.level = opts.level ?? 'warning';
-		opts.shouldReport = opts.shouldReport ?? false;
 
 		super(message, opts);
 	}

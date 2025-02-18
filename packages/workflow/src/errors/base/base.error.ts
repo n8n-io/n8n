@@ -34,7 +34,7 @@ export abstract class BaseError extends Error {
 		{
 			level = 'error',
 			description,
-			shouldReport = true,
+			shouldReport,
 			tags = {},
 			extra,
 			...rest
@@ -43,7 +43,7 @@ export abstract class BaseError extends Error {
 		super(message, rest);
 
 		this.level = level;
-		this.shouldReport = shouldReport;
+		this.shouldReport = shouldReport ?? (level === 'error' || level === 'fatal');
 		this.description = description;
 		this.tags = tags;
 		this.extra = extra;

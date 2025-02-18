@@ -11,12 +11,10 @@ export type UnexpectedErrorOptions = Omit<BaseErrorOptions, 'level'> & {
  * should be brought to developers' attention.
  *
  * Default level: error
- * Default shouldReport: true
  */
 export class UnexpectedError extends BaseError {
 	constructor(message: string, opts: UnexpectedErrorOptions = {}) {
 		opts.level = opts.level ?? 'error';
-		opts.shouldReport = opts.shouldReport ?? true;
 
 		super(message, opts);
 	}

@@ -12,14 +12,12 @@ export type UserErrorOptions = Omit<BaseErrorOptions, 'level'> & {
  * authorized to, or violates a business rule.
  *
  * Default level: info
- * Default shouldReport: false
  */
 export class UserError extends BaseError {
 	readonly description: string | null | undefined;
 
 	constructor(message: string, opts: UserErrorOptions = {}) {
 		opts.level = opts.level ?? 'info';
-		opts.shouldReport = opts.shouldReport ?? false;
 
 		super(message, opts);
 	}
