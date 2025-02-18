@@ -140,6 +140,7 @@ async function fetchWorkflow() {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
 				workflowHelpers.initState(data);
+				// @TODO MIGRATION TO USECANVASOPERATIONS
 				await nodeHelpers.addNodes(data.nodes, data.connections);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));

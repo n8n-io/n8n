@@ -8,9 +8,6 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
-import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
-import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	AssignmentCollectionValue,
 	IConnection,
@@ -23,8 +20,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
-import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
 import type { StyleValue } from 'vue';
 
