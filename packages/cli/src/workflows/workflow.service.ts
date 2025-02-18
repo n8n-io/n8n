@@ -168,6 +168,7 @@ export class WorkflowService {
 		workflowsAndFolders.forEach((wf) => {
 			if (isFolder(wf)) {
 				wf.workflowsCount = wf?.workflows?.length ?? 0;
+				//@ts-expect-error needed because property it's not optional
 				delete wf?.workflows;
 			}
 		});
