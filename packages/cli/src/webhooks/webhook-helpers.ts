@@ -115,12 +115,6 @@ function autoDetectResponseMode(workflowStartNode: INode, workflow: Workflow, me
 		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
 		method === 'POST'
 	) {
-		if (
-			workflowStartNode.type === WAIT_NODE_TYPE &&
-			workflowStartNode.parameters.resume !== 'form'
-		) {
-			return undefined;
-		}
 
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 
