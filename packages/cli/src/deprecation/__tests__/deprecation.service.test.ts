@@ -51,9 +51,6 @@ describe('DeprecationService', () => {
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
-		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', 'true', true],
-		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', 'false', true],
-		['N8N_PARTIAL_EXECUTION_ENFORCE_VERSION', undefined, false],
 	])('should detect when %s is in use', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});

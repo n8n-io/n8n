@@ -307,7 +307,6 @@ describe('GlobalConfig', () => {
 		},
 		partialExecutions: {
 			version: 2,
-			enforce: false,
 		},
 	};
 

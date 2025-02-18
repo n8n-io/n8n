@@ -180,6 +180,5 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	partialExecution: {
 		version: 1 | 2;
-		enforce: boolean;
 	};
 }

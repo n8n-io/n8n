@@ -58,10 +58,6 @@ export class DeprecationService {
 			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
 			message: 'This environment variable is internal and should not be set.',
 		},
-		{
-			envVar: 'N8N_PARTIAL_EXECUTION_ENFORCE_VERSION',
-			message: 'This environment variable is internal and should not be set.',
-		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */
