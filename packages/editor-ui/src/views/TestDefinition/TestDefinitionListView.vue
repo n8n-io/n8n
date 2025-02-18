@@ -14,6 +14,7 @@ import {
 	N8nHeading,
 	N8nIconButton,
 	N8nLoading,
+	N8nTooltip,
 } from 'n8n-design-system';
 import { computed, h } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
@@ -47,6 +48,8 @@ const listItems = computed(() =>
 			...test,
 			testCases: (testDefinitionStore.testRunsByTestId[test.id] || []).length,
 			lastExecution: testDefinitionStore.lastRunByTestId[test.id] ?? undefined,
+			isTestRunning: isTestRunning(test.id),
+			setupErrors: testDefinitionStore.getFieldIssues(test.id),
 		}),
 	),
 );
@@ -78,9 +81,6 @@ function isTestRunning(testId: string) {
 	return testDefinitionStore.lastRunByTestId[testId]?.status === 'running';
 }
 
-function isRunDisabled(testId: string) {
-	return testDefinitionStore.getFieldIssues(testId).length > 0;
-}
 // // Action handlers
 function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
@@ -196,21 +196,33 @@ async function onDeleteTest(testId: string) {
 				>
 					<template #prepend>
 						<div @click.stop>
-							<N8nIconButton
-								v-if="isTestRunning(item.id)"
-								icon="stop"
-								type="secondary"
-								size="mini"
-								@click="onCancelTestRun(item.id)"
-							/>
-							<N8nIconButton
+							<N8nTooltip v-if="item.isTestRunning" content="Cancel test run" placement="top">
+								<N8nIconButton
+									icon="stop"
+									type="secondary"
+									size="mini"
+									@click="onCancelTestRun(item.id)"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
 								v-else
-								icon="play"
-								type="secondary"
-								size="mini"
-								:disabled="isRunDisabled(item.id)"
-								@click="onRunTest(item.id)"
-							/>
+								:disabled="!Boolean(item.setupErrors.length)"
+								placement="top"
+								teleported
+							>
+								<template #content>
+									<div v-for="(error, index) in item.setupErrors" :key="index">
+										{{ error.message }}
+									</div>
+								</template>
+								<N8nIconButton
+									icon="play"
+									type="secondary"
+									size="mini"
+									:disabled="Boolean(item.setupErrors.length)"
+									@click="onRunTest(item.id)"
+								/>
+							</N8nTooltip>
 						</div>
 					</template>
 					<template #append>
