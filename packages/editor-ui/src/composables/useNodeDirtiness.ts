@@ -34,14 +34,6 @@ function markDownstreamDirtyRecursively(
 				if (hasRunData) {
 					dirtiness[node] = dirtiness[node] ?? 'upstream-dirty';
 				}
-
-				markDownstreamDirtyRecursively(
-					node,
-					dirtiness,
-					visitedNodes,
-					runDataByNode,
-					getOutgoingConnections,
-				);
 			}
 		}
 	}
@@ -154,13 +146,11 @@ export function useNodeDirtiness() {
 
 			if (parametersLastUpdate > runAt) {
 				dirtiness[nodeName] = 'parameters-updated';
-				markDownstreamDirty(nodeName);
 				continue;
 			}
 
 			if (historyStore.undoStack.some((command) => shouldMarkDirty(command, nodeName, runAt))) {
 				dirtiness[nodeName] = 'incoming-connections-updated';
-				markDownstreamDirty(nodeName);
 				continue;
 			}
 
@@ -168,7 +158,6 @@ export function useNodeDirtiness() {
 
 			if (pinnedDataUpdatedAt > runAt) {
 				dirtiness[nodeName] = 'pinned-data-updated';
-				markDownstreamDirty(nodeName);
 				continue;
 			}
 		}
