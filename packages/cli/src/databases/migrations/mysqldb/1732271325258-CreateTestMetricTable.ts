@@ -15,10 +15,6 @@ export class CreateTestMetricTable1732271325258 implements ReversibleMigration {
 		);
 
 		if (brokenPrimaryColumn) {
-			console.log(
-				'Previous migration contained a mistake, primary column change was not finished. Trying to fix it.',
-			);
-
 			// The migration was completed, but left the table in inconsistent state, let's finish the primary key change
 			await queryRunner.query(
 				`ALTER TABLE ${tablePrefix}test_definition MODIFY COLUMN tmp_id INT NOT NULL;`,

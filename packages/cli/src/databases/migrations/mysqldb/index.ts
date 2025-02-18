@@ -46,6 +46,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { CreateTestMetricTable1732271325258 } from './1732271325258-CreateTestMetricTable';
 import { AddStatsColumnsToTestRun1736172058779 } from './1736172058779-AddStatsColumnsToTestRun';
+import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTestDefinitionPrimaryKey';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -162,4 +163,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateTestCaseExecutionTable1736947513045,
 	AddErrorColumnsToTestRuns1737715421462,
 	CreateFolderTable1738709609940,
+	FixTestDefinitionPrimaryKey1739873751194,
 ];
