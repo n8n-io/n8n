@@ -12,6 +12,32 @@ import { N8nActionToggle, N8nButton, N8nText, N8nTooltip } from 'n8n-design-syst
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+// TODO: replace with n8n-api type
+const TEST_CASE_EXECUTION_ERROR_CODE = {
+	MOCKED_NODE_DOES_NOT_EXIST: 'MOCKED_NODE_DOES_NOT_EXIST',
+	TRIGGER_NO_LONGER_EXISTS: 'TRIGGER_NO_LONGER_EXISTS',
+	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
+	EVALUATION_WORKFLOW_DOES_NOT_EXIST: 'EVALUATION_WORKFLOW_DOES_NOT_EXIST',
+	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
+	METRICS_MISSING: 'METRICS_MISSING',
+	UNKNOWN_METRICS: 'UNKNOWN_METRICS',
+	INVALID_METRICS: 'INVALID_METRICS',
+	PAYLOAD_LIMIT_EXCEEDED: 'PAYLOAD_LIMIT_EXCEEDED',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+} as const;
+
+type TestCaseExecutionErrorCodes =
+	(typeof TEST_CASE_EXECUTION_ERROR_CODE)[keyof typeof TEST_CASE_EXECUTION_ERROR_CODE];
+
+const TEST_RUN_ERROR_CODES = {
+	PAST_EXECUTIONS_NOT_FOUND: 'PAST_EXECUTIONS_NOT_FOUND',
+	EVALUATION_WORKFLOW_NOT_FOUND: 'EVALUATION_WORKFLOW_NOT_FOUND',
+	INTERRUPTED: 'INTERRUPTED',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+} as const;
+
+type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERROR_CODES];
+
 const router = useRouter();
 const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
@@ -66,8 +92,7 @@ const gotToExecution = (executionId: string) => {
 	window.open(href, '_blank');
 };
 
-const errorTooltipMap: Record<string, BaseTextKey> = {
-	// Test case errors
+const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
 	MOCKED_NODE_DOES_NOT_EXIST: 'testDefinition.runDetail.error.mockedNodeMissing',
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
@@ -75,14 +100,19 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
 	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
+} as const;
 
-	// Test run errors
+const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	PAST_EXECUTIONS_NOT_FOUND: 'testDefinition.listRuns.error.noPastExecutions',
 	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
-};
+} as const;
+
+const getErrorBaseKey = (errorCode?: string) =>
+	testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
+	testRunErrorDictionary[errorCode as TestRunErrorCode];
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
-	if (row.errorCode === 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW') {
+	if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_EVALUATION_WORKFLOW) {
 		return {
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
@@ -90,14 +120,14 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 				executionId: row.evaluationExecutionId,
 			},
 		};
-	} else if (row.errorCode === 'MOCKED_NODE_DOES_NOT_EXIST') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_DOES_NOT_EXIST) {
 		return {
 			name: VIEWS.TEST_DEFINITION_EDIT,
 			params: {
 				testId: testId.value,
 			},
 		};
-	} else if (row.errorCode === 'FAILED_TO_EXECUTE_WORKFLOW') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW) {
 		return {
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
@@ -105,7 +135,7 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 				executionId: row.executionId,
 			},
 		};
-	} else if (row.errorCode === 'TRIGGER_NO_LONGER_EXISTS') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.TRIGGER_NO_LONGER_EXISTS) {
 		return {
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
@@ -113,21 +143,21 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 				executionId: row.pastExecutionId,
 			},
 		};
-	} else if (row.errorCode === 'METRICS_MISSING') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.METRICS_MISSING) {
 		return {
 			name: VIEWS.TEST_DEFINITION_EDIT,
 			params: {
 				testId: testId.value,
 			},
 		};
-	} else if (row.errorCode === 'UNKNOWN_METRICS') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.UNKNOWN_METRICS) {
 		return {
 			name: VIEWS.TEST_DEFINITION_EDIT,
 			params: {
 				testId: testId.value,
 			},
 		};
-	} else if (row.errorCode === 'INVALID_METRICS') {
+	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.INVALID_METRICS) {
 		return {
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
@@ -275,20 +305,18 @@ onMounted(async () => {
 				<template v-if="row.status === 'error'">
 					<N8nTooltip placement="right" :show-after="300">
 						<template #content>
-							<i18n-t :keypath="errorTooltipMap[row.errorCode]">
-								<template #link>
-									<RouterLink :to="getErrorTooltipLinkRoute(row)" target="_blank">
-										{{ locale.baseText(`${errorTooltipMap[row.errorCode]}.solution`) }}
-									</RouterLink>
-									<!-- <N8nLink
-										:to="getErrorTooltipLinkRoute(row)"
-										size="small"
-										style="white-space: nowrap"
-									>
-										{{ locale.baseText(`${errorTooltipMap[row.errorCode]}.solution`) }}
-									</N8nLink> -->
-								</template>
-							</i18n-t>
+							<template v-if="getErrorBaseKey(row.errorCode)">
+								<i18n-t :keypath="getErrorBaseKey(row.errorCode)">
+									<template #link>
+										<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
+											{{
+												locale.baseText(`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey)
+											}}
+										</RouterLink>
+									</template>
+								</i18n-t>
+							</template>
+							<template v-else> UNKNOWN_ERROR </template>
 						</template>
 						<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
 							<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>

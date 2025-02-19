@@ -49,7 +49,7 @@ const listItems = computed(() =>
 			testCases: (testDefinitionStore.testRunsByTestId[test.id] || []).length,
 			lastExecution: testDefinitionStore.lastRunByTestId[test.id] ?? undefined,
 			isTestRunning: isTestRunning(test.id),
-			setupErrors: testDefinitionStore.getFieldIssues(test.id),
+			setupErrors: testDefinitionStore.getFieldIssues(test.id) ?? [],
 		}),
 	),
 );
@@ -165,7 +165,7 @@ async function onDeleteTest(testId: string) {
 
 <template>
 	<div :class="$style.container">
-		<N8nLoading v-if="isLoading" loading :rows="3"></N8nLoading>
+		<N8nLoading v-if="isLoading" loading :rows="3" data-test-id="test-definition-loader" />
 		<EmptyState
 			v-else-if="!listItems.length"
 			data-test-id="test-definition-empty-state"
@@ -185,13 +185,14 @@ async function onDeleteTest(testId: string) {
 					<N8nButton label="Run all evaluations" disabled type="secondary" />
 				</div>
 			</div>
-			<div :class="$style.testList">
+			<div :class="$style.testList" data-test-id="test-definition-list">
 				<TestItem
 					v-for="item in listItems"
 					:key="item.id"
 					:name="item.name"
 					:test-cases="item.testCases"
 					:execution="item.lastExecution"
+					:data-test-id="`test-item-${item.id}`"
 					@click="onEditTest(item.id)"
 				>
 					<template #prepend>
@@ -220,6 +221,7 @@ async function onDeleteTest(testId: string) {
 									type="secondary"
 									size="mini"
 									:disabled="Boolean(item.setupErrors.length)"
+									:data-test-id="`run-test-${item.id}`"
 									@click="onRunTest(item.id)"
 								/>
 							</N8nTooltip>
@@ -229,6 +231,7 @@ async function onDeleteTest(testId: string) {
 						<div @click.stop>
 							<N8nActionToggle
 								:actions="actions"
+								:data-test-id="`test-actions-${item.id}`"
 								icon-orientation="horizontal"
 								@action="(action) => handleAction(action, item.id)"
 							>

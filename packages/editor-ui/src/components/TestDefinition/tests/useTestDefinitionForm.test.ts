@@ -13,6 +13,7 @@ const TEST_DEF_A: TestDefinitionRecord = {
 	workflowId: '123',
 	annotationTagId: '789',
 	annotationTag: null,
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 const TEST_DEF_B: TestDefinitionRecord = {
 	id: '2',
@@ -20,6 +21,7 @@ const TEST_DEF_B: TestDefinitionRecord = {
 	workflowId: '123',
 	description: 'Description B',
 	annotationTag: null,
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 const TEST_DEF_NEW: TestDefinitionRecord = {
 	id: '3',
@@ -27,6 +29,7 @@ const TEST_DEF_NEW: TestDefinitionRecord = {
 	name: 'New Test Definition',
 	description: 'New Description',
 	annotationTag: null,
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 
 beforeEach(() => {
@@ -150,6 +153,7 @@ describe('useTestDefinitionForm', () => {
 			id: TEST_DEF_A.id,
 			name: TEST_DEF_B.name,
 			description: TEST_DEF_B.description,
+			mockedNodes: [],
 		});
 		expect(updatedTest).toEqual(updatedBTest);
 	});

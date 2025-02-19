@@ -36,6 +36,9 @@ describe('TestDefinitionRunDetailView', () => {
 		createdAt: '2023-01-01T00:00:00.000Z',
 		updatedAt: '2023-01-01T00:00:00.000Z',
 		completedAt: '2023-01-01T00:00:00.000Z',
+		failedCases: 0,
+		passedCases: 1,
+		totalCases: 1,
 	};
 
 	const mockTestDefinition = {
@@ -43,6 +46,7 @@ describe('TestDefinitionRunDetailView', () => {
 		name: 'Test Definition 1',
 		evaluationWorkflowId: 'workflow1',
 		workflowId: 'workflow1',
+		createdAt: '2023-01-01T00:00:00.000Z',
 	};
 
 	const mockWorkflow = {

@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
-import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
-import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord } from '@/api/testDefinition.ee';
-import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
-import type { ITag, ModalState } from '@/Interface';
-import { NODE_PINNING_MODAL_KEY } from '@/constants';
-import { ref, computed } from 'vue';
-import { useMessage } from '@/composables/useMessage';
-import type { IPinData } from 'n8n-workflow';
 import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
+import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
+import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
+import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
+import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { NODE_PINNING_MODAL_KEY } from '@/constants';
+import type { ITag, ModalState } from '@/Interface';
+import type { IPinData } from 'n8n-workflow';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	showConfig: boolean;

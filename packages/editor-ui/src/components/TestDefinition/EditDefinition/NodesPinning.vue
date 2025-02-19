@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { computed, onMounted, ref, useCssModule } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
-import { createEventBus, N8nTooltip } from 'n8n-design-system';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { useI18n } from '@/composables/useI18n';
+import { createEventBus, N8nTooltip } from 'n8n-design-system';
+import { computed, onMounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -154,6 +154,7 @@ onMounted(loadData);
 							block
 							type="secondary"
 							:class="$style.customSecondary"
+							data-test-id="node-pin-button"
 							@click="onPinButtonClick(data)"
 						>
 							Un Mock
@@ -163,6 +164,7 @@ onMounted(loadData);
 							icon="thumbtack"
 							block
 							type="secondary"
+							data-test-id="node-pin-button"
 							@click="onPinButtonClick(data)"
 						>
 							Mock

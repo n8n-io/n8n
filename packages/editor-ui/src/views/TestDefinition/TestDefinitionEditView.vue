@@ -231,7 +231,6 @@ const updateDescription = (value: string) => {
 			</div>
 
 			<div :class="$style.content">
-				<!-- <pre>{{ runs }}</pre> -->
 				<RunsSection
 					v-if="runs.length > 0"
 					v-model:selectedMetric="selectedMetric"

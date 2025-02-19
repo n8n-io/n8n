@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRouter } from 'vue-router';
 import { useAsyncState } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
