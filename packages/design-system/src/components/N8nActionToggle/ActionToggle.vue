@@ -18,6 +18,7 @@ interface ActionToggleProps {
 	iconOrientation?: IconOrientation;
 	loading?: boolean;
 	loadingRowCount?: number;
+	disabled?: boolean;
 }
 
 defineOptions({ name: 'N8nActionToggle' });
@@ -30,6 +31,7 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingRowCount: 3,
+	disabled: false,
 });
 
 const emit = defineEmits<{
@@ -45,6 +47,7 @@ const onVisibleChange = (value: boolean) => emit('visible-change', value);
 		<ElDropdown
 			:placement="placement"
 			:size="size"
+			:disabled="disabled"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"

@@ -71,6 +71,20 @@ WithHiddenItems.args = {
 	],
 };
 
+const hiddenItemsDisabledTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: '<Breadcrumbs v-bind="args" />',
+});
+
+export const HiddenItemsDisabled = hiddenItemsDisabledTemplate.bind({});
+HiddenItemsDisabled.args = {
+	items: items.slice(2),
+	hiddenItems: [],
+	pathTruncated: true,
+};
+
 const asyncLoadingTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	components: { AsyncLoadingCacheDemo },

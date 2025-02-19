@@ -19,6 +19,8 @@ type Props = {
 	loadingSkeletonRows?: number;
 	separator?: string;
 	highlightLastItem?: boolean;
+	// Setting this to true will show the ellipsis even if there are no hidden items
+	pathTruncated?: boolean;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -37,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingSkeletonRows: 3,
 	separator: '/',
 	highlightLastItem: true,
+	isPathTruncated: false,
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -46,7 +49,15 @@ const currentPromise = ref<Promise<PathItem[]> | null>(null);
 const hasHiddenItems = computed(() => {
 	return Array.isArray(props.hiddenItems)
 		? props.hiddenItems.length > 0
-		: props.hiddenItems instanceof Promise;
+		: props.hiddenItems !== undefined;
+});
+
+const showEllipsis = computed(() => {
+	return hasHiddenItems.value || props.pathTruncated;
+});
+
+const dropdownDisabled = computed(() => {
+	return props.pathTruncated && !hasHiddenItems.value;
 });
 
 const hiddenItemActions = computed((): UserAction[] => {
@@ -129,8 +140,8 @@ const handleTooltipClose = () => {
 		<ul :class="$style.list">
 			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
 			<li
-				v-if="hasHiddenItems"
-				:class="{ [$style.ellipsis]: true, [$style.clickable]: hasHiddenItems }"
+				v-if="showEllipsis"
+				:class="{ [$style.ellipsis]: true, [$style.disabled]: dropdownDisabled }"
 				data-test-id="ellipsis"
 			>
 				<!-- Show interactive dropdown for larger versions -->
@@ -139,6 +150,8 @@ const handleTooltipClose = () => {
 						:actions="hiddenItemActions"
 						:loading="isLoadingHiddenItems"
 						:loading-row-count="loadingSkeletonRows"
+						:disabled="dropdownDisabled"
+						:class="$style['action-toggle']"
 						theme="dark"
 						placement="bottom"
 						size="small"
@@ -151,6 +164,7 @@ const handleTooltipClose = () => {
 				<n8n-tooltip
 					v-else
 					:popper-class="$style.tooltip"
+					:disabled="dropdownDisabled"
 					trigger="click"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
@@ -174,7 +188,7 @@ const handleTooltipClose = () => {
 					<span>...</span>
 				</n8n-tooltip>
 			</li>
-			<li v-if="hasHiddenItems" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
+			<li v-if="showEllipsis" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
 			<template v-for="(item, index) in items" :key="item.id">
 				<li
 					:class="{
@@ -221,9 +235,15 @@ const handleTooltipClose = () => {
 	color: var(--color-text-dark);
 }
 
+// Make disabled ellipsis look like a normal item
 .ellipsis {
-	&.clickable {
-		cursor: pointer;
+	&.disabled {
+		.action-toggle * {
+			cursor: default;
+			&:hover {
+				color: inherit;
+			}
+		}
 	}
 }
 
