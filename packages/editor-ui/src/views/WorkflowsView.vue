@@ -1,11 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import ResourcesListLayout, {
-	type Resource,
-	type BaseFilters,
-	FolderResource,
-	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { Resource, BaseFilters } from '@/components/layouts/ResourcesListLayout.vue';
+import { FolderResource, WorkflowResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
@@ -652,7 +649,7 @@ const addTestFolders = (resources: Resource[]) => {
 		<template #item="{ item: data }">
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).type === 'folders'"
-				:data="data as Folder"
+				:data="data as FolderResource"
 				class="mb-2xs"
 				@click="navigateToFolder((data as FolderResource | WorkflowResource).id)"
 				@action="onFolderCardAction"

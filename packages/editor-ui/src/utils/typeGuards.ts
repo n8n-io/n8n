@@ -11,6 +11,13 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
+import type {
+	CredentialsResource,
+	FolderResource,
+	Resource,
+	VariableResource,
+	WorkflowResource,
+} from '@/components/layouts/ResourcesListLayout.vue';
 
 /*
 	Type guards used in editor-ui project
@@ -97,4 +104,32 @@ export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
 
 export function isComponentPublicInstance(value: unknown): value is ComponentPublicInstance {
 	return value !== null && typeof value === 'object' && '$props' in value;
+}
+
+export function isWorkflowResource(value: Resource): value is WorkflowResource {
+	return value.type === 'workflows';
+}
+
+export function isFolderResource(value: Resource): value is FolderResource {
+	return value.type === 'folders';
+}
+
+export function isVariableResource(value: Resource): value is VariableResource {
+	return value.type === 'variables';
+}
+
+export function isCredentialsResource(value: Resource): value is CredentialsResource {
+	return value.type === 'credentials';
+}
+
+export function isSharedResource(
+	value: Resource,
+): value is WorkflowResource | FolderResource | CredentialsResource {
+	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
+}
+
+export function isSortableResource(
+	value: Resource,
+): value is WorkflowResource | FolderResource | CredentialsResource {
+	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
 }

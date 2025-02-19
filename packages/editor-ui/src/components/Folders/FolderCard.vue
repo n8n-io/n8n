@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import type { Folder } from '@/types/folders.types';
 import { computed } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
+import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
 
 type Props = {
-	data: Folder;
+	data: FolderResource;
 };
-
-const locale = useI18n();
 
 const props = defineProps<Props>();
 

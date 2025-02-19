@@ -92,6 +92,7 @@ const variables = computed<VariableResource[]>(() =>
 			({
 				type: 'variables',
 				id: variable.id,
+				name: variable.key,
 				key: variable.key,
 				value: variable.value,
 			}) as VariableResource,

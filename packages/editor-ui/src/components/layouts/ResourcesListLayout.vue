@@ -15,16 +15,17 @@ import { useRoute, useRouter } from 'vue-router';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 import type { ITag } from '@/Interface';
+import { isSharedResource, isSortableResource } from '@/utils/typeGuards';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
 export type BaseResource = {
 	id: string;
+	name: string;
 };
 
 export type FolderResource = BaseResource & {
 	type: 'folders';
-	name: string;
 	updatedAt: string;
 	createdAt: string;
 	homeProject?: ProjectSharingData;
@@ -36,7 +37,6 @@ export type FolderResource = BaseResource & {
 
 export type WorkflowResource = BaseResource & {
 	type: 'workflows';
-	name: string;
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -55,7 +55,6 @@ export type VariableResource = BaseResource & {
 
 export type CredentialsResource = BaseResource & {
 	type: 'credentials';
-	name: string;
 	updatedAt: string;
 	createdAt: string;
 	homeProject?: ProjectSharingData;
@@ -187,7 +186,7 @@ const filteredAndSortedResources = computed(() => {
 	const filtered = props.resources.filter((resource) => {
 		let matches = true;
 
-		if (filtersModel.value.homeProject) {
+		if (filtersModel.value.homeProject && isSharedResource(resource)) {
 			matches =
 				matches &&
 				!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
@@ -206,6 +205,10 @@ const filteredAndSortedResources = computed(() => {
 	});
 
 	return filtered.sort((a, b) => {
+		const areSortable = isSortableResource(a) && isSortableResource(b);
+		if (!areSortable) {
+			return 0;
+		}
 		switch (sortBy.value) {
 			case 'lastUpdated':
 				return props.sortFns.lastUpdated
