@@ -7,7 +7,6 @@ import '@vue-flow/minimap/dist/style.css';
 import '@vue-flow/node-resizer/dist/style.css';
 
 import 'vue-json-pretty/lib/styles.css';
-import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 // import 'n8n-design-system/css/tailwind/index.css';
 
@@ -27,7 +26,6 @@ import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
 
@@ -41,7 +39,6 @@ app.use(PiniaVuePlugin);
 app.use(FontAwesomePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
-app.use(JsPlumbPlugin);
 app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
