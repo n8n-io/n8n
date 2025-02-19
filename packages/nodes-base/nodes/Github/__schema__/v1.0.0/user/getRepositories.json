@@ -338,5 +338,6 @@
         "events_url",
         "issues_url",
         "notifications_url"
-    ]
+    ],
+    "version": 1
 }
