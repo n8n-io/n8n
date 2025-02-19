@@ -198,9 +198,22 @@ watch(
 		state.value.evaluationWorkflow,
 		state.value.mockedNodes,
 	],
-	debounce(onSaveTest, { debounceTime: 400 }),
+	debounce(onSaveTest, { debounceTime: 400, trailing: true }),
 	{ deep: true },
 );
+
+function onEvaluationWorkflowCreated(workflowId: string) {
+	telemetry.track(
+		'User created evaluation workflow from test',
+		{
+			test_id: testId.value,
+			subworkflow_id: workflowId,
+		},
+		{
+			withPostHog: true,
+		},
+	);
+}
 </script>
 
 <template>
@@ -261,6 +274,7 @@ watch(
 				:sample-workflow-name="workflowName"
 				@open-pinning-modal="openPinningModal"
 				@delete-metric="onDeleteMetric"
+				@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 			/>
 		</div>
 	</div>
