@@ -779,12 +779,17 @@
 								if (json?.redirectURL) {
 									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
 									window.location.replace(url);
-								} else if (json?.formSubmittedText) {
+									return;
+								}
+
+								if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
 									return;
-								} else if (text) {
+								}
+
+								if (text) {
 									document.body.innerHTML = text;
 									return;
 								}

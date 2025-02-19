@@ -170,9 +170,24 @@ export class ActiveExecutions {
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);
-		execution?.responsePromise?.resolve({});
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });
+	}
+
+	/** Resolve the response promise in an execution. */
+	resolveExecutionResponsePromise(executionId: string) {
+		// TODO: This should probably be refactored.
+		// The reason for adding this method is that the Form node works in 'responseNode' mode
+		// and expects the next Form to 'sendResponse' to redirect to the current Form node.
+		// Resolving responsePromise here is needed to complete the redirection chain; otherwise, a manual reload will be required.
+
+		if (!this.has(executionId)) return;
+		const execution = this.getExecutionOrFail(executionId);
+
+		if (execution.status !== 'waiting' && execution?.responsePromise) {
+			execution.responsePromise.resolve({});
+			this.logger.debug('Execution response promise cleaned', { executionId });
+		}
 	}
 
 	/**

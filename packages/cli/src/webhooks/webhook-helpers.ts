@@ -128,10 +128,6 @@ export function autoDetectResponseMode(
 				return 'responseNode';
 			}
 		}
-
-		if (workflowStartNode.type === FORM_NODE_TYPE) {
-			return 'onReceived';
-		}
 	}
 
 	return undefined;
