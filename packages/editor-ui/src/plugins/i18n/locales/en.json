@@ -2286,6 +2286,7 @@
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
 	"workflowSettings.timezone": "Timezone",
+	"workflowSettings.timeSavedPerExecution": "Time saved per execution",
 	"workflowHistory.title": "Version History",
 	"workflowHistory.content.title": "Version",
 	"workflowHistory.content.editedBy": "Edited by",
