@@ -128,5 +128,6 @@
         "Comments",
         "LastViewedDate",
         "LastReferencedDate"
-    ]
+    ],
+    "version": 1
 }
