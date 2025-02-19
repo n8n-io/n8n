@@ -1,110 +1,111 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"url": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"created_at": {
-			"type": "string"
-		},
-		"updated_at": {
-			"type": "string"
-		},
-		"time_zone": {
-			"type": "string"
-		},
-		"iana_time_zone": {
-			"type": "string"
-		},
-		"locale_id": {
-			"type": "integer"
-		},
-		"locale": {
-			"type": "string"
-		},
-		"role": {
-			"type": "string"
-		},
-		"verified": {
-			"type": "boolean"
-		},
-		"tags": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"active": {
-			"type": "boolean"
-		},
-		"shared": {
-			"type": "boolean"
-		},
-		"shared_agent": {
-			"type": "boolean"
-		},
-		"two_factor_auth_enabled": {
-			"type": "null"
-		},
-		"moderator": {
-			"type": "boolean"
-		},
-		"only_private_comments": {
-			"type": "boolean"
-		},
-		"restricted_agent": {
-			"type": "boolean"
-		},
-		"suspended": {
-			"type": "boolean"
-		},
-		"report_csv": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"url",
-		"name",
-		"email",
-		"created_at",
-		"updated_at",
-		"time_zone",
-		"iana_time_zone",
-		"phone",
-		"shared_phone_number",
-		"photo",
-		"locale_id",
-		"locale",
-		"organization_id",
-		"role",
-		"verified",
-		"external_id",
-		"tags",
-		"alias",
-		"active",
-		"shared",
-		"shared_agent",
-		"last_login_at",
-		"two_factor_auth_enabled",
-		"signature",
-		"details",
-		"notes",
-		"role_type",
-		"custom_role_id",
-		"moderator",
-		"ticket_restriction",
-		"only_private_comments",
-		"restricted_agent",
-		"suspended",
-		"default_group_id",
-		"report_csv",
-		"user_fields"
-	]
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "iana_time_zone": {
+            "type": "string"
+        },
+        "locale_id": {
+            "type": "integer"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        },
+        "verified": {
+            "type": "boolean"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "shared_agent": {
+            "type": "boolean"
+        },
+        "two_factor_auth_enabled": {
+            "type": "null"
+        },
+        "moderator": {
+            "type": "boolean"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "report_csv": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "url",
+        "name",
+        "email",
+        "created_at",
+        "updated_at",
+        "time_zone",
+        "iana_time_zone",
+        "phone",
+        "shared_phone_number",
+        "photo",
+        "locale_id",
+        "locale",
+        "organization_id",
+        "role",
+        "verified",
+        "external_id",
+        "tags",
+        "alias",
+        "active",
+        "shared",
+        "shared_agent",
+        "last_login_at",
+        "two_factor_auth_enabled",
+        "signature",
+        "details",
+        "notes",
+        "role_type",
+        "custom_role_id",
+        "moderator",
+        "ticket_restriction",
+        "only_private_comments",
+        "restricted_agent",
+        "suspended",
+        "default_group_id",
+        "report_csv",
+        "user_fields"
+    ],
+    "version": 1
 }
