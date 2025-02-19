@@ -296,6 +296,7 @@ export class WorkflowRunner {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
+					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(
@@ -345,14 +346,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			lifecycleHooks = getLifecycleHooksForScalingMain(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{
-					retryOf: data.retryOf ?? undefined,
-				},
-			);
+			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
@@ -360,12 +354,7 @@ export class WorkflowRunner {
 		} catch (error) {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const lifecycleHooks = getLifecycleHooksForScalingWorker(
-				data.executionMode,
-				executionId,
-				data.workflowData,
-				{ retryOf: data.retryOf ?? undefined },
-			);
+			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
 			throw error;
 		}
@@ -378,13 +367,7 @@ export class WorkflowRunner {
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const lifecycleHooks = getLifecycleHooksForScalingWorker(
-						data.executionMode,
-						executionId,
-						data.workflowData,
-						{ retryOf: data.retryOf ?? undefined },
-					);
-
+					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 					const error = new ExecutionCancelledError(executionId);
 					await this.processError(
 						error,
@@ -409,12 +392,7 @@ export class WorkflowRunner {
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const lifecycleHooks = getLifecycleHooksForScalingWorker(
-						data.executionMode,
-						executionId,
-						data.workflowData,
-						{ retryOf: data.retryOf ?? undefined },
-					);
+					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 
 					await this.processError(
 						error,
