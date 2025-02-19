@@ -21,12 +21,9 @@ import {
 	getPropertyName,
 } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
-import {
-	configureWaitTillDate,
-	getSendAndWaitProperties,
-	sendAndWaitWebhook,
-} from '../../utils/sendAndWait/utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {

@@ -162,7 +162,10 @@ export class ExternalHooks {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const error = new ApplicationError(`External hook "${hookName}" failed`, { cause });
 				this.errorReporter.error(error, { level: 'fatal' });
-				throw error;
+
+				// Throw original error, so that hooks control the error returned to use
+				// For example on Cloud we return upgrade message when user reaches max executions or activations
+				throw cause;
 			}
 		}
 	}

@@ -824,8 +824,8 @@ importers:
         specifier: 1.13.0
         version: 1.13.0
       '@n8n_io/license-sdk':
-        specifier: 2.15.1
-        version: 2.15.1
+        specifier: 2.16.0
+        version: 2.16.0
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -1429,21 +1429,6 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: '*'
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
-      '@jsplumb/browser-ui':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/common':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/connector-bezier':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/core':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/util':
-        specifier: ^5.13.2
-        version: 5.13.2
       '@lezer/common':
         specifier: ^1.0.4
         version: 1.1.0
@@ -3912,21 +3897,6 @@ packages:
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
-  '@jsplumb/browser-ui@5.13.2':
-    resolution: {integrity: sha512-BZ76kPtxESMIdhcCtWXPdICMudJyBVzDxaKY4jlne93Zq1T2ErfpNQ3E6f3JZfvoyvlNbKgh0udYkZ7Yg7BmIQ==}
-
-  '@jsplumb/common@5.13.2':
-    resolution: {integrity: sha512-ZX/EvvYi4HBkRVtsuSSAa/AuAz4p2wr3RrRz6l+r8yeElzX3lrrBx/fkERY2qwZPkKcOoLCr5ezZ7sslVMnl0Q==}
-
-  '@jsplumb/connector-bezier@5.13.2':
-    resolution: {integrity: sha512-AALmOvkiP3ouGag6TGkBcd7SbCewPNwsKu9gku9AZqIq+fFu321zJ2IpfoyCFgkoFFSQjJ9jo1sWBbD3gnEXrg==}
-
-  '@jsplumb/core@5.13.2':
-    resolution: {integrity: sha512-IODXQzhpq9QEzGKhPir6+ea8m4KeU3gzJsYjIu8oqSQ4jDhvEYF7TvSfeaNgy9sUAMt3OoKCqxCS4ga9J7LS5A==}
-
-  '@jsplumb/util@5.13.2':
-    resolution: {integrity: sha512-POrqlZMOo821oa49Xbxb+pNmnxu0z2oS7FOeklRxKuYXR+7nsP0j9PpXjo8E8Ily4TaP+pdUnatb53vAaONO3g==}
-
   '@kafkajs/confluent-schema-registry@1.0.6':
     resolution: {integrity: sha512-NrZL1peOIlmlLKvheQcJAx9PHdnc4kaW+9+Yt4jXUfbbYR9EFNCZt6yApI4SwlFilaiZieReM6XslWy1LZAvoQ==}
 
@@ -4594,8 +4564,8 @@ packages:
     resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.15.1':
-    resolution: {integrity: sha512-z7gf0sDpJ8R6JqS05yqSbOFBCV54d8zSne6xbGrpyKoWs0EpCzCBia3YTfYbULi8m+d6JfqnRTiqFQPa1VZpkg==}
+  '@n8n_io/license-sdk@2.16.0':
+    resolution: {integrity: sha512-MVBqCkapJUX1rWhAXzGnfqOFaqzr0MT2X3ZTuA1BOyypb0doiuG9eh2ABy67Py4QKXGu+gnBAXZYGwG29bay+w==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -16526,24 +16496,6 @@ snapshots:
 
   '@jsdevtools/ono@7.1.3': {}
 
-  '@jsplumb/browser-ui@5.13.2':
-    dependencies:
-      '@jsplumb/core': 5.13.2
-
-  '@jsplumb/common@5.13.2':
-    dependencies:
-      '@jsplumb/util': 5.13.2
-
-  '@jsplumb/connector-bezier@5.13.2':
-    dependencies:
-      '@jsplumb/core': 5.13.2
-
-  '@jsplumb/core@5.13.2':
-    dependencies:
-      '@jsplumb/common': 5.13.2
-
-  '@jsplumb/util@5.13.2': {}
-
   '@kafkajs/confluent-schema-registry@1.0.6':
     dependencies:
       avsc: 5.7.6
@@ -17009,7 +16961,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
-  '@n8n_io/license-sdk@2.15.1':
+  '@n8n_io/license-sdk@2.16.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

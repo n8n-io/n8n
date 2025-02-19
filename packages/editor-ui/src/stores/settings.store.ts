@@ -180,10 +180,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const isCanvasV2Enabled = computed(() =>
-		(settings.value.betaFeatures ?? []).includes('canvas_v2'),
-	);
-
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
@@ -431,7 +427,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution,
 		isCommunityPlan,
 		isAskAiEnabled,
-		isCanvasV2Enabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		reset,
