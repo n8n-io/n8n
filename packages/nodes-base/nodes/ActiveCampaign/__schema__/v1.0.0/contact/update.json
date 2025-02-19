@@ -204,5 +204,6 @@
         "links",
         "id",
         "organization"
-    ]
+    ],
+    "version": 1
 }
