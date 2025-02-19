@@ -145,7 +145,9 @@ const handleTooltipClose = () => {
 						icon-orientation="horizontal"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
-					/>
+					>
+						<n8n-text :bold="true" :class="$style.dots">...</n8n-text>
+					</n8n-action-toggle>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
 				<n8n-tooltip
@@ -260,6 +262,18 @@ const handleTooltipClose = () => {
 
 	.tooltip-loading {
 		min-width: var(--spacing-4xl);
+	}
+}
+
+.dots {
+	padding: 0 var(--spacing-4xs);
+	color: var(--color-text-light);
+	border-radius: var(--border-radius-base);
+
+	&:hover,
+	&:focus {
+		background-color: var(--color-background-base);
+		color: var(--color-primary);
 	}
 }
 
