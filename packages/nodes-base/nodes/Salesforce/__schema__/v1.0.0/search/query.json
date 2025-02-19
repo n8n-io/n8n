@@ -22,5 +22,6 @@
     },
     "required": [
         "attributes"
-    ]
+    ],
+    "version": 1
 }
