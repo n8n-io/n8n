@@ -47,5 +47,6 @@
         "description",
         "dueDate",
         "cycle"
-    ]
+    ],
+    "version": 1
 }
