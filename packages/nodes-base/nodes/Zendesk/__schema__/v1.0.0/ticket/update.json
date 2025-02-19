@@ -138,5 +138,6 @@
         "from_messaging_channel": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
