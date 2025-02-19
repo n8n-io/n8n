@@ -19,5 +19,6 @@
         "_mtime": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
