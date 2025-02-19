@@ -1,34 +1,24 @@
-import { captor } from 'jest-mock-extended';
-
-import { mockLogger } from '@test/mocking';
+import { captor, mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 
 import { DeprecationService } from '../deprecation.service';
 
-// Ignore environment variables coming in from the environment when running
-// this test suite.
-process.env = {};
-
 describe('DeprecationService', () => {
-	const logger = mockLogger();
+	const logger = mock<Logger>();
+	const deprecationService = new DeprecationService(logger);
 
 	beforeEach(() => {
+		// Ignore environment variables coming in from the environment when running
+		// this test suite.
+		process.env = {};
+
 		jest.resetAllMocks();
 	});
 
 	describe('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', () => {
-		beforeAll(() => {
-			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
-		});
-
-		afterAll(() => {
-			delete process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT;
-		});
-
 		test('supports multiple warnings for the same environment variable', () => {
 			// ARRANGE
 			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
-			const deprecationService = new DeprecationService(logger);
-
 			const dataCaptor = captor();
 
 			// ACT
@@ -37,7 +27,12 @@ describe('DeprecationService', () => {
 			// ASSERT
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
-			expect(dataCaptor.value.match(/N8N_PARTIAL_EXECUTION_VERSION_DEFAULT/g)).toHaveLength(2);
+			expect(dataCaptor.value.split('\n')).toEqual(
+				expect.arrayContaining([
+					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
+					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.',
+				]),
+			);
 		});
 	});
 
@@ -50,8 +45,6 @@ describe('DeprecationService', () => {
 			} else {
 				delete process.env[envVar];
 			}
-
-			const deprecationService = new DeprecationService(logger);
 
 			// ACT
 			deprecationService.warn();

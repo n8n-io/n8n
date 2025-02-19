@@ -127,7 +127,7 @@ describe('settings.store', () => {
 				result: 2,
 			},
 			{
-				name: "pick the user' choice",
+				name: "pick the user's choice",
 				default: 1 as const,
 				userVersion: 2,
 				result: 2,
