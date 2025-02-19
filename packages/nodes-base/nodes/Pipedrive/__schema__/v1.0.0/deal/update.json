@@ -58,5 +58,6 @@
         "person_hidden": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
