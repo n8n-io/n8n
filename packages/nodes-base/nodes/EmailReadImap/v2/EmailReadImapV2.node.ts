@@ -464,6 +464,9 @@ export class EmailReadImapV2 implements INodeType {
 							textHtml: await getText(parts, message, 'html'),
 							textPlain: await getText(parts, message, 'plain'),
 							metadata: {} as IDataObject,
+							attributes: {
+								uid: message.attributes.uid,
+							} as IDataObject,
 						},
 					};
 
