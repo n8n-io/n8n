@@ -2001,11 +2001,7 @@ export class WorkflowExecute {
 	ensureInputData(workflow: Workflow, executionNode: INode, executionData: IExecuteData): boolean {
 		const inputConnections = workflow.connectionsByDestinationNode[executionNode.name]?.main ?? [];
 		for (let connectionIndex = 0; connectionIndex < inputConnections.length; connectionIndex++) {
-			const highestNodes = workflow.getHighestNode(
-				executionNode.name,
-				NodeConnectionType.Main,
-				connectionIndex,
-			);
+			const highestNodes = workflow.getHighestNode(executionNode.name, connectionIndex);
 			if (highestNodes.length === 0) {
 				// If there is no valid incoming node (if all are disabled)
 				// then ignore that it has inputs and simply execute it as it is without
