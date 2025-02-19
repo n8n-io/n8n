@@ -1390,13 +1390,7 @@ export class WorkflowExecute {
 								connectionIndex < inputConnections.length;
 								connectionIndex++
 							) {
-								if (
-									workflow.getHighestNode(
-										executionNode.name,
-										NodeConnectionType.Main,
-										connectionIndex,
-									).length === 0
-								) {
+								if (workflow.getHighestNode(executionNode.name, connectionIndex).length === 0) {
 									// If there is no valid incoming node (if all are disabled)
 									// then ignore that it has inputs and simply execute it as it is without
 									// any data

@@ -2143,30 +2143,6 @@ describe('Workflow', () => {
 			expect(result).toEqual([targetNode.name]);
 		});
 
-		test('should respect specified connection type', () => {
-			const node1 = createNode('Node1');
-			const node2 = createNode('Node2');
-			const targetNode = createNode('TargetNode');
-
-			const connections = {
-				Node1: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
-				},
-			};
-
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [node1, node2, targetNode],
-				connections,
-				active: false,
-				nodeTypes,
-			});
-
-			const resultMain = workflow.getHighestNode(targetNode.name, NodeConnectionType.Main);
-
-			expect(resultMain).toEqual([node1.name]);
-		});
-
 		test('should handle specified connection index', () => {
 			const node1 = createNode('Node1');
 			const node2 = createNode('Node2');
@@ -2189,12 +2165,8 @@ describe('Workflow', () => {
 				nodeTypes,
 			});
 
-			const resultFirstIndex = workflow.getHighestNode(targetNode.name, NodeConnectionType.Main, 0);
-			const resultSecondIndex = workflow.getHighestNode(
-				targetNode.name,
-				NodeConnectionType.Main,
-				1,
-			);
+			const resultFirstIndex = workflow.getHighestNode(targetNode.name, 0);
+			const resultSecondIndex = workflow.getHighestNode(targetNode.name, 1);
 
 			expect(resultFirstIndex).toEqual([node1.name]);
 			expect(resultSecondIndex).toEqual([node2.name]);
