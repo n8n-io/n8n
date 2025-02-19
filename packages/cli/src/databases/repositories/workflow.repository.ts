@@ -153,7 +153,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
 				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
 				.addCommonTableExpression(
-					'SELECT * FROM FOLDERS_QUERY UNION ALL SELECT * FROM WORKFLOWS_QUERY',
+					'SELECT * FROM "FOLDERS_QUERY" UNION ALL SELECT * FROM "WORKFLOWS_QUERY"',
 					'RESULT_QUERY',
 				),
 			sortByColumn,
@@ -167,12 +167,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			options,
 		);
 
-		const query = baseQuery.select('DISTINCT RESULT.*').from('RESULT_QUERY', 'RESULT');
+		const query = baseQuery.select('DISTINCT "RESULT".*').from('RESULT_QUERY', 'RESULT');
 
 		if (sortByColumn === 'name') {
-			query.addSelect('LOWER(RESULT.name)', 'name_lower').orderBy('name_lower', sortByDirection);
+			query
+				.addSelect('LOWER("RESULT"."name")', 'name_lower')
+				.orderBy('name_lower', sortByDirection);
 		} else {
-			query.orderBy(sortByColumn, sortByDirection);
+			query.orderBy(`"RESULT"."${sortByColumn}"`, sortByDirection);
 		}
 
 		if (options.take) {
@@ -195,7 +197,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
 
 		const response = await baseQuery
-			.select('COUNT(DISTINCT RESULT.id)', 'count')
+			.select('COUNT(DISTINCT "RESULT"."id")', 'count')
 			.from('RESULT_QUERY', 'RESULT')
 			.getRawOne<{ count: number | string }>();
 
@@ -287,7 +289,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	private createBaseQuery(workflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
 		return this.createQueryBuilder('workflow').where('workflow.id IN (:...workflowIds)', {
-			workflowIds,
+			/*
+			 * If workflowIds is empty, add a dummy value to prevent an error
+			 * when using the IN operator with an empty array.
+			 */
+			workflowIds: !workflowIds.length ? [''] : workflowIds,
 		});
 	}
 
