@@ -15,5 +15,6 @@
         "message",
         "id",
         "notificationId"
-    ]
+    ],
+    "version": 1
 }
