@@ -186,7 +186,7 @@ const handleTooltipClose = () => {
 							</div>
 						</div>
 					</template>
-					<span>...</span>
+					<span :class="$style['tooltip-ellipsis']">...</span>
 				</n8n-tooltip>
 			</li>
 			<li v-if="showEllipsis" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
@@ -238,11 +238,21 @@ const handleTooltipClose = () => {
 
 // Make disabled ellipsis look like a normal item
 .ellipsis {
+	.dots,
+	.tooltip-ellipsis {
+		cursor: pointer;
+		user-select: none;
+	}
 	&.disabled {
-		.action-toggle * {
+		.dots,
+		.tooltip-ellipsis {
 			cursor: default;
+		}
+		.dots {
+			cursor: default;
+			color: var(--color-text-base);
 			&:hover {
-				color: inherit;
+				color: var(--color-text-base);
 			}
 		}
 	}
