@@ -243,7 +243,7 @@ export class Form extends Node {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: 'onReceived',
+				responseMode: 'responseNode',
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
@@ -383,6 +383,13 @@ export class Form extends Node {
 
 		const waitTill = configureWaitTillDate(context, 'root');
 		await context.putExecutionToWait(waitTill);
+
+		context.sendResponse({
+			headers: {
+				location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+			},
+			statusCode: 307,
+		});
 
 		return [context.getInputData()];
 	}
