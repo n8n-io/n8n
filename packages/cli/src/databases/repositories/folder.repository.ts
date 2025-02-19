@@ -51,13 +51,13 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyDefaultSelect(query: SelectQueryBuilder<Folder>): void {
 		query
-			.leftJoinAndSelect('folder.project', 'project')
+			.leftJoinAndSelect('folder.homeProject', 'homeProject')
 			.leftJoinAndSelect('folder.parentFolder', 'parentFolder')
 			.leftJoinAndSelect('folder.tags', 'tags')
 			.leftJoinAndSelect('folder.workflows', 'workflows')
 			.select([
 				'folder',
-				...this.getProjectFields('project'),
+				...this.getProjectFields('homeProject'),
 				...this.getTagFields(),
 				...this.getParentFolderFields('parentFolder'),
 				'workflows.id',
@@ -88,8 +88,8 @@ export class FolderRepository extends Repository<Folder> {
 		select?: Record<string, boolean>,
 	): void {
 		if (select?.project) {
-			query.leftJoin('folder.project', 'project');
-			selections.push(...this.getProjectFields('project'));
+			query.leftJoin('folder.homeProject', 'homeProject');
+			selections.push(...this.getProjectFields('homeProject'));
 		}
 
 		if (select?.tags) {

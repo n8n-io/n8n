@@ -60,7 +60,7 @@ describe('FolderRepository', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						parentFolder: null,
-						project: {
+						homeProject: {
 							id: expect.any(String),
 							name: expect.any(String),
 							type: expect.any(String),
@@ -86,7 +86,7 @@ describe('FolderRepository', () => {
 				expect(count).toBe(1);
 				expect(folders).toHaveLength(1);
 				expect(folders[0].name).toBe('folder1');
-				expect(folders[0].project.id).toBe(project.id);
+				expect(folders[0].homeProject.id).toBe(project.id);
 			});
 
 			it('should filter folders by name case-insensitively', async () => {
@@ -286,8 +286,8 @@ describe('FolderRepository', () => {
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
-					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'project']);
-					expect(folder.project).toEqual({
+					expect(Object.keys(folder).sort()).toEqual(['homeProject', 'id', 'name']);
+					expect(folder.homeProject).toEqual({
 						id: expect.any(String),
 						name: expect.any(String),
 						type: expect.any(String),
@@ -368,7 +368,7 @@ describe('FolderRepository', () => {
 						name: expect.any(String),
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
-						project: {
+						homeProject: {
 							id: expect.any(String),
 							name: expect.any(String),
 							type: expect.any(String),

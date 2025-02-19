@@ -1131,7 +1131,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					tags: [],
-					project: {
+					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
 						icon: null,
@@ -1455,8 +1455,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.body.data[0].id).toBe(workflow.id);
 			expect(response.body.data[0].homeProject).not.toBeNull();
 			expect(response.body.data[1].id).toBe(folder.id);
-			// @TODO update folder endpoint to return homeProject
-			expect(response.body.data[1].project).not.toBeNull();
+			expect(response.body.data[1].homeProject).not.toBeNull();
 		});
 	});
 
@@ -1659,17 +1658,23 @@ describe('GET /workflows?includeFolders=true', () => {
 		});
 
 		test('should return empty array when pagination exceeds total count', async () => {
-			const response = await authOwnerAgent.get('/workflows').query('take=2&skip=10').expect(200);
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('take=2&skip=10&includeFolders=true')
+				.expect(200);
 
 			expect(response.body.data).toHaveLength(0);
-			expect(response.body.count).toBe(5);
+			expect(response.body.count).toBe(6);
 		});
 
 		test('should return all results when no pagination parameters are provided', async () => {
-			const response = await authOwnerAgent.get('/workflows').expect(200);
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('includeFolders=true')
+				.expect(200);
 
-			expect(response.body.data).toHaveLength(5);
-			expect(response.body.count).toBe(5);
+			expect(response.body.data).toHaveLength(6);
+			expect(response.body.count).toBe(6);
 		});
 	});
 });
