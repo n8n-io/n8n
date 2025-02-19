@@ -64,5 +64,6 @@
         "versionId",
         "link",
         "linkedEvents"
-    ]
+    ],
+    "version": 1
 }
