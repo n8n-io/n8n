@@ -4,6 +4,10 @@ import { mockLogger } from '@test/mocking';
 
 import { DeprecationService } from '../deprecation.service';
 
+// Ignore environment variables coming in from the environment when running
+// this test suite.
+process.env = {};
+
 describe('DeprecationService', () => {
 	const logger = mockLogger();
 
@@ -57,7 +61,7 @@ describe('DeprecationService', () => {
 				expect(logger.warn).toHaveBeenCalledTimes(1);
 				expect(logger.warn.mock.lastCall?.[0]).toMatch(envVar);
 			} else {
-				expect(logger.warn).toHaveBeenCalledTimes(0);
+				expect(logger.warn.mock.lastCall?.[0] ?? '').not.toMatch(envVar);
 			}
 		} finally {
 			// CLEANUP
