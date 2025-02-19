@@ -395,5 +395,6 @@
         "Total",
         "UpdatedDateUTC",
         "CurrencyCode"
-    ]
+    ],
+    "version": 1
 }
