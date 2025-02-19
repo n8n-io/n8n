@@ -11,6 +11,10 @@ import type {
 
 import { Form } from '../Form.node';
 
+jest.mock('../../../utils/sendAndWait/configureWaitTillDate.util', () => ({
+	configureWaitTillDate: jest.fn(), // Mocked function
+}));
+
 describe('Form Node', () => {
 	let form: Form;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;

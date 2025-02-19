@@ -2,12 +2,12 @@ import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
+import { configureWaitTillDate } from '../configureWaitTillDate.util';
 import {
 	getSendAndWaitProperties,
 	getSendAndWaitConfig,
 	createEmail,
 	sendAndWaitWebhook,
-	configureWaitTillDate,
 } from '../utils';
 
 describe('Send and Wait utils tests', () => {
@@ -465,5 +465,77 @@ describe('configureWaitTillDate', () => {
 		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(
 			'Could not configure Limit Wait Time',
 		);
+	});
+
+	it('should return WAIT_INDEFINITELY when limitWaitTime is false', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		expect(result).toBe(WAIT_INDEFINITELY);
+	});
+
+	it('should calculate minutes correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true) // limitWaitTime
+			.mockReturnValueOnce('afterTimeInterval') // limitType
+			.mockReturnValueOnce(15) // resumeAmount
+			.mockReturnValueOnce('minutes'); // resumeUnit
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 15 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should calculate hours correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce(3)
+			.mockReturnValueOnce('hours');
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 3 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should calculate days correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce(5)
+			.mockReturnValueOnce('days');
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 5 * 24 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should handle maxDateAndTime in root location', () => {
+		const maxDateAndTime = '2024-12-31T23:59:59Z';
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('maxDateAndTime')
+			.mockReturnValueOnce(maxDateAndTime);
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		expect(result).toEqual(new Date(maxDateAndTime));
+	});
+
+	it('should throw error for invalid date in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('maxDateAndTime')
+			.mockReturnValueOnce('not-a-valid-date');
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
+	});
+
+	it('should throw error for invalid resumeAmount in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce('not-a-number')
+			.mockReturnValueOnce('minutes');
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
 	});
 });
