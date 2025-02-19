@@ -122,5 +122,6 @@
         "removable",
         "key",
         "agent_description"
-    ]
+    ],
+    "version": 1
 }
