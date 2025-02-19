@@ -34,5 +34,6 @@
         "isDownloadable": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
