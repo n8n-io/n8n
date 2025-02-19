@@ -175,18 +175,28 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
+const missingCredentials = computed(
+	() =>
+		nodeType.value?.credentials &&
+		nodeType.value.credentials?.length > 0 &&
+		nodeType.value.credentials[0].required &&
+		!node.value?.credentials,
+);
+
+const shouldShowOverride = computed(
+	() =>
+		props.canBeOverridden &&
+		!(remoteParameterOptionsLoadingIssues.value && missingCredentials.value),
+);
+
 const displayValue = computed(() => {
 	if (remoteParameterOptionsLoadingIssues.value) {
 		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
 		}
 
-		if (nodeType.value?.credentials && nodeType.value?.credentials?.length > 0) {
-			const credentialsType = nodeType.value?.credentials[0];
-
-			if (credentialsType.required && !node.value?.credentials) {
-				return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
-			}
+		if (missingCredentials.value) {
+			return i18n.baseText('parameterInput.loadOptionsCredentialsRequired');
 		}
 
 		return i18n.baseText('parameterInput.loadOptionsErrorService', {
@@ -1112,7 +1122,7 @@ onUpdated(async () => {
 				'parameter-input',
 				'ignore-key-press-canvas',
 				{
-					[$style.noRightCornersInput]: canBeOverridden,
+					[$style.noRightCornersInput]: shouldShowOverride,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -1593,7 +1603,7 @@ onUpdated(async () => {
 			</div>
 		</div>
 		<div
-			v-if="$slots.overrideButton"
+			v-if="$slots.overrideButton && shouldShowOverride"
 			:class="[
 				$style.overrideButton,
 				{
