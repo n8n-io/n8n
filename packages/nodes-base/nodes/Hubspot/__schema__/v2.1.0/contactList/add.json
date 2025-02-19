@@ -31,5 +31,6 @@
         "discarded",
         "invalidVids",
         "invalidEmails"
-    ]
+    ],
+    "version": 1
 }
