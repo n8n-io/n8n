@@ -23,5 +23,6 @@
         "Score",
         "Text",
         "Type"
-    ]
+    ],
+    "version": 1
 }
