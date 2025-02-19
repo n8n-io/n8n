@@ -21,5 +21,6 @@
         "id",
         "name",
         "type"
-    ]
+    ],
+    "version": 1
 }
