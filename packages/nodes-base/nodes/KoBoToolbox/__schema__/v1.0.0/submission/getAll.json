@@ -177,5 +177,6 @@
         "_notes",
         "_validation_status",
         "_submitted_by"
-    ]
+    ],
+    "version": 1
 }
