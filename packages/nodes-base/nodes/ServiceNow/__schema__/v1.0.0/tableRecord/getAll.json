@@ -52,5 +52,6 @@
         "view_count": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
