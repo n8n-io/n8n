@@ -52,5 +52,6 @@
         "nb_employees": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
