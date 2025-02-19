@@ -187,5 +187,6 @@
         "updateAuthor",
         "created",
         "updated"
-    ]
+    ],
+    "version": 1
 }
