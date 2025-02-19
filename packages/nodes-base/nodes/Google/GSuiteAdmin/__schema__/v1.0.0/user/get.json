@@ -112,5 +112,6 @@
         "includeInGlobalAddressList": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
