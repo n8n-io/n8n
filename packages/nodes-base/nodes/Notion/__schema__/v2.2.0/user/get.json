@@ -35,5 +35,6 @@
         "avatar_url",
         "type",
         "person"
-    ]
+    ],
+    "version": 1
 }
