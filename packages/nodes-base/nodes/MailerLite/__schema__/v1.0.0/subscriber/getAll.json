@@ -89,5 +89,6 @@
         "date_unsubscribe",
         "date_created",
         "date_updated"
-    ]
+    ],
+    "version": 1
 }
