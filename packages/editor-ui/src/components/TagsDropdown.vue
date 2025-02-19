@@ -48,6 +48,7 @@ const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
+const tagRefs0 = ref<InstanceType<typeof N8nOption>>();
 const tagRefs = ref<Array<InstanceType<typeof N8nOption>>>();
 const createRef = ref<InstanceType<typeof N8nOption>>();
 
@@ -166,9 +167,10 @@ function onTagsUpdated(selected: string[]) {
 }
 
 function focusFirstOption() {
+	// this is not the first element anymore?
 	// focus on top option after filter
-	if (tagRefs.value?.[0]?.$el) {
-		tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
+	if (tagRefs0.value?.$el) {
+		tagRefs0.value.$el.dispatchEvent(new Event('mouseenter'));
 	}
 	// focus on create option
 	else if (createRef.value?.$el) {
@@ -228,7 +230,17 @@ onClickOutside(
 			@remove-tag="onRemoveTag"
 		>
 			<N8nOption
-				v-for="(tag, i) in options"
+				v-if="options.length > 0"
+				:key="options[0].id + '_' + 0"
+				ref="tagRefs0"
+				:value="options[0].id"
+				:label="options[0].name"
+				class="tag"
+				data-test-id="tag"
+			/>
+
+			<N8nOption
+				v-for="(tag, i) in options.slice(1)"
 				:key="tag.id + '_' + i"
 				ref="tagRefs"
 				:value="tag.id"
