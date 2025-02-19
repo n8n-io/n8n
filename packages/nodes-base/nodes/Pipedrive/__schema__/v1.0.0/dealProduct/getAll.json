@@ -91,5 +91,6 @@
         "billing_frequency_cycles",
         "billing_start_date",
         "product"
-    ]
+    ],
+    "version": 1
 }
