@@ -87,7 +87,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.decrypt(credential, true);
+			decryptedData = this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -109,6 +109,11 @@ export class EnterpriseCredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 

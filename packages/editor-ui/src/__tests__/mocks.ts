@@ -12,7 +12,7 @@ import type {
 	INodeIssues,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
-import { uuid } from '@jsplumb/util';
+import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import {
