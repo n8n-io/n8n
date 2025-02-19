@@ -55,5 +55,6 @@
         "timeFinalized": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
