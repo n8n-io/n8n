@@ -43,6 +43,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const ldap = ref({ loginLabel: '', loginEnabled: false });
 	const saml = ref({ loginLabel: '', loginEnabled: false });
 	const mfa = ref({ enabled: false });
+	const folders = ref({ enabled: false });
+
 	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveManualExecutions = ref(false);
@@ -141,6 +143,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
+	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
+
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -203,6 +207,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 
 		mfa.value.enabled = settings.value.mfa?.enabled;
+		folders.value.enabled = settings.value.folders?.enabled;
 
 		if (settings.value.enterprise?.showNonProdBanner) {
 			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
@@ -411,6 +416,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		logLevel,
 		isTelemetryEnabled,
 		isMfaFeatureEnabled,
+		isFoldersFeatureEnabled,
 		isAiAssistantEnabled,
 		areTagsEnabled,
 		isHiringBannerEnabled,
