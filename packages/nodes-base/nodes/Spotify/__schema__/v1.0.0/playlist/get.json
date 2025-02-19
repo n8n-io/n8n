@@ -473,5 +473,6 @@
         "tracks",
         "type",
         "uri"
-    ]
+    ],
+    "version": 1
 }
