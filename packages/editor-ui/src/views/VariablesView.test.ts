@@ -164,7 +164,7 @@ describe('VariablesView', () => {
 
 			expect(queryAllByTestId('variables-row').length).toBe(2);
 
-			const newVariable = { key: 'b', value: 'b' };
+			const newVariable = { key: 'b', value: 'b', name: '', resourceType: 'variables' };
 
 			await userEvent.type(getByPlaceholderText('Enter a name'), newVariable.key);
 			await userEvent.type(getByPlaceholderText('Enter a value'), newVariable.value);
@@ -212,7 +212,9 @@ describe('VariablesView', () => {
 			expect(dialog).toBeVisible();
 			await userEvent.click(within(dialog as HTMLElement).getByText('Delete'));
 
-			expect(environmentsStore.deleteVariable).toHaveBeenCalledWith(environmentsStore.variables[0]);
+			expect(environmentsStore.deleteVariable).toHaveBeenCalledWith(
+				expect.objectContaining(environmentsStore.variables[0]),
+			);
 		});
 
 		it('should update variable', async () => {
@@ -241,7 +243,9 @@ describe('VariablesView', () => {
 
 			await userEvent.click(getByTestId('variable-row-save-button'));
 
-			expect(environmentsStore.updateVariable).toHaveBeenCalledWith(newVariable);
+			expect(environmentsStore.updateVariable).toHaveBeenCalledWith(
+				expect.objectContaining(newVariable),
+			);
 		});
 	});
 
