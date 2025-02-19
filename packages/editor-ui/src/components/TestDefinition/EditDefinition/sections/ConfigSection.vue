@@ -10,7 +10,6 @@ import type { ITag, ModalState } from '@/Interface';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import { ref } from 'vue';
 import type { IPinData } from 'n8n-workflow';
-import { useTelemetry } from '@/composables/useTelemetry';
 
 defineProps<{
 	showConfig: boolean;

@@ -4,7 +4,6 @@ import { SAMPLE_EVALUATION_WORKFLOW } from '@/constants.workflows';
 import type { IWorkflowDataCreate } from '@/Interface';
 import type { INodeParameterResourceLocator, IPinData } from 'n8n-workflow';
 import { computed } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
 
 interface WorkflowSelectorProps {
 	modelValue: INodeParameterResourceLocator;
