@@ -214,3 +214,19 @@ SmallAsyncLoading.args = {
 	theme: 'small',
 	showBorder: true,
 };
+
+const smallHiddenItemsDisabledTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	components: { Breadcrumbs },
+	props: Object.keys(argTypes),
+	template: '<Breadcrumbs v-bind="args" />',
+});
+
+export const SmallWithHiddenItemsDisabled = smallHiddenItemsDisabledTemplate.bind({});
+SmallWithHiddenItemsDisabled.args = {
+	theme: 'small',
+	showBorder: true,
+	items: items.slice(2),
+	hiddenItems: [],
+	pathTruncated: true,
+};

@@ -33,7 +33,7 @@ const emit = defineEmits<{
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
-	hiddenItems: () => [],
+	hiddenItems: () => new Array<PathItem>(),
 	theme: 'medium',
 	showBorder: false,
 	loadingSkeletonRows: 3,
