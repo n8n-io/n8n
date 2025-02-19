@@ -46,5 +46,6 @@
         "resourceName",
         "etag",
         "contactId"
-    ]
+    ],
+    "version": 1
 }
