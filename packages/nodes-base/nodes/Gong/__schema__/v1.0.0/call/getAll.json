@@ -1,78 +1,79 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"url": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"scheduled": {
-			"type": "string"
-		},
-		"started": {
-			"type": "string"
-		},
-		"duration": {
-			"type": "integer"
-		},
-		"primaryUserId": {
-			"type": "string"
-		},
-		"direction": {
-			"type": "string"
-		},
-		"system": {
-			"type": "string"
-		},
-		"scope": {
-			"type": "string"
-		},
-		"media": {
-			"type": "string"
-		},
-		"language": {
-			"type": "string"
-		},
-		"workspaceId": {
-			"type": "string"
-		},
-		"customData": {
-			"type": "null"
-		},
-		"purpose": {
-			"type": "null"
-		},
-		"meetingUrl": {
-			"type": "string"
-		},
-		"isPrivate": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"url",
-		"title",
-		"scheduled",
-		"started",
-		"duration",
-		"primaryUserId",
-		"direction",
-		"system",
-		"scope",
-		"media",
-		"language",
-		"workspaceId",
-		"sdrDisposition",
-		"clientUniqueId",
-		"customData",
-		"purpose",
-		"meetingUrl",
-		"isPrivate",
-		"calendarEventId"
-	]
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "scheduled": {
+            "type": "string"
+        },
+        "started": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "primaryUserId": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "system": {
+            "type": "string"
+        },
+        "scope": {
+            "type": "string"
+        },
+        "media": {
+            "type": "string"
+        },
+        "language": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
+        },
+        "customData": {
+            "type": "null"
+        },
+        "purpose": {
+            "type": "null"
+        },
+        "meetingUrl": {
+            "type": "string"
+        },
+        "isPrivate": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "url",
+        "title",
+        "scheduled",
+        "started",
+        "duration",
+        "primaryUserId",
+        "direction",
+        "system",
+        "scope",
+        "media",
+        "language",
+        "workspaceId",
+        "sdrDisposition",
+        "clientUniqueId",
+        "customData",
+        "purpose",
+        "meetingUrl",
+        "isPrivate",
+        "calendarEventId"
+    ],
+    "version": 1
 }
