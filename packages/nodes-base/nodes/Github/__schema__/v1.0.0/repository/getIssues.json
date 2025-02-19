@@ -307,5 +307,6 @@
         "performed_via_github_app": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }
