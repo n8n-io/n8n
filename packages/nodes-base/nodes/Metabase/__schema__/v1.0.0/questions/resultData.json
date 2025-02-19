@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "Email": {
+            "type": "string"
+        },
+        "Departmento": {
+            "type": "string"
+        },
+        "investment_id": {
+            "type": "string"
+        },
+        "Provincia": {
+            "type": "string"
+        },
+        "Fecha de inversion": {
+            "type": "string"
+        },
+        "Distrito": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "Direccion": {
+            "type": "string"
+        },
+        "No DNI": {
+            "type": "string"
+        },
+        "Fecha de devolucion": {
+            "type": "string"
+        },
+        "materno": {
+            "type": "string"
+        },
+        "paterno": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
