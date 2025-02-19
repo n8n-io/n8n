@@ -133,5 +133,6 @@
         "contactId",
         "metaData",
         "campaignName"
-    ]
+    ],
+    "version": 1
 }
