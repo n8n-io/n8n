@@ -106,5 +106,6 @@
         "comments_count": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }
