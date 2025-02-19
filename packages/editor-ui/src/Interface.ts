@@ -850,12 +850,8 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
-	/**
-	 * UNIX timestamp of either when existing pinned data is modified or removed.
-	 *
-	 * Note that pinning data for the first time isn't supposed to set this field.
-	 */
-	pinnedDataUpdatedAt?: number;
+	pinnedDataLastUpdatedAt?: number;
+	pinnedDataLastRemovedAt?: number;
 	pristine: boolean;
 }
 

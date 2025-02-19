@@ -136,9 +136,27 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const pinnedDataUpdatedAt = workflowsStore.getPinnedDataLastUpdate(nodeName) ?? 0;
+			const hasInputPinnedDataChanged = Object.values(
+				workflowsStore.incomingConnectionsByNodeName(nodeName),
+			)
+				.flat()
+				.flat()
+				.filter((connection) => connection !== null)
+				.some((connection) => {
+					const pinnedDataLastUpdatedAt =
+						workflowsStore.getPinnedDataLastUpdate(connection.node) ?? 0;
 
-			if (pinnedDataUpdatedAt > runAt) {
+					return pinnedDataLastUpdatedAt > runAt;
+				});
+
+			if (hasInputPinnedDataChanged) {
+				dirtiness[nodeName] = 'pinned-data-updated';
+				continue;
+			}
+
+			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
+
+			if (pinnedDataLastRemovedAt > runAt) {
 				dirtiness[nodeName] = 'pinned-data-updated';
 				continue;
 			}

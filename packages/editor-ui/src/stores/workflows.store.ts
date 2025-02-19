@@ -332,7 +332,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getPinnedDataLastUpdate(nodeName: string): number | undefined {
-		return nodeMetadata.value[nodeName]?.pinnedDataUpdatedAt;
+		return nodeMetadata.value[nodeName]?.pinnedDataLastUpdatedAt;
+	}
+
+	function getPinnedDataLastRemovedAt(nodeName: string): number | undefined {
+		return nodeMetadata.value[nodeName]?.pinnedDataLastRemovedAt;
 	}
 
 	function isNodePristine(nodeName: string): boolean {
@@ -833,7 +837,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if ((workflow.value.pinData?.[nodeName] ?? []).length > 0 && nodeMetadata.value[nodeName]) {
 			// Updating existing pinned data
-			nodeMetadata.value[nodeName].pinnedDataUpdatedAt = Date.now();
+			nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt = Date.now();
 		}
 
 		const storedPinData = payload.data.map((item) =>
@@ -868,7 +872,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		if (nodeMetadata.value[nodeName]) {
-			nodeMetadata.value[nodeName].pinnedDataUpdatedAt = Date.now();
+			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
 		}
 
 		uiStore.stateIsDirty = true;
@@ -1710,6 +1714,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodesByIds,
 		getParametersLastUpdate,
 		getPinnedDataLastUpdate,
+		getPinnedDataLastRemovedAt,
 		isNodePristine,
 		isNodeExecuting,
 		getExecutionDataById,

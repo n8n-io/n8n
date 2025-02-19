@@ -27,6 +27,9 @@ describe(useNodeDirtiness, () => {
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let uiStore: ReturnType<typeof useUIStore>;
 
+	const NODE_RUN_AT = new Date('2025-01-01T00:00:01');
+	const WORKFLOW_UPDATED_AT = new Date('2025-01-01T00:00:10');
+
 	beforeEach(() => {
 		vi.useFakeTimers();
 
@@ -122,6 +125,42 @@ describe(useNodeDirtiness, () => {
 			});
 		});
 
+		it('should clear dirtiness if a dirty node gets new run data', () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a✅ -> b✅ -> c✅');
+
+			canvasOperations.setNodeParameters('b', { foo: 1 });
+
+			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
+
+			workflowsStore.setWorkflowExecutionData({
+				id: workflowsStore.workflow.id,
+				finished: true,
+				mode: 'manual',
+				status: 'success',
+				workflowData: workflowsStore.workflow,
+				startedAt: runAt,
+				createdAt: runAt,
+				data: {
+					resultData: {
+						runData: {
+							b: [
+								{
+									startTime: +runAt,
+									executionTime: 0,
+									executionStatus: 'success',
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			});
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+		});
+
 		it("should not update dirtiness if the node hasn't run yet", () => {
 			setupTestWorkflow('a✅, b, c✅');
 
@@ -192,7 +231,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should update dirtiness when pinned data is removed from a node with run data', async () => {
-			setupTestWorkflow('a✅ -> b✅📌 -> c✅');
+			setupTestWorkflow('a✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
 			canvasOperations.toggleNodesPinned(['b'], 'pin-icon-click', {
 				trackHistory: true,
@@ -203,13 +242,15 @@ describe(useNodeDirtiness, () => {
 			});
 		});
 
-		it('should update dirtiness when an existing pinned data is updated', async () => {
-			setupTestWorkflow('a✅ -> b✅📌 -> c✅');
+		it('should update dirtiness when an existing pinned data of an incoming node is updated', async () => {
+			setupTestWorkflow('a✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
 			workflowsStore.pinData({ node: workflowsStore.nodesByName.b, data: [{ json: {} }] });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'pinned-data-updated',
+				// 'd' is not marked as pinned-data-updated because it has no run data.
+				c: 'pinned-data-updated',
+				e: 'pinned-data-updated',
 			});
 		});
 	});
@@ -276,7 +317,7 @@ describe(useNodeDirtiness, () => {
 				if (attributes.includes('✅')) {
 					runData[name] = [
 						{
-							startTime: +new Date('2025-01-01'),
+							startTime: +NODE_RUN_AT,
 							executionTime: 0,
 							executionStatus: 'success',
 							source: [],
@@ -308,11 +349,12 @@ describe(useNodeDirtiness, () => {
 			mode: 'manual',
 			status: 'success',
 			workflowData: workflow,
-			startedAt: new Date(0),
-			createdAt: new Date(0),
+			startedAt: NODE_RUN_AT,
+			createdAt: NODE_RUN_AT,
 			data: { resultData: { runData } },
 		});
 
-		vi.setSystemTime(new Date('2025-01-02')); // after execution
+		// prepare for making changes to the workflow
+		vi.setSystemTime(WORKFLOW_UPDATED_AT);
 	}
 });
