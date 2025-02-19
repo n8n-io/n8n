@@ -27,5 +27,6 @@
         "isShared",
         "wellknownListName",
         "id"
-    ]
+    ],
+    "version": 1
 }
