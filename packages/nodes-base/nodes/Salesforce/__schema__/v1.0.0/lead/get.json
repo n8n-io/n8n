@@ -145,5 +145,6 @@
         "IsPriorityRecord": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
