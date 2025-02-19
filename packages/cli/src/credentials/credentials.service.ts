@@ -689,7 +689,7 @@ export class CredentialsService {
 			id: null,
 			name: opts.name,
 			type: opts.type,
-			data: opts.data,
+			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({
