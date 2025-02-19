@@ -233,6 +233,9 @@ export class FrontendService {
 			},
 			easyAIWorkflowOnboarded: false,
 			partialExecution: this.globalConfig.partialExecutions,
+			webhookProxy: {
+				url: this.globalConfig.webhookProxy?.url as string,
+			},
 		};
 	}
 

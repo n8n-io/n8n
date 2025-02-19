@@ -149,6 +149,34 @@ export class Webhook extends Node {
 				default: '',
 			},
 			{
+				// Information: This parameter is only used to be able to dynamically display the parameter useQueue
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Deployment',
+				name: 'deployment',
+				type: 'hidden',
+				displayOptions: {
+					show: {
+						responseMode: ['onReceived'],
+					},
+				},
+				default: '={{ $settings.deploymentType }}',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Use n8n Webhook Proxy Service [BETA]',
+				name: 'useQueue',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						responseMode: ['onReceived'],
+						deployment: ['cloud'],
+					},
+				},
+				default: false,
+				description:
+					'Whether to use the n8n Webhook Proxy Service, which automatically retries webhook delivery if the n8n instance is temporarily unavailable. NOTE: Enabling this option changes the webhook\'s Production URL. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#proxy" target="_blank">More details</a>',
+			},
+			{
 				...responseCodeProperty,
 				displayOptions: {
 					show: {

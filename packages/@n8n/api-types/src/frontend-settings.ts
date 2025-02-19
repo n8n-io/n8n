@@ -180,4 +180,7 @@ export interface FrontendSettings {
 		version: 1 | 2;
 		enforce: boolean;
 	};
+	webhookProxy?: {
+		url: string;
+	};
 }
