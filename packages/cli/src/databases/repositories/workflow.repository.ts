@@ -26,6 +26,7 @@ type ResourceType = 'folder' | 'workflow';
 type WorkflowAndFolderUnion = {
 	id: string;
 	name: string;
+	name_lower?: string;
 	resource: ResourceType;
 	createdAt: Date;
 	updatedAt: Date;
@@ -129,21 +130,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			name: true,
 		};
 
-		const copyOptions = cloneDeep(options);
+		const optionsCopy = cloneDeep(options);
+
+		delete optionsCopy.skip;
+		delete optionsCopy.take;
+		delete optionsCopy.sortBy;
 
 		const columnNames = [...Object.keys(options.select), 'resource'];
 
 		const [sortByColumn, sortByDirection] = this.parseSortingParams(
-			copyOptions.sortBy ?? 'updatedAt:asc',
+			options.sortBy ?? 'updatedAt:asc',
 		);
 
-		delete copyOptions.sortBy;
-
 		const foldersQuery = this.folderRepository
-			.getManyQuery(copyOptions)
+			.getManyQuery(optionsCopy)
 			.addSelect("'folder'", 'resource');
 
-		const workflowsQuery = this.getManyQuery(workflowIds, copyOptions).addSelect(
+		const workflowsQuery = this.getManyQuery(workflowIds, optionsCopy).addSelect(
 			"'workflow'",
 			'resource',
 		);
@@ -171,24 +174,35 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			options,
 		);
 
-		const query = baseQuery
-			.select('RESULT.*')
-			.from('RESULT_QUERY', 'RESULT')
-			.orderBy(sortByColumn, sortByDirection)
-			.skip(options.skip ?? 0);
+		const query = baseQuery.select('DISTINCT RESULT.*').from('RESULT_QUERY', 'RESULT');
+
+		if (sortByColumn === 'name') {
+			query.addSelect('LOWER(RESULT.name)', 'name_lower').orderBy('name_lower', sortByDirection);
+		} else {
+			query.orderBy(sortByColumn, sortByDirection);
+		}
 
 		if (options.take) {
 			query.take(options.take);
 		}
 
+		query.skip(options.skip ?? 0);
+
 		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
-		return workflowsAndFolders.filter(
-			(item, index, self) => index === self.findIndex((obj) => obj.id === item.id),
-		);
+
+		return workflowsAndFolders.map((item) => {
+			const { name_lower, ...rest } = item;
+			return rest;
+		});
 	}
 
 	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
-		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, options);
+		const optionsCopy = cloneDeep(options);
+
+		delete optionsCopy.skip;
+		delete optionsCopy.take;
+
+		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, optionsCopy);
 
 		const response = await baseQuery
 			.select('COUNT(DISTINCT RESULT.id)', 'count')
@@ -439,7 +453,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
 		if (!sortBy) {
-			this.applyDefaultSorting(qb);
+			qb.orderBy('workflow.updatedAt', 'ASC');
 			return;
 		}
 
@@ -450,10 +464,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
 		const [column, order] = sortBy.split(':');
 		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
-	}
-
-	private applyDefaultSorting(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		qb.orderBy('workflow.updatedAt', 'ASC');
 	}
 
 	private applySortingByColumn(
