@@ -130,7 +130,10 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-			if (testUrl && source !== 'RunData.ManualChatMessage') openFormPopupWindow(testUrl);
+			if (testUrl && source !== 'RunData.ManualChatMessage') {
+				clearPopupWindowState();
+				openFormPopupWindow(testUrl);
+			}
 		}
 	}
 }
