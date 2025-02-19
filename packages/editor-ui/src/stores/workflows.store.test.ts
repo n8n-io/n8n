@@ -405,7 +405,10 @@ describe('useWorkflowsStore', () => {
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
 			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
-			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue(mockWorkflows);
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
 
 			await workflowsStore.fetchAllWorkflows();
 
