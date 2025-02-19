@@ -122,5 +122,6 @@
         "image_192",
         "image_512",
         "status_text_canonical"
-    ]
+    ],
+    "version": 1
 }
