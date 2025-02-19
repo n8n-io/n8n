@@ -66,7 +66,6 @@ const outputLabelClasses = computed(() => ({
 const runDataLabelClasses = computed(() => ({
 	[$style.label]: true,
 	[$style.runDataLabel]: true,
-	[$style.dirty]: renderOptions.value.dirtiness !== undefined,
 }));
 
 function onMouseEnter() {
@@ -143,11 +142,7 @@ function onClickAdd() {
 	left: 50%;
 	transform: translate(-50%, -150%);
 	font-size: var(--font-size-xs);
-	color: var(--color-success);
-
-	&.dirty {
-		color: var(--color-warning);
-	}
+	color: var(--color-text-base);
 }
 </style>
 
