@@ -24,5 +24,6 @@
         "ETag": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
