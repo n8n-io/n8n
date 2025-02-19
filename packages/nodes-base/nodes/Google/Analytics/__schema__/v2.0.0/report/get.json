@@ -10,5 +10,6 @@
         "totalUsers": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
