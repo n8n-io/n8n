@@ -28,6 +28,8 @@
 	<body>
 		{{#if responseText}}
 			{{{responseText}}}
+		{{else if redirectUrl}}
+			<div>Redirecting to <a href='{{redirectUrl}}'>{{redirectUrl}}</a></div>
 		{{else}}
 			<div class='container'>
 				<section>
@@ -73,9 +75,40 @@
 				</section>
 			</div>
 		{{/if}}
-		<script>
-			fetch('', { method: 'POST', body: {}, }).catch(() => {});
-		</script>
+		{{#if redirectUrl}}
+			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
+		{{/if}}
+	<script>
+			fetch('', {
+					method: 'POST',
+					body: {}
+			})
+			.then(async function (response) {
+					if (response.status === 200) {
+						const redirectUrl = document.getElementById("redirectUrl");
+						if (redirectUrl) {
+							window.location.replace(redirectUrl.href);
+						}
+					}
+
+					const text = await response.text();
+					let json;
+
+					try {
+							json = JSON.parse(text);
+					} catch (e) {}
+
+					if (json?.redirectURL) {
+							const url = json.redirectURL.includes("://")
+									? json.redirectURL
+									: "https://" + json.redirectURL;
+							window.location.replace(url);
+					}
+			})
+			.catch(function (error) {
+					console.error('Error:', error);
+			});
+	</script>
 	</body>
 
 </html>
