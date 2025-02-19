@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.square",
+	"nodeVersion": 1.0,
+	"codexVersion": "1.0",
+	"categories": ["Payment", "Finance"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://developer.squareup.com/docs"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://developer.squareup.com/reference/square"
+			}
+		]
+	}
+}
