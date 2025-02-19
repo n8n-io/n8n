@@ -37,12 +37,9 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import {
-	configureWaitTillDate,
-	getSendAndWaitProperties,
-	sendAndWaitWebhook,
-} from '../../../utils/sendAndWait/utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +53,7 @@ export class GoogleChat implements INodeType {
 		defaults: {
 			name: 'Google Chat',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		webhooks: sendAndWaitWebhooksDescription,

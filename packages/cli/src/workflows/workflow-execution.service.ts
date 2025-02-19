@@ -12,6 +12,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
@@ -20,7 +21,7 @@ import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { CreateExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
+import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
@@ -44,7 +45,7 @@ export class WorkflowExecutionService {
 	) {}
 
 	async runWorkflow(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		node: INode,
 		data: INodeExecutionData[][],
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -86,6 +87,18 @@ export class WorkflowExecutionService {
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
+	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
+		const node = workflow.nodes.find((n) => n.name === destinationNode);
+
+		if (node === undefined) {
+			return false;
+		}
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		return nodeType.description.group.includes('trigger');
+	}
+
 	async executeManually(
 		{
 			workflowData,
@@ -97,14 +110,37 @@ export class WorkflowExecutionService {
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
-		partialExecutionVersion?: string,
+		partialExecutionVersion: 1 | 2 = 1,
 	) {
 		const pinData = workflowData.pinData;
-		const pinnedTrigger = this.selectPinnedActivatorStarter(
+		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
 		);
+
+		// TODO: Reverse the order of events, first find out if the execution is
+		// partial or full, if it's partial create the execution and run, if it's
+		// full get the data first and only then create the execution.
+		//
+		// If the destination node is a trigger, then per definition this
+		// is not a partial execution and thus we can ignore the run data.
+		// If we don't do this we'll end up creating an execution, calling the
+		// partial execution flow, finding out that we don't have run data to
+		// create the execution stack and have to cancel the execution, come back
+		// here and either create the runData (e.g. scheduler trigger) or wait for
+		// a webhook or event.
+		if (destinationNode) {
+			if (this.isDestinationNodeATrigger(destinationNode, workflowData)) {
+				runData = undefined;
+			}
+		}
+
+		// if we have a trigger to start from and it's not the pinned trigger
+		// ignore the pinned trigger
+		if (pinnedTrigger && triggerToStartFrom && pinnedTrigger.name !== triggerToStartFrom.name) {
+			pinnedTrigger = null;
+		}
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
@@ -142,7 +178,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
-			partialExecutionVersion: partialExecutionVersion ?? '0',
+			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
 		};
@@ -171,7 +207,7 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData,
+					runData: runData ?? {},
 				},
 				manualData: {
 					userId: data.userId,
@@ -340,7 +376,7 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+	selectPinnedActivatorStarter(workflow: IWorkflowBase, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
 
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
@@ -379,7 +415,7 @@ export class WorkflowExecutionService {
 		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
 	}
 
-	private findAllPinnedActivators(workflow: IWorkflowDb, pinData?: IPinData) {
+	private findAllPinnedActivators(workflow: IWorkflowBase, pinData?: IPinData) {
 		return workflow.nodes
 			.filter(
 				(node) =>

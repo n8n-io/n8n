@@ -50,6 +50,10 @@ export function sanitizeHtml(text: string) {
 			'pre',
 			'span',
 			'br',
+			'ul',
+			'ol',
+			'li',
+			'p',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -167,6 +171,11 @@ export function prepareFormData({
 		} else if (fieldType === 'html') {
 			input.isHtml = true;
 			input.html = field.html as string;
+		} else if (fieldType === 'hiddenField') {
+			input.isHidden = true;
+			input.hiddenName = field.fieldName as string;
+			input.hiddenValue =
+				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
@@ -178,9 +187,10 @@ export function prepareFormData({
 	return formData;
 }
 
-const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
+export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const nodeVersion = context.getNode().typeVersion;
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
@@ -197,13 +207,26 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(`${context.getNode().name} node not correctly configured`),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+			},
+		);
+	}
+
+	if (isRespondToWebhookConnected && nodeVersion > 2.1) {
+		throw new NodeOperationError(
+			context.getNode(),
+			new Error(
+				'The "Respond to Webhook" node is not supported in workflows initiated by the "n8n Form Trigger"',
+			),
+			{
+				description:
+					'To configure your response, add an "n8n Form" node and set the "Page Type" to "Form Ending"',
 			},
 		);
 	}
@@ -272,6 +295,13 @@ export async function prepareFormReturnItem(
 
 		if (value === null) {
 			returnItem.json[field.fieldLabel] = null;
+			continue;
+		}
+
+		if (field.fieldType === 'html') {
+			if (field.elementName) {
+				returnItem.json[field.elementName as string] = value;
+			}
 			continue;
 		}
 
@@ -432,18 +462,21 @@ export async function formWebhook(
 			if (field.fieldType === 'html') {
 				field.html = sanitizeHtml(field.html as string);
 			}
+			if (field.fieldType === 'hiddenField') {
+				field.fieldLabel = field.fieldName as string;
+			}
 			return field;
 		},
 	);
 	const method = context.getRequestObject().method;
 
-	checkResponseModeConfiguration(context);
+	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
-		const responseMode = context.getNodeParameter('responseMode', '') as string;
+		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
 		let redirectUrl;
@@ -471,15 +504,14 @@ export async function formWebhook(
 			buttonLabel = options.buttonLabel;
 		}
 
-		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name, {
-				includeNodeParameters: true,
-			});
-			const hasNextPage = isFormConnected(connectedNodes);
+		const connectedNodes = context.getChildNodes(context.getNode().name, {
+			includeNodeParameters: true,
+		});
+		const hasNextPage = isFormConnected(connectedNodes);
 
-			if (hasNextPage) {
-				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
-			}
+		if (hasNextPage) {
+			redirectUrl = undefined;
+			responseMode = 'responseNode';
 		}
 
 		renderForm({

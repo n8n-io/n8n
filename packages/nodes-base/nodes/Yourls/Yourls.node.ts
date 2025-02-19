@@ -23,6 +23,7 @@ export class Yourls implements INodeType {
 		defaults: {
 			name: 'Yourls',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

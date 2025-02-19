@@ -84,7 +84,8 @@ export async function modelSearch(
 			isCustomAPI ||
 			model.id.startsWith('gpt-') ||
 			model.id.startsWith('ft:') ||
-			model.id.startsWith('o1'),
+			model.id.startsWith('o1') ||
+			model.id.startsWith('o3'),
 	)(this, filter);
 }
 

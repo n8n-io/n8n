@@ -72,7 +72,7 @@ describe('N8nSelectableList', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('renders disabled collection and clicks do not modify', async () => {
+	it('renders disabled collection without selectables', async () => {
 		const wrapper = render(N8nSelectableList, {
 			props: {
 				modelValue: {
@@ -87,20 +87,10 @@ describe('N8nSelectableList', () => {
 			},
 		});
 
-		expect(wrapper.getByTestId('selectable-list-selectable-propA')).toBeInTheDocument();
+		expect(wrapper.queryByTestId('selectable-list-selectable-propA')).not.toBeInTheDocument();
 		expect(wrapper.getByTestId('selectable-list-slot-propB')).toBeInTheDocument();
 		expect(wrapper.queryByTestId('selectable-list-selectable-propB')).not.toBeInTheDocument();
-		expect(wrapper.getByTestId('selectable-list-selectable-propC')).toBeInTheDocument();
-
-		await fireEvent.click(wrapper.getByTestId('selectable-list-selectable-propA'));
-
-		expect(wrapper.getByTestId('selectable-list-selectable-propA')).toBeInTheDocument();
-		expect(wrapper.queryByTestId('selectable-list-slot-propA')).not.toBeInTheDocument();
-
-		await fireEvent.click(wrapper.getByTestId('selectable-list-remove-slot-propB'));
-
-		expect(wrapper.getByTestId('selectable-list-slot-propB')).toBeInTheDocument();
-		expect(wrapper.queryByTestId('selectable-list-selectable-propB')).not.toBeInTheDocument();
+		expect(wrapper.queryByTestId('selectable-list-selectable-propC')).not.toBeInTheDocument();
 
 		expect(wrapper.html()).toMatchSnapshot();
 	});

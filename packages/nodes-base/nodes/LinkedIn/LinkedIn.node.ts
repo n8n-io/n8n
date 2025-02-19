@@ -24,6 +24,7 @@ export class LinkedIn implements INodeType {
 		defaults: {
 			name: 'LinkedIn',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

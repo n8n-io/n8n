@@ -23,6 +23,7 @@ export class Msg91 implements INodeType {
 		defaults: {
 			name: 'MSG91',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

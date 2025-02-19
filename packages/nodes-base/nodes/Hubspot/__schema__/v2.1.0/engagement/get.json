@@ -1,0 +1,260 @@
+{
+    "type": "object",
+    "properties": {
+        "engagement": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "portalId": {
+                    "type": "integer"
+                },
+                "active": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "integer"
+                },
+                "lastUpdated": {
+                    "type": "integer"
+                },
+                "createdBy": {
+                    "type": "integer"
+                },
+                "modifiedBy": {
+                    "type": "integer"
+                },
+                "ownerId": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "allAccessibleTeamIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "bodyPreview": {
+                    "type": "string"
+                },
+                "queueMembershipIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "bodyPreviewIsTruncated": {
+                    "type": "boolean"
+                },
+                "bodyPreviewHtml": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "portalId",
+                "active",
+                "createdAt",
+                "lastUpdated",
+                "type",
+                "timestamp",
+                "allAccessibleTeamIds",
+                "queueMembershipIds"
+            ]
+        },
+        "associations": {
+            "type": "object",
+            "properties": {
+                "contactIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "companyIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "dealIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ownerIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ticketIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "contactIds",
+                "companyIds",
+                "dealIds",
+                "ownerIds",
+                "workflowIds",
+                "ticketIds",
+                "contentIds",
+                "quoteIds",
+                "marketingEventIds",
+                "partnerClientIds",
+                "orderIds",
+                "cartIds"
+            ]
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "raw": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "firstName": {
+                                "type": "string"
+                            },
+                            "lastName": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "email"
+                        ]
+                    }
+                },
+                "cc": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "raw": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "firstName": {
+                                "type": "string"
+                            },
+                            "lastName": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "raw",
+                            "email",
+                            "firstName",
+                            "lastName"
+                        ]
+                    }
+                },
+                "html": {
+                    "type": "string"
+                },
+                "ownerIdsFrom": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ownerIdsTo": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "raw": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "firstName": {
+                            "type": "string"
+                        },
+                        "lastName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "email"
+                    ]
+                },
+                "sender": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "email"
+                    ]
+                },
+                "text": {
+                    "type": "string"
+                },
+                "messageId": {
+                    "type": "string"
+                },
+                "loggedFrom": {
+                    "type": "string"
+                },
+                "mediaProcessingStatus": {
+                    "type": "string"
+                },
+                "attachedVideoOpened": {
+                    "type": "boolean"
+                },
+                "attachedVideoWatched": {
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "required": [
+        "engagement",
+        "associations",
+        "attachments",
+        "metadata"
+    ]
+}

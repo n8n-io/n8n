@@ -14,9 +14,10 @@ import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
-import { useExecutionsStore } from '@/stores/executions.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IPinData } from 'n8n-workflow';
+import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
@@ -30,7 +31,7 @@ const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
-const executionsStore = useExecutionsStore();
+const telemetry = useTelemetry();
 const workflowStore = useWorkflowsStore();
 
 const {
@@ -97,6 +98,18 @@ async function onSaveTest() {
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				params: { testId: savedTest.id },
 			});
+
+			telemetry.track(
+				'User created test',
+				{
+					test_id: savedTest.id,
+					workflow_id: currentWorkflowId.value,
+					session_id: useRootStore().pushRef,
+				},
+				{
+					withPostHog: true,
+				},
+			);
 		}
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));
@@ -154,22 +167,16 @@ function toggleConfig() {
 }
 
 async function getExamplePinnedDataForTags() {
-	const evaluationWorkflowExecutions = await executionsStore.fetchExecutions({
-		workflowId: currentWorkflowId.value,
-		annotationTags: state.value.tags.value,
-	});
-	if (evaluationWorkflowExecutions.count > 0) {
-		const firstExecution = evaluationWorkflowExecutions.results[0];
-		const executionData = await executionsStore.fetchExecution(firstExecution.id);
-		const resultData = executionData?.data?.resultData.runData;
+	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(
+		testId.value,
+		state.value.tags.value[0],
+	);
 
+	if (exampleInput !== null) {
 		examplePinnedData.value = {
 			'When called by a test run': [
 				{
-					json: {
-						originalExecution: resultData,
-						newExecution: resultData,
-					},
+					json: exampleInput as IDataObject,
 				},
 			],
 		};
@@ -182,7 +189,7 @@ watch(
 	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
 	{ deep: true },
 );
-watch(() => state.value.tags, getExamplePinnedDataForTags);
+watch(() => state.value.tags.value, getExamplePinnedDataForTags);
 watch(
 	() => [
 		state.value.description,

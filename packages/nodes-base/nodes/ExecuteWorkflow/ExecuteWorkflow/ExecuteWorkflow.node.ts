@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
 	IExecuteFunctions,
@@ -9,7 +9,6 @@ import type {
 
 import { getWorkflowInfo } from './GenericFunctions';
 import { localResourceMapping } from './methods';
-import { generatePairedItemData } from '../../../utils/utilities';
 import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,7 +129,6 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '',
 				required: true,
-				hint: "Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
 			// ----------------------------------
 			//         source:localFile
@@ -270,6 +268,17 @@ export class ExecuteWorkflow implements INodeType {
 				],
 			},
 		],
+		hints: [
+			{
+				type: 'info',
+				message:
+					"Note on using an expression for workflow ID: Since this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+				displayCondition:
+					'={{ $rawParameter.workflowId.startsWith("=") && $parameter.mode === "once" && $nodeVersion >= 1.2 }}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
+			},
+		],
 	};
 
 	methods = {
@@ -360,7 +369,12 @@ export class ExecuteWorkflow implements INodeType {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
-						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						const metadata = parseErrorMetadata(error);
+						returnData[i].push({
+							json: { error: error.message },
+							pairedItem: { item: i },
+							metadata,
+						});
 						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
@@ -412,8 +426,6 @@ export class ExecuteWorkflow implements INodeType {
 
 				const workflowResult = executionResult.data as INodeExecutionData[][];
 
-				const fallbackPairedItemData = generatePairedItemData(items.length);
-
 				for (const output of workflowResult) {
 					const sameLength = output.length === items.length;
 
@@ -422,17 +434,22 @@ export class ExecuteWorkflow implements INodeType {
 
 						if (sameLength) {
 							item.pairedItem = { item: itemIndex };
-						} else {
-							item.pairedItem = fallbackPairedItemData;
 						}
 					}
 				}
 
 				return workflowResult;
 			} catch (error) {
-				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message }, pairedItem }]];
+					const metadata = parseErrorMetadata(error);
+					return [
+						[
+							{
+								json: { error: error.message },
+								metadata,
+							},
+						],
+					];
 				}
 				throw error;
 			}

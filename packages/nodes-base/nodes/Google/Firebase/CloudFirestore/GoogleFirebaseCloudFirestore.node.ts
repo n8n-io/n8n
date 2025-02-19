@@ -17,7 +17,6 @@ import {
 	googleApiRequestAllItems,
 	jsonToDocument,
 } from './GenericFunctions';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +31,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -120,7 +120,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
+
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
@@ -135,7 +135,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		if (nodeVersion >= 1.1) {
 			itemsLength = items.length;
 		} else {
-			fallbackPairedItems = generatePairedItemData(items.length);
+			fallbackPairedItems = [];
 		}
 
 		if (resource === 'document') {
@@ -171,10 +171,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						.filter((el: IDataObject) => !!el);
 				}
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData },
-				);
+				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 
 				returnData.push(...executionData);
 			} else if (operation === 'create') {

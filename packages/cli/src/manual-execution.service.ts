@@ -23,6 +23,13 @@ export class ManualExecutionService {
 
 	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
+
+		// If the user chose a trigger to start from we honor this.
+		if (data.triggerToStartFrom?.name) {
+			startNode = workflow.getNode(data.triggerToStartFrom.name) ?? undefined;
+		}
+
+		// Old logic for partial executions v1
 		if (
 			data.startNodes?.length === 1 &&
 			Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
@@ -105,7 +112,7 @@ export class ManualExecutionService {
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			if (data.partialExecutionVersion === '1') {
+			if (data.partialExecutionVersion === 2) {
 				return workflowExecute.runPartialWorkflow2(
 					workflow,
 					data.runData,

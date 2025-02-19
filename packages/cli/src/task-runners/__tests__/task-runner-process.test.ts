@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
-import type { TaskRunnerAuthService } from '@/task-runners/auth/task-runner-auth.service';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { mockInstance } from '@test/mocking';
 
@@ -26,7 +26,7 @@ describe('TaskRunnerProcess', () => {
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal';
-	const authService = mock<TaskRunnerAuthService>();
+	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
 
 	afterEach(async () => {

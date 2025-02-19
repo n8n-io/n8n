@@ -1,3 +1,113 @@
+# [1.79.0](https://github.com/n8n-io/n8n/compare/n8n@1.78.0...n8n@1.79.0) (2025-02-13)
+
+
+### Bug Fixes
+
+* **Airtable Node:** Use item at correct index in base/getSchema ([#13174](https://github.com/n8n-io/n8n/issues/13174)) ([f2e3586](https://github.com/n8n-io/n8n/commit/f2e35869c143d15ea79017ec103370c4aa92a92f))
+* **Basic LLM Chain Node:** Use correct mimetype for binary data ([#12978](https://github.com/n8n-io/n8n/issues/12978)) ([2b1eb04](https://github.com/n8n-io/n8n/commit/2b1eb049f2c639f054e7c5f671483e29fd600567))
+* **Call n8n Sub-Workflow Tool Node:** Fix json type when using $fromAI ([#13102](https://github.com/n8n-io/n8n/issues/13102)) ([9e4e1ca](https://github.com/n8n-io/n8n/commit/9e4e1ca1f48b08143883668be037026075eddb25))
+* **core:** Add an option to enable dual-stack lookup to support IPv6 for redis ([#13118](https://github.com/n8n-io/n8n/issues/13118)) ([be39d0a](https://github.com/n8n-io/n8n/commit/be39d0a0f11c0274d2be1d7e1579264a95b18f7b))
+* **core:** Allow secrets manager secrets to be used in credentials ([#13110](https://github.com/n8n-io/n8n/issues/13110)) ([cae98e7](https://github.com/n8n-io/n8n/commit/cae98e733d4cac7b5082bae345be504d00876c4b))
+* **core:** Do not save credential overwrites data into the database ([#13170](https://github.com/n8n-io/n8n/issues/13170)) ([298a7b0](https://github.com/n8n-io/n8n/commit/298a7b00386dcfb670c27e6e1cc374f73d00a7a5))
+* **core:** Fix high volume of node operation errors in Sentry ([#13053](https://github.com/n8n-io/n8n/issues/13053)) ([e59d983](https://github.com/n8n-io/n8n/commit/e59d9830bfda51bcf43246e32bf88bd045f8b8ad))
+* **core:** Fix resuming executions on test webhooks from Wait nodes ([#13168](https://github.com/n8n-io/n8n/issues/13168)) ([5dddf77](https://github.com/n8n-io/n8n/commit/5dddf772cf1704f65ed86cea1f4640e3b274b14e))
+* **core:** Handle cancellation of waiting executions correctly ([#13051](https://github.com/n8n-io/n8n/issues/13051)) ([fc440eb](https://github.com/n8n-io/n8n/commit/fc440eb68bb6750dc096cdaeb50fed7cf0718b07))
+* **core:** Handle credential decryption failures gracefully on the API ([#13166](https://github.com/n8n-io/n8n/issues/13166)) ([a4c5334](https://github.com/n8n-io/n8n/commit/a4c5334853cbc71eddbb035b86d3dda68c3ef81e))
+* **core:** Handle missing `json` property on `nodeSuccessData` ([#13219](https://github.com/n8n-io/n8n/issues/13219)) ([aedea7a](https://github.com/n8n-io/n8n/commit/aedea7a76c1752410b8734d87a74bd870cd54e2d))
+* **core:** Same version of merge node behaves differently after n8n update ([#13106](https://github.com/n8n-io/n8n/issues/13106)) ([df8f059](https://github.com/n8n-io/n8n/commit/df8f059504266667ffd30b5d706bad9dd7e09ab3))
+* **editor:** Adjust project plus button color in dark mode ([#13175](https://github.com/n8n-io/n8n/issues/13175)) ([4c19bae](https://github.com/n8n-io/n8n/commit/4c19baea3dd232df67353e8637470c205c37bd92))
+* **editor:** Correctly compare old parameter value for nested parameters ([#13179](https://github.com/n8n-io/n8n/issues/13179)) ([b6c0d96](https://github.com/n8n-io/n8n/commit/b6c0d96e4376e1b5fbc80227633eae57b1eff4c0))
+* **editor:** Disable fromAI button for vector stores ([#13125](https://github.com/n8n-io/n8n/issues/13125)) ([bde8420](https://github.com/n8n-io/n8n/commit/bde84205f924d79c3eb2bd45d2e3745b53992a0d))
+* **editor:** Don't show 'Test workflow' button if the canvas is read-only ([#13199](https://github.com/n8n-io/n8n/issues/13199)) ([56426e9](https://github.com/n8n-io/n8n/commit/56426e989ff4ca01efad0b6d525e12e68d25e87f))
+* **editor:** Fix '=' handling in expressions ([#13129](https://github.com/n8n-io/n8n/issues/13129)) ([8f25a06](https://github.com/n8n-io/n8n/commit/8f25a06e6ca7d4d0a78b5aa379a8c124f55a0325))
+* **editor:** Fix alignment in RMC component ([#13167](https://github.com/n8n-io/n8n/issues/13167)) ([78644b0](https://github.com/n8n-io/n8n/commit/78644b0ec7007cabd1a908cfd81ec1b3f06db63d))
+* **editor:** Fix issues with push connect reconnection ([#13085](https://github.com/n8n-io/n8n/issues/13085)) ([fff98b1](https://github.com/n8n-io/n8n/commit/fff98b16bb7c86e08ec2b1a475eeb7b93bedf2de))
+* **editor:** Fix prompt in easy ai template ([#13091](https://github.com/n8n-io/n8n/issues/13091)) ([2eabca5](https://github.com/n8n-io/n8n/commit/2eabca5613dece94231395a89e84c5e4433bb730))
+* **editor:** Load only personal credentials when setting up a template ([#12826](https://github.com/n8n-io/n8n/issues/12826)) ([814e2a8](https://github.com/n8n-io/n8n/commit/814e2a89241bdc6a26defb6bfd3d87abdc477ae0))
+* **editor:** Make connector buttons background opaque when dark mode is enabled system-wide ([#13180](https://github.com/n8n-io/n8n/issues/13180)) ([77be25d](https://github.com/n8n-io/n8n/commit/77be25d337e32f2bb32e191ee579f30d0442b537))
+* **Gmail Trigger Node:** Prevent error for empty emails, improve type safety ([#13171](https://github.com/n8n-io/n8n/issues/13171)) ([115a367](https://github.com/n8n-io/n8n/commit/115a367caeb9cbec8597d328cd969fff5ab6d941))
+* **Google Sheets Node:** Do not delete row_number key from input item ([#13158](https://github.com/n8n-io/n8n/issues/13158)) ([da5e4be](https://github.com/n8n-io/n8n/commit/da5e4be0fd645df24892f81c553bc1808e3fec93))
+* **Google Sheets Node:** RMC should correctly map columns if data location set in options ([#13116](https://github.com/n8n-io/n8n/issues/13116)) ([5d05f7f](https://github.com/n8n-io/n8n/commit/5d05f7f436a32b98d35a7b87968990e845ec56bb))
+* **Google Sheets Trigger Node:** Do not return header row in rowAdded mode ([#13119](https://github.com/n8n-io/n8n/issues/13119)) ([cd8b300](https://github.com/n8n-io/n8n/commit/cd8b300d5c9c2a2911b50c737c88ba799a2f0799))
+* **Microsoft OneDrive Node:** Try to download file using downloadUrl ([#13200](https://github.com/n8n-io/n8n/issues/13200)) ([67cd05c](https://github.com/n8n-io/n8n/commit/67cd05c6dc9407b09ed89a9dbb041f2f6d0ac500))
+* **OpenAI Node:** Limit chat history to context window when using memory ([#13137](https://github.com/n8n-io/n8n/issues/13137)) ([f057cfb](https://github.com/n8n-io/n8n/commit/f057cfb46af198566935d811ba294e596c9ab5ec))
+* **Summarize Node:** Not dealing with null values properly ([#13044](https://github.com/n8n-io/n8n/issues/13044)) ([9324e4f](https://github.com/n8n-io/n8n/commit/9324e4ffe66a8268e3d7d0eb2c127e35caee7a4c))
+
+
+### Features
+
+* Add ConvertAPI cred only node ([#12663](https://github.com/n8n-io/n8n/issues/12663)) ([731a9a7](https://github.com/n8n-io/n8n/commit/731a9a79456066d72f5d7ba6c343eca420407979))
+* **core:** Add an option to allow community nodes as tools ([#13075](https://github.com/n8n-io/n8n/issues/13075)) ([2b133aa](https://github.com/n8n-io/n8n/commit/2b133aa201325e27baddaa2bfd5995dca2093728))
+* **core:** Add migration to create model for folders feature ([#13060](https://github.com/n8n-io/n8n/issues/13060)) ([03f4ed8](https://github.com/n8n-io/n8n/commit/03f4ed8445bb1e1f0ef5c82b0164e50db3e2c45c))
+* **editor:** Add ‘execute workflow’ buttons below triggers on the canvas ([#12769](https://github.com/n8n-io/n8n/issues/12769)) ([b17cbec](https://github.com/n8n-io/n8n/commit/b17cbec3af446e67db57a0927011d51a9317dff2))
+* **editor:** Add docs link in $fromAI hover info tooltip ([#13097](https://github.com/n8n-io/n8n/issues/13097)) ([ff8b1c1](https://github.com/n8n-io/n8n/commit/ff8b1c11082f4e8caf2a474e57be3b3b328a1be3))
+* **editor:** Expose `View Execution` links for erroneous sub-executions ([#13185](https://github.com/n8n-io/n8n/issues/13185)) ([11cf1cd](https://github.com/n8n-io/n8n/commit/11cf1cd23a181714e445ef58e97fdd7dca870dd7))
+* **Microsoft Teams Node:** New operation sendAndWait ([#12964](https://github.com/n8n-io/n8n/issues/12964)) ([e925562](https://github.com/n8n-io/n8n/commit/e92556260f2b95022a852825f8475be369f0440a))
+* **OpenAI Chat Model Node:** Add reasoning effort option to control the amount of reasoning tokens to use ([#13103](https://github.com/n8n-io/n8n/issues/13103)) ([76e0c99](https://github.com/n8n-io/n8n/commit/76e0c9961344d4baac60a50f1ec1e849e40586e6))
+
+
+### Performance Improvements
+
+* **core:** Batch workflow activation to speed up startup ([#13191](https://github.com/n8n-io/n8n/issues/13191)) ([17acf70](https://github.com/n8n-io/n8n/commit/17acf70591422bfea84b13f24c35d628bff4d35e))
+
+
+
+# [1.78.0](https://github.com/n8n-io/n8n/compare/n8n@1.77.0...n8n@1.78.0) (2025-02-06)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Ignore SSL errors option for SQLAgent ([#13052](https://github.com/n8n-io/n8n/issues/13052)) ([a90529f](https://github.com/n8n-io/n8n/commit/a90529fd51ca88bc9640d24490dbeb2023c98e30))
+* **Code Node:** Do not validate code within comments ([#12938](https://github.com/n8n-io/n8n/issues/12938)) ([cdfa225](https://github.com/n8n-io/n8n/commit/cdfa22593b69cf647c2a798d6571a9bbbd11c1b2))
+* **core:** "Respond to Webhook" should work with workflows with waiting nodes ([#12806](https://github.com/n8n-io/n8n/issues/12806)) ([e8635f2](https://github.com/n8n-io/n8n/commit/e8635f257433748f4d7d2c4b0ae794de6bff5b28))
+* **core:** Do not emit `workflow-post-execute` event for waiting executions ([#13065](https://github.com/n8n-io/n8n/issues/13065)) ([1593b6c](https://github.com/n8n-io/n8n/commit/1593b6cb4112ab2a85ca93c4eaec7d5f088895b1))
+* **core:** Do not enable strict type validation by default for resource mapper ([#13037](https://github.com/n8n-io/n8n/issues/13037)) ([fdcff90](https://github.com/n8n-io/n8n/commit/fdcff9082b97314f8b04579ab6fa81c724916320))
+* **core:** Fix empty node execution stack ([#12945](https://github.com/n8n-io/n8n/issues/12945)) ([7031569](https://github.com/n8n-io/n8n/commit/7031569a028bcc85558fcb614f8143d68a7f81f0))
+* **core:** Only use new resource mapper type validation when it is enabled ([#13099](https://github.com/n8n-io/n8n/issues/13099)) ([a37c8e8](https://github.com/n8n-io/n8n/commit/a37c8e8fb86aaa3244ac13500ffa0e7c0d809a6f))
+* **editor:** Actually enforce the version and don't break for old values in local storage ([#13025](https://github.com/n8n-io/n8n/issues/13025)) ([884a7e2](https://github.com/n8n-io/n8n/commit/884a7e23f84258756d8dcdd2dfe933bdedf61adc))
+* **editor:** Add telemetry to source control feature ([#13016](https://github.com/n8n-io/n8n/issues/13016)) ([18eaa54](https://github.com/n8n-io/n8n/commit/18eaa5423dfc9348374c2cff4ae0e6f152268fbb))
+* **editor:** Allow switch to `Fixed` for boolean and number parameters with invalid expressions ([#12948](https://github.com/n8n-io/n8n/issues/12948)) ([118be24](https://github.com/n8n-io/n8n/commit/118be24d25f001525ced03d9426a6129fa5a2053))
+* **editor:** Allow to re-open sub-connection node creator if already active ([#13041](https://github.com/n8n-io/n8n/issues/13041)) ([16d59e9](https://github.com/n8n-io/n8n/commit/16d59e98edc427bf68edbce4cd2174a44d6dcfb1))
+* **editor:** Code node overwrites code when switching nodes after edits ([#13078](https://github.com/n8n-io/n8n/issues/13078)) ([00e3ebc](https://github.com/n8n-io/n8n/commit/00e3ebc9e2e0b8cc2d88b678c3a2a21602dac010))
+* **editor:** Fix execution running status listener for chat messages ([#12951](https://github.com/n8n-io/n8n/issues/12951)) ([4d55a29](https://github.com/n8n-io/n8n/commit/4d55a294600dc2c86f6f7019da923b66a4b9de7e))
+* **editor:** Fix position of connector buttons when the line is straight ([#13034](https://github.com/n8n-io/n8n/issues/13034)) ([3a908ac](https://github.com/n8n-io/n8n/commit/3a908aca17f0bc1cf5fb5eb8813cc94f27f0bcdf))
+* **editor:** Fix showing and hiding canvas edge toolbar when hovering ([#13009](https://github.com/n8n-io/n8n/issues/13009)) ([ac7bc4f](https://github.com/n8n-io/n8n/commit/ac7bc4f1911f913233eeeae5d229432fdff332c4))
+* **editor:** Make AI transform node read only in executions view ([#12970](https://github.com/n8n-io/n8n/issues/12970)) ([ce1deb8](https://github.com/n8n-io/n8n/commit/ce1deb8aea528eef996fc774d0fff1dc61df5843))
+* **editor:** Prevent infinite loop in expressions crashing the browser ([#12732](https://github.com/n8n-io/n8n/issues/12732)) ([8c2dbcf](https://github.com/n8n-io/n8n/commit/8c2dbcfeced70a0a84137773269cc6db2928d174))
+* **editor:** Refine push modal layout ([#12886](https://github.com/n8n-io/n8n/issues/12886)) ([212a5bf](https://github.com/n8n-io/n8n/commit/212a5bf23eb11cc3296e7a8d002a4b7727d5193c))
+* **editor:** SchemaView renders duplicate structures properly ([#12943](https://github.com/n8n-io/n8n/issues/12943)) ([0d8a544](https://github.com/n8n-io/n8n/commit/0d8a544975f72724db931778d7e3ace8a12b6cfc))
+* **editor:** Update node issues when opening execution ([#12972](https://github.com/n8n-io/n8n/issues/12972)) ([1a91523](https://github.com/n8n-io/n8n/commit/1a915239c6571d7744023c6df6242dabe97c912e))
+* **editor:** Use correct connection index when connecting adjancent nodes after deleting a node ([#12973](https://github.com/n8n-io/n8n/issues/12973)) ([c7a15d5](https://github.com/n8n-io/n8n/commit/c7a15d5980d181a865f8e2ec6a5f70d0681dcf56))
+* **GitHub Node:** Don't truncate filenames retrieved from GitHub ([#12923](https://github.com/n8n-io/n8n/issues/12923)) ([7e18447](https://github.com/n8n-io/n8n/commit/7e1844757fe0d544e8881d229d16af95ed53fb21))
+* **Google Cloud Firestore Node:** Fix potential prototype pollution vulnerability ([#13035](https://github.com/n8n-io/n8n/issues/13035)) ([f150f79](https://github.com/n8n-io/n8n/commit/f150f79ad6c7d43e036688b1de8d6c2c8140aca9))
+* Increment runIndex in WorkflowToolV2 tool executions to avoid reusing out of date inputs ([#13008](https://github.com/n8n-io/n8n/issues/13008)) ([cc907fb](https://github.com/n8n-io/n8n/commit/cc907fbca9aa00fe07dd54a2fcac8983f2321ad1))
+* Sync partial execution version of FE and BE, also allow enforcing a specific version ([#12840](https://github.com/n8n-io/n8n/issues/12840)) ([a155043](https://github.com/n8n-io/n8n/commit/a15504329bac582225185705566297d9cc27bf73))
+* **Wise Node:** Use ISO formatting for timestamps ([#10288](https://github.com/n8n-io/n8n/issues/10288)) ([1a2d39a](https://github.com/n8n-io/n8n/commit/1a2d39a158c9a61bdaf11124b09ae70de65ebbf1))
+
+
+### Features
+
+* Add reusable frontend `composables` package ([#13077](https://github.com/n8n-io/n8n/issues/13077)) ([ef87da4](https://github.com/n8n-io/n8n/commit/ef87da4c193a08e089e48044906a4f5ce9959a22))
+* Add support for client credentials with Azure Log monitor ([#13038](https://github.com/n8n-io/n8n/issues/13038)) ([2c2d631](https://github.com/n8n-io/n8n/commit/2c2d63157b7866f1a68cc45c5823e29570ccff77))
+* Allow multi API creation via the UI ([#12845](https://github.com/n8n-io/n8n/issues/12845)) ([ad3250c](https://github.com/n8n-io/n8n/commit/ad3250ceb0df84379917e684d54d4100e3bf44f5))
+* Allow setting API keys expiration ([#12954](https://github.com/n8n-io/n8n/issues/12954)) ([9bcbc2c](https://github.com/n8n-io/n8n/commit/9bcbc2c2ccbb88537e9b7554c92b631118d870f1))
+* **core:** Add sorting to GET `/workflows` endpoint ([#13029](https://github.com/n8n-io/n8n/issues/13029)) ([b60011a](https://github.com/n8n-io/n8n/commit/b60011a1808d47f32ab84e685dba0e915e82df8f))
+* **core:** Enable usage as a tool for more nodes ([#12930](https://github.com/n8n-io/n8n/issues/12930)) ([9deb759](https://github.com/n8n-io/n8n/commit/9deb75916e4eb63b899ba79b40cbd24b69a752db))
+* **core:** Handle Declarative nodes more like regular nodes ([#13007](https://github.com/n8n-io/n8n/issues/13007)) ([a65a9e6](https://github.com/n8n-io/n8n/commit/a65a9e631b13bbe70ad64727fb1109ae7cd014eb))
+* **Discord Node:** New sendAndWait operation ([#12894](https://github.com/n8n-io/n8n/issues/12894)) ([d47bfdd](https://github.com/n8n-io/n8n/commit/d47bfddd656367454b51da39cf87dbfb2bd59eb2))
+* **editor:** Display schema preview for unexecuted nodes ([#12901](https://github.com/n8n-io/n8n/issues/12901)) ([0063bbb](https://github.com/n8n-io/n8n/commit/0063bbb30b45b3af92aff4c0f76b905d50a71a2d))
+* **editor:** Easy $fromAI Button for AI Tools ([#12587](https://github.com/n8n-io/n8n/issues/12587)) ([2177376](https://github.com/n8n-io/n8n/commit/21773764d37c37a6464a3885d3fa548a5feb4fd8))
+* **editor:** Show fixed collection parameter issues in UI ([#12899](https://github.com/n8n-io/n8n/issues/12899)) ([12d686c](https://github.com/n8n-io/n8n/commit/12d686ce52694f4c0b88f92a744451c1b0c66dec))
+* **Facebook Graph API Node:** Update node to support API v22.0 ([#13024](https://github.com/n8n-io/n8n/issues/13024)) ([0bc0fc6](https://github.com/n8n-io/n8n/commit/0bc0fc6c1226688c29bf5f8f0ba7e8f244e16fbc))
+* **HTTP Request Tool Node:** Relax binary data detection ([#13048](https://github.com/n8n-io/n8n/issues/13048)) ([b67a003](https://github.com/n8n-io/n8n/commit/b67a003e0b154d4e8c04392bec1c7b28171b5908))
+* Human in the loop section ([#12883](https://github.com/n8n-io/n8n/issues/12883)) ([9590e5d](https://github.com/n8n-io/n8n/commit/9590e5d58b8964de9ce901bf07b537926d18b6b7))
+* **n8n Form Node:** Add Hidden Fields ([#12803](https://github.com/n8n-io/n8n/issues/12803)) ([0da1114](https://github.com/n8n-io/n8n/commit/0da1114981978e371b216bdabc0c3bbdceeefa09))
+* **n8n Form Node:** Respond with Text ([#12979](https://github.com/n8n-io/n8n/issues/12979)) ([182fc15](https://github.com/n8n-io/n8n/commit/182fc150bec62e9a5e2801d6c403e4a6bd35f728))
+* **OpenAI Chat Model Node, OpenAI Node:** Include o3 models in model selection ([#13005](https://github.com/n8n-io/n8n/issues/13005)) ([37d152c](https://github.com/n8n-io/n8n/commit/37d152c148cafbe493c22e07f5d55ff24fcb0ca4))
+* **Summarize Node:** Preserves original field data type ([#13069](https://github.com/n8n-io/n8n/issues/13069)) ([be5e49d](https://github.com/n8n-io/n8n/commit/be5e49d56c09d65c9768e948471626cfd3606c0c))
+
+
+
 # [1.77.0](https://github.com/n8n-io/n8n/compare/n8n@1.76.0...n8n@1.77.0) (2025-01-29)
 
 

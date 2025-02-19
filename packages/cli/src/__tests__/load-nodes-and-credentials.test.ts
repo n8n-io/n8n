@@ -107,7 +107,7 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [existingProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
+			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
 			expect(result.description.properties).toContainEqual(existingProp);
 		});
 
@@ -121,9 +121,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
 		});
 
 		it('should handle nodes with operation property', () => {
@@ -136,9 +136,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with both resource and operation properties', () => {
@@ -158,17 +158,17 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp, operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
-			expect(result.description.properties[4]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
+			expect(result.description.properties[3]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with empty properties', () => {
 			fullNodeWrapper.description.properties = [];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2);
-			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties).toHaveLength(1);
+			expect(result.description.properties[0].name).toBe('toolDescription');
 		});
 
 		it('should handle nodes with existing codex property', () => {

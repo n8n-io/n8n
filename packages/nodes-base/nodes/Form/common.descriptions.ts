@@ -57,13 +57,18 @@ export const formFields: INodeProperties = {
 			name: 'values',
 			values: [
 				{
-					displayName: 'Field Label',
+					displayName: 'Field Name',
 					name: 'fieldLabel',
 					type: 'string',
 					default: '',
 					placeholder: 'e.g. What is your name?',
 					description: 'Label that appears above the input field',
 					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField', 'html'],
+						},
+					},
 				},
 				{
 					displayName: 'Element Type',
@@ -93,6 +98,10 @@ export const formFields: INodeProperties = {
 							value: 'file',
 						},
 						{
+							name: 'Hidden Field',
+							value: 'hiddenField',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},
@@ -112,6 +121,19 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
+					displayName: 'Element Name',
+					name: 'elementName',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. content-section',
+					description: 'Optional field. It can be used to include the html in the output.',
+					displayOptions: {
+						show: {
+							fieldType: ['html'],
+						},
+					},
+				},
+				{
 					displayName: 'Placeholder',
 					name: 'placeholder',
 					description: 'Sample text to display inside the field',
@@ -119,7 +141,33 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html'],
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
+					displayName: 'Field Value',
+					name: 'fieldValue',
+					description:
+						'Input value can be set here or will be passed as a query parameter via Field Name if no value is set',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
 						},
 					},
 				},
@@ -169,14 +217,16 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'HTML Template',
+					displayName: 'HTML',
 					name: 'html',
 					typeOptions: {
 						editor: 'htmlEditor',
 					},
 					type: 'string',
+					noDataExpression: true,
 					default: placeholder,
-					description: 'HTML template to render',
+					description: 'HTML elements to display on the form page',
+					hint: 'Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags',
 					displayOptions: {
 						show: {
 							fieldType: ['html'],
@@ -222,18 +272,6 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName:
-						'Does not accept <code>&lt;style&gt;</code> <code>&lt;script&gt;</code> or <code>&lt;input&gt;</code> tags.',
-					name: 'htmlTips',
-					type: 'notice',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['html'],
-						},
-					},
-				},
-				{
 					displayName: 'Required Field',
 					name: 'requiredField',
 					type: 'boolean',
@@ -242,7 +280,7 @@ export const formFields: INodeProperties = {
 						'Whether to require the user to enter a value for this field before submitting the form',
 					displayOptions: {
 						hide: {
-							fieldType: ['html'],
+							fieldType: ['html', 'hiddenField'],
 						},
 					},
 				},

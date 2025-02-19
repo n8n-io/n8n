@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { WorkflowsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { chunk } from 'lodash';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -7,13 +9,13 @@ import {
 	Logger,
 	PollContext,
 	TriggerContext,
+	type IGetExecutePollFunctions,
+	type IGetExecuteTriggerFunctions,
 } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IGetExecutePollFunctions,
-	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecutionData,
 	IRun,
@@ -22,6 +24,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
+	WorkflowId,
 } from 'n8n-workflow';
 import {
 	Workflow,
@@ -53,6 +56,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -63,7 +67,7 @@ interface QueuedActivation {
 
 @Service()
 export class ActiveWorkflowManager {
-	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
+	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -82,6 +86,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	async init() {
@@ -90,7 +95,6 @@ export class ActiveWorkflowManager {
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized');
-		await this.webhookService.populateCache();
 	}
 
 	async getAllWorkflowActivationErrors() {
@@ -132,7 +136,7 @@ export class ActiveWorkflowManager {
 	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
 	 * which checks if the workflow is active in memory.
 	 */
-	async isActive(workflowId: string) {
+	async isActive(workflowId: WorkflowId) {
 		const workflow = await this.workflowRepository.findOne({
 			select: ['active'],
 			where: { id: workflowId },
@@ -228,7 +232,7 @@ export class ActiveWorkflowManager {
 	 * Remove all webhooks of a workflow from the database, and
 	 * deregister those webhooks from external services.
 	 */
-	async clearWebhooks(workflowId: string) {
+	async clearWebhooks(workflowId: WorkflowId) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 		});
@@ -409,9 +413,9 @@ export class ActiveWorkflowManager {
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
-		const dbWorkflows = await this.workflowRepository.getAllActive();
+		const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
 
-		if (dbWorkflows.length === 0) return;
+		if (dbWorkflowIds.length === 0) return;
 
 		if (this.instanceSettings.isLeader) {
 			this.logger.info(' ================================');
@@ -419,46 +423,62 @@ export class ActiveWorkflowManager {
 			this.logger.info(' ================================');
 		}
 
-		for (const dbWorkflow of dbWorkflows) {
-			try {
-				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
-					shouldPublish: false,
-				});
+		const batches = chunk(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
 
-				if (wasActivated) {
-					this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
-						workflowName: dbWorkflow.name,
-						workflowId: dbWorkflow.id,
-					});
-					this.logger.info('     => Started');
-				}
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.info(
-					'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
-				);
+		for (const batch of batches) {
+			const activationPromises = batch.map(async (dbWorkflowId) => {
+				await this.activateWorkflow(dbWorkflowId, activationMode);
+			});
 
-				this.logger.info(`               ${error.message}`);
-				this.logger.error(
-					`Issue on initial workflow activation try of ${dbWorkflow.display()} (startup)`,
-					{
-						workflowName: dbWorkflow.name,
-						workflowId: dbWorkflow.id,
-					},
-				);
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				this.executeErrorWorkflow(error, dbWorkflow, 'internal');
-
-				// do not keep trying to activate on authorization error
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				if (error.message.includes('Authorization')) continue;
-
-				this.addQueuedWorkflowActivation('init', dbWorkflow);
-			}
+			await Promise.all(activationPromises);
 		}
 
 		this.logger.debug('Finished activating workflows (startup)');
+	}
+
+	private async activateWorkflow(
+		workflowId: WorkflowId,
+		activationMode: 'init' | 'leadershipChange',
+	) {
+		const dbWorkflow = await this.workflowRepository.findById(workflowId);
+		if (!dbWorkflow) return;
+
+		try {
+			const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
+				shouldPublish: false,
+			});
+			if (wasActivated) {
+				this.logger.info(`   - ${formatWorkflow(dbWorkflow)})`);
+				this.logger.info('     => Started');
+				this.logger.debug(`Successfully started workflow ${formatWorkflow(dbWorkflow)}`, {
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				});
+			}
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.info(
+				`     => ERROR: Workflow ${formatWorkflow(dbWorkflow)} could not be activated on first try, keep on trying if not an auth issue`,
+			);
+
+			this.logger.info(`               ${error.message}`);
+			this.logger.error(
+				`Issue on initial workflow activation try of ${formatWorkflow(dbWorkflow)} (startup)`,
+				{
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				},
+			);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+
+			// do not keep trying to activate on authorization error
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			if (error.message.includes('Authorization')) return;
+
+			this.addQueuedWorkflowActivation('init', dbWorkflow);
+		}
 	}
 
 	async clearAllActivationErrors() {
@@ -500,7 +520,7 @@ export class ActiveWorkflowManager {
 	 * since webhooks do not require continuous execution.
 	 */
 	async add(
-		workflowId: string,
+		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
@@ -532,9 +552,18 @@ export class ActiveWorkflowManager {
 				});
 			}
 
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.active) {
+				this.logger.debug(
+					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+					{
+						workflowId: dbWorkflow.id,
+					},
+				);
+				return false;
+			}
+
 			if (shouldDisplayActivationMessage) {
-				this.logger.info(`   - ${dbWorkflow.display()}`);
-				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
+				this.logger.debug(`Initializing active workflow ${formatWorkflow(dbWorkflow)} (startup)`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
@@ -555,7 +584,7 @@ export class ActiveWorkflowManager {
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(
-					`Workflow ${dbWorkflow.display()} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
 					{ level: 'warning' },
 				);
 			}
@@ -715,7 +744,7 @@ export class ActiveWorkflowManager {
 	/**
 	 * Remove a workflow from the activation queue
 	 */
-	private removeQueuedWorkflowActivation(workflowId: string) {
+	private removeQueuedWorkflowActivation(workflowId: WorkflowId) {
 		if (this.queuedActivations[workflowId]) {
 			clearTimeout(this.queuedActivations[workflowId].timeout);
 			delete this.queuedActivations[workflowId];
@@ -738,7 +767,7 @@ export class ActiveWorkflowManager {
 	 */
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-	async remove(workflowId: string) {
+	async remove(workflowId: WorkflowId) {
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);
@@ -780,7 +809,7 @@ export class ActiveWorkflowManager {
 	/**
 	 * Stop running active triggers and pollers for a workflow.
 	 */
-	async removeWorkflowTriggersAndPollers(workflowId: string) {
+	async removeWorkflowTriggersAndPollers(workflowId: WorkflowId) {
 		if (!this.activeWorkflows.isActive(workflowId)) return;
 
 		const wasRemoved = await this.activeWorkflows.remove(workflowId);
@@ -823,7 +852,7 @@ export class ActiveWorkflowManager {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
+			this.logger.debug(`Adding triggers and pollers for workflow ${formatWorkflow(dbWorkflow)}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,
@@ -835,14 +864,14 @@ export class ActiveWorkflowManager {
 				getPollFunctions,
 			);
 
-			this.logger.debug(`Workflow ${dbWorkflow.display()} activated`, {
+			this.logger.debug(`Workflow ${formatWorkflow(dbWorkflow)} activated`, {
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 			});
 		}
 	}
 
-	async removeActivationError(workflowId: string) {
+	async removeActivationError(workflowId: WorkflowId) {
 		await this.activationErrorsService.deregister(workflowId);
 	}
 

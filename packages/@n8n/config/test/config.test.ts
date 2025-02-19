@@ -119,6 +119,7 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				allowToolUsage: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -155,6 +156,7 @@ describe('GlobalConfig', () => {
 		workflows: {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+			activationBatchSize: 1,
 		},
 		endpoints: {
 			metrics: {
@@ -213,6 +215,7 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					dualStack: false,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -301,6 +304,10 @@ describe('GlobalConfig', () => {
 		},
 		tags: {
 			disabled: false,
+		},
+		partialExecutions: {
+			version: 1,
+			enforce: false,
 		},
 	};
 

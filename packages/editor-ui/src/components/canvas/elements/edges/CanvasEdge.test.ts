@@ -71,6 +71,30 @@ describe('CanvasEdge', () => {
 		expect(() => getByTestId('delete-connection-button')).toThrow();
 	});
 
+	it('should hide toolbar after delay', async () => {
+		vi.useFakeTimers();
+
+		const user = userEvent.setup({
+			advanceTimers: vi.advanceTimersByTime,
+		});
+
+		const { rerender, getByTestId, queryByTestId } = renderComponent({
+			props: { hovered: true },
+		});
+
+		await user.hover(getByTestId('edge-label'));
+		expect(queryByTestId('canvas-edge-toolbar')).toBeInTheDocument();
+
+		await rerender({ hovered: false });
+
+		await user.unhover(getByTestId('edge-label'));
+		expect(getByTestId('canvas-edge-toolbar')).toBeInTheDocument();
+
+		await vi.advanceTimersByTimeAsync(300);
+
+		expect(queryByTestId('canvas-edge-toolbar')).not.toBeInTheDocument();
+	});
+
 	it('should compute edgeStyle correctly', () => {
 		const { container } = renderComponent();
 
@@ -161,12 +185,9 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		const label = container.querySelector('.vue-flow__edge-label');
+		const label = container.querySelector('.vue-flow__edge-label')?.childNodes[0];
 
-		expect(label).toHaveAttribute(
-			'style',
-			'transform: translate(-50%, -150%) translate(50px, 50px);',
-		);
+		expect(label).toHaveAttribute('style', 'transform: translate(0, -100%);');
 	});
 
 	it("should render a label in the middle of the connector when it isn't straight", () => {
@@ -178,11 +199,8 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		const label = container.querySelector('.vue-flow__edge-label');
+		const label = container.querySelector('.vue-flow__edge-label')?.childNodes[0];
 
-		expect(label).toHaveAttribute(
-			'style',
-			'transform: translate(-50%, -50%) translate(50px, 50px);',
-		);
+		expect(label).toHaveAttribute('style', 'transform: translate(0, 0%);');
 	});
 });
