@@ -128,5 +128,6 @@
         "groups",
         "applicationRoles",
         "expand"
-    ]
+    ],
+    "version": 1
 }
