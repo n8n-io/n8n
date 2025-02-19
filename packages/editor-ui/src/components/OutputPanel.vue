@@ -361,7 +361,7 @@ const activatePane = () => {
 					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
-					v-if="staleData || (hasNodeRun && !pinnedData.hasData.value && runsCount === 1)"
+					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
 					v-show="!outputPanelEditMode.enabled"
 					:task-data="runTaskData"
 					:has-stale-data="staleData"
