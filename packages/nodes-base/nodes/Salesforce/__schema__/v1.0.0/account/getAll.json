@@ -22,5 +22,6 @@
         "Id": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
