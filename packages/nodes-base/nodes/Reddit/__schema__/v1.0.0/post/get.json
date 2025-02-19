@@ -367,5 +367,6 @@
         "num_crossposts",
         "mod_reports",
         "is_video"
-    ]
+    ],
+    "version": 1
 }
