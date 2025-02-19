@@ -156,5 +156,6 @@
         "created_at",
         "updated_at",
         "tags"
-    ]
+    ],
+    "version": 1
 }
