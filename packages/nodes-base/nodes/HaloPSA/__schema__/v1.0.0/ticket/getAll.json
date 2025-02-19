@@ -291,5 +291,6 @@
         "id",
         "agent_id",
         "targetdate"
-    ]
+    ],
+    "version": 1
 }
