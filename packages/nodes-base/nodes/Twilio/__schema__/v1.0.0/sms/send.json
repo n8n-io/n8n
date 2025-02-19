@@ -88,5 +88,6 @@
         "subresource_uris",
         "to",
         "uri"
-    ]
+    ],
+    "version": 1
 }
