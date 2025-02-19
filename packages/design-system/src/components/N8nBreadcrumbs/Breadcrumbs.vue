@@ -95,11 +95,10 @@ const getHiddenItems = async () => {
 };
 
 watch(
-	async () => await props.hiddenItems,
+	(): PathItem[] | Promise<PathItem[]> => props.hiddenItems,
 	(_newValue: PathItem[] | Promise<PathItem[]>) => {
 		void getHiddenItems();
 	},
-	{ deep: true },
 );
 
 const onHiddenMenuVisibleChange = async (visible: boolean) => {
