@@ -809,11 +809,14 @@ onMounted(async () => {
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.timeSavedPerExecution') + ':' }}
+						<label for="timeSavedPerExecution">{{
+							i18n.baseText('workflowSettings.timeSavedPerExecution') + ':'
+						}}</label>
 					</el-col>
 					<el-col :span="2">
 						<div>
 							<N8nInput
+								id="timeSavedPerExecution"
 								type="number"
 								v-model="workflowSettings.timeSavedPerExecution"
 								@update:model-value="updateTimeSavedPerExecution"
