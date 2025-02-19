@@ -148,13 +148,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 
 		return {
-			baseQuery: this.createQueryBuilder()
-				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', {
-					columnNames,
-				})
-				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', {
-					columnNames,
-				})
+			baseQuery: this.manager
+				.createQueryBuilder()
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
 				.addCommonTableExpression(
 					'SELECT * FROM FOLDERS_QUERY UNION ALL SELECT * FROM WORKFLOWS_QUERY',
 					'RESULT_QUERY',
