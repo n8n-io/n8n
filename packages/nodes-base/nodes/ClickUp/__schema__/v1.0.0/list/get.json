@@ -130,5 +130,6 @@
         "override_statuses",
         "statuses",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }
