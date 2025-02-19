@@ -128,7 +128,7 @@ export function isSharedResource(
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
 }
 
-export function isSortableResource(
+export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);

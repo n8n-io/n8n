@@ -15,7 +15,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 import type { ITag } from '@/Interface';
-import { isSharedResource, isSortableResource } from '@/utils/typeGuards';
+import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import type { FolderShortInfo } from '@/types/folders.types';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
@@ -206,16 +206,19 @@ const filteredAndSortedResources = computed(() => {
 	});
 
 	return filtered.sort((a, b) => {
-		const areSortable = isSortableResource(a) && isSortableResource(b);
-		if (!areSortable) {
-			return 0;
-		}
+		const sortableByDate = isResourceSortableByDate(a) && isResourceSortableByDate(b);
 		switch (sortBy.value) {
 			case 'lastUpdated':
+				if (!sortableByDate) {
+					return 0;
+				}
 				return props.sortFns.lastUpdated
 					? props.sortFns.lastUpdated(a, b)
 					: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
 			case 'lastCreated':
+				if (!sortableByDate) {
+					return 0;
+				}
 				return props.sortFns.lastCreated
 					? props.sortFns.lastCreated(a, b)
 					: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
