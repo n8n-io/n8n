@@ -78,5 +78,6 @@
         "url",
         "duration",
         "deadline"
-    ]
+    ],
+    "version": 1
 }
