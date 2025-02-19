@@ -7,9 +7,9 @@ import type {
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport } from './utils';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { createEmailBody } from '../../../utils/sendAndWait/email-templates';
 import {
-	configureWaitTillDate,
 	createButton,
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
