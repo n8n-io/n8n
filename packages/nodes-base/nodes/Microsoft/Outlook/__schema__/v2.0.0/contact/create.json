@@ -141,5 +141,6 @@
         "homeAddress",
         "businessAddress",
         "otherAddress"
-    ]
+    ],
+    "version": 1
 }
