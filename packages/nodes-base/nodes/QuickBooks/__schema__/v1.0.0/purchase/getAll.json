@@ -219,5 +219,6 @@
         "TxnDate",
         "CurrencyRef",
         "Line"
-    ]
+    ],
+    "version": 1
 }
