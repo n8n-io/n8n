@@ -632,11 +632,11 @@ describe('WorkflowDataProxy', () => {
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
 
 		test('$nodeVersion should return node type version', () => {
-			expect(proxy.$nodeVersion).toBeDefined();
+			expect(proxy.$nodeVersion).toBe(1);
 		});
 
 		test('$nodeId should return node ID', () => {
-			expect(proxy.$nodeId).toBeDefined();
+			expect(proxy.$nodeId).toBe('uuid-5');
 		});
 
 		test('$webhookId should be optional', () => {
