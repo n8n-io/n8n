@@ -10,5 +10,6 @@
         "inventoryStatus": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
