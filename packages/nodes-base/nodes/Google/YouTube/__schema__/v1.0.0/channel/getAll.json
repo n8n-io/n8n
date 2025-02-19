@@ -219,5 +219,6 @@
                 "channel"
             ]
         }
-    }
+    },
+    "version": 1
 }
