@@ -141,14 +141,14 @@ export class PrometheusMetricsService {
 
 		app.use(
 			[
-				'/rest/',
 				'/api/',
-				'/webhook/',
-				'/webhook-waiting/',
-				'/webhook-test/',
-				'/form/',
-				'/form-waiting/',
-				'/form-test/',
+				`/${this.globalConfig.endpoints.rest}/`,
+				`/${this.globalConfig.endpoints.webhook}/`,
+				`/${this.globalConfig.endpoints.webhookWaiting}/`,
+				`/${this.globalConfig.endpoints.webhookTest}/`,
+				`/${this.globalConfig.endpoints.form}/`,
+				`/${this.globalConfig.endpoints.formWaiting}/`,
+				`/${this.globalConfig.endpoints.formTest}/`,
 			],
 			(req, res, next) => {
 				activityGauge.reset();

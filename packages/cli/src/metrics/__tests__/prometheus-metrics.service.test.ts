@@ -38,6 +38,13 @@ describe('PrometheusMetricsService', () => {
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
 			},
+			rest: 'rest',
+			form: 'form',
+			formTest: 'form-test',
+			formWaiting: 'form-waiting',
+			webhook: 'webhook',
+			webhookTest: 'webhook-test',
+			webhookWaiting: 'webhook-waiting',
 		},
 	});
 
@@ -153,8 +160,8 @@ describe('PrometheusMetricsService', () => {
 
 			expect(app.use).toHaveBeenCalledWith(
 				[
-					'/rest/',
 					'/api/',
+					'/rest/',
 					'/webhook/',
 					'/webhook-waiting/',
 					'/webhook-test/',
