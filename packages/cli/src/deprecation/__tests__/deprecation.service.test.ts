@@ -5,37 +5,68 @@ import { mockLogger } from '@test/mocking';
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
-	test('supports multiple warnings for the same environment variable', () => {
-		// ARRANGE
-		process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
-		const logger = mockLogger();
-		const deprecationService = new DeprecationService(logger);
+	const logger = mockLogger();
 
-		const dataCaptor = captor();
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
 
-		// ACT
-		deprecationService.warn();
+	describe('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', () => {
+		beforeAll(() => {
+			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
+		});
 
-		// ASSERT
-		expect(deprecationService.mustWarn('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT')).toBe(true);
+		afterAll(() => {
+			delete process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT;
+		});
 
-		expect(logger.warn).toHaveBeenCalledTimes(1);
-		expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
-		expect(dataCaptor.value.match(/N8N_PARTIAL_EXECUTION_VERSION_DEFAULT/g)).toHaveLength(2);
+		test('supports multiple warnings for the same environment variable', () => {
+			// ARRANGE
+			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
+			const deprecationService = new DeprecationService(logger);
+
+			const dataCaptor = captor();
+
+			// ACT
+			deprecationService.warn();
+
+			// ASSERT
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
+			expect(dataCaptor.value.match(/N8N_PARTIAL_EXECUTION_VERSION_DEFAULT/g)).toHaveLength(2);
+		});
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
-		if (value) {
-			process.env[envVar] = value;
-		} else {
-			delete process.env[envVar];
+		const originalEnv = process.env[envVar];
+		try {
+			// ARRANGE
+			if (value) {
+				process.env[envVar] = value;
+			} else {
+				delete process.env[envVar];
+			}
+
+			const deprecationService = new DeprecationService(logger);
+
+			// ACT
+			deprecationService.warn();
+
+			// ASSERT
+			if (mustWarn) {
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn.mock.lastCall?.[0]).toMatch(envVar);
+			} else {
+				expect(logger.warn).toHaveBeenCalledTimes(0);
+			}
+		} finally {
+			// CLEANUP
+			if (originalEnv) {
+				process.env[envVar] = originalEnv;
+			} else {
+				delete process.env[envVar];
+			}
 		}
-
-		const deprecationService = new DeprecationService(mockLogger());
-
-		deprecationService.warn();
-
-		expect(deprecationService.mustWarn(envVar)).toBe(mustWarn);
 	};
 
 	test.each([
@@ -47,7 +78,7 @@ describe('DeprecationService', () => {
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
 		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
-	])('should detect when %s is in use', (envVar, value, mustWarn) => {
+	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
 
@@ -77,15 +108,7 @@ describe('DeprecationService', () => {
 			['true', false],
 			[undefined /* warnIfMissing */, true],
 		])('should handle value: %s', (value, mustWarn) => {
-			if (value === undefined) {
-				delete process.env[envVar];
-			} else {
-				process.env[envVar] = value;
-			}
-
-			const deprecationService = new DeprecationService(mockLogger());
-			deprecationService.warn();
-			expect(deprecationService.mustWarn(envVar)).toBe(mustWarn);
+			toTest(envVar, value, mustWarn);
 		});
 	});
 });

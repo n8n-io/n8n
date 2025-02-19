@@ -95,18 +95,4 @@ export class DeprecationService {
 
 		this.logger.warn(`\n${header}:\n${deprecations}`);
 	}
-
-	mustWarn(envVar: string) {
-		for (const [deprecation, metadata] of this.state.entries()) {
-			if (deprecation.envVar !== envVar) {
-				continue;
-			}
-
-			if (metadata.mustWarn) {
-				return true;
-			}
-		}
-
-		return false;
-	}
 }
