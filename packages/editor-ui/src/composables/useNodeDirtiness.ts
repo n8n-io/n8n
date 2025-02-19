@@ -134,7 +134,7 @@ export function useNodeDirtiness() {
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
 
 		for (const [nodeName, runData] of Object.entries(runDataByNode)) {
-			const runAt = runData[0].startTime ?? 0;
+			const runAt = runData[0]?.startTime ?? 0;
 
 			if (!runAt) {
 				continue;

@@ -42,6 +42,8 @@ vi.mock('@/stores/workflows.store', () => ({
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
+		getPinnedDataLastRemovedAt: vi.fn(),
+		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 	}),
 }));
@@ -336,13 +338,15 @@ describe('useRunWorkflow({ router })', () => {
 				createTestNode({ name: parentName }),
 				createTestNode({ name: executeName }),
 			];
-			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation(
-				(nodeName) =>
-					({
-						[parentName]: {
-							main: [[{ node: executeName, type: NodeConnectionType.Main, index: 0 }]],
-						},
-					})[nodeName] ?? ({} as INodeConnections),
+			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation((nodeName) =>
+				nodeName === parentName
+					? { main: [[{ node: executeName, type: NodeConnectionType.Main, index: 0 }]] }
+					: ({} as INodeConnections),
+			);
+			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockImplementation((nodeName) =>
+				nodeName === executeName
+					? { main: [[{ node: parentName, type: NodeConnectionType.Main, index: 0 }]] }
+					: ({} as INodeConnections),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				[parentName]: [
