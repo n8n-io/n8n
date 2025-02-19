@@ -98,5 +98,6 @@
         "updated_at",
         "associated_tickets_count",
         "tags"
-    ]
+    ],
+    "version": 1
 }
