@@ -199,5 +199,6 @@
         "kind",
         "etag",
         "id"
-    ]
+    ],
+    "version": 1
 }
