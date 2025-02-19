@@ -327,5 +327,6 @@
         "customFields",
         "_embedded",
         "_links"
-    ]
+    ],
+    "version": 1
 }
