@@ -238,5 +238,6 @@
         "tts": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
