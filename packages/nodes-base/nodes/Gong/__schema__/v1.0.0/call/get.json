@@ -96,5 +96,6 @@
     },
     "required": [
         "metaData"
-    ]
+    ],
+    "version": 1
 }
