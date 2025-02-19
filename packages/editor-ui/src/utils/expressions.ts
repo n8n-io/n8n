@@ -141,8 +141,9 @@ export const stringifyExpressionResult = (
 };
 
 export const completeExpressionSyntax = <T>(value: T) => {
-	if (typeof value === 'string' && !value.startsWith('=') && value.endsWith('{{ ')) {
-		return '=' + value + ' }}';
+	if (typeof value === 'string' && !value.startsWith('=')) {
+		if (value.endsWith('{{ ')) return '=' + value + ' }}';
+		if (value.endsWith('{{$')) return '=' + value.slice(0, -1) + ' $ }}';
 	}
 
 	return value;
