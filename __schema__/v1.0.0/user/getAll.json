@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        },
+        "mail": {
+            "type": "string"
+        },
+        "mailNickname": {
+            "type": "string"
+        },
+        "securityIdentifier": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "version": 1
+}
