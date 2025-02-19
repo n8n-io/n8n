@@ -160,5 +160,6 @@
         "settings",
         "status",
         "customFields"
-    ]
+    ],
+    "version": 1
 }
