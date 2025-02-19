@@ -41,7 +41,6 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { Folder } from '@/components/Folders/FolderCard.vue';
-import { E } from 'vitest/dist/chunks/reporters.6vxQttCV';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -198,7 +197,7 @@ const workflowResources = computed<Resource[]>(() => {
 	const folders = [testFolder1, testFolder2, testSubFolder1, testSubFolder2, testSubFolder3];
 	// Add test folders instead of two first workflows
 	// TODO: Get typing for resources in order
-	const currentFolderId = route.query.folderId as string | undefined;
+	const currentFolderId = route.params?.folderId as string | undefined;
 	if (!currentFolderId) {
 		resources.unshift({
 			id: testFolder1.id,
@@ -559,11 +558,31 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 };
 
 const navigateToFolder = async (folderId: string) => {
-	console.log('Navigate to folder with id:', folderId);
-	// Push folderId=folderId to query params
-	await router.push({
-		query: { folderId },
-	});
+	if (route.name === VIEWS.WORKFLOWS) {
+		await router.push({
+			name: VIEWS.FOLDERS,
+			params: { folderId },
+			query: route.query,
+		});
+	} else if (route.name === VIEWS.PROJECTS_WORKFLOWS) {
+		await router.push({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { folderId },
+			query: route.query,
+		});
+	} else if (route.name === VIEWS.PROJECTS_FOLDERS) {
+		await router.push({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { folderId },
+			query: route.query,
+		});
+	} else if (route.name === VIEWS.FOLDERS) {
+		await router.push({
+			name: VIEWS.FOLDERS,
+			params: { folderId },
+			query: route.query,
+		});
+	}
 	await fetchWorkflows();
 };
 </script>
