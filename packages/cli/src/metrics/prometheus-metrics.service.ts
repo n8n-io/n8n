@@ -118,7 +118,7 @@ export class PrometheusMetricsService {
 
 	/**
 	 * Set up metrics for server routes with `express-prom-bundle`. The same
-	 * middleware is also utilized for a user activity metric
+	 * middleware is also utilized for an instance activity metric
 	 */
 	private initRouteMetrics(app: express.Application) {
 		if (!this.includes.metrics.routes) return;
@@ -133,7 +133,7 @@ export class PrometheusMetricsService {
 
 		const activityGauge = new promClient.Gauge({
 			name: this.prefix + 'last_activity',
-			help: 'last user activity (backend call).',
+			help: 'last instance activity (backend request).',
 			labelNames: ['timestamp'],
 		});
 
