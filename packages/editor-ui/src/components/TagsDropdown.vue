@@ -237,7 +237,11 @@ onClickOutside(
 				data-test-id="tag"
 			/>
 			<N8nOption
-				v-if="createEnabled && filter && !options.some((x) => x.name === filter.trim())"
+				v-if="
+					createEnabled &&
+					filter &&
+					!options.some((x) => x.name.toLowerCase() === filter.trim().toLowerCase())
+				"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
