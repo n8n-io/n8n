@@ -38,6 +38,27 @@ describe('CreateCredentialDto', () => {
 			const result = CreateCredentialDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
+
+		test('should not strip out properties from the data object', () => {
+			const result = CreateCredentialDto.safeParse({
+				name: 'My API Credentials',
+				type: 'apiKey',
+				data: {
+					apiKey: '123',
+					otherProperty: 'otherValue',
+				},
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).toEqual({
+				name: 'My API Credentials',
+				type: 'apiKey',
+				data: {
+					apiKey: '123',
+					otherProperty: 'otherValue',
+				},
+			});
+		});
 	});
 
 	describe('Invalid requests', () => {
