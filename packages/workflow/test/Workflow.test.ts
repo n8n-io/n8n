@@ -2201,7 +2201,7 @@ describe('Workflow', () => {
 			expect(result).toEqual([targetNode.name]);
 		});
 
-		test('should handle connections to nodes not defined in workflow', () => {
+		test('should handle connections to nodes that are not defined in the workflow', () => {
 			const node1 = createNode('Node1');
 			const targetNode = createNode('TargetNode');
 
@@ -2225,6 +2225,31 @@ describe('Workflow', () => {
 			const result = workflow.getHighestNode(targetNode.name);
 
 			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle connections from nodes that are not defined in the workflow', () => {
+			const node1 = createNode('Node1');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				NonExistentNode: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node1.name]);
 		});
 	});
 
