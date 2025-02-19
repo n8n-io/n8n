@@ -34,7 +34,7 @@ function shouldCommandMarkDirty(
 	if (
 		command instanceof RemoveNodeCommand ||
 		command instanceof AddNodeCommand ||
-		command instanceof EnableNodeToggleCommand
+		(command instanceof EnableNodeToggleCommand && command.newState) // truthy newState value means node is getting disabled
 	) {
 		const commandTargetNodeName =
 			command instanceof RemoveNodeCommand || command instanceof AddNodeCommand

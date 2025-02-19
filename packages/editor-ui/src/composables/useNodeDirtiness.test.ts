@@ -158,16 +158,14 @@ describe(useNodeDirtiness, () => {
 			});
 		});
 
-		it('should mark downstream nodes dirty if the node is set to enabled', () => {
+		it('should not mark anything dirty if a disabled node is set to enabled', () => {
 			setupTestWorkflow('a✅ -> b🚫 -> c✅ -> d✅');
 
 			canvasOperations.toggleNodesDisabled(['b'], {
 				trackHistory: true,
 			});
 
-			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
-			});
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
 
 		it('should restore original dirtiness after undoing a command', async () => {
