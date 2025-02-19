@@ -1,0 +1,123 @@
+{
+	"type": "object",
+	"properties": {
+		"errors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"detail": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"customers": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "created_at", "updated_at", "version"],
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"given_name": {
+						"type": "string"
+					},
+					"family_name": {
+						"type": "string"
+					},
+					"company_name": {
+						"type": "string"
+					},
+					"email_address": {
+						"type": "string",
+						"format": "email"
+					},
+					"phone_number": {
+						"type": "string"
+					},
+					"reference_id": {
+						"type": "string"
+					},
+					"note": {
+						"type": "string"
+					},
+					"address": {
+						"type": "object",
+						"properties": {
+							"address_line_1": {
+								"type": "string"
+							},
+							"address_line_2": {
+								"type": "string"
+							},
+							"locality": {
+								"type": "string"
+							},
+							"administrative_district_level_1": {
+								"type": "string"
+							},
+							"postal_code": {
+								"type": "string"
+							},
+							"country": {
+								"type": "string"
+							}
+						}
+					},
+					"preferences": {
+						"type": "object",
+						"properties": {
+							"email_unsubscribed": {
+								"type": "boolean"
+							}
+						}
+					},
+					"creation_source": {
+						"type": "string",
+						"enum": ["THIRD_PARTY", "FIRST_PARTY", "TERMINAL"]
+					},
+					"group_ids": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"segment_ids": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"version": {
+						"type": "integer"
+					}
+				}
+			}
+		},
+		"cursor": {
+			"type": "string",
+			"description": "A pagination cursor that can be used during subsequent calls to SearchCustomers to retrieve the next set of results associated with the original query. Pagination cursors are only present when a request succeeds and additional results are available."
+		},
+		"count": {
+			"type": "integer",
+			"format": "int64",
+			"description": "The total count of customers associated with the Square account that match the search query. Only customer profiles with public information are counted. This field is present only if count is set to true in the request."
+		}
+	}
+}

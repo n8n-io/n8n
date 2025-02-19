@@ -1,0 +1,125 @@
+{
+	"type": "object",
+	"properties": {
+		"errors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string",
+						"enum": ["INVALID_EMAIL_ADDRESS", "INVALID_PHONE_NUMBER"]
+					},
+					"detail": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"customer": {
+			"type": "object",
+			"required": ["id", "created_at", "updated_at", "version"],
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"created_at": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"updated_at": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"given_name": {
+					"type": "string",
+					"maxLength": 300
+				},
+				"family_name": {
+					"type": "string",
+					"maxLength": 300
+				},
+				"company_name": {
+					"type": "string",
+					"maxLength": 500
+				},
+				"nickname": {
+					"type": "string",
+					"maxLength": 100
+				},
+				"email_address": {
+					"type": "string",
+					"format": "email",
+					"maxLength": 254
+				},
+				"phone_number": {
+					"type": "string"
+				},
+				"reference_id": {
+					"type": "string",
+					"maxLength": 100
+				},
+				"note": {
+					"type": "string"
+				},
+				"birthday": {
+					"type": "string",
+					"pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}-[0-9]{2})$"
+				},
+				"address": {
+					"type": "object",
+					"properties": {
+						"address_line_1": {
+							"type": "string"
+						},
+						"address_line_2": {
+							"type": "string"
+						},
+						"locality": {
+							"type": "string"
+						},
+						"administrative_district_level_1": {
+							"type": "string"
+						},
+						"postal_code": {
+							"type": "string"
+						},
+						"country": {
+							"type": "string"
+						}
+					}
+				},
+				"preferences": {
+					"type": "object",
+					"properties": {
+						"email_unsubscribed": {
+							"type": "boolean"
+						}
+					}
+				},
+				"creation_source": {
+					"type": "string",
+					"enum": ["THIRD_PARTY", "FIRST_PARTY", "TERMINAL"]
+				},
+				"group_ids": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"segment_ids": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"version": {
+					"type": "integer"
+				}
+			}
+		}
+	}
+}
