@@ -19,6 +19,7 @@ interface ActionToggleProps {
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
+	custom?: boolean;
 }
 
 defineOptions({ name: 'N8nActionToggle' });
