@@ -135,5 +135,6 @@
         "update_time",
         "visible_to",
         "cc_email"
-    ]
+    ],
+    "version": 1
 }
