@@ -194,5 +194,6 @@
         "creatorRef",
         "sort",
         "collectionId"
-    ]
+    ],
+    "version": 1
 }
