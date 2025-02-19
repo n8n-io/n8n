@@ -198,5 +198,6 @@
         "assigned_to_user_id",
         "type_name",
         "lead"
-    ]
+    ],
+    "version": 1
 }
