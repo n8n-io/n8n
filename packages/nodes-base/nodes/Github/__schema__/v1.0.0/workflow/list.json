@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "properties": {
+        "total_count": {
+            "type": "integer"
+        },
+        "workflows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "node_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "path": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "html_url": {
+                        "type": "string"
+                    },
+                    "badge_url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "node_id",
+                    "name",
+                    "path",
+                    "state",
+                    "created_at",
+                    "updated_at",
+                    "url",
+                    "html_url",
+                    "badge_url"
+                ]
+            }
+        }
+    },
+    "required": [
+        "total_count",
+        "workflows"
+    ],
+    "version": 1
+}
