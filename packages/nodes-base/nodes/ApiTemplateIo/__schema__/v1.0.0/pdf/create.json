@@ -19,5 +19,6 @@
         "template_id",
         "transaction_ref",
         "status"
-    ]
+    ],
+    "version": 1
 }
