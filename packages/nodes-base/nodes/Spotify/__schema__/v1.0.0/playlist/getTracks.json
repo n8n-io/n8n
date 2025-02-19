@@ -321,5 +321,6 @@
         "primary_color",
         "track",
         "video_thumbnail"
-    ]
+    ],
+    "version": 1
 }
