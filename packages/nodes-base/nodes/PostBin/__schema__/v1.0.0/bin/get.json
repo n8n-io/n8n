@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "binId": {
+            "type": "string"
+        },
+        "nowTimestamp": {
+            "type": "integer"
+        },
+        "nowIso": {
+            "type": "string"
+        },
+        "expiresTimestamp": {
+            "type": "integer"
+        },
+        "expiresIso": {
+            "type": "string"
+        },
+        "requestUrl": {
+            "type": "string"
+        },
+        "viewUrl": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "binId",
+        "nowTimestamp",
+        "nowIso",
+        "expiresTimestamp",
+        "expiresIso",
+        "requestUrl",
+        "viewUrl"
+    ],
+    "version": 1
+}
