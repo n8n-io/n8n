@@ -8,5 +8,6 @@
     "required": [
         "updateTime",
         "status"
-    ]
+    ],
+    "version": 1
 }
