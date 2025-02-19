@@ -19,6 +19,7 @@ export async function searchModels(
 			(baseURL && !baseURL.includes('api.openai.com')) ||
 			model.id.startsWith('ft:') ||
 			model.id.startsWith('o1') ||
+			model.id.startsWith('o3') ||
 			(model.id.startsWith('gpt-') && !model.id.includes('instruct'));
 
 		if (!filter) return isValidModel;

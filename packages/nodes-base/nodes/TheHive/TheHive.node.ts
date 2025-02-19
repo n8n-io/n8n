@@ -43,6 +43,7 @@ export class TheHive implements INodeType {
 		defaults: {
 			name: 'TheHive',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

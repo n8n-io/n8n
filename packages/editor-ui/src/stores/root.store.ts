@@ -20,7 +20,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
 		endpointWebhookWaiting: 'webhook-waiting',
-		pushConnectionActive: true,
 		timezone: 'America/New_York',
 		executionTimeout: -1,
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
@@ -66,8 +65,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const versionCli = computed(() => state.value.versionCli);
 
-	const pushConnectionActive = computed(() => state.value.pushConnectionActive);
-
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
 
 	const webhookTestUrl = computed(
@@ -103,14 +100,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const setUrlBaseWebhook = (urlBaseWebhook: string) => {
 		const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
 		state.value.urlBaseWebhook = url;
-	};
-
-	const setPushConnectionActive = () => {
-		state.value.pushConnectionActive = true;
-	};
-
-	const setPushConnectionInactive = () => {
-		state.value.pushConnectionActive = false;
 	};
 
 	const setUrlBaseEditor = (urlBaseEditor: string) => {
@@ -198,13 +187,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef,
 		defaultLocale,
 		binaryDataMode,
-		pushConnectionActive,
 		OAuthCallbackUrls,
 		executionTimeout,
 		maxExecutionTimeout,
 		timezone,
-		setPushConnectionInactive,
-		setPushConnectionActive,
 		setUrlBaseWebhook,
 		setUrlBaseEditor,
 		setEndpointForm,

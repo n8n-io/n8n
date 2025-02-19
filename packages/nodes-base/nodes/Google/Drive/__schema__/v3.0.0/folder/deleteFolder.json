@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "fileId": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "fileId",
+        "success"
+    ]
+}

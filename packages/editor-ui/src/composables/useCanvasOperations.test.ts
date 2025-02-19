@@ -11,7 +11,14 @@ import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IExecutionResponse,
+	INodeUi,
+	IWorkflowDb,
+	IWorkflowTemplate,
+	IWorkflowTemplateNode,
+} from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -43,6 +50,7 @@ import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { nextTick } from 'vue';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2622,6 +2630,296 @@ describe('useCanvasOperations', () => {
 			await openExecution(executionId);
 
 			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
+		});
+	});
+
+	describe('connectAdjacentNodes', () => {
+		it('should connect nodes that were connected through the removed node', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			// Create three nodes in a sequence: A -> B -> C
+			const nodeA = createTestNode({ id: 'A', name: 'Node A', position: [0, 0] });
+			const nodeB = createTestNode({ id: 'B', name: 'Node B', position: [100, 0] });
+			const nodeC = createTestNode({ id: 'C', name: 'Node C', position: [200, 0] });
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeA.type,
+				inputs: [NodeConnectionType.Main],
+				outputs: [NodeConnectionType.Main],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn(() => nodeTypeDescription);
+
+			// Set up the workflow connections A -> B -> C
+			workflowsStore.workflow.nodes = [nodeA, nodeB, nodeC];
+			workflowsStore.workflow.connections = {
+				[nodeA.name]: {
+					main: [[{ node: nodeB.name, type: NodeConnectionType.Main, index: 0 }]],
+				},
+				[nodeB.name]: {
+					main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			// Mock store methods
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.getNodeById.mockImplementation(
+				(id: string) =>
+					({
+						[nodeA.id]: nodeA,
+						[nodeB.id]: nodeB,
+						[nodeC.id]: nodeC,
+					})[id],
+			);
+			workflowsStore.getNodeByName.mockImplementation(
+				(name: string) =>
+					({
+						[nodeA.name]: nodeA,
+						[nodeB.name]: nodeB,
+						[nodeC.name]: nodeC,
+					})[name],
+			);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 }]],
+			});
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeA.name, type: NodeConnectionType.Main, index: 0 }]],
+			});
+
+			const { connectAdjacentNodes } = useCanvasOperations({ router });
+			connectAdjacentNodes(nodeB.id, { trackHistory: true });
+
+			// Check that A was connected directly to C
+			expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: nodeA.name, type: NodeConnectionType.Main, index: 0 },
+					{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 },
+				],
+			});
+
+			// Verify the connection was tracked in history
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
+		it('should connect nodes that were connected through the removed node at different indices', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			// Create three nodes in a sequence: A -> B -> C
+			const nodeA = createTestNode({ id: 'A', name: 'Node A', position: [0, 0] });
+			const nodeB = createTestNode({ id: 'B', name: 'Node B', position: [100, 0] });
+			const nodeC = createTestNode({ id: 'C', name: 'Node C', position: [200, 0] });
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeA.type,
+				inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+				outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn(() => nodeTypeDescription);
+
+			// Set up the workflow connections A -> B -> C
+			workflowsStore.workflow.nodes = [nodeA, nodeB, nodeC];
+			workflowsStore.workflow.connections = {
+				[nodeA.name]: {
+					main: [[{ node: nodeB.name, type: NodeConnectionType.Main, index: 1 }]],
+				},
+				[nodeB.name]: {
+					main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			// Mock store methods
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.getNodeById.mockImplementation(
+				(id: string) =>
+					({
+						[nodeA.id]: nodeA,
+						[nodeB.id]: nodeB,
+						[nodeC.id]: nodeC,
+					})[id],
+			);
+			workflowsStore.getNodeByName.mockImplementation(
+				(name: string) =>
+					({
+						[nodeA.name]: nodeA,
+						[nodeB.name]: nodeB,
+						[nodeC.name]: nodeC,
+					})[name],
+			);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 1 }]],
+			});
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeA.name, type: NodeConnectionType.Main, index: 0 }]],
+			});
+
+			const { connectAdjacentNodes } = useCanvasOperations({ router });
+			connectAdjacentNodes(nodeB.id, { trackHistory: true });
+
+			// Check that A was connected directly to C
+			expect(workflowsStore.addConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: nodeA.name, type: NodeConnectionType.Main, index: 0 },
+					{ node: nodeC.name, type: NodeConnectionType.Main, index: 1 },
+				],
+			});
+
+			// Verify the connection was tracked in history
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
+		it('should not create connections if middle node has no incoming connections', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			// Create nodes: B -> C (no incoming to B)
+			const nodeB = createTestNode({ id: 'B', name: 'Node B', position: [100, 0] });
+			const nodeC = createTestNode({ id: 'C', name: 'Node C', position: [200, 0] });
+
+			workflowsStore.workflow.nodes = [nodeB, nodeC];
+			workflowsStore.workflow.connections = {
+				[nodeB.name]: {
+					main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.getNodeById.mockReturnValue(nodeB);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeC.name, type: NodeConnectionType.Main, index: 0 }]],
+			});
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({});
+
+			const { connectAdjacentNodes } = useCanvasOperations({ router });
+			connectAdjacentNodes(nodeB.id);
+
+			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+		});
+
+		it('should not create connections if middle node has no outgoing connections', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			// Create nodes: A -> B (no outgoing from B)
+			const nodeA = createTestNode({ id: 'A', name: 'Node A', position: [0, 0] });
+			const nodeB = createTestNode({ id: 'B', name: 'Node B', position: [100, 0] });
+
+			workflowsStore.workflow.nodes = [nodeA, nodeB];
+			workflowsStore.workflow.connections = {
+				[nodeA.name]: {
+					main: [[{ node: nodeB.name, type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.getNodeById.mockReturnValue(nodeB);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({
+				main: [[{ node: nodeA.name, type: NodeConnectionType.Main, index: 0 }]],
+			});
+
+			const { connectAdjacentNodes } = useCanvasOperations({ router });
+			connectAdjacentNodes(nodeB.id);
+
+			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toggleChatOpen', () => {
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `true` if the chat panel is closed', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = false;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', true);
+		});
+
+		it('should invoke workflowsStore#setPanelOpen with 2nd argument `false` if the chat panel is open', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { toggleChatOpen } = useCanvasOperations({ router });
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
+			workflowsStore.isChatPanelOpen = true;
+
+			await toggleChatOpen('main');
+
+			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', false);
+		});
+	});
+
+	describe('importTemplate', () => {
+		it('should import template to canvas', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProjectId = 'test-project-id';
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.convertTemplateNodeToNodeUi.mockImplementation((node) => ({
+				...node,
+				credentials: {},
+			}));
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			// Create nodes: A -> B (no outgoing from B)
+			const nodeA: IWorkflowTemplateNode = createTestNode({
+				id: 'X',
+				name: 'Node X',
+				position: [80, 80],
+			});
+			const nodeB: IWorkflowTemplateNode = createTestNode({
+				id: 'Y',
+				name: 'Node Y',
+				position: [180, 80],
+			});
+
+			const workflow: IWorkflowTemplate['workflow'] = {
+				nodes: [nodeA, nodeB],
+				connections: {
+					[nodeA.name]: {
+						main: [[{ node: nodeB.name, type: NodeConnectionType.Main, index: 0 }]],
+					},
+				},
+			};
+
+			const { importTemplate } = useCanvasOperations({ router });
+
+			const templateId = 'template-id';
+			const templateName = 'template name';
+			await importTemplate({
+				id: templateId,
+				name: templateName,
+				workflow,
+			});
+
+			expect(workflowsStore.setConnections).toHaveBeenCalledWith(workflow.connections);
+			expect(workflowsStore.addNode).toHaveBeenCalledWith({
+				...nodeA,
+				credentials: {},
+				disabled: false,
+			});
+			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeA.name, true);
+			expect(workflowsStore.addNode).toHaveBeenCalledWith({
+				...nodeB,
+				credentials: {},
+				disabled: false,
+			});
+			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
+			expect(workflowsStore.getNewWorkflowData).toHaveBeenCalledWith(
+				templateName,
+				projectsStore.currentProjectId,
+			);
+			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({ templateId });
 		});
 	});
 });

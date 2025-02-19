@@ -35,6 +35,7 @@ export class Marketstack implements INodeType {
 		defaults: {
 			name: 'Marketstack',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

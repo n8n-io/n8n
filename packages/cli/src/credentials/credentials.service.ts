@@ -7,7 +7,7 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
-import { Credentials, Logger } from 'n8n-core';
+import { CredentialDataError, Credentials, ErrorReporter, Logger } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -51,6 +51,7 @@ export class CredentialsService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
@@ -111,9 +112,16 @@ export class CredentialsService {
 
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (data?.oauthTokenData) {
+						data.oauthTokenData = true;
+					}
+
 					return {
 						...c,
-						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+						data,
 					} as unknown as CredentialsEntity;
 				});
 			}
@@ -330,11 +338,23 @@ export class CredentialsService {
 	 */
 	decrypt(credential: CredentialsEntity, includeRawData = false) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		const data = coreCredential.getData();
-		if (includeRawData) {
-			return data;
+		try {
+			const data = coreCredential.getData();
+			if (includeRawData) {
+				return data;
+			}
+			return this.redact(data, credential);
+		} catch (error) {
+			if (error instanceof CredentialDataError) {
+				this.errorReporter.error(error, {
+					level: 'error',
+					extra: { credentialId: credential.id },
+					tags: { credentialType: credential.type },
+				});
+				return {};
+			}
+			throw error;
 		}
-		return this.redact(data, credential);
 	}
 
 	async update(credentialId: string, newCredentialData: ICredentialsDb) {
@@ -428,8 +448,8 @@ export class CredentialsService {
 		await this.credentialsRepository.remove(credential);
 	}
 
-	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
+	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
+		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
@@ -540,7 +560,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.decrypt(sharing.credentials, true);
+			decryptedData = this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -556,6 +576,11 @@ export class CredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };

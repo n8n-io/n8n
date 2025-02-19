@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.77.0",
+  "version": "1.79.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -68,6 +68,7 @@
       "dist/credentials/CockpitApi.credentials.js",
       "dist/credentials/CodaApi.credentials.js",
       "dist/credentials/ContentfulApi.credentials.js",
+      "dist/credentials/ConvertApi.credentials.js",
       "dist/credentials/ConvertKitApi.credentials.js",
       "dist/credentials/CopperApi.credentials.js",
       "dist/credentials/CortexApi.credentials.js",

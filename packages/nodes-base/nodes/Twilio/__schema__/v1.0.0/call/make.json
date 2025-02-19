@@ -1,0 +1,106 @@
+{
+    "type": "object",
+    "properties": {
+        "price_unit": {
+            "type": "string"
+        },
+        "parent_call_sid": {
+            "type": "null"
+        },
+        "caller_name": {
+            "type": "null"
+        },
+        "duration": {
+            "type": "null"
+        },
+        "from": {
+            "type": "string"
+        },
+        "to": {
+            "type": "string"
+        },
+        "annotation": {
+            "type": "null"
+        },
+        "answered_by": {
+            "type": "null"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "queue_time": {
+            "type": "string"
+        },
+        "price": {
+            "type": "null"
+        },
+        "api_version": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "null"
+        },
+        "from_formatted": {
+            "type": "string"
+        },
+        "group_sid": {
+            "type": "null"
+        },
+        "trunk_sid": {
+            "type": "null"
+        },
+        "forwarded_from": {
+            "type": "null"
+        },
+        "uri": {
+            "type": "string"
+        },
+        "account_sid": {
+            "type": "string"
+        },
+        "end_time": {
+            "type": "null"
+        },
+        "to_formatted": {
+            "type": "string"
+        },
+        "subresource_uris": {
+            "type": "object",
+            "properties": {
+                "notifications": {
+                    "type": "string"
+                },
+                "user_defined_messages": {
+                    "type": "string"
+                },
+                "transcriptions": {
+                    "type": "string"
+                },
+                "recordings": {
+                    "type": "string"
+                },
+                "streams": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "string"
+                },
+                "user_defined_message_subscriptions": {
+                    "type": "string"
+                },
+                "siprec": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

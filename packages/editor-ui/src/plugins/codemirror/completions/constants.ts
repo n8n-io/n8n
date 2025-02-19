@@ -284,6 +284,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 				name: '$fromAI',
 				returnType: 'any',
 				description: 'Populate this with the parameter passed from the large language model',
+				docURL: 'https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/',
 				args: [
 					{
 						name: 'key',

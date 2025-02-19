@@ -38,6 +38,13 @@ vi.mock('@/composables/useToast', () => {
 		},
 	};
 });
+
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		isConnected: true,
+	}),
+}));
+
 // Test data
 const mockNodes: INodeUi[] = [
 	{
@@ -215,6 +222,7 @@ describe('CanvasChat', () => {
 			// Send message
 			const input = await findByTestId('chat-input');
 			await userEvent.type(input, 'Hello AI!');
+
 			await userEvent.keyboard('{Enter}');
 
 			// Verify message and response
@@ -263,14 +271,21 @@ describe('CanvasChat', () => {
 			// Send message
 			const input = await findByTestId('chat-input');
 			await userEvent.type(input, 'Test message');
+
+			// Since runWorkflow resolve is mocked, the isWorkflowRunning will be false from the first run.
+			// This means that the loading state never gets a chance to appear.
+			// We're forcing isWorkflowRunning to be true for the first run.
+			workflowsStore.isWorkflowRunning = true;
 			await userEvent.keyboard('{Enter}');
 
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
 
+			workflowsStore.isWorkflowRunning = false;
 			workflowsStore.getWorkflowExecution = {
 				...(mockWorkflowExecution as unknown as IExecutionResponse),
 				status: 'success',
 			};
+
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());
 		});
 

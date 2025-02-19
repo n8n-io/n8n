@@ -16,6 +16,7 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	validateResponseModeConfiguration,
 } from '../utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -743,6 +744,22 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json.formQueryParameters).toEqual(staticData);
 	});
+
+	it('should return html if field name is set', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '<div>hi</div>', 'field-1': '<h1><haha/hi>' },
+			files: {},
+		});
+
+		const formFields = [
+			{ fieldLabel: '', elementName: 'greeting', fieldType: 'html' },
+			{ fieldLabel: '', elementName: '', fieldType: 'html' },
+		];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'production');
+
+		expect(result.json.greeting).toBe('<div>hi</div>');
+		expect(result.json.formMode).toBe('production');
+	});
 });
 
 describe('resolveRawData', () => {
@@ -921,5 +938,60 @@ describe('FormTrigger, isFormConnected', () => {
 			}),
 		]);
 		expect(result).toBe(true);
+	});
+});
+
+describe('validateResponseModeConfiguration', () => {
+	let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+	beforeEach(() => {
+		webhookFunctions = mock<IWebhookFunctions>();
+
+		webhookFunctions.getNode.mockReturnValue({
+			name: 'TestNode',
+			typeVersion: 2.2,
+		} as INode);
+
+		webhookFunctions.getChildNodes.mockReturnValue([]);
+	});
+
+	test('throws error if responseMode is "responseNode" but no Respond to Webhook node is connected', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('responseNode');
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'No Respond to Webhook node found in the workflow',
+		);
+	});
+
+	test('throws error if "Respond to Webhook" node is connected but "responseMode" is not "responseNode" in typeVersion <= 2.1', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
+		webhookFunctions.getNode.mockReturnValue({
+			name: 'TestNode',
+			typeVersion: 2.1,
+		} as INode);
+		webhookFunctions.getChildNodes.mockReturnValue([
+			{ type: 'n8n-nodes-base.respondToWebhook' } as NodeTypeAndVersion,
+		]);
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'TestNode node not correctly configured',
+		);
+	});
+
+	test('throws error if "Respond to Webhook" node is connected, version >= 2.2', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('responseNode');
+		webhookFunctions.getChildNodes.mockReturnValue([
+			{ type: 'n8n-nodes-base.respondToWebhook' } as NodeTypeAndVersion,
+		]);
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'The "Respond to Webhook" node is not supported in workflows initiated by the "n8n Form Trigger"',
+		);
+	});
+
+	test('does not throw an error mode in not "responseNode" and no "Respond to Webhook" node is connected', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).not.toThrow();
 	});
 });

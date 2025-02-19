@@ -16,6 +16,7 @@ export class CrowdDev implements INodeType {
 		defaults: {
 			name: 'crowd.dev',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

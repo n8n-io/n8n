@@ -1,0 +1,65 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "column_values": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "column": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "archived": {
+                                "type": "boolean"
+                            },
+                            "settings_str": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "archived",
+                            "description",
+                            "settings_str"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "text",
+                    "type",
+                    "value",
+                    "column"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "created_at",
+        "state",
+        "column_values"
+    ]
+}

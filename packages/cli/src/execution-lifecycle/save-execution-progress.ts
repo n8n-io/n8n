@@ -1,24 +1,19 @@
 import { Container } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
-import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
-import { toSaveSettings } from './to-save-settings';
-
 export async function saveExecutionProgress(
-	workflowData: IWorkflowBase,
+	workflowId: string,
 	executionId: string,
 	nodeName: string,
 	data: ITaskData,
 	executionData: IRunExecutionData,
-	pushRef?: string,
 ) {
-	const saveSettings = toSaveSettings(workflowData.settings);
-
-	if (!saveSettings.progress) return;
-
 	const logger = Container.get(Logger);
+	const executionRepository = Container.get(ExecutionRepository);
+	const errorReporter = Container.get(ErrorReporter);
 
 	try {
 		logger.debug(`Save execution progress to database for execution ID ${executionId} `, {
@@ -26,13 +21,10 @@ export async function saveExecutionProgress(
 			nodeName,
 		});
 
-		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-			executionId,
-			{
-				includeData: true,
-				unflattenData: true,
-			},
-		);
+		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!fullExecutionData) {
 			// Something went badly wrong if this happens.
@@ -47,29 +39,22 @@ export async function saveExecutionProgress(
 			return;
 		}
 
-		if (fullExecutionData.data === undefined) {
-			fullExecutionData.data = {
-				startData: {},
-				resultData: {
-					runData: {},
-				},
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: [],
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
-		}
+		fullExecutionData.data ??= {
+			startData: {},
+			resultData: {
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		};
 
-		if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
-			// Append data if array exists
-			fullExecutionData.data.resultData.runData[nodeName].push(data);
-		} else {
-			// Initialize array and save data
-			fullExecutionData.data.resultData.runData[nodeName] = [data];
-		}
+		const { runData } = fullExecutionData.data.resultData;
+		(runData[nodeName] ??= []).push(data);
 
 		fullExecutionData.data.executionData = executionData.executionData;
 
@@ -78,27 +63,19 @@ export async function saveExecutionProgress(
 
 		fullExecutionData.status = 'running';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 	} catch (e) {
 		const error = e instanceof Error ? e : new Error(`${e}`);
 
-		Container.get(ErrorReporter).error(error);
+		errorReporter.error(error);
 		// TODO: Improve in the future!
 		// Errors here might happen because of database access
 		// For busy machines, we may get "Database is locked" errors.
 
 		// We do this to prevent crashes and executions ending in `unknown` state.
 		logger.error(
-			`Failed saving execution progress to database for execution ID ${executionId} (hookFunctionsPreExecute, nodeExecuteAfter)`,
-			{
-				...error,
-				executionId,
-				pushRef,
-				workflowId: workflowData.id,
-			},
+			`Failed saving execution progress to database for execution ID ${executionId} (hookFunctionsSaveProgress, nodeExecuteAfter)`,
+			{ error, executionId, workflowId },
 		);
 	}
 }
