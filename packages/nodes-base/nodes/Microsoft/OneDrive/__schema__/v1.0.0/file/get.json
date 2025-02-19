@@ -167,5 +167,6 @@
         "webUrl",
         "fileSystemInfo",
         "size"
-    ]
+    ],
+    "version": 1
 }
