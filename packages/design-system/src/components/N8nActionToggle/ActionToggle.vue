@@ -17,6 +17,9 @@ interface ActionToggleProps {
 	iconSize?: IconSize;
 	theme?: (typeof THEME)[number];
 	iconOrientation?: IconOrientation;
+	loading?: boolean;
+	loadingRowCount?: number;
+	disabled?: boolean;
 }
 
 defineOptions({ name: 'N8nActionToggle' });
@@ -25,7 +28,11 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	placement: 'bottom',
 	size: 'medium',
 	theme: 'default',
+	iconSize: 'medium',
 	iconOrientation: 'vertical',
+	loading: false,
+	loadingRowCount: 3,
+	disabled: false,
 });
 
 const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
@@ -54,6 +61,7 @@ defineExpose({
 			ref="actionToggleRef"
 			:placement="placement"
 			:size="size"
+			:disabled="disabled"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
@@ -68,7 +76,18 @@ defineExpose({
 			</slot>
 
 			<template #dropdown>
-				<ElDropdownMenu data-test-id="action-toggle-dropdown">
+				<ElDropdownMenu
+					v-if="loading"
+					:class="$style['loading-dropdown']"
+					data-test-id="action-toggle-loading-dropdown"
+				>
+					<ElDropdownItem v-for="index in loadingRowCount" :key="index" :disabled="true">
+						<template #default>
+							<N8nLoading :class="$style.loading" animated variant="text" />
+						</template>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+				<ElDropdownMenu v-else data-test-id="action-toggle-dropdown">
 					<ElDropdownItem
 						v-for="action in actions"
 						:key="action.value"
@@ -126,5 +145,18 @@ defineExpose({
 
 li:hover .iconContainer svg {
 	color: var(--color-primary-tint-1);
+}
+
+.loading-dropdown {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing-xs) 0;
+	gap: var(--spacing-2xs);
+}
+
+.loading {
+	display: flex;
+	width: 100%;
+	min-width: var(--spacing-3xl);
 }
 </style>

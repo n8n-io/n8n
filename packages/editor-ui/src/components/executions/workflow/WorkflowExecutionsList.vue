@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { MAIN_HEADER_TABS } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
-import { type ExecutionSummary } from 'n8n-workflow';
-import { getNodeViewTab } from '@/utils/canvasUtils';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getNodeViewTab } from '@/utils/nodeViewUtils';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { computed } from 'vue';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 
 const props = withDefaults(
 	defineProps<{
