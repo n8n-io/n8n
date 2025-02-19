@@ -7,5 +7,6 @@
         "revised_prompt": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
