@@ -217,5 +217,6 @@
     },
     "required": [
         "title"
-    ]
+    ],
+    "version": 1
 }
