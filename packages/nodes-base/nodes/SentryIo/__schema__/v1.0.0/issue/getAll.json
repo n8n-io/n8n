@@ -156,5 +156,6 @@
         "firstSeen",
         "lastSeen",
         "stats"
-    ]
+    ],
+    "version": 1
 }
