@@ -55,6 +55,8 @@ const PATH_DENYLIST = [
 	'parameters.toolDescription',
 ];
 
+const PROP_TYPE_DENYLIST = ['options', 'credentialsSelect'];
+
 export const fromAIExtraProps: Record<FromAIExtraProps, ExtraPropValue> = {
 	description: {
 		initialValue: '',
@@ -165,6 +167,8 @@ export function canBeContentOverride(
 
 	if (PATH_DENYLIST.includes(props.path)) return false;
 
+	if (PROP_TYPE_DENYLIST.includes(props.parameter.type)) return false;
+
 	const codex = nodeType?.codex;
 	if (
 		!codex?.categories?.includes('AI') ||
@@ -173,7 +177,7 @@ export function canBeContentOverride(
 	)
 		return false;
 
-	return !props.parameter.noDataExpression && 'options' !== props.parameter.type;
+	return !props.parameter.noDataExpression;
 }
 
 export function makeOverrideValue(
