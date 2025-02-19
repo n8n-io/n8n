@@ -123,30 +123,27 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
-		options.select = {
-			createdAt: true,
-			updatedAt: true,
-			id: true,
-			name: true,
+		const subQueryParameters: ListQuery.Options = {
+			select: {
+				createdAt: true,
+				updatedAt: true,
+				id: true,
+				name: true,
+			},
+			filter: options.filter,
 		};
 
-		const optionsCopy = cloneDeep(options);
-
-		delete optionsCopy.skip;
-		delete optionsCopy.take;
-		delete optionsCopy.sortBy;
-
-		const columnNames = [...Object.keys(options.select), 'resource'];
+		const columnNames = [...Object.keys(subQueryParameters.select ?? {}), 'resource'];
 
 		const [sortByColumn, sortByDirection] = this.parseSortingParams(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
 		const foldersQuery = this.folderRepository
-			.getManyQuery(optionsCopy)
+			.getManyQuery(subQueryParameters)
 			.addSelect("'folder'", 'resource');
 
-		const workflowsQuery = this.getManyQuery(workflowIds, optionsCopy).addSelect(
+		const workflowsQuery = this.getManyQuery(workflowIds, subQueryParameters).addSelect(
 			"'workflow'",
 			'resource',
 		);
