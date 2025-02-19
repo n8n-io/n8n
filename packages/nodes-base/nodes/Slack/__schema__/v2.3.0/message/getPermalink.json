@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "channel": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
