@@ -151,5 +151,6 @@
         "type_name": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
