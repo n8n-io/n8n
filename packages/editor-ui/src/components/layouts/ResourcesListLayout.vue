@@ -26,6 +26,7 @@ export type Resource = {
 	scopes?: Scope[];
 	type?: string;
 	sharedWithProjects?: ProjectSharingData[];
+	workflowCount?: number;
 };
 
 export type BaseFilters = {

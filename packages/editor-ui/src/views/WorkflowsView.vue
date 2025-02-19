@@ -40,6 +40,8 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { Folder } from '@/components/Folders/FolderCard.vue';
+import { E } from 'vitest/dist/chunks/reporters.6vxQttCV';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -100,8 +102,8 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const workflowResources = computed<Resource[]>(() =>
-	workflows.value.map((workflow) => ({
+const workflowResources = computed<Resource[]>(() => {
+	const resources = workflows.value.map((workflow) => ({
 		id: workflow.id,
 		name: workflow.name,
 		value: '',
@@ -114,8 +116,142 @@ const workflowResources = computed<Resource[]>(() =>
 		sharedWithProjects: workflow.sharedWithProjects,
 		readOnly: !getResourcePermissions(workflow.scopes).workflow.update,
 		tags: workflow.tags,
-	})),
-);
+	}));
+	const testFolder1: Folder = {
+		id: '1',
+		name: 'Test Folder',
+		createdAt: '2021-09-01T00:00:00.000Z',
+		updatedAt: new Date().toISOString(),
+		workflowCount: 10,
+		homeProject: {
+			id: '1',
+			type: 'personal',
+			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+	const testFolder2: Folder = {
+		id: '2',
+		name: 'Personal workflows',
+		createdAt: '2025-01-01T00:00:00.000Z',
+		updatedAt: new Date().toISOString(),
+		workflowCount: 3,
+		homeProject: {
+			id: '1',
+			type: 'personal',
+			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+	const testSubFolder1: Folder = {
+		id: '3',
+		name: 'Subfolder',
+		createdAt: '2025-01-01T00:00:00.000Z',
+		updatedAt: new Date().toISOString(),
+		workflowCount: 3,
+		parentFolderId: '1',
+		homeProject: {
+			id: '1',
+			type: 'personal',
+			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+	const testSubFolder2 = {
+		id: '4',
+		name: 'Subfolder 2',
+		createdAt: '2025-01-01T00:00:00.000Z',
+		updatedAt: new Date().toISOString(),
+		workflowCount: 3,
+		parentFolderId: '2',
+		homeProject: {
+			id: '1',
+			type: 'personal',
+			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+	const testSubFolder3 = {
+		id: '4',
+		name: 'Subfolder 3',
+		createdAt: '2025-01-01T00:00:00.000Z',
+		updatedAt: new Date().toISOString(),
+		workflowCount: 3,
+		parentFolderId: '2',
+		homeProject: {
+			id: '1',
+			type: 'personal',
+			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	};
+	const folders = [testFolder1, testFolder2, testSubFolder1, testSubFolder2, testSubFolder3];
+	// Add test folders instead of two first workflows
+	// TODO: Get typing for resources in order
+	const currentFolderId = route.query.folderId as string | undefined;
+	if (!currentFolderId) {
+		resources.unshift({
+			id: testFolder1.id,
+			name: testFolder1.name,
+			value: '',
+			createdAt: testFolder1.createdAt,
+			updatedAt: testFolder1.updatedAt,
+			type: 'folder',
+			active: false,
+			homeProject: testFolder1.homeProject,
+			scopes: undefined,
+			sharedWithProjects: undefined,
+			readOnly: false,
+			tags: undefined,
+			workflowCount: testFolder1.workflowCount,
+		});
+		resources.unshift({
+			id: testFolder2.id,
+			name: testFolder2.name,
+			value: '',
+			createdAt: testFolder2.createdAt,
+			updatedAt: testFolder2.updatedAt,
+			type: 'folder',
+			active: false,
+			homeProject: testFolder2.homeProject,
+			scopes: undefined,
+			sharedWithProjects: undefined,
+			readOnly: false,
+			tags: undefined,
+			workflowCount: testFolder2.workflowCount,
+		});
+	} else {
+		const subfolders = folders.filter((folder) => folder.parentFolderId === currentFolderId);
+		subfolders.forEach((folder) => {
+			resources.unshift({
+				id: folder.id,
+				name: folder.name,
+				value: '',
+				createdAt: folder.createdAt,
+				updatedAt: folder.updatedAt,
+				type: 'folder',
+				active: false,
+				homeProject: folder.homeProject,
+				scopes: undefined,
+				sharedWithProjects: undefined,
+				readOnly: false,
+				tags: undefined,
+				workflowCount: folder.workflowCount,
+			});
+		});
+	}
+	return resources;
+});
 
 const statusFilterOptions = computed(() => [
 	{
@@ -421,6 +557,15 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	if (!workflow) return;
 	workflow.active = data.active;
 };
+
+const navigateToFolder = async (folderId: string) => {
+	console.log('Navigate to folder with id:', folderId);
+	// Push folderId=folderId to query params
+	await router.push({
+		query: { folderId },
+	});
+	await fetchWorkflows();
+};
 </script>
 
 <template>
@@ -478,7 +623,14 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 			</N8nCallout>
 		</template>
 		<template #item="{ item: data }">
+			<FolderCard
+				v-if="data.type === 'folder'"
+				:data="data as Folder"
+				class="mb-2xs"
+				@click="navigateToFolder(data.id)"
+			/>
 			<WorkflowCard
+				v-else
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data as IWorkflowDb"
