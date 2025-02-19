@@ -241,5 +241,6 @@
         "PrintStatus",
         "EmailStatus",
         "Balance"
-    ]
+    ],
+    "version": 1
 }
