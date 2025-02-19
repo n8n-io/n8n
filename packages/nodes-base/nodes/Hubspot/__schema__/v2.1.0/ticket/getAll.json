@@ -20,5 +20,6 @@
         "objectId",
         "properties",
         "isDeleted"
-    ]
+    ],
+    "version": 1
 }
