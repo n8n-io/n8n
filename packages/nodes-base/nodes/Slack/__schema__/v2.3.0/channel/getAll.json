@@ -152,5 +152,6 @@
         "is_org_shared",
         "context_team_id",
         "updated"
-    ]
+    ],
+    "version": 1
 }
