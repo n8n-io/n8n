@@ -1,0 +1,187 @@
+{
+	"type": "object",
+	"properties": {
+		"query": {
+			"type": "object",
+			"required": true,
+			"properties": {
+				"filter": {
+					"type": "object",
+					"properties": {
+						"location_ids": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						},
+						"customer_ids": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						}
+					}
+				},
+				"sort": {
+					"type": "object",
+					"properties": {
+						"field": {
+							"type": "string",
+							"enum": ["INVOICE_SORT_DATE"],
+							"description": "Field to sort by"
+						},
+						"order": {
+							"type": "string",
+							"enum": ["ASC", "DESC"],
+							"description": "Sort order"
+						}
+					}
+				}
+			}
+		},
+		"limit": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 200,
+			"description": "Maximum number of results to return (200 is the maximum limit)"
+		},
+		"cursor": {
+			"type": "string",
+			"description": "A pagination cursor returned by a previous call to this endpoint"
+		},
+		"invoices": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"version": {
+						"type": "integer"
+					},
+					"location_id": {
+						"type": "string"
+					},
+					"order_id": {
+						"type": "string"
+					},
+					"payment_requests": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"uid": {
+									"type": "string"
+								},
+								"request_type": {
+									"type": "string",
+									"enum": ["BALANCE", "DEPOSIT"]
+								},
+								"due_date": {
+									"type": "string",
+									"format": "date"
+								},
+								"tipping_enabled": {
+									"type": "boolean"
+								},
+								"computed_amount_money": {
+									"type": "object",
+									"properties": {
+										"amount": {
+											"type": "integer"
+										},
+										"currency": {
+											"type": "string"
+										}
+									}
+								},
+								"total_completed_amount_money": {
+									"type": "object",
+									"properties": {
+										"amount": {
+											"type": "integer"
+										},
+										"currency": {
+											"type": "string"
+										}
+									}
+								},
+								"automatic_payment_source": {
+									"type": "string",
+									"enum": ["NONE", "CARD_ON_FILE"]
+								}
+							}
+						}
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"DRAFT",
+							"UNPAID",
+							"SCHEDULED",
+							"PARTIALLY_PAID",
+							"PAID",
+							"PARTIALLY_REFUNDED",
+							"REFUNDED",
+							"CANCELED",
+							"FAILED",
+							"PAYMENT_PENDING"
+						]
+					},
+					"timezone": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"primary_recipient": {
+						"type": "object",
+						"properties": {
+							"customer_id": {
+								"type": "string"
+							},
+							"given_name": {
+								"type": "string"
+							},
+							"family_name": {
+								"type": "string"
+							},
+							"email_address": {
+								"type": "string",
+								"format": "email"
+							}
+						}
+					}
+				}
+			}
+		},
+		"cursor": {
+			"type": "string",
+			"description": "Pagination cursor for the next set of results"
+		},
+		"errors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"detail": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	},
+	"required": ["query"]
+}

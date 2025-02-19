@@ -1,0 +1,227 @@
+{
+	"type": "object",
+	"properties": {
+		"invoices": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"version": {
+						"type": "integer"
+					},
+					"location_id": {
+						"type": "string"
+					},
+					"order_id": {
+						"type": "string"
+					},
+					"payment_requests": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"uid": {
+									"type": "string"
+								},
+								"request_type": {
+									"type": "string",
+									"enum": ["BALANCE", "DEPOSIT"]
+								},
+								"due_date": {
+									"type": "string",
+									"format": "date"
+								},
+								"tipping_enabled": {
+									"type": "boolean"
+								},
+								"reminders": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"uid": {
+												"type": "string"
+											},
+											"relative_scheduled_days": {
+												"type": "integer"
+											},
+											"message": {
+												"type": "string"
+											},
+											"status": {
+												"type": "string",
+												"enum": ["PENDING"]
+											}
+										}
+									}
+								},
+								"computed_amount_money": {
+									"type": "object",
+									"properties": {
+										"amount": {
+											"type": "integer"
+										},
+										"currency": {
+											"type": "string"
+										}
+									}
+								},
+								"total_completed_amount_money": {
+									"type": "object",
+									"properties": {
+										"amount": {
+											"type": "integer"
+										},
+										"currency": {
+											"type": "string"
+										}
+									}
+								},
+								"automatic_payment_source": {
+									"type": "string",
+									"enum": ["NONE", "CARD_ON_FILE"]
+								}
+							}
+						}
+					},
+					"invoice_number": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"public_url": {
+						"type": "string"
+					},
+					"scheduled_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"status": {
+						"type": "string",
+						"enum": ["DRAFT", "PARTIALLY_PAID"]
+					},
+					"timezone": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"primary_recipient": {
+						"type": "object",
+						"properties": {
+							"customer_id": {
+								"type": "string"
+							},
+							"given_name": {
+								"type": "string"
+							},
+							"family_name": {
+								"type": "string"
+							},
+							"email_address": {
+								"type": "string",
+								"format": "email"
+							},
+							"phone_number": {
+								"type": "string"
+							}
+						}
+					},
+					"next_payment_amount_money": {
+						"type": "object",
+						"properties": {
+							"amount": {
+								"type": "integer"
+							},
+							"currency": {
+								"type": "string"
+							}
+						}
+					},
+					"accepted_payment_methods": {
+						"type": "object",
+						"properties": {
+							"card": {
+								"type": "boolean"
+							},
+							"square_gift_card": {
+								"type": "boolean"
+							},
+							"bank_account": {
+								"type": "boolean"
+							},
+							"buy_now_pay_later": {
+								"type": "boolean"
+							},
+							"cash_app_pay": {
+								"type": "boolean"
+							}
+						}
+					},
+					"custom_fields": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"value": {
+									"type": "string"
+								},
+								"placement": {
+									"type": "string",
+									"enum": ["ABOVE_LINE_ITEMS", "BELOW_LINE_ITEMS"]
+								}
+							}
+						}
+					},
+					"delivery_method": {
+						"type": "string",
+						"enum": ["EMAIL"]
+					},
+					"sale_or_service_date": {
+						"type": "string",
+						"format": "date"
+					},
+					"store_payment_method_enabled": {
+						"type": "boolean"
+					}
+				}
+			}
+		},
+		"cursor": {
+			"type": "string",
+			"description": "When a response is truncated, it includes a cursor that you can use in a subsequent request to retrieve the next set of invoices. If empty, this is the final response."
+		},
+		"errors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"detail": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	}
+}

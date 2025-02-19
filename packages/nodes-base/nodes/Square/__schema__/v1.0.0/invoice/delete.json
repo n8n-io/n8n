@@ -1,0 +1,23 @@
+{
+	"type": "object",
+	"properties": {
+		"errors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string",
+						"enum": ["NOT_FOUND", "INVALID_VERSION", "FORBIDDEN"]
+					},
+					"detail": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	}
+}

@@ -11,7 +11,7 @@ import { squareApiRequest, squareApiRequestAllItems } from './helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { customerOperations, customerFields } from './descriptions/CustomerOperations';
-
+import { invoiceOperations, invoiceFields } from './descriptions/InvoiceOperations';
 export class Square implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Square',
@@ -53,14 +53,16 @@ export class Square implements INodeType {
 						value: 'customer',
 					},
 					{
-						name: 'Inventory',
-						value: 'inventory',
+						name: 'Invoice',
+						value: 'invoice',
 					},
 				],
 				default: 'customer',
 			},
 			...customerOperations,
 			...customerFields,
+			...invoiceOperations,
+			...invoiceFields,
 		],
 	};
 
@@ -181,9 +183,21 @@ export class Square implements INodeType {
 						// ----------------------------------
 
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const searchFields = this.getNodeParameter('searchFields', i);
-						const body: { query: { filter: object }; limit?: number } = {
-							query: { filter: searchFields as object },
+						const searchFields = this.getNodeParameter('searchFields', i) as IDataObject;
+						const body: {
+							query: { filter: { location_ids?: string[]; customer_ids?: string[] } };
+							limit?: number;
+						} = {
+							query: {
+								filter: {
+									location_ids: searchFields?.location_ids
+										? (searchFields.location_ids as string).split(',')
+										: undefined,
+									customer_ids: searchFields?.customer_ids
+										? (searchFields.customer_ids as string).split(',')
+										: undefined,
+								},
+							},
 						};
 
 						if (returnAll) {
@@ -192,6 +206,120 @@ export class Square implements INodeType {
 							const limit = this.getNodeParameter('limit', i, 100);
 							body.limit = limit;
 							responseData = await squareApiRequest.call(this, 'POST', '/customers/search', body);
+						}
+					}
+				} else if (resource === 'invoice') {
+					// *********************************************************************
+					//                             invoice
+					// *********************************************************************
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//         invoice: create
+						// ----------------------------------
+
+						const body: IDataObject = {
+							location_id: this.getNodeParameter('location_id', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						Object.assign(body, additionalFields);
+
+						responseData = await squareApiRequest.call(this, 'POST', '/invoices', body);
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         invoice: get
+						// ----------------------------------
+
+						const invoiceId = this.getNodeParameter('invoiceId', i);
+						responseData = await squareApiRequest.call(
+							this,
+							'GET',
+							`/invoices/${invoiceId}`,
+							{},
+							{},
+						);
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         invoice: getAll
+						// ----------------------------------
+
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const limit = this.getNodeParameter('limit', i, 100);
+
+						if (returnAll) {
+							responseData = await squareApiRequestAllItems.call(this, '/invoices');
+						} else {
+							const qs = {
+								limit,
+							};
+							responseData = await squareApiRequest.call(this, 'GET', '/invoices', {}, qs);
+						}
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         invoice: update
+						// ----------------------------------
+
+						const invoiceId = this.getNodeParameter('invoiceId', i);
+						const version = this.getNodeParameter('version', i);
+						const updateFields = this.getNodeParameter('updateFields', i);
+
+						if (Object.keys(updateFields).length === 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Please enter at least one field to update for the invoice',
+								{ itemIndex: i },
+							);
+						}
+
+						const body = {
+							invoice: {
+								version,
+								...updateFields,
+							},
+						};
+
+						responseData = await squareApiRequest.call(this, 'PUT', `/invoices/${invoiceId}`, body);
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         invoice: delete
+						// ----------------------------------
+
+						const invoiceId = this.getNodeParameter('invoiceId', i);
+						const version = this.getNodeParameter('version', i);
+
+						responseData = await squareApiRequest.call(this, 'DELETE', `/invoices/${invoiceId}`, {
+							version,
+						});
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         invoice: search
+						// ----------------------------------
+
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const searchFields = this.getNodeParameter('searchFields', i) as IDataObject;
+						const body: {
+							query: { filter: { location_ids?: string[]; customer_ids?: string[] } };
+							limit?: number;
+						} = {
+							query: {
+								filter: {
+									location_ids: searchFields?.location_ids
+										? (searchFields.location_ids as string).split(',')
+										: undefined,
+									customer_ids: searchFields?.customer_ids
+										? (searchFields.customer_ids as string).split(',')
+										: undefined,
+								},
+							},
+						};
+
+						if (returnAll) {
+							responseData = await squareApiRequestAllItems.call(this, '/invoices/search', body);
+						} else {
+							const limit = this.getNodeParameter('limit', i, 100);
+							body.limit = limit;
+							responseData = await squareApiRequest.call(this, 'POST', '/invoices/search', body);
 						}
 					}
 				}
