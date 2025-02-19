@@ -43,7 +43,7 @@ function onClick() {
 			:popper-class="$style.tooltip"
 			:show-after="700"
 		>
-			<button :class="$style.button" data-test-id="canvas-plus-button" @click="onClick">
+			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
 				<FontAwesomeIcon icon="plus" size="lg" />
 			</button>
 			<template #content>

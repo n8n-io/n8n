@@ -617,11 +617,16 @@ function onToggleNodesDisabled(ids: string[]) {
 	toggleNodesDisabled(ids);
 }
 
+function onClickNode() {
+	closeNodeCreator();
+}
+
 function onSetNodeActive(id: string) {
 	setNodeActive(id);
 }
 
 function onSetNodeSelected(id?: string) {
+	closeNodeCreator();
 	setNodeSelected(id);
 }
 
@@ -1033,6 +1038,12 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 
 	if (!options.createNodeActive && !options.hasAddedNodes) {
 		uiStore.resetLastInteractedWith();
+	}
+}
+
+function closeNodeCreator() {
+	if (nodeCreatorStore.isCreateNodeActive) {
+		nodeCreatorStore.isCreateNodeActive = false;
 	}
 }
 
@@ -1507,8 +1518,7 @@ function selectNodes(ids: string[]) {
 
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
-	nodeCreatorStore.isCreateNodeActive = false;
-	setNodeSelected();
+	onSetNodeSelected();
 }
 
 /**
@@ -1725,6 +1735,7 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
