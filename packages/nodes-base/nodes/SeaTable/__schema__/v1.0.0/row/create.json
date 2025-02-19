@@ -15,5 +15,6 @@
         "_id",
         "_ctime",
         "_mtime"
-    ]
+    ],
+    "version": 1
 }
