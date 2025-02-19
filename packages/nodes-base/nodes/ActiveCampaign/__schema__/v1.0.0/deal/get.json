@@ -1,152 +1,153 @@
 {
-	"type": "object",
-	"properties": {
-		"deal": {
-			"type": "object",
-			"properties": {
-				"hash": {
-					"type": "string"
-				},
-				"owner": {
-					"type": "string"
-				},
-				"group": {
-					"type": "string"
-				},
-				"stage": {
-					"type": "string"
-				},
-				"title": {
-					"type": "string"
-				},
-				"description": {
-					"type": "string"
-				},
-				"percent": {
-					"type": "string"
-				},
-				"cdate": {
-					"type": "string"
-				},
-				"mdate": {
-					"type": "string"
-				},
-				"value": {
-					"type": "string"
-				},
-				"currency": {
-					"type": "string"
-				},
-				"status": {
-					"type": "string"
-				},
-				"activitycount": {
-					"type": "string"
-				},
-				"nextdealid": {
-					"type": "string"
-				},
-				"links": {
-					"type": "object",
-					"properties": {
-						"dealActivities": {
-							"type": "string"
-						},
-						"contact": {
-							"type": "string"
-						},
-						"contactDeals": {
-							"type": "string"
-						},
-						"group": {
-							"type": "string"
-						},
-						"nextTask": {
-							"type": "string"
-						},
-						"notes": {
-							"type": "string"
-						},
-						"account": {
-							"type": "string"
-						},
-						"customerAccount": {
-							"type": "string"
-						},
-						"organization": {
-							"type": "string"
-						},
-						"owner": {
-							"type": "string"
-						},
-						"scoreValues": {
-							"type": "string"
-						},
-						"stage": {
-							"type": "string"
-						},
-						"tasks": {
-							"type": "string"
-						},
-						"dealCustomFieldData": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"dealActivities",
-						"contact",
-						"contactDeals",
-						"group",
-						"nextTask",
-						"notes",
-						"account",
-						"customerAccount",
-						"organization",
-						"owner",
-						"scoreValues",
-						"stage",
-						"tasks",
-						"dealCustomFieldData"
-					]
-				},
-				"id": {
-					"type": "string"
-				},
-				"isDisabled": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"hash",
-				"owner",
-				"contact",
-				"organization",
-				"group",
-				"stage",
-				"title",
-				"description",
-				"percent",
-				"cdate",
-				"mdate",
-				"nextdate",
-				"nexttaskid",
-				"value",
-				"currency",
-				"winProbability",
-				"winProbabilityMdate",
-				"status",
-				"activitycount",
-				"nextdealid",
-				"edate",
-				"links",
-				"id",
-				"isDisabled",
-				"account",
-				"customerAccount"
-			]
-		}
-	},
-	"required": [
-		"deal"
-	]
+    "type": "object",
+    "properties": {
+        "deal": {
+            "type": "object",
+            "properties": {
+                "hash": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "percent": {
+                    "type": "string"
+                },
+                "cdate": {
+                    "type": "string"
+                },
+                "mdate": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "activitycount": {
+                    "type": "string"
+                },
+                "nextdealid": {
+                    "type": "string"
+                },
+                "links": {
+                    "type": "object",
+                    "properties": {
+                        "dealActivities": {
+                            "type": "string"
+                        },
+                        "contact": {
+                            "type": "string"
+                        },
+                        "contactDeals": {
+                            "type": "string"
+                        },
+                        "group": {
+                            "type": "string"
+                        },
+                        "nextTask": {
+                            "type": "string"
+                        },
+                        "notes": {
+                            "type": "string"
+                        },
+                        "account": {
+                            "type": "string"
+                        },
+                        "customerAccount": {
+                            "type": "string"
+                        },
+                        "organization": {
+                            "type": "string"
+                        },
+                        "owner": {
+                            "type": "string"
+                        },
+                        "scoreValues": {
+                            "type": "string"
+                        },
+                        "stage": {
+                            "type": "string"
+                        },
+                        "tasks": {
+                            "type": "string"
+                        },
+                        "dealCustomFieldData": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "dealActivities",
+                        "contact",
+                        "contactDeals",
+                        "group",
+                        "nextTask",
+                        "notes",
+                        "account",
+                        "customerAccount",
+                        "organization",
+                        "owner",
+                        "scoreValues",
+                        "stage",
+                        "tasks",
+                        "dealCustomFieldData"
+                    ]
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDisabled": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "hash",
+                "owner",
+                "contact",
+                "organization",
+                "group",
+                "stage",
+                "title",
+                "description",
+                "percent",
+                "cdate",
+                "mdate",
+                "nextdate",
+                "nexttaskid",
+                "value",
+                "currency",
+                "winProbability",
+                "winProbabilityMdate",
+                "status",
+                "activitycount",
+                "nextdealid",
+                "edate",
+                "links",
+                "id",
+                "isDisabled",
+                "account",
+                "customerAccount"
+            ]
+        }
+    },
+    "required": [
+        "deal"
+    ],
+    "version": 1
 }
