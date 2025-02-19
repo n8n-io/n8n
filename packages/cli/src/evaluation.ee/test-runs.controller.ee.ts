@@ -11,9 +11,9 @@ import { TestRunsRequest } from '@/evaluation.ee/test-definitions.types.ee';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { Telemetry } from '@/telemetry';
 
 import { TestDefinitionService } from './test-definition.service.ee';
-import { Telemetry } from '@/telemetry';
 
 @RestController('/evaluation/test-definitions')
 export class TestRunsController {

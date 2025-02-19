@@ -87,6 +87,7 @@ const onTagsBlur = async () => {
 		if (newTagIds.length > 0) {
 			telemetry.track('User added execution annotation tag', {
 				tag_ids: newTagIds,
+				execution_id: activeExecution.value.id,
 			});
 		}
 	} catch (e) {
