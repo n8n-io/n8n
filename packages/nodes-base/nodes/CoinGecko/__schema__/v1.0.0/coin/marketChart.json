@@ -16,5 +16,6 @@
         "price",
         "marketCaps",
         "totalVolume"
-    ]
+    ],
+    "version": 1
 }
