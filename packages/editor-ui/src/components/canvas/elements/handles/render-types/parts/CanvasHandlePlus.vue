@@ -115,7 +115,7 @@ function onClick(event: MouseEvent) {
 			data-test-id="canvas-handle-plus"
 			:class="[$style.plus, handleClasses, 'clickable']"
 			:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
-			@click="onClick"
+			@click.stop="onClick"
 		>
 			<rect
 				:class="[handleClasses, 'clickable']"

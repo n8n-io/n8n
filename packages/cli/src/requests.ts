@@ -147,8 +147,6 @@ export declare namespace CredentialRequest {
 		isManaged?: boolean;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
-
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
 	type GetMany = AuthenticatedRequest<
