@@ -146,13 +146,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			"'workflow'",
 			'resource',
 		);
-		// Create separate subqueries and combine them
-		const qb = this.manager.createQueryBuilder();
-		const foldersSubQuery = qb
-			.subQuery()
-			.select('*')
-			.from('FOLDERS_QUERY', 'FOLDERS_QUERY')
-			.getQuery();
 
 		const qb = this.manager.createQueryBuilder();
 
