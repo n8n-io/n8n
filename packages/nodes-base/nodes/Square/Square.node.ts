@@ -111,6 +111,19 @@ export class Square implements INodeType {
 							{},
 							{},
 						);
+						if (responseData.error) {
+							if (this.continueOnFail()) {
+								const executionErrorData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ error: responseData.error.message }),
+									{ itemData: { item: i } },
+								);
+								returnData.push(...executionErrorData);
+								continue;
+							}
+							throw new NodeOperationError(this.getNode(), responseData.error.message, {
+								itemIndex: i,
+							});
+						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         customer: getAll
