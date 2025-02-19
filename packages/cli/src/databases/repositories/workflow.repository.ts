@@ -189,8 +189,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		query.skip(options.skip ?? 0);
 
-		console.log(query.getQuery());
-
 		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
 
 		return workflowsAndFolders

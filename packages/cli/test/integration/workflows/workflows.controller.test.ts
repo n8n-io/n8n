@@ -1149,7 +1149,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
-	test.only('should return workflows with scopes and folders when ?includeScopes=true', async () => {
+	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
 		});
