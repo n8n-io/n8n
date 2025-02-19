@@ -77,5 +77,6 @@
         "readTime": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
