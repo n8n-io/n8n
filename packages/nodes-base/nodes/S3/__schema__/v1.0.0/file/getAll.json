@@ -23,5 +23,6 @@
         "LastModified",
         "ETag",
         "StorageClass"
-    ]
+    ],
+    "version": 1
 }
