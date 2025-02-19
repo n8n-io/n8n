@@ -52,5 +52,6 @@
         "id",
         "edit_history_tweet_ids",
         "text"
-    ]
+    ],
+    "version": 1
 }
