@@ -1,36 +1,20 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { ProjectIcon, ProjectSharingData } from '@/types/projects.types';
+import type { Folder } from '@/types/folders.types';
 import { computed } from 'vue';
-
-export type Folder = {
-	id: string;
-	name: string;
-	createdAt: string;
-	updatedAt: string;
-	workflowCount: number;
-	parentFolderId?: string;
-	homeProject: ProjectSharingData;
-};
+import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
 
 type Props = {
 	data: Folder;
 };
 
-const FOLDER_LIST_ITEM_ACTIONS = {
-	OPEN: 'open',
-	CREATE: 'create',
-	CREATE_WORKFLOW: 'create_workflow',
-	RENAME: 'rename',
-	MOVE: 'move',
-	CHOWN: 'change_owner',
-	TAGS: 'manage_tags',
-	DELETE: 'delete',
-};
+const locale = useI18n();
 
 const props = defineProps<Props>();
 
-const locale = useI18n();
+const emit = defineEmits<{
+	action: [{ action: string; folderId: string }];
+}>();
 
 const actions = computed(() => {
 	const items = [
@@ -41,34 +25,45 @@ const actions = computed(() => {
 		{
 			label: 'Create Folder',
 			value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+			disabled: true,
 		},
 		{
 			label: 'Create Workflow',
 			value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
+			disabled: true,
 		},
 		{
 			label: 'Rename',
 			value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
+			disabled: true,
 		},
 		{
 			label: 'Move to Folder',
 			value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
+			disabled: true,
 		},
 		{
 			label: 'Change Owner',
 			value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
+			disabled: true,
 		},
 		{
 			label: 'Manage Tags',
 			value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
+			disabled: true,
 		},
 		{
 			label: 'Delete',
 			value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
+			disabled: true,
 		},
 	];
 	return items;
 });
+
+const onAction = (action: string) => {
+	emit('action', { action, folderId: props.data.id });
+};
 </script>
 
 <template>
@@ -95,7 +90,12 @@ const actions = computed(() => {
 			</div>
 		</template>
 		<template #append>
-			<n8n-action-toggle :actions="actions" theme="dark" data-test-id="workflow-card-actions" />
+			<n8n-action-toggle
+				:actions="actions"
+				theme="dark"
+				data-test-id="workflow-card-actions"
+				@action="onAction"
+			/>
 		</template>
 	</n8n-card>
 </template>

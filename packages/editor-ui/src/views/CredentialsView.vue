@@ -76,6 +76,7 @@ const needsSetup = (data: string | undefined): boolean => {
 
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
+		type: 'credentials',
 		id: credential.id,
 		name: credential.name,
 		value: '',
@@ -83,10 +84,10 @@ const allCredentials = computed<Resource[]>(() =>
 		createdAt: credential.createdAt,
 		homeProject: credential.homeProject,
 		scopes: credential.scopes,
-		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
+		credentialType: credential.type,
 	})),
 );
 

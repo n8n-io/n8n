@@ -3,12 +3,12 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
-import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
+import type { CredentialsResource, WorkflowResource } from '../layouts/ResourcesListLayout.vue';
 
 type Props = {
-	resource: IWorkflowDb | ICredentialsResponse;
+	resource: WorkflowResource | CredentialsResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;

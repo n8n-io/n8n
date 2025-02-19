@@ -14,28 +14,65 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
+import type { ITag } from '@/Interface';
 
-export type Resource = {
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
+
+export type BaseResource = {
 	id: string;
-	name?: string;
-	value?: string;
-	key?: string;
-	updatedAt?: string;
-	createdAt?: string;
+};
+
+export type FolderResource = BaseResource & {
+	type: 'folders';
+	name: string;
+	updatedAt: string;
+	createdAt: string;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
-	type?: string;
 	sharedWithProjects?: ProjectSharingData[];
-	workflowCount?: number;
+	readOnly: boolean;
+	workflowCount: number;
 };
+
+export type WorkflowResource = BaseResource & {
+	type: 'workflows';
+	name: string;
+	updatedAt: string;
+	createdAt: string;
+	active: boolean;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	tags?: ITag[] | string[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+};
+
+export type VariableResource = BaseResource & {
+	type: 'variables';
+	key?: string;
+	value?: string;
+};
+
+export type CredentialsResource = BaseResource & {
+	type: 'credentials';
+	name: string;
+	updatedAt: string;
+	createdAt: string;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	needsSetup: boolean;
+	credentialType?: string;
+};
+
+export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
 
 export type BaseFilters = {
 	search: string;
 	homeProject: string;
 	[key: string]: boolean | string | string[];
 };
-
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables';
 
 const route = useRoute();
 const router = useRouter();
@@ -107,7 +144,7 @@ const emit = defineEmits<{
 	'update:search': [value: string];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	header(): unknown;
 	empty(): unknown;
 	preamble(): unknown;

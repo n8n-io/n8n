@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IWorkflowDb, IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -18,7 +18,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
@@ -26,6 +25,7 @@ import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from 'n8n-design-system/utils';
+import { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -37,23 +37,11 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 
 const props = withDefaults(
 	defineProps<{
-		data: IWorkflowDb;
+		data: WorkflowResource;
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 	}>(),
 	{
-		data: () => ({
-			id: '',
-			createdAt: '',
-			updatedAt: '',
-			active: false,
-			connections: {},
-			nodes: [],
-			name: '',
-			sharedWithProjects: [],
-			homeProject: {} as ProjectSharingData,
-			versionId: '',
-		}),
 		readOnly: false,
 		workflowListEventBus: undefined,
 	},

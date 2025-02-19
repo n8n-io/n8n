@@ -17,6 +17,7 @@ import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 import ResourcesListLayout, {
 	type Resource,
 	type BaseFilters,
+	type VariableResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
@@ -85,7 +86,17 @@ const addEmptyVariableForm = () => {
 	telemetry.track('User clicked add variable button');
 };
 
-const variables = computed(() => [...variableForms.value.values(), ...environmentsStore.variables]);
+const variables = computed<VariableResource[]>(() =>
+	[...variableForms.value.values(), ...environmentsStore.variables].map(
+		(variable) =>
+			({
+				type: 'variables',
+				id: variable.id,
+				key: variable.key,
+				value: variable.value,
+			}) as VariableResource,
+	),
+);
 
 const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
