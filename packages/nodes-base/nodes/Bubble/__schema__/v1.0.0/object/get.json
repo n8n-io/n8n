@@ -18,5 +18,6 @@
         "Modified Date",
         "Created Date",
         "_id"
-    ]
+    ],
+    "version": 1
 }
