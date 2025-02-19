@@ -19,5 +19,6 @@
         "retryNumber": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }
