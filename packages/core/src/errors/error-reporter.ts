@@ -32,6 +32,8 @@ const RELEASE_EXPIRATION_WARNING =
 export class ErrorReporter {
 	private enabled = true;
 
+	private expirationTimer?: NodeJS.Timeout;
+
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
@@ -68,6 +70,7 @@ export class ErrorReporter {
 	}
 
 	async shutdown(timeoutInMs = 1000) {
+		clearTimeout(this.expirationTimer);
 		await close(timeoutInMs);
 	}
 
@@ -91,7 +94,7 @@ export class ErrorReporter {
 				return;
 			}
 			// Once this release expires, reject all events
-			setTimeout(() => {
+			this.expirationTimer = setTimeout(() => {
 				this.enabled = false;
 				this.logger.warn(RELEASE_EXPIRATION_WARNING);
 			}, releaseExpiresInMs);
