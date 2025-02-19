@@ -174,5 +174,6 @@
         "body",
         "reactions",
         "performed_via_github_app"
-    ]
+    ],
+    "version": 1
 }
