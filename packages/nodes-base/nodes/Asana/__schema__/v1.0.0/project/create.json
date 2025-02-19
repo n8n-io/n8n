@@ -196,5 +196,6 @@
         "followers",
         "icon",
         "color"
-    ]
+    ],
+    "version": 1
 }
