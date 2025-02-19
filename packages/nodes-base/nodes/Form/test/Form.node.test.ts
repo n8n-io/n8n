@@ -162,7 +162,7 @@ describe('Form Node', () => {
 				formTitle: 'Form Title',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 				testRun: true,
-				useResponseData: false,
+				useResponseData: true,
 				validForm: true,
 				formSubmittedHeader: undefined,
 			});

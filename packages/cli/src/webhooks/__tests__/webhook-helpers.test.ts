@@ -38,7 +38,7 @@ describe('autoDetectResponseMode', () => {
 		expect(result).toBe('responseNode');
 	});
 
-	test('should return onReceived when start node is FORM_NODE_TYPE with no other form child nodes', () => {
+	test('should return undefined when start node is FORM_NODE_TYPE with no other form child nodes', () => {
 		const workflowStartNode = mock<INode>({
 			type: FORM_NODE_TYPE,
 			name: 'startNode',
@@ -46,7 +46,7 @@ describe('autoDetectResponseMode', () => {
 		});
 		workflow.getChildNodes.mockReturnValue([]);
 		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
-		expect(result).toBe('onReceived');
+		expect(result).toBeUndefined();
 	});
 
 	test('should return undefined for non-matching node type and method', () => {
