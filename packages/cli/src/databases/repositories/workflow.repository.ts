@@ -191,12 +191,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
 
-		return workflowsAndFolders
-			.filter((item, index, self) => index === self.findIndex((obj) => obj.id === item.id))
-			.map((item) => {
-				const { name_lower, ...rest } = item;
-				return rest;
-			});
+		return workflowsAndFolders.map((item) => {
+			const { name_lower, ...rest } = item;
+			return rest;
+		});
 	}
 
 	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
