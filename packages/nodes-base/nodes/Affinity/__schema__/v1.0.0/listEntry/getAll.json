@@ -55,5 +55,6 @@
         "entity_type",
         "created_at",
         "entity"
-    ]
+    ],
+    "version": 1
 }
