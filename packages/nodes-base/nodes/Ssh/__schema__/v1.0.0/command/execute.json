@@ -16,5 +16,6 @@
         "signal",
         "stdout",
         "stderr"
-    ]
+    ],
+    "version": 1
 }
