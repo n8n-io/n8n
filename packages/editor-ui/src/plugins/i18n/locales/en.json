@@ -85,6 +85,7 @@
 	"generic.variable_plural": "Variables",
 	"generic.variable": "Variable | {count} Variables",
 	"generic.viewDocs": "View docs",
+	"generic.workflows": "Workflows",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",

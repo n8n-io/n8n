@@ -16,6 +16,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 import type { ITag } from '@/Interface';
 import { isSharedResource, isSortableResource } from '@/utils/typeGuards';
+import type { FolderShortInfo } from '@/types/folders.types';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
@@ -28,11 +29,11 @@ export type FolderResource = BaseResource & {
 	type: 'folders';
 	updatedAt: string;
 	createdAt: string;
-	homeProject?: ProjectSharingData;
-	scopes?: Scope[];
-	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	workflowCount: number;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
+	parentFolder?: FolderShortInfo;
 };
 
 export type WorkflowResource = BaseResource & {

@@ -101,6 +101,8 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
+const currentFolder = computed(() => route.params?.folderId as string | undefined);
+
 const workflowResources = computed<Resource[]>(() => {
 	const resources: Resource[] = workflows.value.map((workflow) => ({
 		type: 'workflows',
@@ -425,6 +427,7 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
+// TODO: Simplify this function, ideally implement navigation using links
 const navigateToFolder = async (folderId: string) => {
 	if (route.name === VIEWS.WORKFLOWS) {
 		await router.push({
@@ -467,7 +470,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 const addTestFolders = (resources: Resource[]) => {
 	const testFolder1: Folder = {
 		id: '1',
-		name: 'Test Folder',
+		name: 'Personal workflows',
 		createdAt: '2021-09-01T00:00:00.000Z',
 		updatedAt: new Date().toISOString(),
 		workflowCount: 10,
@@ -482,15 +485,15 @@ const addTestFolders = (resources: Resource[]) => {
 	};
 	const testFolder2: Folder = {
 		id: '2',
-		name: 'Personal workflows',
+		name: 'AI Folder',
 		createdAt: '2025-01-01T00:00:00.000Z',
 		updatedAt: new Date().toISOString(),
 		workflowCount: 3,
 		homeProject: {
-			id: '1',
-			type: 'personal',
-			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
-			icon: null,
+			id: 'W4GKEIjqJrtSJ0AH',
+			type: 'team',
+			name: 'AI Assistant',
+			icon: { type: 'icon', value: 'robot' },
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 		},
@@ -501,7 +504,7 @@ const addTestFolders = (resources: Resource[]) => {
 		createdAt: '2025-01-01T00:00:00.000Z',
 		updatedAt: new Date().toISOString(),
 		workflowCount: 3,
-		parentFolderId: '1',
+		parentFolder: { id: '1', name: 'Personal workflows' },
 		homeProject: {
 			id: '1',
 			type: 'personal',
@@ -517,12 +520,12 @@ const addTestFolders = (resources: Resource[]) => {
 		createdAt: '2025-01-01T00:00:00.000Z',
 		updatedAt: new Date().toISOString(),
 		workflowCount: 3,
-		parentFolderId: '2',
+		parentFolder: { id: '2', name: 'AI Folder' },
 		homeProject: {
-			id: '1',
-			type: 'personal',
-			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
-			icon: null,
+			id: 'W4GKEIjqJrtSJ0AH',
+			type: 'team',
+			name: 'AI Assistant',
+			icon: { type: 'icon', value: 'robot' },
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 		},
@@ -533,19 +536,18 @@ const addTestFolders = (resources: Resource[]) => {
 		createdAt: '2025-01-01T00:00:00.000Z',
 		updatedAt: new Date().toISOString(),
 		workflowCount: 3,
-		parentFolderId: '2',
+		parentFolder: { id: '2', name: 'AI Folder' },
 		homeProject: {
-			id: '1',
-			type: 'personal',
-			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
-			icon: null,
+			id: 'W4GKEIjqJrtSJ0AH',
+			type: 'team',
+			name: 'AI Assistant',
+			icon: { type: 'icon', value: 'robot' },
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 		},
 	};
 	const folders = [testFolder1, testFolder2, testSubFolder1, testSubFolder2, testSubFolder3];
-	const currentFolderId = route.params?.folderId as string | undefined;
-	if (!currentFolderId) {
+	if (!currentFolder.value) {
 		resources.unshift({
 			id: testFolder1.id,
 			name: testFolder1.name,
@@ -553,7 +555,6 @@ const addTestFolders = (resources: Resource[]) => {
 			updatedAt: testFolder1.updatedAt,
 			type: 'folders',
 			homeProject: testFolder1.homeProject,
-			scopes: undefined,
 			sharedWithProjects: undefined,
 			readOnly: false,
 			workflowCount: testFolder1.workflowCount,
@@ -565,14 +566,13 @@ const addTestFolders = (resources: Resource[]) => {
 			updatedAt: testFolder2.updatedAt,
 			type: 'folders',
 			homeProject: testFolder2.homeProject,
-			scopes: undefined,
 			sharedWithProjects: undefined,
 			readOnly: false,
 			workflowCount: testFolder2.workflowCount,
 		});
 	} else {
 		const subfolders: Folder[] = folders.filter(
-			(folder) => folder.parentFolderId === currentFolderId,
+			(folder) => folder.parentFolder?.id === currentFolder.value,
 		);
 		subfolders.forEach((folder) => {
 			resources.unshift({
@@ -582,10 +582,10 @@ const addTestFolders = (resources: Resource[]) => {
 				updatedAt: folder.updatedAt,
 				type: 'folders',
 				homeProject: folder.homeProject,
-				scopes: undefined,
 				sharedWithProjects: undefined,
 				readOnly: false,
 				workflowCount: folder.workflowCount,
+				parentFolder: folder.parentFolder,
 			});
 		});
 	}
@@ -651,7 +651,7 @@ const addTestFolders = (resources: Resource[]) => {
 				v-if="(data as FolderResource | WorkflowResource).type === 'folders'"
 				:data="data as FolderResource"
 				class="mb-2xs"
-				@click="navigateToFolder((data as FolderResource | WorkflowResource).id)"
+				@click="navigateToFolder((data as FolderResource).id)"
 				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
