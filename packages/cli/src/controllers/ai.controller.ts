@@ -1,3 +1,4 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
@@ -14,7 +15,6 @@ import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { CredentialRequest } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
@@ -84,18 +84,17 @@ export class AiController {
 		try {
 			const aiCredits = await this.aiService.createFreeAiCredits(req.user);
 
-			const credentialProperties: CredentialRequest.CredentialProperties = {
+			const credentialProperties: CreateCredentialDto = {
 				name: FREE_AI_CREDITS_CREDENTIAL_NAME,
 				type: OPEN_AI_API_CREDENTIAL_TYPE,
 				data: {
 					apiKey: aiCredits.apiKey,
 					url: aiCredits.url,
 				},
-				isManaged: true,
 				projectId: payload?.projectId,
 			};
 
-			const newCredential = await this.credentialsService.createCredential(
+			const newCredential = await this.credentialsService.createManagedCredential(
 				credentialProperties,
 				req.user,
 			);
