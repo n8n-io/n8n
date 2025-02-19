@@ -97,6 +97,9 @@ catalogs:
     '@vue/tsconfig':
       specifier: ^0.7.0
       version: 0.7.0
+    '@vueuse/core':
+      specifier: ^10.11.0
+      version: 10.11.0
     highlight.js:
       specifier: ^11.8.0
       version: 11.9.0
@@ -140,25 +143,25 @@ overrides:
 
 patchedDependencies:
   '@types/express-serve-static-core@4.17.43':
-    hash: 5orrj4qleu2iko5t27vl44u4we
+    hash: 15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea
     path: patches/@types__express-serve-static-core@4.17.43.patch
   '@types/uuencode@0.0.3':
-    hash: 3i7wecddkama6vhpu5o37g24u4
+    hash: 083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62
     path: patches/@types__uuencode@0.0.3.patch
   '@types/ws@8.5.4':
-    hash: nbzuqaoyqbrfwipijj5qriqqju
+    hash: 3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357
     path: patches/@types__ws@8.5.4.patch
   bull@4.12.1:
-    hash: ep6h4rqtpclldfcdohxlgcb3aq
+    hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
   pkce-challenge@3.0.0:
-    hash: dypouzb3lve7vncq25i5fuanki
+    hash: 4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b
     path: patches/pkce-challenge@3.0.0.patch
   pyodide@0.23.4:
-    hash: kzcwsjcayy5m6iezu7r4tdimjq
+    hash: c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c
     path: patches/pyodide@0.23.4.patch
   vue-tsc@2.1.10:
-    hash: z2iuqlt7ype4qnrwd5eymeecl4
+    hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.1.10.patch
 
 importers:
@@ -375,7 +378,7 @@ importers:
         version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/@n8n/client-oauth2:
     dependencies:
@@ -443,7 +446,7 @@ importers:
         version: 3.0.3
       '@types/uuencode':
         specifier: ^0.0.3
-        version: 0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)
+        version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -461,7 +464,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ilqk5sp4kmqg6yh3rv76amkknm))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d2c70e6e899e44bb5377ca6198a97c6c))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -488,7 +491,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(knkgly4tvsbdesqmuf53sm5qpe)
+        version: 0.3.24(8549324d4d39cb6e91ae9ff5fc6970d3)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -575,7 +578,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(ilqk5sp4kmqg6yh3rv76amkknm)
+        version: 0.3.11(d2c70e6e899e44bb5377ca6198a97c6c)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -821,8 +824,8 @@ importers:
         specifier: 1.13.0
         version: 1.13.0
       '@n8n_io/license-sdk':
-        specifier: 2.15.1
-        version: 2.15.1
+        specifier: 2.16.1
+        version: 2.16.1
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -843,7 +846,7 @@ importers:
         version: 2.4.3
       bull:
         specifier: 4.12.1
-        version: 4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq)
+        version: 4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68)
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
@@ -981,7 +984,7 @@ importers:
         version: 1.0.1
       pkce-challenge:
         specifier: 3.0.0
-        version: 3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki)
+        version: 3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b)
       posthog-node:
         specifier: 3.2.1
         version: 3.2.1
@@ -1117,7 +1120,7 @@ importers:
         version: 13.7.7
       '@types/ws':
         specifier: ^8.5.4
-        version: 8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)
+        version: 8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
@@ -1377,7 +1380,7 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/editor-ui:
     dependencies:
@@ -1429,21 +1432,6 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: '*'
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
-      '@jsplumb/browser-ui':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/common':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/connector-bezier':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/core':
-        specifier: ^5.13.2
-        version: 5.13.2
-      '@jsplumb/util':
-        specifier: ^5.13.2
-        version: 5.13.2
       '@lezer/common':
         specifier: ^1.0.4
         version: 1.1.0
@@ -1493,7 +1481,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       '@vueuse/core':
-        specifier: ^10.11.0
+        specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
@@ -1702,13 +1690,9 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/frontend/@n8n/composables:
-    dependencies:
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.13(typescript@5.7.2)
     devDependencies:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
@@ -1734,6 +1718,9 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       tsup:
         specifier: catalog:frontend
         version: 8.3.6(@microsoft/api-extractor@7.48.0(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.4.49)(typescript@5.7.2)
@@ -1749,9 +1736,12 @@ importers:
       vitest:
         specifier: catalog:frontend
         version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.7.2)
       vue-tsc:
         specifier: ^2.1.10
-        version: 2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
 
   packages/frontend/tooling/eslint-config:
     dependencies:
@@ -1961,7 +1951,7 @@ importers:
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
         specifier: 0.23.4
-        version: 0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)(encoding@0.1.13)
+        version: 0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13)
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -3917,21 +3907,6 @@ packages:
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
-  '@jsplumb/browser-ui@5.13.2':
-    resolution: {integrity: sha512-BZ76kPtxESMIdhcCtWXPdICMudJyBVzDxaKY4jlne93Zq1T2ErfpNQ3E6f3JZfvoyvlNbKgh0udYkZ7Yg7BmIQ==}
-
-  '@jsplumb/common@5.13.2':
-    resolution: {integrity: sha512-ZX/EvvYi4HBkRVtsuSSAa/AuAz4p2wr3RrRz6l+r8yeElzX3lrrBx/fkERY2qwZPkKcOoLCr5ezZ7sslVMnl0Q==}
-
-  '@jsplumb/connector-bezier@5.13.2':
-    resolution: {integrity: sha512-AALmOvkiP3ouGag6TGkBcd7SbCewPNwsKu9gku9AZqIq+fFu321zJ2IpfoyCFgkoFFSQjJ9jo1sWBbD3gnEXrg==}
-
-  '@jsplumb/core@5.13.2':
-    resolution: {integrity: sha512-IODXQzhpq9QEzGKhPir6+ea8m4KeU3gzJsYjIu8oqSQ4jDhvEYF7TvSfeaNgy9sUAMt3OoKCqxCS4ga9J7LS5A==}
-
-  '@jsplumb/util@5.13.2':
-    resolution: {integrity: sha512-POrqlZMOo821oa49Xbxb+pNmnxu0z2oS7FOeklRxKuYXR+7nsP0j9PpXjo8E8Ily4TaP+pdUnatb53vAaONO3g==}
-
   '@kafkajs/confluent-schema-registry@1.0.6':
     resolution: {integrity: sha512-NrZL1peOIlmlLKvheQcJAx9PHdnc4kaW+9+Yt4jXUfbbYR9EFNCZt6yApI4SwlFilaiZieReM6XslWy1LZAvoQ==}
 
@@ -4599,8 +4574,8 @@ packages:
     resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.15.1':
-    resolution: {integrity: sha512-z7gf0sDpJ8R6JqS05yqSbOFBCV54d8zSne6xbGrpyKoWs0EpCzCBia3YTfYbULi8m+d6JfqnRTiqFQPa1VZpkg==}
+  '@n8n_io/license-sdk@2.16.1':
+    resolution: {integrity: sha512-J3zsSzu0JftKAsLnxeKtprKkNSWpfNNMy7kUGkBgEsd6R7kJ6bzKKIcyTu+pHPP+Gfe6iTKw+SXz2TXSZEmK2A==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -13339,8 +13314,8 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
-  vue-component-type-helpers@2.2.0:
-    resolution: {integrity: sha512-cYrAnv2me7bPDcg9kIcGwjJiSB6Qyi08+jLDo9yuvoFQjzHiPTzML7RnkJB1+3P6KMsX/KbCD4QE3Tv/knEllw==}
+  vue-component-type-helpers@2.2.2:
+    resolution: {integrity: sha512-6lLY+n2xz2kCYshl59mL6gy8OUUTmkscmDFMO8i7Lj+QKwgnIFUZmM1i/iTYObtrczZVdw7UakPqDTGwVSGaRg==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -16061,7 +16036,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ilqk5sp4kmqg6yh3rv76amkknm))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d2c70e6e899e44bb5377ca6198a97c6c))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16070,7 +16045,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(ilqk5sp4kmqg6yh3rv76amkknm)
+      langchain: 0.3.11(d2c70e6e899e44bb5377ca6198a97c6c)
     transitivePeerDependencies:
       - encoding
 
@@ -16537,24 +16512,6 @@ snapshots:
 
   '@jsdevtools/ono@7.1.3': {}
 
-  '@jsplumb/browser-ui@5.13.2':
-    dependencies:
-      '@jsplumb/core': 5.13.2
-
-  '@jsplumb/common@5.13.2':
-    dependencies:
-      '@jsplumb/util': 5.13.2
-
-  '@jsplumb/connector-bezier@5.13.2':
-    dependencies:
-      '@jsplumb/core': 5.13.2
-
-  '@jsplumb/core@5.13.2':
-    dependencies:
-      '@jsplumb/common': 5.13.2
-
-  '@jsplumb/util@5.13.2': {}
-
   '@kafkajs/confluent-schema-registry@1.0.6':
     dependencies:
       avsc: 5.7.6
@@ -16607,7 +16564,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(knkgly4tvsbdesqmuf53sm5qpe)':
+  '@langchain/community@0.3.24(8549324d4d39cb6e91ae9ff5fc6970d3)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16618,7 +16575,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.11(ilqk5sp4kmqg6yh3rv76amkknm)
+      langchain: 0.3.11(d2c70e6e899e44bb5377ca6198a97c6c)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -16633,7 +16590,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
       '@browserbasehq/sdk': 2.0.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(ilqk5sp4kmqg6yh3rv76amkknm))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d2c70e6e899e44bb5377ca6198a97c6c))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -17020,7 +16977,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
-  '@n8n_io/license-sdk@2.15.1':
+  '@n8n_io/license-sdk@2.16.1':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
@@ -18498,7 +18455,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.7.2)
-      vue-component-type-helpers: 2.2.0
+      vue-component-type-helpers: 2.2.2
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -18733,7 +18690,7 @@ snapshots:
 
   '@types/eventsource@1.1.9': {}
 
-  '@types/express-serve-static-core@4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)':
+  '@types/express-serve-static-core@4.17.43(patch_hash=15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea)':
     dependencies:
       '@types/node': 18.16.16
       '@types/qs': 6.9.15
@@ -18743,7 +18700,7 @@ snapshots:
   '@types/express@4.17.21':
     dependencies:
       '@types/body-parser': 1.19.2
-      '@types/express-serve-static-core': 4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)
+      '@types/express-serve-static-core': 4.17.43(patch_hash=15f7699a9bdd76b6931949ecb3eaa8b658f5a9f4a5ffcc5db00e84d440f1ebea)
       '@types/qs': 6.9.15
       '@types/serve-static': 1.15.0
 
@@ -19080,7 +19037,7 @@ snapshots:
 
   '@types/utf8@3.0.3': {}
 
-  '@types/uuencode@0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)':
+  '@types/uuencode@0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)':
     dependencies:
       '@types/node': 18.16.16
 
@@ -19108,7 +19065,7 @@ snapshots:
     dependencies:
       '@types/node': 18.16.16
 
-  '@types/ws@8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)':
+  '@types/ws@8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)':
     dependencies:
       '@types/node': 18.16.16
 
@@ -19525,7 +19482,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.2.0
+      vue-component-type-helpers: 2.2.2
 
   '@vue/tsconfig@0.7.0(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))':
     optionalDependencies:
@@ -20210,7 +20167,7 @@ snapshots:
       - supports-color
     optional: true
 
-  bull@4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq):
+  bull@4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1
@@ -21624,7 +21581,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21649,7 +21606,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.7.2)
       eslint: 8.57.0
@@ -21669,7 +21626,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22449,7 +22406,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -23750,7 +23707,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(ilqk5sp4kmqg6yh3rv76amkknm):
+  langchain@0.3.11(d2c70e6e899e44bb5377ca6198a97c6c):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -25320,7 +25277,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25420,7 +25377,7 @@ snapshots:
 
   pirates@4.0.6: {}
 
-  pkce-challenge@3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki):
+  pkce-challenge@3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b):
     dependencies:
       crypto-js: 4.2.0
 
@@ -25747,7 +25704,7 @@ snapshots:
 
   pure-rand@6.0.1: {}
 
-  pyodide@0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)(encoding@0.1.13):
+  pyodide@0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13):
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8(encoding@0.1.13)
@@ -26161,7 +26118,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -27799,7 +27756,7 @@ snapshots:
 
   vue-component-type-helpers@2.1.10: {}
 
-  vue-component-type-helpers@2.2.0: {}
+  vue-component-type-helpers@2.2.2: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.7.2)):
     dependencies:
@@ -27872,7 +27829,7 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.13(typescript@5.7.2)
 
-  vue-tsc@2.1.10(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2):
+  vue-tsc@2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2):
     dependencies:
       '@volar/typescript': 2.4.10
       '@vue/language-core': 2.1.10(typescript@5.7.2)
