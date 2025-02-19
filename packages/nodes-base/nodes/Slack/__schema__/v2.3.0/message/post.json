@@ -160,5 +160,6 @@
         "channel",
         "message",
         "message_timestamp"
-    ]
+    ],
+    "version": 1
 }
