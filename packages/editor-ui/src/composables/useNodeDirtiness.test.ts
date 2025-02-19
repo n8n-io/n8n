@@ -101,15 +101,27 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('deleting a node', () => {
-		it("should mark a node as 'incoming-connections-updated' if parent node is deleted", async () => {
+		it("should mark a node as 'incoming-connections-updated' if a parent node is replaced by removing a node", async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a✅ -> b✅ -> c✅');
 
-			canvasOperations.deleteNodes(['b'], { trackHistory: true });
+			canvasOperations.deleteNodes(['b'], { trackHistory: true }); // 'a' becomes new parent of 'c'
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'incoming-connections-updated',
+			});
+		});
+
+		it("should mark a node as 'incoming-connections-updated' if a parent node get removed", async () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a✅ -> b✅ -> c✅');
+
+			canvasOperations.deleteNodes(['a'], { trackHistory: true }); // 'b' has no parent node anymore
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				b: 'incoming-connections-updated',
 			});
 		});
 	});
@@ -265,6 +277,28 @@ describe(useNodeDirtiness, () => {
 				// 'e' itself is not marked as parameters-updated, because it has no run data.
 				f: 'upstream-dirty',
 				b: 'upstream-dirty',
+			});
+		});
+
+		it('should change dirtiness if a disabled sub node is set to enabled', () => {
+			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠🚫 -> b');
+
+			canvasOperations.toggleNodesDisabled(['d'], {
+				trackHistory: true,
+			});
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				b: 'incoming-connections-updated',
+			});
+		});
+
+		it('should change dirtiness if a sub node is removed', () => {
+			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b');
+
+			canvasOperations.deleteNodes(['d'], { trackHistory: true });
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				b: 'incoming-connections-updated',
 			});
 		});
 	});

@@ -3,7 +3,7 @@ import {
 	AddNodeCommand,
 	BulkCommand,
 	EnableNodeToggleCommand,
-	RemoveNodeCommand,
+	RemoveConnectionCommand,
 	type Undoable,
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
@@ -20,10 +20,11 @@ function shouldCommandMarkDirty(
 	command: Undoable,
 	nodeName: string,
 	getIncomingConnections: (nodeName: string) => INodeConnections,
+	getOutgoingConnectors: (nodeName: string) => INodeConnections,
 ): boolean {
 	if (command instanceof BulkCommand) {
 		return command.commands.some((cmd) =>
-			shouldCommandMarkDirty(cmd, nodeName, getIncomingConnections),
+			shouldCommandMarkDirty(cmd, nodeName, getIncomingConnections, getOutgoingConnectors),
 		);
 	}
 
@@ -31,20 +32,30 @@ function shouldCommandMarkDirty(
 		return command.connectionData[1]?.node === nodeName;
 	}
 
-	if (
-		command instanceof RemoveNodeCommand ||
-		command instanceof AddNodeCommand ||
-		(command instanceof EnableNodeToggleCommand && command.newState) // truthy newState value means node is getting disabled
-	) {
-		const commandTargetNodeName =
-			command instanceof RemoveNodeCommand || command instanceof AddNodeCommand
-				? command.node.name
-				: command.nodeName;
+	const incomingNodes = Object.values(getIncomingConnections(nodeName))
+		.flat()
+		.flat()
+		.filter((connection) => connection !== null)
+		.map((connection) => connection.node);
 
-		return Object.values(getIncomingConnections(nodeName))
-			.flat()
-			.flat()
-			.some((connection) => connection?.node === commandTargetNodeName);
+	if (command instanceof RemoveConnectionCommand) {
+		const [from, to] = command.connectionData;
+
+		return to.node === nodeName && !incomingNodes.includes(from.node);
+	}
+
+	if (command instanceof AddNodeCommand) {
+		return incomingNodes.includes(command.node.name);
+	}
+
+	if (command instanceof EnableNodeToggleCommand) {
+		return (
+			incomingNodes.includes(command.nodeName) &&
+			(command.newState ||
+				Object.keys(getOutgoingConnectors(command.nodeName)).some(
+					(type) => type !== NodeConnectionType.Main,
+				))
+		);
 	}
 
 	return false;
@@ -92,7 +103,14 @@ export function useNodeDirtiness() {
 				break;
 			}
 
-			if (shouldCommandMarkDirty(command, nodeName, workflowsStore.incomingConnectionsByNodeName)) {
+			if (
+				shouldCommandMarkDirty(
+					command,
+					nodeName,
+					workflowsStore.incomingConnectionsByNodeName,
+					workflowsStore.outgoingConnectionsByNodeName,
+				)
+			) {
 				return 'incoming-connections-updated';
 			}
 		}
