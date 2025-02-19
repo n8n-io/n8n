@@ -52,5 +52,6 @@
         "timeStorageClassUpdated": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
