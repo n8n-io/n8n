@@ -200,9 +200,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const response = await baseQuery
 			.select('COUNT(DISTINCT RESULT.id)', 'count')
 			.from('RESULT_QUERY', 'RESULT')
-			.getRawOne<{ count: number }>();
+			.getRawOne<{ count: number | string }>();
 
-		return response?.count ? response.count : 0;
+		return Number(response?.count) || 0;
 	}
 
 	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
