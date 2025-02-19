@@ -60,5 +60,6 @@
         "categories",
         "id",
         "body"
-    ]
+    ],
+    "version": 1
 }
