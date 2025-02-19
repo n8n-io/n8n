@@ -62,5 +62,6 @@
     },
     "required": [
         "tag"
-    ]
+    ],
+    "version": 1
 }
