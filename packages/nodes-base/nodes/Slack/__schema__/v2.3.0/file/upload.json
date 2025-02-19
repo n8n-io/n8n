@@ -88,5 +88,6 @@
         "file_access": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
