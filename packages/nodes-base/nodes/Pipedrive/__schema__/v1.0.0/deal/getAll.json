@@ -295,5 +295,6 @@
         "cc_email",
         "org_hidden",
         "person_hidden"
-    ]
+    ],
+    "version": 1
 }
