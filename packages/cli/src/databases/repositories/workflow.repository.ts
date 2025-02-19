@@ -9,7 +9,6 @@ import type {
 	FindManyOptions,
 	FindOptionsRelations,
 } from '@n8n/typeorm';
-import { cloneDeep } from 'lodash';
 
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
@@ -194,12 +193,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
-		const optionsCopy = cloneDeep(options);
+		const { skip, take, ...baseQueryParameters } = options;
 
-		delete optionsCopy.skip;
-		delete optionsCopy.take;
-
-		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, optionsCopy);
+		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
 
 		const response = await baseQuery
 			.select('COUNT(DISTINCT RESULT.id)', 'count')
