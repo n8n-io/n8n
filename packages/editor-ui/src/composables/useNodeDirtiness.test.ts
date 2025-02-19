@@ -205,22 +205,6 @@ describe(useNodeDirtiness, () => {
 			});
 		});
 
-		// TODO: is this a real scenario?
-		it.todo(
-			"should update dirtiness when pinned data is removed from a node which hasn't run",
-			async () => {
-				setupTestWorkflow('a✅ -> b📌 -> c✅');
-
-				canvasOperations.toggleNodesPinned(['b'], 'pin-icon-click', {
-					trackHistory: true,
-				});
-
-				expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-					b: 'pinned-data-updated',
-				});
-			},
-		);
-
 		it('should update dirtiness when an existing pinned data is updated', async () => {
 			setupTestWorkflow('a✅ -> b✅📌 -> c✅');
 
@@ -233,17 +217,28 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('sub-nodes', () => {
-		it('should mark its root node as dirty when parameters of a sub node has changed', () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f🧠 -> b');
+		it('should mark its parent nodes with run data as dirty when parameters of a sub node has changed', () => {
+			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f✅🧠 -> b');
 
 			canvasOperations.setNodeParameters('e', { foo: 1 });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				e: 'parameters-updated',
+				// 'e' itself is not marked as parameters-updated, because it has no run data.
+				f: 'upstream-dirty',
+				b: 'upstream-dirty',
 			});
 		});
 	});
 
+	/**
+	 * Setup test data in the workflow store using given diagram.
+	 *
+	 * [Symbols]
+	 * - ✅: Node with run data
+	 * - 🚫: Disabled node
+	 * - 📌: Node with pinned data
+	 * - 🧠: A sub node
+	 */
 	function setupTestWorkflow(diagram: string) {
 		const nodeNamesWithPinnedData = new Set<string>();
 		const nodes: Record<string, INodeUi> = {};

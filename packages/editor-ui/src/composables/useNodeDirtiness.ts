@@ -19,16 +19,11 @@ import { computed } from 'vue';
 function shouldCommandMarkDirty(
 	command: Undoable,
 	nodeName: string,
-	nodeLastRanAt: number,
 	getIncomingConnections: (nodeName: string) => INodeConnections,
 ): boolean {
-	if (nodeLastRanAt > command.getTimestamp()) {
-		return false;
-	}
-
 	if (command instanceof BulkCommand) {
 		return command.commands.some((cmd) =>
-			shouldCommandMarkDirty(cmd, nodeName, nodeLastRanAt, getIncomingConnections),
+			shouldCommandMarkDirty(cmd, nodeName, getIncomingConnections),
 		);
 	}
 
@@ -46,16 +41,10 @@ function shouldCommandMarkDirty(
 				? command.node.name
 				: command.nodeName;
 
-		return Object.entries(getIncomingConnections(nodeName)).some(([type, nodeInputConnections]) => {
-			switch (type as NodeConnectionType) {
-				case NodeConnectionType.Main:
-					return nodeInputConnections.some((connections) =>
-						connections?.some((connection) => connection.node === commandTargetNodeName),
-					);
-				default:
-					return false;
-			}
-		});
+		return Object.values(getIncomingConnections(nodeName))
+			.flat()
+			.flat()
+			.some((connection) => connection?.node === commandTargetNodeName);
 	}
 
 	return false;
@@ -69,6 +58,54 @@ export function useNodeDirtiness() {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 
+	function getParentSubNodes(nodeName: string) {
+		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
+			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionType.Main)
+			.flatMap(([, typeConnections]) => typeConnections.flat().filter((conn) => conn !== null));
+	}
+
+	function getParameterUpdateType(
+		nodeName: string,
+		after: number,
+	): CanvasNodeDirtiness | undefined {
+		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
+			return 'parameters-updated';
+		}
+
+		for (const connection of getParentSubNodes(nodeName)) {
+			if (getParameterUpdateType(connection.node, after) !== undefined) {
+				return 'upstream-dirty';
+			}
+		}
+
+		return undefined;
+	}
+
+	function getConnectionUpdateType(
+		nodeName: string,
+		after: number,
+	): CanvasNodeDirtiness | undefined {
+		for (let i = historyStore.undoStack.length - 1; i >= 0; i--) {
+			const command = historyStore.undoStack[i];
+
+			if (command.getTimestamp() < after) {
+				break;
+			}
+
+			if (shouldCommandMarkDirty(command, nodeName, workflowsStore.incomingConnectionsByNodeName)) {
+				return 'incoming-connections-updated';
+			}
+		}
+
+		for (const connection of getParentSubNodes(nodeName)) {
+			if (getConnectionUpdateType(connection.node, after) !== undefined) {
+				return 'upstream-dirty';
+			}
+		}
+
+		return undefined;
+	}
+
 	const dirtinessByName = computed(() => {
 		// Do not highlight dirtiness if new partial execution is not enabled
 		if (settingsStore.partialExecutionVersion === 1) {
@@ -78,42 +115,24 @@ export function useNodeDirtiness() {
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
 
-		function shouldMarkDirty(command: Undoable, nodeName: string, nodeLastRanAt: number) {
-			return shouldCommandMarkDirty(
-				command,
-				nodeName,
-				nodeLastRanAt,
-				workflowsStore.incomingConnectionsByNodeName,
-			);
-		}
-
-		function getRunAt(nodeName: string): number {
-			return Math.max(
-				...Object.entries(workflowsStore.outgoingConnectionsByNodeName(nodeName))
-					.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionType.Main)
-					.flatMap(([, conn]) => conn.flat())
-					.map((conn) => (conn ? getRunAt(conn.node) : 0)),
-				runDataByNode[nodeName]?.[0]?.startTime ?? 0,
-			);
-		}
-
-		for (const node of workflowsStore.allNodes) {
-			const nodeName = node.name;
-			const runAt = getRunAt(nodeName);
+		for (const [nodeName, runData] of Object.entries(runDataByNode)) {
+			const runAt = runData[0].startTime ?? 0;
 
 			if (!runAt) {
 				continue;
 			}
 
-			const parametersLastUpdate = workflowsStore.getParametersLastUpdate(nodeName) ?? 0;
+			const parameterUpdate = getParameterUpdateType(nodeName, runAt);
 
-			if (parametersLastUpdate > runAt) {
-				dirtiness[nodeName] = 'parameters-updated';
+			if (parameterUpdate) {
+				dirtiness[nodeName] = parameterUpdate;
 				continue;
 			}
 
-			if (historyStore.undoStack.some((command) => shouldMarkDirty(command, nodeName, runAt))) {
-				dirtiness[nodeName] = 'incoming-connections-updated';
+			const connectionUpdate = getConnectionUpdateType(nodeName, runAt);
+
+			if (connectionUpdate) {
+				dirtiness[nodeName] = connectionUpdate;
 				continue;
 			}
 
