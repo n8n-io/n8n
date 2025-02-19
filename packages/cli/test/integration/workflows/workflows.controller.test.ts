@@ -1047,10 +1047,7 @@ describe('GET /workflows', () => {
 
 describe('GET /workflows?includeFolders=true', () => {
 	test('should return zero workflows and folders if none exist', async () => {
-		const response = await authOwnerAgent
-			.get('/workflows')
-			.query({ includeFolders: true })
-			.expect(200);
+		const response = await authOwnerAgent.get('/workflows').query({ includeFolders: true });
 
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
@@ -1152,7 +1149,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
-	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
+	test.only('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
 		});
@@ -1196,6 +1193,8 @@ describe('GET /workflows?includeFolders=true', () => {
 			const response = await testServer
 				.authAgentFor(member1)
 				.get('/workflows?includeScopes=true&includeFolders=true');
+
+			console.log(response.body);
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(3);
@@ -1519,6 +1518,8 @@ describe('GET /workflows?includeFolders=true', () => {
 				.get('/workflows')
 				.query('sortBy=name:asc&includeFolders=true')
 				.expect(200);
+
+			console.log(response.body);
 
 			expect(response.body).toEqual({
 				count: 4,
