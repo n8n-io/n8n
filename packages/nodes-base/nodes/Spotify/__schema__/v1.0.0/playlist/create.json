@@ -145,5 +145,6 @@
         "public",
         "snapshot_id",
         "tracks"
-    ]
+    ],
+    "version": 1
 }
