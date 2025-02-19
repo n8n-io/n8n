@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as create from '../../../actions/window/create.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -126,7 +127,7 @@ describe('Test Airtop, window create operation', () => {
 		};
 
 		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			'Session ID is required',
+			ERROR_MESSAGES.SESSION_ID_REQUIRED,
 		);
 	});
 });

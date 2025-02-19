@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as close from '../../../actions/window/close.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -72,7 +73,7 @@ describe('Test Airtop, window close operation', () => {
 		};
 
 		await expect(close.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			'Session ID is required',
+			ERROR_MESSAGES.SESSION_ID_REQUIRED,
 		);
 	});
 
@@ -85,7 +86,7 @@ describe('Test Airtop, window close operation', () => {
 		};
 
 		await expect(close.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			'Window ID is required',
+			ERROR_MESSAGES.WINDOW_ID_REQUIRED,
 		);
 	});
 });

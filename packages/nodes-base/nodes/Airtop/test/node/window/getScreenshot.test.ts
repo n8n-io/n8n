@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as getScreenshot from '../../../actions/window/getScreenshot.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -78,7 +79,7 @@ describe('Test Airtop, take screenshot operation', () => {
 
 		await expect(
 			getScreenshot.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Session ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.SESSION_ID_REQUIRED);
 	});
 
 	it('should throw error when windowId is empty', async () => {
@@ -89,6 +90,6 @@ describe('Test Airtop, take screenshot operation', () => {
 
 		await expect(
 			getScreenshot.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Window ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.WINDOW_ID_REQUIRED);
 	});
 });

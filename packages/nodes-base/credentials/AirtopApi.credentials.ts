@@ -10,8 +10,7 @@ export class AirtopApi implements ICredentialType {
 
 	displayName = 'Airtop API';
 
-	documentationUrl =
-		'https://docs.n8n.io/integrations/creating-nodes/build/declarative-style-node/';
+	documentationUrl = 'airtop';
 
 	properties: INodeProperties[] = [
 		{

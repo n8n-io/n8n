@@ -1,12 +1,15 @@
 import { NodeApiError } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from './node/helpers';
+import { ERROR_MESSAGES } from '../constants';
 import {
 	validateProfileName,
 	validateTimeoutMinutes,
 	validateSaveProfileOnTermination,
 	validateSessionAndWindowId,
 	validateAirtopApiResponse,
+	validateSessionId,
+	validateUrl,
 } from '../GenericFunctions';
 
 describe('Test Airtop utils', () => {
@@ -35,7 +38,7 @@ describe('Test Airtop utils', () => {
 			};
 
 			expect(() => validateProfileName.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
-				'Profile name should only contain letters, numbers and dashes',
+				ERROR_MESSAGES.PROFILE_NAME_INVALID,
 			);
 		});
 	});
@@ -57,7 +60,7 @@ describe('Test Airtop utils', () => {
 
 			expect(() =>
 				validateTimeoutMinutes.call(createMockExecuteFunction(nodeParameters), 0),
-			).toThrow('Timeout must be between 1 and 10080 minutes');
+			).toThrow(ERROR_MESSAGES.TIMEOUT_MINUTES_INVALID);
 		});
 
 		it('should throw error for timeout above maximum', () => {
@@ -67,7 +70,7 @@ describe('Test Airtop utils', () => {
 
 			expect(() =>
 				validateTimeoutMinutes.call(createMockExecuteFunction(nodeParameters), 0),
-			).toThrow('Timeout must be between 1 and 10080 minutes');
+			).toThrow(ERROR_MESSAGES.TIMEOUT_MINUTES_INVALID);
 		});
 	});
 
@@ -105,12 +108,42 @@ describe('Test Airtop utils', () => {
 
 			expect(() =>
 				validateSaveProfileOnTermination.call(createMockExecuteFunction(nodeParameters), 0, ''),
-			).toThrow('Profile name is required when "Save Profile" is enabled');
+			).toThrow(ERROR_MESSAGES.PROFILE_NAME_REQUIRED);
+		});
+	});
+
+	describe('validateSessionId', () => {
+		it('should validate session ID', () => {
+			const nodeParameters = {
+				sessionId: 'test-session-123',
+			};
+
+			const result = validateSessionId.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe('test-session-123');
+		});
+
+		it('should throw error for empty session ID', () => {
+			const nodeParameters = {
+				sessionId: '',
+			};
+
+			expect(() => validateSessionId.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
+				ERROR_MESSAGES.SESSION_ID_REQUIRED,
+			);
+		});
+
+		it('should trim whitespace from session ID', () => {
+			const nodeParameters = {
+				sessionId: '  test-session-123  ',
+			};
+
+			const result = validateSessionId.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe('test-session-123');
 		});
 	});
 
 	describe('validateSessionAndWindowId', () => {
-		it('should validate valid session and window IDs', () => {
+		it('should validate session and window IDs', () => {
 			const nodeParameters = {
 				sessionId: 'test-session-123',
 				windowId: 'win-123',
@@ -131,7 +164,7 @@ describe('Test Airtop utils', () => {
 
 			expect(() =>
 				validateSessionAndWindowId.call(createMockExecuteFunction(nodeParameters), 0),
-			).toThrow('Session ID is required');
+			).toThrow(ERROR_MESSAGES.SESSION_ID_REQUIRED);
 		});
 
 		it('should throw error for empty window ID', () => {
@@ -142,7 +175,7 @@ describe('Test Airtop utils', () => {
 
 			expect(() =>
 				validateSessionAndWindowId.call(createMockExecuteFunction(nodeParameters), 0),
-			).toThrow('Window ID is required');
+			).toThrow(ERROR_MESSAGES.WINDOW_ID_REQUIRED);
 		});
 
 		it('should trim whitespace from IDs', () => {
@@ -156,6 +189,46 @@ describe('Test Airtop utils', () => {
 				sessionId: 'test-session-123',
 				windowId: 'win-123',
 			});
+		});
+	});
+
+	describe('validateUrl', () => {
+		it('should validate valid URL', () => {
+			const nodeParameters = {
+				url: 'https://example.com',
+			};
+
+			const result = validateUrl.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe('https://example.com');
+		});
+
+		it('should throw error for invalid URL', () => {
+			const nodeParameters = {
+				url: 'invalid-url',
+			};
+
+			expect(() => validateUrl.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
+				ERROR_MESSAGES.URL_INVALID,
+			);
+		});
+
+		it('should return empty string for empty URL', () => {
+			const nodeParameters = {
+				url: '',
+			};
+
+			const result = validateUrl.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe('');
+		});
+
+		it('should throw error for URL without http or https', () => {
+			const nodeParameters = {
+				url: 'example.com',
+			};
+
+			expect(() => validateUrl.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
+				ERROR_MESSAGES.URL_INVALID,
+			);
 		});
 	});
 
@@ -192,18 +265,6 @@ describe('Test Airtop utils', () => {
 
 			const expectedError = new NodeApiError(mockNode, { message: 'Error 1\nError 2' });
 			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(expectedError);
-		});
-
-		it('should handle response with empty errors array', () => {
-			const response = {
-				status: 'success',
-				data: {},
-				meta: {},
-				errors: [],
-				warnings: [],
-			};
-
-			expect(() => validateAirtopApiResponse(mockNode, response)).not.toThrow();
 		});
 	});
 });

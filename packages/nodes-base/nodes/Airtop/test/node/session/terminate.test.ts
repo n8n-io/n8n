@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as terminate from '../../../actions/session/terminate.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -60,7 +61,7 @@ describe('Test Airtop, session terminate operation', () => {
 
 		await expect(
 			terminate.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Session ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.SESSION_ID_REQUIRED);
 	});
 
 	it('should throw error when sessionId is whitespace', async () => {
@@ -72,6 +73,6 @@ describe('Test Airtop, session terminate operation', () => {
 
 		await expect(
 			terminate.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Session ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.SESSION_ID_REQUIRED);
 	});
 });

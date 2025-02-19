@@ -20,6 +20,7 @@ export const description: INodeProperties[] = [
 				operation: ['query'],
 			},
 		},
+		description: 'The ID of the window to query',
 	},
 	{
 		displayName: 'Prompt',

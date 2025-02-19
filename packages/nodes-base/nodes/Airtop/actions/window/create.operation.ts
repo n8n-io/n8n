@@ -4,9 +4,9 @@ import type {
 	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { validateAirtopApiResponse } from '../../GenericFunctions';
+import { validateAirtopApiResponse, validateSessionId, validateUrl } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
 import type { IAirtopResponse } from '../../transport/response.type';
 
@@ -87,20 +87,12 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let sessionId = this.getNodeParameter('sessionId', index, '') as string;
-	sessionId = sessionId.trim();
-	const url = this.getNodeParameter('url', index);
+	const sessionId = validateSessionId.call(this, index);
+	const url = validateUrl.call(this, index);
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const getLiveView = this.getNodeParameter('getLiveView', index, false);
 
 	let response: IAirtopResponse;
-
-	// validate sessionId
-	if (!sessionId) {
-		throw new NodeOperationError(this.getNode(), "Please fill the 'Session ID' parameter", {
-			itemIndex: index,
-		});
-	}
 
 	const body: IDataObject = {
 		url,

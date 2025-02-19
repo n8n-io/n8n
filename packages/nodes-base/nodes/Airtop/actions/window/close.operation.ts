@@ -9,7 +9,7 @@ export const description: INodeProperties[] = [
 		name: 'windowId',
 		type: 'string',
 		required: true,
-		default: '',
+		default: '={{ $json["windowId"] }}',
 		displayOptions: {
 			show: {
 				resource: ['window'],

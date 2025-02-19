@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as getPaginated from '../../../actions/extraction/getPaginated.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -52,7 +53,6 @@ describe('Test Airtop, paginated extraction operation', () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			prompt: 'Extract all product titles and prices',
-			additionalFields: { outputSchema: mockJsonSchema },
 		};
 
 		const result = await getPaginated.execute.call(createMockExecuteFunction(nodeParameters), 0);
@@ -62,8 +62,8 @@ describe('Test Airtop, paginated extraction operation', () => {
 			'POST',
 			'/sessions/test-session-123/windows/win-123/paginated-extraction',
 			{
+				configuration: {},
 				prompt: 'Extract all product titles and prices',
-				configuration: { outputSchema: mockJsonSchema },
 			},
 		);
 
@@ -127,7 +127,7 @@ describe('Test Airtop, paginated extraction operation', () => {
 
 		await expect(
 			getPaginated.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Session ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.SESSION_ID_REQUIRED);
 	});
 
 	it('should throw error when windowId is empty', async () => {
@@ -139,6 +139,6 @@ describe('Test Airtop, paginated extraction operation', () => {
 
 		await expect(
 			getPaginated.execute.call(createMockExecuteFunction(nodeParameters), 0),
-		).rejects.toThrow('Window ID is required');
+		).rejects.toThrow(ERROR_MESSAGES.WINDOW_ID_REQUIRED);
 	});
 });

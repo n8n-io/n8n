@@ -5,6 +5,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { INTEGRATION_URL } from '../../constants';
 import {
 	validateAirtopApiResponse,
 	validateProfileName,
@@ -59,7 +60,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const url = 'https://portal-api.airtop.ai/integrations/v1/no-code/create-session';
+	const url = `${INTEGRATION_URL}/create-session`;
 
 	const profileName = validateProfileName.call(this, index);
 	const timeoutMinutes = validateTimeoutMinutes.call(this, index);
@@ -78,7 +79,7 @@ export async function execute(
 	// validate response
 	validateAirtopApiResponse(this.getNode(), response);
 
-	if (saveProfileOnTermination && profileName) {
+	if (saveProfileOnTermination) {
 		await apiRequest.call(
 			this,
 			'PUT',

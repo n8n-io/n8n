@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { IAirtopResponse } from './response.type';
+import { BASE_URL } from '../constants';
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -22,7 +23,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		url: endpoint.startsWith('http') ? endpoint : `https://api.airtop.ai/api/v1${endpoint}`,
+		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 

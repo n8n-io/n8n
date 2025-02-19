@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import * as query from '../../../actions/window/query.operation';
+import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -117,7 +118,7 @@ describe('Test Airtop, query page operation', () => {
 		};
 
 		await expect(query.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			'Session ID is required',
+			ERROR_MESSAGES.SESSION_ID_REQUIRED,
 		);
 	});
 
@@ -129,7 +130,7 @@ describe('Test Airtop, query page operation', () => {
 		};
 
 		await expect(query.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			'Window ID is required',
+			ERROR_MESSAGES.WINDOW_ID_REQUIRED,
 		);
 	});
 });

@@ -1,11 +1,32 @@
 import { NodeApiError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import {
+	ERROR_MESSAGES,
+	DEFAULT_TIMEOUT_MINUTES,
+	MIN_TIMEOUT_MINUTES,
+	MAX_TIMEOUT_MINUTES,
+} from './constants';
 import type { IAirtopResponse } from './transport/response.type';
 
-const DEFAULT_TIMEOUT_MINUTES = 10;
-const MIN_TIMEOUT_MINUTES = 1;
-const MAX_TIMEOUT_MINUTES = 10080;
+/**
+ * Validate the session ID parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns The validated session ID
+ */
+export function validateSessionId(this: IExecuteFunctions, index: number) {
+	let sessionId = this.getNodeParameter('sessionId', index, '') as string;
+	sessionId = (sessionId || '').trim();
+
+	if (!sessionId) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SESSION_ID_REQUIRED, {
+			itemIndex: index,
+		});
+	}
+
+	return sessionId;
+}
 
 /**
  * Validate the session ID and window ID parameters
@@ -20,13 +41,13 @@ export function validateSessionAndWindowId(this: IExecuteFunctions, index: numbe
 	windowId = (windowId || '').trim();
 
 	if (!sessionId) {
-		throw new NodeOperationError(this.getNode(), "Please fill the 'Session ID' parameter", {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SESSION_ID_REQUIRED, {
 			itemIndex: index,
 		});
 	}
 
 	if (!windowId) {
-		throw new NodeOperationError(this.getNode(), "Please fill the 'Window ID' parameter", {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.WINDOW_ID_REQUIRED, {
 			itemIndex: index,
 		});
 	}
@@ -52,13 +73,9 @@ export function validateProfileName(this: IExecuteFunctions, index: number) {
 	}
 
 	if (!/^[a-zA-Z0-9-]+$/.test(profileName)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			"'Profile Name' should only contain letters, numbers and dashes",
-			{
-				itemIndex: index,
-			},
-		);
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROFILE_NAME_INVALID, {
+			itemIndex: index,
+		});
 	}
 
 	return profileName;
@@ -78,13 +95,35 @@ export function validateTimeoutMinutes(this: IExecuteFunctions, index: number) {
 	) as number;
 
 	if (timeoutMinutes < MIN_TIMEOUT_MINUTES || timeoutMinutes > MAX_TIMEOUT_MINUTES) {
-		const errorMessage = `Timeout must be between ${MIN_TIMEOUT_MINUTES} and ${MAX_TIMEOUT_MINUTES} minutes`;
-		throw new NodeOperationError(this.getNode(), errorMessage, {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.TIMEOUT_MINUTES_INVALID, {
 			itemIndex: index,
 		});
 	}
 
 	return timeoutMinutes;
+}
+
+/**
+ * Validate the URL parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns The validated URL
+ */
+export function validateUrl(this: IExecuteFunctions, index: number) {
+	let url = this.getNodeParameter('url', index) as string;
+	url = (url || '').trim();
+
+	if (!url) {
+		return '';
+	}
+
+	if (!url.startsWith('http')) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.URL_INVALID, {
+			itemIndex: index,
+		});
+	}
+
+	return url;
 }
 
 /**
@@ -106,13 +145,9 @@ export function validateSaveProfileOnTermination(
 	) as boolean;
 
 	if (saveProfileOnTermination && !profileName) {
-		throw new NodeOperationError(
-			this.getNode(),
-			"'Profile Name' is required when 'Save Profile' is enabled",
-			{
-				itemIndex: index,
-			},
-		);
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROFILE_NAME_REQUIRED, {
+			itemIndex: index,
+		});
 	}
 
 	return saveProfileOnTermination;

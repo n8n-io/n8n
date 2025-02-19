@@ -20,6 +20,7 @@ export const description: INodeProperties[] = [
 				operation: ['getPaginated'],
 			},
 		},
+		description: 'The ID of the session to use for the extraction',
 	},
 	{
 		displayName: 'Window ID',
@@ -33,6 +34,7 @@ export const description: INodeProperties[] = [
 				operation: ['getPaginated'],
 			},
 		},
+		description: 'The ID of the window to use for the extraction',
 	},
 	{
 		displayName: 'Prompt',
