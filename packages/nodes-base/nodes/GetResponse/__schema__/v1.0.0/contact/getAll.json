@@ -67,5 +67,6 @@
         "createdOn",
         "scoring",
         "engagementScore"
-    ]
+    ],
+    "version": 1
 }
