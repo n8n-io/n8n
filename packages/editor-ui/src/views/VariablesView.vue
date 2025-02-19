@@ -134,7 +134,11 @@ const handleSubmit = async (variable: EnvironmentVariable) => {
 		if (id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 			await environmentsStore.createVariable(rest);
 		} else {
-			await environmentsStore.updateVariable(variable);
+			await environmentsStore.updateVariable({
+				id: variable.id,
+				value: variable.value,
+				key: variable.key,
+			});
 		}
 		removeEditableVariable(id);
 	} catch (error) {
