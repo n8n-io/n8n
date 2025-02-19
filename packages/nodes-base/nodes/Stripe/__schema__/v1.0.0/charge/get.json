@@ -476,5 +476,6 @@
         "status",
         "transfer_data",
         "transfer_group"
-    ]
+    ],
+    "version": 1
 }
