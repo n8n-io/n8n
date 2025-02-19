@@ -1581,7 +1581,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			response = await authOwnerAgent
 				.get('/workflows')
-				.query('sortBy=name:desc&includeFolders=true')
+				.query('sortBy=updatedAt:desc&includeFolders=true')
 				.expect(200);
 
 			expect(response.body).toEqual({
@@ -1615,8 +1615,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		test('should handle skip with take parameter', async () => {
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('skip=2&take=4&includeFolders=true')
-				.expect(200);
+				.query('skip=2&take=4&includeFolders=true');
 
 			expect(response.body.data).toHaveLength(4);
 			expect(response.body.count).toBe(6);

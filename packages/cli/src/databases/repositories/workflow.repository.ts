@@ -154,21 +154,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.from('FOLDERS_QUERY', 'FOLDERS_QUERY')
 			.getQuery();
 
-		const workflowsSubQuery = qb
-			.subQuery()
-			.select('*')
-			.from('WORKFLOWS_QUERY', 'WORKFLOWS_QUERY')
-			.getQuery();
-
-		// Combine with UNION ALL
-		const unionQuery = `${foldersSubQuery} UNION ALL ${workflowsSubQuery}`;
+		const qb = this.manager.createQueryBuilder();
 
 		return {
-			baseQuery: this.manager
+			baseQuery: qb
 				.createQueryBuilder()
-				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY')
-				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY')
-				.addCommonTableExpression(unionQuery, 'RESULT_QUERY'),
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
+				.addCommonTableExpression(
+					`SELECT * FROM ${qb.escape('FOLDERS_QUERY')} UNION ALL SELECT * FROM ${qb.escape('WORKFLOWS_QUERY')}`,
+					'RESULT_QUERY',
+				),
 			sortByColumn,
 			sortByDirection,
 		};
@@ -181,28 +177,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 
 		const query = baseQuery
-			.select('MIN(id)', 'id')
-			.addSelect('MIN(resource)', 'resource')
+			.select(`${baseQuery.escape('RESULT')}.*`)
 			.from('RESULT_QUERY', 'RESULT');
-
-		// const query = baseQuery
-		// 	.distinctOn(['id'])
-		// 	.select('id')
-		// 	.addSelect('resource')
-		// 	.from('RESULT_QUERY', 'RESULT');
-
 		if (sortByColumn === 'name') {
 			query
-				.addSelect('LOWER(name)', 'name_lower')
-				.groupBy('id')
-				.addGroupBy('name_lower')
+				.addSelect(`LOWER(${baseQuery.escape('RESULT')}.${baseQuery.escape('name')})`, 'name_lower')
 				.orderBy('name_lower', sortByDirection);
 		} else {
-			query
-				.addSelect(`"${sortByColumn}"`, 'sorting_column')
-				.groupBy('id')
-				.addGroupBy('sorting_column')
-				.orderBy('sorting_column', sortByDirection);
+			query.orderBy(
+				`${baseQuery.escape('RESULT')}.${baseQuery.escape(sortByColumn)}`,
+				sortByDirection,
+			);
 		}
 
 		if (options.take) {
@@ -215,10 +200,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
 
-		return workflowsAndFolders.map((item) => {
-			const { name_lower, ...rest } = item;
-			return rest;
-		});
+		return workflowsAndFolders
+			.filter((item, index, self) => index === self.findIndex((obj) => obj.id === item.id))
+			.map((item) => {
+				const { name_lower, ...rest } = item;
+				return rest;
+			});
 	}
 
 	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
@@ -227,8 +214,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
 
 		const response = await baseQuery
-			.select('RESULT.id')
-			.distinct(true)
+			.select(`COUNT(DISTINCT ${baseQuery.escape('RESULT')}.${baseQuery.escape('id')})`, 'count')
 			.from('RESULT_QUERY', 'RESULT')
 			.select('COUNT(*)', 'count')
 			.getRawOne<{ count: number | string }>();
