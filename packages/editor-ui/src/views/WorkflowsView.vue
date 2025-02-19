@@ -239,7 +239,9 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	const markLoading = debounce(() => {
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
 		loading.value = true;
 	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
@@ -256,7 +258,7 @@ const fetchWorkflows = async () => {
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
 	);
-	markLoading.cancel();
+	delayedLoading.cancel();
 	workflows.value = fetchedWorkflows;
 	loading.value = false;
 	return fetchedWorkflows;
