@@ -81,7 +81,6 @@ const hiddenItemsDisabledTemplate: StoryFn = (args, { argTypes }) => ({
 export const HiddenItemsDisabled = hiddenItemsDisabledTemplate.bind({});
 HiddenItemsDisabled.args = {
 	items: items.slice(2),
-	hiddenItems: [],
 	pathTruncated: true,
 };
 
@@ -227,6 +226,5 @@ SmallWithHiddenItemsDisabled.args = {
 	theme: 'small',
 	showBorder: true,
 	items: items.slice(2),
-	hiddenItems: [],
 	pathTruncated: true,
 };
