@@ -106,5 +106,6 @@
         "LID__Session_Id__c": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
