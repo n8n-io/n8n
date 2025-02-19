@@ -190,5 +190,6 @@
         "created",
         "updated",
         "jsdPublic"
-    ]
+    ],
+    "version": 1
 }
