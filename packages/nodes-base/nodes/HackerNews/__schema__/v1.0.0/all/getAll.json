@@ -118,5 +118,6 @@
         "objectID",
         "story_id",
         "updated_at"
-    ]
+    ],
+    "version": 1
 }
