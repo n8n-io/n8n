@@ -32,7 +32,7 @@ n8n is a workflow automation platform that gives technical teams the flexibility
     - [Pull specific version](#pull-specific-version)
     - [Pull next (unstable) version](#pull-next-unstable-version)
     - [Updating with Docker Compose](#updating-with-docker-compose)
-  - [Setting Timezone](#setting-timezone)
+  - [Setting Timezone](#setting-the-timezone)
   - [Build Docker-Image](#build-docker-image)
   - [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
   - [Support](#support)
@@ -45,7 +45,7 @@ This [:tv: short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok)  
 
 ## Available integrations
 
-n8n has 200+ different nodes to automate workflows. A full list can be found at [https://n8n.io/nodes](https://n8n.io/nodes).
+n8n has 200+ different nodes to automate workflows. A full list can be found at [https://n8n.io/integrations](https://n8n.io/integrations).
 
 ## Documentation
 
@@ -67,7 +67,7 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-This command will download all required n8n images and start your container.
+This command will download the required n8n image and start your container.
 You can then access n8n by opening:
 [http://localhost:5678](http://localhost:5678)
 
@@ -98,18 +98,11 @@ docker run -it --rm \
 
 By default, n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgreSQL.
 
-Note that even when using a different database, it is still important to
+> **WARNING**: Even when using a different database, it is still important to
 persist the `/home/node/.n8n` folder, which also contains essential n8n
 user data including the encryption key for the credentials.
 
-In the following commands, replace these placeholders with the actual data:
-
-- POSTGRES_DATABASE
-- POSTGRES_HOST
-- POSTGRES_PASSWORD
-- POSTGRES_PORT
-- POSTGRES_USER
-- POSTGRES_SCHEMA
+In the following commands, replace the placeholders (depicted within angled brackets, e.g. `<POSTGRES_USER>`) with the actual data:
 
 ```bash
 docker volume create n8n_data
@@ -187,8 +180,7 @@ docker ps -a
 docker stop [container_id]
 ```
 
-3. Remove the container with ID container_id:
-
+3. Remove the container (this does not remove your user data) with ID container_id:
 
 ```bash
 docker rm [container_id]
@@ -218,7 +210,7 @@ docker compose up -d
 ## Setting the timezone
 
 To specify the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
-be set. One instance where this variable is implemented is in the Schedule node.
+be set. One example where this variable has an effect is the Schedule node.
 
 The system's timezone can be set separately with the environment variable `TZ`.
 This controls the output of certain scripts and commands such as `$ date`.
