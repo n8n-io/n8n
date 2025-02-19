@@ -194,5 +194,6 @@
         "item_status": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
