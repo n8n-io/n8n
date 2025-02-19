@@ -52,5 +52,6 @@
         "listIds",
         "listUnsubscribed",
         "attributes"
-    ]
+    ],
+    "version": 1
 }
