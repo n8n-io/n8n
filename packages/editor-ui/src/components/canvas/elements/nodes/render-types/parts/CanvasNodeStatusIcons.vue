@@ -79,7 +79,9 @@ const dirtiness = computed(() =>
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				{{ i18n.baseText('node.dirty') }}
+				{{
+					i18n.baseText(dirtiness === 'parameters-updated' ? 'node.dirty' : 'node.subjectToChange')
+				}}
 			</template>
 			<FontAwesomeIcon size="xs" icon="circle" />
 		</N8nTooltip>
