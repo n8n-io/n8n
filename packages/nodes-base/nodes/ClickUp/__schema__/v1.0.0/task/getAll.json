@@ -513,5 +513,6 @@
         "project",
         "folder",
         "space"
-    ]
+    ],
+    "version": 1
 }
