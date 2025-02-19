@@ -284,5 +284,6 @@
         "parent",
         "item_status",
         "item_collection"
-    ]
+    ],
+    "version": 1
 }
