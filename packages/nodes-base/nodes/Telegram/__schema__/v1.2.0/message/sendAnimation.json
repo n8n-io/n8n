@@ -172,5 +172,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }
