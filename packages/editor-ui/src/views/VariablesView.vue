@@ -90,7 +90,7 @@ const variables = computed<VariableResource[]>(() =>
 	[...variableForms.value.values(), ...environmentsStore.variables].map(
 		(variable) =>
 			({
-				type: 'variables',
+				resourceType: 'variables',
 				id: variable.id,
 				name: variable.key,
 				key: variable.key,

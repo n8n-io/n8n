@@ -1,8 +1,12 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import type { Resource, BaseFilters } from '@/components/layouts/ResourcesListLayout.vue';
-import { FolderResource, WorkflowResource } from '@/components/layouts/ResourcesListLayout.vue';
+import type {
+	Resource,
+	BaseFilters,
+	FolderResource,
+	WorkflowResource,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
@@ -105,7 +109,7 @@ const currentFolder = computed(() => route.params?.folderId as string | undefine
 
 const workflowResources = computed<Resource[]>(() => {
 	const resources: Resource[] = workflows.value.map((workflow) => ({
-		type: 'workflows',
+		resourceType: 'workflows',
 		id: workflow.id,
 		name: workflow.name,
 		active: workflow.active,
@@ -118,7 +122,7 @@ const workflowResources = computed<Resource[]>(() => {
 		tags: workflow.tags,
 	}));
 	// Mock folders for testing
-	addTestFolders(resources);
+	// addTestFolders(resources);
 	return resources;
 });
 
@@ -467,6 +471,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 	}
 };
 
+// @ts-expect-error test function
 const addTestFolders = (resources: Resource[]) => {
 	const testFolder1: Folder = {
 		id: '1',
@@ -553,7 +558,7 @@ const addTestFolders = (resources: Resource[]) => {
 			name: testFolder1.name,
 			createdAt: testFolder1.createdAt,
 			updatedAt: testFolder1.updatedAt,
-			type: 'folders',
+			resourceType: 'folders',
 			homeProject: testFolder1.homeProject,
 			sharedWithProjects: undefined,
 			readOnly: false,
@@ -564,7 +569,7 @@ const addTestFolders = (resources: Resource[]) => {
 			name: testFolder2.name,
 			createdAt: testFolder2.createdAt,
 			updatedAt: testFolder2.updatedAt,
-			type: 'folders',
+			resourceType: 'folders',
 			homeProject: testFolder2.homeProject,
 			sharedWithProjects: undefined,
 			readOnly: false,
@@ -580,7 +585,7 @@ const addTestFolders = (resources: Resource[]) => {
 				name: folder.name,
 				createdAt: folder.createdAt,
 				updatedAt: folder.updatedAt,
-				type: 'folders',
+				resourceType: 'folders',
 				homeProject: folder.homeProject,
 				sharedWithProjects: undefined,
 				readOnly: false,
@@ -648,7 +653,7 @@ const addTestFolders = (resources: Resource[]) => {
 		</template>
 		<template #item="{ item: data }">
 			<FolderCard
-				v-if="(data as FolderResource | WorkflowResource).type === 'folders'"
+				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
 				:data="data as FolderResource"
 				class="mb-2xs"
 				@click="navigateToFolder((data as FolderResource).id)"

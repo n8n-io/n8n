@@ -107,19 +107,19 @@ export function isComponentPublicInstance(value: unknown): value is ComponentPub
 }
 
 export function isWorkflowResource(value: Resource): value is WorkflowResource {
-	return value.type === 'workflows';
+	return value.resourceType === 'workflows';
 }
 
 export function isFolderResource(value: Resource): value is FolderResource {
-	return value.type === 'folders';
+	return value.resourceType === 'folders';
 }
 
 export function isVariableResource(value: Resource): value is VariableResource {
-	return value.type === 'variables';
+	return value.resourceType === 'variables';
 }
 
 export function isCredentialsResource(value: Resource): value is CredentialsResource {
-	return value.type === 'credentials';
+	return value.resourceType === 'credentials';
 }
 
 export function isSharedResource(

@@ -26,7 +26,7 @@ export type BaseResource = {
 };
 
 export type FolderResource = BaseResource & {
-	type: 'folders';
+	resourceType: 'folders';
 	updatedAt: string;
 	createdAt: string;
 	readOnly: boolean;
@@ -37,7 +37,7 @@ export type FolderResource = BaseResource & {
 };
 
 export type WorkflowResource = BaseResource & {
-	type: 'workflows';
+	resourceType: 'workflows';
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -49,21 +49,21 @@ export type WorkflowResource = BaseResource & {
 };
 
 export type VariableResource = BaseResource & {
-	type: 'variables';
+	resourceType: 'variables';
 	key?: string;
 	value?: string;
 };
 
 export type CredentialsResource = BaseResource & {
-	type: 'credentials';
+	resourceType: 'credentials';
 	updatedAt: string;
 	createdAt: string;
+	type: string;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
-	credentialType?: string;
 };
 
 export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;

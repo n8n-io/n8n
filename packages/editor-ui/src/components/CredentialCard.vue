@@ -44,7 +44,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
-	credentialsStore.getCredentialTypeByName(props.data.credentialType ?? ''),
+	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
 );
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
