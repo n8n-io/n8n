@@ -1989,7 +1989,15 @@ export class WorkflowExecute {
 		});
 	}
 
-	/** Check if all the data which is needed to run the node is available */
+	/**
+	 * This method determines if a specific node has incoming connections and verifies if execution data is available for all required inputs.
+	 * If any required input data is missing, the node execution is deferred by pushing it back onto the execution stack.
+	 *
+	 * @param workflow - The workflow containing the node and connections.
+	 * @param executionNode - The node being checked.
+	 * @param executionData - The data available for executing the node.
+	 * @returns `true` if the node has the required input data and can execute immediately, otherwise `false`.
+	 */
 	ensureInputData(workflow: Workflow, executionNode: INode, executionData: IExecuteData): boolean {
 		const inputConnections = workflow.connectionsByDestinationNode[executionNode.name]?.main ?? [];
 		for (let connectionIndex = 0; connectionIndex < inputConnections.length; connectionIndex++) {
