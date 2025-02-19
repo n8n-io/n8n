@@ -360,5 +360,6 @@
         "0bb28fa193c6b091813e9ba57a42aae322b1f098": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
