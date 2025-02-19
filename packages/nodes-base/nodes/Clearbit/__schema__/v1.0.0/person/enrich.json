@@ -183,5 +183,6 @@
         "emailProvider",
         "indexedAt",
         "phone"
-    ]
+    ],
+    "version": 1
 }
