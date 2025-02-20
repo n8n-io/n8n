@@ -70,6 +70,23 @@ describe('FolderRepository', () => {
 					});
 				});
 			});
+
+			it('should filter folders by IDs', async () => {
+				const anotherUser = await createMember();
+				const anotherProject = await getPersonalProject(anotherUser);
+
+				const folder1 = await createFolder(project, { name: 'folder1' });
+				await createFolder(anotherProject, { name: 'folder2' });
+
+				const [folders, count] = await folderRepository.getManyAndCount({
+					filter: { ids: [folder1.id] },
+				});
+
+				expect(count).toBe(1);
+				expect(folders).toHaveLength(1);
+				expect(folders[0].name).toBe('folder1');
+			});
+
 			it('should filter folders by project ID', async () => {
 				const anotherUser = await createMember();
 				const anotherProject = await getPersonalProject(anotherUser);

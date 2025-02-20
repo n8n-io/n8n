@@ -129,6 +129,10 @@ export class FolderRepository extends Repository<Folder> {
 		query: SelectQueryBuilder<Folder>,
 		filter: ListQuery.Options['filter'],
 	): void {
+		if (filter?.ids && Array.isArray(filter.ids)) {
+			query.andWhere('folder.id IN (:...ids)', { ids: filter.ids });
+		}
+
 		if (filter?.projectId) {
 			query.andWhere('folder.projectId = :projectId', { projectId: filter.projectId });
 		}
