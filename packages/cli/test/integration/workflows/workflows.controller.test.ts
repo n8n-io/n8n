@@ -1383,8 +1383,8 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: [
-					objectContaining({ id: workflow1.id, name: 'First' }),
 					objectContaining({ id: folder1.id, name: 'First' }),
+					objectContaining({ id: workflow1.id, name: 'First' }),
 				],
 			});
 		});
@@ -1448,14 +1448,14 @@ describe('GET /workflows?includeFolders=true', () => {
 				count: 2,
 				data: [
 					objectContaining({
-						name: 'First',
+						name: 'First Folder',
 						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
 						]),
 					}),
 					objectContaining({
-						name: 'First Folder',
+						name: 'First',
 						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
@@ -1479,8 +1479,8 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response1.body.data).toHaveLength(2);
-			expect(response1.body.data[0].id).toBe(workflow.id);
-			expect(response1.body.data[1].id).toBe(folder.id);
+			expect(response1.body.data[0].id).toBe(folder.id);
+			expect(response1.body.data[1].id).toBe(workflow.id);
 
 			const response2 = await authOwnerAgent
 				.get('/workflows')
@@ -1504,9 +1504,9 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(2);
-			expect(response.body.data[0].id).toBe(workflow.id);
+			expect(response.body.data[0].id).toBe(folder.id);
 			expect(response.body.data[0].homeProject).not.toBeNull();
-			expect(response.body.data[1].id).toBe(folder.id);
+			expect(response.body.data[1].id).toBe(workflow.id);
 			expect(response.body.data[1].homeProject).not.toBeNull();
 		});
 	});
@@ -1527,17 +1527,22 @@ describe('GET /workflows?includeFolders=true', () => {
 				name: 'First Folder',
 			});
 
+			await createFolder(pp, {
+				name: 'Z Folder',
+			});
+
 			let response = await authOwnerAgent
 				.get('/workflows')
 				.query('sortBy=createdAt:asc&includeFolders=true')
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 3,
+				count: 4,
 				data: arrayContaining([
+					expect.objectContaining({ name: 'First Folder' }),
+					expect.objectContaining({ name: 'Z Folder' }),
 					expect.objectContaining({ name: 'First' }),
 					expect.objectContaining({ name: 'Second' }),
-					expect.objectContaining({ name: 'First Folder' }),
 				]),
 			});
 
@@ -1547,8 +1552,9 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 3,
+				count: 4,
 				data: arrayContaining([
+					expect.objectContaining({ name: 'Z Folder' }),
 					expect.objectContaining({ name: 'First Folder' }),
 					expect.objectContaining({ name: 'Second' }),
 					expect.objectContaining({ name: 'First' }),
@@ -1562,6 +1568,10 @@ describe('GET /workflows?includeFolders=true', () => {
 			await createWorkflow({ name: 'My workflow' }, owner);
 			const pp = await getPersonalProject(owner);
 			await createFolder(pp, {
+				name: 'a Folder',
+			});
+
+			await createFolder(pp, {
 				name: 'Z Folder',
 			});
 
@@ -1572,15 +1582,14 @@ describe('GET /workflows?includeFolders=true', () => {
 				.query('sortBy=name:asc&includeFolders=true')
 				.expect(200);
 
-			console.log(response.body);
-
 			expect(response.body).toEqual({
-				count: 4,
+				count: 5,
 				data: [
+					expect.objectContaining({ name: 'a Folder' }),
+					expect.objectContaining({ name: 'Z Folder' }),
 					expect.objectContaining({ name: 'a' }),
 					expect.objectContaining({ name: 'b' }),
 					expect.objectContaining({ name: 'My workflow' }),
-					expect.objectContaining({ name: 'Z Folder' }),
 				],
 			});
 
@@ -1590,9 +1599,10 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 4,
+				count: 5,
 				data: [
 					expect.objectContaining({ name: 'Z Folder' }),
+					expect.objectContaining({ name: 'a Folder' }),
 					expect.objectContaining({ name: 'My workflow' }),
 					expect.objectContaining({ name: 'b' }),
 					expect.objectContaining({ name: 'a' }),
@@ -1606,6 +1616,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			const pp = await getPersonalProject(owner);
 			await createFolder(pp, {
 				name: 'Folder',
+			});
+			await createFolder(pp, {
+				name: 'Z Folder',
 			});
 			await createWorkflow(
 				{ name: 'Second', updatedAt: baseDate.plus({ minutes: 1 }).toJSDate() },
@@ -1624,9 +1637,10 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 3,
+				count: 4,
 				data: arrayContaining([
 					expect.objectContaining({ name: 'Folder' }),
+					expect.objectContaining({ name: 'Z Folder' }),
 					expect.objectContaining({ name: 'Second' }),
 					expect.objectContaining({ name: 'First' }),
 				]),
@@ -1638,11 +1652,12 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 3,
+				count: 4,
 				data: arrayContaining([
+					expect.objectContaining({ name: 'Z Folder' }),
+					expect.objectContaining({ name: 'Folder' }),
 					expect.objectContaining({ name: 'First' }),
 					expect.objectContaining({ name: 'Second' }),
-					expect.objectContaining({ name: 'Folder' }),
 				]),
 			});
 		});
@@ -1672,10 +1687,10 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			expect(response.body.data).toHaveLength(4);
 			expect(response.body.count).toBe(6);
-			expect(response.body.data[0].name).toBe('Workflow 3');
-			expect(response.body.data[1].name).toBe('Workflow 4');
-			expect(response.body.data[2].name).toBe('Workflow 5');
-			expect(response.body.data[3].name).toBe('Folder 1');
+			expect(response.body.data[0].name).toBe('Workflow 2');
+			expect(response.body.data[1].name).toBe('Workflow 3');
+			expect(response.body.data[2].name).toBe('Workflow 4');
+			expect(response.body.data[3].name).toBe('Workflow 5');
 		});
 
 		test('should handle pagination with sorting', async () => {
@@ -1685,8 +1700,8 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			expect(response.body.data).toHaveLength(2);
 			expect(response.body.count).toBe(6);
-			expect(response.body.data[0].name).toBe('Workflow 4');
-			expect(response.body.data[1].name).toBe('Workflow 3');
+			expect(response.body.data[0].name).toBe('Workflow 5');
+			expect(response.body.data[1].name).toBe('Workflow 4');
 		});
 
 		test('should handle pagination with filtering', async () => {
@@ -1706,8 +1721,8 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			expect(response.body.data).toHaveLength(2);
 			expect(response.body.count).toBe(4);
-			expect(response.body.data[0].name).toBe('Special Workflow 2');
-			expect(response.body.data[1].name).toBe('Special Workflow 3');
+			expect(response.body.data[0].name).toBe('Special Workflow 1');
+			expect(response.body.data[1].name).toBe('Special Workflow 2');
 		});
 
 		test('should return empty array when pagination exceeds total count', async () => {

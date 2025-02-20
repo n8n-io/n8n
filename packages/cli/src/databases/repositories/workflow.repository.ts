@@ -212,14 +212,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const resultTableEscaped = baseQuery.escape('RESULT');
 		const nameColumnEscaped = baseQuery.escape('name');
+		const resourceColumnEscaped = baseQuery.escape('resource');
 		const sortByColumnEscaped = baseQuery.escape(sortByColumn);
+
+		// Guarantee folders show up first
+		query.orderBy(`${resultTableEscaped}.${resourceColumnEscaped}`, 'ASC');
 
 		if (sortByColumn === 'name') {
 			query
 				.addSelect(`LOWER(${resultTableEscaped}.${nameColumnEscaped})`, 'name_lower')
-				.orderBy('name_lower', sortByDirection);
+				.addOrderBy('name_lower', sortByDirection);
 		} else {
-			query.orderBy(`${resultTableEscaped}.${sortByColumnEscaped}`, sortByDirection);
+			query.addOrderBy(`${resultTableEscaped}.${sortByColumnEscaped}`, sortByDirection);
 		}
 	}
 
