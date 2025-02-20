@@ -49,6 +49,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
+import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 
 export function useCanvasMapping({
 	nodes,
@@ -63,6 +64,7 @@ export function useCanvasMapping({
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
+	const { dirtinessByName } = useNodeDirtiness();
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
 		return {
@@ -97,6 +99,7 @@ export function useCanvasMapping({
 					labelSize: nodeOutputLabelSizeById.value[node.id],
 				},
 				tooltip: nodeTooltipById.value[node.id],
+				dirtiness: dirtinessByName.value[node.name],
 			},
 		};
 	}
@@ -580,20 +583,36 @@ export function useCanvasMapping({
 		const runDataTotal =
 			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
 
-		let status: CanvasConnectionData['status'];
-		if (nodeExecutionRunningById.value[connection.source]) {
-			status = 'running';
-		} else if (
-			nodePinnedDataById.value[connection.source] &&
-			nodeExecutionRunDataById.value[connection.source]
-		) {
-			status = 'pinned';
-		} else if (nodeHasIssuesById.value[connection.source]) {
-			status = 'error';
-		} else if (runDataTotal > 0) {
-			status = 'success';
+		function getStatus(): CanvasConnectionData['status'] | undefined {
+			if (nodeExecutionRunningById.value[connection.source]) {
+				return 'running';
+			}
+
+			if (
+				nodePinnedDataById.value[connection.source] &&
+				nodeExecutionRunDataById.value[connection.source]
+			) {
+				return 'pinned';
+			}
+
+			if (nodeHasIssuesById.value[connection.source]) {
+				return 'error';
+			}
+
+			const sourceNodeName = connection.data?.source.node;
+
+			if (sourceNodeName && dirtinessByName.value[sourceNodeName] !== undefined) {
+				return 'warning';
+			}
+
+			if (runDataTotal > 0) {
+				return 'success';
+			}
+
+			return undefined;
 		}
 
+		const status = getStatus();
 		const maxConnections = [
 			...nodeInputsById.value[connection.source],
 			...nodeInputsById.value[connection.target],

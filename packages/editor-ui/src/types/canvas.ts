@@ -47,6 +47,12 @@ export const enum CanvasNodeRenderType {
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
+export type CanvasNodeDirtiness =
+	| 'parameters-updated'
+	| 'incoming-connections-updated'
+	| 'pinned-data-updated'
+	| 'upstream-dirty';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
@@ -60,6 +66,7 @@ export type CanvasNodeDefaultRender = {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
 		tooltip?: string;
+		dirtiness?: CanvasNodeDirtiness;
 	}>;
 };
 
@@ -117,7 +124,7 @@ export type CanvasNode = Node<CanvasNodeData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	status?: 'success' | 'error' | 'pinned' | 'running';
+	status?: 'success' | 'error' | 'warning' | 'pinned' | 'running';
 	maxConnections?: number;
 }
 

@@ -206,6 +206,10 @@ export function clickWorkflowCardContent(workflowName: string) {
 	getWorkflowCardContent(workflowName).click();
 }
 
+export function clickAssignmentCollectionAdd() {
+	cy.getByTestId('assignment-collection-drop-area').click();
+}
+
 export function assertNodeOutputHintExists() {
 	getNodeOutputHint().should('exist');
 }

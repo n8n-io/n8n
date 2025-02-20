@@ -41,7 +41,13 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
+const plusType = computed(() =>
+	renderOptions.value.dirtiness !== undefined
+		? 'warning'
+		: runDataTotal.value > 0
+			? 'success'
+			: 'default',
+);
 
 const plusLineSize = computed(
 	() =>
@@ -136,7 +142,7 @@ function onClickAdd() {
 	left: 50%;
 	transform: translate(-50%, -150%);
 	font-size: var(--font-size-xs);
-	color: var(--color-success);
+	color: var(--color-text-base);
 }
 </style>
 

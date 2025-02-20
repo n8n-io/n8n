@@ -67,6 +67,8 @@ const edgeColor = computed(() => {
 		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
 		return 'var(--color-background-dark)';
+	} else if (status.value === 'warning') {
+		return 'var(--color-warning)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}
@@ -87,7 +89,7 @@ const edgeClasses = computed(() => ({
 
 const edgeLabelStyle = computed(() => ({
 	transform: `translate(0, ${isConnectorStraight.value ? '-100%' : '0%'})`,
-	color: edgeColor.value,
+	color: 'var(--color-text-base)',
 }));
 
 const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);

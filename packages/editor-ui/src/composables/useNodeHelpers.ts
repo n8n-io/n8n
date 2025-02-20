@@ -642,7 +642,7 @@ export function useNodeHelpers() {
 			}
 
 			// Toggle disabled flag
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: node.name,
 				properties: {
 					disabled: newDisabledState,
@@ -662,7 +662,12 @@ export function useNodeHelpers() {
 			updateNodesInputIssues();
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(
-					new EnableNodeToggleCommand(node.name, node.disabled === true, newDisabledState),
+					new EnableNodeToggleCommand(
+						node.name,
+						node.disabled === true,
+						newDisabledState,
+						Date.now(),
+					),
 				);
 			}
 		}

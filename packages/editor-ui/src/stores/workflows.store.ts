@@ -331,6 +331,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return nodeMetadata.value[nodeName]?.parametersLastUpdatedAt;
 	}
 
+	function getPinnedDataLastUpdate(nodeName: string): number | undefined {
+		return nodeMetadata.value[nodeName]?.pinnedDataLastUpdatedAt;
+	}
+
+	function getPinnedDataLastRemovedAt(nodeName: string): number | undefined {
+		return nodeMetadata.value[nodeName]?.pinnedDataLastRemovedAt;
+	}
+
 	function isNodePristine(nodeName: string): boolean {
 		return nodeMetadata.value[nodeName] === undefined || nodeMetadata.value[nodeName].pristine;
 	}
@@ -817,12 +825,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function pinData(payload: { node: INodeUi; data: INodeExecutionData[] }): void {
+		const nodeName = payload.node.name;
+
 		if (!workflow.value.pinData) {
 			workflow.value = { ...workflow.value, pinData: {} };
 		}
 
 		if (!Array.isArray(payload.data)) {
 			payload.data = [payload.data];
+		}
+
+		if ((workflow.value.pinData?.[nodeName] ?? []).length > 0 && nodeMetadata.value[nodeName]) {
+			// Updating existing pinned data
+			nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt = Date.now();
 		}
 
 		const storedPinData = payload.data.map((item) =>
@@ -833,7 +848,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...workflow.value,
 			pinData: {
 				...workflow.value.pinData,
-				[payload.node.name]: storedPinData,
+				[nodeName]: storedPinData,
 			},
 		};
 
@@ -844,21 +859,27 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function unpinData(payload: { node: INodeUi }): void {
+		const nodeName = payload.node.name;
+
 		if (!workflow.value.pinData) {
 			workflow.value = { ...workflow.value, pinData: {} };
 		}
 
-		const { [payload.node.name]: _, ...pinData } = workflow.value.pinData as IPinData;
+		const { [nodeName]: _, ...pinData } = workflow.value.pinData as IPinData;
 		workflow.value = {
 			...workflow.value,
 			pinData,
 		};
 
+		if (nodeMetadata.value[nodeName]) {
+			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
+		}
+
 		uiStore.stateIsDirty = true;
 		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('unpin-data', {
-			nodeNames: [payload.node.name],
+			nodeNames: [nodeName],
 		});
 	}
 
@@ -1203,9 +1224,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (const key of Object.keys(updateInformation.properties)) {
 				uiStore.stateIsDirty = true;
 
-				updateNodeAtIndex(nodeIndex, {
-					[key]: updateInformation.properties[key],
-				});
+				const typedKey = key as keyof INodeUpdatePropertiesInformation['properties'];
+				const property = updateInformation.properties[typedKey];
+
+				updateNodeAtIndex(nodeIndex, { [key]: property });
 			}
 		}
 	}
@@ -1691,6 +1713,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodeById,
 		getNodesByIds,
 		getParametersLastUpdate,
+		getPinnedDataLastUpdate,
+		getPinnedDataLastRemovedAt,
 		isNodePristine,
 		isNodeExecuting,
 		getExecutionDataById,

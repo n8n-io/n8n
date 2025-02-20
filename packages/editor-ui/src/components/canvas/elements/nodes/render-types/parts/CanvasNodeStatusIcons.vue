@@ -4,6 +4,8 @@ import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@/composables/useI18n';
+import { CanvasNodeRenderType } from '@/types';
+import { N8nTooltip } from 'n8n-design-system';
 
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
@@ -18,9 +20,13 @@ const {
 	hasRunData,
 	runDataIterations,
 	isDisabled,
+	render,
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
+const dirtiness = computed(() =>
+	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
+);
 </script>
 
 <template>
@@ -65,6 +71,20 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		:class="[$style.status, $style.running]"
 	>
 		<FontAwesomeIcon icon="sync-alt" spin />
+	</div>
+	<div
+		v-else-if="dirtiness !== undefined"
+		data-test-id="canvas-node-status-warning"
+		:class="[$style.status, $style.warning]"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{
+					i18n.baseText(dirtiness === 'parameters-updated' ? 'node.dirty' : 'node.subjectToChange')
+				}}
+			</template>
+			<FontAwesomeIcon icon="triangle" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasRunData"
@@ -125,5 +145,9 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 
 .count {
 	font-size: var(--font-size-s);
+}
+
+.warning {
+	color: var(--color-warning);
 }
 </style>

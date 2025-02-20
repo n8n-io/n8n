@@ -1,0 +1,74 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"id": "dcc1c5e1-c6c1-45f8-80d5-65c88d66d56e",
+			"name": "A"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3d8f0810-84f0-41ce-a81b-0e7f04fd88cb",
+							"name": "",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "097ffa30-d37b-4de6-bd5c-ccd945f31df1",
+			"name": "B"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "dc44e635-916f-4f76-a745-1add5762f730",
+			"name": "C"
+		}
+	],
+	"connections": {
+		"A": {
+			"main": [
+				[
+					{
+						"node": "B",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"B": {
+			"main": [
+				[
+					{
+						"node": "C",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "b0d9447cff9c96796e4ac4f00fcd899b03cfac3ab3d4f748ae686d34881eae0c"
+	}
+}
