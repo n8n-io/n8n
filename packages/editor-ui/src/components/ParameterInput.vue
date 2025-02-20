@@ -1240,6 +1240,7 @@ onUpdated(async () => {
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
 							fullscreen
+							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
