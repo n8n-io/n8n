@@ -198,6 +198,15 @@ watch(
 	},
 );
 
+watch(
+	() => route.params?.folderId,
+	async (newVal) => {
+		if (!newVal) {
+			currentFolder.value = undefined;
+		}
+	},
+);
+
 // Lifecycle hooks
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
@@ -463,6 +472,17 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 };
 
 const addTestFolders = (resources: Resource[]) => {
+	// Add parent folder to the first two workflows
+	if (workflowResources.value?.length > 0) {
+		(workflowResources.value as WorkflowResource[])[0].parentFolder = {
+			id: '1',
+			name: 'Personal workflows',
+		};
+		(workflowResources.value as WorkflowResource[])[1].parentFolder = {
+			id: '2',
+			name: 'AI Folder',
+		};
+	}
 	const testFolder1: Folder = {
 		id: '1',
 		name: 'Personal workflows',

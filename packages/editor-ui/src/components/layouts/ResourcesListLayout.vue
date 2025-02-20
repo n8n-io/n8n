@@ -17,7 +17,6 @@ import type { Scope } from '@n8n/permissions';
 import type { ITag } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import type { FolderShortInfo } from '@/types/folders.types';
-import { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
@@ -47,6 +46,7 @@ export type WorkflowResource = BaseResource & {
 	tags?: ITag[] | string[];
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
+	parentFolder?: FolderShortInfo;
 };
 
 export type VariableResource = BaseResource & {
