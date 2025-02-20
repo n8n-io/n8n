@@ -159,7 +159,7 @@ describe('TestDefinitionListView', () => {
 		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 	});
 
-	it.only('should sort tests by updated date in descending order', async () => {
+	it('should sort tests by updated date in descending order', async () => {
 		const testDefinitionStore = mockedStore(useTestDefinitionStore);
 		testDefinitionStore.allTestDefinitionsByWorkflowId[workflowId] = mockTestDefinitions;
 
