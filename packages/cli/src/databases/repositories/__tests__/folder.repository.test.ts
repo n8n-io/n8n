@@ -247,7 +247,6 @@ describe('FolderRepository', () => {
 
 		describe('select', () => {
 			let testFolder: Folder;
-			let workflowWithTestFolder: WorkflowEntity;
 
 			beforeEach(async () => {
 				const parentFolder = await createFolder(project, { name: 'Parent Folder' });
@@ -257,7 +256,7 @@ describe('FolderRepository', () => {
 					parentFolder,
 					tags: [tag],
 				});
-				workflowWithTestFolder = await createWorkflow({ parentFolder: testFolder });
+				await createWorkflow({ parentFolder: testFolder });
 			});
 
 			it('should select only id and name when specified', async () => {
