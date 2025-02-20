@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { TextSize, TextColor, TextAlign } from 'n8n-design-system/types/text';
+import type { TextAlign, TextColor, TextSize } from 'n8n-design-system/types/text';
 
 interface TextProps {
 	bold?: boolean;
@@ -119,6 +119,14 @@ const classes = computed(() => {
 
 .warning {
 	color: var(--color-warning);
+}
+
+.foreground-dark {
+	color: var(--color-foreground-dark);
+}
+
+.foreground-xdark {
+	color: var(--color-foreground-xdark);
 }
 
 .align-left {
