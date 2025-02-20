@@ -11,5 +11,6 @@
     "required": [
         "_id",
         "success"
-    ]
+    ],
+    "version": 1
 }

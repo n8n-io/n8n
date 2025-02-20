@@ -149,5 +149,6 @@
         "label_ids",
         "owner_name",
         "cc_email"
-    ]
+    ],
+    "version": 1
 }

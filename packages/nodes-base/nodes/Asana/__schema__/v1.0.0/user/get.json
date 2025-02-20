@@ -1,36 +1,48 @@
 {
-	"type": "object",
-	"properties": {
-		"gid": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"resource_type": {
-			"type": "string"
-		},
-		"workspaces": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"gid": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"resource_type": {
-						"type": "string"
-					}
-				},
-				"required": ["gid", "name", "resource_type"]
-			}
-		}
-	},
-	"required": ["gid", "email", "name", "photo", "resource_type", "workspaces"]
+    "type": "object",
+    "properties": {
+        "gid": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "workspaces": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "name",
+                    "resource_type"
+                ]
+            }
+        }
+    },
+    "required": [
+        "gid",
+        "email",
+        "name",
+        "photo",
+        "resource_type",
+        "workspaces"
+    ],
+    "version": 1
 }

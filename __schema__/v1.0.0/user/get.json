@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        },
+        "mailNickname": {
+            "type": "string"
+        },
+        "securityIdentifier": {
+            "type": "string"
+        },
+        "accountEnabled": {
+            "type": "boolean"
+        },
+        "city": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "@odata.context",
+        "id"
+    ],
+    "version": 1
+}

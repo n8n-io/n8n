@@ -461,5 +461,6 @@
         "permissions",
         "network_count",
         "subscribers_count"
-    ]
+    ],
+    "version": 1
 }

@@ -217,5 +217,6 @@
         "owner_name",
         "primary_email",
         "cc_email"
-    ]
+    ],
+    "version": 1
 }

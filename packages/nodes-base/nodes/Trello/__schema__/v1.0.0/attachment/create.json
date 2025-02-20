@@ -66,5 +66,6 @@
         "isMalicious": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

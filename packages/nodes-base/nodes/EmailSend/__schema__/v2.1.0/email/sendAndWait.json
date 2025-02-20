@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "approved": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approved"
+            ]
+        }
+    },
+    "version": 1
+}

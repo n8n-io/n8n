@@ -758,5 +758,6 @@
         "folder",
         "space",
         "attachments"
-    ]
+    ],
+    "version": 1
 }

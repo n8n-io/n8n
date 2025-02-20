@@ -348,5 +348,6 @@
         "display",
         "entities",
         "memberCreator"
-    ]
+    ],
+    "version": 1
 }

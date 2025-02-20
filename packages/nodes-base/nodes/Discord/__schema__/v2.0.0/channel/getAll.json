@@ -79,5 +79,6 @@
         "parent_id",
         "position",
         "permission_overwrites"
-    ]
+    ],
+    "version": 1
 }

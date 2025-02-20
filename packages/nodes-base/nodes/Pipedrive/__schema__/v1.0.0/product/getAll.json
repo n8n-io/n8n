@@ -177,5 +177,6 @@
         "billing_frequency",
         "prices",
         "product_variations"
-    ]
+    ],
+    "version": 1
 }

@@ -1,17 +1,18 @@
 {
-	"type": "object",
-	"properties": {
-		"index": {
-			"type": "integer"
-		},
-		"text": {
-			"type": "string"
-		},
-		"logprobs": {
-			"type": "null"
-		},
-		"finish_reason": {
-			"type": "string"
-		}
-	}
+    "type": "object",
+    "properties": {
+        "index": {
+            "type": "integer"
+        },
+        "text": {
+            "type": "string"
+        },
+        "logprobs": {
+            "type": "null"
+        },
+        "finish_reason": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

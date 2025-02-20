@@ -205,5 +205,6 @@
         "productid": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

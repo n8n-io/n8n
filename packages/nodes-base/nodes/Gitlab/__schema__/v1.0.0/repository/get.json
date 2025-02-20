@@ -406,5 +406,6 @@
         "web_url",
         "_links",
         "updated_at"
-    ]
+    ],
+    "version": 1
 }

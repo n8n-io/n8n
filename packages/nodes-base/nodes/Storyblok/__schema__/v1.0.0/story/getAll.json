@@ -123,5 +123,6 @@
         "group_id",
         "first_published_at",
         "path"
-    ]
+    ],
+    "version": 1
 }

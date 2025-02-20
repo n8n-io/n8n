@@ -92,5 +92,6 @@
         "type",
         "unsigned",
         "event_id"
-    ]
+    ],
+    "version": 1
 }

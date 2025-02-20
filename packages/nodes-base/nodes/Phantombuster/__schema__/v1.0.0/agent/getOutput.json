@@ -10,5 +10,6 @@
         "profileUrl": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

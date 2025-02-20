@@ -240,5 +240,6 @@
         "cardRole": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }

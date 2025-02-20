@@ -94,5 +94,6 @@
         "createdAt",
         "updatedAt",
         "triggerCount"
-    ]
+    ],
+    "version": 1
 }

@@ -152,5 +152,6 @@
         "traceId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

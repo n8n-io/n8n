@@ -68,5 +68,6 @@
         "preferred_source",
         "company_id",
         "unique_external_id"
-    ]
+    ],
+    "version": 1
 }

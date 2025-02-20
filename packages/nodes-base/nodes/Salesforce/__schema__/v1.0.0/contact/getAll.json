@@ -22,5 +22,6 @@
         "LastName": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

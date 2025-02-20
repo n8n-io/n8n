@@ -57,5 +57,6 @@
         "last_changed",
         "last_updated",
         "context"
-    ]
+    ],
+    "version": 1
 }

@@ -85,5 +85,6 @@
         "postalCode": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

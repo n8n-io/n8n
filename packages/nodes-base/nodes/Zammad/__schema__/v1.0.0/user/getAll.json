@@ -386,5 +386,6 @@
         "authorization_ids",
         "overview_sorting_ids",
         "group_ids"
-    ]
+    ],
+    "version": 1
 }

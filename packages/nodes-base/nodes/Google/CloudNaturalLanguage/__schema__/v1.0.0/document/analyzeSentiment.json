@@ -36,5 +36,6 @@
         "documentSentiment",
         "language",
         "sentences"
-    ]
+    ],
+    "version": 1
 }

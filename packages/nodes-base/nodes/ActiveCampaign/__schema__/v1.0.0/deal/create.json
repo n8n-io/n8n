@@ -514,5 +514,6 @@
         "dealGroups",
         "dealStages",
         "deal"
-    ]
+    ],
+    "version": 1
 }

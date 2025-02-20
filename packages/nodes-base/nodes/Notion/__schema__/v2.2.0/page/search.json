@@ -14,5 +14,6 @@
     "required": [
         "id",
         "url"
-    ]
+    ],
+    "version": 1
 }

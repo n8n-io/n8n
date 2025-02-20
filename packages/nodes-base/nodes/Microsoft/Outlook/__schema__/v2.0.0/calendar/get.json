@@ -64,5 +64,6 @@
     },
     "required": [
         "@odata.context"
-    ]
+    ],
+    "version": 1
 }
