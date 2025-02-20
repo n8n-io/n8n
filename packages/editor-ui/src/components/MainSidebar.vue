@@ -466,15 +466,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	height: 100%;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
-	width: $sidebar-expanded-width;
-	padding-top: 54px;
+	min-width: $sidebar-expanded-width;
+	max-width: 243px;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
@@ -489,7 +485,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 100px;
+		min-width: auto;
 
 		.logo {
 			flex-direction: column;
@@ -589,6 +585,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--border-radius-small);
-	margin: 5px 5px 0;
+	margin: 7px 12px 0 5px;
 }
 </style>
