@@ -345,7 +345,7 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
-		// 8. try to activate it again if it was active
+		// 9. try to activate it again if it was active
 		if (wasActive) {
 			try {
 				await this.activeWorkflowManager.add(workflowId, 'update');
