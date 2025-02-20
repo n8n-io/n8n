@@ -22,7 +22,7 @@ import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
 type ResourceType = 'folder' | 'workflow';
 
-type WorkflowAndFolderUnion = {
+type WorkflowFolderUnionRow = {
 	id: string;
 	name: string;
 	name_lower?: string;
@@ -189,7 +189,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		query.skip(options.skip ?? 0);
 
-		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
+		const workflowsAndFolders = await query.getRawMany<WorkflowFolderUnionRow>();
 
 		return workflowsAndFolders.map((item) => {
 			const { name_lower, ...rest } = item;
@@ -217,7 +217,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			this.getWorkflowsAndFoldersCount(workflowIds, options),
 		]);
 
-		const { workflows, folders } = await this.fetchExtraData(workflowIds);
+		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders);
 
 		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
 			workflows,
@@ -227,17 +227,30 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return [enrichedWorkflowsAndFolders, count] as const;
 	}
 
-	private async fetchExtraData(workflowIds: string[]) {
+	private getFolderIds(workflowsAndFolders: WorkflowFolderUnionRow[]) {
+		return workflowsAndFolders.filter((item) => item.resource === 'folder').map((item) => item.id);
+	}
+
+	private getWorkflowsIds(workflowsAndFolders: WorkflowFolderUnionRow[]) {
+		return workflowsAndFolders
+			.filter((item) => item.resource === 'workflow')
+			.map((item) => item.id);
+	}
+
+	private async fetchExtraData(workflowsAndFolders: WorkflowFolderUnionRow[]) {
+		const workflowIds = this.getWorkflowsIds(workflowsAndFolders);
+		const folderIds = this.getFolderIds(workflowsAndFolders);
+
 		const [workflows, folders] = await Promise.all([
 			this.getMany(workflowIds),
-			this.folderRepository.getMany(),
+			this.folderRepository.getMany({ filter: { folderIds } }),
 		]);
 
 		return { workflows, folders };
 	}
 
 	private enrichDataWithExtras(
-		baseData: WorkflowAndFolderUnion[],
+		baseData: WorkflowFolderUnionRow[],
 		extraData: {
 			workflows: ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[];
 			folders: Folder[];

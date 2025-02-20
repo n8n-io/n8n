@@ -79,7 +79,7 @@ describe('FolderRepository', () => {
 				await createFolder(anotherProject, { name: 'folder2' });
 
 				const [folders, count] = await folderRepository.getManyAndCount({
-					filter: { ids: [folder1.id] },
+					filter: { folderIds: [folder1.id] },
 				});
 
 				expect(count).toBe(1);
