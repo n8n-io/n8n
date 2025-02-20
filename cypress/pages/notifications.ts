@@ -13,10 +13,12 @@ export const infoToast = () => cy.get('.el-notification:has(.el-notification--in
  * Actions
  */
 export const clearNotifications = () => {
-	const notificationSelector = '.el-notification:has(.el-notification--success)'
+	const notificationSelector = '.el-notification:has(.el-notification--success)';
 	cy.get('body').then(($body) => {
 		if ($body.find(notificationSelector).length) {
-			cy.get(notificationSelector).find('.el-notification__closeBtn').click({ multiple: true, force: true });
+			cy.get(notificationSelector)
+				.find('.el-notification__closeBtn')
+				.click({ multiple: true, force: true });
 		}
 	});
 };
