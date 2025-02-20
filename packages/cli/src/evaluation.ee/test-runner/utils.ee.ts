@@ -1,3 +1,4 @@
+import { TEST_CASE_EXECUTION_ERROR_CODE } from '@n8n/api-types';
 import assert from 'assert';
 import { mapValues, pick } from 'lodash';
 import type {
@@ -53,7 +54,7 @@ export function createPinData(
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
 			} else {
-				throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
+				throw new TestCaseExecutionError(TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_DOES_NOT_EXIST);
 			}
 		}
 	}

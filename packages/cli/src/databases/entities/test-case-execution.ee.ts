@@ -1,3 +1,5 @@
+import { TestCaseExecutionStatus } from '@n8n/api-types';
+import type { TestCaseExecutionErrorCode } from '@n8n/api-types';
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -8,18 +10,8 @@ import {
 } from '@/databases/entities/abstract-entity';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { TestRun } from '@/databases/entities/test-run.ee';
-import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
 export type TestCaseRunMetrics = Record<string, number | boolean>;
-
-export type TestCaseExecutionStatus =
-	| 'new' // Test case execution was created and added to the test run, but has not been started yet
-	| 'running' // Workflow under test is running
-	| 'evaluation_running' // Evaluation workflow is running
-	| 'success' // Both workflows have completed successfully
-	| 'error' // An error occurred during the execution of workflow under test or evaluation workflow
-	| 'warning' // There were warnings during the execution of workflow under test or evaluation workflow. Used only to signal possible issues to user, not to indicate a failure.
-	| 'cancelled';
 
 /**
  * This entity represents the linking between the test runs and individual executions.

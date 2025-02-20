@@ -1,3 +1,4 @@
+import { TEST_CASE_EXECUTION_ERROR_CODE } from '@n8n/api-types';
 import difference from 'lodash/difference';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -33,7 +34,7 @@ export class EvaluationMetrics {
 					addResultsInfo.addedMetrics[metricName] = metricValue;
 					this.rawMetricsByName.get(metricName)!.push(metricValue);
 				} else {
-					throw new TestCaseExecutionError('INVALID_METRICS', {
+					throw new TestCaseExecutionError(TEST_CASE_EXECUTION_ERROR_CODE.INVALID_METRICS, {
 						metricName,
 						metricValue,
 					});

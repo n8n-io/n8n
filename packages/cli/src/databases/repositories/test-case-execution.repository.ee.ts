@@ -1,3 +1,4 @@
+import type { TestCaseExecutionErrorCode } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
@@ -5,7 +6,6 @@ import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
 import type { IDataObject } from 'n8n-workflow';
 
 import { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
-import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
 type StatusUpdateOptions = {
 	testRunId: string;
