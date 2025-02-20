@@ -13,16 +13,38 @@ import type {
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
+import { FolderRepository } from './folder.repository';
+import type { Folder } from '../entities/folder';
 import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
+
+type ResourceType = 'folder' | 'workflow';
+
+type WorkflowAndFolderUnion = {
+	id: string;
+	name: string;
+	name_lower?: string;
+	resource: ResourceType;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+export type WorkflowAndFolderUnionFull = (
+	| ListQuery.Workflow.Plain
+	| ListQuery.Workflow.WithSharing
+	| (Folder & { workflowsCount?: number })
+) & {
+	resource: ResourceType;
+};
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderRepository: FolderRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
@@ -99,20 +121,160 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
+	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+		const subQueryParameters: ListQuery.Options = {
+			select: {
+				createdAt: true,
+				updatedAt: true,
+				id: true,
+				name: true,
+			},
+			filter: options.filter,
+		};
+
+		const columnNames = [...Object.keys(subQueryParameters.select ?? {}), 'resource'];
+
+		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+			options.sortBy ?? 'updatedAt:asc',
+		);
+
+		const foldersQuery = this.folderRepository
+			.getManyQuery(subQueryParameters)
+			.addSelect("'folder'", 'resource');
+
+		const workflowsQuery = this.getManyQuery(workflowIds, subQueryParameters).addSelect(
+			"'workflow'",
+			'resource',
+		);
+
+		const qb = this.manager.createQueryBuilder();
+
+		return {
+			baseQuery: qb
+				.createQueryBuilder()
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
+				.addCommonTableExpression(
+					`SELECT * FROM ${qb.escape('FOLDERS_QUERY')} UNION ALL SELECT * FROM ${qb.escape('WORKFLOWS_QUERY')}`,
+					'RESULT_QUERY',
+				),
+			sortByColumn,
+			sortByDirection,
+		};
+	}
+
+	async getWorkflowsAndFoldersUnion(workflowIds: string[], options: ListQuery.Options = {}) {
+		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
+			workflowIds,
+			options,
+		);
+
+		const query = baseQuery
+			.select(`${baseQuery.escape('RESULT')}.*`)
+			.from('RESULT_QUERY', 'RESULT');
+		if (sortByColumn === 'name') {
+			query
+				.addSelect(`LOWER(${baseQuery.escape('RESULT')}.${baseQuery.escape('name')})`, 'name_lower')
+				.orderBy('name_lower', sortByDirection);
+		} else {
+			query.orderBy(
+				`${baseQuery.escape('RESULT')}.${baseQuery.escape(sortByColumn)}`,
+				sortByDirection,
+			);
+		}
+
+		if (options.take) {
+			query.take(options.take);
+		}
+
+		query.skip(options.skip ?? 0);
+
+		const workflowsAndFolders = await query.getRawMany<WorkflowAndFolderUnion>();
+
+		return workflowsAndFolders.map((item) => {
+			const { name_lower, ...rest } = item;
+			return rest;
+		});
+	}
+
+	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		const { skip, take, ...baseQueryParameters } = options;
+
+		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
+
+		const response = await baseQuery
+			.select(`COUNT(DISTINCT ${baseQuery.escape('RESULT')}.${baseQuery.escape('id')})`, 'count')
+			.from('RESULT_QUERY', 'RESULT')
+			.select('COUNT(*)', 'count')
+			.getRawOne<{ count: number | string }>();
+
+		return Number(response?.count) || 0;
+	}
+
+	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		const [workflowsAndFolders, count] = await Promise.all([
+			this.getWorkflowsAndFoldersUnion(workflowIds, options),
+			this.getWorkflowsAndFoldersCount(workflowIds, options),
+		]);
+
+		const { workflows, folders } = await this.fetchExtraData(workflowIds);
+
+		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
+			workflows,
+			folders,
+		});
+
+		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	private async fetchExtraData(workflowIds: string[]) {
+		const [workflows, folders] = await Promise.all([
+			this.getMany(workflowIds),
+			this.folderRepository.getMany(),
+		]);
+
+		return { workflows, folders };
+	}
+
+	private enrichDataWithExtras(
+		baseData: WorkflowAndFolderUnion[],
+		extraData: {
+			workflows: ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[];
+			folders: Folder[];
+		},
+	): WorkflowAndFolderUnionFull[] {
+		return baseData.map((item) => {
+			const extraItem =
+				item.resource === 'folder'
+					? extraData.folders.find((folder) => folder.id === item.id)
+					: extraData.workflows.find((workflow) => workflow.id === item.id);
+
+			return extraItem ? { ...item, ...extraItem } : item;
+		});
+	}
+
+	async getMany(workflowIds: string[], options: ListQuery.Options = {}) {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		const query = this.getManyQuery(workflowIds, options);
+
+		const workflows = (await query.getMany()) as
+			| ListQuery.Workflow.Plain[]
+			| ListQuery.Workflow.WithSharing[];
+
+		return workflows;
+	}
+
+	async getManyAndCount(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
 		if (sharedWorkflowIds.length === 0) {
 			return { workflows: [], count: 0 };
 		}
 
-		const qb = this.createBaseQuery(sharedWorkflowIds);
+		const query = this.getManyQuery(sharedWorkflowIds, options);
 
-		this.applyFilters(qb, options.filter);
-		this.applySelect(qb, options.select);
-		this.applyRelations(qb, options.select);
-		this.applySorting(qb, options.sortBy);
-		this.applyPagination(qb, options);
-
-		const [workflows, count] = (await qb.getManyAndCount()) as [
+		const [workflows, count] = (await query.getManyAndCount()) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
@@ -120,9 +282,25 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return { workflows, count };
 	}
 
-	private createBaseQuery(sharedWorkflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
-		return this.createQueryBuilder('workflow').where('workflow.id IN (:...sharedWorkflowIds)', {
-			sharedWorkflowIds,
+	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+		const qb = this.createBaseQuery(workflowIds);
+
+		this.applyFilters(qb, options.filter);
+		this.applySelect(qb, options.select);
+		this.applyRelations(qb, options.select);
+		this.applySorting(qb, options.sortBy);
+		this.applyPagination(qb, options);
+
+		return qb;
+	}
+
+	private createBaseQuery(workflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
+		return this.createQueryBuilder('workflow').where('workflow.id IN (:...workflowIds)', {
+			/*
+			 * If workflowIds is empty, add a dummy value to prevent an error
+			 * when using the IN operator with an empty array.
+			 */
+			workflowIds: !workflowIds.length ? [''] : workflowIds,
 		});
 	}
 
@@ -219,12 +397,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		select?: Record<string, boolean>,
 	): void {
-		// Always start with workflow.id
-		qb.select(['workflow.id']);
-
 		if (!select) {
-			// Default select fields when no select option provided
-			qb.addSelect([
+			// Instead of selecting id first and then adding more fields,
+			// select all fields at once
+			qb.select([
+				'workflow.id',
 				'workflow.name',
 				'workflow.active',
 				'workflow.createdAt',
@@ -234,6 +411,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			return;
 		}
 
+		// For custom select, still start with ID but don't add it again
+		const fieldsToSelect = ['workflow.id'];
+
 		// Handle special fields separately
 		const regularFields = Object.entries(select).filter(
 			([field]) => !['ownedBy', 'tags'].includes(field),
@@ -241,10 +421,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		// Add regular fields
 		regularFields.forEach(([field, include]) => {
-			if (include) {
-				qb.addSelect(`workflow.${field}`);
+			if (include && field !== 'id') {
+				// Skip id since we already added it
+				fieldsToSelect.push(`workflow.${field}`);
 			}
 		});
+
+		qb.select(fieldsToSelect);
 	}
 
 	private applyRelations(
@@ -273,7 +456,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
 		if (!sortBy) {
-			this.applyDefaultSorting(qb);
+			qb.orderBy('workflow.updatedAt', 'ASC');
 			return;
 		}
 
@@ -284,10 +467,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
 		const [column, order] = sortBy.split(':');
 		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
-	}
-
-	private applyDefaultSorting(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		qb.orderBy('workflow.updatedAt', 'ASC');
 	}
 
 	private applySortingByColumn(

@@ -20,7 +20,7 @@ export const createFolder = async (
 	const folder = await folderRepository.save(
 		folderRepository.create({
 			name: options.name ?? randomName(),
-			project,
+			homeProject: project,
 			parentFolder: options.parentFolder ?? null,
 			tags: options.tags ?? [],
 			updatedAt: options.updatedAt ?? new Date(),

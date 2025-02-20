@@ -24,7 +24,7 @@ export class Folder extends WithTimestampsAndStringId {
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
-	project: Project;
+	homeProject: Project;
 
 	@OneToMany('WorkflowEntity', 'parentFolder')
 	workflows: WorkflowEntity[];
