@@ -55,6 +55,13 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					} else {
 						console.warn(`Invalid boolean value for ${envName}: ${value}`);
 					}
+				} else if (type === Date) {
+					const timestamp = Date.parse(value);
+					if (isNaN(timestamp)) {
+						console.warn(`Invalid timestamp value for ${envName}: ${value}`);
+					} else {
+						config[key] = new Date(timestamp);
+					}
 				} else if (type === String) {
 					config[key] = value;
 				} else {
