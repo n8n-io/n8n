@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
-import type { Project } from '@/types/projects.types';
+import { type Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, WorkflowResource } from '../layouts/ResourcesListLayout.vue';
 
@@ -68,16 +68,16 @@ const badgeText = computed(() => {
 		return name ?? email ?? '';
 	}
 });
-const badgeIcon = computed(() => {
+const badgeIcon = computed<BadgeIcon>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
-			return 'user';
+			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return 'layer-group';
+			return props.resource.homeProject?.icon ?? { type: 'icon', value: 'layer-group' };
 		default:
-			return '';
+			return { type: 'icon', value: 'layer-group' };
 	}
 });
 const badgeTooltip = computed(() => {
@@ -129,12 +129,12 @@ const badgeTooltip = computed(() => {
 		<div :class="$style.wrapper" v-bind="$attrs">
 			<N8nBadge
 				v-if="badgeText"
-				:class="$style.badge"
+				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
 				bold
 				data-test-id="card-badge"
 			>
-				<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="small" class="mr-3xs" />
+				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<span v-n8n-truncate:20>{{ badgeText }}</span>
 			</N8nBadge>
 			<N8nBadge
@@ -167,6 +167,13 @@ const badgeTooltip = computed(() => {
 	height: 23px;
 	:global(.n8n-text) {
 		color: var(--color-text-base);
+	}
+}
+
+.projectBadge {
+	& > span {
+		display: flex;
+		gap: var(--spacing-3xs);
 	}
 }
 
