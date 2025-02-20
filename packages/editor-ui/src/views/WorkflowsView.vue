@@ -45,8 +45,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { Folder } from '@/types/folders.types';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { ProjectIcon as HomeIcon, ProjectTypes } from '@/types/projects.types';
-import { isFolderResource } from '@/utils/typeGuards';
+import { ProjectTypes } from '@/types/projects.types';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -105,15 +104,16 @@ const currentSort = ref('updatedAt:desc');
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const showMainBreadcrumbs = computed(() => foldersEnabled.value && currentFolder.value);
+const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
 
 const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
-	if (!showMainBreadcrumbs.value || !currentFolder.value) return;
+	if (!showFolders.value || !currentFolder.value) return;
 	const items: PathItem[] = [];
 	items.push({
 		id: currentFolder.value.id,
@@ -146,7 +146,7 @@ const workflowResources = computed<Resource[]>(() => {
 		tags: workflow.tags,
 	}));
 	// Mock folders for testing
-	if (foldersEnabled.value) {
+	if (showFolders.value) {
 		addTestFolders(resources);
 	}
 	return resources;
