@@ -31,6 +31,7 @@ import type {
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
+	WorkflowListResourceDB,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -484,7 +485,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
 		filters: { name?: string; tags?: string[]; active?: boolean } = {},
-	): Promise<IWorkflowDb[]> {
+		includeFolders: boolean = false,
+	): Promise<WorkflowListResourceDB[]> {
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -496,6 +498,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			rootStore.restApiContext,
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
+			includeFolders,
 		);
 
 		setWorkflows(data);

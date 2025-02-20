@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, WorkflowListResourceDB } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -43,7 +43,6 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { Folder } from '@/types/folders.types';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
 
@@ -92,7 +91,7 @@ const filters = ref<Filters>({
 
 const workflowListEventBus = createEventBus();
 
-const workflows = ref<IWorkflowDb[]>([]);
+const workflowsAndFolders = ref<WorkflowListResourceDB[]>([]);
 
 const easyAICalloutVisible = ref(true);
 
@@ -131,24 +130,40 @@ const projectName = computed(() => {
 	return homeProject.value?.name;
 });
 
-const workflowResources = computed<Resource[]>(() => {
-	const resources: Resource[] = workflows.value.map((workflow) => ({
-		resourceType: 'workflows',
-		id: workflow.id,
-		name: workflow.name,
-		active: workflow.active,
-		updatedAt: workflow.updatedAt.toString(),
-		createdAt: workflow.createdAt.toString(),
-		homeProject: workflow.homeProject,
-		scopes: workflow.scopes,
-		sharedWithProjects: workflow.sharedWithProjects,
-		readOnly: !getResourcePermissions(workflow.scopes).workflow.update,
-		tags: workflow.tags,
-	}));
-	// Mock folders for testing
-	if (showFolders.value) {
-		addTestFolders(resources);
-	}
+const workflowListResources = computed<Resource[]>(() => {
+	const resources: Resource[] = workflowsAndFolders.value
+		.map((resource) => {
+			if (resource.resource === 'folder') {
+				return {
+					resourceType: 'folders',
+					id: resource.id,
+					name: resource.name,
+					createdAt: resource.createdAt.toString(),
+					updatedAt: resource.updatedAt.toString(),
+					homeProject: resource.homeProject,
+					sharedWithProjects: resource.sharedWithProjects,
+					workflowCount: resource.workflowCount,
+					parentFolder: resource.parentFolder,
+				} as FolderResource;
+			}
+			if (resource.resource === 'workflow') {
+				return {
+					resourceType: 'workflows',
+					id: resource.id,
+					name: resource.name,
+					active: resource.active ?? false,
+					updatedAt: resource.updatedAt.toString(),
+					createdAt: resource.createdAt.toString(),
+					homeProject: resource.homeProject,
+					scopes: resource.scopes,
+					sharedWithProjects: resource.sharedWithProjects,
+					readOnly: !getResourcePermissions(resource.scopes).workflow.update,
+					tags: resource.tags,
+				} as WorkflowResource;
+			}
+			return undefined;
+		})
+		.filter((resource): resource is FolderResource | WorkflowResource => resource !== undefined);
 	return resources;
 });
 
@@ -262,12 +277,12 @@ const initialize = async () => {
 	loading.value = true;
 	currentFolder.value = undefined;
 	await setFiltersFromQueryString();
-	const [, workflowsPage] = await Promise.all([
+	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
-	workflows.value = workflowsPage;
+	workflowsAndFolders.value = resourcesPage;
 	loading.value = false;
 };
 
@@ -286,7 +301,7 @@ const fetchWorkflows = async () => {
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 
-	const fetchedWorkflows = await workflowsStore.fetchWorkflowsPage(
+	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 		routeProjectId ?? homeProjectFilter,
 		currentPage.value,
 		pageSize.value,
@@ -296,10 +311,11 @@ const fetchWorkflows = async () => {
 			active: filters.value.status ? Boolean(filters.value.status) : undefined,
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
+		showFolders.value,
 	);
-	workflows.value = fetchedWorkflows;
+	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
-	return fetchedWorkflows;
+	return fetchedResources;
 };
 
 const onClickTag = async (tagId: string) => {
@@ -462,148 +478,13 @@ const onSortUpdated = async (sort: string) => {
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
-	const workflow = workflows.value.find((w) => w.id === data.id);
+	const workflow = workflowsAndFolders.value.find((w) => w.id === data.id);
 	if (!workflow) return;
-	workflow.active = data.active;
+	workflow.active = data.active === true;
 };
 
 const onFolderOpened = (data: { folder: FolderResource }) => {
 	currentFolder.value = data.folder;
-};
-
-const addTestFolders = (resources: Resource[]) => {
-	// Add parent folder to the first two workflows
-	if (workflowResources.value?.length > 0) {
-		(workflowResources.value as WorkflowResource[])[0].parentFolder = {
-			id: '1',
-			name: 'Personal workflows',
-		};
-		(workflowResources.value as WorkflowResource[])[1].parentFolder = {
-			id: '2',
-			name: 'AI Folder',
-		};
-	}
-	const testFolder1: Folder = {
-		id: '1',
-		name: 'Personal workflows',
-		createdAt: '2021-09-01T00:00:00.000Z',
-		updatedAt: new Date().toISOString(),
-		workflowCount: 10,
-		homeProject: {
-			id: '1',
-			type: 'personal',
-			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
-			icon: null,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		},
-	};
-	const testFolder2: Folder = {
-		id: '2',
-		name: 'AI Folder',
-		createdAt: '2025-01-01T00:00:00.000Z',
-		updatedAt: new Date().toISOString(),
-		workflowCount: 3,
-		homeProject: {
-			id: 'W4GKEIjqJrtSJ0AH',
-			type: 'team',
-			name: 'AI Assistant',
-			icon: { type: 'icon', value: 'robot' },
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		},
-	};
-	const testSubFolder1: Folder = {
-		id: '3',
-		name: 'Subfolder',
-		createdAt: '2025-01-01T00:00:00.000Z',
-		updatedAt: new Date().toISOString(),
-		workflowCount: 3,
-		parentFolder: { id: '1', name: 'Personal workflows' },
-		homeProject: {
-			id: '1',
-			type: 'personal',
-			name: 'Milorad Filipovic <milorad.filipovic19@gmail.com>',
-			icon: null,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		},
-	};
-	const testSubFolder2: Folder = {
-		id: '4',
-		name: 'Subfolder 2',
-		createdAt: '2025-01-01T00:00:00.000Z',
-		updatedAt: new Date().toISOString(),
-		workflowCount: 3,
-		parentFolder: { id: '2', name: 'AI Folder' },
-		homeProject: {
-			id: 'W4GKEIjqJrtSJ0AH',
-			type: 'team',
-			name: 'AI Assistant',
-			icon: { type: 'icon', value: 'robot' },
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		},
-	};
-	const testSubFolder3: Folder = {
-		id: '4',
-		name: 'Subfolder 3',
-		createdAt: '2025-01-01T00:00:00.000Z',
-		updatedAt: new Date().toISOString(),
-		workflowCount: 3,
-		parentFolder: { id: '2', name: 'AI Folder' },
-		homeProject: {
-			id: 'W4GKEIjqJrtSJ0AH',
-			type: 'team',
-			name: 'AI Assistant',
-			icon: { type: 'icon', value: 'robot' },
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-		},
-	};
-	const folders = [testFolder1, testFolder2, testSubFolder1, testSubFolder2, testSubFolder3];
-	if (!currentFolder.value) {
-		resources.unshift({
-			id: testFolder1.id,
-			name: testFolder1.name,
-			createdAt: testFolder1.createdAt,
-			updatedAt: testFolder1.updatedAt,
-			resourceType: 'folders',
-			homeProject: testFolder1.homeProject,
-			sharedWithProjects: undefined,
-			readOnly: false,
-			workflowCount: testFolder1.workflowCount,
-		});
-		resources.unshift({
-			id: testFolder2.id,
-			name: testFolder2.name,
-			createdAt: testFolder2.createdAt,
-			updatedAt: testFolder2.updatedAt,
-			resourceType: 'folders',
-			homeProject: testFolder2.homeProject,
-			sharedWithProjects: undefined,
-			readOnly: false,
-			workflowCount: testFolder2.workflowCount,
-		});
-	} else {
-		const subfolders: Folder[] = folders.filter(
-			(folder) => folder.parentFolder?.id === currentFolder.value?.id,
-		);
-		subfolders.forEach((folder) => {
-			resources.unshift({
-				id: folder.id,
-				name: folder.name,
-				createdAt: folder.createdAt,
-				updatedAt: folder.updatedAt,
-				resourceType: 'folders',
-				homeProject: folder.homeProject,
-				sharedWithProjects: undefined,
-				readOnly: false,
-				workflowCount: folder.workflowCount,
-				parentFolder: folder.parentFolder,
-			});
-		});
-	}
 };
 </script>
 
@@ -612,7 +493,7 @@ const addTestFolders = (resources: Resource[]) => {
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
-		:resources="workflowResources"
+		:resources="workflowListResources"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
