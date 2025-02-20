@@ -25,6 +25,326 @@ interface StubNode {
 }
 
 describe('Workflow', () => {
+	const nodeTypes = Helpers.NodeTypes();
+
+	const SIMPLE_WORKFLOW = new Workflow({
+		nodeTypes,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [240, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [460, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [680, 300],
+			},
+		],
+		connections: {
+			Start: {
+				main: [
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		active: false,
+	});
+
+	const WORKFLOW_WITH_SWITCH = new Workflow({
+		active: false,
+		nodeTypes,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [460, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [740, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [780, 100],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set2',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-4',
+				position: [1040, 260],
+			},
+		],
+		connections: {
+			Switch: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set2',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set1: {
+				main: [
+					[
+						{
+							node: 'Set2',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+	});
+
+	const WORKFLOW_WITH_LOOPS = new Workflow({
+		nodeTypes,
+		active: false,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [920, 340],
+			},
+			{
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [240, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [700, 340],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-4',
+				position: [1220, 300],
+			},
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-5',
+				position: [920, 340],
+			},
+		],
+		connections: {
+			Switch: {
+				main: [
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+					[], // todo why is null not accepted
+					[
+						{
+							node: 'Switch',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Start: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set1: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+						{
+							node: 'Switch',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+	});
+
+	const WORKFLOW_WITH_MIXED_CONNECTIONS = new Workflow({
+		nodeTypes,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [240, 300],
+			},
+			{
+				parameters: {},
+				name: 'AINode',
+				type: 'test.ai',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [460, 300],
+			},
+			{
+				parameters: {},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [680, 300],
+			},
+		],
+		connections: {
+			Start: {
+				main: [
+					[
+						{
+							node: 'AINode',
+							type: NodeConnectionType.AiAgent,
+							index: 0,
+						},
+					],
+				],
+			},
+			AINode: {
+				ai: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionType.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		active: false,
+	});
+
 	describe('renameNodeInParameterValue', () => {
 		describe('for expressions', () => {
 			const tests = [
@@ -259,7 +579,6 @@ describe('Workflow', () => {
 				},
 			];
 
-			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({ nodes: [], connections: {}, active: false, nodeTypes });
 
 			for (const testData of tests) {
@@ -309,7 +628,7 @@ describe('Workflow', () => {
 				nodes: [],
 				connections: {},
 				active: false,
-				nodeTypes: Helpers.NodeTypes(),
+				nodeTypes,
 			});
 
 			for (const t of tests) {
@@ -713,7 +1032,6 @@ describe('Workflow', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.NodeTypes();
 		let workflow: Workflow;
 
 		function createNodeData(stubData: StubNode): INode {
@@ -1324,85 +1642,7 @@ describe('Workflow', () => {
 			});
 		}
 
-		// test('should be able to set and read key data without initial data set', () => {
-
-		//     const nodes: Node[] = [
-		//         {
-		//             "name": "Node1",
-		//             "parameters": {
-		//                 "value": "outputSet1"
-		//             },
-		//             "type": "test.set",
-		//             "typeVersion": 1,
-		//             "position": [
-		//                 100,
-		//                 200
-		//             ]
-		//         },
-		//         {
-		//             "name": "Node2",
-		//             "parameters": {
-		//                 "name": "=[data.propertyName]"
-		//             },
-		//             "type": "test.set",
-		//             "typeVersion": 1,
-		//             "position": [
-		//                 100,
-		//                 300
-		//             ]
-		//         }
-		//     ];
-		//     const connections: Connections = {
-		//         "Node1": {
-		//             "main": [
-		//                 [
-		//                     {
-		//                         "node": "Node2",
-		//                         "type": "main",
-		//                         "index": 0
-		//                     }
-		//                 ]
-		//             ]
-		//         }
-		//     };
-
-		//     const nodeTypes = Helpers.NodeTypes();
-		//     const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-		//     const activeNodeName = 'Node2';
-
-		//     const parameterValue = nodes.find((node) => node.name === activeNodeName).parameters.name;
-		//     // const parameterValue = '=[data.propertyName]'; // TODO: Make this dynamic from node-data via "activeNodeName"!
-		//     const runData: RunData = {
-		//         Node1: [
-		//             {
-		//                 startTime: 1,
-		//                 executionTime: 1,
-		//                 data: {
-		//                     main: [
-		//                         [
-		//                             {
-		//                                 json: {
-		//                                     propertyName: 'outputSet1'
-		//                                 }
-		//                             }
-		//                         ]
-		//                     ]
-		//                 }
-		//             }
-		//         ]
-		//     };
-
-		//     const itemIndex = 0;
-		//     const connectionInputData: NodeExecutionData[] = runData!['Node1']![0]!.data!.main[0]!;
-
-		//     const result = workflow.getParameterValue(parameterValue, runData, itemIndex, activeNodeName, connectionInputData);
-
-		//     expect(result).toEqual('outputSet1');
-		// });
-
 		test('should also resolve all child parameters when the parent get requested', () => {
-			const nodeTypes = Helpers.NodeTypes();
-
 			const nodes: INode[] = [
 				{
 					name: 'Node1',
@@ -1490,270 +1730,6 @@ describe('Workflow', () => {
 	});
 
 	describe('getParentNodesByDepth', () => {
-		const nodeTypes = Helpers.NodeTypes();
-		const SIMPLE_WORKFLOW = new Workflow({
-			nodeTypes,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Start',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [240, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [460, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [680, 300],
-				},
-			],
-			connections: {
-				Start: {
-					main: [
-						[
-							{
-								node: 'Set',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-			active: false,
-		});
-
-		const WORKFLOW_WITH_SWITCH = new Workflow({
-			active: false,
-			nodeTypes,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [460, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [740, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [780, 100],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set2',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-4',
-					position: [1040, 260],
-				},
-			],
-			connections: {
-				Switch: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-						[
-							{
-								node: 'Set',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-						[
-							{
-								node: 'Set',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set2',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Set1: {
-					main: [
-						[
-							{
-								node: 'Set2',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-
-		const WORKFLOW_WITH_LOOPS = new Workflow({
-			nodeTypes,
-			active: false,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [920, 340],
-				},
-				{
-					parameters: {},
-					name: 'Start',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [240, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [700, 340],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-4',
-					position: [1220, 300],
-				},
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-5',
-					position: [920, 340],
-				},
-			],
-			connections: {
-				Switch: {
-					main: [
-						[
-							{
-								node: 'Set',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-						[], // todo why is null not accepted
-						[
-							{
-								node: 'Switch',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Start: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Set1: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-							{
-								node: 'Switch',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: NodeConnectionType.Main,
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-
 		test('Should return parent nodes of nodes', () => {
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Start')).toEqual([]);
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set')).toEqual([
@@ -2042,6 +2018,367 @@ describe('Workflow', () => {
 					],
 				},
 			});
+		});
+	});
+
+	describe('getHighestNode', () => {
+		const createNode = (name: string, disabled = false) =>
+			({
+				name,
+				type: 'test.set',
+				typeVersion: 1,
+				disabled,
+				position: [0, 0],
+				parameters: {},
+			}) as INode;
+
+		test('should return node name if node is not disabled', () => {
+			const node = createNode('Node1');
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(node.name);
+			expect(result).toEqual([node.name]);
+		});
+
+		test('should return empty array if node is disabled', () => {
+			const node = createNode('Node1', true);
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(node.name);
+			expect(result).toEqual([]);
+		});
+
+		test('should return highest nodes when multiple parent nodes exist', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const node3 = createNode('Node3');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, node3, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node1.name, node2.name]);
+		});
+
+		test('should ignore disabled parent nodes', () => {
+			const node1 = createNode('Node1', true);
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node2.name]);
+		});
+
+		test('should handle nested connections', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const node3 = createNode('Node3');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node3: {
+					main: [
+						[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }],
+						[{ node: 'Node2', type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+				TargetNode: {
+					main: [[{ node: 'Node3', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, node3, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle specified connection index', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[], [{ node: 'TargetNode', type: NodeConnectionType.Main, index: 1 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const resultFirstIndex = workflow.getHighestNode(targetNode.name, 0);
+			const resultSecondIndex = workflow.getHighestNode(targetNode.name, 1);
+
+			expect(resultFirstIndex).toEqual([node1.name]);
+			expect(resultSecondIndex).toEqual([node2.name]);
+		});
+
+		test('should prevent infinite loops with cyclic connections', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'Node2', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				TargetNode: {
+					main: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle connections to nodes that are not defined in the workflow', () => {
+			const node1 = createNode('Node1');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				TargetNode: {
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle connections from nodes that are not defined in the workflow', () => {
+			const node1 = createNode('Node1');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+				NonExistentNode: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node1.name]);
+		});
+	});
+
+	describe('getParentMainInputNode', () => {
+		test('should return the node itself if no parent connections exist', () => {
+			const startNode = SIMPLE_WORKFLOW.getNode('Start')!;
+			const result = SIMPLE_WORKFLOW.getParentMainInputNode(startNode);
+			expect(result).toBe(startNode);
+		});
+
+		test('should return direct main input parent node', () => {
+			const set1Node = SIMPLE_WORKFLOW.getNode('Set1')!;
+			const result = SIMPLE_WORKFLOW.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+
+		test('should traverse through non-main connections to find main input', () => {
+			const set1Node = WORKFLOW_WITH_MIXED_CONNECTIONS.getNode('Set1')!;
+			const result = WORKFLOW_WITH_MIXED_CONNECTIONS.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+
+		test('should handle nested non-main connections', () => {
+			const set1Node = WORKFLOW_WITH_LOOPS.getNode('Set1')!;
+			const result = WORKFLOW_WITH_LOOPS.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+	});
+
+	describe('getNodeConnectionIndexes', () => {
+		test('should return undefined for non-existent parent node', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set', 'NonExistentNode');
+			expect(result).toBeUndefined();
+		});
+
+		test('should return undefined for nodes without connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Start', 'Set1');
+			expect(result).toBeUndefined();
+		});
+
+		test('should return correct connection indexes for direct connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return correct connection indexes for multi-step connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set1', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return undefined when depth is 0', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
+				'Set',
+				'Start',
+				NodeConnectionType.Main,
+				0,
+			);
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle workflows with multiple connection indexes', () => {
+			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+	});
+
+	describe('getStartNode', () => {
+		const manualTriggerNode = mock<INode>({
+			name: 'ManualTrigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		const scheduleTriggerNode = mock<INode>({
+			name: 'ScheduleTrigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+		});
+		const httpRequestNode = mock<INode>({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+		});
+		const set1Node = mock<INode>({
+			name: 'Set1',
+			type: 'n8n-nodes-base.set',
+		});
+		const disabledSetNode = mock<INode>({
+			name: 'Set Disabled',
+			type: 'n8n-nodes-base.set',
+			disabled: true,
+		});
+
+		test('returns first trigger node when multiple start nodes exist', () => {
+			const workflow = new Workflow({
+				nodes: [manualTriggerNode, scheduleTriggerNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(scheduleTriggerNode);
+		});
+
+		test('returns first starting node type when no trigger nodes are present', () => {
+			const workflow = new Workflow({
+				nodes: [httpRequestNode, set1Node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(httpRequestNode);
+		});
+
+		test('returns undefined when all nodes are disabled', () => {
+			const workflow = new Workflow({
+				nodes: [disabledSetNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBeUndefined();
 		});
 	});
 });

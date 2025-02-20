@@ -140,4 +140,7 @@ export const defaultSettings: FrontendSettings = {
 		version: 1,
 		enforce: false,
 	},
+	folders: {
+		enabled: false,
+	},
 };
