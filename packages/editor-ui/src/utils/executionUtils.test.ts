@@ -1,23 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-	displayForm,
-	openFormPopupWindow,
-	executionFilterToQueryFilter,
-	waitingNodeTooltip,
-} from './executionUtils';
+import { displayForm, executionFilterToQueryFilter, waitingNodeTooltip } from './executionUtils';
 import type { INode, IRunData, IPinData } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
+import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/constants';
+import { createTestNode } from '@/__tests__/mocks';
 
-const FORM_TRIGGER_NODE_TYPE = 'formTrigger';
 const WAIT_NODE_TYPE = 'waitNode';
 
-vi.mock('./executionUtils', async () => {
-	const actual = await vi.importActual('./executionUtils');
-	return {
-		...actual,
-		openFormPopupWindow: vi.fn(),
-	};
-});
+const windowOpenSpy = vi.spyOn(window, 'open');
 
 vi.mock('@/stores/root.store', () => ({
 	useRootStore: () => ({
@@ -81,12 +71,13 @@ describe('displayForm', () => {
 			runData,
 			pinData,
 			destinationNode: undefined,
+			triggerNode: undefined,
 			directParentNodes: [],
 			source: undefined,
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openFormPopupWindow).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
@@ -114,12 +105,13 @@ describe('displayForm', () => {
 			runData: undefined,
 			pinData: {},
 			destinationNode: 'Node3',
+			triggerNode: undefined,
 			directParentNodes: ['Node4'],
 			source: undefined,
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openFormPopupWindow).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
@@ -141,20 +133,62 @@ describe('displayForm', () => {
 			runData: undefined,
 			pinData: {},
 			destinationNode: undefined,
+			triggerNode: undefined,
 			directParentNodes: [],
 			source: 'RunData.ManualChatMessage',
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(openFormPopupWindow).not.toHaveBeenCalled();
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	describe('executionFilterToQueryFilter()', () => {
-		it('adds "new" to the filter', () => {
-			expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
-				expect.arrayContaining(['new']),
-			);
+	describe('with trigger node', () => {
+		const nodes: INode[] = [
+			createTestNode({ name: 'Node1', type: FORM_TRIGGER_NODE_TYPE }),
+			createTestNode({ name: 'Node2', type: CHAT_TRIGGER_NODE_TYPE }),
+		];
+
+		beforeEach(() => {
+			getTestUrlMock.mockReturnValue('http://test-url.com');
 		});
+
+		it('should open pop-up if the trigger node is a form node', () => {
+			displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node1',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).toHaveBeenCalled();
+		});
+
+		it("should not open pop-up if the trigger node is specified and it isn't a form node", () => {
+			displayForm({
+				nodes,
+				runData: undefined,
+				pinData: {},
+				destinationNode: undefined,
+				triggerNode: 'Node2',
+				directParentNodes: [],
+				source: undefined,
+				getTestUrl: getTestUrlMock,
+			});
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('executionFilterToQueryFilter()', () => {
+	it('adds "new" to the filter', () => {
+		expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
+			expect.arrayContaining(['new']),
+		);
 	});
 });
 
