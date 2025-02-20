@@ -52,7 +52,7 @@ describe('TestDefinitionRootView', () => {
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
 	});
 
-	it.only('should render router view', async () => {
+	it('should render router view', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
