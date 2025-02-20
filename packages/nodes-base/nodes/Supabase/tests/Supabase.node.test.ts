@@ -14,14 +14,22 @@ import { Supabase } from '../Supabase.node';
 
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
-
 	const input = [{ json: {} }];
+	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
 	const createMockExecuteFunction = (
 		nodeParameters: IDataObject,
 		continueOnFail: boolean = false,
 	) => {
 		const fakeExecuteFunction = {
+			getCredentials: jest.fn().mockResolvedValue({
+				host: 'https://api.supabase.io',
+				serviceRole: 'service_role',
+			}),
 			getNodeParameter(
 				parameterName: string,
 				itemIndex: number,
@@ -29,13 +37,10 @@ describe('Test Supabase Node', () => {
 				options?: IGetNodeParameterOptions | undefined,
 			) {
 				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-
 				const parameterValue = get(nodeParameters, parameter, fallbackValue);
-
 				if ((parameterValue as IDataObject)?.nodeOperationError) {
 					throw new NodeOperationError(mock(), 'Get Options Error', { itemIndex });
 				}
-
 				return parameterValue;
 			},
 			getNode() {
@@ -44,6 +49,7 @@ describe('Test Supabase Node', () => {
 			continueOnFail: () => continueOnFail,
 			getInputData: () => input,
 			helpers: {
+				requestWithAuthentication: mockRequestWithAuthentication,
 				constructExecutionMetaData: (
 					_inputData: INodeExecutionData[],
 					_options: { itemData: IPairedItemData | IPairedItemData[] },
@@ -94,6 +100,56 @@ describe('Test Supabase Node', () => {
 				and: '(created_at.gt.2025-01-02 08:03:43.952051+00,created_at.lt.2025-01-02 08:07:36.102231+00)',
 				offset: 0,
 			},
+		);
+
+		supabaseApiRequest.mockRestore();
+	});
+
+	it('should set the correct headers for the schema in GET calls', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			schema: 'custom_schema',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.objectContaining({
+					'Accept-Profile': 'custom_schema',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set the correct headers for the schema in POST calls', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'create',
+			returnAll: true,
+			schema: 'custom_schema',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'POST',
+				headers: expect.objectContaining({
+					'Content-Profile': 'custom_schema',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
 		);
 	});
 });
