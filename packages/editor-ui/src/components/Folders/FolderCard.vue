@@ -6,6 +6,7 @@ import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
+import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 type Props = {
 	data: FolderResource;
@@ -72,7 +73,7 @@ const breadCrumbsItems = computed(() => {
 			{
 				id: props.data.parentFolder.id,
 				label: props.data.parentFolder.name,
-				href: `/folders/${props.data.parentFolder.id}`,
+				href: getFolderUrl(props.data.parentFolder.id),
 			},
 		];
 	}
@@ -97,23 +98,27 @@ const projectName = computed(() => {
 });
 
 const cardUrl = computed(() => {
+	return getFolderUrl(props.data.id);
+});
+
+const getFolderUrl = (folderId: string) => {
 	const isProjectRoute = route.params.projectId !== undefined;
 	if (isProjectRoute) {
 		return router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId as string,
-				folderId: props.data.id,
+				folderId,
 			},
 			query: route.query,
 		}).href;
 	}
 	return router.resolve({
 		name: VIEWS.FOLDERS,
-		params: { folderId: props.data.id },
+		params: { folderId },
 		query: route.query,
 	}).href;
-});
+};
 
 const onAction = async (action: string) => {
 	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
@@ -121,6 +126,12 @@ const onAction = async (action: string) => {
 		return;
 	}
 	emit('action', { action, folderId: props.data.id });
+};
+
+const onBreadcrumbsItemClick = async (item: PathItem) => {
+	if (item.href) {
+		await router.push(item.href);
+	}
 };
 </script>
 
@@ -160,6 +171,7 @@ const onAction = async (action: string) => {
 							:highlight-last-item="false"
 							theme="small"
 							data-test-id="folder-card-breadcrumbs"
+							@item-selected="onBreadcrumbsItemClick"
 						>
 							<template v-if="data.homeProject" #prepend>
 								<div :class="$style['home-project']">
