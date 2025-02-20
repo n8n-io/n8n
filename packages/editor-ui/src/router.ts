@@ -19,7 +19,6 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
@@ -294,14 +293,6 @@ export const routes: RouteRecordRaw[] = [
 				props: true,
 				components: {
 					default: TestDefinitionEditView,
-				},
-			},
-			{
-				path: ':testId/runs',
-				name: VIEWS.TEST_DEFINITION_RUNS,
-				props: true,
-				components: {
-					default: TestDefinitionRunsListView,
 				},
 			},
 			{

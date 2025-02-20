@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
-import type { RouteLocation, RouteLocationRaw } from 'vue-router';
-import { useRouter, useRoute } from 'vue-router';
-import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
+import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
+import { useI18n } from '@/composables/useI18n';
+import { usePushConnection } from '@/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
@@ -12,18 +11,19 @@ import {
 	VIEWS,
 	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { usePushConnection } from '@/composables/usePushConnection';
-import { usePostHog } from '@/stores/posthog.store';
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
-import GithubButton from 'vue-github-button';
 import { useLocalStorage } from '@vueuse/core';
+import GithubButton from 'vue-github-button';
 
 const router = useRouter();
 const route = useRoute();
@@ -50,7 +50,6 @@ const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON
 const testDefinitionRoutes: VIEWS[] = [
 	VIEWS.TEST_DEFINITION,
 	VIEWS.TEST_DEFINITION_EDIT,
-	VIEWS.TEST_DEFINITION_RUNS,
 	VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 	VIEWS.TEST_DEFINITION_RUNS_COMPARE,
 ];
