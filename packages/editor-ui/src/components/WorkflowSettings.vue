@@ -27,6 +27,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import N8nInput from 'n8n-design-system/components/N8nInput';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -376,6 +377,11 @@ const saveSettings = async () => {
 
 const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
+};
+
+const updateTimeSavedPerExecution = (value: string) => {
+	const numValue = parseInt(value, 10);
+	workflowSettings.value.timeSavedPerExecution = isNaN(numValue) ? undefined : numValue;
 };
 
 onMounted(async () => {
@@ -801,6 +807,23 @@ onMounted(async () => {
 						</el-col>
 					</el-row>
 				</div>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						<label for="timeSavedPerExecution">{{
+							i18n.baseText('workflowSettings.timeSavedPerExecution') + ':'
+						}}</label>
+					</el-col>
+					<el-col :span="2">
+						<div>
+							<N8nInput
+								id="timeSavedPerExecution"
+								type="number"
+								v-model="workflowSettings.timeSavedPerExecution"
+								@update:model-value="updateTimeSavedPerExecution"
+							/>
+						</div>
+					</el-col>
+				</el-row>
 			</div>
 		</template>
 		<template #footer>
