@@ -5,6 +5,7 @@ import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -32,6 +33,7 @@ import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
 let anotherMember: User;
 
@@ -66,6 +68,7 @@ beforeEach(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 	owner = await createOwner();
+	ownerPersonalProject = await getPersonalProject(owner);
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
@@ -1326,7 +1329,7 @@ describe('DELETE /workflows/:workflowId', () => {
 describe('PUT /workflows/:workflowId/share', () => {
 	test('should ignore sharing with owner project', async () => {
 		// ARRANGE
-		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const project = ownerPersonalProject;
 		const workflow = await createWorkflow({ name: 'My workflow' }, project);
 
 		await authOwnerAgent
