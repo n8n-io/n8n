@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import TimeAgo from '@/components/TimeAgo.vue';
+import { useI18n } from '@/composables/useI18n';
 import { N8nIcon, N8nText } from 'n8n-design-system';
 import type { IconColor } from 'n8n-design-system/types/icon';
 import { computed } from 'vue';
@@ -11,6 +12,8 @@ const props = defineProps<{
 	execution?: TestRunRecord;
 	errors?: Array<{ field: string; message: string }>;
 }>();
+
+const locale = useI18n();
 
 type IconDefinition = { icon: string; color: IconColor };
 
@@ -74,7 +77,13 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 		<div :class="$style.testCardContent">
 			<div>
 				<N8nText bold tag="div">{{ name }}</N8nText>
-				<N8nText tag="div" color="text-base" size="small"> {{ testCases }} test cases </N8nText>
+				<N8nText tag="div" color="text-base" size="small">
+					{{
+						locale.baseText('testDefinition.list.item.tests', {
+							adjustToNumber: testCases,
+						})
+					}}
+				</N8nText>
 			</div>
 			<div>
 				<div :class="$style.status">
@@ -87,7 +96,11 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 				</div>
 
 				<N8nText v-if="errors?.length" tag="div" color="text-base" size="small" class="ml-m">
-					{{ errors.length }} fields missing
+					{{
+						locale.baseText('testDefinition.list.item.missingFields', {
+							adjustToNumber: errors.length,
+						})
+					}}
 				</N8nText>
 				<N8nText v-else-if="execution" tag="div" color="text-base" size="small" class="ml-m">
 					<TimeAgo :date="execution.updatedAt" />

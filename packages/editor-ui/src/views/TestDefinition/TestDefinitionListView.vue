@@ -181,7 +181,11 @@ async function onDeleteTest(testId: string) {
 						class="mr-xs"
 						@click="onCreateTest"
 					/>
-					<N8nButton label="Run all evaluations" disabled type="secondary" />
+					<N8nButton
+						:label="locale.baseText('testDefinition.list.runAll')"
+						disabled
+						type="secondary"
+					/>
 				</div>
 			</div>
 			<div :class="$style.testList" data-test-id="test-definition-list">

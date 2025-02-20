@@ -37,27 +37,33 @@ const hasReachedLimit = computed(() => false);
 						{{ locale.baseText('testDefinition.list.actionButton') }}
 					</N8nButton>
 					<N8nText tag="div" color="text-light" size="small" class="mt-2xs">
-						Your plan allows one evaluation
+						{{ locale.baseText('testDefinition.list.actionDescription.registered') }}
 					</N8nText>
 				</template>
 				<template v-else-if="isNotRegisteredCommunity">
 					<div :class="$style.divider" class="mb-s"></div>
 					<N8nText tag="div" color="text-light" size="small" class="mb-s">
-						Unlock a free test when you register
+						{{ locale.baseText('testDefinition.list.actionDescription.unregistered') }}
 					</N8nText>
-					<N8nButton>Unlock evaluation</N8nButton>
+					<N8nButton>
+						{{ locale.baseText('testDefinition.list.actionButton.unregistered') }}
+					</N8nButton>
 				</template>
 				<template v-else-if="hasReachedLimit">
 					<div :class="$style.divider" class="mb-s"></div>
 					<N8nText tag="div" color="text-light" size="small" class="mb-s">
-						You’ve reached your evaluation limit, upgrade to add more
+						{{ locale.baseText('testDefinition.list.actionDescription.atLimit') }}
 					</N8nText>
-					<N8nButton>Upgrade</N8nButton>
+					<N8nButton>
+						{{ locale.baseText('generic.upgrade') }}
+					</N8nButton>
 				</template>
 			</div>
 		</div>
 		<div :class="{ [$style.card]: true, [$style.cardInActive]: true }">
-			<N8nBadge>Coming soon</N8nBadge>
+			<N8nBadge>
+				{{ locale.baseText('testDefinition.list.unitTests.badge') }}
+			</N8nBadge>
 			<div :class="$style.cardContent">
 				<N8nText tag="h2" size="xlarge" color="text-base" class="mb-2xs">
 					{{ locale.baseText('testDefinition.list.unitTests.title') }}
