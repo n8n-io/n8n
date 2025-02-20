@@ -156,6 +156,9 @@ export interface FrontendSettings {
 	mfa: {
 		enabled: boolean;
 	};
+	folders: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
