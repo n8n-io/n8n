@@ -25,7 +25,6 @@ import {
 	Body,
 	Delete,
 	Get,
-	Licensed,
 	Param,
 	Patch,
 	Post,
