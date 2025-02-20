@@ -308,12 +308,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter?: ListQuery.Options['filter'],
 	): void {
-		if (!filter) return;
-
 		this.applyNameFilter(qb, filter);
 		this.applyActiveFilter(qb, filter);
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
+		this.applyParentFolderFilter(qb, filter);
 	}
 
 	private applyNameFilter(
@@ -323,6 +322,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (typeof filter?.name === 'string' && filter.name !== '') {
 			qb.andWhere('LOWER(workflow.name) LIKE :name', {
 				name: `%${filter.name.toLowerCase()}%`,
+			});
+		}
+	}
+
+	private applyParentFolderFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (filter?.parentFolderId === '0') {
+			qb.andWhere('workflow.parentFolderId IS NULL');
+		} else if (filter?.parentFolderId) {
+			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
+				parentFolderId: filter.parentFolderId,
 			});
 		}
 	}

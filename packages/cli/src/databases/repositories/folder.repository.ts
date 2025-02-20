@@ -148,6 +148,8 @@ export class FolderRepository extends Repository<Folder> {
 			query.andWhere('folder.parentFolderId = :parentFolderId', {
 				parentFolderId: filter.parentFolderId,
 			});
+		} else {
+			query.andWhere('folder.parentFolderId IS NULL');
 		}
 	}
 

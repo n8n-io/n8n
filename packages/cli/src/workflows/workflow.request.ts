@@ -44,7 +44,7 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{},
-		ListQuery.Params & { includeScopes?: string; includeFolders?: true }
+		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
 	> & {
 		listQueryOptions: ListQuery.Options;
 	};
