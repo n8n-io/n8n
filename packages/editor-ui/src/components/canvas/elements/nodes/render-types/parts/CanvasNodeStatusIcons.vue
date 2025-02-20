@@ -83,7 +83,7 @@ const dirtiness = computed(() =>
 					i18n.baseText(dirtiness === 'parameters-updated' ? 'node.dirty' : 'node.subjectToChange')
 				}}
 			</template>
-			<FontAwesomeIcon size="xs" icon="circle" />
+			<FontAwesomeIcon icon="triangle" />
 		</N8nTooltip>
 	</div>
 	<div
