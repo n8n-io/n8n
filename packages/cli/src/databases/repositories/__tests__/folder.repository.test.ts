@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 import type { Folder } from '@/databases/entities/folder';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { createFolder } from '@test-integration/db/folders';
 import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
