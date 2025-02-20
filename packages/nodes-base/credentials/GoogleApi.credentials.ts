@@ -8,6 +8,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 	Icon,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 const regions = [
@@ -313,6 +314,26 @@ export class GoogleApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Use ID Token',
+			description: 'Use the ID token as the access token for authentication',
+			name: 'useIDToken',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Use URL as Target Audience',
+			description:
+				"Use the URL of the HTTP Request node as the target audience for the token. This is useful when you're using the token to authenticate against Google Cloud Run",
+			name: 'urlAsTargetAudience',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					useIDToken: [true],
+				},
+			},
+		},
 	];
 
 	async authenticate(
@@ -333,6 +354,12 @@ export class GoogleApi implements ICredentialType {
 
 		const now = moment().unix();
 
+		const baseURLRegex = /https?:\/\/[^\/]+/;
+		// .uri does contain the full URI, but it isn't part of IHttpRequestOptions. Therefore, a type cast is needed here.
+		// @ts-ignore
+		const baseURLMatches = (requestOptions as IRequestOptions).uri.match(baseURLRegex);
+		const baseURL = baseURLMatches !== null ? baseURLMatches[0] : '';
+
 		const signature = jwt.sign(
 			{
 				iss: credentials.email,
@@ -341,6 +368,7 @@ export class GoogleApi implements ICredentialType {
 				aud: 'https://oauth2.googleapis.com/token',
 				iat: now,
 				exp: now + 3600,
+				target_audience: credentials.urlAsTargetAudience ? baseURL : null,
 			},
 			privateKey,
 			{
@@ -367,13 +395,13 @@ export class GoogleApi implements ICredentialType {
 
 		const result = await axios(axiosRequestConfig);
 
-		const { access_token } = result.data;
+		const { access_token, id_token } = result.data;
 
 		const requestOptionsWithAuth: IHttpRequestOptions = {
 			...requestOptions,
 			headers: {
 				...requestOptions.headers,
-				Authorization: `Bearer ${access_token}`,
+				Authorization: `Bearer ${credentials.useIDToken ? id_token : access_token}`,
 			},
 		};
 
