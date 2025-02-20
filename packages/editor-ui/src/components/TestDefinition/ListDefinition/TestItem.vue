@@ -1,25 +1,72 @@
 <script setup lang="ts">
-import TimeAgo from '@/components/TimeAgo.vue';
-// import { useI18n } from '@/composables/useI18n';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
+import TimeAgo from '@/components/TimeAgo.vue';
 import { N8nIcon, N8nText } from 'n8n-design-system';
+import type { IconColor } from 'n8n-design-system/types/icon';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
 	name: string;
 	testCases: number;
 	execution?: TestRunRecord;
+	errors?: Array<{ field: string; message: string }>;
 }>();
-// const locale = useI18n();
 
-const statusesColorDictionary: Record<TestRunRecord['status'], string> = {
-	new: 'var(--color-primary)',
-	running: 'var(--color-secondary)',
-	completed: 'var(--color-success)',
-	error: 'var(--color-danger)',
-	cancelled: 'var(--color-foreground-dark)',
-	warning: 'var(--color-warning)',
-	success: 'var(--color-success)',
-};
+type IconDefinition = { icon: string; color: IconColor };
+
+const statusesColorDictionary: Record<TestRunRecord['status'], IconDefinition> = {
+	new: {
+		icon: 'circle',
+		color: 'foreground-dark',
+	},
+	running: {
+		icon: 'spinner',
+		color: 'secondary',
+	},
+	completed: {
+		icon: 'exclamation-circle',
+		color: 'success',
+	},
+	error: {
+		icon: 'exclamation-triangle',
+		color: 'danger',
+	},
+	cancelled: {
+		icon: 'minus-circle',
+		color: 'success',
+	},
+	warning: {
+		icon: 'exclamation-circle',
+		color: 'warning',
+	},
+	success: {
+		icon: 'circle-check',
+		color: 'success',
+	},
+} as const;
+
+const statusRender = computed<IconDefinition & { label: string }>(() => {
+	if (props.errors?.length) {
+		return {
+			icon: 'adjust',
+			color: 'foreground-dark',
+			label: 'Incomplete',
+		};
+	}
+
+	if (!props.execution) {
+		return {
+			icon: 'circle',
+			color: 'foreground-dark',
+			label: 'Never ran',
+		};
+	}
+
+	return {
+		...statusesColorDictionary[props.execution.status],
+		label: props.execution.status,
+	};
+});
 </script>
 
 <template>
@@ -29,29 +76,22 @@ const statusesColorDictionary: Record<TestRunRecord['status'], string> = {
 				<N8nText bold tag="div">{{ name }}</N8nText>
 				<N8nText tag="div" color="text-base" size="small"> {{ testCases }} test cases </N8nText>
 			</div>
-
 			<div>
-				<template v-if="execution">
-					<div
-						style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
-					>
-						<N8nIcon
-							icon="circle"
-							size="xsmall"
-							:style="{ color: statusesColorDictionary[execution.status] }"
-						></N8nIcon>
-						<N8nText size="small" bold color="text-base">
-							{{ execution.status }}
+				<div :class="$style.status">
+					<N8nIcon :icon="statusRender.icon" size="small" :color="statusRender.color"></N8nIcon>
+					<div>
+						<N8nText size="small" color="text-base">
+							{{ statusRender.label }}
 						</N8nText>
 					</div>
+				</div>
 
-					<N8nText tag="div" color="text-base" size="small">
-						<TimeAgo :date="execution.updatedAt" />
-					</N8nText>
-				</template>
-				<template v-else>
-					<N8nText tag="div" color="text-base" size="small"> Never run </N8nText>
-				</template>
+				<N8nText v-if="errors?.length" tag="div" color="text-base" size="small" class="ml-m">
+					{{ errors.length }} fields missing
+				</N8nText>
+				<N8nText v-else-if="execution" tag="div" color="text-base" size="small" class="ml-m">
+					<TimeAgo :date="execution.updatedAt" />
+				</N8nText>
 			</div>
 
 			<div :class="$style.metrics">
@@ -99,7 +139,17 @@ const statusesColorDictionary: Record<TestRunRecord['status'], string> = {
 
 	&:hover {
 		background-color: var(--color-background-light);
+		.name {
+			color: var(--color-primary);
+		}
 	}
+}
+
+.status {
+	display: inline-flex;
+	gap: 8px;
+	text-transform: capitalize;
+	align-items: center;
 }
 
 .testCardContent {

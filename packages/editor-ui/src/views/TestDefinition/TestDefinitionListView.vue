@@ -192,6 +192,7 @@ async function onDeleteTest(testId: string) {
 					:name="item.name"
 					:test-cases="item.testCases"
 					:execution="item.lastExecution"
+					:errors="item.setupErrors"
 					:data-test-id="`test-item-${item.id}`"
 					@click="onEditTest(item.id)"
 				>
@@ -212,8 +213,9 @@ async function onDeleteTest(testId: string) {
 								teleported
 							>
 								<template #content>
-									<div v-for="(error, index) in item.setupErrors" :key="index">
-										{{ error.message }}
+									<div>{{ locale.baseText('testDefinition.completeConfig') }}</div>
+									<div v-for="issue in item.setupErrors" :key="issue.field">
+										- {{ issue.message }}
 									</div>
 								</template>
 								<N8nIconButton
