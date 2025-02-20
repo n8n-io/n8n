@@ -3,6 +3,7 @@ import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/cre
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
+import { validate as isJwt } from 'uuid';
 
 import { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
@@ -107,14 +108,17 @@ export class PublicApiKeyService {
 
 			if (!user) return false;
 
-			try {
-				this.jwtService.verify(providedApiKey, {
-					issuer: API_KEY_ISSUER,
-					audience: API_KEY_AUDIENCE,
-				});
-			} catch (e) {
-				if (e instanceof TokenExpiredError) return false;
-				throw e;
+			// Legacy API keys are not JWTs and do not need to be verified.
+			if (isJwt(providedApiKey)) {
+				try {
+					this.jwtService.verify(providedApiKey, {
+						issuer: API_KEY_ISSUER,
+						audience: API_KEY_AUDIENCE,
+					});
+				} catch (e) {
+					if (e instanceof TokenExpiredError) return false;
+					throw e;
+				}
 			}
 
 			this.eventService.emit('public-api-invoked', {

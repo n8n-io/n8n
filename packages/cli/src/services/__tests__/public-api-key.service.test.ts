@@ -12,6 +12,8 @@ import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
+import { Container } from '@n8n/di';
+import { randomString } from 'n8n-workflow';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
 	return mock<AuthenticatedRequest>({
@@ -128,6 +130,52 @@ describe('PublicApiKeyService', () => {
 			//Act
 
 			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
+
+			//Assert
+
+			expect(response).toBe(true);
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'public-api-invoked',
+				expect.objectContaining({
+					userId: owner.id,
+					path,
+					method,
+					apiVersion: 'v1',
+				}),
+			);
+		});
+
+		it('should work with non JWT (legacy) api keys', async () => {
+			//Arrange
+
+			const path = '/test';
+			const method = 'GET';
+			const apiVersion = 'v1';
+			const legacyApiKey = `n8n_api_${randomString(10)}`;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const owner = await createOwnerWithApiKey();
+
+			const [{ apiKey }] = owner.apiKeys;
+
+			await Container.get(ApiKeyRepository).update({ apiKey }, { apiKey: legacyApiKey });
+
+			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
+
+			//Act
+
+			const response = await middleware(
+				mockReqWith(legacyApiKey, path, method),
+				{},
+				securitySchema,
+			);
 
 			//Assert
 
