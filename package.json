@@ -100,6 +100,7 @@
     }
   },
   "dependencies": {
+    "cheerio": "^1.0.0",
     "n8n-nodes-notion-markdown": "^1.1.0"
   }
 }
