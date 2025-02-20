@@ -1,3 +1,15 @@
+## [1.79.2](https://github.com/n8n-io/n8n/compare/n8n@1.79.1...n8n@1.79.2) (2025-02-20)
+
+
+### Bug Fixes
+
+* Always clear popupWindowState  before showing popup from form trigger ([#13363](https://github.com/n8n-io/n8n/issues/13363)) ([f65b0f5](https://github.com/n8n-io/n8n/commit/f65b0f5e0b10d4d6c2bea6d0026f7b624eb9bdfe))
+* **Code Node:** Fix `$items` in Code node when using task runner ([#13368](https://github.com/n8n-io/n8n/issues/13368)) ([172fbe5](https://github.com/n8n-io/n8n/commit/172fbe5f7bddfd3cc8a725d81b22e65c85b1e082))
+* **core:** Ensure that 'workflow-post-execute' event has userId whenever it's available ([#13326](https://github.com/n8n-io/n8n/issues/13326)) ([c2ed1a0](https://github.com/n8n-io/n8n/commit/c2ed1a04cbfd5221c9b8935d4f0545c7ea67e811))
+* **core:** Handle connections for missing nodes in a workflow ([#13362](https://github.com/n8n-io/n8n/issues/13362)) ([4229d6c](https://github.com/n8n-io/n8n/commit/4229d6c804db0072f5eab5e33b410f99af542829))
+
+
+
 ## [1.79.1](https://github.com/n8n-io/n8n/compare/n8n@1.79.0...n8n@1.79.1) (2025-02-15)
 
 
