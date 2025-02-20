@@ -498,7 +498,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			rootStore.restApiContext,
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
-			includeFolders,
+			includeFolders ? includeFolders : undefined,
 		);
 
 		totalWorkflowCount.value = count;

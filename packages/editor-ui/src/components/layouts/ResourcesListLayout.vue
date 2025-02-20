@@ -679,6 +679,7 @@ const loadPaginationFromQueryString = async () => {
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
+	gap: var(--spacing-2xs);
 }
 
 .filters {
