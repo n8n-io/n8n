@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
 
 type EnvVarName = string;
 
@@ -49,32 +48,41 @@ export class DeprecationService {
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
 		},
+		{
+			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
+			checkValue: (value: string) => value === '1',
+			message:
+				'Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
+		},
+		{
+			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
+			message: 'This environment variable is internal and should not be set.',
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */
-	private readonly state: Record<EnvVarName, { mustWarn: boolean }> = {};
+	private readonly state: Map<Deprecation, { mustWarn: boolean }> = new Map();
 
 	constructor(private readonly logger: Logger) {}
 
 	warn() {
 		this.deprecations.forEach((d) => {
 			const envValue = process.env[d.envVar];
-			this.state[d.envVar] = {
+			this.state.set(d, {
 				mustWarn:
 					(d.warnIfMissing !== undefined && envValue === undefined) ||
 					(d.checkValue ? d.checkValue(envValue) : envValue !== undefined),
-			};
+			});
 		});
 
-		const mustWarn = Object.entries(this.state)
-			.filter(([, d]) => d.mustWarn)
-			.map(([envVar]) => {
-				const deprecation = this.deprecations.find((d) => d.envVar === envVar);
-				if (!deprecation) {
-					throw new ApplicationError(`Deprecation not found for env var: ${envVar}`);
-				}
-				return deprecation;
-			});
+		const mustWarn: Deprecation[] = [];
+		for (const [deprecation, metadata] of this.state.entries()) {
+			if (!metadata.mustWarn) {
+				continue;
+			}
+
+			mustWarn.push(deprecation);
+		}
 
 		if (mustWarn.length === 0) return;
 
@@ -86,9 +94,5 @@ export class DeprecationService {
 			.join('');
 
 		this.logger.warn(`\n${header}:\n${deprecations}`);
-	}
-
-	mustWarn(envVar: string) {
-		return this.state[envVar]?.mustWarn ?? false;
 	}
 }

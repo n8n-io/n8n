@@ -117,44 +117,32 @@ describe('settings.store', () => {
 			{
 				name: 'pick the default',
 				default: 1 as const,
-				enforce: false,
 				userVersion: -1,
 				result: 1,
 			},
 			{
-				name: "pick the user' choice",
-				default: 1 as const,
-				enforce: false,
-				userVersion: 2,
+				name: 'pick the default',
+				default: 2 as const,
+				userVersion: -1,
 				result: 2,
 			},
 			{
-				name: 'enforce the default',
+				name: "pick the user's choice",
 				default: 1 as const,
-				enforce: true,
 				userVersion: 2,
-				result: 1,
-			},
-			{
-				name: 'enforce the default',
-				default: 2 as const,
-				enforce: true,
-				userVersion: 1,
 				result: 2,
 			},
 			{
 				name: 'handle values that used to be allowed in local storage',
 				default: 1 as const,
-				enforce: false,
 				userVersion: 0,
 				result: 1,
 			},
-		])('%name', async ({ default: defaultVersion, userVersion, enforce, result }) => {
+		])('%name', async ({ default: defaultVersion, userVersion, result }) => {
 			const settingsStore = useSettingsStore();
 
 			settingsStore.settings.partialExecution = {
 				version: defaultVersion,
-				enforce,
 			};
 			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(userVersion));
 
