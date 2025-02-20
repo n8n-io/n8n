@@ -1,17 +1,19 @@
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseLLM } from '@langchain/core/language_models/llms';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { Tool } from '@langchain/core/tools';
+import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
-	EventNamesAiNodesType,
+	AiEvent,
 	IDataObject,
 	IExecuteFunctions,
+	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import type { BaseMessage } from '@langchain/core/messages';
-import { DynamicTool, type Tool } from '@langchain/core/tools';
-import type { BaseLLM } from '@langchain/core/language_models/llms';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+
+import { N8nTool } from './N8nTool';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -24,7 +26,7 @@ function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): ob
 }
 
 export function getMetadataFiltersValues(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
 	const options = ctx.getNodeParameter('options', itemIndex, {});
@@ -70,21 +72,6 @@ export function isToolsInstance(model: unknown): model is Tool {
 	return namespace.includes('tools');
 }
 
-export async function getOptionalOutputParsers(
-	ctx: IExecuteFunctions,
-): Promise<Array<BaseOutputParser<unknown>>> {
-	let outputParsers: BaseOutputParser[] = [];
-
-	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
-		outputParsers = (await ctx.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
-			0,
-		)) as BaseOutputParser[];
-	}
-
-	return outputParsers;
-}
-
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions;
 	i: number;
@@ -112,7 +99,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions | IWebhookFunctions,
+	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -143,7 +130,7 @@ export function getSessionId(
 		if (sessionId === '' || sessionId === undefined) {
 			throw new NodeOperationError(ctx.getNode(), 'Key parameter is empty', {
 				description:
-					"Provide a key to use as session ID in the 'Key' parameter or use the 'Take from previous node automatically' option to use the session ID from the previous node, e.t. chat trigger node",
+					"Provide a key to use as session ID in the 'Key' parameter or use the 'Connected Chat Trigger Node' option to use the session ID from your Chat Trigger",
 				itemIndex,
 			});
 		}
@@ -152,13 +139,13 @@ export function getSessionId(
 	return sessionId;
 }
 
-export async function logAiEvent(
-	executeFunctions: IExecuteFunctions,
-	event: EventNamesAiNodesType,
+export function logAiEvent(
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
+	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {
-		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
 	} catch (error) {
 		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
 	}
@@ -178,7 +165,30 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+export function escapeSingleCurlyBrackets(text?: string): string | undefined {
+	if (text === undefined) return undefined;
+
+	let result = text;
+
+	result = result
+		// First handle triple brackets to avoid interference with double brackets
+		.replace(/(?<!{){{{(?!{)/g, '{{{{')
+		.replace(/(?<!})}}}(?!})/g, '}}}}')
+		// Then handle single brackets, but only if they're not part of double brackets
+		// Convert single { to {{ if it's not already part of {{ or {{{
+		.replace(/(?<!{){(?!{)/g, '{{')
+		// Convert single } to }} if it's not already part of }} or }}}
+		.replace(/(?<!})}(?!})/g, '}}');
+
+	return result;
+}
+
+export const getConnectedTools = async (
+	ctx: IExecuteFunctions,
+	enforceUniqueNames: boolean,
+	convertStructuredTool: boolean = true,
+	escapeCurlyBrackets: boolean = false,
+) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 
@@ -186,9 +196,9 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 
 	const seenNames = new Set<string>();
 
-	for (const tool of connectedTools) {
-		if (!(tool instanceof DynamicTool)) continue;
+	const finalTools = [];
 
+	for (const tool of connectedTools) {
 		const { name } = tool;
 		if (seenNames.has(name)) {
 			throw new NodeOperationError(
@@ -197,7 +207,17 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 			);
 		}
 		seenNames.add(name);
+
+		if (escapeCurlyBrackets) {
+			tool.description = escapeSingleCurlyBrackets(tool.description) ?? tool.description;
+		}
+
+		if (convertStructuredTool && tool instanceof N8nTool) {
+			finalTools.push(tool.asDynamicTool());
+		} else {
+			finalTools.push(tool);
+		}
 	}
 
-	return connectedTools;
+	return finalTools;
 };

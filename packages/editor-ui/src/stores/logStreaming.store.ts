@@ -7,8 +7,9 @@ import {
 	hasDestinationId,
 	saveDestinationToDb,
 	sendTestMessageToDestination,
-} from '../api/eventbus.ee';
+} from '@/api/eventbus.ee';
 import { useRootStore } from './root.store';
+import { ref } from 'vue';
 
 export interface EventSelectionItem {
 	selected: boolean;
@@ -32,221 +33,242 @@ export interface DestinationSettingsStore {
 	[key: string]: DestinationStoreItem;
 }
 
-export const useLogStreamingStore = defineStore('logStreaming', {
-	state: () => ({
-		items: {} as DestinationSettingsStore,
-		eventNames: new Set<string>(),
-	}),
-	getters: {},
-	actions: {
-		addDestination(destination: MessageEventBusDestinationOptions) {
-			if (destination.id && this.items[destination.id]) {
-				this.items[destination.id].destination = destination;
-			} else {
-				this.setSelectionAndBuildItems(destination);
+export const useLogStreamingStore = defineStore('logStreaming', () => {
+	const items = ref<DestinationSettingsStore>({});
+	const eventNames = ref(new Set<string>());
+
+	const rootStore = useRootStore();
+
+	const addDestination = (destination: MessageEventBusDestinationOptions) => {
+		if (destination.id && items.value[destination.id]) {
+			items.value[destination.id].destination = destination;
+		} else {
+			setSelectionAndBuildItems(destination);
+		}
+	};
+
+	const setSelectionAndBuildItems = (destination: MessageEventBusDestinationOptions) => {
+		if (destination.id) {
+			if (!items.value[destination.id]) {
+				items.value[destination.id] = {
+					destination,
+					selectedEvents: new Set<string>(),
+					eventGroups: [],
+					isNew: false,
+				} as DestinationStoreItem;
 			}
-		},
-		getDestination(destinationId: string): MessageEventBusDestinationOptions | undefined {
-			if (this.items[destinationId]) {
-				return this.items[destinationId].destination;
-			} else {
-				return;
+			items.value[destination.id]?.selectedEvents?.clear();
+			if (destination.subscribedEvents) {
+				for (const eventName of destination.subscribedEvents) {
+					items.value[destination.id]?.selectedEvents?.add(eventName);
+				}
 			}
-		},
-		getAllDestinations(): MessageEventBusDestinationOptions[] {
-			const destinations: MessageEventBusDestinationOptions[] = [];
-			for (const key of Object.keys(this.items)) {
-				destinations.push(this.items[key].destination);
-			}
-			return destinations;
-		},
-		updateDestination(destination: MessageEventBusDestinationOptions) {
-			if (destination.id && this.items[destination.id]) {
-				this.$patch((state) => {
-					if (destination.id && this.items[destination.id]) {
-						state.items[destination.id].destination = destination;
-					}
-					// to trigger refresh
-					state.items = { ...state.items };
-				});
-			}
-		},
-		removeDestination(destinationId: string) {
-			if (!destinationId) return;
-			delete this.items[destinationId];
-			if (this.items[destinationId]) {
-				this.$patch({
-					items: {
-						...this.items,
-					},
-				});
-			}
-		},
-		clearDestinations() {
-			this.items = {};
-		},
-		addEventName(name: string) {
-			this.eventNames.add(name);
-		},
-		removeEventName(name: string) {
-			this.eventNames.delete(name);
-		},
-		clearEventNames() {
-			this.eventNames.clear();
-		},
-		addSelectedEvent(id: string, name: string) {
-			this.items[id]?.selectedEvents?.add(name);
-			this.setSelectedInGroup(id, name, true);
-		},
-		removeSelectedEvent(id: string, name: string) {
-			this.items[id]?.selectedEvents?.delete(name);
-			this.setSelectedInGroup(id, name, false);
-		},
-		getSelectedEvents(destinationId: string): string[] {
-			const selectedEvents: string[] = [];
-			if (this.items[destinationId]) {
-				for (const group of this.items[destinationId].eventGroups) {
-					if (group.selected) {
-						selectedEvents.push(group.name);
-					}
-					for (const event of group.children) {
-						if (event.selected) {
-							selectedEvents.push(event.name);
+			items.value[destination.id].eventGroups = eventGroupsFromStringList(
+				eventNames.value,
+				items.value[destination.id]?.selectedEvents,
+			);
+		}
+	};
+
+	const getDestination = (destinationId: string) => {
+		if (items.value[destinationId]) {
+			return items.value[destinationId].destination;
+		} else {
+			return;
+		}
+	};
+
+	const getAllDestinations = () => {
+		const destinations: MessageEventBusDestinationOptions[] = [];
+		for (const key of Object.keys(items)) {
+			destinations.push(items.value[key].destination);
+		}
+		return destinations;
+	};
+
+	const clearDestinations = () => {
+		items.value = {};
+	};
+
+	const addEventName = (name: string) => {
+		eventNames.value.add(name);
+	};
+
+	const removeEventName = (name: string) => {
+		eventNames.value.delete(name);
+	};
+
+	const clearEventNames = () => {
+		eventNames.value.clear();
+	};
+
+	const addSelectedEvent = (id: string, name: string) => {
+		items.value[id]?.selectedEvents?.add(name);
+		setSelectedInGroup(id, name, true);
+	};
+
+	const removeSelectedEvent = (id: string, name: string) => {
+		items.value[id]?.selectedEvents?.delete(name);
+		setSelectedInGroup(id, name, false);
+	};
+
+	const setSelectedInGroup = (destinationId: string, name: string, isSelected: boolean) => {
+		if (items.value[destinationId]) {
+			const groupName = eventGroupFromEventName(name);
+			const groupIndex = items.value[destinationId].eventGroups.findIndex(
+				(e) => e.name === groupName,
+			);
+
+			if (groupIndex > -1) {
+				if (groupName === name) {
+					items.value[destinationId].eventGroups[groupIndex].selected = isSelected;
+				} else {
+					const eventIndex = items.value[destinationId].eventGroups[groupIndex].children.findIndex(
+						(e) => e.name === name,
+					);
+					if (eventIndex > -1) {
+						items.value[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
+							isSelected;
+						if (isSelected) {
+							items.value[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
+						} else {
+							let anySelected = false;
+							for (
+								let i = 0;
+								i < items.value[destinationId].eventGroups[groupIndex].children.length;
+								i++
+							) {
+								anySelected =
+									anySelected ||
+									items.value[destinationId].eventGroups[groupIndex].children[i].selected;
+							}
+							items.value[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
 						}
 					}
 				}
 			}
-			return selectedEvents;
-		},
-		setSelectedInGroup(destinationId: string, name: string, isSelected: boolean) {
-			if (this.items[destinationId]) {
-				const groupName = eventGroupFromEventName(name);
-				const groupIndex = this.items[destinationId].eventGroups.findIndex(
-					(e) => e.name === groupName,
-				);
-				if (groupIndex > -1) {
-					if (groupName === name) {
-						this.$patch((state) => {
-							state.items[destinationId].eventGroups[groupIndex].selected = isSelected;
-						});
-					} else {
-						const eventIndex = this.items[destinationId].eventGroups[groupIndex].children.findIndex(
-							(e) => e.name === name,
-						);
-						if (eventIndex > -1) {
-							this.$patch((state) => {
-								state.items[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
-									isSelected;
-								if (isSelected) {
-									state.items[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
-								} else {
-									let anySelected = false;
-									for (
-										let i = 0;
-										i < state.items[destinationId].eventGroups[groupIndex].children.length;
-										i++
-									) {
-										anySelected =
-											anySelected ||
-											state.items[destinationId].eventGroups[groupIndex].children[i].selected;
-									}
-									state.items[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
-								}
-							});
-						}
+		}
+	};
+
+	const removeDestinationItemTree = (id: string) => {
+		delete items.value[id];
+	};
+
+	const updateDestination = (destination: MessageEventBusDestinationOptions) => {
+		if (destination.id && items.value[destination.id]) {
+			items.value[destination.id].destination = destination;
+		}
+	};
+
+	const removeDestination = (destinationId: string) => {
+		if (!destinationId) return;
+		delete items.value[destinationId];
+	};
+
+	const getSelectedEvents = (destinationId: string): string[] => {
+		const selectedEvents: string[] = [];
+		if (items.value[destinationId]) {
+			for (const group of items.value[destinationId].eventGroups) {
+				if (group.selected) {
+					selectedEvents.push(group.name);
+				}
+				for (const event of group.children) {
+					if (event.selected) {
+						selectedEvents.push(event.name);
 					}
 				}
 			}
-		},
-		removeDestinationItemTree(id: string) {
-			delete this.items[id];
-		},
-		clearDestinationItemTrees() {
-			this.items = {} as DestinationSettingsStore;
-		},
-		setSelectionAndBuildItems(destination: MessageEventBusDestinationOptions) {
-			if (destination.id) {
-				if (!this.items[destination.id]) {
-					this.items[destination.id] = {
-						destination,
-						selectedEvents: new Set<string>(),
-						eventGroups: [],
-						isNew: false,
-					} as DestinationStoreItem;
-				}
-				this.items[destination.id]?.selectedEvents?.clear();
-				if (destination.subscribedEvents) {
-					for (const eventName of destination.subscribedEvents) {
-						this.items[destination.id]?.selectedEvents?.add(eventName);
-					}
-				}
-				this.items[destination.id].eventGroups = eventGroupsFromStringList(
-					this.eventNames,
-					this.items[destination.id]?.selectedEvents,
-				);
-			}
-		},
-		async saveDestination(destination: MessageEventBusDestinationOptions): Promise<boolean> {
-			if (!hasDestinationId(destination)) {
-				return false;
-			}
+		}
+		return selectedEvents;
+	};
 
-			const rootStore = useRootStore();
-			const selectedEvents = this.getSelectedEvents(destination.id);
-			try {
-				await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
-				this.updateDestination(destination);
-				return true;
-			} catch (e) {
-				return false;
-			}
-		},
-		async sendTestMessage(destination: MessageEventBusDestinationOptions): Promise<boolean> {
-			if (!hasDestinationId(destination)) {
-				return false;
-			}
+	const saveDestination = async (
+		destination: MessageEventBusDestinationOptions,
+	): Promise<boolean> => {
+		if (!hasDestinationId(destination)) {
+			return false;
+		}
 
-			const rootStore = useRootStore();
-			const testResult = await sendTestMessageToDestination(rootStore.restApiContext, destination);
-			return testResult;
-		},
-		async fetchEventNames(): Promise<string[]> {
-			const rootStore = useRootStore();
-			return await getEventNamesFromBackend(rootStore.restApiContext);
-		},
-		async fetchDestinations(): Promise<MessageEventBusDestinationOptions[]> {
-			const rootStore = useRootStore();
-			return await getDestinationsFromBackend(rootStore.restApiContext);
-		},
-		async deleteDestination(destinationId: string) {
-			const rootStore = useRootStore();
-			await deleteDestinationFromDb(rootStore.restApiContext, destinationId);
-			this.removeDestination(destinationId);
-		},
-	},
+		const selectedEvents = getSelectedEvents(destination.id);
+		try {
+			await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
+			updateDestination(destination);
+			return true;
+		} catch (e) {
+			return false;
+		}
+	};
+
+	const sendTestMessage = async (
+		destination: MessageEventBusDestinationOptions,
+	): Promise<boolean> => {
+		if (!hasDestinationId(destination)) {
+			return false;
+		}
+
+		const testResult = await sendTestMessageToDestination(rootStore.restApiContext, destination);
+		return testResult;
+	};
+
+	const fetchEventNames = async () => {
+		return await getEventNamesFromBackend(rootStore.restApiContext);
+	};
+
+	const fetchDestinations = async (): Promise<MessageEventBusDestinationOptions[]> => {
+		return await getDestinationsFromBackend(rootStore.restApiContext);
+	};
+
+	const deleteDestination = async (destinationId: string) => {
+		await deleteDestinationFromDb(rootStore.restApiContext, destinationId);
+		removeDestination(destinationId);
+	};
+
+	return {
+		addDestination,
+		setSelectionAndBuildItems,
+		getDestination,
+		getAllDestinations,
+		clearDestinations,
+		addEventName,
+		removeEventName,
+		clearEventNames,
+		addSelectedEvent,
+		removeSelectedEvent,
+		setSelectedInGroup,
+		removeDestinationItemTree,
+		updateDestination,
+		removeDestination,
+		getSelectedEvents,
+		saveDestination,
+		sendTestMessage,
+		fetchEventNames,
+		fetchDestinations,
+		deleteDestination,
+		items,
+	};
 });
 
-export function eventGroupFromEventName(eventName: string): string | undefined {
+export const eventGroupFromEventName = (eventName: string): string | undefined => {
 	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
 	if (matches && matches?.length > 0) {
 		return matches[0];
 	}
 	return undefined;
-}
+};
 
-function prettifyEventName(label: string, group = ''): string {
+const prettifyEventName = (label: string, group = ''): string => {
 	label = label.replace(group + '.', '');
 	if (label.length > 0) {
 		label = label[0].toUpperCase() + label.substring(1);
 		label = label.replaceAll('.', ' ');
 	}
 	return label;
-}
+};
 
-export function eventGroupsFromStringList(
+export const eventGroupsFromStringList = (
 	dottedList: Set<string>,
 	selectionList: Set<string> = new Set(),
-) {
+) => {
 	const result = [] as EventSelectionGroup[];
 	const eventNameArray = Array.from(dottedList.values());
 
@@ -287,4 +309,4 @@ export function eventGroupsFromStringList(
 		result.push(collection);
 	}
 	return result;
-}
+};

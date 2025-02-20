@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -13,9 +14,16 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
+import { dealFields, dealOperations } from './DealDescription';
+import type { IAssociation, IDeal } from './DealInterface';
+import { engagementFields, engagementOperations } from './EngagementDescription';
+import { formFields, formOperations } from './FormDescription';
+import type { IForm } from './FormInterface';
 import {
 	clean,
 	getAssociations,
@@ -27,24 +35,7 @@ import {
 	hubspotApiRequestAllItems,
 	validateCredentials,
 } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
-import { engagementFields, engagementOperations } from './EngagementDescription';
-
-import { formFields, formOperations } from './FormDescription';
-
 import { ticketFields, ticketOperations } from './TicketDescription';
-
-import type { IForm } from './FormInterface';
-
-import type { IAssociation, IDeal } from './DealInterface';
 
 export class HubspotV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -58,8 +49,8 @@ export class HubspotV1 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -977,7 +968,7 @@ export class HubspotV1 implements INodeType {
 					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -2724,7 +2715,7 @@ export class HubspotV1 implements INodeType {
 					);
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });
 						continue;
 					}

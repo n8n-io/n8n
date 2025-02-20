@@ -1,14 +1,15 @@
-import type {
-	IPollFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import { DateTime } from 'luxon';
+import {
+	type IPollFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
-import { triggerDescription } from './TriggerDescription';
 import { getPath, microsoftApiRequest, microsoftApiRequestAllItemsDelta } from './GenericFunctions';
+import { triggerDescription } from './TriggerDescription';
 
 export class MicrosoftOneDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,7 +31,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [...triggerDescription],
 	};
 

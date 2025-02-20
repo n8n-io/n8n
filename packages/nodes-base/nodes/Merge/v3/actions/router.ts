@@ -1,6 +1,7 @@
-import { NodeExecutionOutput, type IExecuteFunctions } from 'n8n-workflow';
-import type { MergeType } from './node.type';
+import type { IExecuteFunctions } from 'n8n-workflow';
+
 import * as mode from './mode';
+import type { MergeType } from './node.type';
 import { getNodeInputsData } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions) {
@@ -12,11 +13,5 @@ export async function router(this: IExecuteFunctions) {
 		operationMode = combineBy;
 	}
 
-	const returnData = await mode[operationMode as MergeType].execute.call(this, inputsData);
-
-	if (returnData instanceof NodeExecutionOutput) {
-		return returnData;
-	} else {
-		return [returnData];
-	}
+	return await mode[operationMode as MergeType].execute.call(this, inputsData);
 }

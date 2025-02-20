@@ -1,11 +1,13 @@
-import { Container } from 'typedi';
-import convict from 'convict';
-import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
-import { flatten } from 'flat';
-import merge from 'lodash/merge';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import convict from 'convict';
+import { flatten } from 'flat';
+import { readFileSync } from 'fs';
+import merge from 'lodash/merge';
+import { Logger } from 'n8n-core';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import assert from 'node:assert';
+import colors from 'picocolors';
 
 import { inTest, inE2ETests } from '@/constants';
 
@@ -21,8 +23,7 @@ if (inE2ETests) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	process.env.N8N_SECURE_COOKIE = 'false';
-} else {
-	dotenv.config();
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
 }
 
 // Load schema after process.env has been overwritten
@@ -32,13 +33,15 @@ const config = convict(schema, { args: [] });
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
 
+const logger = Container.get(Logger);
+const globalConfig = Container.get(GlobalConfig);
+
 // Load overwrites when not in tests
 if (!inE2ETests && !inTest) {
 	// Overwrite default configuration with settings which got defined in
 	// optional configuration files
 	const { N8N_CONFIG_FILES } = process.env;
 	if (N8N_CONFIG_FILES !== undefined) {
-		const globalConfig = Container.get(GlobalConfig);
 		const configFiles = N8N_CONFIG_FILES.split(',');
 		for (const configFile of configFiles) {
 			if (!configFile) continue;
@@ -59,9 +62,10 @@ if (!inE2ETests && !inTest) {
 						}
 					}
 				}
-				console.debug('Loaded config overwrites from', configFile);
+				logger.debug(`Loaded config overwrites from ${configFile}`);
 			} catch (error) {
-				console.error('Error loading config file', configFile, error);
+				assert(error instanceof Error);
+				logger.error(`Error loading config file ${configFile}`, { error });
 			}
 		}
 	}
@@ -97,26 +101,25 @@ config.validate({
 const userManagement = config.get('userManagement');
 if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
 	if (!inTest)
-		console.warn(
+		logger.warn(
 			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
 		);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
 
-import colors from 'picocolors';
 const executionProcess = config.getEnv('executions.process');
 if (executionProcess) {
-	console.error(
-		colors.yellow('Please unset the deprecated env variable'),
-		colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
+	logger.error(
+		colors.yellow('Please unset the deprecated env variable') +
+			colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
 	);
 }
 if (executionProcess === 'own') {
-	console.error(
+	logger.error(
 		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),
 	);
-	console.error(
+	logger.error(
 		colors.red(
 			'If you need the isolation and performance gains, please consider using queue mode instead.\n\n',
 		),
@@ -125,8 +128,10 @@ if (executionProcess === 'own') {
 }
 
 setGlobalState({
-	defaultTimezone: config.getEnv('generic.timezone'),
+	defaultTimezone: globalConfig.generic.timezone,
 });
 
 // eslint-disable-next-line import/no-default-export
 export default config;
+
+export type Config = typeof config;

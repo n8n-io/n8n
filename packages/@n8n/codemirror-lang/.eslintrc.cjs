@@ -8,7 +8,5 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
-	ignorePatterns: [
-		'src/expressions/grammar*.ts'
-	]
+	ignorePatterns: ['src/expressions/grammar*.ts'],
 };

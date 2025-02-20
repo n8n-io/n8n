@@ -1,0 +1,22 @@
+{
+    "type": "object",
+    "properties": {
+        "Modified Date": {
+            "type": "string"
+        },
+        "Created Date": {
+            "type": "string"
+        },
+        "Created By": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Modified Date",
+        "Created Date",
+        "_id"
+    ]
+}

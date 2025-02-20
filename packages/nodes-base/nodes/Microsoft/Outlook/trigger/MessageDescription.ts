@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { messageFields } from '../v2/helpers/utils';
 
 export const properties: INodeProperties[] = [
@@ -65,7 +66,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Folders to Include',
@@ -76,7 +77,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Read Status',

@@ -6,12 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
-import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
-import type { Connection } from '@jsplumb/core';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
+import type { ComponentPublicInstance } from 'vue';
 
 /*
 	Type guards used in editor-ui project
@@ -50,14 +49,6 @@ export const isCredentialModalState = (value: unknown): value is NewCredentialsM
 
 export const isResourceMapperValue = (value: unknown): value is string | number | boolean => {
 	return ['string', 'number', 'boolean'].includes(typeof value);
-};
-
-export const isJSPlumbEndpointElement = (element: Node): element is jsPlumbDOMElement => {
-	return 'jtk' in element && 'endpoint' in (element.jtk as object);
-};
-
-export const isJSPlumbConnection = (connection: unknown): connection is Connection => {
-	return connection !== null && typeof connection === 'object' && 'connector' in connection;
 };
 
 export function isDateObject(date: unknown): date is Date {
@@ -102,4 +93,8 @@ export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
 		typeof value === 'string' ||
 		(typeof value === 'object' && value !== null && ('name' in value || 'path' in value))
 	);
+}
+
+export function isComponentPublicInstance(value: unknown): value is ComponentPublicInstance {
+	return value !== null && typeof value === 'object' && '$props' in value;
 }

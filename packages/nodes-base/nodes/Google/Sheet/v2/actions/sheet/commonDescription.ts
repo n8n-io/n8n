@@ -258,3 +258,13 @@ export const handlingExtraData: INodeProperties = {
 	default: 'insertInNewColumn',
 	description: "What do to with fields that don't match any columns in the Google Sheet",
 };
+
+export const useAppendOption: INodeProperties = {
+	displayName: 'Minimise API Calls',
+	name: 'useAppend',
+	type: 'boolean',
+	default: false,
+	hint: 'Use if your sheet has no gaps between rows or columns',
+	description:
+		'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
+};

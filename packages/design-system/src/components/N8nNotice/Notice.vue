@@ -1,23 +1,7 @@
-<template>
-	<div :id="id" :class="classes" role="alert" @click="onClick">
-		<div class="notice-content">
-			<N8nText size="small" :compact="true">
-				<slot>
-					<span
-						:id="`${id}-content`"
-						:class="showFullContent ? $style['expanded'] : $style['truncated']"
-						role="region"
-						v-html="displayContent"
-					/>
-				</slot>
-			</N8nText>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
 import sanitize from 'sanitize-html';
+import { computed, ref, useCssModule } from 'vue';
+
 import N8nText from '../../components/N8nText';
 import { uid } from '../../utils';
 
@@ -26,6 +10,7 @@ interface NoticeProps {
 	theme?: 'success' | 'warning' | 'danger' | 'info';
 	content?: string;
 	fullContent?: string;
+	compact?: boolean;
 }
 
 const props = withDefaults(defineProps<NoticeProps>(), {
@@ -33,6 +18,7 @@ const props = withDefaults(defineProps<NoticeProps>(), {
 	theme: 'warning',
 	content: '',
 	fullContent: '',
+	compact: true,
 });
 
 const emit = defineEmits<{
@@ -80,6 +66,23 @@ const onClick = (event: MouseEvent) => {
 	}
 };
 </script>
+
+<template>
+	<div :id="id" :class="classes" role="alert" @click="onClick">
+		<div class="notice-content">
+			<N8nText size="small" :compact="compact">
+				<slot>
+					<span
+						:id="`${id}-content`"
+						:class="showFullContent ? $style['expanded'] : $style['truncated']"
+						role="region"
+						v-n8n-html="displayContent"
+					/>
+				</slot>
+			</N8nText>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .notice {

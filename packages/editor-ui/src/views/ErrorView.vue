@@ -1,26 +1,8 @@
-<template>
-	<div :class="$style.container">
-		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
-		<div :class="$style.message">
-			<div>
-				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(messageKey) }}
-				</n8n-heading>
-			</div>
-			<div>
-				<n8n-text v-if="errorCode" size="large">
-					{{ errorCode }} {{ $locale.baseText('error') }}
-				</n8n-text>
-			</div>
-		</div>
-		<n8n-button :label="$locale.baseText(redirectTextKey)" @click="onButtonClick" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 const router = useRouter();
 
 const props = defineProps<{
@@ -30,10 +12,31 @@ const props = defineProps<{
 	redirectPage?: keyof typeof VIEWS;
 }>();
 
+const i18n = useI18n();
+
 function onButtonClick() {
 	void router.push({ name: props.redirectPage ?? VIEWS.HOMEPAGE });
 }
 </script>
+
+<template>
+	<div :class="$style.container">
+		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
+		<div :class="$style.message">
+			<div>
+				<n8n-heading size="2xlarge">
+					{{ i18n.baseText(messageKey) }}
+				</n8n-heading>
+			</div>
+			<div>
+				<n8n-text v-if="errorCode" size="large">
+					{{ errorCode }} {{ i18n.baseText('error') }}
+				</n8n-text>
+			</div>
+		</div>
+		<n8n-button :label="i18n.baseText(redirectTextKey)" @click="onButtonClick" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

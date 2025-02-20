@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -21,7 +21,6 @@ import {
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{
@@ -41,8 +40,9 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'supabaseApi',
@@ -123,14 +123,16 @@ export class Supabase implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
+		let qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
+			const tableId = this.getNodeParameter('tableId', 0) as string;
+
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
 					const dataToSend = this.getNodeParameter('dataToSend', 0) as
@@ -171,7 +173,7 @@ export class Supabase implements INodeType {
 						returnData.push(...executionData);
 					});
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.description }),
 							{ itemData: mapPairedItemsFrom(records) },
@@ -184,10 +186,9 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'delete') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
-				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -220,7 +221,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -240,7 +241,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'get') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
@@ -260,7 +260,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -280,19 +280,21 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'getAll') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
 				const filterType = this.getNodeParameter('filterType', 0) as string;
+
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					qs = {}; // reset qs
+
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (keys.length !== 0) {
 							if (matchType === 'allFilters') {
-								const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-								Object.assign(qs, data);
+								const data = keys.map((key) => buildOrQuery(key));
+								Object.assign(qs, { and: `(${data.join(',')})` });
 							}
 							if (matchType === 'anyFilter') {
 								const data = keys.map((key) => buildOrQuery(key));
@@ -327,7 +329,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -342,7 +344,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'update') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
@@ -403,7 +404,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },

@@ -6,10 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleBigQueryApiRequest } from '../../transport';
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -63,7 +65,7 @@ const properties: INodeProperties[] = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['projectId.value', 'datasetId.value', 'tableId.value'],
 							loadOptionsMethod: 'getSchema',
@@ -210,7 +212,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			rows.push({ json: checkSchema.call(this, schema, record, i) });
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
@@ -225,7 +227,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	const itemData = generatePairedItemData(items.length);
 	for (let i = 0; i < rows.length; i += batchSize) {
 		const batch = rows.slice(i, i + batchSize);
 		body.rows = batch;
@@ -275,13 +276,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				: '';
 			throw new NodeOperationError(this.getNode(), `${failedMessage}${stoppedMessage}`, {
 				description: errors.join('\n, '),
+				itemIndex: i,
 			});
 		}
 
-		const executionData = this.helpers.constructExecutionMetaData(
-			wrapData(responseData as IDataObject[]),
-			{ itemData },
-		);
+		const executionData = wrapData(responseData as IDataObject[]);
 
 		returnData.push(...executionData);
 	}

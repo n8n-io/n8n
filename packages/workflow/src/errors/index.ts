@@ -1,3 +1,8 @@
+export type * from './error.types';
+export { BaseError, type BaseErrorOptions } from './base/base.error';
+export { OperationalError, type OperationalErrorOptions } from './base/operational.error';
+export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.error';
+export { UserError, type UserErrorOptions } from './base/user.error';
 export { ApplicationError } from './application.error';
 export { ExpressionError } from './expression.error';
 export { CredentialAccessError } from './credential-access-error';
@@ -16,3 +21,5 @@ export { TriggerCloseError } from './trigger-close.error';
 export { NodeError } from './abstract/node.error';
 export { ExecutionBaseError } from './abstract/execution-base.error';
 export { ExpressionExtensionError } from './expression-extension.error';
+export { DbConnectionTimeoutError } from './db-connection-timeout-error';
+export { ensureError } from './ensure-error';

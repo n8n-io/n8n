@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as table from './table/Table.resource';
 import * as workbook from './workbook/Workbook.resource';
@@ -16,8 +16,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Excel 365',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',
@@ -27,7 +27,7 @@ export const versionDescription: INodeTypeDescription = {
 	properties: [
 		{
 			displayName:
-				'This node connects to the Microsoft 365 cloud platform. Use the \'Extract from File\' and \'Convert to File\' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="/templates/890" target="_blank">More info</a>.',
+				'This node connects to the Microsoft 365 cloud platform. Use the \'Extract from File\' and \'Convert to File\' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">More info</a>.',
 			name: 'notice',
 			type: 'notice',
 			default: '',

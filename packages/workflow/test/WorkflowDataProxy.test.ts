@@ -1,14 +1,19 @@
-import type {
-	IExecuteData,
-	INode,
-	IPinData,
-	IRun,
-	IWorkflowBase,
-	WorkflowExecuteMode,
+import { DateTime, Duration, Interval } from 'luxon';
+
+import { ensureError } from '@/errors/ensure-error';
+import { ExpressionError } from '@/errors/expression.error';
+import {
+	NodeConnectionType,
+	type IExecuteData,
+	type INode,
+	type IPinData,
+	type IRun,
+	type IWorkflowBase,
+	type WorkflowExecuteMode,
 } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
-import { ExpressionError } from '@/errors/expression.error';
+
 import * as Helpers from './Helpers';
 
 const loadFixture = (fixture: string) => {
@@ -25,9 +30,15 @@ const getProxyFromFixture = (
 	run: IRun | null,
 	activeNode: string,
 	mode?: WorkflowExecuteMode,
+	opts?: {
+		throwOnMissingExecutionData: boolean;
+		connectionType?: NodeConnectionType;
+		runIndex?: number;
+	},
 ) => {
-	const taskData = run?.data.resultData.runData[activeNode]?.[0];
-	const lastNodeConnectionInputData = taskData?.data?.main[0];
+	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
+	const lastNodeConnectionInputData =
+		taskData?.data?.[opts?.connectionType ?? NodeConnectionType.Main]?.[0];
 
 	let executeData: IExecuteData | undefined;
 
@@ -36,7 +47,7 @@ const getProxyFromFixture = (
 			data: taskData.data!,
 			node: workflow.nodes.find((node) => node.name === activeNode) as INode,
 			source: {
-				main: taskData.source,
+				[opts?.connectionType ?? NodeConnectionType.Main]: taskData.source,
 			},
 		};
 	}
@@ -62,7 +73,7 @@ const getProxyFromFixture = (
 			pinData,
 		}),
 		run?.data ?? null,
-		0,
+		opts?.runIndex ?? 0,
 		0,
 		activeNode,
 		lastNodeConnectionInputData ?? [],
@@ -72,7 +83,7 @@ const getProxyFromFixture = (
 		executeData,
 	);
 
-	return dataProxy.getDataProxy();
+	return dataProxy.getDataProxy(opts);
 };
 
 describe('WorkflowDataProxy', () => {
@@ -326,7 +337,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Can't get data for expression");
+				expect(exprError.message).toEqual(
+					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				);
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
 			}
@@ -401,6 +414,376 @@ describe('WorkflowDataProxy', () => {
 
 		test('$node[PinnedSet].json.firstName', () => {
 			expect(proxy.$node.PinnedSet.json.firstName).toBe('Joe');
+		});
+	});
+
+	describe('Pinned data with paired items', () => {
+		const fixture = loadFixture('pindata_paireditem');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Set', 'manual', {
+			runIndex: 0,
+			throwOnMissingExecutionData: false,
+		});
+
+		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
+			'$methodName should throw when it cannot find a paired item',
+			async ({ methodName }) => {
+				try {
+					proxy.$('DebugHelper')[methodName](0);
+					fail('should throw');
+				} catch (e) {
+					const error = ensureError(e);
+					expect(error.message).toEqual(
+						`Using the ${methodName} method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.`,
+					);
+
+					expect(error).toMatchObject({
+						functionality: 'pairedItem',
+						context: {
+							runIndex: 0,
+							itemIndex: 0,
+							type: 'paired_item_no_info',
+							descriptionKey: 'pairedItemNoInfo',
+							nodeCause: 'Edit Fields',
+							causeDetailed:
+								"Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
+						},
+					});
+				}
+			},
+		);
+
+		test('item should throw when it cannot find a paired item', async () => {
+			try {
+				proxy.$('DebugHelper').item;
+				fail('should throw');
+			} catch (e) {
+				const error = ensureError(e);
+				expect(error.message).toEqual(
+					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Edit Fields' and try again.",
+				);
+
+				expect(error).toMatchObject({
+					functionality: 'pairedItem',
+					context: {
+						runIndex: 0,
+						itemIndex: 0,
+						type: 'paired_item_no_info',
+						descriptionKey: 'pairedItemNoInfo',
+						nodeCause: 'Edit Fields',
+						causeDetailed: "Missing pairedItem data (node 'Edit Fields' probably didn't supply it)",
+					},
+				});
+			}
+		});
+	});
+
+	describe('Partial data', () => {
+		const fixture = loadFixture('partial_data');
+
+		describe('Default behaviour (throw on missing execution data)', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+			test('$binary', () => {
+				expect(() => proxy.$binary).toThrowError(ExpressionError);
+			});
+
+			test('$json', () => {
+				expect(() => proxy.$json).toThrowError(ExpressionError);
+			});
+
+			test('$data', () => {
+				expect(() => proxy.$data).toThrowError(ExpressionError);
+			});
+		});
+
+		describe("Don't throw on missing execution data)", () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', undefined, {
+				throwOnMissingExecutionData: false,
+			});
+
+			test('$binary', () => {
+				expect(proxy.$binary).toBeUndefined();
+			});
+
+			test('$json', () => {
+				expect(proxy.$json).toBeUndefined();
+			});
+
+			test('$data', () => {
+				expect(proxy.$data).toBeUndefined();
+			});
+		});
+	});
+
+	describe('$fromAI', () => {
+		const fixture = loadFixture('from_ai_multiple_items');
+		const getFromAIProxy = (runIndex = 0) =>
+			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
+				connectionType: NodeConnectionType.AiTool,
+				throwOnMissingExecutionData: false,
+				runIndex,
+			});
+
+		test('Retrieves values for first item', () => {
+			expect(getFromAIProxy().$fromAI('full_name')).toEqual('Mr. Input 1');
+			expect(getFromAIProxy().$fromAI('email')).toEqual('input1@n8n.io');
+		});
+
+		test('Retrieves values for second item', () => {
+			expect(getFromAIProxy(1).$fromAI('full_name')).toEqual('Mr. Input 2');
+			expect(getFromAIProxy(1).$fromAI('email')).toEqual('input2@n8n.io');
+		});
+
+		test('Case variants: $fromAi and $fromai', () => {
+			expect(getFromAIProxy().$fromAi('full_name')).toEqual('Mr. Input 1');
+			expect(getFromAIProxy().$fromai('email')).toEqual('input1@n8n.io');
+		});
+
+		test('Returns default value when key not found', () => {
+			expect(
+				getFromAIProxy().$fromAI('non_existent_key', 'description', 'string', 'default_value'),
+			).toEqual('default_value');
+		});
+
+		test('Throws an error when a key is invalid (e.g. empty string)', () => {
+			expect(() => getFromAIProxy().$fromAI('')).toThrow(ExpressionError);
+			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
+			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$rawParameter', () => {
+		const fixture = loadFixture('rawParameter');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
+			connectionType: NodeConnectionType.Main,
+			throwOnMissingExecutionData: false,
+			runIndex: 0,
+		});
+
+		test('returns simple raw parameter value', () => {
+			expect(proxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+
+		test('returns raw parameter value for resource locator values', () => {
+			expect(proxy.$rawParameter.workflowId).toEqual('={{ $json.foo }}');
+		});
+
+		test('returns raw parameter value when there is no run data', () => {
+			const noRunDataProxy = getProxyFromFixture(
+				fixture.workflow,
+				{
+					data: { resultData: { runData: {} } },
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+				},
+				'Execute Workflow',
+				'manual',
+				{
+					connectionType: NodeConnectionType.Main,
+					throwOnMissingExecutionData: false,
+					runIndex: 0,
+				},
+			);
+			expect(noRunDataProxy.$rawParameter.options).toEqual({
+				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+	});
+
+	describe('DateTime and Time-related functions', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('$now should return current datetime', () => {
+			expect(proxy.$now).toBeInstanceOf(DateTime);
+		});
+
+		test('$today should return datetime at start of day', () => {
+			const today = proxy.$today;
+			expect(today).toBeInstanceOf(DateTime);
+			expect(today.hour).toBe(0);
+			expect(today.minute).toBe(0);
+			expect(today.second).toBe(0);
+			expect(today.millisecond).toBe(0);
+		});
+
+		test('should expose DateTime, Interval, and Duration', () => {
+			expect(proxy.DateTime).toBe(DateTime);
+			expect(proxy.Interval).toBe(Interval);
+			expect(proxy.Duration).toBe(Duration);
+		});
+
+		test('$now should be configurable with timezone', () => {
+			const timezoneProxy = getProxyFromFixture(
+				{ ...fixture.workflow, settings: { timezone: 'America/New_York' } },
+				fixture.run,
+				'End',
+			);
+
+			expect(timezoneProxy.$now.zoneName).toBe('America/New_York');
+		});
+	});
+
+	describe('Node version and ID', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('$nodeVersion should return node type version', () => {
+			expect(proxy.$nodeVersion).toBe(1);
+		});
+
+		test('$nodeId should return node ID', () => {
+			expect(proxy.$nodeId).toBe('uuid-5');
+		});
+
+		test('$webhookId should be optional', () => {
+			expect(proxy.$webhookId).toBeUndefined();
+		});
+	});
+
+	describe('$jmesPath', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('should query simple object', () => {
+			const data = { name: 'John', age: 30 };
+			expect(proxy.$jmesPath(data, 'name')).toBe('John');
+		});
+
+		test('should query nested object', () => {
+			const data = {
+				user: {
+					name: 'John',
+					details: { age: 30 },
+				},
+			};
+			expect(proxy.$jmesPath(data, 'user.details.age')).toBe(30);
+		});
+
+		test('should query array', () => {
+			const data = [
+				{ name: 'John', age: 30 },
+				{ name: 'Jane', age: 25 },
+			];
+			expect(proxy.$jmesPath(data, '[*].name')).toEqual(['John', 'Jane']);
+		});
+
+		test('should throw error for invalid arguments', () => {
+			expect(() => proxy.$jmesPath('not an object', 'test')).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({}, 123 as unknown as string)).toThrow(ExpressionError);
+		});
+
+		test('$jmespath should alias $jmesPath', () => {
+			const data = { name: 'John' };
+			expect(proxy.$jmespath(data, 'name')).toBe(proxy.$jmesPath(data, 'name'));
+		});
+	});
+
+	describe('$mode', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', 'manual');
+
+		test('should return execution mode', () => {
+			expect(proxy.$mode).toBe('manual');
+		});
+	});
+
+	describe('$item', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('should return data proxy for specific item', () => {
+			const itemProxy = proxy.$item(1);
+			expect(itemProxy.$json.data).toBe(160);
+		});
+
+		test('should allow specifying run index', () => {
+			const itemProxy = proxy.$item(1, 0);
+			expect(itemProxy.$json.data).toBe(160);
+		});
+	});
+
+	describe('$items', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		describe('Default behavior (no arguments)', () => {
+			test('should return input items from previous node', () => {
+				const items = proxy.$items();
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+				expect(items[1].json.data).toBe(160);
+			});
+
+			test('should limit items for nodes with executeOnce=true', () => {
+				// Mock a node with executeOnce=true
+				const mockWorkflow = {
+					...fixture.workflow,
+					nodes: fixture.workflow.nodes.map((node) =>
+						node.name === 'Rename' ? { ...node, executeOnce: true } : node,
+					),
+				};
+
+				const mockProxy = getProxyFromFixture(mockWorkflow, fixture.run, 'End');
+				const items = mockProxy.$items();
+
+				expect(items.length).toBe(1);
+				expect(items[0].json.data).toBe(105);
+			});
+		});
+
+		describe('With node name argument', () => {
+			test('should return items for specified node', () => {
+				const items = proxy.$items('Rename');
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+				expect(items[1].json.data).toBe(160);
+			});
+
+			test('should throw error for non-existent node', () => {
+				expect(() => proxy.$items('NonExistentNode')).toThrowError(ExpressionError);
+			});
+		});
+
+		describe('With node name and output index', () => {
+			const switchWorkflow = loadFixture('multiple_outputs');
+			const switchProxy = getProxyFromFixture(
+				switchWorkflow.workflow,
+				switchWorkflow.run,
+				'Edit Fields',
+			);
+
+			test('should return items from specific output', () => {
+				const items = switchProxy.$items('If', 1);
+				expect(items[0].json.code).toBe(1);
+			});
+		});
+
+		describe('With node name, output index, and run index', () => {
+			test('should handle negative run index', () => {
+				const items = proxy.$items('Rename', 0, -1);
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+			});
+		});
+
+		describe('Error handling', () => {
+			test('should throw error for invalid run index', () => {
+				expect(() => proxy.$items('Rename', 0, 999)).toThrowError(ExpressionError);
+			});
+
+			test('should handle nodes with no execution data', () => {
+				const noDataWorkflow = {
+					...fixture.workflow,
+					nodes: fixture.workflow.nodes.filter((node) => node.name !== 'Rename'),
+				};
+				const noDataProxy = getProxyFromFixture(noDataWorkflow, null, 'End');
+
+				expect(() => noDataProxy.$items('Rename')).toThrowError(ExpressionError);
+			});
 		});
 	});
 });

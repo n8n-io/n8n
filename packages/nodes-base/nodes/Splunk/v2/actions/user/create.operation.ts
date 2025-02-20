@@ -1,8 +1,9 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import type { SplunkFeedResponse } from '../../helpers/interfaces';
 import { formatFeed, populate } from '../../helpers/utils';
 import { splunkApiRequest } from '../../transport';
-import type { SplunkFeedResponse } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -19,7 +20,7 @@ const properties: INodeProperties[] = [
 		name: 'roles',
 		type: 'multiOptions',
 		description:
-			'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 		default: ['user'],
 		typeOptions: {

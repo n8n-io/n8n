@@ -95,7 +95,7 @@ const onCredentialModalOpened = () => {
 				:plural="credentials.usedBy.length"
 				scope="global"
 			>
-				<span v-html="nodeNames" />
+				<span v-n8n-html="nodeNames" />
 			</i18n-t>
 		</p>
 

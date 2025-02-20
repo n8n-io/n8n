@@ -1,3 +1,5 @@
+import isEmpty from 'lodash/isEmpty';
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -6,14 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import { Converter } from 'showdown';
-
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
-
-import isEmpty from 'lodash/isEmpty';
-import set from 'lodash/set';
+import { Converter } from 'showdown';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +25,8 @@ export class Markdown implements INodeType {
 		defaults: {
 			name: 'Markdown',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -608,7 +605,7 @@ export class Markdown implements INodeType {
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}

@@ -81,7 +81,7 @@ export const couponFields: INodeProperties[] = [
 		},
 		default: [],
 		description:
-			'Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 	},
 	{

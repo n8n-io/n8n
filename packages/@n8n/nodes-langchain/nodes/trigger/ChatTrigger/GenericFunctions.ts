@@ -1,5 +1,6 @@
-import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 import basicAuth from 'basic-auth';
+import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
+
 import { ChatTriggerAuthorizationError } from './error';
 import type { AuthenticationChatOption } from './types';
 
@@ -14,7 +15,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 		// Basic authorization is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await context.getCredentials('httpBasicAuth');
+			expectedAuth = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {

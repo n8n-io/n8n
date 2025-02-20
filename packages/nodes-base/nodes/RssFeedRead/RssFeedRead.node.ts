@@ -1,15 +1,14 @@
-import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import { generatePairedItemData } from '../../utils/utilities';
+import { URL } from 'url';
 
 // Utility function
 
@@ -35,8 +34,9 @@ export class RssFeedRead implements INodeType {
 			name: 'RSS Read',
 			color: '#b02020',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'URL',
@@ -54,7 +54,7 @@ export class RssFeedRead implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Ignore SSL Issues',
+						displayName: 'Ignore SSL Issues (Insecure)',
 						name: 'ignoreSSL',
 						type: 'boolean',
 						default: false,
@@ -76,7 +76,7 @@ export class RssFeedRead implements INodeType {
 		if (nodeVersion >= 1.1) {
 			itemsLength = items.length;
 		} else {
-			fallbackPairedItems = generatePairedItemData(items.length);
+			fallbackPairedItems = [] as IPairedItemData[];
 		}
 
 		for (let i = 0; i < itemsLength; i++) {
@@ -137,7 +137,7 @@ export class RssFeedRead implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: fallbackPairedItems || [{ item: i }],

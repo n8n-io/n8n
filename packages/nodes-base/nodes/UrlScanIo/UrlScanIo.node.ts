@@ -5,10 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { scanFields, scanOperations } from './descriptions';
-
 import { handleListing, normalizeId, urlScanIoApiRequest } from './GenericFunctions';
 
 export class UrlScanIo implements INodeType {
@@ -24,8 +23,9 @@ export class UrlScanIo implements INodeType {
 		defaults: {
 			name: 'urlscan.io',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'urlScanIoApi',
@@ -132,7 +132,7 @@ export class UrlScanIo implements INodeType {
 					? returnData.push(...(responseData as IDataObject[]))
 					: returnData.push(responseData as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

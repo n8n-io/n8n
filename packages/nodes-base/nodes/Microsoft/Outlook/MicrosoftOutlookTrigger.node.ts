@@ -1,15 +1,14 @@
-import type {
-	IPollFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import { DateTime } from 'luxon';
+import {
+	type IPollFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
-
-import { properties as messageProperties } from './trigger/MessageDescription';
-
 import { getPollResponse } from './trigger/GenericFunctions';
+import { properties as messageProperties } from './trigger/MessageDescription';
 import { loadOptions } from './v2/methods';
 
 export class MicrosoftOutlookTrigger implements INodeType {
@@ -33,7 +32,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',

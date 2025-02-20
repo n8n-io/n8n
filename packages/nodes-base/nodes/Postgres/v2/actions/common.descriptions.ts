@@ -97,7 +97,7 @@ export const optionsCollection: INodeProperties = {
 			type: 'multiOptions',
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 			description:
-				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
 				loadOptionsDependsOn: ['table.value'],
@@ -226,7 +226,7 @@ export const whereFixedCollection: INodeProperties = {
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					placeholder: 'e.g. ID',
 					typeOptions: {
@@ -318,7 +318,7 @@ export const sortFixedCollection: INodeProperties = {
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',

@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	groupDescription,
@@ -18,7 +18,6 @@ import {
 	ticketDescription,
 	userDescription,
 } from './descriptions';
-
 import {
 	doesNotBelongToZammad,
 	fieldToLoadOption,
@@ -38,7 +37,6 @@ import {
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 } from './GenericFunctions';
-
 import type { Zammad as ZammadTypes } from './types';
 
 export class Zammad implements INodeType {
@@ -53,8 +51,9 @@ export class Zammad implements INodeType {
 		defaults: {
 			name: 'Zammad',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zammadBasicAuthApi',
@@ -749,7 +748,7 @@ export class Zammad implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

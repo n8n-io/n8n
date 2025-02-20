@@ -1,8 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as upload from './upload.operation';
 import * as deleteFile from './deleteFile.operation';
 import * as list from './list.operation';
+import * as upload from './upload.operation';
 
 export { upload, deleteFile, list };
 

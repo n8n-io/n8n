@@ -122,7 +122,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				description:
-					'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -140,7 +140,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				description:
-					'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Country',
@@ -193,7 +193,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLifecycleStages',
 				},
 				description:
-					'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -225,7 +225,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sales Account Names or IDs',
@@ -236,7 +236,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccounts',
 				},
 				description:
-					'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -268,7 +268,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTerritories',
 				},
 				description:
-					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Time Zone',
@@ -345,7 +345,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'view',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -434,7 +434,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				description:
-					'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -452,7 +452,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				description:
-					'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Country',
@@ -509,7 +509,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'ID of the source where contact came from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the source where contact came from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -520,7 +520,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLifecycleStages',
 				},
 				description:
-					'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -552,7 +552,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sales Account Names or IDs',
@@ -563,7 +563,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccounts',
 				},
 				description:
-					'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -578,7 +578,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Status of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Status of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subscription Types Name or ID',
@@ -586,7 +586,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Type of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Type of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Territory Name or ID',
@@ -597,7 +597,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTerritories',
 				},
 				description:
-					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Time Zone',

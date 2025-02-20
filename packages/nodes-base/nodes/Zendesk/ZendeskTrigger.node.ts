@@ -8,11 +8,10 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { conditionFields } from './ConditionDescription';
-
+import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { triggerPlaceholders } from './TriggerPlaceholders';
 
 export class ZendeskTrigger implements INodeType {
@@ -27,7 +26,7 @@ export class ZendeskTrigger implements INodeType {
 			name: 'Zendesk Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zendeskApi',
@@ -101,7 +100,7 @@ export class ZendeskTrigger implements INodeType {
 						displayName: 'Field Names or IDs',
 						name: 'fields',
 						description:
-							'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 						type: 'multiOptions',
 						default: [],
 						typeOptions: {

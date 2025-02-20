@@ -7,19 +7,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
+import { collectionFields, collectionOperations } from './CollectionDescription';
+import { documentFields, documentOperations } from './DocumentDescription';
 import {
 	fullDocumentToJson,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	jsonToDocument,
 } from './GenericFunctions';
-
-import { collectionFields, collectionOperations } from './CollectionDescription';
-
-import { documentFields, documentOperations } from './DocumentDescription';
 
 export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +31,9 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleFirebaseCloudFirestoreOAuth2Api',
@@ -122,7 +120,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
+
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
@@ -137,7 +135,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		if (nodeVersion >= 1.1) {
 			itemsLength = items.length;
 		} else {
-			fallbackPairedItems = generatePairedItemData(items.length);
+			fallbackPairedItems = [];
 		}
 
 		if (resource === 'document') {
@@ -173,10 +171,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						.filter((el: IDataObject) => !!el);
 				}
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData },
-				);
+				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 
 				returnData.push(...executionData);
 			} else if (operation === 'create') {
@@ -269,7 +264,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -433,7 +428,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],

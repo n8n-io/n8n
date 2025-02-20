@@ -1,23 +1,19 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { convertKitApiRequest } from './GenericFunctions';
-
 import { customFieldFields, customFieldOperations } from './CustomFieldDescription';
-
 import { formFields, formOperations } from './FormDescription';
-
+import { convertKitApiRequest } from './GenericFunctions';
 import { sequenceFields, sequenceOperations } from './SequenceDescription';
-
 import { tagFields, tagOperations } from './TagDescription';
-
 import { tagSubscriberFields, tagSubscriberOperations } from './TagSubscriberDescription';
 
 export class ConvertKit implements INodeType {
@@ -32,8 +28,9 @@ export class ConvertKit implements INodeType {
 		defaults: {
 			name: 'ConvertKit',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'convertKitApi',
@@ -484,7 +481,7 @@ export class ConvertKit implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}

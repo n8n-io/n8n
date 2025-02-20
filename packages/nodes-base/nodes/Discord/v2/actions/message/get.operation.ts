@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	createSimplifyFunction,
@@ -84,7 +85,7 @@ export async function execute(
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}

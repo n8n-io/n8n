@@ -7,11 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { netlifyApiRequest, netlifyRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { deployFields, deployOperations } from './DeployDescription';
-
+import { netlifyApiRequest, netlifyRequestAllItems } from './GenericFunctions';
 import { siteFields, siteOperations } from './SiteDescription';
 
 export class Netlify implements INodeType {
@@ -26,8 +25,9 @@ export class Netlify implements INodeType {
 		defaults: {
 			name: 'Netlify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'netlifyApi',
@@ -194,7 +194,7 @@ export class Netlify implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

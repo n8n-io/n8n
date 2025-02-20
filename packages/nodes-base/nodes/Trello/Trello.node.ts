@@ -8,24 +8,16 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { apiRequest, apiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
-
 import { boardFields, boardOperations } from './BoardDescription';
-
 import { boardMemberFields, boardMemberOperations } from './BoardMemberDescription';
-
-import { cardFields, cardOperations } from './CardDescription';
-
 import { cardCommentFields, cardCommentOperations } from './CardCommentDescription';
-
+import { cardFields, cardOperations } from './CardDescription';
 import { checklistFields, checklistOperations } from './ChecklistDescription';
-
+import { apiRequest, apiRequestAllItems } from './GenericFunctions';
 import { labelFields, labelOperations } from './LabelDescription';
-
 import { listFields, listOperations } from './ListDescription';
 
 interface TrelloBoardType {
@@ -47,8 +39,9 @@ export class Trello implements INodeType {
 		defaults: {
 			name: 'Trello',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'trelloApi',
@@ -906,7 +899,7 @@ export class Trello implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

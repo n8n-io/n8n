@@ -1,14 +1,13 @@
-import type { WebSocket } from 'ws';
 import { mock } from 'jest-mock-extended';
+import type { WebSocket } from 'ws';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/user';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
-import { WebSocketPush } from '@/push/websocket.push';
 import type { WebSocketPushRequest, SSEPushRequest } from '@/push/types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
+import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 
 jest.unmock('@/push');
@@ -21,7 +20,7 @@ describe('Push', () => {
 
 	test('should validate pushRef on requests for websocket backend', () => {
 		config.set('push.backend', 'websocket');
-		const push = new Push(mock());
+		const push = new Push(mock(), mock(), mock());
 		const ws = mock<WebSocket>();
 		const request = mock<WebSocketPushRequest>({ user, ws });
 		request.query = { pushRef: '' };
@@ -34,7 +33,7 @@ describe('Push', () => {
 
 	test('should validate pushRef on requests for SSE backend', () => {
 		config.set('push.backend', 'sse');
-		const push = new Push(mock());
+		const push = new Push(mock(), mock(), mock());
 		const request = mock<SSEPushRequest>({ user, ws: undefined });
 		request.query = { pushRef: '' };
 		expect(() => push.handleRequest(request, mock())).toThrow(BadRequestError);

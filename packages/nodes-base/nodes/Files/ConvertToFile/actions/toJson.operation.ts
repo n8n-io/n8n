@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 import { createBinaryFromJson } from '@utils/binary';
 import { encodeDecodeOptions } from '@utils/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -92,7 +92,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 	const mode = this.getNodeParameter('mode', 0, 'once') as string;
 	if (mode === 'once') {
-		const pairedItem = generatePairedItemData(items.length);
 		try {
 			const options = this.getNodeParameter('options', 0, {});
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
@@ -114,17 +113,15 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				binary: {
 					[binaryPropertyName]: binaryData,
 				},
-				pairedItem,
 			};
 
 			returnData = [newItem];
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,
 					},
-					pairedItem,
 				});
 			}
 			throw new NodeOperationError(this.getNode(), error);
@@ -154,7 +151,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

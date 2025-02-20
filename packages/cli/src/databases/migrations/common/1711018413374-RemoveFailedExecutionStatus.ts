@@ -1,4 +1,4 @@
-import type { IrreversibleMigration, MigrationContext } from '@db/types';
+import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
 export class RemoveFailedExecutionStatus1711018413374 implements IrreversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {

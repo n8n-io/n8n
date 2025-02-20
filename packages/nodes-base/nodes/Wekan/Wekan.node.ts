@@ -8,22 +8,16 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { wrapData } from '../../utils/utilities';
-import { apiRequest } from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { boardFields, boardOperations } from './BoardDescription';
-
-import { cardFields, cardOperations } from './CardDescription';
-
 import { cardCommentFields, cardCommentOperations } from './CardCommentDescription';
-
+import { cardFields, cardOperations } from './CardDescription';
 import { checklistFields, checklistOperations } from './ChecklistDescription';
-
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
-
+import { apiRequest } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
+import { wrapData } from '../../utils/utilities';
 
 // https://wekan.github.io/api/v4.41/
 
@@ -40,8 +34,9 @@ export class Wekan implements INodeType {
 		defaults: {
 			name: 'Wekan',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wekanApi',
@@ -668,7 +663,7 @@ export class Wekan implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}

@@ -15,7 +15,7 @@ import {
 	type CompletionSection,
 } from '@codemirror/autocomplete';
 import type { EditorView } from '@codemirror/view';
-import type { TransactionSpec } from '@codemirror/state';
+import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { useRouter } from 'vue-router';
 import type { DocMetadata } from 'n8n-workflow';
@@ -112,23 +112,19 @@ export function expressionWithFirstItem(syntaxTree: Tree, expression: string): s
 }
 
 export function longestCommonPrefix(...strings: string[]) {
-	if (strings.length < 2) {
-		throw new Error('Expected at least two strings');
-	}
+	if (strings.length < 2) return '';
 
-	return strings.reduce((acc, next) => {
-		let i = 0;
-
-		while (acc[i] && next[i] && acc[i] === next[i]) {
-			i++;
+	return strings.reduce((prefix, str) => {
+		while (!str.startsWith(prefix)) {
+			prefix = prefix.slice(0, -1);
+			if (prefix === '') return '';
 		}
-
-		return acc.slice(0, i);
-	}, '');
+		return prefix;
+	}, strings[0]);
 }
 
 export const prefixMatch = (first: string, second: string) =>
-	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase()) && first !== second;
+	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase());
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed
@@ -208,26 +204,73 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNode = useNDVStore().activeNode;
 
-	if (!activeNodeName) return [];
+	if (!activeNode) return [];
 
-	return useWorkflowHelpers({ router: useRouter() })
-		.getCurrentWorkflow()
-		.getParentNodesByDepth(activeNodeName)
+	const activeNodeName = activeNode.name;
+
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+
+	// This is a tool node, look for the nearest node with main connections
+	if (nonMainChildren.length > 0) {
+		return nonMainChildren.map(getPreviousNodes).flat();
+	}
+
+	return getPreviousNodes(activeNodeName);
+}
+
+export function getPreviousNodes(nodeName: string) {
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	return workflow
+		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
-		.filter((name) => name !== activeNodeName);
+		.filter((name) => name !== nodeName);
+}
+
+/**
+ * Finds the amount of common chars at the end of the source and the start of the target.
+ * Example: "hello world", "world peace" => 5 ("world" is the overlap)
+ */
+function findCommonBoundary(source: string, target: string) {
+	return (
+		[...source]
+			.reverse()
+			.map((_, i) => source.slice(-i - 1))
+			.find((end) => target.startsWith(end))?.length ?? 0
+	);
+}
+
+function getClosingChars(input: string): string {
+	const match = input.match(/^['"\])]+/);
+	return match ? match[0] : '';
 }
 
 /**
  * Remove excess parens from an option label when the cursor is already
- * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric`
+ * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric` or `$(|)` -> `$("Node Name")|`
  */
 export const stripExcessParens = (context: CompletionContext) => (option: Completion) => {
 	const followedByParens = context.state.sliceDoc(context.pos, context.pos + 2) === '()';
 
 	if (option.label.endsWith('()') && followedByParens) {
 		option.label = option.label.slice(0, '()'.length * -1);
+	}
+
+	const closingChars = getClosingChars(context.state.sliceDoc(context.pos));
+	const commonClosingChars = findCommonBoundary(option.label, closingChars);
+
+	if (commonClosingChars > 0) {
+		option.apply = (view: EditorView, completion: Completion, from: number, to: number): void => {
+			const tx: TransactionSpec = {
+				...insertCompletionText(view.state, option.label.slice(0, -commonClosingChars), from, to),
+				annotations: pickedCompletion.of(completion),
+			};
+
+			tx.selection = EditorSelection.cursor(from + option.label.length);
+			view.dispatch(tx);
+		};
 	}
 
 	return option;

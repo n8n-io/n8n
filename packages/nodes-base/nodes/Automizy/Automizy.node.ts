@@ -1,18 +1,17 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	NodeExecutionWithMetadata,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type NodeExecutionWithMetadata,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
+import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Automizy implements INodeType {
@@ -28,8 +27,8 @@ export class Automizy implements INodeType {
 		defaults: {
 			name: 'Automizy',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		hidden: true,
 		credentials: [
 			{

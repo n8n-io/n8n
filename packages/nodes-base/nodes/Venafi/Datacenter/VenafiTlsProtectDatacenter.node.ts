@@ -5,11 +5,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
-
+import { venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
 import { policyFields, policyOperations } from './PolicyDescription';
 
 export class VenafiTlsProtectDatacenter implements INodeType {
@@ -24,8 +23,9 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Datacenter',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'venafiTlsProtectDatacenterApi',
@@ -245,7 +245,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

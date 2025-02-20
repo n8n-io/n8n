@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,19 +6,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import { uptimeRobotApiRequest } from './GenericFunctions';
-
-import { monitorFields, monitorOperations } from './MonitorDescription';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { alertContactFields, alertContactOperations } from './AlertContactDescription';
-
+import { uptimeRobotApiRequest } from './GenericFunctions';
 import {
 	maintenanceWindowFields,
 	maintenanceWindowOperations,
 } from './MaintenanceWindowDescription';
-
+import { monitorFields, monitorOperations } from './MonitorDescription';
 import { publicStatusPageFields, publicStatusPageOperations } from './PublicStatusPageDescription';
 
 export class UptimeRobot implements INodeType {
@@ -32,8 +29,9 @@ export class UptimeRobot implements INodeType {
 		defaults: {
 			name: 'UptimeRobot',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'uptimeRobotApi',
@@ -420,7 +418,7 @@ export class UptimeRobot implements INodeType {
 					? returnData.push(...(responseData as IDataObject[]))
 					: returnData.push(responseData as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

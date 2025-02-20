@@ -1,14 +1,15 @@
 import type {
-	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -74,7 +75,7 @@ export const properties: INodeProperties[] = [
 				name: 'categories',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategoriesNames',
 				},
@@ -239,7 +240,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 				);
 			}
 
-			const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
+			const binaryData = items[index].binary[binaryPropertyName];
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				name: binaryData.fileName,

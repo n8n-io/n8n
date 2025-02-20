@@ -1,27 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
-			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
-		</div>
-		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<n8n-spinner type="dots" />
-		</div>
-		<iframe
-			ref="iframeRef"
-			:class="{
-				[$style.workflow]: !nodeViewDetailsOpened,
-				[$style.executionPreview]: mode === 'execution',
-				[$style.openNDV]: nodeViewDetailsOpened,
-				[$style.show]: showPreview,
-			}"
-			:src="iframeSrc"
-			data-test-id="workflow-preview-iframe"
-			@mouseenter="onMouseEnter"
-			@mouseleave="onMouseLeave"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
@@ -39,6 +15,7 @@ const props = withDefaults(
 		loaderType?: 'image' | 'spinner';
 		canOpenNDV?: boolean;
 		hideNodeIssues?: boolean;
+		focusOnLoad?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -49,6 +26,7 @@ const props = withDefaults(
 		loaderType: 'image',
 		canOpenNDV: true,
 		hideNodeIssues: false,
+		focusOnLoad: true,
 	},
 );
 
@@ -144,6 +122,7 @@ const onMouseEnter = () => {
 	scrollX.value = window.scrollX;
 	scrollY.value = window.scrollY;
 };
+
 const onMouseLeave = () => {
 	insideIframe.value = false;
 };
@@ -155,18 +134,41 @@ const receiveMessage = ({ data }: MessageEvent) => {
 	try {
 		const json = JSON.parse(data);
 		if (json.command === 'n8nReady') {
-			ready.value = true;
+			onReady();
 		} else if (json.command === 'openNDV') {
-			nodeViewDetailsOpened.value = true;
+			onOpenNDV();
 		} else if (json.command === 'closeNDV') {
-			nodeViewDetailsOpened.value = false;
+			onCloseNDV();
 		} else if (json.command === 'error') {
-			emit('close');
+			onError();
 		}
 	} catch (e) {
 		console.error(e);
 	}
 };
+
+const onReady = () => {
+	ready.value = true;
+
+	if (props.focusOnLoad) {
+		setTimeout(() => {
+			iframeRef.value?.contentWindow?.focus();
+		});
+	}
+};
+
+const onOpenNDV = () => {
+	nodeViewDetailsOpened.value = true;
+};
+
+const onCloseNDV = () => {
+	nodeViewDetailsOpened.value = false;
+};
+
+const onError = () => {
+	emit('close');
+};
+
 const onDocumentScroll = () => {
 	if (insideIframe.value) {
 		window.scrollTo(scrollX.value, scrollY.value);
@@ -215,6 +217,30 @@ watch(
 );
 </script>
 
+<template>
+	<div :class="$style.container">
+		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
+			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+		</div>
+		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
+			<n8n-spinner type="dots" />
+		</div>
+		<iframe
+			ref="iframeRef"
+			:class="{
+				[$style.workflow]: !nodeViewDetailsOpened,
+				[$style.executionPreview]: mode === 'execution',
+				[$style.openNDV]: nodeViewDetailsOpened,
+				[$style.show]: showPreview,
+			}"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
+			@mouseenter="onMouseEnter"
+			@mouseleave="onMouseLeave"
+		/>
+	</div>
+</template>
+
 <style lang="scss" module>
 .container {
 	width: 100%;
@@ -242,7 +268,7 @@ watch(
 	left: 0;
 	height: 100%;
 	width: 100%;
-	z-index: 9999999;
+	z-index: var(--z-index-workflow-preview-ndv);
 }
 
 .spinner {

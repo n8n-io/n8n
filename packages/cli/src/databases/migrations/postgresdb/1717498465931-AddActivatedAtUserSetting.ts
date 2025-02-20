@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddActivatedAtUserSetting1717498465931 implements ReversibleMigration {
 	async up({ queryRunner, escape }: MigrationContext) {

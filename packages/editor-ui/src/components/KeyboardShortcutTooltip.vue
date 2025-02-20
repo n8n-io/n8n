@@ -4,10 +4,10 @@ import type { Placement } from 'element-plus';
 
 interface Props {
 	label: string;
-	shortcut: KeyboardShortcut;
+	shortcut?: KeyboardShortcut;
 	placement?: Placement;
 }
-withDefaults(defineProps<Props>(), { placement: 'top' });
+withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 </script>
 
 <template>
@@ -15,7 +15,7 @@ withDefaults(defineProps<Props>(), { placement: 'top' });
 		<template #content>
 			<div :class="$style.shortcut">
 				<div :class="$style.label">{{ label }}</div>
-				<n8n-keyboard-shortcut v-bind="shortcut"></n8n-keyboard-shortcut>
+				<n8n-keyboard-shortcut v-if="shortcut" v-bind="shortcut" />
 			</div>
 		</template>
 		<slot />

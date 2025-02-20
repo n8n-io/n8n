@@ -1,4 +1,5 @@
 import { type StoryFn } from '@storybook/vue3';
+
 import Sizes from './Sizes.vue';
 import VariableTable from './VariableTable.vue';
 

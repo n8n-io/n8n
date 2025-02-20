@@ -1,10 +1,11 @@
 import { mock } from 'jest-mock-extended';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
-import { EventService } from '@/events/event.service';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interfaces';
-import type { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import type { RelayEventMap } from '@/events/relay-event-map';
+
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import type { IWorkflowDb } from '@/interfaces';
 
 describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
@@ -142,7 +143,12 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'some-id',
 				userId: 'some-id',
 				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
-				runData: mock<IRun>({ status: 'success', mode: 'manual', data: { resultData: {} } }),
+				runData: mock<IRun>({
+					finished: true,
+					status: 'success',
+					mode: 'manual',
+					data: { resultData: {} },
+				}),
 			});
 
 			eventService.emit('workflow-post-execute', payload);
@@ -153,7 +159,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.workflow.success',
 				payload: {
 					...rest,
-					success: true,
+					success: true, // same as finished
 					isManual: true,
 					workflowName: 'some-name',
 					workflowId: 'some-id',
@@ -161,10 +167,11 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-post-execute` event for unsuccessful execution', () => {
+		it('should log on `workflow-post-execute` event for failed execution', () => {
 			const runData = mock<IRun>({
 				status: 'error',
 				mode: 'manual',
+				finished: false,
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
@@ -193,7 +200,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.workflow.failed',
 				payload: {
 					...rest,
-					success: false,
+					success: false, // same as finished
 					isManual: true,
 					workflowName: 'some-name',
 					workflowId: 'some-id',
@@ -262,6 +269,117 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `user-invited` event', () => {
+			const event: RelayEventMap['user-invited'] = {
+				user: {
+					id: 'user101',
+					email: 'inviter@example.com',
+					firstName: 'Inviter',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				targetUserId: ['newUser123'],
+				publicApi: false,
+				emailSent: true,
+				inviteeRole: 'global:member',
+			};
+
+			eventService.emit('user-invited', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.invited',
+				payload: {
+					userId: 'user101',
+					_email: 'inviter@example.com',
+					_firstName: 'Inviter',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					targetUserId: ['newUser123'],
+				},
+			});
+		});
+
+		it('should log on `user-reinvited` event', () => {
+			const event: RelayEventMap['user-reinvited'] = {
+				user: {
+					id: 'user202',
+					email: 'reinviter@example.com',
+					firstName: 'Reinviter',
+					lastName: 'User',
+					role: 'global:admin',
+				},
+				targetUserId: ['existingUser456'],
+			};
+
+			eventService.emit('user-reinvited', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.reinvited',
+				payload: {
+					userId: 'user202',
+					_email: 'reinviter@example.com',
+					_firstName: 'Reinviter',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					targetUserId: ['existingUser456'],
+				},
+			});
+		});
+
+		it('should log on `user-signed-up` event', () => {
+			const event: RelayEventMap['user-signed-up'] = {
+				user: {
+					id: 'user303',
+					email: 'newuser@example.com',
+					firstName: 'New',
+					lastName: 'User',
+					role: 'global:member',
+				},
+				userType: 'email',
+				wasDisabledLdapUser: false,
+			};
+
+			eventService.emit('user-signed-up', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.signedup',
+				payload: {
+					userId: 'user303',
+					_email: 'newuser@example.com',
+					_firstName: 'New',
+					_lastName: 'User',
+					globalRole: 'global:member',
+				},
+			});
+		});
+
+		it('should log on `user-logged-in` event', () => {
+			const event: RelayEventMap['user-logged-in'] = {
+				user: {
+					id: 'user404',
+					email: 'loggedin@example.com',
+					firstName: 'Logged',
+					lastName: 'In',
+					role: 'global:owner',
+				},
+				authenticationMethod: 'email',
+			};
+
+			eventService.emit('user-logged-in', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.success',
+				payload: {
+					userId: 'user404',
+					_email: 'loggedin@example.com',
+					_firstName: 'Logged',
+					_lastName: 'In',
+					globalRole: 'global:owner',
+					authenticationMethod: 'email',
+				},
+			});
+		});
 	});
 
 	describe('click events', () => {
@@ -327,6 +445,31 @@ describe('LogStreamingEventRelay', () => {
 						_lastName: 'Doe',
 						globalRole: 'some-other-role',
 					},
+				},
+			});
+		});
+
+		it('should log on `user-password-reset-email-click` event', () => {
+			const event: RelayEventMap['user-password-reset-email-click'] = {
+				user: {
+					id: 'user505',
+					email: 'resetuser@example.com',
+					firstName: 'Reset',
+					lastName: 'User',
+					role: 'global:member',
+				},
+			};
+
+			eventService.emit('user-password-reset-email-click', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.reset',
+				payload: {
+					userId: 'user505',
+					_email: 'resetuser@example.com',
+					_firstName: 'Reset',
+					_lastName: 'User',
+					globalRole: 'global:member',
 				},
 			});
 		});
@@ -494,6 +637,64 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `credentials-deleted` event', () => {
+			const event: RelayEventMap['credentials-deleted'] = {
+				user: {
+					id: 'user707',
+					email: 'creduser@example.com',
+					firstName: 'Cred',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				credentialId: 'cred789',
+				credentialType: 'githubApi',
+			};
+
+			eventService.emit('credentials-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.deleted',
+				payload: {
+					userId: 'user707',
+					_email: 'creduser@example.com',
+					_firstName: 'Cred',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					credentialId: 'cred789',
+					credentialType: 'githubApi',
+				},
+			});
+		});
+
+		it('should log on `credentials-updated` event', () => {
+			const event: RelayEventMap['credentials-updated'] = {
+				user: {
+					id: 'user808',
+					email: 'updatecred@example.com',
+					firstName: 'Update',
+					lastName: 'Cred',
+					role: 'global:owner',
+				},
+				credentialId: 'cred101',
+				credentialType: 'slackApi',
+			};
+
+			eventService.emit('credentials-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.updated',
+				payload: {
+					userId: 'user808',
+					_email: 'updatecred@example.com',
+					_firstName: 'Update',
+					_lastName: 'Cred',
+					globalRole: 'global:owner',
+					credentialId: 'cred101',
+					credentialType: 'slackApi',
+				},
+			});
+		});
 	});
 
 	describe('auth events', () => {
@@ -593,6 +794,41 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `community-package-deleted` event', () => {
+			const event: RelayEventMap['community-package-deleted'] = {
+				user: {
+					id: 'user909',
+					email: 'packagedeleter@example.com',
+					firstName: 'Package',
+					lastName: 'Deleter',
+					role: 'global:admin',
+				},
+				packageName: 'n8n-nodes-awesome-package',
+				packageVersion: '1.0.0',
+				packageNodeNames: ['AwesomeNode1', 'AwesomeNode2'],
+				packageAuthor: 'John Doe',
+				packageAuthorEmail: 'john@example.com',
+			};
+
+			eventService.emit('community-package-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.package.deleted',
+				payload: {
+					userId: 'user909',
+					_email: 'packagedeleter@example.com',
+					_firstName: 'Package',
+					_lastName: 'Deleter',
+					globalRole: 'global:admin',
+					packageName: 'n8n-nodes-awesome-package',
+					packageVersion: '1.0.0',
+					packageNodeNames: ['AwesomeNode1', 'AwesomeNode2'],
+					packageAuthor: 'John Doe',
+					packageAuthorEmail: 'john@example.com',
+				},
+			});
+		});
 	});
 
 	describe('email events', () => {
@@ -606,6 +842,7 @@ describe('LogStreamingEventRelay', () => {
 					role: 'global:member',
 				},
 				messageType: 'New user invite',
+				publicApi: false,
 			};
 
 			eventService.emit('email-failed', event);
@@ -650,12 +887,54 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `public-api-key-deleted` event', () => {
+			const event: RelayEventMap['public-api-key-deleted'] = {
+				user: {
+					id: 'user606',
+					email: 'apiuser@example.com',
+					firstName: 'API',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				publicApi: true,
+			};
+
+			eventService.emit('public-api-key-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.api.deleted',
+				payload: {
+					userId: 'user606',
+					_email: 'apiuser@example.com',
+					_firstName: 'API',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+				},
+			});
+		});
 	});
 
 	describe('execution events', () => {
+		it('should log on `execution-started-during-bootup` event', () => {
+			const event: RelayEventMap['execution-started-during-bootup'] = {
+				executionId: 'exec101010',
+			};
+
+			eventService.emit('execution-started-during-bootup', event);
+
+			expect(eventBus.sendExecutionEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.execution.started-during-bootup',
+				payload: {
+					executionId: 'exec101010',
+				},
+			});
+		});
+
 		it('should log on `execution-throttled` event', () => {
 			const event: RelayEventMap['execution-throttled'] = {
 				executionId: 'exec123456',
+				type: 'production',
 			};
 
 			eventService.emit('execution-throttled', event);
@@ -664,7 +943,262 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.execution.throttled',
 				payload: {
 					executionId: 'exec123456',
+					type: 'production',
 				},
+			});
+		});
+	});
+
+	describe('AI events', () => {
+		it('should log on `ai-messages-retrieved-from-memory` event', () => {
+			const payload: RelayEventMap['ai-messages-retrieved-from-memory'] = {
+				msg: 'Hello, world!',
+				executionId: 'exec789',
+				nodeName: 'Memory',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.memory',
+			};
+
+			eventService.emit('ai-messages-retrieved-from-memory', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.memory.get.messages',
+				payload,
+			});
+		});
+
+		it('should log on `ai-message-added-to-memory` event', () => {
+			const payload: RelayEventMap['ai-message-added-to-memory'] = {
+				msg: 'Test',
+				executionId: 'exec456',
+				nodeName: 'Memory',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.memory',
+			};
+
+			eventService.emit('ai-message-added-to-memory', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.memory.added.message',
+				payload,
+			});
+		});
+
+		it('should log on `ai-output-parsed` event', () => {
+			const payload: RelayEventMap['ai-output-parsed'] = {
+				msg: 'Test',
+				executionId: 'exec123',
+				nodeName: 'Output Parser',
+				workflowId: 'wf456',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.outputParser',
+			};
+
+			eventService.emit('ai-output-parsed', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.output.parser.parsed',
+				payload,
+			});
+		});
+
+		it('should log on `ai-documents-retrieved` event', () => {
+			const payload: RelayEventMap['ai-documents-retrieved'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'Retriever',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.retriever',
+			};
+
+			eventService.emit('ai-documents-retrieved', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.retriever.get.relevant.documents',
+				payload,
+			});
+		});
+
+		it('should log on `ai-document-embedded` event', () => {
+			const payload: RelayEventMap['ai-document-embedded'] = {
+				msg: 'Test',
+				executionId: 'exec456',
+				nodeName: 'Embeddings',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.embeddings',
+			};
+
+			eventService.emit('ai-document-embedded', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.embeddings.embedded.document',
+				payload,
+			});
+		});
+
+		it('should log on `ai-query-embedded` event', () => {
+			const payload: RelayEventMap['ai-query-embedded'] = {
+				msg: 'Test',
+				executionId: 'exec123',
+				nodeName: 'Embeddings',
+				workflowId: 'wf456',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.embeddings',
+			};
+
+			eventService.emit('ai-query-embedded', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.embeddings.embedded.query',
+				payload,
+			});
+		});
+
+		it('should log on `ai-document-processed` event', () => {
+			const payload: RelayEventMap['ai-document-processed'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'Embeddings',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.embeddings',
+			};
+
+			eventService.emit('ai-document-processed', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.document.processed',
+				payload,
+			});
+		});
+
+		it('should log on `ai-text-split` event', () => {
+			const payload: RelayEventMap['ai-text-split'] = {
+				msg: 'Test',
+				executionId: 'exec456',
+				nodeName: 'Text Splitter',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.textSplitter',
+			};
+
+			eventService.emit('ai-text-split', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.text.splitter.split',
+				payload,
+			});
+		});
+
+		it('should log on `ai-tool-called` event', () => {
+			const payload: RelayEventMap['ai-tool-called'] = {
+				msg: 'Test',
+				executionId: 'exec123',
+				nodeName: 'Tool',
+				workflowId: 'wf456',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.tool',
+			};
+
+			eventService.emit('ai-tool-called', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.tool.called',
+				payload,
+			});
+		});
+
+		it('should log on `ai-vector-store-searched` event', () => {
+			const payload: RelayEventMap['ai-vector-store-searched'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'Vector Store',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.vectorStore',
+			};
+
+			eventService.emit('ai-vector-store-searched', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.vector.store.searched',
+				payload,
+			});
+		});
+
+		it('should log on `ai-llm-generated-output` event', () => {
+			const payload: RelayEventMap['ai-llm-generated-output'] = {
+				msg: 'Test',
+				executionId: 'exec456',
+				nodeName: 'OpenAI',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.openai',
+			};
+
+			eventService.emit('ai-llm-generated-output', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.llm.generated',
+				payload,
+			});
+		});
+
+		it('should log on `ai-llm-errored` event', () => {
+			const payload: RelayEventMap['ai-llm-errored'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'OpenAI',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.openai',
+			};
+
+			eventService.emit('ai-llm-errored', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.llm.error',
+				payload,
+			});
+		});
+
+		it('should log on `ai-vector-store-populated` event', () => {
+			const payload: RelayEventMap['ai-vector-store-populated'] = {
+				msg: 'Test',
+				executionId: 'exec456',
+				nodeName: 'Vector Store',
+				workflowId: 'wf789',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.vectorStore',
+			};
+
+			eventService.emit('ai-vector-store-populated', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.vector.store.populated',
+				payload,
+			});
+		});
+
+		it('should log on `ai-vector-store-updated` event', () => {
+			const payload: RelayEventMap['ai-vector-store-updated'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'Vector Store',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.vectorStore',
+			};
+
+			eventService.emit('ai-vector-store-updated', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.vector.store.updated',
+				payload,
 			});
 		});
 	});

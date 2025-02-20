@@ -1,5 +1,6 @@
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
 import N8nColorPicker from './ColorPicker.vue';
 
 export default {

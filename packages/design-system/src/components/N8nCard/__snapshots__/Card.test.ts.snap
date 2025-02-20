@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nCard > should render correctly 1`] = `
+"<div class="card">
+  <!--v-if-->
+  <div class="content" data-test-id="card-content">
+    <!--v-if-->
+    <div class="body">This is a card.</div>
+    <!--v-if-->
+  </div>
+  <!--v-if-->
+</div>"
+`;
+
+exports[`components > N8nCard > should render correctly with header and footer 1`] = `
+"<div class="card">
+  <!--v-if-->
+  <div class="content" data-test-id="card-content">
+    <div class="header">Header</div>
+    <div class="body">This is a card.</div>
+    <div class="footer">Footer</div>
+  </div>
+  <!--v-if-->
+</div>"
+`;

@@ -1,16 +1,15 @@
-import * as publicApiApi from '@/api/api-keys';
+import { computed, ref } from 'vue';
+import Bowser from 'bowser';
+import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
+
+import * as eventsApi from '@/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
 import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import type {
-	IDataObject,
-	IN8nUISettings,
-	WorkflowSettings,
-	IUserManagementSettings,
-} from 'n8n-workflow';
+import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
@@ -18,14 +17,13 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
-import { computed, ref } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
-	const settings = ref<IN8nUISettings>({} as IN8nUISettings);
+	const settings = ref<FrontendSettings>({} as FrontendSettings);
 	const userManagement = ref<IUserManagementSettings>({
 		quota: -1,
 		showSetupOnFirstLoad: false,
@@ -34,6 +32,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
+		apiKeysPerUserLimit: 0,
 		enabled: false,
 		latestVersion: 0,
 		path: '/',
@@ -44,6 +43,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const ldap = ref({ loginLabel: '', loginEnabled: false });
 	const saml = ref({ loginLabel: '', loginEnabled: false });
 	const mfa = ref({ enabled: false });
+	const folders = ref({ enabled: false });
+
 	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveManualExecutions = ref(false);
@@ -72,6 +73,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
+	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
+
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
 	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
@@ -88,15 +91,41 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
 
+	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
+
+	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
+
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
-	const isDesktopDeployment = computed(() =>
-		settings.value.deployment?.type.startsWith('desktop_'),
-	);
-
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
+
+	const partialExecutionVersion = computed(() => {
+		const defaultVersion = settings.value.partialExecution?.version ?? 1;
+		const enforceVersion = settings.value.partialExecution?.enforce ?? false;
+		// -1 means we pick the defaultVersion
+		//  1 is the old flow
+		//  2 is the new flow
+		const userVersion = useLocalStorage('PartialExecution.version', -1).value;
+		const version = enforceVersion
+			? defaultVersion
+			: userVersion === -1
+				? defaultVersion
+				: userVersion;
+
+		// For backwards compatibility, e.g. if the user has 0 in their local
+		// storage, which used to be allowed, but not anymore.
+		if (![1, 2].includes(version)) {
+			return 1;
+		}
+
+		return version;
+	});
+
+	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+
+	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -113,6 +142,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
+
+	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -132,8 +163,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
-	const isNpmAvailable = computed(() => settings.value.isNpmAvailable);
-
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
@@ -151,7 +180,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isBelowUserQuota = computed(
-		() =>
+		(): boolean =>
 			userManagement.value.quota === -1 ||
 			userManagement.value.quota > useUsersStore().allUsers.length,
 	);
@@ -160,7 +189,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const setSettings = (newSettings: IN8nUISettings) => {
+	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
@@ -178,6 +207,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 
 		mfa.value.enabled = settings.value.mfa?.enabled;
+		folders.value.enabled = settings.value.folders?.enabled;
 
 		if (settings.value.enterprise?.showNonProdBanner) {
 			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
@@ -187,13 +217,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			useRootStore().setVersionCli(settings.value.versionCli);
 		}
 
-		if (
-			settings.value.authCookie.secure &&
-			location.protocol === 'http:' &&
-			!['localhost', '127.0.0.1'].includes(location.hostname)
-		) {
-			document.write(INSECURE_CONNECTION_WARNING);
-			return;
+		if (settings.value.authCookie.secure) {
+			const { browser } = Bowser.parse(navigator.userAgent);
+			if (
+				location.protocol === 'http:' &&
+				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
+			}
 		}
 
 		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');
@@ -202,7 +234,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 	};
 
-	const setAllowedModules = (allowedModules: IN8nUISettings['allowedModules']) => {
+	const setAllowedModules = (allowedModules: FrontendSettings['allowedModules']) => {
 		settings.value.allowedModules = allowedModules;
 	};
 
@@ -240,6 +272,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
+		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
@@ -247,9 +280,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setIsNpmAvailable(fetchedSettings.isNpmAvailable);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
+
+		if (fetchedSettings.telemetry.enabled) {
+			void eventsApi.sessionStarted(rootStore.restApiContext);
+		}
 	};
 
 	const initialize = async () => {
@@ -263,9 +299,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
 
-			// Re-compute title since settings are now available
-			useTitleChange().titleReset();
-
 			initialized.value = true;
 		} catch (e) {
 			showToast({
@@ -273,7 +306,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				message: i18n.baseText('startupError.message'),
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			});
 
 			throw e;
@@ -313,23 +345,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getApiKey = async () => {
-		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.getApiKey(rootStore.restApiContext);
-		return apiKey;
-	};
-
-	const createApiKey = async () => {
-		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.createApiKey(rootStore.restApiContext);
-		return apiKey;
-	};
-
-	const deleteApiKey = async () => {
-		const rootStore = useRootStore();
-		await publicApiApi.deleteApiKey(rootStore.restApiContext);
-	};
-
 	const getLdapConfig = async () => {
 		const rootStore = useRootStore();
 		return await ldapApi.getLdapConfig(rootStore.restApiContext);
@@ -361,7 +376,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	};
 
 	const reset = () => {
-		settings.value = {} as IN8nUISettings;
+		settings.value = {} as FrontendSettings;
 	};
 
 	return {
@@ -383,6 +398,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		security,
 		nodeJsVersion,
 		concurrency,
+		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
@@ -393,7 +409,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSamlLoginEnabled,
 		showSetupPage,
 		deploymentType,
-		isDesktopDeployment,
 		isCloudDeployment,
 		isSmtpSetup,
 		isPersonalizationSurveyEnabled,
@@ -401,6 +416,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		logLevel,
 		isTelemetryEnabled,
 		isMfaFeatureEnabled,
+		isFoldersFeatureEnabled,
+		isAiAssistantEnabled,
 		areTagsEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
@@ -408,7 +425,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
-		isNpmAvailable,
 		allowedModules,
 		isQueueModeEnabled,
 		isWorkerViewAvailable,
@@ -421,6 +437,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isAskAiEnabled,
+		isAiCreditsEnabled,
+		aiCreditsQuota,
 		reset,
 		testLdapConnection,
 		getLdapConfig,
@@ -428,9 +447,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		updateLdapConfig,
 		runLdapSync,
 		getTimezones,
-		createApiKey,
-		getApiKey,
-		deleteApiKey,
 		testTemplatesEndpoint,
 		submitContactInfo,
 		disableTemplates,
@@ -438,5 +454,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
+		partialExecutionVersion,
 	};
 });

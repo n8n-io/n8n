@@ -1,17 +1,23 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, type GenericValue, type IDataObject } from 'n8n-workflow';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import { parse } from 'flatted';
+import { assert } from '@/utils/assert';
 
-const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-if (!browserId && 'randomUUID' in crypto) {
-	browserId = crypto.randomUUID();
-	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-}
+import { BROWSER_ID_STORAGE_KEY } from '@/constants';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+
+const getBrowserId = () => {
+	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+	if (!browserId) {
+		browserId = crypto.randomUUID();
+		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+	}
+	return browserId!;
+};
 
 export const NO_NETWORK_ERROR_CODE = 999;
+export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
 export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
@@ -80,8 +86,8 @@ export async function request(config: {
 		baseURL,
 		headers: headers ?? {},
 	};
-	if (baseURL.startsWith('/') && browserId) {
-		options.headers!['browser-id'] = browserId;
+	if (baseURL.startsWith('/')) {
+		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
@@ -107,8 +113,8 @@ export async function request(config: {
 			});
 		}
 
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+		const errorResponseData = error.response?.data;
+		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
 				throw errorResponseData;
@@ -123,6 +129,31 @@ export async function request(config: {
 
 		throw error;
 	}
+}
+
+/**
+ * Sends a request to the API and returns the response without extracting the data key.
+ * @param context Rest API context
+ * @param method HTTP method
+ * @param endpoint relative path to the API endpoint
+ * @param data request data
+ * @returns data and total count
+ */
+export async function getFullApiResponse<T>(
+	context: IRestApiContext,
+	method: Method,
+	endpoint: string,
+	data?: GenericValue | GenericValue[],
+) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: { 'push-ref': context.pushRef },
+		data,
+	});
+
+	return response as { count: number; data: T };
 }
 
 export async function makeRestApiRequest<T>(
@@ -190,4 +221,91 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	}
 
 	return returnData;
+}
+
+export async function streamRequest<T extends object>(
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+	onChunk?: (chunk: T) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+	separator = STREAM_SEPERATOR,
+): Promise<void> {
+	const headers: Record<string, string> = {
+		'browser-id': getBrowserId(),
+		'Content-Type': 'application/json',
+	};
+	const assistantRequest: RequestInit = {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	};
+	try {
+		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
+
+		if (response.body) {
+			// Handle the streaming response
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder('utf-8');
+
+			let buffer = '';
+
+			async function readStream() {
+				const { done, value } = await reader.read();
+				if (done) {
+					onDone?.();
+					return;
+				}
+				const chunk = decoder.decode(value);
+				buffer += chunk;
+
+				const splitChunks = buffer.split(separator);
+
+				buffer = '';
+				for (const splitChunk of splitChunks) {
+					if (splitChunk) {
+						let data: T;
+						try {
+							data = jsonParse<T>(splitChunk, { errorMessage: 'Invalid json' });
+						} catch (e) {
+							// incomplete json. append to buffer to complete
+							buffer += splitChunk;
+
+							continue;
+						}
+
+						try {
+							if (response.ok) {
+								// Call chunk callback if request was successful
+								onChunk?.(data);
+							} else {
+								// Otherwise, call error callback
+								const message = 'message' in data ? data.message : response.statusText;
+								onError?.(
+									new ResponseError(String(message), {
+										httpStatusCode: response.status,
+									}),
+								);
+							}
+						} catch (e: unknown) {
+							if (e instanceof Error) {
+								onError?.(e);
+							}
+						}
+					}
+				}
+				await readStream();
+			}
+
+			// Start reading the stream
+			await readStream();
+		} else if (onError) {
+			onError(new Error(response.statusText));
+		}
+	} catch (e: unknown) {
+		assert(e instanceof Error);
+		onError?.(e);
+	}
 }

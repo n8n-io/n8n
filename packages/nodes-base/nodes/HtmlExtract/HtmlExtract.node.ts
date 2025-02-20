@@ -1,4 +1,5 @@
 import cheerio from 'cheerio';
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,9 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import get from 'lodash/get';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
 
@@ -57,8 +56,8 @@ export class HtmlExtract implements INodeType {
 			name: 'HTML Extract',
 			color: '#333377',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Source Data',
@@ -283,7 +282,7 @@ export class HtmlExtract implements INodeType {
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

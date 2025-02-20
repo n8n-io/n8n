@@ -4,6 +4,7 @@
 :root {
 	// Using native css variable enables us to use this value in JS
 	--header-height: 65;
+	--content-container-width: 1280px;
 }
 
 .clickable {
@@ -20,6 +21,10 @@
 // Dialog
 .el-overlay {
 	background-color: var(--color-dialog-overlay-background-dark);
+}
+
+#app-modals .el-overlay {
+	position: absolute;
 }
 
 .el-dialog {

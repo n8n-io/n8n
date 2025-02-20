@@ -17,6 +17,7 @@ import { type FilterOperatorId } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
+	inferOperatorType,
 	isEmptyInput,
 	operatorTypeToNodeProperty,
 	resolveCondition,
@@ -32,6 +33,7 @@ interface Props {
 	canRemove?: boolean;
 	readOnly?: boolean;
 	index?: number;
+	canDrag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	fixedLeftValue: false,
 	readOnly: false,
 	index: 0,
+	canDrag: true,
 });
 
 const emit = defineEmits<{
@@ -70,6 +73,14 @@ const conditionResult = computed(() =>
 	resolveCondition({ condition: condition.value, options: props.options }),
 );
 
+const suggestedType = computed(() => {
+	if (conditionResult.value.status !== 'resolve_error') {
+		return inferOperatorType(conditionResult.value.resolved.leftValue);
+	}
+
+	return 'any';
+});
+
 const allIssues = computed(() => {
 	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
 		return [conditionResult.value.error];
@@ -81,8 +92,8 @@ const allIssues = computed(() => {
 const now = computed(() => DateTime.now().toISO());
 
 const leftParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
+	name: 'left',
+	displayName: 'Left',
 	default: '',
 	placeholder:
 		operator.value.type === 'dateTime'
@@ -94,8 +105,8 @@ const leftParameter = computed<INodeProperties>(() => ({
 const rightParameter = computed<INodeProperties>(() => {
 	const type = operator.value.rightType ?? operator.value.type;
 	return {
-		name: '',
-		displayName: '',
+		name: 'right',
+		displayName: 'Right',
 		default: '',
 		placeholder:
 			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
@@ -143,6 +154,15 @@ const onBlur = (): void => {
 		}"
 		data-test-id="filter-condition"
 	>
+		<N8nIconButton
+			v-if="canDrag && !readOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:title="i18n.baseText('filter.dragCondition')"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
 			type="tertiary"
@@ -151,7 +171,7 @@ const onBlur = (): void => {
 			icon="trash"
 			data-test-id="filter-remove-condition"
 			:title="i18n.baseText('filter.removeCondition')"
-			:class="$style.remove"
+			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
 		></n8n-icon-button>
 		<InputTriple>
@@ -176,6 +196,7 @@ const onBlur = (): void => {
 			<template #middle>
 				<OperatorSelect
 					:selected="`${operator.type}:${operator.operation}`"
+					:suggested-type="suggestedType"
 					:read-only="readOnly"
 					@operator-change="onOperatorChange"
 				></OperatorSelect>
@@ -238,7 +259,7 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.iconButton {
 			opacity: 1;
 		}
 	}
@@ -251,13 +272,21 @@ const onBlur = (): void => {
 
 .statusIcon {
 	padding-left: var(--spacing-4xs);
+	padding-right: var(--spacing-4xs);
 }
 
-.remove {
+.iconButton {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+
+.defaultTopPadding {
+	top: var(--spacing-m);
+}
+.extraTopPadding {
+	top: calc(14px + var(--spacing-m));
 }
 </style>

@@ -52,7 +52,7 @@ export const deployFields: INodeProperties[] = [
 			loadOptionsMethod: 'getSites',
 		},
 		description:
-			'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['deploy'],

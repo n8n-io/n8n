@@ -1,4 +1,4 @@
-import { addVarType, escape } from '../utils';
+import { addInfoRenderer, addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useI18n } from '@/composables/useI18n';
 
@@ -54,7 +54,7 @@ export function useItemFieldCompletions(language: 'python' | 'javaScript') {
 		const patterns = {
 			first: new RegExp(`\\${prefix}input\\.first\\(\\)\\..*`),
 			last: new RegExp(`\\${prefix}input\\.last\\(\\)\\..*`),
-			item: new RegExp(`\\${prefix}item\\.first\\(\\)\\..*`),
+			item: new RegExp(`\\${prefix}input\\.item\\..*`),
 			all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
 		};
 
@@ -94,7 +94,7 @@ export function useItemFieldCompletions(language: 'python' | 'javaScript') {
 
 			return {
 				from: preCursor.from,
-				options: options.map(addVarType),
+				options: options.map(addVarType).map(addInfoRenderer),
 			};
 		}
 

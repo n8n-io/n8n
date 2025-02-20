@@ -1,26 +1,32 @@
-import { Container } from 'typedi';
-import { BinaryDataService } from 'n8n-core';
-import { type INode } from 'n8n-workflow';
-import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	UnrecognizedNodeTypeError,
+	type DirectoryLoader,
+} from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
+import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
+import type { INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import { mockInstance } from '../../../shared/mocking';
 
-export { setupTestServer } from './testServer';
+export { setupTestServer } from './test-server';
 
 // ----------------------------------
 //          initializers
@@ -30,14 +36,13 @@ export { setupTestServer } from './testServer';
  * Initialize node types.
  */
 export async function initActiveWorkflowManager() {
-	mockInstance(OrchestrationService, {
-		isMultiMainSetupEnabled: false,
-		shouldAddWebhooks: jest.fn().mockReturnValue(true),
+	mockInstance(InstanceSettings, {
+		isMultiMain: false,
 	});
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
@@ -63,7 +68,8 @@ export async function initCredentialsTypes(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	Container.get(LoadNodesAndCredentials).loaded.nodes = {
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	const nodes: INodeTypeData = {
 		'n8n-nodes-base.start': {
 			type: new Start(),
 			sourcePath: '',
@@ -76,7 +82,21 @@ export async function initNodeTypes() {
 			type: new Set(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.scheduleTrigger': {
+			type: new ScheduleTrigger(),
+			sourcePath: '',
+		},
 	};
+	const loader = mock<DirectoryLoader>();
+	loader.getNode.mockImplementation((nodeType) => {
+		const node = nodes[`n8n-nodes-base.${nodeType}`];
+		if (!node) throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeType);
+		return node;
+	});
+
+	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
+	loadNodesAndCredentials.loaded.nodes = nodes;
 }
 
 /**
@@ -137,7 +157,7 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 //           community nodes
 // ----------------------------------
 
-export * from './communityNodes';
+export * from './community-nodes';
 
 // ----------------------------------
 //           workflow

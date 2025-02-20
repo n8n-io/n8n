@@ -19,7 +19,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		endpointFormWaiting: 'form-waiting',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
-		pushConnectionActive: true,
+		endpointWebhookWaiting: 'webhook-waiting',
 		timezone: 'America/New_York',
 		executionTimeout: -1,
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
@@ -29,7 +29,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
-		isNpmAvailable: false,
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
@@ -44,9 +43,15 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
 
-	const formWaitingUrl = computed(() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`);
+	const formWaitingUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointFormWaiting}`,
+	);
 
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
+
+	const webhookWaitingUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookWaiting}`,
+	);
 
 	const pushRef = computed(() => state.value.pushRef);
 
@@ -59,8 +64,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const instanceId = computed(() => state.value.instanceId);
 
 	const versionCli = computed(() => state.value.versionCli);
-
-	const pushConnectionActive = computed(() => state.value.pushConnectionActive);
 
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
 
@@ -99,14 +102,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.urlBaseWebhook = url;
 	};
 
-	const setPushConnectionActive = () => {
-		state.value.pushConnectionActive = true;
-	};
-
-	const setPushConnectionInactive = () => {
-		state.value.pushConnectionActive = false;
-	};
-
 	const setUrlBaseEditor = (urlBaseEditor: string) => {
 		const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
 		state.value.urlBaseEditor = url;
@@ -130,6 +125,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const setEndpointWebhookTest = (endpointWebhookTest: string) => {
 		state.value.endpointWebhookTest = endpointWebhookTest;
+	};
+
+	const setEndpointWebhookWaiting = (endpointWebhookWaiting: string) => {
+		state.value.endpointWebhookWaiting = endpointWebhookWaiting;
 	};
 
 	const setTimezone = (timezone: string) => {
@@ -165,10 +164,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = locale;
 	};
 
-	const setIsNpmAvailable = (isNpmAvailable: boolean) => {
-		state.value.isNpmAvailable = isNpmAvailable;
-	};
-
 	const setBinaryDataMode = (binaryDataMode: string) => {
 		state.value.binaryDataMode = binaryDataMode;
 	};
@@ -182,6 +177,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		formWaitingUrl,
 		webhookUrl,
 		webhookTestUrl,
+		webhookWaitingUrl,
 		restUrl,
 		restCloudApiContext,
 		restApiContext,
@@ -191,13 +187,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef,
 		defaultLocale,
 		binaryDataMode,
-		pushConnectionActive,
 		OAuthCallbackUrls,
 		executionTimeout,
 		maxExecutionTimeout,
 		timezone,
-		setPushConnectionInactive,
-		setPushConnectionActive,
 		setUrlBaseWebhook,
 		setUrlBaseEditor,
 		setEndpointForm,
@@ -205,6 +198,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setEndpointFormWaiting,
 		setEndpointWebhook,
 		setEndpointWebhookTest,
+		setEndpointWebhookWaiting,
 		setTimezone,
 		setExecutionTimeout,
 		setMaxExecutionTimeout,
@@ -213,7 +207,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setOauthCallbackUrls,
 		setN8nMetadata,
 		setDefaultLocale,
-		setIsNpmAvailable,
 		setBinaryDataMode,
 	};
 });

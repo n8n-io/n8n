@@ -9,12 +9,29 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const processedName = computed(() => splitName(props.project.name ?? ''));
+const processedName = computed(() => {
+	const { name, email } = splitName(props.project.name ?? '');
+	const nameArray = name?.split(' ');
+	const lastName = nameArray?.pop() ?? '';
+	return {
+		firstName: nameArray?.join(' ') ?? '',
+		lastName,
+		email,
+	};
+});
+
+const projectIcon = computed(() => {
+	if (props.project.icon) {
+		return props.project.icon;
+	}
+	return null;
+});
 </script>
 <template>
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
 		<div>
-			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
+			<ProjectIcon v-if="projectIcon" :icon="projectIcon" size="large" :round="true" />
+			<N8nAvatar v-else :first-name="processedName.firstName" :last-name="processedName.lastName" />
 			<div :class="$style.text">
 				<p v-if="processedName.firstName || processedName.lastName">
 					{{ processedName.firstName }} {{ processedName.lastName }}
@@ -58,5 +75,9 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 .text {
 	display: flex;
 	flex-direction: column;
+
+	p {
+		margin: 0;
+	}
 }
 </style>

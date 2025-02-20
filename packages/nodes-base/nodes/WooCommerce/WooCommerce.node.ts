@@ -1,12 +1,15 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
+
+import { customerFields, customerOperations } from './descriptions';
 import {
 	adjustMetadata,
 	setFields,
@@ -15,9 +18,7 @@ import {
 	woocommerceApiRequest,
 	woocommerceApiRequestAllItems,
 } from './GenericFunctions';
-import { productFields, productOperations } from './ProductDescription';
 import { orderFields, orderOperations } from './OrderDescription';
-import type { IDimension, IImage, IProduct } from './ProductInterface';
 import type {
 	IAddress,
 	ICouponLine,
@@ -26,8 +27,8 @@ import type {
 	IOrder,
 	IShoppingLine,
 } from './OrderInterface';
-
-import { customerFields, customerOperations } from './descriptions';
+import { productFields, productOperations } from './ProductDescription';
+import type { IDimension, IImage, IProduct } from './ProductInterface';
 
 export class WooCommerce implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,8 +42,9 @@ export class WooCommerce implements INodeType {
 		defaults: {
 			name: 'WooCommerce',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'wooCommerceApi',

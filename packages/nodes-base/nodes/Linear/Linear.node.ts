@@ -1,16 +1,17 @@
-import type {
-	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
+import {
+	type IExecuteFunctions,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type JsonObject,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -19,9 +20,7 @@ import {
 	sort,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
@@ -39,8 +38,9 @@ export class Linear implements INodeType {
 		defaults: {
 			name: 'Linear',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'linearApi',
@@ -298,7 +298,7 @@ export class Linear implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

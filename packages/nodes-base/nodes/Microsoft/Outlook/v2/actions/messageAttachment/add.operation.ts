@@ -1,5 +1,4 @@
 import type {
-	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,9 +6,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { microsoftApiRequest } from '../../transport';
-import { messageRLC } from '../../descriptions';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { messageRLC } from '../../descriptions';
+import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	messageRLC,
@@ -75,7 +76,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		);
 	}
 
-	const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
+	const binaryData = items[index].binary[binaryPropertyName];
 	const dataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
 	const fileName = options.fileName === undefined ? binaryData.fileName : options.fileName;

@@ -9,7 +9,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+
 import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class FunctionItem implements INodeType {
@@ -25,8 +26,8 @@ export class FunctionItem implements INodeType {
 			name: 'Function Item',
 			color: '#ddbb33',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
@@ -71,7 +72,7 @@ return item;`,
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
-					if (inputData[key]!.constructor.name === 'Object') {
+					if (inputData[key].constructor.name === 'Object') {
 						// Is regular node.js object so check its data
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
@@ -113,8 +114,8 @@ return item;`,
 						}
 						item.binary = data;
 					},
-					getNodeParameter: this.getNodeParameter,
-					getWorkflowStaticData: this.getWorkflowStaticData,
+					getNodeParameter: this.getNodeParameter.bind(this),
+					getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 					helpers: this.helpers,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
@@ -165,7 +166,7 @@ return item;`,
 				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
-					vm.on('console.log', this.sendMessageToUI);
+					vm.on('console.log', this.sendMessageToUI.bind(this));
 				}
 
 				// Get the code to execute
@@ -179,7 +180,7 @@ return item;`,
 						__dirname,
 					);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					} else {
@@ -226,7 +227,7 @@ return item;`,
 
 				returnData.push(returnItem);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

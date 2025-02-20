@@ -1,0 +1,143 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema",
+	"properties": {
+		"allOf": {
+			"allOf": [
+				{
+					"type": "boolean"
+				},
+				{
+					"type": "number"
+				},
+				{
+					"type": "string"
+				}
+			]
+		},
+		"anyOf": {
+			"anyOf": [
+				{
+					"type": "boolean"
+				},
+				{
+					"type": "number"
+				},
+				{
+					"type": "string"
+				}
+			]
+		},
+		"oneOf": {
+			"oneOf": [
+				{
+					"type": "boolean"
+				},
+				{
+					"type": "number"
+				},
+				{
+					"type": "string"
+				}
+			]
+		},
+		"array": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"minItems": 2,
+			"maxItems": 3
+		},
+		"tuple": {
+			"type": "array",
+			"items": [
+				{
+					"type": "boolean"
+				},
+				{
+					"type": "number"
+				},
+				{
+					"type": "string"
+				}
+			],
+			"minItems": 2,
+			"maxItems": 3
+		},
+		"const": {
+			"const": "xbox"
+		},
+		"enum": {
+			"enum": ["ps4", "ps5"]
+		},
+		"ifThenElse": {
+			"if": {
+				"type": "string"
+			},
+			"then": {
+				"const": "x"
+			},
+			"else": {
+				"enum": [1, 2, 3]
+			}
+		},
+		"null": {
+			"type": "null"
+		},
+		"multiple": {
+			"type": ["array", "boolean"]
+		},
+		"objAdditionalTrue": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				}
+			},
+			"additionalProperties": true
+		},
+		"objAdditionalFalse": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				}
+			},
+			"additionalProperties": false
+		},
+		"objAdditionalNumber": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				}
+			},
+			"additionalProperties": {
+				"type": "number"
+			}
+		},
+		"objAdditionalOnly": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "number"
+			}
+		},
+		"patternProps": {
+			"type": "object",
+			"patternProperties": {
+				"^x": {
+					"type": "string"
+				},
+				"^y": {
+					"type": "number"
+				}
+			},
+			"properties": {
+				"z": {
+					"type": "string"
+				}
+			},
+			"additionalProperties": false
+		}
+	}
+}

@@ -1,53 +1,29 @@
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
+import svgLoader from 'vite-svg-loader';
 
-import packageJSON from './package.json';
-import { vitestConfig } from '../design-system/vite.config.mts';
+import { vitestConfig } from '@n8n/frontend-vitest-config';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver'
+import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
-
-const vendorChunks = ['vue', 'vue-router'];
-const n8nChunks = ['n8n-workflow', 'n8n-design-system', '@n8n/chat'];
-const ignoreChunks = [
-	'@fontsource/open-sans',
-	'@vueuse/components',
-	// TODO: remove this. It's currently required by xml2js in NodeErrors
-	'stream-browserify',
-	'vue-markdown-render',
-];
-
-const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
-
-function renderChunks() {
-	const { dependencies } = packageJSON;
-	const chunks: Record<string, string[]> = {};
-
-	Object.keys(dependencies).forEach((key) => {
-		if ([...vendorChunks, ...n8nChunks, ...ignoreChunks].includes(key)) {
-			return;
-		}
-
-		if (isScopedPackageToIgnore(key)) return;
-
-		chunks[key] = [key];
-	});
-
-	return chunks;
-}
+import browserslistToEsbuild from 'browserslist-to-esbuild';
+import legacy from '@vitejs/plugin-legacy';
+import browserslist from 'browserslist';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
+
+const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
 		find: /^n8n-design-system$/,
-		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'index.ts'),
 	},
 	{
 		find: /^n8n-design-system\//,
@@ -60,6 +36,10 @@ const alias = [
 	{
 		find: /^@n8n\/chat\//,
 		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
+	},
+	{
+		find: /^@n8n\/composables(.+)$/,
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
@@ -80,29 +60,30 @@ const plugins = [
 		dts: './src/components.d.ts',
 		resolvers: [
 			iconsResolver({
-				prefix: 'icon'
-			})
-		]
+				prefix: 'icon',
+			}),
+		],
+	}),
+	viteStaticCopy({
+		targets: [
+			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				dest: 'public',
+			},
+		],
 	}),
 	vue(),
+	svgLoader(),
+	legacy({
+		modernTargets: browsers,
+		modernPolyfills: true,
+		renderLegacyChunks: false,
+	}),
 ];
 
-const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
-if (release && authToken) {
-	plugins.push(
-		sentryVitePlugin({
-			org: 'n8nio',
-			project: 'instance-frontend',
-			// Specify the directory containing build artifacts
-			include: './dist',
-			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
-			// and needs the `project:releases` and `org:read` scopes
-			authToken,
-			telemetry: false,
-			release,
-		}),
-	);
-}
+const { RELEASE: release } = process.env;
+const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
 	defineConfig({
@@ -119,24 +100,26 @@ export default mergeConfig(
 		css: {
 			preprocessorOptions: {
 				scss: {
-					additionalData: '\n@use "@/n8n-theme-variables.scss" as *;\n',
+					additionalData: [
+						'',
+						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "n8n-design-system/css/mixins" as mixins;',
+					].join('\n'),
 				},
 			},
 		},
 		build: {
-			assetsInlineLimit: 0,
 			minify: !!release,
 			sourcemap: !!release,
-			rollupOptions: {
-				treeshake: !!release,
-				output: {
-					manualChunks: {
-						vendor: vendorChunks,
-						n8n: n8nChunks,
-						...renderChunks(),
-					},
-				},
+			target,
+		},
+		optimizeDeps: {
+			esbuildOptions: {
+				target,
 			},
+		},
+		worker: {
+			format: 'es',
 		},
 	}),
 	vitestConfig,

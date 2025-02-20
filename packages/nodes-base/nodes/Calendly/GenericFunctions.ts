@@ -19,7 +19,7 @@ export async function getAuthenticationType(
 ): Promise<'accessToken' | 'apiKey'> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 	if (authentication === 'apiKey') {
-		const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
+		const { apiKey } = await this.getCredentials<{ apiKey: string }>('calendlyApi');
 		return getAuthenticationTypeFromApiKey(apiKey);
 	} else {
 		return 'accessToken';

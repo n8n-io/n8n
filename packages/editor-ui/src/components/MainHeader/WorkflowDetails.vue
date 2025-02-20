@@ -3,7 +3,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -13,17 +12,16 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-
 import ShortenName from '@/components/ShortenName.vue';
-import TagsContainer from '@/components/TagsContainer.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -35,11 +33,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -55,13 +52,18 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useLocalStorage } from '@vueuse/core';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
-	workflow: IWorkflowDb;
 	readOnly?: boolean;
+	id: IWorkflowDb['id'];
+	tags: IWorkflowDb['tags'];
+	name: IWorkflowDb['name'];
+	meta: IWorkflowDb['meta'];
+	scopes: IWorkflowDb['scopes'];
+	active: IWorkflowDb['active'];
 }>();
 
 const $style = useCssModule();
@@ -76,6 +78,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const npsSurveyStore = useNpsSurveyStore();
+const i18n = useI18n();
 
 const router = useRouter();
 const route = useRoute();
@@ -84,8 +87,9 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
-const titleChange = useTitleChange();
+const documentTitle = useDocumentTitle();
 const workflowHelpers = useWorkflowHelpers({ router });
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
 const isNameEditEnabled = ref(false);
@@ -95,9 +99,6 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
-
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', import.meta.env.DEV ? 'true' : '');
-const nodeViewVersion = useLocalStorage('NodeView.version', '1');
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -109,11 +110,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return (
-		!props.workflow.id ||
-		props.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflow.id === 'new'
-	);
+	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
 });
 
 const isWorkflowSaving = computed(() => {
@@ -132,9 +129,7 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
-	return getWorkflowPermissions(workflowsStore.getWorkflowById(props.workflow.id));
-});
+const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	const actions: ActionDropdownItem[] = [
@@ -145,11 +140,11 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.workflow.id,
+			disabled: !onWorkflowPage.value || !props.id,
 		});
 
 		actions.push(
@@ -184,17 +179,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (nodeViewSwitcher.value === 'true') {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-			label:
-				nodeViewVersion.value === '2'
-					? locale.baseText('menuActions.switchToOldNodeViewVersion')
-					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
-
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
@@ -212,25 +196,12 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
-const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
-	return {
-		name: VIEWS.WORKFLOW_HISTORY,
-		params: {
-			workflowId: props.workflow.id,
-		},
-	};
-});
-
-const isWorkflowHistoryButtonDisabled = computed(() => {
-	return isNewWorkflow.value;
-});
-
 const workflowTagIds = computed(() => {
-	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
 
 watch(
-	() => props.workflow.id,
+	() => props.id,
 	() => {
 		isTagsEditEnabled.value = false;
 		isNameEditEnabled.value = false;
@@ -239,8 +210,8 @@ watch(
 
 function getWorkflowId(): string | undefined {
 	let id: string | undefined = undefined;
-	if (props.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.workflow.id;
+	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		id = props.id;
 	} else if (route.params.name && route.params.name !== 'new') {
 		id = route.params.name as string;
 	}
@@ -256,8 +227,8 @@ async function onSaveButtonClick() {
 
 	const id = getWorkflowId();
 
-	const name = props.workflow.name;
-	const tags = props.workflow.tags as string[];
+	const name = props.name;
+	const tags = props.tags as string[];
 
 	const saved = await workflowHelpers.saveCurrentWorkflow({
 		id,
@@ -273,7 +244,7 @@ async function onSaveButtonClick() {
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await router.replace({
 				name: VIEWS.WORKFLOW,
-				params: { name: props.workflow.id },
+				params: { name: props.id },
 			});
 		}
 	}
@@ -282,18 +253,18 @@ async function onSaveButtonClick() {
 function onShareButtonClick() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_SHARE_MODAL_KEY,
-		data: { id: props.workflow.id },
+		data: { id: props.id },
 	});
 
 	telemetry.track('User opened sharing modal', {
-		workflow_id: props.workflow.id,
+		workflow_id: props.id,
 		user_id_sharer: usersStore.currentUser?.id,
 		sub_view: route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 	});
 }
 
 function onTagsEditEnable() {
-	appliedTagIds.value = (props.workflow.tags ?? []) as string[];
+	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
 
 	setTimeout(() => {
@@ -304,7 +275,7 @@ function onTagsEditEnable() {
 }
 
 async function onTagsBlur() {
-	const current = (props.workflow.tags ?? []) as string[];
+	const current = (props.tags ?? []) as string[];
 	const tags = appliedTagIds.value;
 	if (!hasChanged(current, tags)) {
 		isTagsEditEnabled.value = false;
@@ -318,7 +289,7 @@ async function onTagsBlur() {
 
 	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
-		workflow_id: props.workflow.id,
+		workflow_id: props.id,
 		new_tag_count: tags.length,
 	});
 
@@ -362,7 +333,7 @@ async function onNameSubmit({
 		return;
 	}
 
-	if (newName === props.workflow.name) {
+	if (newName === props.name) {
 		isNameEditEnabled.value = false;
 
 		onSubmit(true);
@@ -375,6 +346,7 @@ async function onNameSubmit({
 	if (saved) {
 		isNameEditEnabled.value = false;
 		showCreateWorkflowSuccessToast(id);
+		workflowHelpers.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	onSubmit(saved);
@@ -412,9 +384,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: DUPLICATE_MODAL_KEY,
 				data: {
-					id: props.workflow.id,
-					name: props.workflow.name,
-					tags: props.workflow.tags,
+					id: props.id,
+					name: props.name,
+					tags: props.tags,
 				},
 			});
 			break;
@@ -425,7 +397,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...props.workflow.meta,
+					...props.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
@@ -439,7 +411,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				type: 'application/json;charset=utf-8',
 			});
 
-			let name = props.workflow.name || 'unsaved_workflow';
+			let name = props.name || 'unsaved_workflow';
 			name = name.replace(/[^a-z0-9]/gi, '_');
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
@@ -505,42 +477,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			break;
 		}
-		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
-			if (uiStore.stateIsDirty) {
-				const confirmModal = await message.confirm(
-					locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					{
-						title: locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'generic.unsavedWork.confirmMessage.cancelButtonText',
-						),
-						showClose: true,
-					},
-				);
-
-				if (confirmModal === MODAL_CONFIRM) {
-					await onSaveButtonClick();
-				} else if (confirmModal === MODAL_CLOSE) {
-					return;
-				}
-			}
-
-			if (nodeViewVersion.value === '1') {
-				nodeViewVersion.value = '2';
-			} else {
-				nodeViewVersion.value = '1';
-			}
-
-			break;
-		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			const deleteConfirmed = await message.confirm(
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-					interpolate: { workflowName: props.workflow.name },
+					interpolate: { workflowName: props.name },
 				}),
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 				{
@@ -559,14 +499,14 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			}
 
 			try {
-				await workflowsStore.deleteWorkflow(props.workflow.id);
+				await workflowsStore.deleteWorkflow(props.id);
 			} catch (error) {
 				toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 				return;
 			}
 			uiStore.stateIsDirty = false;
 			// Reset tab title since workflow is deleted.
-			titleChange.titleReset();
+			documentTitle.reset();
 			toast.showMessage({
 				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 				type: 'success',
@@ -581,14 +521,22 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+}
+
+function goToWorkflowHistoryUpgrade() {
+	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
-		if (projectsStore.currentProject) {
+
+		if (
+			projectsStore.currentProject &&
+			projectsStore.currentProject.id !== projectsStore.personalProject?.id
+		) {
 			toastTitle = locale.baseText('workflows.create.project.toast.title', {
 				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
 			});
@@ -611,19 +559,14 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<ShortenName
-					:name="workflow.name"
-					:limit="value"
-					:custom="true"
-					test-id="workflow-name-input"
-				>
+				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:model-value="workflow.name"
+							:model-value="name"
 							:preview-value="shortenedName"
 							:is-edit-enabled="isNameEditEnabled"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly"
+							:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
 							placeholder="Enter workflow name"
 							class="name"
 							@toggle="onNameToggle"
@@ -635,26 +578,29 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<TagsDropdown
-				v-if="isTagsEditEnabled && !readOnly"
+			<WorkflowTagsDropdown
+				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
-				:create-enabled="true"
 				:event-bus="tagsEventBus"
-				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+				:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
 				@blur="onTagsBlur"
 				@esc="onTagsEditEsc"
 			/>
-			<div v-else-if="(workflow.tags ?? []).length === 0 && !readOnly">
+			<div
+				v-else-if="
+					(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
+				"
+			>
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-					+ {{ $locale.baseText('workflowDetails.addTag') }}
+					+ {{ i18n.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
-			<TagsContainer
+			<WorkflowTagsContainer
 				v-else
-				:key="workflow.id"
+				:key="id"
 				:tag-ids="workflowTagIds"
 				:clickable="true"
 				:responsive="true"
@@ -666,22 +612,27 @@ function showCreateWorkflowSuccessToast(id?: string) {
 
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
-				<WorkflowActivator :workflow-active="workflow.active" :workflow-id="workflow.id" />
+				<WorkflowActivator
+					:workflow-active="active"
+					:workflow-id="id"
+					:workflow-permissions="workflowPermissions"
+				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
+					<CollaborationPane v-if="!isNewWorkflow" />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"
 						@click="onShareButtonClick"
 					>
-						{{ $locale.baseText('workflowDetails.share') }}
+						{{ i18n.baseText('workflowDetails.share') }}
 					</N8nButton>
 				</div>
 				<template #fallback>
 					<N8nTooltip>
 						<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-							{{ $locale.baseText('workflowDetails.share') }}
+							{{ i18n.baseText('workflowDetails.share') }}
 						</N8nButton>
 						<template #content>
 							<i18n-t
@@ -694,7 +645,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 								<template #action>
 									<a @click="goToUpgrade">
 										{{
-											$locale.baseText(
+											i18n.baseText(
 												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
 													.button as BaseTextKey,
 											)
@@ -710,27 +661,21 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				<SaveButton
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-					:disabled="isWorkflowSaving || readOnly"
+					:disabled="
+						isWorkflowSaving || readOnly || (!isNewWorkflow && !workflowPermissions.update)
+					"
 					:is-saving="isWorkflowSaving"
-					with-shortcut
-					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
+					:with-shortcut="!readOnly && workflowPermissions.update"
+					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<RouterLink
-					v-if="isWorkflowHistoryFeatureEnabled"
-					:to="workflowHistoryRoute"
-					:class="$style.workflowHistoryButton"
-				>
-					<N8nIconButton
-						:disabled="isWorkflowHistoryButtonDisabled"
-						data-test-id="workflow-history-button"
-						type="tertiary"
-						icon="history"
-						size="medium"
-						text
-					/>
-				</RouterLink>
+				<WorkflowHistoryButton
+					:workflow-id="props.id"
+					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
+					:is-new-workflow="isNewWorkflow"
+					@upgrade="goToWorkflowHistoryUpgrade"
+				/>
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
@@ -756,11 +701,16 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: $--header-spacing;
+
+	:deep(.el-input) {
+		padding: 0;
+	}
 }
 
 .name {
 	color: $custom-font-dark;
 	font-size: 15px;
+	display: block;
 }
 
 .activator {
@@ -768,7 +718,6 @@ $--header-spacing: 20px;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
-	display: flex;
 	align-items: center;
 
 	> span {
@@ -806,22 +755,32 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
+	flex-wrap: nowrap;
+}
+
+@include mixins.breakpoint('xs-only') {
+	.name {
+		:deep(input) {
+			min-width: 180px;
+		}
+	}
 }
 </style>
 
 <style module lang="scss">
 .container {
 	position: relative;
-	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;
+	flex-wrap: nowrap;
 }
 
 .group {
 	display: flex;
 	gap: var(--spacing-xs);
 }
+
 .hiddenInput {
 	display: none;
 }
@@ -834,20 +793,10 @@ $--header-spacing: 20px;
 	cursor: not-allowed;
 }
 
-.workflowHistoryButton {
-	width: 30px;
-	height: 30px;
-	color: var(--color-text-dark);
-	border-radius: var(--border-radius-base);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-
-	:disabled {
-		background: transparent;
-		border: none;
-		opacity: 0.5;
-	}
+.closeNodeViewDiscovery {
+	position: absolute;
+	right: var(--spacing-xs);
+	top: var(--spacing-xs);
+	cursor: pointer;
 }
 </style>

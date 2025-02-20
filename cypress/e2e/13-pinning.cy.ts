@@ -7,6 +7,7 @@ import {
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 import { errorToast } from '../pages/notifications';
+import { getVisiblePopper } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -105,36 +106,6 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
-	it('Should be able to pin data from canvas (context menu or shortcut)', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
-		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, 'overflow-button');
-		workflowPage.getters
-			.contextMenuAction('toggle_pin')
-			.parent()
-			.should('have.class', 'is-disabled');
-
-		cy.get('body').type('{esc}');
-
-		// Unpin using context menu
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.actions.setPinnedData([{ test: 1 }]);
-		ndv.actions.close();
-		workflowPage.actions.pinNode(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.getters.nodeOutputHint().should('exist');
-		ndv.actions.close();
-
-		// Unpin using shortcut
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.actions.setPinnedData([{ test: 1 }]);
-		ndv.actions.close();
-		workflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).click();
-		workflowPage.actions.hitPinNodeShortcut();
-		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.getters.nodeOutputHint().should('exist');
-	});
-
 	it('Should show an error when maximum pin data size is exceeded', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
@@ -211,6 +182,16 @@ describe('Data pinning', () => {
 				});
 			},
 		);
+	});
+
+	it('should not show pinned data tooltip', () => {
+		cy.createFixtureWorkflow('Pinned_webhook_node.json', 'Test');
+		workflowPage.actions.executeWorkflow();
+
+		// hide other visible popper on workflow execute button
+		workflowPage.getters.canvasNodes().eq(0).click();
+
+		getVisiblePopper().should('have.length', 0);
 	});
 });
 

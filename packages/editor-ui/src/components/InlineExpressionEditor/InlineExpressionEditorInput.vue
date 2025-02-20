@@ -1,26 +1,19 @@
 <script setup lang="ts">
-import { startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
 import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
+import { dropCursor, EditorView, keymap } from '@codemirror/view';
+import { computed, ref, watch } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useNDVStore } from '@/stores/ndv.store';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
-import { removeExpressionPrefix } from '@/utils/expressions';
-import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
-import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import { onKeyStroke } from '@vueuse/core';
+import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
 
 type Props = {
 	modelValue: string;
@@ -28,14 +21,12 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	additionalData?: IDataObject;
-	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isReadOnly: false,
 	additionalData: () => ({}),
-	eventBus: () => createEventBus(),
 });
 
 const emit = defineEmits<{
@@ -44,22 +35,30 @@ const emit = defineEmits<{
 	focus: [];
 }>();
 
-const ndvStore = useNDVStore();
-
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
-	Prec.highest(
-		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
 	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
-	expressionInputHandler(),
+	mappingDropCursor(),
+	dropCursor(),
+	expressionCloseBrackets(),
 	EditorView.lineWrapping,
 	infoBoxTooltips(),
 ]);
-const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+const editorValue = computed(() => props.modelValue);
+
+// Exit expression editor when pressing Backspace in empty field
+onKeyStroke(
+	'Backspace',
+	() => {
+		if (props.modelValue === '') emit('update:model-value', { value: '', segments: [] });
+	},
+	{ target: root },
+);
+
 const {
 	editor: editorRef,
 	segments,
@@ -72,43 +71,10 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadOnly,
+	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
-
-defineExpose({
-	focus: () => {
-		if (!hasFocus.value) {
-			setCursorPosition('lastExpression');
-			focus();
-		}
-	},
-});
-
-async function onDrop() {
-	await nextTick();
-
-	const editor = toValue(editorRef);
-	if (!editor) return;
-
-	focus();
-
-	setCursorPosition('lastExpression');
-
-	if (!ndvStore.isAutocompleteOnboarded) {
-		setTimeout(() => {
-			startCompletion(editor);
-		});
-	}
-}
-
-watch(
-	() => props.modelValue,
-	(newValue) => {
-		editorValue.value = removeExpressionPrefix(newValue);
-	},
-);
 
 watch(segments.display, (newSegments) => {
 	emit('update:model-value', {
@@ -130,30 +96,26 @@ watch(hasFocus, (focused) => {
 	if (focused) emit('focus');
 });
 
-onMounted(() => {
-	props.eventBus.on('drop', onDrop);
-});
-
-onBeforeUnmount(() => {
-	props.eventBus.off('drop', onDrop);
+defineExpose({
+	editor: editorRef,
+	setCursorPosition,
+	focus: () => {
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
+	},
+	selectAll: () => {
+		editorRef.value?.dispatch({
+			selection: selection.value.extend(0, editorRef.value?.state.doc.length),
+		});
+	},
 });
 </script>
 
 <template>
-	<div
-		ref="root"
-		title=""
-		:class="$style.editor"
-		data-test-id="inline-expression-editor-input"
-	></div>
+	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
 </template>
-
-<style lang="scss" module>
-.editor div[contenteditable='false'] {
-	background-color: var(--disabled-fill, var(--color-background-light));
-	cursor: not-allowed;
-}
-</style>
 
 <style lang="scss" scoped>
 :deep(.cm-editor) {
@@ -161,5 +123,15 @@ onBeforeUnmount(() => {
 }
 :deep(.cm-content) {
 	padding-left: var(--spacing-2xs);
+
+	&[aria-readonly='true'] {
+		background-color: var(--disabled-fill, var(--color-background-light));
+		border-color: var(--disabled-border, var(--border-color-base));
+		color: var(--disabled-color, var(--color-text-base));
+		cursor: not-allowed;
+
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
 }
 </style>

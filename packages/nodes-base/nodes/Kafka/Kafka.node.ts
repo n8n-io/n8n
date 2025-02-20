@@ -1,8 +1,6 @@
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
-
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -14,8 +12,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
-import { generatePairedItemData } from '../../utils/utilities';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +25,9 @@ export class Kafka implements INodeType {
 		defaults: {
 			name: 'Kafka',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kafka',
@@ -229,7 +227,6 @@ export class Kafka implements INodeType {
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
-							// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 							throw new ApplicationError('Username and password are required for authentication', {
 								level: 'warning',
 							});
@@ -261,7 +258,6 @@ export class Kafka implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
 
 		const length = items.length;
 
@@ -401,15 +397,12 @@ export class Kafka implements INodeType {
 
 			await producer.disconnect();
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
-				{ itemData },
-			);
+			const executionData = this.helpers.returnJsonArray(responseData);
 
 			return [executionData];
 		} catch (error) {
-			if (this.continueOnFail(error)) {
-				return [[{ json: { error: error.message }, pairedItem: itemData }]];
+			if (this.continueOnFail()) {
+				return [[{ json: { error: error.message } }]];
 			} else {
 				throw error;
 			}

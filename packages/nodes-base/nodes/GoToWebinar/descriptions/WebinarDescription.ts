@@ -154,7 +154,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'timezone',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				typeOptions: {
@@ -456,7 +456,7 @@ export const webinarFields: INodeProperties[] = [
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				description:
-					'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					loadOptionsMethod: 'getTimezones',

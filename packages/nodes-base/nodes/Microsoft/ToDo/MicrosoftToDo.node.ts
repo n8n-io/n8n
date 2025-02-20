@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,16 +8,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
-
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
-
-import { taskFields, taskOperations } from './TaskDescription';
-
 import { listFields, listOperations } from './ListDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
 export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,8 +27,9 @@ export class MicrosoftToDo implements INodeType {
 		defaults: {
 			name: 'Microsoft To Do',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'microsoftToDoOAuth2Api',
@@ -414,7 +412,7 @@ export class MicrosoftToDo implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

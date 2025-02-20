@@ -1,6 +1,6 @@
-import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');

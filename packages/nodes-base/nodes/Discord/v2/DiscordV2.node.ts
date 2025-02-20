@@ -6,11 +6,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { listSearch, loadOptions } from './methods';
-
 import { router } from './actions/router';
-
 import { versionDescription } from './actions/versionDescription';
+import { listSearch, loadOptions } from './methods';
+import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
 export class DiscordV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -19,6 +18,7 @@ export class DiscordV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 
@@ -26,6 +26,8 @@ export class DiscordV2 implements INodeType {
 		listSearch,
 		loadOptions,
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);

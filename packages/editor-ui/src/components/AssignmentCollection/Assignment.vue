@@ -4,13 +4,13 @@ import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { isExpression, stringifyExpressionResult } from '@/utils/expressions';
-import type { AssignmentValue, INodeProperties, Result } from 'n8n-workflow';
+import { useResolvedExpression } from '@/composables/useResolvedExpression';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useRouter } from 'vue-router';
+import { N8nIconButton } from 'n8n-design-system';
 
 interface Props {
 	path: string;
@@ -31,8 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = useNDVStore();
-const router = useRouter();
-const { resolveExpression } = useWorkflowHelpers({ router });
+const environmentsStore = useEnvironmentsStore();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -75,42 +74,20 @@ const valueParameter = computed<INodeProperties>(() => {
 	};
 });
 
-const hint = computed(() => {
-	const { value } = assignment.value;
-	if (typeof value !== 'string' || !value.startsWith('=')) {
-		return '';
-	}
+const value = computed(() => assignment.value.value);
 
-	let result: Result<unknown, Error>;
-	try {
-		const resolvedValue = resolveExpression(
-			value,
-			undefined,
-			ndvStore.isInputParentOfActiveNode
-				? {
-						targetItem: ndvStore.expressionTargetItem ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-					}
-				: {},
-		) as unknown;
-
-		result = { ok: true, result: resolvedValue };
-	} catch (error) {
-		result = { ok: false, error };
-	}
-
-	return stringifyExpressionResult(result);
+const resolvedAdditionalExpressionData = computed(() => {
+	return { $vars: environmentsStore.variablesAsObject };
 });
+
+const { resolvedExpressionString, isExpression } = useResolvedExpression({
+	expression: value,
+	additionalData: resolvedAdditionalExpressionData,
+});
+
+const hint = computed(() => resolvedExpressionString.value);
 
 const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
-
-const valueIsExpression = computed(() => {
-	const { value } = assignment.value;
-
-	return typeof value === 'string' && isExpression(value);
-});
 
 const onAssignmentNameChange = (update: IUpdateInformation): void => {
 	assignment.value.name = update.value as string;
@@ -119,7 +96,7 @@ const onAssignmentNameChange = (update: IUpdateInformation): void => {
 const onAssignmentTypeChange = (update: string): void => {
 	assignment.value.type = update;
 
-	if (update === 'boolean' && !valueIsExpression.value) {
+	if (update === 'boolean' && !isExpression.value) {
 		assignment.value.value = false;
 	}
 };
@@ -146,16 +123,24 @@ const onBlur = (): void => {
 		}"
 		data-test-id="assignment"
 	>
-		<n8n-icon-button
+		<N8nIconButton
+			v-if="!isReadOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
+		></N8nIconButton>
+		<N8nIconButton
 			v-if="!isReadOnly"
 			type="tertiary"
 			text
 			size="mini"
 			icon="trash"
 			data-test-id="assignment-remove"
-			:class="$style.remove"
+			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
-		></n8n-icon-button>
+		></N8nIconButton>
 
 		<div :class="$style.inputs">
 			<InputTriple middle-width="100px">
@@ -235,7 +220,7 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.iconButton {
 			opacity: 1;
 		}
 	}
@@ -263,12 +248,19 @@ const onBlur = (): void => {
 	}
 }
 
-.remove {
+.iconButton {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+.extraTopPadding {
+	top: calc(20px + var(--spacing-l));
+}
+
+.defaultTopPadding {
+	top: var(--spacing-l);
 }
 
 .status {

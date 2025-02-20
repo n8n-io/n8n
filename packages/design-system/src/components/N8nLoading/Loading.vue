@@ -1,3 +1,37 @@
+<script lang="ts" setup>
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
+
+const VARIANT = [
+	'custom',
+	'p',
+	'text',
+	'h1',
+	'h3',
+	'text',
+	'caption',
+	'button',
+	'image',
+	'circle',
+	'rect',
+] as const;
+
+interface LoadingProps {
+	animated?: boolean;
+	loading?: boolean;
+	rows?: number;
+	shrinkLast?: boolean;
+	variant?: (typeof VARIANT)[number];
+}
+
+withDefaults(defineProps<LoadingProps>(), {
+	animated: true,
+	loading: true,
+	rows: 1,
+	shrinkLast: true,
+	variant: 'p',
+});
+</script>
+
 <template>
 	<ElSkeleton
 		:loading="loading"
@@ -34,40 +68,6 @@
 		</template>
 	</ElSkeleton>
 </template>
-
-<script lang="ts" setup>
-import { ElSkeleton, ElSkeletonItem } from 'element-plus';
-
-const VARIANT = [
-	'custom',
-	'p',
-	'text',
-	'h1',
-	'h3',
-	'text',
-	'caption',
-	'button',
-	'image',
-	'circle',
-	'rect',
-] as const;
-
-interface LoadingProps {
-	animated?: boolean;
-	loading?: boolean;
-	rows?: number;
-	shrinkLast?: boolean;
-	variant?: (typeof VARIANT)[number];
-}
-
-withDefaults(defineProps<LoadingProps>(), {
-	animated: true,
-	loading: true,
-	rows: 1,
-	shrinkLast: true,
-	variant: 'p',
-});
-</script>
 
 <style lang="scss" module>
 .h1Last {

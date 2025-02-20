@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/vue';
+
 import { defaultMountingTarget } from '@n8n/chat/constants';
 
 export function getMountingTarget(target = defaultMountingTarget) {

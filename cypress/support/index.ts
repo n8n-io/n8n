@@ -1,7 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings, PushPayload, PushType } from '@n8n/api-types';
 
 Cypress.Keyboard.defaults({
 	keystrokeDelay: 0,
@@ -10,6 +10,10 @@ Cypress.Keyboard.defaults({
 interface SigninPayload {
 	email: string;
 	password: string;
+}
+
+interface DragAndDropOptions {
+	position: 'top' | 'center' | 'bottom';
 }
 
 declare global {
@@ -24,6 +28,7 @@ declare global {
 				selector: string,
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
+			ifCanvasVersion<T1, T2>(getterV1: () => T1, getterV2: () => T2): T1 | T2;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			/**
 			 * Creates a workflow from the given fixture and optionally renames it.
@@ -41,7 +46,7 @@ declare global {
 			 */
 			signinAsMember(index?: number): void;
 			signout(): void;
-			overrideSettings(value: Partial<IN8nUISettings>): void;
+			overrideSettings(value: Partial<FrontendSettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;
@@ -54,10 +59,20 @@ declare global {
 			drag(
 				selector: string | Chainable<JQuery<HTMLElement>>,
 				target: [number, number],
-				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
+				options?: {
+					abs?: boolean;
+					index?: number;
+					realMouse?: boolean;
+					clickToFinish?: boolean;
+					moveTwice?: boolean;
+				},
 			): void;
-			draganddrop(draggableSelector: string, droppableSelector: string): void;
-			push(type: string, data: unknown): void;
+			draganddrop(
+				draggableSelector: string,
+				droppableSelector: string,
+				options?: Partial<DragAndDropOptions>,
+			): void;
+			push<Type extends PushType>(type: Type, data: PushPayload<Type>): void;
 			shouldNotHaveConsoleErrors(): void;
 			window(): Chainable<
 				AUTWindow & {

@@ -96,7 +96,7 @@ export const postFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reply To Post Number',

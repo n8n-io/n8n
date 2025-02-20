@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
+import { computed, ref } from 'vue';
+
+import { uid } from '../../utils';
 import N8nInput from '../N8nInput';
 
 export type ColorPickerProps = {

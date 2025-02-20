@@ -7,12 +7,10 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
-
 import { parseString } from 'xml2js';
 
 import {
 	SPLUNK,
-	type SplunkCredentials,
 	type SplunkError,
 	type SplunkFeedResponse,
 	type SplunkResultResponse,
@@ -115,9 +113,7 @@ export async function splunkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
-		'splunkApi',
-	)) as SplunkCredentials;
+	const { baseUrl, allowUnauthorizedCerts } = await this.getCredentials('splunkApi');
 
 	const options: IRequestOptions = {
 		headers: {

@@ -4,10 +4,11 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
-import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
+
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import { viewRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -107,7 +108,7 @@ const properties: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Direction',
@@ -155,12 +156,9 @@ export async function execute(
 	const endpoint = `${base}/${table}`;
 
 	let itemsLength = items.length ? 1 : 0;
-	let fallbackPairedItems;
 
 	if (nodeVersion >= 2.1) {
 		itemsLength = items.length;
-	} else {
-		fallbackPairedItems = generatePairedItemData(items.length);
 	}
 
 	for (let i = 0; i < itemsLength; i++) {
@@ -207,7 +205,7 @@ export async function execute(
 					this,
 					responseData.records as IRecord[],
 					options.downloadFields as string[],
-					fallbackPairedItems || [{ item: i }],
+					nodeVersion >= 2.1 ? [{ item: i }] : undefined,
 				);
 				returnData.push(...itemWithAttachments);
 				continue;
@@ -219,7 +217,7 @@ export async function execute(
 				json: flattenOutput(record),
 			})) as INodeExecutionData[];
 
-			const itemData = fallbackPairedItems || [{ item: i }];
+			const itemData = nodeVersion >= 2.1 ? [{ item: i }] : [];
 
 			const executionData = this.helpers.constructExecutionMetaData(records, {
 				itemData,
@@ -227,7 +225,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error }, pairedItem: { item: i } });
 				continue;
 			} else {

@@ -1,9 +1,11 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { folderRLC, messageRLC } from '../../descriptions';
 import { createMessage, decodeOutlookId } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { folderRLC, messageRLC } from '../../descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	messageRLC,
@@ -26,7 +28,7 @@ export const properties: INodeProperties[] = [
 				name: 'categories',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategoriesNames',
 				},

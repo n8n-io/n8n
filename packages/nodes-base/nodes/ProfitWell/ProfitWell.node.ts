@@ -1,22 +1,21 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { companyOperations } from './CompanyDescription';
 import type { Metrics } from './GenericFunctions';
 import {
 	profitWellApiRequest,
 	simplifyDailyMetrics,
 	simplifyMontlyMetrics,
 } from './GenericFunctions';
-
-import { companyOperations } from './CompanyDescription';
-
 import { metricFields, metricOperations } from './MetricDescription';
 
 export class ProfitWell implements INodeType {
@@ -32,8 +31,9 @@ export class ProfitWell implements INodeType {
 		defaults: {
 			name: 'ProfitWell',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'profitWellApi',
@@ -138,7 +138,7 @@ export class ProfitWell implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

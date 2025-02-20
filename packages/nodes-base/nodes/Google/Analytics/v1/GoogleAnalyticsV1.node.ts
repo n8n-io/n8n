@@ -1,23 +1,23 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	IHttpRequestMethods,
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { reportFields, reportOperations } from './ReportDescription';
-import { userActivityFields, userActivityOperations } from './UserActivityDescription';
+import { oldVersionNotice } from '@utils/descriptions';
+
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 import type { IData } from './Interfaces';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { reportFields, reportOperations } from './ReportDescription';
+import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -30,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Analytics',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleAnalyticsOAuth2',
@@ -292,7 +292,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as itemList from './itemList';
 
@@ -14,8 +14,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Item Lists',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [],
 	properties: [
 		{

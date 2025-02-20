@@ -12,6 +12,7 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import axios from 'axios';
+import type { CreateCredentialDto } from '@n8n/api-types';
 
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
 	const { data } = await axios.get(baseUrl + 'types/credentials.json', { withCredentials: true });
@@ -32,6 +33,7 @@ export async function getAllCredentials(
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
+		includeData: true,
 		...(filter ? { filter } : {}),
 	});
 }
@@ -47,13 +49,9 @@ export async function getAllCredentialsForWorkflow(
 
 export async function createNewCredential(
 	context: IRestApiContext,
-	data: ICredentialsDecrypted,
-	projectId?: string,
+	payload: CreateCredentialDto,
 ): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(context, 'POST', '/credentials', {
-		...data,
-		projectId,
-	} as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/credentials', payload);
 }
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {

@@ -4,10 +4,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import * as spreadsheet from './actions/spreadsheet.operation';
 import * as moveTo from './actions/moveTo.operation';
 import * as pdf from './actions/pdf.operation';
+import * as spreadsheet from './actions/spreadsheet.operation';
 
 export class ExtractFromFile implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
@@ -21,8 +22,8 @@ export class ExtractFromFile implements INodeType {
 		defaults: {
 			name: 'Extract from File',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',

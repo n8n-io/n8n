@@ -1,5 +1,4 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-
 import { parseString } from 'xml2js';
 
 import type { SplunkError, SplunkFeedResponse } from './interfaces';

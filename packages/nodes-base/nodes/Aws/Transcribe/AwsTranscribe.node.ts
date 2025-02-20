@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
@@ -20,8 +21,9 @@ export class AwsTranscribe implements INodeType {
 		defaults: {
 			name: 'AWS Transcribe',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -539,7 +541,7 @@ export class AwsTranscribe implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

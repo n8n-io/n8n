@@ -1,5 +1,4 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { JsonToBinaryOptions } from '@utils/binary';
@@ -141,7 +140,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData.push(newItem);
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

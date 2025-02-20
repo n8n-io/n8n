@@ -1,56 +1,3 @@
-<template>
-	<a
-		v-if="version"
-		:href="version.documentationUrl"
-		target="_blank"
-		:class="$style.card"
-		data-test-id="version-card"
-	>
-		<div :class="$style.header">
-			<div>
-				<div :class="$style.name">
-					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
-				</div>
-				<WarningTooltip v-if="version.hasSecurityIssue">
-					<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
-				</WarningTooltip>
-				<Badge
-					v-if="version.hasSecurityFix"
-					:text="$locale.baseText('versionCard.securityUpdate')"
-					type="danger"
-				/>
-				<Badge
-					v-if="version.hasBreakingChange"
-					:text="$locale.baseText('versionCard.breakingChanges')"
-					type="warning"
-				/>
-			</div>
-			<div :class="$style['release-date']">
-				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
-			</div>
-		</div>
-		<div
-			v-if="version.description || (version.nodes && version.nodes.length)"
-			:class="$style.divider"
-		></div>
-		<div>
-			<div
-				v-if="version.description"
-				:class="$style.description"
-				v-html="version.description"
-			></div>
-			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
-				<NodeIcon
-					v-for="node in version.nodes"
-					:key="node.name"
-					:node-type="node"
-					:title="nodeName(node)"
-				/>
-			</div>
-		</div>
-	</a>
-</template>
-
 <script setup lang="ts">
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
@@ -69,6 +16,59 @@ const nodeName = (node: IVersionNode): string => {
 	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
 };
 </script>
+
+<template>
+	<a
+		v-if="version"
+		:href="version.documentationUrl"
+		target="_blank"
+		:class="$style.card"
+		data-test-id="version-card"
+	>
+		<div :class="$style.header">
+			<div>
+				<div :class="$style.name">
+					{{ `${i18n.baseText('versionCard.version')} ${version.name}` }}
+				</div>
+				<WarningTooltip v-if="version.hasSecurityIssue">
+					<span v-n8n-html="i18n.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
+				</WarningTooltip>
+				<Badge
+					v-if="version.hasSecurityFix"
+					:text="i18n.baseText('versionCard.securityUpdate')"
+					type="danger"
+				/>
+				<Badge
+					v-if="version.hasBreakingChange"
+					:text="i18n.baseText('versionCard.breakingChanges')"
+					type="warning"
+				/>
+			</div>
+			<div :class="$style['release-date']">
+				{{ i18n.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
+			</div>
+		</div>
+		<div
+			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
+		></div>
+		<div>
+			<div
+				v-if="version.description"
+				:class="$style.description"
+				v-n8n-html="version.description"
+			></div>
+			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
+				<NodeIcon
+					v-for="node in version.nodes"
+					:key="node.name"
+					:node-type="node"
+					:title="nodeName(node)"
+				/>
+			</div>
+		</div>
+	</a>
+</template>
 
 <style module lang="scss">
 .card {

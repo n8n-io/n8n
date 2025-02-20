@@ -1,37 +1,30 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { configOperations } from './ConfigDescription';
-
-import { serviceFields, serviceOperations } from './ServiceDescription';
-
-import { stateFields, stateOperations } from './StateDescription';
-
-import { eventFields, eventOperations } from './EventDescription';
-
-import { logFields, logOperations } from './LogDescription';
-
-import { templateFields, templateOperations } from './TemplateDescription';
-
-import { historyFields, historyOperations } from './HistoryDescription';
-
 import { cameraProxyFields, cameraProxyOperations } from './CameraProxyDescription';
-
+import { configOperations } from './ConfigDescription';
+import { eventFields, eventOperations } from './EventDescription';
 import {
 	getHomeAssistantEntities,
 	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
+import { historyFields, historyOperations } from './HistoryDescription';
+import { logFields, logOperations } from './LogDescription';
+import { serviceFields, serviceOperations } from './ServiceDescription';
+import { stateFields, stateOperations } from './StateDescription';
+import { templateFields, templateOperations } from './TemplateDescription';
 
 export class HomeAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,8 +38,9 @@ export class HomeAssistant implements INodeType {
 		defaults: {
 			name: 'Home Assistant',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'homeAssistantApi',
@@ -221,7 +215,6 @@ export class HomeAssistant implements INodeType {
 						if (Object.entries(serviceAttributes).length) {
 							if (serviceAttributes.attributes !== undefined) {
 								serviceAttributes.attributes.map((attribute) => {
-									// @ts-ignore
 									body[attribute.name as string] = attribute.value;
 								});
 							}
@@ -437,7 +430,7 @@ export class HomeAssistant implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					if (resource === 'cameraProxy' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else {

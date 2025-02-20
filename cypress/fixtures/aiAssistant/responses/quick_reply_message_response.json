@@ -1,0 +1,20 @@
+{
+	"sessionId": "1",
+	"messages": [
+		{
+			"role": "assistant",
+			"type": "message",
+			"text": "Hey, this is an assistant message",
+			"quickReplies": [
+				{
+					"text": "Sure, let's do it",
+					"type": "yes"
+				},
+				{
+					"text": "Nah, doesn't sound good",
+					"type": "no"
+				}
+			]
+		}
+	]
+}

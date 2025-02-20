@@ -7,8 +7,8 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import type { Project, ProjectRelation } from '@/types/projects.types';
+import type { ProjectIcon } from '@/types/projects.types';
+import { type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -17,6 +17,10 @@ import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+
+import { getAllIconNames } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
@@ -26,13 +30,15 @@ type FormDataDiff = {
 };
 
 const usersStore = useUsersStore();
-const locale = useI18n();
+const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
+const documentTitle = useDocumentTitle();
+
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
@@ -43,10 +49,18 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
-	'project:editor': locale.baseText('projects.settings.role.editor'),
-	'project:admin': locale.baseText('projects.settings.role.admin'),
+	'project:viewer': i18n.baseText('projects.settings.role.viewer'),
+	'project:editor': i18n.baseText('projects.settings.role.editor'),
+	'project:admin': i18n.baseText('projects.settings.role.admin'),
 });
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
+
+const availableProjectIcons: string[] = getAllIconNames();
+
+const projectIcon = ref<ProjectIcon>({
+	type: 'icon',
+	value: 'layer-group',
+});
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -59,7 +73,9 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.availableProjects.filter(
+		(project) => project.id !== projectsStore.currentProjectId,
+	),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
@@ -171,35 +187,42 @@ const sendTelemetry = (diff: FormDataDiff) => {
 	}
 };
 
-const onSubmit = async () => {
+const updateProject = async () => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
 	try {
-		if (isDirty.value && projectsStore.currentProject) {
-			const diff = makeFormDataDiff();
-
-			await projectsStore.updateProject({
-				id: projectsStore.currentProject.id,
-				name: formData.value.name,
-				relations: formData.value.relations.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
-			});
-			sendTelemetry(diff);
-			isDirty.value = false;
-			toast.showMessage({
-				title: locale.baseText('projects.settings.save.successful.title', {
-					interpolate: { projectName: formData.value.name ?? '' },
-				}),
-				type: 'success',
-			});
-		}
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			name: formData.value.name!,
+			icon: projectIcon.value,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
+		});
+		isDirty.value = false;
 	} catch (error) {
-		toast.showError(error, locale.baseText('projects.settings.save.error.title'));
+		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 	}
 };
 
+const onSubmit = async () => {
+	if (!isDirty.value) {
+		return;
+	}
+	await updateProject();
+	const diff = makeFormDataDiff();
+	sendTelemetry(diff);
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.save.successful.title', {
+			interpolate: { projectName: formData.value.name ?? '' },
+		}),
+		type: 'success',
+	});
+};
+
 const onDelete = async () => {
-	await projectsStore.getAllProjects();
+	await projectsStore.getAvailableProjects();
 	dialogVisible.value = true;
 };
 
@@ -210,7 +233,7 @@ const onConfirmDelete = async (transferId?: string) => {
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
-				title: locale.baseText('projects.settings.delete.successful.title', {
+				title: i18n.baseText('projects.settings.delete.successful.title', {
 					interpolate: { projectName },
 				}),
 				type: 'success',
@@ -218,15 +241,23 @@ const onConfirmDelete = async (transferId?: string) => {
 			dialogVisible.value = true;
 		}
 	} catch (error) {
-		toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
+		toast.showError(error, i18n.baseText('projects.settings.delete.error.title'));
 	}
 };
 
 const selectProjectNameIfMatchesDefault = () => {
-	if (formData.value.name === locale.baseText('projects.settings.newProjectName')) {
+	if (formData.value.name === i18n.baseText('projects.settings.newProjectName')) {
 		nameInput.value?.inputRef?.focus();
 		nameInput.value?.inputRef?.select();
 	}
+};
+
+const onIconUpdated = async () => {
+	await updateProject();
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.icon.update.successful.title'),
+		type: 'success',
+	});
 };
 
 watch(
@@ -238,6 +269,9 @@ watch(
 			: [];
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
+		if (projectsStore.currentProject?.icon) {
+			projectIcon.value = projectsStore.currentProject.icon;
+		}
 	},
 	{ immediate: true },
 );
@@ -247,6 +281,7 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
+	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 });
 </script>
@@ -254,35 +289,42 @@ onMounted(() => {
 <template>
 	<div :class="$style.projectSettings">
 		<div :class="$style.header">
-			<ProjectTabs />
+			<ProjectHeader />
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
-				<label for="projectName">{{ locale.baseText('projects.settings.name') }}</label>
-				<N8nFormInput
-					id="projectName"
-					ref="nameInput"
-					v-model="formData.name"
-					label=""
-					type="text"
-					name="name"
-					required
-					data-test-id="project-settings-name-input"
-					@input="onNameInput"
-					@validate="isValid = $event"
-				/>
+				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
+				<div :class="$style['project-name']">
+					<N8nIconPicker
+						v-model="projectIcon"
+						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+						:available-icons="availableProjectIcons"
+						@update:model-value="onIconUpdated"
+					/>
+					<N8nFormInput
+						id="projectName"
+						ref="nameInput"
+						v-model="formData.name"
+						label=""
+						type="text"
+						name="name"
+						required
+						data-test-id="project-settings-name-input"
+						:class="$style['project-name-input']"
+						@input="onNameInput"
+						@validate="isValid = $event"
+					/>
+				</div>
 			</fieldset>
 			<fieldset>
-				<label for="projectMembers">{{
-					locale.baseText('projects.settings.projectMembers')
-				}}</label>
+				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
 				<N8nUserSelect
 					id="projectMembers"
 					class="mb-s"
 					size="large"
 					:users="usersList"
 					:current-user-id="usersStore.currentUser?.id"
-					:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+					:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 					data-test-id="project-members-select"
 					@update:model-value="onAddMember"
 				>
@@ -294,7 +336,7 @@ onMounted(() => {
 					:actions="[]"
 					:users="formData.relations"
 					:current-user-id="usersStore.currentUser?.id"
-					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
+					:delete-label="i18n.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
 						<div :class="$style.buttons">
@@ -302,6 +344,7 @@ onMounted(() => {
 								class="mr-2xs"
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
+								data-test-id="projects-settings-user-role-select"
 								@update:model-value="onRoleAction(user, $event)"
 							>
 								<N8nOption
@@ -317,7 +360,7 @@ onMounted(() => {
 										:class="$style.upgrade"
 										@click="upgradeDialogVisible = true"
 									>
-										&nbsp;-&nbsp;{{ locale.baseText('generic.upgrade') }}
+										&nbsp;-&nbsp;{{ i18n.baseText('generic.upgrade') }}
 									</span>
 								</N8nOption>
 							</N8nSelect>
@@ -336,7 +379,7 @@ onMounted(() => {
 			<fieldset :class="$style.buttons">
 				<div>
 					<small v-if="isDirty" class="mr-2xs">{{
-						locale.baseText('projects.settings.message.unsavedChanges')
+						i18n.baseText('projects.settings.message.unsavedChanges')
 					}}</small>
 					<N8nButton
 						:disabled="!isDirty"
@@ -345,20 +388,20 @@ onMounted(() => {
 						class="mr-2xs"
 						data-test-id="project-settings-cancel-button"
 						@click.stop.prevent="onCancel"
-						>{{ locale.baseText('projects.settings.button.cancel') }}</N8nButton
+						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 				</div>
 				<N8nButton
 					:disabled="!isDirty || !isValid"
 					type="primary"
 					data-test-id="project-settings-save-button"
-					>{{ locale.baseText('projects.settings.button.save') }}</N8nButton
+					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
 				>
 			</fieldset>
 			<fieldset>
 				<hr class="mb-2xl" />
-				<h3 class="mb-xs">{{ locale.baseText('projects.settings.danger.title') }}</h3>
-				<small>{{ locale.baseText('projects.settings.danger.message') }}</small>
+				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
+				<small>{{ i18n.baseText('projects.settings.danger.message') }}</small>
 				<br />
 				<N8nButton
 					type="tertiary"
@@ -366,7 +409,7 @@ onMounted(() => {
 					class="mt-s"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
-					>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
+					>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 				>
 			</fieldset>
 		</form>
@@ -393,7 +436,7 @@ onMounted(() => {
 
 	form {
 		width: 100%;
-		max-width: 1280px;
+		max-width: var(--content-container-width);
 		padding: 0 var(--spacing-2xl);
 
 		fieldset {
@@ -410,7 +453,7 @@ onMounted(() => {
 
 .header {
 	width: 100%;
-	max-width: 1280px;
+	max-width: var(--content-container-width);
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
@@ -422,5 +465,15 @@ onMounted(() => {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.project-name {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: center;
+
+	.project-name-input {
+		flex: 1;
+	}
 }
 </style>

@@ -1,10 +1,10 @@
-import path from 'path';
-import convict from 'convict';
-import { Container } from 'typedi';
-import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS } from 'n8n-workflow';
-import { ensureStringArray } from './utils';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import convict from 'convict';
+import { InstanceSettings } from 'n8n-core';
+import path from 'path';
+
+import { ensureStringArray } from './utils';
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -34,6 +34,12 @@ export const schema = {
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
+			},
+			evaluationLimit: {
+				doc: 'Max evaluation executions allowed to run concurrently.',
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_EVALUATION_LIMIT',
 			},
 		},
 
@@ -98,54 +104,6 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
-		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 15 minute interval).
-		// All saved execution data older than the max age will be deleted.
-		// Pruning is currently not activated by default, which will change in
-		// a future version.
-		pruneData: {
-			doc: 'Delete data of past executions on a rolling basis',
-			format: Boolean,
-			default: true,
-			env: 'EXECUTIONS_DATA_PRUNE',
-		},
-		pruneDataMaxAge: {
-			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
-			format: Number,
-			default: 336,
-			env: 'EXECUTIONS_DATA_MAX_AGE',
-		},
-		pruneDataHardDeleteBuffer: {
-			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
-			format: Number,
-			default: 1,
-			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
-		},
-		pruneDataIntervals: {
-			hardDelete: {
-				doc: 'How often (minutes) execution data should be hard-deleted',
-				format: Number,
-				default: 15,
-				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
-			},
-			softDelete: {
-				doc: 'How often (minutes) execution data should be soft-deleted',
-				format: Number,
-				default: 60,
-				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
-			},
-		},
-
-		// Additional pruning option to delete executions if total count exceeds the configured max.
-		// Deletes the oldest entries first
-		// Set to 0 for No limit
-		pruneDataMaxCount: {
-			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
-			format: Number,
-			default: 10000,
-			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
-		},
-
 		queueRecovery: {
 			interval: {
 				doc: 'How often (minutes) to check for queue recovery',
@@ -159,152 +117,6 @@ export const schema = {
 				default: 100,
 				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',
 			},
-		},
-	},
-
-	queue: {
-		health: {
-			active: {
-				doc: 'If health checks should be enabled',
-				format: Boolean,
-				default: false,
-				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
-			},
-			port: {
-				doc: 'Port to serve health check on if activated',
-				format: Number,
-				default: 5678,
-				env: 'QUEUE_HEALTH_CHECK_PORT',
-			},
-		},
-		bull: {
-			prefix: {
-				doc: 'Prefix for all bull queue keys',
-				format: String,
-				default: 'bull',
-				env: 'QUEUE_BULL_PREFIX',
-			},
-			redis: {
-				db: {
-					doc: 'Redis DB',
-					format: Number,
-					default: 0,
-					env: 'QUEUE_BULL_REDIS_DB',
-				},
-				host: {
-					doc: 'Redis Host',
-					format: String,
-					default: 'localhost',
-					env: 'QUEUE_BULL_REDIS_HOST',
-				},
-				password: {
-					doc: 'Redis Password',
-					format: String,
-					default: '',
-					env: 'QUEUE_BULL_REDIS_PASSWORD',
-				},
-				port: {
-					doc: 'Redis Port',
-					format: Number,
-					default: 6379,
-					env: 'QUEUE_BULL_REDIS_PORT',
-				},
-				timeoutThreshold: {
-					doc: 'Max cumulative timeout (in milliseconds) of connection retries before process exit',
-					format: Number,
-					default: 10000,
-					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
-				},
-				username: {
-					doc: 'Redis Username (needs Redis >= 6)',
-					format: String,
-					default: '',
-					env: 'QUEUE_BULL_REDIS_USERNAME',
-				},
-				clusterNodes: {
-					doc: 'Redis Cluster startup nodes (comma separated list of host:port pairs)',
-					format: String,
-					default: '',
-					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
-				},
-				tls: {
-					format: Boolean,
-					default: false,
-					env: 'QUEUE_BULL_REDIS_TLS',
-					doc: 'Enable TLS on Redis connections. Default: false',
-				},
-			},
-			queueRecoveryInterval: {
-				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
-				format: Number,
-				default: 60,
-				env: 'QUEUE_RECOVERY_INTERVAL',
-			},
-			gracefulShutdownTimeout: {
-				doc: '[DEPRECATED] (Use N8N_GRACEFUL_SHUTDOWN_TIMEOUT instead) How long should n8n wait for running executions before exiting worker process (seconds)',
-				format: Number,
-				default: 30,
-				env: 'QUEUE_WORKER_TIMEOUT',
-			},
-			settings: {
-				lockDuration: {
-					doc: 'How long (ms) is the lease period for a worker to work on a message',
-					format: Number,
-					default: 30000,
-					env: 'QUEUE_WORKER_LOCK_DURATION',
-				},
-				lockRenewTime: {
-					doc: 'How frequently (ms) should a worker renew the lease time',
-					format: Number,
-					default: 15000,
-					env: 'QUEUE_WORKER_LOCK_RENEW_TIME',
-				},
-				stalledInterval: {
-					doc: 'How often check for stalled jobs (use 0 for never checking)',
-					format: Number,
-					default: 30000,
-					env: 'QUEUE_WORKER_STALLED_INTERVAL',
-				},
-				maxStalledCount: {
-					doc: 'Max amount of times a stalled job will be re-processed',
-					format: Number,
-					default: 1,
-					env: 'QUEUE_WORKER_MAX_STALLED_COUNT',
-				},
-			},
-		},
-	},
-
-	generic: {
-		// The timezone to use. Is important for nodes like "Cron" which start the
-		// workflow automatically at a specified time. This setting can also be
-		// overwritten on a per workflow basis in the workflow settings in the
-		// editor.
-		timezone: {
-			doc: 'The timezone to use',
-			format: '*',
-			default: 'America/New_York',
-			env: 'GENERIC_TIMEZONE',
-		},
-
-		instanceType: {
-			doc: 'Type of n8n instance',
-			format: ['main', 'webhook', 'worker'] as const,
-			default: 'main',
-		},
-
-		releaseChannel: {
-			doc: 'N8N release channel',
-			format: ['stable', 'beta', 'nightly', 'dev'] as const,
-			default: 'dev',
-			env: 'N8N_RELEASE_TYPE',
-		},
-
-		gracefulShutdownTimeout: {
-			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
-			format: Number,
-			default: 30,
-			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
 		},
 	},
 
@@ -331,36 +143,6 @@ export const schema = {
 		default: '',
 		env: 'N8N_EDITOR_BASE_URL',
 		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
-	},
-
-	security: {
-		restrictFileAccessTo: {
-			doc: 'If set only files in that directories can be accessed. Multiple directories can be separated by semicolon (";").',
-			format: String,
-			default: '',
-			env: 'N8N_RESTRICT_FILE_ACCESS_TO',
-		},
-		blockFileAccessToN8nFiles: {
-			doc: 'If set to true it will block access to all files in the ".n8n" directory and user defined config files.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES',
-		},
-		audit: {
-			daysAbandonedWorkflow: {
-				doc: 'Days for a workflow to be considered abandoned if not executed',
-				format: Number,
-				default: 90,
-				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
-			},
-		},
-	},
-
-	workflowTagsDisabled: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable workflow tags.',
 	},
 
 	userManagement: {
@@ -405,48 +187,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
-	},
-
-	externalHookFiles: {
-		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_HOOK_FILES',
-	},
-
-	logs: {
-		level: {
-			doc: 'Log output level',
-			format: LOG_LEVELS,
-			default: 'info',
-			env: 'N8N_LOG_LEVEL',
-		},
-		output: {
-			doc: 'Where to output logs. Options are: console, file. Multiple can be separated by comma (",")',
-			format: String,
-			default: 'console',
-			env: 'N8N_LOG_OUTPUT',
-		},
-		file: {
-			fileCountMax: {
-				doc: 'Maximum number of files to keep.',
-				format: Number,
-				default: 100,
-				env: 'N8N_LOG_FILE_COUNT_MAX',
-			},
-			fileSizeMax: {
-				doc: 'Maximum size for each log file in MB.',
-				format: Number,
-				default: 16,
-				env: 'N8N_LOG_FILE_SIZE_MAX',
-			},
-			location: {
-				doc: 'Log file location; only used if log output is set to file.',
-				format: String,
-				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
-				env: 'N8N_LOG_FILE_LOCATION',
-			},
-		},
 	},
 
 	push: {
@@ -548,95 +288,11 @@ export const schema = {
 		},
 	},
 
-	diagnostics: {
-		enabled: {
-			doc: 'Whether diagnostic mode is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_DIAGNOSTICS_ENABLED',
-		},
-		config: {
-			posthog: {
-				apiKey: {
-					doc: 'API key for PostHog',
-					format: String,
-					default: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-					env: 'N8N_DIAGNOSTICS_POSTHOG_API_KEY',
-				},
-				apiHost: {
-					doc: 'API host for PostHog',
-					format: String,
-					default: 'https://ph.n8n.io',
-					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
-				},
-			},
-			sentry: {
-				dsn: {
-					doc: 'Data source name for error tracking on Sentry',
-					format: String,
-					default: '',
-					env: 'N8N_SENTRY_DSN',
-				},
-			},
-			frontend: {
-				doc: 'Diagnostics config for frontend.',
-				format: String,
-				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
-				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
-			},
-			backend: {
-				doc: 'Diagnostics config for backend.',
-				format: String,
-				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
-				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
-			},
-		},
-	},
-
 	defaultLocale: {
 		doc: 'Default locale for the UI',
 		format: String,
 		default: 'en',
 		env: 'N8N_DEFAULT_LOCALE',
-	},
-
-	license: {
-		serverUrl: {
-			format: String,
-			default: 'https://license.n8n.io/v1',
-			env: 'N8N_LICENSE_SERVER_URL',
-			doc: 'License server url to retrieve license.',
-		},
-		autoRenewEnabled: {
-			format: Boolean,
-			default: true,
-			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether auto renewal for licenses is enabled.',
-		},
-		autoRenewOffset: {
-			format: Number,
-			default: 60 * 60 * 72, // 72 hours
-			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
-			doc: 'How many seconds before expiry a license should get automatically renewed. ',
-		},
-		activationKey: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_ACTIVATION_KEY',
-			doc: 'Activation key to initialize license',
-		},
-		tenantId: {
-			format: Number,
-			default: 1,
-			env: 'N8N_LICENSE_TENANT_ID',
-			doc: 'Tenant id used by the license manager',
-		},
-		cert: {
-			format: String,
-			default: '',
-			env: 'N8N_LICENSE_CERT',
-			doc: 'Ephemeral license certificate',
-		},
 	},
 
 	hideUsagePage: {
@@ -652,11 +308,6 @@ export const schema = {
 			format: String,
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
-		},
-		queueModeId: {
-			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
-			format: String,
-			default: '',
 		},
 	},
 
@@ -697,15 +348,6 @@ export const schema = {
 		},
 	},
 
-	sourceControl: {
-		defaultKeyPairType: {
-			doc: 'Default SSH key type to use when generating SSH keys',
-			format: ['rsa', 'ed25519'] as const,
-			default: 'ed25519',
-			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
-		},
-	},
-
 	workflowHistory: {
 		enabled: {
 			doc: 'Whether to save workflow history versions',
@@ -722,31 +364,19 @@ export const schema = {
 		},
 	},
 
-	multiMainSetup: {
-		enabled: {
-			doc: 'Whether to enable multi-main setup for queue mode (license required)',
-			format: Boolean,
-			default: false,
-			env: 'N8N_MULTI_MAIN_SETUP_ENABLED',
-		},
-		ttl: {
-			doc: 'Time to live (in seconds) for leader key in multi-main setup',
-			format: Number,
-			default: 10,
-			env: 'N8N_MULTI_MAIN_SETUP_KEY_TTL',
-		},
-		interval: {
-			doc: 'Interval (in seconds) for leader check in multi-main setup',
-			format: Number,
-			default: 3,
-			env: 'N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
+	},
+
+	folders: {
+		enabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_FOLDERS_ENABLED',
+			doc: 'Temporary env variable to enable folders feature',
+		},
 	},
 };

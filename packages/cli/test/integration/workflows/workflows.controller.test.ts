@@ -1,31 +1,35 @@
-import Container from 'typedi';
-import { v4 as uuid } from 'uuid';
-import type { INode, IPinData } from 'n8n-workflow';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { DateTime } from 'luxon';
+import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
-import type { User } from '@db/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { License } from '@/license';
 import type { ListQuery } from '@/requests';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import {
+	createWorkflow,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+} from '../shared/db/workflows';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
@@ -437,6 +441,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -452,6 +457,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -513,7 +519,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -540,7 +546,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -573,7 +579,7 @@ describe('GET /workflows', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(2);
 
-			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<IWorkflowBase & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 
@@ -640,20 +646,47 @@ describe('GET /workflows', () => {
 			});
 		});
 
-		test('should filter workflows by field: tags', async () => {
-			const workflow = await createWorkflow({ name: 'First' }, owner);
+		test('should filter workflows by field: tags (AND operator)', async () => {
+			const workflow1 = await createWorkflow({ name: 'First' }, owner);
+			const workflow2 = await createWorkflow({ name: 'Second' }, owner);
 
-			await createTag({ name: 'A' }, workflow);
-			await createTag({ name: 'B' }, workflow);
+			const baseDate = DateTime.now();
+
+			await createTag(
+				{
+					name: 'A',
+					createdAt: baseDate.toJSDate(),
+				},
+				workflow1,
+			);
+			await createTag(
+				{
+					name: 'B',
+					createdAt: baseDate.plus({ seconds: 1 }).toJSDate(),
+				},
+				workflow1,
+			);
+
+			const tagC = await createTag({ name: 'C' }, workflow2);
+
+			await assignTagToWorkflow(tagC, workflow2);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "tags": ["A"] }')
+				.query('filter={ "tags": ["A", "B"] }')
 				.expect(200);
 
 			expect(response.body).toEqual({
 				count: 1,
-				data: [objectContaining({ name: 'First', tags: [{ id: any(String), name: 'A' }] })],
+				data: [
+					objectContaining({
+						name: 'First',
+						tags: expect.arrayContaining([
+							{ id: any(String), name: 'A' },
+							{ id: any(String), name: 'B' },
+						]),
+					}),
+				],
 			});
 		});
 
@@ -675,6 +708,21 @@ describe('GET /workflows', () => {
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
+		});
+
+		test('should return homeProject when filtering workflows by projectId', async () => {
+			const workflow = await createWorkflow({ name: 'First' }, owner);
+			await shareWorkflowWithUsers(workflow, [member]);
+			const pp = await getPersonalProject(member);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query(`filter={ "projectId": "${pp.id}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(workflow.id);
+			expect(response.body.data[0].homeProject).not.toBeNull();
 		});
 	});
 
@@ -814,6 +862,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
@@ -823,12 +872,173 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
 					},
 				]),
 			});
+		});
+	});
+
+	describe('sortBy', () => {
+		test('should fail when trying to sort by non sortable column', async () => {
+			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(500);
+		});
+
+		test('should sort by createdAt column', async () => {
+			await createWorkflow({ name: 'First' }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response = await authOwnerAgent
+				.get('/workflows')
+				.query('sortBy=createdAt:asc')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=createdAt:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+		});
+
+		test('should sort by name column', async () => {
+			await createWorkflow({ name: 'a' }, owner);
+			await createWorkflow({ name: 'b' }, owner);
+			await createWorkflow({ name: 'My workflow' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 3,
+				data: [
+					expect.objectContaining({ name: 'a' }),
+					expect.objectContaining({ name: 'b' }),
+					expect.objectContaining({ name: 'My workflow' }),
+				],
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 3,
+				data: [
+					expect.objectContaining({ name: 'My workflow' }),
+					expect.objectContaining({ name: 'b' }),
+					expect.objectContaining({ name: 'a' }),
+				],
+			});
+		});
+
+		test('should sort by updatedAt column', async () => {
+			const futureDate = new Date();
+			futureDate.setDate(futureDate.getDate() + 10);
+
+			await createWorkflow({ name: 'First', updatedAt: futureDate }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
+
+			let response;
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=updatedAt:asc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'Second' }),
+					expect.objectContaining({ name: 'First' }),
+				]),
+			});
+
+			response = await authOwnerAgent.get('/workflows').query('sortBy=name:desc').expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					expect.objectContaining({ name: 'First' }),
+					expect.objectContaining({ name: 'Second' }),
+				]),
+			});
+		});
+	});
+
+	describe('pagination', () => {
+		beforeEach(async () => {
+			await createWorkflow({ name: 'Workflow 1' }, owner);
+			await createWorkflow({ name: 'Workflow 2' }, owner);
+			await createWorkflow({ name: 'Workflow 3' }, owner);
+			await createWorkflow({ name: 'Workflow 4' }, owner);
+			await createWorkflow({ name: 'Workflow 5' }, owner);
+		});
+
+		test('should fail when skip is provided without take', async () => {
+			await authOwnerAgent.get('/workflows').query('skip=2').expect(500);
+		});
+
+		test('should handle skip with take parameter', async () => {
+			const response = await authOwnerAgent.get('/workflows').query('skip=2&take=2').expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(5);
+			expect(response.body.data[0].name).toBe('Workflow 3');
+			expect(response.body.data[1].name).toBe('Workflow 4');
+		});
+
+		test('should handle pagination with sorting', async () => {
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('take=2&skip=1&sortBy=name:desc');
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(5);
+			expect(response.body.data[0].name).toBe('Workflow 4');
+			expect(response.body.data[1].name).toBe('Workflow 3');
+		});
+
+		test('should handle pagination with filtering', async () => {
+			// Create additional workflows with specific names for filtering
+			await createWorkflow({ name: 'Special Workflow 1' }, owner);
+			await createWorkflow({ name: 'Special Workflow 2' }, owner);
+			await createWorkflow({ name: 'Special Workflow 3' }, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('take=2&skip=1')
+				.query('filter={"name":"Special"}')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.count).toBe(3); // Only 3 'Special' workflows exist
+			expect(response.body.data[0].name).toBe('Special Workflow 2');
+			expect(response.body.data[1].name).toBe('Special Workflow 3');
+		});
+
+		test('should return empty array when pagination exceeds total count', async () => {
+			const response = await authOwnerAgent.get('/workflows').query('take=2&skip=10').expect(200);
+
+			expect(response.body.data).toHaveLength(0);
+			expect(response.body.count).toBe(5);
+		});
+
+		test('should return all results when no pagination parameters are provided', async () => {
+			const response = await authOwnerAgent.get('/workflows').expect(200);
+
+			expect(response.body.data).toHaveLength(5);
+			expect(response.body.count).toBe(5);
 		});
 	});
 });
@@ -1010,7 +1220,7 @@ describe('PATCH /workflows/:workflowId', () => {
 describe('POST /workflows/:workflowId/run', () => {
 	let sharingSpy: jest.SpyInstance;
 	let tamperingSpy: jest.SpyInstance;
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 
 	beforeAll(() => {
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);

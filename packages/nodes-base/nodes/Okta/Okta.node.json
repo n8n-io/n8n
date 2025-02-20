@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.okta",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"alias": ["authentication", "users", "Security"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/okta/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.okta/"
+			}
+		],
+		"generic": []
+	}
+}

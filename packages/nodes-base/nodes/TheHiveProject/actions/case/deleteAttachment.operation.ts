@@ -1,7 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { theHiveApiRequest } from '../../transport';
-import { caseRLC } from '../../descriptions';
+
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { caseRLC } from '../../descriptions';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	caseRLC,
@@ -12,7 +14,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		required: true,
 		description:
-			'ID of the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'loadCaseAttachments',
 		},

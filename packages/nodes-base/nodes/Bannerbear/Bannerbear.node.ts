@@ -7,11 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
-
 import { imageFields, imageOperations } from './ImageDescription';
-
 import { templateFields, templateOperations } from './TemplateDescription';
 
 export class Bannerbear implements INodeType {
@@ -27,8 +26,8 @@ export class Bannerbear implements INodeType {
 		defaults: {
 			name: 'Bannerbear',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'bannerbearApi',

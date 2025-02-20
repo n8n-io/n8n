@@ -1,19 +1,19 @@
-import Container, { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
 
 import config from '@/config';
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { Time } from '@/constants';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
+import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TIME } from '@/constants';
-import { TypedEmitter } from '@/TypedEmitter';
-import { GlobalConfig } from '@n8n/config';
+import { TypedEmitter } from '@/typed-emitter';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -36,7 +36,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis/redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = config.getEnv('redis.prefix');
@@ -45,7 +45,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			);
 
 			const redisClient = redisClientService.createClient({
-				type: 'client(cache)',
+				type: 'cache(n8n)',
 				extraOptions: { keyPrefix: prefix },
 			});
 
@@ -89,6 +89,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	//             storing
 	// ----------------------------------
 
+	/**
+	 * @param ttl Time to live in milliseconds
+	 */
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
@@ -157,7 +160,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			});
 		}
 
-		await this.cache.store.expire(key, ttlMs / TIME.SECOND);
+		await this.cache.store.expire(key, ttlMs * Time.milliseconds.toSeconds);
 	}
 
 	// ----------------------------------

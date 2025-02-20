@@ -1,30 +1,23 @@
 /* eslint-disable @typescript-eslint/dot-notation */
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import set from 'lodash/set';
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeParameters,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import set from 'lodash/set';
 import { alertFields, alertOperations } from './descriptions/AlertDescription';
-
-import { observableFields, observableOperations } from './descriptions/ObservableDescription';
-
 import { caseFields, caseOperations } from './descriptions/CaseDescription';
-
-import { taskFields, taskOperations } from './descriptions/TaskDescription';
-
 import { logFields, logOperations } from './descriptions/LogDescription';
-
-import type { IQueryObject } from './QueryFunctions';
-import { And, Between, ContainsString, Eq, Id, In, Parent } from './QueryFunctions';
-
+import { observableFields, observableOperations } from './descriptions/ObservableDescription';
+import { taskFields, taskOperations } from './descriptions/TaskDescription';
 import {
 	buildCustomFieldSearch,
 	mapResource,
@@ -35,6 +28,8 @@ import {
 	splitTags,
 	theHiveApiRequest,
 } from './GenericFunctions';
+import type { IQueryObject } from './QueryFunctions';
+import { And, Between, ContainsString, Eq, Id, In, Parent } from './QueryFunctions';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,8 +43,9 @@ export class TheHive implements INodeType {
 		defaults: {
 			name: 'TheHive',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'theHiveApi',
@@ -1892,7 +1888,7 @@ export class TheHive implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

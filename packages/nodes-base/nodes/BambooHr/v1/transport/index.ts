@@ -53,7 +53,6 @@ export async function apiRequest(
 	}
 
 	try {
-		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
 		const description = error?.response?.headers['x-bamboohr-error-messsage'] || '';

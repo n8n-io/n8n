@@ -4,6 +4,8 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	createSimplifyFunction,
@@ -13,7 +15,6 @@ import {
 } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
 import { channelRLC, simplifyBoolean } from '../common.description';
-import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	channelRLC,
@@ -111,7 +112,7 @@ export async function execute(
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}

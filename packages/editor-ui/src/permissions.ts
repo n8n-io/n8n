@@ -1,66 +1,32 @@
-import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
-import type {
-	CredentialScope,
-	ProjectScope,
-	Scope,
-	WorkflowScope,
-	VariableScope,
-} from '@n8n/permissions';
-import type { Project } from '@/types/projects.types';
+import type { Scope } from '@n8n/permissions';
+import { RESOURCES } from '@n8n/permissions';
 
-type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
-export type PermissionsMap<T> = {
-	[K in ExtractAfterColon<T>]: boolean;
+type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
+	? [Prefix, Suffix]
+	: never;
+type ActionBooleans<T extends readonly string[]> = {
+	[K in T[number]]?: boolean;
+};
+export type PermissionsRecord = {
+	[K in keyof typeof RESOURCES]: ActionBooleans<(typeof RESOURCES)[K]>;
 };
 
-const mapScopesToPermissions = <T extends Scope>(scopes: T[], scopeSet: Set<T>) =>
-	scopes.reduce(
-		(permissions, scope) => ({
+export const getResourcePermissions = (resourceScopes: Scope[] = []): PermissionsRecord =>
+	Object.keys(RESOURCES).reduce(
+		(permissions, key) => ({
 			...permissions,
-			[scope.split(':')[1]]: scopeSet.has(scope),
+			[key]: resourceScopes.reduce((resourcePermissions, scope) => {
+				const [prefix, suffix] = scope.split(':') as ExtractScopePrefixSuffix<Scope>;
+
+				if (prefix === key) {
+					return {
+						...resourcePermissions,
+						[suffix]: true,
+					};
+				}
+
+				return resourcePermissions;
+			}, {}),
 		}),
-		{} as PermissionsMap<T>,
-	);
-
-export const getCredentialPermissions = (
-	credential: ICredentialsResponse,
-): PermissionsMap<CredentialScope> =>
-	mapScopesToPermissions(
-		[
-			'credential:create',
-			'credential:read',
-			'credential:update',
-			'credential:delete',
-			'credential:list',
-			'credential:share',
-			'credential:move',
-		],
-		new Set(credential?.scopes ?? []),
-	);
-
-export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<WorkflowScope> =>
-	mapScopesToPermissions(
-		[
-			'workflow:create',
-			'workflow:read',
-			'workflow:update',
-			'workflow:delete',
-			'workflow:list',
-			'workflow:share',
-			'workflow:execute',
-			'workflow:move',
-		],
-		new Set(workflow?.scopes ?? []),
-	);
-
-export const getProjectPermissions = (project: Project | null): PermissionsMap<ProjectScope> =>
-	mapScopesToPermissions(
-		['project:create', 'project:read', 'project:update', 'project:delete', 'project:list'],
-		new Set(project?.scopes ?? []),
-	);
-
-export const getVariablesPermissions = (user: IUser | null): PermissionsMap<VariableScope> =>
-	mapScopesToPermissions(
-		['variable:create', 'variable:read', 'variable:update', 'variable:delete', 'variable:list'],
-		new Set(user?.globalScopes ?? []),
+		{} as PermissionsRecord,
 	);

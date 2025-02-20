@@ -1,18 +1,17 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import isEmpty from 'lodash/isEmpty';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
-import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
-
 import { campaignFields, campaignOperations } from './CampaignDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
+import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,8 +25,9 @@ export class Emelia implements INodeType {
 		defaults: {
 			name: 'Emelia',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'emeliaApi',
@@ -428,7 +428,7 @@ export class Emelia implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

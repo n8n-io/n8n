@@ -8,9 +8,12 @@ import type {
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_OTHER_TOOLS,
 	AI_SUBCATEGORY,
+	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,6 +21,10 @@ import { sublimeSearch } from '@/utils/sortUtils';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
 import { sortBy } from 'lodash-es';
+import * as changeCase from 'change-case';
+
+import { useSettingsStore } from '@/stores/settings.store';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -41,7 +48,11 @@ export function transformNodeType(
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
-	const WHITE_LISTED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY];
+	const WHITE_LISTED_SUBCATEGORIES = [
+		CORE_NODES_CATEGORY,
+		AI_SUBCATEGORY,
+		HUMAN_IN_THE_LOOP_CATEGORY,
+	];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
@@ -74,6 +85,11 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 }
 
 export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
+	const askAiEnabled = useSettingsStore().isAskAiEnabled;
+	if (!askAiEnabled) {
+		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
+	}
+
 	// In order to support the old search we need to remove the 'trigger' part
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 
@@ -134,7 +150,7 @@ export function groupItemsInSections(
 				title: section.title,
 				children: sortAlphabetically
 					? sortNodeCreateElements(children[section.key] ?? [])
-					: children[section.key] ?? [],
+					: (children[section.key] ?? []),
 			}),
 		);
 
@@ -160,12 +176,29 @@ export function groupItemsInSections(
 	result.sort((a, b) => {
 		if (a.key.toLowerCase().includes('recommended')) return -1;
 		if (b.key.toLowerCase().includes('recommended')) return 1;
+		if (b.key === AI_CATEGORY_OTHER_TOOLS) return -1;
 
 		return 0;
 	});
-	if (result.length <= 1) {
+	if (!shouldRenderSectionSubtitle(result)) {
 		return items;
 	}
 
 	return result;
 }
+
+const shouldRenderSectionSubtitle = (sections: SectionCreateElement[]) => {
+	if (!sections.length) return false;
+	if (sections.length > 1) return true;
+	if (sections[0].key === SEND_AND_WAIT_OPERATION) return true;
+
+	return false;
+};
+
+export const formatTriggerActionName = (actionPropertyName: string) => {
+	let name = actionPropertyName;
+	if (actionPropertyName.includes('.')) {
+		name = actionPropertyName.split('.').join(' ');
+	}
+	return changeCase.noCase(name);
+};

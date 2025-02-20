@@ -1,3 +1,6 @@
+import { snakeCase } from 'change-case';
+import set from 'lodash/set';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -15,11 +18,14 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
-import set from 'lodash/set';
-import { generatePairedItemData } from '../../../utils/utilities';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
+import { dealFields, dealOperations } from './DealDescription';
+import type { IAssociation, IDeal } from './DealInterface';
+import { engagementFields, engagementOperations } from './EngagementDescription';
+import type { IForm } from './FormInterface';
 import {
 	clean,
 	getAssociations,
@@ -31,22 +37,7 @@ import {
 	hubspotApiRequestAllItems,
 	validateCredentials,
 } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
-import { engagementFields, engagementOperations } from './EngagementDescription';
-
 import { ticketFields, ticketOperations } from './TicketDescription';
-
-import type { IForm } from './FormInterface';
-
-import type { IAssociation, IDeal } from './DealInterface';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -60,8 +51,9 @@ export class HubspotV2 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			usableAsTool: true,
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -1192,15 +1184,10 @@ export class HubspotV2 implements INodeType {
 					);
 				}
 
-				const itemData = generatePairedItemData(items.length);
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData },
-				);
+				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -1672,7 +1659,6 @@ export class HubspotV2 implements INodeType {
 											delete filter.type;
 											// Hacky way to get the filter value as we concat the values with a | and the type
 											filter.propertyName = filter.propertyName?.toString().split('|')[0];
-											//@ts-ignore
 										}
 										(body.filterGroups as IDataObject[]).push({ filters: filterValues });
 									}
@@ -3071,7 +3057,7 @@ export class HubspotV2 implements INodeType {
 							set(error, 'message', message);
 						}
 					}
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: { item: i },

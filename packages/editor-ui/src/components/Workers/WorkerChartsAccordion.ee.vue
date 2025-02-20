@@ -1,36 +1,3 @@
-<template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
-		<template #title>
-			{{ $locale.baseText('workerList.item.chartsTitle') }}
-		</template>
-		<template #content>
-			<div :class="$style.charts">
-				<Chart
-					ref="chartRefJobs"
-					type="line"
-					:data="dataJobs"
-					:options="optionsJobs"
-					:class="$style.chart"
-				/>
-				<Chart
-					ref="chartRefCPU"
-					type="line"
-					:data="dataCPU"
-					:options="optionsCPU"
-					:class="$style.chart"
-				/>
-				<Chart
-					ref="chartRefMemory"
-					type="line"
-					:data="dataMemory"
-					:options="optionsMemory"
-					:class="$style.chart"
-				/>
-			</div>
-		</template>
-	</WorkerAccordion>
-</template>
-
 <script setup lang="ts">
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { WORKER_HISTORY_LENGTH, useOrchestrationStore } from '@/stores/orchestration.store';
@@ -39,10 +6,13 @@ import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
 import { averageWorkerLoadFromLoads, memAsGb } from '@/utils/workerUtils';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	workerId: string;
 }>();
+
+const i18n = useI18n();
 
 const blankDataSet = (label: string, color: string, prefill: number = 0) => ({
 	datasets: [
@@ -123,6 +93,39 @@ orchestrationStore.$onAction(({ name, store }) => {
 	}
 });
 </script>
+
+<template>
+	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
+		<template #title>
+			{{ i18n.baseText('workerList.item.chartsTitle') }}
+		</template>
+		<template #content>
+			<div :class="$style.charts">
+				<Chart
+					ref="chartRefJobs"
+					type="line"
+					:data="dataJobs"
+					:options="optionsJobs"
+					:class="$style.chart"
+				/>
+				<Chart
+					ref="chartRefCPU"
+					type="line"
+					:data="dataCPU"
+					:options="optionsCPU"
+					:class="$style.chart"
+				/>
+				<Chart
+					ref="chartRefMemory"
+					type="line"
+					:data="dataMemory"
+					:options="optionsMemory"
+					:class="$style.chart"
+				/>
+			</div>
+		</template>
+	</WorkerAccordion>
+</template>
 
 <style lang="scss" module>
 .accordionItems {

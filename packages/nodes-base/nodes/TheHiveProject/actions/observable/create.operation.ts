@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -5,12 +6,12 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
-import FormData from 'form-data';
-import { theHiveApiRequest } from '../../transport';
 
-import { fixFieldType, prepareInputItem } from '../../helpers/utils';
-import { alertRLC, attachmentsUi, caseRLC } from '../../descriptions';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { alertRLC, attachmentsUi, caseRLC } from '../../descriptions';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -54,7 +55,7 @@ const properties: INodeProperties[] = [
 		name: 'dataType',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		default: 'file',
 		typeOptions: {

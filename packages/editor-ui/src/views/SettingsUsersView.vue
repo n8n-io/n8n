@@ -12,6 +12,8 @@ import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 import { computed, onMounted } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
@@ -20,6 +22,8 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const i18n = useI18n();
 
@@ -28,6 +32,8 @@ const showUMSetupWarning = computed(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.users'));
+
 	if (!showUMSetupWarning.value) {
 		await usersStore.fetchUsers();
 	}
@@ -205,13 +211,30 @@ async function onDisallowSSOManualLogin(userId: string) {
 	}
 }
 function goToUpgrade() {
-	void uiStore.goToUpgrade('settings-users', 'upgrade-users');
+	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 function goToUpgradeAdvancedPermissions() {
-	void uiStore.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
+	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
 async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['newRoleName']) {
-	await usersStore.updateGlobalRole({ id: user.id, newRoleName });
+	try {
+		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
+
+		const role = userRoles.value.find(({ value }) => value === newRoleName)?.label || newRoleName;
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.userRoleUpdated'),
+			message: i18n.baseText('settings.users.userRoleUpdated.message', {
+				interpolate: {
+					user: user.fullName ?? '',
+					role,
+				},
+			}),
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userReinviteError'));
+	}
 }
 </script>
 

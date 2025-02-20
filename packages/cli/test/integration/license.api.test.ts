@@ -1,14 +1,15 @@
 import nock from 'nock';
+
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@db/entities/User';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { License } from '@/License';
+import type { User } from '@/databases/entities/user';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
+import { License } from '@/license';
 
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -115,7 +116,7 @@ describe('POST /license/renew', () => {
 const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,
@@ -131,7 +132,7 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,

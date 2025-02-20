@@ -1,4 +1,10 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
+import { connect as imapConnect, getParts } from '@n8n/imap';
+import find from 'lodash/find';
+import isEmpty from 'lodash/isEmpty';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -14,15 +20,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
-import { connect as imapConnect, getParts } from '@n8n/imap';
-import type { Source as ParserSource } from 'mailparser';
-import { simpleParser } from 'mailparser';
-
-import isEmpty from 'lodash/isEmpty';
-import find from 'lodash/find';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -83,9 +80,9 @@ const versionDescription: INodeTypeDescription = {
 		activationHint:
 			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -201,7 +198,7 @@ const versionDescription: INodeTypeDescription = {
 						'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -508,7 +505,7 @@ export class EmailReadImapV1 implements INodeType {
 			return newEmails;
 		};
 
-		const returnedPromise = await this.helpers.createDeferredPromise();
+		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
@@ -561,7 +558,7 @@ export class EmailReadImapV1 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							await returnedPromise.promise().then(() => {
+							await returnedPromise.promise.then(() => {
 								this.emitError(error as Error);
 							});
 						}
@@ -589,7 +586,7 @@ export class EmailReadImapV1 implements INodeType {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
-						this.logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
+						this.logger.debug(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
 							error,
 						});
 						try {
@@ -618,7 +615,7 @@ export class EmailReadImapV1 implements INodeType {
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(
 				async () => {
-					this.logger.verbose('Forcing reconnection of IMAP node.');
+					this.logger.debug('Forcing reconnection of IMAP node.');
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);

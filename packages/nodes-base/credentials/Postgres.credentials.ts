@@ -1,4 +1,5 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
 import { sshTunnelProperties } from '@utils/sshTunnel.properties';
 
 export class Postgres implements ICredentialType {
@@ -37,7 +38,15 @@ export class Postgres implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Maximum Number of Connections',
+			name: 'maxConnections',
+			type: 'number',
+			default: 100,
+			description:
+				'Make sure this value times the number of workers you have is lower than the maximum number of connections your postgres instance allows.',
+		},
+		{
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
@@ -64,14 +73,6 @@ export class Postgres implements ICredentialType {
 				{
 					name: 'Require',
 					value: 'require',
-				},
-				{
-					name: 'Verify (Not Implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'Verify-Full (Not Implemented)',
-					value: 'verify-full',
 				},
 			],
 			default: 'disable',

@@ -1,9 +1,10 @@
 import type { INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
-import * as transport from '../../../../v2/transport';
+
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+
+import * as transport from '../../../../v2/transport';
 
 const microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequestAllItems');
 
@@ -93,16 +94,6 @@ microsoftApiRequestSpy.mockImplementation(async (_, method: string) => {
 describe('Test MicrosoftTeamsV2, chatMessage => getAll', () => {
 	const workflows = ['nodes/Microsoft/Teams/test/v2/node/chatMessage/getAll.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.resetAllMocks();
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

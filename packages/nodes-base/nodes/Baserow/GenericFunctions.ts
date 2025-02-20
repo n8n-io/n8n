@@ -21,7 +21,7 @@ export async function baserowApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
+	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -169,7 +169,7 @@ export class TableFieldMapper {
 	}
 
 	setField(field: string) {
-		return this.mapIds ? field : this.nameToIdMapping[field] ?? field;
+		return this.mapIds ? field : (this.nameToIdMapping[field] ?? field);
 	}
 
 	idsToNames(obj: Record<string, unknown>) {

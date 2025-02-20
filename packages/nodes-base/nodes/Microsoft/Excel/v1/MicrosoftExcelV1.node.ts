@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,22 +9,18 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
+import { oldVersionNotice } from '@utils/descriptions';
+
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	microsoftApiRequestAllItemsSkip,
 } from './GenericFunctions';
-
-import { workbookFields, workbookOperations } from './WorkbookDescription';
-
-import { worksheetFields, worksheetOperations } from './WorksheetDescription';
-
 import { tableFields, tableOperations } from './TableDescription';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { workbookFields, workbookOperations } from './WorkbookDescription';
+import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',
@@ -38,8 +33,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Excel',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'microsoftExcelOAuth2Api',
@@ -177,7 +172,6 @@ export class MicrosoftExcelV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
@@ -249,18 +243,12 @@ export class MicrosoftExcelV1 implements INodeType {
 						{ 'workbook-session-id': id },
 					);
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
-						{ itemData },
-					);
+					const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
-						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData },
-						);
+					if (this.continueOnFail()) {
+						const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
 						returnData.push(...executionErrorData);
 					} else {
 						throw error;
@@ -317,7 +305,7 @@ export class MicrosoftExcelV1 implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -402,7 +390,7 @@ export class MicrosoftExcelV1 implements INodeType {
 							returnData.push(...executionData);
 						}
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -483,7 +471,7 @@ export class MicrosoftExcelV1 implements INodeType {
 							returnData.push(...executionData);
 						}
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -577,7 +565,7 @@ export class MicrosoftExcelV1 implements INodeType {
 						returnData.push(...executionData);
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
@@ -675,7 +663,7 @@ export class MicrosoftExcelV1 implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },

@@ -13,7 +13,11 @@ export const useRolesStore = defineStore('roles', () => {
 		credential: [],
 		workflow: [],
 	});
-	const projectRoleOrder = ref<ProjectRole[]>(['project:editor', 'project:admin']);
+	const projectRoleOrder = ref<ProjectRole[]>([
+		'project:viewer',
+		'project:editor',
+		'project:admin',
+	]);
 	const projectRoleOrderMap = computed<Map<ProjectRole, number>>(
 		() => new Map(projectRoleOrder.value.map((role, idx) => [role, idx])),
 	);

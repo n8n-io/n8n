@@ -1,56 +1,3 @@
-<template>
-	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<ElDropdown
-			ref="elementDropdown"
-			:placement="placement"
-			:trigger="trigger"
-			:popper-class="popperClass"
-			:teleported="teleported"
-			@command="onSelect"
-			@visible-change="onVisibleChange"
-		>
-			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
-				v-else
-				type="tertiary"
-				text
-				:class="$style.activator"
-				:size="activatorSize"
-				:icon="activatorIcon"
-				@blur="onButtonBlur"
-			/>
-
-			<template #dropdown>
-				<ElDropdownMenu :class="$style.userActionsMenu">
-					<ElDropdownItem
-						v-for="item in items"
-						:key="item.id"
-						:command="item.id"
-						:disabled="item.disabled"
-						:divided="item.divided"
-						:class="$style.elementItem"
-					>
-						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
-							<span v-if="item.icon" :class="$style.icon">
-								<N8nIcon :icon="item.icon" :size="iconSize" />
-							</span>
-							<span :class="$style.label">
-								{{ item.label }}
-							</span>
-							<N8nKeyboardShortcut
-								v-if="item.shortcut"
-								v-bind="item.shortcut"
-								:class="$style.shortcut"
-							>
-							</N8nKeyboardShortcut>
-						</div>
-					</ElDropdownItem>
-				</ElDropdownMenu>
-			</template>
-		</ElDropdown>
-	</div>
-</template>
-
 <script lang="ts" setup>
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
@@ -58,12 +5,14 @@
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-import { ref, useCssModule, useAttrs, computed } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+import { ref, useCssModule, useAttrs, computed } from 'vue';
+
+import type { IconSize } from 'n8n-design-system/types/icon';
+
+import type { ActionDropdownItem } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
-import type { ActionDropdownItem } from '../../types';
-import type { IconSize } from 'n8n-design-system/types/icon';
 
 const TRIGGER = ['click', 'hover'] as const;
 
@@ -76,6 +25,7 @@ interface ActionDropdownProps {
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
 	teleported?: boolean;
+	disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -86,6 +36,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	trigger: 'click',
 	hideArrow: false,
 	teleported: true,
+	disabled: false,
 });
 
 const attrs = useAttrs();
@@ -125,6 +76,65 @@ const open = () => elementDropdown.value?.handleOpen();
 const close = () => elementDropdown.value?.handleClose();
 defineExpose({ open, close });
 </script>
+
+<template>
+	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
+		<ElDropdown
+			ref="elementDropdown"
+			:placement="placement"
+			:trigger="trigger"
+			:popper-class="popperClass"
+			:teleported="teleported"
+			:disabled="disabled"
+			@command="onSelect"
+			@visible-change="onVisibleChange"
+		>
+			<slot v-if="$slots.activator" name="activator" />
+			<n8n-icon-button
+				v-else
+				type="tertiary"
+				text
+				:class="$style.activator"
+				:size="activatorSize"
+				:icon="activatorIcon"
+				@blur="onButtonBlur"
+			/>
+
+			<template #dropdown>
+				<ElDropdownMenu :class="$style.userActionsMenu">
+					<ElDropdownItem
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
+						:class="$style.elementItem"
+					>
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
+							<span v-if="item.icon" :class="$style.icon">
+								<N8nIcon :icon="item.icon" :size="iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+							<span v-if="item.badge">
+								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
+									{{ item.badge }}
+								</N8nBadge>
+							</span>
+							<N8nKeyboardShortcut
+								v-if="item.shortcut"
+								v-bind="item.shortcut"
+								:class="$style.shortcut"
+							>
+							</N8nKeyboardShortcut>
+						</div>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+			</template>
+		</ElDropdown>
+	</div>
+</template>
 
 <style lang="scss" module>
 :global(.el-dropdown__list) {

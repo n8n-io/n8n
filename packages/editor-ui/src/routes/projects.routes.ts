@@ -1,10 +1,21 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
+import { useProjectsStore } from '@/stores/projects.store';
+import { getResourcePermissions } from '@/permissions';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () => await import('@/views/ProjectSettings.vue');
+const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+
+const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
+	if (!to?.params.projectId) {
+		return true;
+	}
+	const project = useProjectsStore().myProjects.find((p) => to?.params.projectId === p.id);
+	return !!project;
+};
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
@@ -14,17 +25,37 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
 		},
 	},
 	{
-		path: 'credentials',
+		path: 'credentials/:credentialId?',
+		props: true,
 		components: {
 			default: CredentialsView,
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
+		},
+	},
+	{
+		path: 'executions',
+		components: {
+			default: ExecutionsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
 		},
 	},
 ];
@@ -37,6 +68,9 @@ const commonChildRouteExtensions = {
 		{
 			name: VIEWS.CREDENTIALS,
 		},
+		{
+			name: VIEWS.EXECUTIONS,
+		},
 	],
 	projects: [
 		{
@@ -44,6 +78,9 @@ const commonChildRouteExtensions = {
 		},
 		{
 			name: VIEWS.PROJECTS_CREDENTIALS,
+		},
+		{
+			name: VIEWS.PROJECTS_EXECUTIONS,
 		},
 	],
 };
@@ -77,7 +114,15 @@ export const projectsRoutes: RouteRecordRaw[] = [
 								sidebar: MainSidebar,
 							},
 							meta: {
-								middleware: ['authenticated'],
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => {
+										const project = useProjectsStore().myProjects.find(
+											(p) => p.id === options?.to.params.projectId,
+										);
+										return !!getResourcePermissions(project?.scopes).project.update;
+									},
+								},
 							},
 						},
 					]),
@@ -103,5 +148,9 @@ export const projectsRoutes: RouteRecordRaw[] = [
 	{
 		path: '/credentials',
 		redirect: '/home/credentials',
+	},
+	{
+		path: '/executions',
+		redirect: '/home/executions',
 	},
 ];

@@ -1,29 +1,29 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeParameterResourceLocator,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	JsonObject,
-} from 'n8n-workflow';
-
 import ISO6391 from 'iso-639-1';
 import { DateTime } from 'luxon';
-import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
-import { listFields, listOperations } from './ListDescription';
-import { tweetFields, tweetOperations } from './TweetDescription';
-import { userFields, userOperations } from './UserDescription';
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeParameterResourceLocator,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type JsonObject,
+} from 'n8n-workflow';
 
+import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
 import {
 	returnId,
 	returnIdFromUsername,
 	twitterApiRequest,
 	twitterApiRequestAllItems,
 } from './GenericFunctions';
+import { listFields, listOperations } from './ListDescription';
+import { tweetFields, tweetOperations } from './TweetDescription';
+import { userFields, userOperations } from './UserDescription';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -38,8 +38,9 @@ export class TwitterV2 implements INodeType {
 			defaults: {
 				name: 'X',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			usableAsTool: true,
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'twitterOAuth2Api',
@@ -347,7 +348,7 @@ export class TwitterV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {
 							error: (error as JsonObject).message,

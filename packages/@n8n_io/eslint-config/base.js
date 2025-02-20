@@ -22,12 +22,6 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint',
 
-		/**
-		 * Plugin to report formatting violations as lint violations
-		 * https://github.com/prettier/eslint-plugin-prettier
-		 */
-		'eslint-plugin-prettier',
-
 		/*
 		 * Plugin to allow specifying local ESLint rules.
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
@@ -76,28 +70,6 @@ const config = (module.exports = {
 	],
 
 	rules: {
-		// ******************************************************************
-		//                   required by prettier plugin
-		// ******************************************************************
-
-		// The following rule enables eslint-plugin-prettier
-		// See: https://github.com/prettier/eslint-plugin-prettier#recommended-configuration
-
-		'prettier/prettier': ['error', { endOfLine: 'auto' }],
-
-		// The following two rules must be disabled when using eslint-plugin-prettier:
-		// See: https://github.com/prettier/eslint-plugin-prettier#arrow-body-style-and-prefer-arrow-callback-issue
-
-		/**
-		 * https://eslint.org/docs/rules/arrow-body-style
-		 */
-		'arrow-body-style': 'off',
-
-		/**
-		 * https://eslint.org/docs/rules/prefer-arrow-callback
-		 */
-		'prefer-arrow-callback': 'off',
-
 		// ******************************************************************
 		//                     additions to base ruleset
 		// ******************************************************************
@@ -344,6 +316,11 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/return-await': ['error', 'always'],
 
+		/**
+		 * https://typescript-eslint.io/rules/explicit-member-accessibility/
+		 */
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
@@ -366,7 +343,17 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
-		'import/order': 'error',
+		'import/order': [
+			'error',
+			{
+				alphabetize: {
+					order: 'asc',
+					caseInsensitive: true,
+				},
+				groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
+				'newlines-between': 'always',
+			},
+		],
 
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
@@ -381,6 +368,8 @@ const config = (module.exports = {
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
+		'n8n-local-rules/no-useless-catch-throw': 'error',
 
 		'n8n-local-rules/no-plain-errors': 'error',
 

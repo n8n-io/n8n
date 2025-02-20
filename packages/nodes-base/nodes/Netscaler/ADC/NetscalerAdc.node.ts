@@ -1,18 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 
-import { netscalerADCApiRequest } from './GenericFunctions';
-
-import { fileDescription } from './FileDescription';
-
 import { certificateDescription } from './CertificateDescription';
+import { fileDescription } from './FileDescription';
+import { netscalerADCApiRequest } from './GenericFunctions';
 
 export class NetscalerAdc implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,8 +32,8 @@ export class NetscalerAdc implements INodeType {
 				required: true,
 			},
 		],
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -239,7 +238,7 @@ export class NetscalerAdc implements INodeType {
 					}),
 				);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).toString() });
 					continue;
 				}

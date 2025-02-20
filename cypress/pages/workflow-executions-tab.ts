@@ -3,10 +3,19 @@ import { WorkflowPage } from './workflow';
 
 const workflowPage = new WorkflowPage();
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class WorkflowExecutionsTab extends BasePage {
 	getters = {
 		executionsTabButton: () => cy.getByTestId('radio-button-executions'),
 		executionsSidebar: () => cy.getByTestId('executions-sidebar'),
+		executionsEmptyList: () => cy.getByTestId('execution-list-empty'),
 		autoRefreshCheckBox: () => cy.getByTestId('auto-refresh-checkbox'),
 		executionsList: () => cy.getByTestId('current-executions-list'),
 		executionListItems: () => this.getters.executionsList().find('div.execution-card'),
@@ -29,12 +38,18 @@ export class WorkflowExecutionsTab extends BasePage {
 
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
+			cy.ifCanvasVersion(
+				() => {},
+				() => {
+					cy.get('body').click(); // Cancel selection if it exists
+				},
+			);
 			workflowPage.getters.canvasNodeByName(nodeName).click();
 			cy.get('body').type('d', { force: true });
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/**/run').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

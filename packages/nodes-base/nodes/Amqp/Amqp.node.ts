@@ -1,6 +1,3 @@
-import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
-import { create_container } from 'rhea';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -12,7 +9,9 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
+import { create_container } from 'rhea';
 
 async function checkIfCredentialsValid(
 	credentials: IDataObject,
@@ -65,8 +64,9 @@ export class Amqp implements INodeType {
 		defaults: {
 			name: 'AMQP Sender',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'amqp',
@@ -261,7 +261,7 @@ export class Amqp implements INodeType {
 
 			return [responseData];
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message }, pairedItems: { item: 0 } }]];
 			} else {
 				throw error;

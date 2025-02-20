@@ -1,11 +1,13 @@
-import type {
-	IWebhookFunctions,
-	IDataObject,
-	IHookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IWebhookFunctions,
+	type IDataObject,
+	type IHookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
+
 import { eventsDescription } from './descriptions/EventsDescription';
 
 export class TheHiveTrigger implements INodeType {
@@ -20,7 +22,7 @@ export class TheHiveTrigger implements INodeType {
 			name: 'TheHive Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		webhooks: [
 			{
 				name: 'default',

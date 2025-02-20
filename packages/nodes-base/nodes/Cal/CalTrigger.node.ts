@@ -1,12 +1,13 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IDataObject,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { calApiRequest, sortOptionParameters } from './GenericFunctions';
@@ -24,7 +25,7 @@ export class CalTrigger implements INodeType {
 			name: 'Cal.com Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'calApi',
@@ -135,7 +136,7 @@ export class CalTrigger implements INodeType {
 							loadOptionsMethod: 'getEventTypes',
 						},
 						description:
-							'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 						default: '',
 					},
 					{

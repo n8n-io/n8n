@@ -1,9 +1,9 @@
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
-import * as utils from './shared/utils/';
 import { createUser } from './shared/db/users';
-import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
+import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
 	mockInstance(ActiveWorkflowManager);

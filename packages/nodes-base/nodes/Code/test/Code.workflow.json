@@ -59,6 +59,34 @@
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
 			"position": [460, 860]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const json = $input.item.json\njson.myNewField = await (async () => json.value)();\n\nreturn $input.item;"
+			},
+			"id": "3cff4a64-c3fd-47d3-a33e-3c446846138f",
+			"name": "With Async Functions",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				460,
+				1200
+			]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "const json = $input.item.json\njson.myNewField = await new Promise((resolve) => resolve(json.value));\n\nreturn $input.item;"
+			},
+			"id": "947e4e3e-2da3-40c5-97da-830c4572fc05",
+			"name": "With Promises",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				460,
+				1380
+			]
 		}
 	],
 	"pinData": {
@@ -91,6 +119,34 @@
 			}
 		],
 		"Run Once for Each Item  (Legacy Syntax)": [
+			{
+				"json": {
+					"value": 1,
+					"myNewField": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2,
+					"myNewField": 2
+				}
+			}
+		],
+		"With Async Functions": [
+			{
+				"json": {
+					"value": 1,
+					"myNewField": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2,
+					"myNewField": 2
+				}
+			}
+		],
+		"With Promises": [
 			{
 				"json": {
 					"value": 1,
@@ -137,6 +193,16 @@
 					},
 					{
 						"node": "Run Once for Each Item  (Legacy Syntax)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With Async Functions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With Promises",
 						"type": "main",
 						"index": 0
 					}

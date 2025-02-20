@@ -7,18 +7,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { affiliateFields, affiliateOperations } from './AffiliateDescription';
-
 import {
 	affiliateMetadataFields,
 	affiliateMetadataOperations,
 } from './AffiliateMetadataDescription';
-
-import { programAffiliateFields, programAffiliateOperations } from './ProgramAffiliateDescription';
-
 import { tapfiliateApiRequest, tapfiliateApiRequestAllItems } from './GenericFunctions';
+import { programAffiliateFields, programAffiliateOperations } from './ProgramAffiliateDescription';
 
 export class Tapfiliate implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,8 +29,9 @@ export class Tapfiliate implements INodeType {
 		defaults: {
 			name: 'Tapfiliate',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'tapfiliateApi',
@@ -302,7 +300,7 @@ export class Tapfiliate implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

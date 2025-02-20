@@ -4,9 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { theHiveApiRequest } from '../../transport';
-import { alertRLC } from '../../descriptions';
+
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { alertRLC } from '../../descriptions';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	alertRLC,
@@ -22,7 +24,7 @@ const properties: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadCaseTemplate',

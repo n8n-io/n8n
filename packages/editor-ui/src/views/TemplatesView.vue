@@ -1,3 +1,15 @@
+<script lang="ts" setup>
+import GoBackButton from '@/components/GoBackButton.vue';
+
+interface Props {
+	goBackEnabled?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+	goBackEnabled: false,
+});
+</script>
+
 <template>
 	<div :class="$style.template">
 		<div :class="$style.container">
@@ -14,29 +26,11 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import GoBackButton from '@/components/GoBackButton.vue';
-
-export default defineComponent({
-	name: 'TemplatesView',
-	components: {
-		GoBackButton,
-	},
-	props: {
-		goBackEnabled: {
-			type: Boolean,
-			default: false,
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
 .template {
 	display: flex;
 	width: 100%;
-	max-width: 1280px;
+	max-width: var(--content-container-width);
 	padding: var(--spacing-l) var(--spacing-l) 0;
 	justify-content: center;
 	@media (min-width: 1200px) {

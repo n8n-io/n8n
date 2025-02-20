@@ -5,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
-
 import { awsApiRequestAllItems, awsApiRequestREST } from './GenericFunctions';
 
 export class AwsCertificateManager implements INodeType {
@@ -22,8 +22,8 @@ export class AwsCertificateManager implements INodeType {
 		defaults: {
 			name: 'AWS Certificate Manager',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -222,7 +222,7 @@ export class AwsCertificateManager implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

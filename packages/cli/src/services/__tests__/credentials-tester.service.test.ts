@@ -1,13 +1,20 @@
-import { CredentialsTester } from '@/services/credentials-tester.service';
 import mock from 'jest-mock-extended/lib/Mock';
-import type { CredentialTypes } from '@/CredentialTypes';
 import type { ICredentialType, INodeType } from 'n8n-workflow';
-import type { NodeTypes } from '@/NodeTypes';
+
+import type { CredentialTypes } from '@/credential-types';
+import type { NodeTypes } from '@/node-types';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 describe('CredentialsTester', () => {
 	const credentialTypes = mock<CredentialTypes>();
 	const nodeTypes = mock<NodeTypes>();
-	const credentialsTester = new CredentialsTester(mock(), credentialTypes, nodeTypes, mock());
+	const credentialsTester = new CredentialsTester(
+		mock(),
+		mock(),
+		credentialTypes,
+		nodeTypes,
+		mock(),
+	);
 
 	beforeEach(() => {
 		jest.clearAllMocks();

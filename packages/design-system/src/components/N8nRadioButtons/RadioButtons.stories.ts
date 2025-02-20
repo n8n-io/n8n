@@ -1,7 +1,7 @@
-import N8nRadioButtons from './RadioButtons.vue';
-
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nRadioButtons from './RadioButtons.vue';
 
 export default {
 	title: 'Atoms/RadioButtons',

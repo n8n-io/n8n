@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	getTableColumns,
@@ -20,12 +20,9 @@ import {
 	split,
 	updateAble,
 } from './GenericFunctions';
-
-import { rowFields, rowOperations } from './RowDescription';
-
-import type { TColumnsUiValues, TColumnValue } from './types';
-
 import type { ICtx, IRow, IRowObject } from './Interfaces';
+import { rowFields, rowOperations } from './RowDescription';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,8 +36,9 @@ export class SeaTable implements INodeType {
 		defaults: {
 			name: 'SeaTable',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'seaTableApi',
@@ -234,7 +232,7 @@ export class SeaTable implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -266,7 +264,7 @@ export class SeaTable implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -329,7 +327,7 @@ export class SeaTable implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -364,7 +362,7 @@ export class SeaTable implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -431,7 +429,7 @@ export class SeaTable implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },

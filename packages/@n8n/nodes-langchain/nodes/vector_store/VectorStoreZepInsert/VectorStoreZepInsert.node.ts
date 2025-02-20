@@ -1,3 +1,6 @@
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	type IExecuteFunctions,
 	type INodeType,
@@ -5,10 +8,9 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
-import type { Embeddings } from '@langchain/core/embeddings';
-import type { Document } from '@langchain/core/documents';
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreZep instead.
@@ -101,7 +103,7 @@ export class VectorStoreZepInsert implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing data for Zep Insert Vector Store');
+		this.logger.debug('Executing data for Zep Insert Vector Store');
 		const items = this.getInputData(0);
 		const collectionName = this.getNodeParameter('collectionName', 0) as string;
 		const options =
@@ -110,10 +112,10 @@ export class VectorStoreZepInsert implements INodeType {
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader

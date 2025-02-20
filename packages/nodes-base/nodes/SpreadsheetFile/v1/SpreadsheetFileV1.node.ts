@@ -6,8 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	JSON2SheetOpts,
 	ParsingOptions,
@@ -22,6 +21,9 @@ import {
 	write as xlsxWrite,
 } from 'xlsx';
 
+import { oldVersionNotice } from '@utils/descriptions';
+import { flattenObject } from '@utils/utilities';
+
 import {
 	operationProperty,
 	binaryProperty,
@@ -29,8 +31,6 @@ import {
 	fromFileOptions,
 	toFileOptions,
 } from '../description';
-import { flattenObject, generatePairedItemData } from '@utils/utilities';
-import { oldVersionNotice } from '@utils/descriptions';
 
 export class SpreadsheetFileV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -43,8 +43,8 @@ export class SpreadsheetFileV1 implements INodeType {
 				name: 'Spreadsheet File',
 				color: '#2244FF',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			properties: [
 				oldVersionNotice,
 				operationProperty,
@@ -58,7 +58,6 @@ export class SpreadsheetFileV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const pairedItem = generatePairedItemData(items.length);
 
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -155,7 +154,7 @@ export class SpreadsheetFileV1 implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						newItems.push({
 							json: {
 								error: error.message,
@@ -230,7 +229,6 @@ export class SpreadsheetFileV1 implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
-					pairedItem,
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -242,12 +240,11 @@ export class SpreadsheetFileV1 implements INodeType {
 
 				newItems.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					newItems.push({
 						json: {
 							error: error.message,
 						},
-						pairedItem,
 					});
 				} else {
 					throw error;

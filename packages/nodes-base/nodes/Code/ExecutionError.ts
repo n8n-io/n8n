@@ -11,7 +11,7 @@ export class ExecutionError extends ApplicationError {
 
 	lineNumber: number | undefined = undefined;
 
-	constructor(error: Error & { stack: string }, itemIndex?: number) {
+	constructor(error: Error & { stack?: string }, itemIndex?: number) {
 		super(error.message);
 		this.itemIndex = itemIndex;
 
@@ -19,7 +19,7 @@ export class ExecutionError extends ApplicationError {
 			this.context = { itemIndex: this.itemIndex };
 		}
 
-		this.stack = error.stack;
+		this.stack = error.stack ?? '';
 
 		this.populateFromStack();
 	}

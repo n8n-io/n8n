@@ -8,14 +8,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { leadFields, leadOperations } from './LeadDescription';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { companyFields, companyOperations } from './CompanyDescription';
+import type { ICompany } from './CompanyInteface';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { leadFields, leadOperations } from './LeadDescription';
 import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser, IUserCompany } from './UserInterface';
-import { companyFields, companyOperations } from './CompanyDescription';
-import type { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,8 +31,9 @@ export class Intercom implements INodeType {
 		defaults: {
 			name: 'Intercom',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'intercomApi',
@@ -621,7 +623,7 @@ export class Intercom implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

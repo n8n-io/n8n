@@ -2,8 +2,8 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { GoogleAnalytics, ReportBasedOnProperty } from './node.type';
-import * as userActivity from './userActivity/UserActivity.resource';
 import * as report from './report/Report.resource';
+import * as userActivity from './userActivity/UserActivity.resource';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -36,7 +36,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 			returnData.push(...responseData);
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },

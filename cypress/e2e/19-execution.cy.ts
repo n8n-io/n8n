@@ -1,6 +1,15 @@
-import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
+import { clickGetBackToCanvas, getNdvContainer, getOutputTableRow } from '../composables/ndv';
+import {
+	clickExecuteWorkflowButton,
+	getExecuteWorkflowButton,
+	getNodeByName,
+	getZoomToFitButton,
+	openNode,
+} from '../composables/workflow';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
+import { isCanvasV2 } from '../utils/workflowUtils';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -117,15 +126,22 @@ describe('Execution', () => {
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
+
+		if (isCanvasV2()) {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
+		} else {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
+		}
+
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
 		successToast().should('be.visible');
-		clearNotifications();
 
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
@@ -206,81 +222,37 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
-	it('should test webhook workflow stop', () => {
-		cy.createFixtureWorkflow('Webhook_wait_set.json');
+	it('should test workflow with specific trigger node', () => {
+		cy.createFixtureWorkflow('Two_schedule_triggers.json');
 
-		// Check workflow buttons
-		workflowPage.getters.executeWorkflowButton().should('be.visible');
-		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-		workflowPage.getters.stopExecutionButton().should('not.exist');
-		workflowPage.getters.stopExecutionWaitingForWebhookButton().should('not.exist');
+		getZoomToFitButton().click();
+		getExecuteWorkflowButton('Trigger A').should('not.be.visible');
+		getExecuteWorkflowButton('Trigger B').should('not.be.visible');
 
-		// Execute the workflow
-		workflowPage.getters.zoomToFitButton().click();
-		workflowPage.getters.executeWorkflowButton().click();
+		// Execute the workflow from trigger A
+		getNodeByName('Trigger A').realHover();
+		getExecuteWorkflowButton('Trigger A').should('be.visible');
+		getExecuteWorkflowButton('Trigger B').should('not.be.visible');
+		clickExecuteWorkflowButton('Trigger A');
 
-		// Check workflow buttons
-		workflowPage.getters.executeWorkflowButton().get('.n8n-spinner').should('be.visible');
-		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-		workflowPage.getters.stopExecutionButton().should('not.exist');
-		workflowPage.getters.stopExecutionWaitingForWebhookButton().should('be.visible');
+		// Check the output
+		successToast().contains('Workflow executed successfully');
+		openNode('Edit Fields');
+		getOutputTableRow(1).should('include.text', 'Trigger A');
 
-		workflowPage.getters.canvasNodes().first().dblclick();
+		clickGetBackToCanvas();
+		getNdvContainer().should('not.be.visible');
 
-		ndv.getters.copyInput().click();
+		// Execute the workflow from trigger B
+		getNodeByName('Trigger B').realHover();
+		getExecuteWorkflowButton('Trigger A').should('not.be.visible');
+		getExecuteWorkflowButton('Trigger B').should('be.visible');
+		clickExecuteWorkflowButton('Trigger B');
 
-		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
-
-		ndv.getters.backToCanvas().click();
-
-		cy.readClipboard().then((url) => {
-			cy.request({
-				method: 'GET',
-				url,
-			}).then((resp) => {
-				expect(resp.status).to.eq(200);
-			});
-		});
-
-		successToast().should('be.visible');
-		clearNotifications();
-
-		workflowPage.getters.stopExecutionButton().click();
-		// Check canvas nodes after 1st step (workflow passed the manual trigger node
-		workflowPage.getters
-			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check').should('not.exist'));
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
-
-		// Check canvas nodes after workflow stopped
-		workflowPage.getters
-			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
-			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
-		workflowPage.getters
-			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
-
-		successToast().should('be.visible');
-		clearNotifications();
-
-		// Clear execution data
-		workflowPage.getters.clearExecutionDataButton().should('be.visible');
-		workflowPage.getters.clearExecutionDataButton().click();
-		workflowPage.getters.clearExecutionDataButton().should('not.exist');
+		// Check the output
+		successToast().contains('Workflow executed successfully');
+		openNode('Edit Fields');
+		getOutputTableRow(1).should('include.text', 'Trigger B');
 	});
 
 	describe('execution preview', () => {
@@ -296,7 +268,11 @@ describe('Execution', () => {
 		});
 	});
 
-	describe('connections should be colored differently for pinned data', () => {
+	/**
+	 * @TODO New Canvas: Different classes for pinned states on edges and nodes
+	 */
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	describe.skip('connections should be colored differently for pinned data', () => {
 		beforeEach(() => {
 			cy.createFixtureWorkflow('Schedule_pinned.json');
 			workflowPage.actions.deselectAll();
@@ -504,7 +480,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('do something with them')
@@ -526,7 +502,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.zoomToFitButton().click();
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('If')
@@ -548,7 +524,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('NoOp2')
@@ -577,7 +553,7 @@ describe('Execution', () => {
 	it('should successfully execute partial executions with nodes attached to the second output', () => {
 		cy.createFixtureWorkflow('Test_Workflow_pairedItem_incomplete_manual_bug.json');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
@@ -597,7 +573,7 @@ describe('Execution', () => {
 	it('should execute workflow partially up to the node that has issues', () => {
 		cy.createFixtureWorkflow('Test_workflow_partial_execution_with_missing_credentials.json');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();

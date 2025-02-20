@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,10 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
-
 import type { ICreateMemberBody } from './Interfaces';
 
 export class Egoi implements INodeType {
@@ -26,8 +26,9 @@ export class Egoi implements INodeType {
 		defaults: {
 			name: 'E-goi',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'egoiApi',
@@ -97,7 +98,7 @@ export class Egoi implements INodeType {
 				},
 				default: '',
 				description:
-					'ID of list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -188,7 +189,7 @@ export class Egoi implements INodeType {
 										name: 'field_id',
 										type: 'options',
 										description:
-											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: ['list'],
@@ -253,7 +254,7 @@ export class Egoi implements INodeType {
 						},
 						default: [],
 						description:
-							'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -316,7 +317,7 @@ export class Egoi implements INodeType {
 										name: 'field_id',
 										type: 'options',
 										description:
-											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: ['list'],
@@ -381,7 +382,7 @@ export class Egoi implements INodeType {
 						},
 						default: [],
 						description:
-							'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -733,7 +734,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					// Return the actual reason as error

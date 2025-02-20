@@ -1,3 +1,5 @@
+import { snakeCase } from 'change-case';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,22 +9,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
+import { boardColumnFields, boardColumnOperations } from './BoardColumnDescription';
+import { boardFields, boardOperations } from './BoardDescription';
+import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
+import { boardItemFields, boardItemOperations } from './BoardItemDescription';
 import {
 	mondayComApiPaginatedRequest,
 	mondayComApiRequest,
 	mondayComApiRequestAllItems,
 } from './GenericFunctions';
-
-import { boardFields, boardOperations } from './BoardDescription';
-
-import { boardColumnFields, boardColumnOperations } from './BoardColumnDescription';
-
-import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
-
-import { boardItemFields, boardItemOperations } from './BoardItemDescription';
 
 interface IGraphqlBody {
 	query: string;
@@ -41,8 +37,9 @@ export class MondayCom implements INodeType {
 		defaults: {
 			name: 'Monday.com',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mondayComApi',
@@ -765,7 +762,7 @@ export class MondayCom implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,22 +1,13 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import { tz } from 'moment-timezone';
 import {
-	adjustAccounts,
-	adjustAttendees,
-	freshworksCrmApiRequest,
-	getAllItemsViewId,
-	handleListing,
-	loadResource,
-	throwOnEmptyUpdate,
-} from './GenericFunctions';
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import {
 	accountFields,
@@ -36,7 +27,15 @@ import {
 	taskFields,
 	taskOperations,
 } from './descriptions';
-
+import {
+	adjustAccounts,
+	adjustAttendees,
+	freshworksCrmApiRequest,
+	getAllItemsViewId,
+	handleListing,
+	loadResource,
+	throwOnEmptyUpdate,
+} from './GenericFunctions';
 import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
 
 export class FreshworksCrm implements INodeType {
@@ -51,8 +50,9 @@ export class FreshworksCrm implements INodeType {
 		defaults: {
 			name: 'Freshworks CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'freshworksCrmApi',
@@ -975,7 +975,7 @@ export class FreshworksCrm implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

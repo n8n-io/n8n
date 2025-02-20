@@ -1,11 +1,144 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useToast } from '@/composables/useToast';
+import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
+import Modal from '@/components/Modal.vue';
+import { useUsersStore } from '@/stores/users.store';
+import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
+import type { IFormInputs, IFormInput } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+
+const config = ref<IFormInputs | null>(null);
+const formBus = createFormEventBus();
+const modalBus = createEventBus();
+const password = ref('');
+const loading = ref(false);
+
+const i18n = useI18n();
+const { showMessage, showError } = useToast();
+const usersStore = useUsersStore();
+
+const passwordsMatch = (value: string | number | boolean | null | undefined) => {
+	if (typeof value !== 'string') {
+		return false;
+	}
+
+	if (value !== password.value) {
+		return {
+			messageKey: 'auth.changePassword.passwordsMustMatchError',
+		};
+	}
+
+	return false;
+};
+
+const onInput = (e: { name: string; value: string }) => {
+	if (e.name === 'password') {
+		password.value = e.value;
+	}
+};
+
+const onSubmit = async (values: {
+	currentPassword: string;
+	password: string;
+	mfaCode?: string;
+}) => {
+	try {
+		loading.value = true;
+		await usersStore.updateCurrentUserPassword({
+			currentPassword: values.currentPassword,
+			newPassword: values.password,
+			mfaCode: values.mfaCode,
+		});
+
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('auth.changePassword.passwordUpdated'),
+			message: i18n.baseText('auth.changePassword.passwordUpdatedMessage'),
+		});
+
+		modalBus.emit('close');
+	} catch (error) {
+		showError(error, i18n.baseText('auth.changePassword.error'));
+	} finally {
+		loading.value = false;
+	}
+};
+
+const onSubmitClick = () => {
+	formBus.emit('submit');
+};
+
+onMounted(() => {
+	const inputs: Record<string, IFormInput> = {
+		currentPassword: {
+			name: 'currentPassword',
+			properties: {
+				label: i18n.baseText('auth.changePassword.currentPassword'),
+				type: 'password',
+				required: true,
+				autocomplete: 'current-password',
+				capitalize: true,
+				focusInitially: true,
+			},
+		},
+		mfaCode: {
+			name: 'mfaCode',
+			properties: {
+				label: i18n.baseText('auth.changePassword.mfaCode'),
+				type: 'text',
+				required: true,
+				capitalize: true,
+			},
+		},
+		newPassword: {
+			name: 'password',
+			properties: {
+				label: i18n.baseText('auth.newPassword'),
+				type: 'password',
+				required: true,
+				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
+				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				autocomplete: 'new-password',
+				capitalize: true,
+			},
+		},
+		newPasswordAgain: {
+			name: 'password2',
+			properties: {
+				label: i18n.baseText('auth.changePassword.reenterNewPassword'),
+				type: 'password',
+				required: true,
+				validators: {
+					TWO_PASSWORDS_MATCH: {
+						validate: passwordsMatch,
+					},
+				},
+				validationRules: [{ name: 'TWO_PASSWORDS_MATCH' }],
+				autocomplete: 'new-password',
+				capitalize: true,
+			},
+		},
+	};
+
+	const { currentUser } = usersStore;
+
+	const form: IFormInputs = currentUser?.mfaEnabled
+		? [inputs.currentPassword, inputs.mfaCode, inputs.newPassword, inputs.newPasswordAgain]
+		: [inputs.currentPassword, inputs.newPassword, inputs.newPasswordAgain];
+
+	config.value = form;
+});
+</script>
+
 <template>
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
-		:title="$locale.baseText('auth.changePassword')"
+		:title="i18n.baseText('auth.changePassword')"
 		:center="true"
 		width="460px"
 		:event-bus="modalBus"
-		@enter="onSubmit"
+		@enter="onSubmitClick"
 	>
 		<template #content>
 			<n8n-form-inputs
@@ -19,7 +152,7 @@
 		<template #footer>
 			<n8n-button
 				:loading="loading"
-				:label="$locale.baseText('auth.changePassword')"
+				:label="i18n.baseText('auth.changePassword')"
 				float="right"
 				data-test-id="change-password-button"
 				@click="onSubmitClick"
@@ -27,128 +160,3 @@
 		</template>
 	</Modal>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
-import type { IFormInputs } from '@/Interface';
-import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
-
-export default defineComponent({
-	name: 'ChangePasswordModal',
-	components: { Modal },
-	props: {
-		modalName: {
-			type: String,
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			config: null as null | IFormInputs,
-			formBus: createEventBus(),
-			modalBus: createEventBus(),
-			password: '',
-			loading: false,
-			CHANGE_PASSWORD_MODAL_KEY,
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore),
-	},
-	mounted() {
-		const form: IFormInputs = [
-			{
-				name: 'currentPassword',
-				properties: {
-					label: this.$locale.baseText('auth.changePassword.currentPassword'),
-					type: 'password',
-					required: true,
-					autocomplete: 'current-password',
-					capitalize: true,
-					focusInitially: true,
-				},
-			},
-			{
-				name: 'password',
-				properties: {
-					label: this.$locale.baseText('auth.newPassword'),
-					type: 'password',
-					required: true,
-					validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-					infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
-					autocomplete: 'new-password',
-					capitalize: true,
-				},
-			},
-			{
-				name: 'password2',
-				properties: {
-					label: this.$locale.baseText('auth.changePassword.reenterNewPassword'),
-					type: 'password',
-					required: true,
-					validators: {
-						TWO_PASSWORDS_MATCH: {
-							validate: this.passwordsMatch,
-						},
-					},
-					validationRules: [{ name: 'TWO_PASSWORDS_MATCH' }],
-					autocomplete: 'new-password',
-					capitalize: true,
-				},
-			},
-		];
-
-		this.config = form;
-	},
-	methods: {
-		passwordsMatch(value: string | number | boolean | null | undefined) {
-			if (typeof value !== 'string') {
-				return false;
-			}
-
-			if (value !== this.password) {
-				return {
-					messageKey: 'auth.changePassword.passwordsMustMatchError',
-				};
-			}
-
-			return false;
-		},
-		onInput(e: { name: string; value: string }) {
-			if (e.name === 'password') {
-				this.password = e.value;
-			}
-		},
-		async onSubmit(values: { currentPassword: string; password: string }) {
-			try {
-				this.loading = true;
-				await this.usersStore.updateCurrentUserPassword(values);
-
-				this.showMessage({
-					type: 'success',
-					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
-					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
-				});
-
-				this.modalBus.emit('close');
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('auth.changePassword.error'));
-			}
-			this.loading = false;
-		},
-		onSubmitClick() {
-			this.formBus.emit('submit');
-		},
-	},
-});
-</script>

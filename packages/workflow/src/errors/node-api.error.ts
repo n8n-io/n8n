@@ -1,34 +1,40 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { parseString } from 'xml2js';
-import type {
-	INode,
-	JsonObject,
-	IDataObject,
-	IStatusCodeMessages,
-	Functionality,
-} from '../Interfaces';
-import { NodeError } from './abstract/node.error';
-import { removeCircularRefs } from '../utils';
-import type { ReportingOptions } from './application.error';
 import { AxiosError } from 'axios';
+import { parseString } from 'xml2js';
+
+import { NodeError } from './abstract/node.error';
+import type { ErrorLevel } from './error.types';
 import {
 	NO_OP_NODE_TYPE,
 	UNKNOWN_ERROR_DESCRIPTION,
 	UNKNOWN_ERROR_MESSAGE,
 	UNKNOWN_ERROR_MESSAGE_CRED,
 } from '../Constants';
+import type {
+	INode,
+	JsonObject,
+	IDataObject,
+	IStatusCodeMessages,
+	Functionality,
+	RelatedExecution,
+} from '../Interfaces';
+import { removeCircularRefs } from '../utils';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
 	description?: string;
 	runIndex?: number;
 	itemIndex?: number;
-	level?: ReportingOptions['level'];
+	level?: ErrorLevel;
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
 	type?: string;
+	metadata?: {
+		subExecution?: RelatedExecution;
+		parentExecution?: RelatedExecution;
+	};
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -260,7 +266,7 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		);
 
-		if (functionality !== undefined) this.context.functionality = functionality;
+		if (functionality !== undefined) this.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}

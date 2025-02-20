@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import * as createEvent from './createEvent.operation';
 
@@ -22,8 +23,8 @@ export class ICalendar implements INodeType {
 			name: 'iCalendar',
 			color: '#408000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{

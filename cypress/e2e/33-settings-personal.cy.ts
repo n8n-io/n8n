@@ -35,13 +35,14 @@ describe('Personal Settings', () => {
 			successToast().find('.el-notification__closeBtn').click();
 		});
 	});
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it('not allow malicious values for personal data', () => {
 		cy.visit('/settings/personal');
 		INVALID_NAMES.forEach((name) => {
 			cy.getByTestId('personal-data-form').find('input[name="firstName"]').clear().type(name);
 			cy.getByTestId('personal-data-form').find('input[name="lastName"]').clear().type(name);
 			cy.getByTestId('save-settings-button').click();
-			errorToast().should('contain', 'Malicious firstName | Malicious lastName');
+			errorToast().should('contain', 'Potentially malicious string');
 			errorToast().find('.el-notification__closeBtn').click();
 		});
 	});

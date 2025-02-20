@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3';
+
 import N8nBlockUi from './BlockUi.vue';
 
 export default {

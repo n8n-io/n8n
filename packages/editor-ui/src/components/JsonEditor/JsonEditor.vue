@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -22,15 +15,11 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 
-import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -54,7 +43,7 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		codeNodeEditorTheme({
+		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',
 			minHeight: '20vh',
@@ -64,9 +53,7 @@ const extensions = computed(() => {
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
 			history(),
-			Prec.highest(
-				keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
-			),
+			Prec.highest(keymap.of(editorKeymap)),
 			createLinter(jsonParseLinter()),
 			lintGutter(),
 			n8nAutocompletion(),
@@ -76,6 +63,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged || !editor.value) return;
 				emit('update:modelValue', editor.value?.state.doc.toString());
@@ -87,6 +75,11 @@ const extensions = computed(() => {
 
 onMounted(() => {
 	createEditor();
+});
+
+onBeforeUnmount(() => {
+	if (!editor.value) return;
+	editor.value.destroy();
 });
 
 watch(
@@ -115,12 +108,19 @@ function destroyEditor() {
 }
 </script>
 
-<style lang="scss" module>
-.editor {
-	height: 100%;
+<template>
+	<div :class="[$style['editor-container'], $style.fillHeight]">
+		<div ref="jsonEditorRef" :class="['ph-no-capture', $style.fillHeight]"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
-	& > div {
-		height: 100%;
-	}
+<style lang="scss" module>
+.editor-container {
+	position: relative;
+}
+
+.fillHeight {
+	height: 100%;
 }
 </style>

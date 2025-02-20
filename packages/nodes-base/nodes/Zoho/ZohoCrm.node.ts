@@ -1,46 +1,12 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import {
-	addGetAllFilterOptions,
-	adjustAccountPayload,
-	adjustContactPayload,
-	adjustDealPayload,
-	adjustInvoicePayload,
-	adjustInvoicePayloadOnUpdate,
-	adjustLeadPayload,
-	adjustProductDetails,
-	adjustProductPayload,
-	adjustPurchaseOrderPayload,
-	adjustQuotePayload,
-	adjustSalesOrderPayload,
-	adjustVendorPayload,
-	getFields,
-	getPicklistOptions,
-	handleListing,
-	throwOnEmptyUpdate,
-	throwOnMissingProducts,
-	toLoadOptions,
-	zohoApiRequest,
-	zohoApiRequestAllItems,
-} from './GenericFunctions';
-
-import type {
-	CamelCaseResource,
-	GetAllFilterOptions,
-	LoadedAccounts,
-	LoadedContacts,
-	LoadedDeals,
-	LoadedProducts,
-	LoadedVendors,
-	ProductDetails,
-} from './types';
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import {
 	accountFields,
@@ -64,6 +30,39 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
+import {
+	addGetAllFilterOptions,
+	adjustAccountPayload,
+	adjustContactPayload,
+	adjustDealPayload,
+	adjustInvoicePayload,
+	adjustInvoicePayloadOnUpdate,
+	adjustLeadPayload,
+	adjustProductDetails,
+	adjustProductPayload,
+	adjustPurchaseOrderPayload,
+	adjustQuotePayload,
+	adjustSalesOrderPayload,
+	adjustVendorPayload,
+	getFields,
+	getPicklistOptions,
+	handleListing,
+	throwOnEmptyUpdate,
+	throwOnMissingProducts,
+	toLoadOptions,
+	zohoApiRequest,
+	zohoApiRequestAllItems,
+} from './GenericFunctions';
+import type {
+	CamelCaseResource,
+	GetAllFilterOptions,
+	LoadedAccounts,
+	LoadedContacts,
+	LoadedDeals,
+	LoadedProducts,
+	LoadedVendors,
+	ProductDetails,
+} from './types';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,8 +76,9 @@ export class ZohoCrm implements INodeType {
 		defaults: {
 			name: 'Zoho CRM',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zohoOAuth2Api',
@@ -1318,7 +1318,7 @@ export class ZohoCrm implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}

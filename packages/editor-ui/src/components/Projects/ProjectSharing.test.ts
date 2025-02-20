@@ -1,7 +1,7 @@
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems } from '@/__tests__/utils';
+import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 
@@ -112,7 +112,6 @@ describe('ProjectSharing', () => {
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 
 		const projectSelect = getByTestId('project-sharing-select');
-		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
 
 		// Get the dropdown items
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
@@ -123,11 +122,13 @@ describe('ProjectSharing', () => {
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(3);
-		expect(projectSelectDropdownItems[0].textContent).toContain(projectSelectInput.value);
+
+		const selectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
+		expect(selectedValue).toBeTruthy();
 		expect(emitted()['update:modelValue']).toEqual([
 			[
 				expect.objectContaining({
-					name: projectSelectInput.value,
+					name: selectedValue,
 				}),
 			],
 		]);
@@ -136,12 +137,13 @@ describe('ProjectSharing', () => {
 		await userEvent.click(projectSelectDropdownItems[1]);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(3);
-		expect(projectSelectDropdownItems[1].textContent).toContain(projectSelectInput.value);
+		const newSelectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
+		expect(newSelectedValue).toBeTruthy();
 		expect(emitted()['update:modelValue']).toEqual([
 			expect.any(Array),
 			[
 				expect.objectContaining({
-					name: projectSelectInput.value,
+					name: newSelectedValue,
 				}),
 			],
 		]);

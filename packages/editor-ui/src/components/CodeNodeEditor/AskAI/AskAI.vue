@@ -16,16 +16,15 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
-	ASK_AI_EXPERIMENT,
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
+import type { AskAiRequest } from '@/types/assistant.types';
 
 const emit = defineEmits<{
 	submit: [code: string];
@@ -89,7 +88,7 @@ function getParentNodes() {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
 		.map((n) => getNodeByName(n.name))
-		.filter((n) => n !== null) as INodeUi[];
+		.filter((n) => n !== null);
 }
 
 function getSchemas() {
@@ -156,24 +155,19 @@ async function onSubmit() {
 
 	const rootStore = useRootStore();
 
-	try {
-		const version = rootStore.versionCli;
-		const model =
-			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
-				? 'gpt-4'
-				: 'gpt-3.5-turbo-16k';
+	const payload: AskAiRequest.RequestPayload = {
+		question: prompt.value,
+		context: {
+			schema: schemas.parentNodesSchemas,
+			inputSchema: schemas.inputSchema!,
+			ndvPushRef: useNDVStore().pushRef,
+			pushRef: rootStore.pushRef,
+		},
+		forNode: 'code',
+	};
 
-		const { code } = await generateCodeForPrompt(restApiContext, {
-			question: prompt.value,
-			context: {
-				schema: schemas.parentNodesSchemas,
-				inputSchema: schemas.inputSchema!,
-				ndvPushRef: useNDVStore().pushRef,
-				pushRef: rootStore.pushRef,
-			},
-			model,
-			n8nVersion: version,
-		});
+	try {
+		const { code } = await generateCodeForPrompt(restApiContext, payload);
 
 		stopLoading();
 		emit('replaceCode', code);

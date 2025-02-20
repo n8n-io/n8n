@@ -1,33 +1,35 @@
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { ProjectRole } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
+import { ApplicationError } from 'n8n-workflow';
+
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { ProjectRelation } from '@/databases/entities/project-relation';
 import type {
 	CredentialSharingRole,
 	SharedCredentials,
-} from '@/databases/entities/SharedCredentials';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
-import type { GlobalRole, User } from '@/databases/entities/User';
+} from '@/databases/entities/shared-credentials';
+import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import type { GlobalRole, User } from '@/databases/entities/user';
+import { License } from '@/license';
 import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_OWNER_SCOPES,
-} from '@/permissions/global-roles';
+} from '@/permissions.ee/global-roles';
 import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
-} from '@/permissions/project-roles';
+} from '@/permissions.ee/project-roles';
 import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
-} from '@/permissions/resource-roles';
+} from '@/permissions.ee/resource-roles';
 import type { ListQuery } from '@/requests';
-import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
-import { Service } from 'typedi';
-import { ApplicationError } from 'n8n-workflow';
-import { License } from '@/License';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 

@@ -1,19 +1,21 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
-import fs from 'fs';
 import glob from 'fast-glob';
+import fs from 'fs';
+import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { generateNanoId } from '@db/utils/generators';
-import { UserRepository } from '@db/repositories/user.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { IWorkflowToImport } from '@/Interfaces';
-import { ImportService } from '@/services/import.service';
-import { BaseCommand } from '../BaseCommand';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
+import type { IWorkflowToImport } from '@/interfaces';
+import { ImportService } from '@/services/import.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -101,7 +103,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		this.reportSuccess(workflows.length);
 	}
 
-	private async checkRelations(workflows: WorkflowEntity[], projectId?: string, userId?: string) {
+	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
 		// The credential is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
@@ -111,11 +113,11 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}
 
 		for (const workflow of workflows) {
-			if (!(await this.workflowExists(workflow))) {
+			if (!(await this.workflowExists(workflow.id))) {
 				continue;
 			}
 
-			const { user, project: ownerProject } = await this.getWorkflowOwner(workflow);
+			const { user, project: ownerProject } = await this.getWorkflowOwner(workflow.id);
 
 			if (!ownerProject) {
 				continue;
@@ -154,9 +156,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private async getWorkflowOwner(workflow: WorkflowEntity) {
+	private async getWorkflowOwner(workflowId: WorkflowId) {
 		const sharing = await Container.get(SharedWorkflowRepository).findOne({
-			where: { workflowId: workflow.id, role: 'workflow:owner' },
+			where: { workflowId, role: 'workflow:owner' },
 			relations: { project: true },
 		});
 
@@ -174,8 +176,8 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		return {};
 	}
 
-	private async workflowExists(workflow: WorkflowEntity) {
-		return await Container.get(WorkflowRepository).existsBy({ id: workflow.id });
+	private async workflowExists(workflowId: WorkflowId) {
+		return await Container.get(WorkflowRepository).existsBy({ id: workflowId });
 	}
 
 	private async readWorkflows(path: string, separate: boolean): Promise<WorkflowEntity[]> {

@@ -48,7 +48,7 @@ It will download everything that is needed to start n8n.
 You can then access n8n by opening:
 [http://localhost:5678](http://localhost:5678)
 
-**Note:** The minimum required version for Node.js is v14.15. Make sure to update Node.js to v14.15 or above.
+**Note:** The minimum required version for Node.js is v18. Make sure to update Node.js to v18 or above.
 
 ### Run with Docker
 
@@ -147,8 +147,4 @@ You can also find breaking changes here: [Breaking Changes](./BREAKING-CHANGES.m
 
 ## License
 
-n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
-
-Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
-
-Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

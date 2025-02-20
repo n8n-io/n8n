@@ -5,9 +5,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { driftApiRequest } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
+
 import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact } from './ContactInterface';
+import { driftApiRequest } from './GenericFunctions';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,8 +24,9 @@ export class Drift implements INodeType {
 		defaults: {
 			name: 'Drift',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'driftApi',
@@ -150,7 +153,7 @@ export class Drift implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -5,8 +5,8 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
+import { versionDescription } from './actions/versionDescription';
 import { listSearch, loadOptions, resourceMapping } from './methods';
 
 export class AirtableV2 implements INodeType {
@@ -16,6 +16,7 @@ export class AirtableV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

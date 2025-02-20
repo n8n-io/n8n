@@ -1,17 +1,20 @@
+import omit from 'lodash/omit';
 import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-
-import omit from 'lodash/omit';
-import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
-
+import {
+	elasticsearchApiRequest,
+	elasticsearchApiRequestAllItems,
+	elasticsearchBulkApiRequest,
+} from './GenericFunctions';
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 export class Elasticsearch implements INodeType {
@@ -26,8 +29,9 @@ export class Elasticsearch implements INodeType {
 		defaults: {
 			name: 'Elasticsearch',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'elasticsearchApi',
@@ -68,12 +72,14 @@ export class Elasticsearch implements INodeType {
 
 		let responseData;
 
+		let bulkBody: IDataObject = {};
+
 		for (let i = 0; i < items.length; i++) {
+			const bulkOperation = this.getNodeParameter('options.bulkOperation', i, false);
 			if (resource === 'document') {
 				// **********************************************************************
 				//                                document
 				// **********************************************************************
-
 				if (operation === 'delete') {
 					// ----------------------------------------
 					//             document: delete
@@ -84,8 +90,17 @@ export class Elasticsearch implements INodeType {
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
 
-					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
+					if (bulkOperation) {
+						bulkBody[i] = JSON.stringify({
+							delete: {
+								_index: indexId,
+								_id: documentId,
+							},
+						});
+					} else {
+						const endpoint = `/${indexId}/_doc/${documentId}`;
+						responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
+					}
 				} else if (operation === 'get') {
 					// ----------------------------------------
 					//              document: get
@@ -156,7 +171,7 @@ export class Elasticsearch implements INodeType {
 						} else {
 							responseData = await elasticsearchApiRequest.call(
 								this,
-								'GET',
+								'POST',
 								`/${indexId}/_search`,
 								body,
 								qs,
@@ -168,7 +183,7 @@ export class Elasticsearch implements INodeType {
 
 						responseData = await elasticsearchApiRequest.call(
 							this,
-							'GET',
+							'POST',
 							`/${indexId}/_search`,
 							body,
 							qs,
@@ -223,12 +238,22 @@ export class Elasticsearch implements INodeType {
 					const indexId = this.getNodeParameter('indexId', i);
 					const { documentId } = additionalFields;
 
-					if (documentId) {
-						const endpoint = `/${indexId}/_doc/${documentId}`;
-						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+					if (bulkOperation) {
+						bulkBody[i] = JSON.stringify({
+							index: {
+								_index: indexId,
+								_id: documentId,
+							},
+						});
+						bulkBody[i] += `\n${JSON.stringify(body)}`;
 					} else {
-						const endpoint = `/${indexId}/_doc`;
-						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+						if (documentId) {
+							const endpoint = `/${indexId}/_doc/${documentId}`;
+							responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+						} else {
+							const endpoint = `/${indexId}/_doc`;
+							responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+						}
 					}
 				} else if (operation === 'update') {
 					// ----------------------------------------
@@ -261,7 +286,17 @@ export class Elasticsearch implements INodeType {
 					const documentId = this.getNodeParameter('documentId', i);
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+					if (bulkOperation) {
+						bulkBody[i] = JSON.stringify({
+							update: {
+								_index: indexId,
+								_id: documentId,
+							},
+						});
+						bulkBody[i] += `\n${JSON.stringify(body)}`;
+					} else {
+						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+					}
 				}
 			} else if (resource === 'index') {
 				// **********************************************************************
@@ -341,13 +376,80 @@ export class Elasticsearch implements INodeType {
 					}
 				}
 			}
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData as IDataObject[]),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		}
 
+			if (!bulkOperation) {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			}
+			if (Object.keys(bulkBody).length >= 50) {
+				responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
+				for (let j = 0; j < responseData.length; j++) {
+					const itemData = responseData[j];
+					if (itemData.error) {
+						const errorData = itemData.error as IDataObject;
+						const message = errorData.type as string;
+						const description = errorData.reason as string;
+						const itemIndex = parseInt(Object.keys(bulkBody)[j]);
+						if (this.continueOnFail()) {
+							returnData.push(
+								...this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ error: message, message: itemData.error }),
+									{ itemData: { item: itemIndex } },
+								),
+							);
+							continue;
+						} else {
+							throw new NodeApiError(this.getNode(), {
+								message,
+								description,
+								itemIndex,
+							} as JsonObject);
+						}
+					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(itemData),
+						{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
+					);
+					returnData.push(...executionData);
+				}
+				bulkBody = {};
+			}
+		}
+		if (Object.keys(bulkBody).length) {
+			responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
+			for (let j = 0; j < responseData.length; j++) {
+				const itemData = responseData[j];
+				if (itemData.error) {
+					const errorData = itemData.error as IDataObject;
+					const message = errorData.type as string;
+					const description = errorData.reason as string;
+					const itemIndex = parseInt(Object.keys(bulkBody)[j]);
+					if (this.continueOnFail()) {
+						returnData.push(
+							...this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: message, message: itemData.error }),
+								{ itemData: { item: itemIndex } },
+							),
+						);
+						continue;
+					} else {
+						throw new NodeApiError(this.getNode(), {
+							message,
+							description,
+							itemIndex,
+						} as JsonObject);
+					}
+				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(itemData),
+					{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
+				);
+				returnData.push(...executionData);
+			}
+		}
 		return [returnData];
 	}
 }

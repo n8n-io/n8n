@@ -1,29 +1,30 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
+import { Logger } from 'n8n-core';
+import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { Project } from '@/databases/entities/project';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import type { User } from '@/databases/entities/user';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Logger } from '@/Logger';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
-import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type EntityManager } from '@n8n/typeorm';
-import { Project } from '@/databases/entities/Project';
-import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -39,7 +40,7 @@ export class EnterpriseWorkflowService {
 	) {}
 
 	async shareWithProjects(
-		workflow: WorkflowEntity,
+		workflowId: WorkflowId,
 		shareWithIds: string[],
 		entityManager: EntityManager,
 	) {
@@ -54,7 +55,7 @@ export class EnterpriseWorkflowService {
 			// always only be one owner.
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
-					workflowId: workflow.id,
+					workflowId,
 					role: 'workflow:editor',
 					projectId: project.id,
 				}),
@@ -117,7 +118,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	validateCredentialPermissionsToUser(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		allowedCredentials: CredentialsEntity[],
 	) {
 		workflow.nodes.forEach((node) => {
@@ -137,7 +138,7 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
-	async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
+	async preventTampering<T extends IWorkflowBase>(workflow: T, workflowId: string, user: User) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
 		if (!previousVersion) {
@@ -161,9 +162,9 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
-	validateWorkflowCredentialUsage(
-		newWorkflowVersion: WorkflowEntity,
-		previousWorkflowVersion: WorkflowEntity,
+	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
+		newWorkflowVersion: T,
+		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
@@ -194,7 +195,7 @@ export class EnterpriseWorkflowService {
 
 		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 			if (isTamperingAttempt(node.id)) {
-				this.logger.verbose('Blocked workflow update due to tampering attempt', {
+				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,
@@ -231,7 +232,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	/** Get all nodes in a workflow where the node credential is not accessible to the user. */
-	getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
+	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: string[]) {
 		if (!workflow.nodes) {
 			return [];
 		}
@@ -283,14 +284,6 @@ export class EnterpriseWorkflowService {
 			throw new TransferWorkflowError(
 				"You can't transfer a workflow into the project that's already owning it.",
 			);
-		}
-		if (sourceProject.type !== 'team' && sourceProject.type !== 'personal') {
-			throw new TransferWorkflowError(
-				'You can only transfer workflows out of personal or team projects.',
-			);
-		}
-		if (destinationProject.type !== 'team') {
-			throw new TransferWorkflowError('You can only transfer workflows into team projects.');
 		}
 
 		// 6. deactivate workflow if necessary

@@ -6,7 +6,7 @@ export const customResourceOperations: INodeProperties[] = [
 		name: 'customResource',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
@@ -93,7 +93,7 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
@@ -179,7 +179,7 @@ export const customResourceDescription: INodeProperties[] = [
 				name: 'fieldsList',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -215,7 +215,7 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsDependsOn: ['customResource'],
@@ -325,7 +325,7 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',

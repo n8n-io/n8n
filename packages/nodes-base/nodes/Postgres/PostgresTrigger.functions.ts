@@ -7,8 +7,8 @@ import type {
 	INodeListSearchItems,
 } from 'n8n-workflow';
 
+import { configurePostgres } from './transport';
 import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';
-import { configurePostgres } from './v2/transport';
 
 export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
 	let suffix = id.replace(/-/g, '_');
@@ -87,7 +87,7 @@ export async function pgTriggerFunction(
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = this.getNodeParameter('options', {}) as {
 		connectionTimeout?: number;
 		delayClosingIdleConnection?: number;
@@ -102,7 +102,6 @@ export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
-	await db.$pool.end();
 	return { results };
 }
 
@@ -122,6 +121,5 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.table_name as string,
 		value: s.table_name as string,
 	}));
-	await db.$pool.end();
 	return { results };
 }

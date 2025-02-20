@@ -1,50 +1,59 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useRootStore } from '@/stores/root.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialType } from 'n8n-workflow';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
+import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { N8nNodeIcon } from 'n8n-design-system';
+import type { ICredentialType } from 'n8n-workflow';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	credentialTypeName: string | null;
 }>();
 
 const credentialsStore = useCredentialsStore();
-const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const credentialWithIcon = computed(() => getCredentialWithIcon(props.credentialTypeName));
 
-const filePath = computed(() => {
-	const themeIconUrl = getThemedValue(credentialWithIcon.value?.iconUrl, uiStore.appliedTheme);
+const nodeBasedIconUrl = computed(() => {
+	const icon = getThemedValue(credentialWithIcon.value?.icon);
+	if (!icon?.startsWith('node:')) return null;
+	return nodeTypesStore.getNodeType(icon.replace('node:', ''))?.iconUrl;
+});
+
+const iconSource = computed(() => {
+	const themeIconUrl = getThemedValue(
+		nodeBasedIconUrl.value ?? credentialWithIcon.value?.iconUrl,
+		uiStore.appliedTheme,
+	);
 
 	if (!themeIconUrl) {
-		return null;
+		return undefined;
 	}
 
 	return rootStore.baseUrl + themeIconUrl;
 });
 
-const relevantNode = computed(() => {
-	const icon = credentialWithIcon.value?.icon;
-	if (typeof icon === 'string' && icon.startsWith('node:')) {
-		const nodeType = icon.replace('node:', '');
-		return nodeTypesStore.getNodeType(nodeType);
-	}
-	if (!props.credentialTypeName) {
-		return null;
-	}
+const iconType = computed(() => {
+	if (iconSource.value) return 'file';
+	else if (iconName.value) return 'icon';
+	return 'unknown';
+});
 
-	const nodesWithAccess = credentialsStore.getNodesWithAccess(props.credentialTypeName);
-	if (nodesWithAccess.length) {
-		return nodesWithAccess[0];
-	}
+const iconName = computed(() => {
+	const icon = getThemedValue(credentialWithIcon.value?.icon, uiStore.appliedTheme);
+	if (!icon || !icon?.startsWith('fa:')) return undefined;
+	return icon.replace('fa:', '');
+});
 
-	return null;
+const iconColor = computed(() => {
+	const { iconColor: color } = credentialWithIcon.value ?? {};
+	if (!color) return undefined;
+	return `var(--color-node-icon-${color})`;
 });
 
 function getCredentialWithIcon(name: string | null): ICredentialType | null {
@@ -64,8 +73,8 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 
 	if (type.extends) {
 		let parentCred = null;
-		type.extends.forEach((iconName) => {
-			parentCred = getCredentialWithIcon(iconName);
+		type.extends.forEach((credType) => {
+			parentCred = getCredentialWithIcon(credType);
 			if (parentCred !== null) return;
 		});
 		return parentCred;
@@ -76,23 +85,18 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 </script>
 
 <template>
-	<div>
-		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
-		<NodeIcon v-else-if="relevantNode" :node-type="relevantNode" :size="28" />
-		<span v-else :class="$style.fallback"></span>
-	</div>
+	<N8nNodeIcon
+		:class="$style.icon"
+		:type="iconType"
+		:size="26"
+		:src="iconSource"
+		:name="iconName"
+		:color="iconColor"
+	/>
 </template>
 
 <style lang="scss" module>
-.credIcon {
-	height: 26px;
-}
-
-.fallback {
-	height: 28px;
-	width: 28px;
-	display: flex;
-	border-radius: 50%;
-	background-color: var(--color-foreground-base);
+.icon {
+	--node-icon-color: var(--color-foreground-dark);
 }
 </style>

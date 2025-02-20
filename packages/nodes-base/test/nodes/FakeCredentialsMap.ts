@@ -54,6 +54,56 @@ BQIDAQAB
 	airtableApi: {
 		apiKey: 'key123',
 	},
+	gongApi: {
+		baseUrl: 'https://api.gong.io',
+		accessKey: 'accessKey123',
+		accessKeySecret: 'accessKeySecret123',
+	},
+	gongOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://app.gong.io/oauth2/authorize',
+		accessTokenUrl: 'https://app.gong.io/oauth2/generate-customer-token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'api:calls:read:transcript api:provisioning:read api:workspaces:read api:meetings:user:delete api:crm:get-objects api:data-privacy:delete api:crm:schema api:flows:write api:crm:upload api:meetings:integration:status api:calls:read:extensive api:meetings:user:update api:integration-settings:write api:settings:scorecards:read api:stats:scorecards api:stats:interaction api:stats:user-actions api:crm:integration:delete api:calls:read:basic api:calls:read:media-url api:digital-interactions:write api:crm:integrations:read api:library:read api:data-privacy:read api:users:read api:logs:read api:calls:create api:meetings:user:create api:stats:user-actions:detailed api:settings:trackers:read api:crm:integration:register api:provisioning:read-write api:engagement-data:write api:permission-profile:read api:permission-profile:write api:flows:read api:crm-calls:manual-association:read',
+		authQueryParameters: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope:
+				'api:calls:read:transcript api:provisioning:read api:workspaces:read api:meetings:user:delete api:crm:get-objects api:data-privacy:delete api:crm:schema api:flows:write api:crm:upload api:meetings:integration:status api:calls:read:extensive api:meetings:user:update api:integration-settings:write api:settings:scorecards:read api:stats:scorecards api:stats:interaction api:stats:user-actions api:crm:integration:delete api:calls:read:basic api:calls:read:media-url api:digital-interactions:write api:crm:integrations:read api:library:read api:data-privacy:read api:users:read api:logs:read api:calls:create api:meetings:user:create api:stats:user-actions:detailed api:settings:trackers:read api:crm:integration:register api:provisioning:read-write api:engagement-data:write api:permission-profile:read api:permission-profile:write api:flows:read api:crm-calls:manual-association:read',
+			token_type: 'bearer',
+			expires_in: 86400,
+			api_base_url_for_customer: 'https://api.gong.io',
+		},
+		baseUrl: 'https://api.gong.io',
+	},
+	microsoftEntraOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		accessTokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'openid offline_access AccessReview.ReadWrite.All Directory.ReadWrite.All NetworkAccessPolicy.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All EntitlementManagement.ReadWrite.All User.ReadWrite.All Directory.AccessAsUser.All Sites.FullControl.All',
+		authQueryParameters: 'response_mode=query',
+		authentication: 'body',
+		oauthTokenData: {
+			token_type: 'Bearer',
+			scope:
+				'AccessReview.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All Directory.AccessAsUser.All Directory.Read.All Directory.ReadWrite.All EntitlementManagement.ReadWrite.All Group.ReadWrite.All NetworkAccessPolicy.ReadWrite.All openid Sites.FullControl.All User.DeleteRestore.All User.EnableDisableAccount.All User.Export.All User.Invite.All User.ManageIdentities.All User.Read User.Read.All User.ReadBasic.All User.ReadWrite User.ReadWrite.All User.RevokeSessions.All profile email',
+			expires_in: 4822,
+			ext_expires_in: 4822,
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			id_token: 'IDTOKEN',
+			callbackQueryString: {
+				session_state: 'SESSIONSTATE',
+			},
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
@@ -94,5 +144,67 @@ BQIDAQAB
 		keyType: 'passphrase',
 		secret: 'baz',
 		algorithm: 'HS256',
+	},
+	telegramApi: {
+		accessToken: 'testToken',
+		baseUrl: 'https://api.telegram.org',
+	},
+	gmailOAuth2: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+		accessTokenUrl: 'https://oauth2.googleapis.com/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.addons.current.action.compose https://www.googleapis.com/auth/gmail.addons.current.message.action https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.compose',
+		authQueryParameters: 'access_type=offline&prompt=consent',
+		authentication: 'body',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope:
+				'https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.addons.current.action.compose https://www.googleapis.com/auth/gmail.addons.current.message.action https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.compose',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
+	notionApi: {
+		apiKey: 'key123',
+	},
+	philipsHueOAuth2Api: {
+		grantType: 'authorizationCode',
+		appId: 'APPID',
+		authUrl: 'https://api.meethue.com/v2/oauth2/authorize',
+		accessTokenUrl: 'https://api.meethue.com/v2/oauth2/token',
+		authQueryParameters: 'appid=APPID',
+		scope: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope: '',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
+	spotifyOAuth2Api: {
+		accessTokenUrl: 'https://accounts.spotify.com/api/token',
+		authQueryParameters: '',
+		authUrl: 'https://accounts.spotify.com/authorize',
+		authentication: 'header',
+		clientId: 'CLIENT_ID',
+		clientSecret: 'CLIENT_SECRET',
+		grantType: 'authorizationCode',
+		oauthTokenData: {
+			access_token: 'ACCESS_TOKEN',
+			expires_in: 3600,
+			refresh_token: 'REFRESH_TOKEN',
+			scope:
+				'playlist-read-private playlist-read-collaborative user-modify-playback-state user-library-read user-follow-read playlist-modify-private playlist-modify-public user-read-playback-state user-read-currently-playing user-read-recently-played',
+			token_type: 'Bearer',
+		},
+		scope:
+			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
+		server: 'https://api.spotify.com/',
 	},
 } as const;

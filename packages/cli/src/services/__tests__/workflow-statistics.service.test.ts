@@ -1,6 +1,5 @@
-import { Container } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -9,16 +8,18 @@ import {
 } from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
+import type { INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { UserService } from '@/services/user.service';
+import type { Project } from '@/databases/entities/project';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { mockInstance } from '@test/mocking';
-import type { Project } from '@/databases/entities/Project';
 
 describe('WorkflowStatisticsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
@@ -38,26 +39,20 @@ describe('WorkflowStatisticsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	config.set('diagnostics.enabled', true);
+	globalConfig.diagnostics.enabled = true;
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
-	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
+	const eventService = mock<EventService>();
 	const workflowStatisticsService = new WorkflowStatisticsService(
 		mock(),
 		new WorkflowStatisticsRepository(dataSource, globalConfig),
 		ownershipService,
 		userService,
+		eventService,
 	);
-
-	const onFirstProductionWorkflowSuccess = jest.fn();
-	const onFirstWorkflowDataLoad = jest.fn();
-	workflowStatisticsService.on(
-		'telemetry.onFirstProductionWorkflowSuccess',
-		onFirstProductionWorkflowSuccess,
-	);
-	workflowStatisticsService.on('telemetry.onFirstWorkflowDataLoad', onFirstWorkflowDataLoad);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -97,11 +92,10 @@ describe('WorkflowStatisticsService', () => {
 
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
-				project_id: fakeProject.id,
-				user_id: fakeUser.id,
-				workflow_id: workflow.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-production-workflow-succeeded', {
+				projectId: fakeProject.id,
+				workflowId: workflow.id,
+				userId: fakeUser.id,
 			});
 		});
 
@@ -124,7 +118,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 			};
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('should not send metrics for updated entries', async () => {
@@ -147,7 +141,7 @@ describe('WorkflowStatisticsService', () => {
 			};
 			mockDBCall(2);
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -164,13 +158,28 @@ describe('WorkflowStatisticsService', () => {
 				parameters: {},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: fakeUser.id,
-				project_id: fakeProject.id,
-				workflow_id: workflowId,
-				node_type: node.type,
-				node_id: node.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: fakeUser.id,
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
+			});
+		});
+
+		test('should emit event with no `userId` if workflow is owned by team project', async () => {
+			const workflowId = '123';
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+			const node = mock<INode>({ id: '123', type: 'n8n-nodes-base.noOp', credentials: {} });
+
+			await workflowStatisticsService.nodeFetchedData(workflowId, node);
+
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: '',
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
 			});
 		});
 
@@ -192,15 +201,14 @@ describe('WorkflowStatisticsService', () => {
 				},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: fakeUser.id,
-				project_id: fakeProject.id,
-				workflow_id: workflowId,
-				node_type: node.type,
-				node_id: node.id,
-				credential_type: 'testCredentials',
-				credential_id: node.credentials.testCredentials.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: fakeUser.id,
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
+				credentialType: 'testCredentials',
+				credentialId: node.credentials.testCredentials.id,
 			});
 		});
 
@@ -217,7 +225,7 @@ describe('WorkflowStatisticsService', () => {
 				parameters: {},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

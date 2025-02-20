@@ -1,22 +1,18 @@
-import Container, { Service } from 'typedi';
-import { Push } from '@/push';
-import { jsonStringify, sleep } from 'n8n-workflow';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO: Dependency cycle
+import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
+import { InstanceSettings, Logger } from 'n8n-core';
+import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
-import type { EventMessageTypes } from '../eventbus/EventMessageClasses';
-import type { IExecutionResponse } from '@/Interfaces';
+
+import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { Logger } from '@/Logger';
-import config from '@/config';
-import { OnShutdown } from '@/decorators/OnShutdown';
-import type { QueueRecoverySettings } from './execution.types';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import type { IExecutionResponse } from '@/interfaces';
+import { Push } from '@/push';
+
+import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
 /**
  * Service for recovering key properties in executions.
@@ -28,33 +24,7 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly orchestrationService: OrchestrationService,
-		private readonly eventService: EventService,
 	) {}
-
-	/**
-	 * @important Requires `OrchestrationService` to be initialized on queue mode.
-	 */
-	init() {
-		if (config.getEnv('executions.mode') === 'regular') return;
-
-		const { isLeader } = this.instanceSettings;
-		if (isLeader) this.scheduleQueueRecovery();
-
-		const { isMultiMainSetupEnabled } = this.orchestrationService;
-		if (isMultiMainSetupEnabled) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.scheduleQueueRecovery())
-				.on('leader-stepdown', () => this.stopQueueRecovery());
-		}
-	}
-
-	private readonly queueRecoverySettings: QueueRecoverySettings = {
-		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
-		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
-	};
-
-	private isShuttingDown = false;
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
@@ -76,92 +46,15 @@ export class ExecutionRecoveryService {
 
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast('executionRecovered', { executionId });
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
 		return amendedExecution;
 	}
 
-	/**
-	 * Schedule a cycle to mark dangling executions as crashed in queue mode.
-	 */
-	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
-		if (!this.shouldScheduleQueueRecovery()) return;
-
-		this.queueRecoverySettings.timeout = setTimeout(async () => {
-			try {
-				const nextWaitMs = await this.recoverFromQueue();
-				this.scheduleQueueRecovery(nextWaitMs);
-			} catch (error) {
-				const msg = this.toErrorMsg(error);
-
-				this.logger.error('[Recovery] Failed to recover dangling executions from queue', { msg });
-				this.logger.error('[Recovery] Retrying...');
-
-				this.scheduleQueueRecovery();
-			}
-		}, waitMs);
-
-		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
-
-		this.logger.debug(`[Recovery] Scheduled queue recovery check for next ${wait}`);
-	}
-
-	stopQueueRecovery() {
-		clearTimeout(this.queueRecoverySettings.timeout);
-	}
-
-	@OnShutdown()
-	shutdown() {
-		this.isShuttingDown = true;
-		this.stopQueueRecovery();
-	}
-
 	// ----------------------------------
 	//             private
 	// ----------------------------------
-
-	/**
-	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
-	 * but absent from the queue. Return time until next recovery cycle.
-	 */
-	private async recoverFromQueue() {
-		const { waitMs, batchSize } = this.queueRecoverySettings;
-
-		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
-
-		if (storedIds.length === 0) {
-			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
-		const { Queue } = await import('@/Queue');
-
-		const queuedIds = await Container.get(Queue).getInProgressExecutionIds();
-
-		if (queuedIds.size === 0) {
-			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
-		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
-
-		if (danglingIds.length === 0) {
-			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
-		await this.executionRepository.markAsCrashed(danglingIds);
-
-		this.logger.info('[Recovery] Completed queue recovery check, recovered dangling executions', {
-			danglingIds,
-		});
-
-		// if this cycle used up the whole batch size, it is possible for there to be
-		// dangling executions outside this check, so speed up next cycle
-
-		return storedIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
-	}
 
 	/**
 	 * Amend `status`, `stoppedAt`, and (if possible) `data` of an execution using event logs.
@@ -178,7 +71,7 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || execution.status === 'success') return null;
+		if (!execution || (execution.status === 'success' && execution.data)) return null;
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 
@@ -281,20 +174,14 @@ export class ExecutionRecoveryService {
 	private async runHooks(execution: IExecutionResponse) {
 		execution.data ??= { resultData: { runData: {} } };
 
-		this.eventService.emit('workflow-post-execute', {
-			workflow: execution.workflowData,
-			executionId: execution.id,
-			runData: execution,
-		});
-
-		const externalHooks = getWorkflowHooksMain(
+		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{
 				userId: '',
 				workflowData: execution.workflowData,
 				executionMode: execution.mode,
 				executionData: execution.data,
 				runData: execution.data.resultData.runData,
-				retryOf: execution.retryOf,
+				retryOf: execution.retryOf ?? undefined,
 			},
 			execution.id,
 		);
@@ -309,20 +196,6 @@ export class ExecutionRecoveryService {
 			status: execution.status,
 		};
 
-		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
-	}
-
-	private toErrorMsg(error: unknown) {
-		return error instanceof Error
-			? error.message
-			: jsonStringify(error, { replaceCircularRefs: true });
-	}
-
-	private shouldScheduleQueueRecovery() {
-		return (
-			config.getEnv('executions.mode') === 'queue' &&
-			this.instanceSettings.isLeader &&
-			!this.isShuttingDown
-		);
+		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
 	}
 }

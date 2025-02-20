@@ -1,3 +1,5 @@
+import get from 'lodash/get';
+import unset from 'lodash/unset';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -7,11 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-import { disableDotNotationBoolean } from '../common.descriptions';
-import { prepareFieldsArray } from '../../helpers/utils';
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { prepareFieldsArray } from '../../helpers/utils';
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -172,7 +173,7 @@ export async function execute(
 					if (splited[elementIndex].binary === undefined) {
 						splited[elementIndex].binary = {};
 					}
-					splited[elementIndex].binary![Object.keys(element)[0]] = Object.values(
+					splited[elementIndex].binary[Object.keys(element)[0]] = Object.values(
 						element,
 					)[0] as IBinaryData;
 

@@ -1,23 +1,23 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
-import { CredentialsHelper } from '@/CredentialsHelper';
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
-
-import { createOwner } from '@test-integration/db/users';
+import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { CredentialsHelper } from '@/credentials-helper';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/user';
 import { saveCredential } from '@test-integration/db/credentials';
-import * as testDb from '@test-integration/testDb';
-import { setupTestServer } from '@test-integration/utils';
+import { createMember, createOwner } from '@test-integration/db/users';
+import * as testDb from '@test-integration/test-db';
 import type { SuperAgentTest } from '@test-integration/types';
+import { setupTestServer } from '@test-integration/utils';
 
 describe('OAuth2 API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['oauth2'] });
 
 	let owner: User;
+	let anotherUser: User;
 	let ownerAgent: SuperAgentTest;
 	let credential: CredentialsEntity;
 	const credentialData = {
@@ -33,6 +33,7 @@ describe('OAuth2 API', () => {
 
 	beforeAll(async () => {
 		owner = await createOwner();
+		anotherUser = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
@@ -75,6 +76,28 @@ describe('OAuth2 API', () => {
 		});
 	});
 
+	it('should fail on auth when callback is called as another user', async () => {
+		const controller = Container.get(OAuth2CredentialController);
+		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
+		const renderSpy = (Response.render = jest.fn(function () {
+			this.end();
+		}));
+
+		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+
+		const [_, state] = csrfSpy.mock.results[0].value;
+
+		await testServer
+			.authAgentFor(anotherUser)
+			.get('/oauth2-credential/callback')
+			.query({ code: 'auth_code', state })
+			.expect(200);
+
+		expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+			error: { message: 'Unauthorized' },
+		});
+	});
+
 	it('should handle a valid callback without auth', async () => {
 		const controller = Container.get(OAuth2CredentialController);
 		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
@@ -88,7 +111,7 @@ describe('OAuth2 API', () => {
 
 		nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'updated_token' });
 
-		await testServer.authlessAgent
+		await ownerAgent
 			.get('/oauth2-credential/callback')
 			.query({ code: 'auth_code', state })
 			.expect(200);

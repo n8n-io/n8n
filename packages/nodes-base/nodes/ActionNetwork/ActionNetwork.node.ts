@@ -5,18 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import {
-	actionNetworkApiRequest,
-	adjustEventPayload,
-	adjustPersonPayload,
-	adjustPetitionPayload,
-	handleListing,
-	makeOsdiLink,
-	resourceLoaders,
-	simplifyResponse,
-} from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	attendanceFields,
@@ -34,7 +23,16 @@ import {
 	tagFields,
 	tagOperations,
 } from './descriptions';
-
+import {
+	actionNetworkApiRequest,
+	adjustEventPayload,
+	adjustPersonPayload,
+	adjustPetitionPayload,
+	handleListing,
+	makeOsdiLink,
+	resourceLoaders,
+	simplifyResponse,
+} from './GenericFunctions';
 import type {
 	AllFieldsUi,
 	EmailAddressUi,
@@ -56,8 +54,9 @@ export class ActionNetwork implements INodeType {
 		defaults: {
 			name: 'Action Network',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'actionNetworkApi',
@@ -487,7 +486,7 @@ export class ActionNetwork implements INodeType {
 					? returnData.push(...(response as IDataObject[]))
 					: returnData.push(response as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -1,3 +1,5 @@
+import { noCase } from 'change-case';
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,15 +7,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import { noCase } from 'change-case';
-import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
-
 import { folderFields, folderOperations } from './FolderDescription';
+import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
 export class Box implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +26,8 @@ export class Box implements INodeType {
 		defaults: {
 			name: 'Box',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'boxOAuth2Api',
@@ -510,7 +508,7 @@ export class Box implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

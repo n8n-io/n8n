@@ -1,11 +1,11 @@
 import type { ICredentialType } from 'n8n-workflow';
-import { NodeCreator } from '../pages/features/node-creator';
-import CustomNodeFixture from '../fixtures/Custom_node.json';
-import { CredentialsModal, WorkflowPage } from '../pages';
-import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+
 import CustomCredential from '../fixtures/Custom_credential.json';
-import { getVisibleSelect } from '../utils';
+import CustomNodeFixture from '../fixtures/Custom_node.json';
+import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
+import { CredentialsModal, WorkflowPage } from '../pages';
+import { NodeCreator } from '../pages/features/node-creator';
 import {
 	confirmCommunityNodeUninstall,
 	confirmCommunityNodeUpdate,
@@ -13,6 +13,7 @@ import {
 	installFirstCommunityNode,
 	visitCommunityNodesSettings,
 } from '../pages/settings-community-nodes';
+import { getVisibleSelect } from '../utils';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
@@ -88,7 +89,7 @@ describe('Community and custom nodes in canvas', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('E2E Node with native n8n credential', true, true);
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
 	});
@@ -97,7 +98,7 @@ describe('Community and custom nodes in canvas', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('E2E Node with custom credential', true, true);
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
 	});

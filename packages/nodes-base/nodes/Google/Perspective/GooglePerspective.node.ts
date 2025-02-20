@@ -1,3 +1,4 @@
+import ISO6391 from 'iso-639-1';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,17 +8,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import ISO6391 from 'iso-639-1';
+import { googleApiRequest } from './GenericFunctions';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
 	Language,
 	RequestedAttributes,
 } from './types';
-
-import { googleApiRequest } from './GenericFunctions';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +30,9 @@ export class GooglePerspective implements INodeType {
 		defaults: {
 			name: 'Google Perspective',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',
@@ -165,7 +165,7 @@ export class GooglePerspective implements INodeType {
 						},
 						default: '',
 						description:
-							'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -262,7 +262,7 @@ export class GooglePerspective implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

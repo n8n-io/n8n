@@ -8,13 +8,13 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 import { computed, reactive, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import Draggable from 'vuedraggable';
 
 interface Props {
 	parameter: INodeProperties;
@@ -34,7 +34,11 @@ const i18n = useI18n();
 
 const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: {
-		assignments: props.value.assignments ?? [],
+		assignments:
+			props.value.assignments?.map((assignment) => {
+				if (!assignment.id) assignment.id = crypto.randomUUID();
+				return assignment;
+			}) ?? [],
 	},
 });
 
@@ -74,12 +78,17 @@ watch(state.paramValue, (value) => {
 });
 
 function addAssignment(): void {
-	state.paramValue.assignments.push({ id: uuid(), name: '', value: '', type: 'string' });
+	state.paramValue.assignments.push({
+		id: crypto.randomUUID(),
+		name: '',
+		value: '',
+		type: 'string',
+	});
 }
 
 function dropAssignment(expression: string): void {
 	state.paramValue.assignments.push({
-		id: uuid(),
+		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
 		type: typeFromExpression(expression),
@@ -98,10 +107,10 @@ function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
 }
 
-function optionSelected(action: 'clearAll' | 'addAll') {
+function optionSelected(action: string) {
 	if (action === 'clearAll') {
 		state.paramValue.assignments = [];
-	} else {
+	} else if (action === 'addAll' && inputData.value) {
 		const newAssignments = inputDataToAssignments(inputData.value);
 		state.paramValue.assignments = state.paramValue.assignments.concat(newAssignments);
 	}
@@ -133,19 +142,27 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.assignments">
-				<div v-for="(assignment, index) of state.paramValue.assignments" :key="assignment.id">
-					<Assignment
-						:model-value="assignment"
-						:index="index"
-						:path="`${path}.${index}`"
-						:issues="getIssues(index)"
-						:class="$style.assignment"
-						:is-read-only="isReadOnly"
-						@update:model-value="(value) => onAssignmentUpdate(index, value)"
-						@remove="() => onAssignmentRemove(index)"
-					>
-					</Assignment>
-				</div>
+				<Draggable
+					v-model="state.paramValue.assignments"
+					item-key="id"
+					handle=".drag-handle"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+				>
+					<template #item="{ index, element: assignment }">
+						<Assignment
+							:model-value="assignment"
+							:index="index"
+							:path="`${path}.${index}`"
+							:issues="getIssues(index)"
+							:class="$style.assignment"
+							:is-read-only="isReadOnly"
+							@update:model-value="(value) => onAssignmentUpdate(index, value)"
+							@remove="() => onAssignmentRemove(index)"
+						>
+						</Assignment>
+					</template>
+				</Draggable>
 			</div>
 			<div
 				v-if="!isReadOnly"
@@ -264,5 +281,19 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 
 .icon {
 	font-size: var(--font-size-2xl);
+}
+.ghost,
+.dragging {
+	border-radius: var(--border-radius-base);
+	padding-right: var(--spacing-xs);
+	padding-bottom: var(--spacing-xs);
+}
+.ghost {
+	background-color: var(--color-background-base);
+	opacity: 0.5;
+}
+.dragging {
+	background-color: var(--color-background-xlight);
+	opacity: 0.7;
 }
 </style>

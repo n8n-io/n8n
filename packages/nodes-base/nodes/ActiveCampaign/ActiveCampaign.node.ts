@@ -8,37 +8,25 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import type { IProduct } from './GenericFunctions';
-import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
-
+import { accountContactFields, accountContactOperations } from './AccountContactDescription';
+import { accountFields, accountOperations } from './AccountDescription';
+import { connectionFields, connectionOperations } from './ConnectionDescription';
 import { contactFields, contactOperations } from './ContactDescription';
-
+import { contactListFields, contactListOperations } from './ContactListDescription';
+import { contactTagFields, contactTagOperations } from './ContactTagDescription';
 import { dealFields, dealOperations } from './DealDescription';
-
-import { ecomOrderFields, ecomOrderOperations } from './EcomOrderDescription';
-
 import { ecomCustomerFields, ecomCustomerOperations } from './EcomCustomerDescription';
-
+import { ecomOrderFields, ecomOrderOperations } from './EcomOrderDescription';
 import {
 	ecomOrderProductsFields,
 	ecomOrderProductsOperations,
 } from './EcomOrderProductsDescription';
-
-import { connectionFields, connectionOperations } from './ConnectionDescription';
-
-import { accountFields, accountOperations } from './AccountDescription';
-
-import { tagFields, tagOperations } from './TagDescription';
-
-import { accountContactFields, accountContactOperations } from './AccountContactDescription';
-
-import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import { contactTagFields, contactTagOperations } from './ContactTagDescription';
-
+import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
+import type { IProduct } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
+import { tagFields, tagOperations } from './TagDescription';
 
 interface CustomProperty {
 	name: string;
@@ -89,8 +77,9 @@ export class ActiveCampaign implements INodeType {
 		defaults: {
 			name: 'ActiveCampaign',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'activeCampaignApi',
@@ -1189,7 +1178,7 @@ export class ActiveCampaign implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

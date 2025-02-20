@@ -1,17 +1,15 @@
 import { nanoid } from 'nanoid';
 
-import { InternalHooks } from '@/InternalHooks';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
-import { createMember, createOwner } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
+import { createMember, createOwner } from '../shared/db/users';
+import * as testDb from '../shared/test-db';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
 
@@ -29,7 +27,7 @@ test('import:credentials should import a credential', async () => {
 	//
 	// ACT
 	//
-	await command.run(['--input=./test/integration/commands/importCredentials/credentials.json']);
+	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
 
 	//
 	// ASSERT
@@ -63,7 +61,7 @@ test('import:credentials should import a credential from separated files', async
 	// import credential the first time, assigning it to the owner
 	await command.run([
 		'--separate',
-		'--input=./test/integration/commands/importCredentials/separate',
+		'--input=./test/integration/commands/import-credentials/separate',
 	]);
 
 	//
@@ -101,7 +99,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 
 	// import credential the first time, assigning it to the owner
 	await command.run([
-		'--input=./test/integration/commands/importCredentials/credentials.json',
+		'--input=./test/integration/commands/import-credentials/credentials.json',
 		`--userId=${owner.id}`,
 	]);
 
@@ -129,7 +127,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	// credential to another user.
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
@@ -172,7 +170,7 @@ test("only update credential, don't create or update owner if neither `--userId`
 
 	// import credential the first time, assigning it to a member
 	await command.run([
-		'--input=./test/integration/commands/importCredentials/credentials.json',
+		'--input=./test/integration/commands/import-credentials/credentials.json',
 		`--userId=${member.id}`,
 	]);
 
@@ -197,7 +195,7 @@ test("only update credential, don't create or update owner if neither `--userId`
 	//
 	// Import again only updating the name and omitting `--userId`
 	await command.run([
-		'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 	]);
 
 	//
@@ -237,7 +235,7 @@ test('`import:credential --projectId ...` should fail if the credential already 
 
 	// import credential the first time, assigning it to the owner
 	await command.run([
-		'--input=./test/integration/commands/importCredentials/credentials.json',
+		'--input=./test/integration/commands/import-credentials/credentials.json',
 		`--userId=${owner.id}`,
 	]);
 
@@ -265,7 +263,7 @@ test('`import:credential --projectId ...` should fail if the credential already 
 	// credential to another user.
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 			`--projectId=${memberProject.id}`,
 		]),
 	).rejects.toThrowError(
@@ -301,7 +299,7 @@ test('`import:credential --projectId ...` should fail if the credential already 
 test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
 	await expect(
 		command.run([
-			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			'--input=./test/integration/commands/import-credentials/credentials-updated.json',
 			`--projectId=${nanoid()}`,
 			`--userId=${nanoid()}`,
 		]),

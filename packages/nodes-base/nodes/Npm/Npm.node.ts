@@ -1,6 +1,8 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { packageFields, packageOperations } from './PackageDescription';
+import { NodeConnectionType } from 'n8n-workflow';
+
 import { distTagFields, distTagOperations } from './DistTagDescription';
+import { packageFields, packageOperations } from './PackageDescription';
 
 export class Npm implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,8 +16,9 @@ export class Npm implements INodeType {
 		defaults: {
 			name: 'npm',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'npmApi',

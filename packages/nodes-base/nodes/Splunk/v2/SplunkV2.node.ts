@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	INodeType,
@@ -17,6 +16,7 @@ export class SplunkV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

@@ -1,5 +1,6 @@
-import N8nCard from './Card.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nCard from './Card.vue';
 import N8nButton from '../N8nButton/Button.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';

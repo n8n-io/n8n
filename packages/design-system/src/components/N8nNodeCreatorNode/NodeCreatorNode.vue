@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { ElTag } from 'element-plus';
+
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nTooltip from '../N8nTooltip';
-import { ElTag } from 'element-plus';
 
 export interface Props {
 	active?: boolean;

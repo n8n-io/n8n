@@ -42,7 +42,7 @@ export const sequenceFields: INodeProperties[] = [
 		name: 'id',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getSequences',
 		},
@@ -166,7 +166,7 @@ export const sequenceFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

@@ -1,10 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { createHash } from 'crypto';
-import type { Readable } from 'stream';
 import { paramCase, snakeCase } from 'change-case';
-
-import { Builder } from 'xml2js';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,14 +8,13 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
+import { Builder } from 'xml2js';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-
-import { folderFields, folderOperations } from './FolderDescription';
-
 import { fileFields, fileOperations } from './FileDescription';
-
+import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
 // Minimum size 5MB for multipart upload in S3
@@ -42,8 +36,9 @@ export class AwsS3V2 implements INodeType {
 			defaults: {
 				name: 'AWS S3',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			usableAsTool: true,
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'aws',
@@ -217,7 +212,7 @@ export class AwsS3V2 implements INodeType {
 						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
 						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.prefix) {
 							qs.prefix = additionalFields.prefix as string;
@@ -1057,7 +1052,7 @@ export class AwsS3V2 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

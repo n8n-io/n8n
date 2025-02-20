@@ -1,17 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
-
-import { userFields, userOperations } from '../shared/descriptions/UserDescription';
-
-import { pageFields, pageOperations } from '../shared/descriptions/PageDescription';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { blockFields, blockOperations } from '../shared/descriptions/BlockDescription';
-
+import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
 import {
 	databasePageFields,
 	databasePageOperations,
 } from '../shared/descriptions/DatabasePageDescription';
+import { pageFields, pageOperations } from '../shared/descriptions/PageDescription';
+import { userFields, userOperations } from '../shared/descriptions/UserDescription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Notion',
@@ -24,8 +21,9 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Notion',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	credentials: [
 		{
 			name: 'notionApi',

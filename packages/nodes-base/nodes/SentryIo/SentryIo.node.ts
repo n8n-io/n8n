@@ -1,28 +1,22 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
-
-import { issueFields, issueOperations } from './IssueDescription';
-
-import { organizationFields, organizationOperations } from './OrganizationDescription';
-
-import { projectFields, projectOperations } from './ProjectDescription';
-
-import { releaseFields, releaseOperations } from './ReleaseDescription';
-
-import { teamFields, teamOperations } from './TeamDescription';
-
 import { sentryApiRequestAllItems, sentryIoApiRequest } from './GenericFunctions';
-
 import type { ICommit, IPatchSet, IRef } from './Interface';
+import { issueFields, issueOperations } from './IssueDescription';
+import { organizationFields, organizationOperations } from './OrganizationDescription';
+import { projectFields, projectOperations } from './ProjectDescription';
+import { releaseFields, releaseOperations } from './ReleaseDescription';
+import { teamFields, teamOperations } from './TeamDescription';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,8 +30,9 @@ export class SentryIo implements INodeType {
 		defaults: {
 			name: 'Sentry.io',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'sentryIoOAuth2Api',
@@ -732,7 +727,7 @@ export class SentryIo implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

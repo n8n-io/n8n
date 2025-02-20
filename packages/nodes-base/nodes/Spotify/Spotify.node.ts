@@ -1,15 +1,16 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	IHttpRequestMethods,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
-
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+
+import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +24,9 @@ export class Spotify implements INodeType {
 		defaults: {
 			name: 'Spotify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'spotifyOAuth2Api',
@@ -1307,13 +1309,17 @@ export class Spotify implements INodeType {
 					);
 				}
 
+				// Remove null values from the response
+				if (operation === 'getUserPlaylists') {
+					responseData = responseData.filter((item: IDataObject) => item !== null);
+				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

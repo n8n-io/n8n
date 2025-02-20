@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,12 +7,11 @@ import type {
 	INodeTypeBaseDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
-import { generatePairedItemData } from '../../../utils/utilities';
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
+import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',
@@ -25,8 +23,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Airtable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'airtableApi',
@@ -653,7 +651,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -696,7 +694,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -738,26 +736,18 @@ export class AirtableV1 implements INodeType {
 					const downloadFieldNames = (
 						this.getNodeParameter('downloadFieldNames', 0) as string
 					).split(',');
-					const pairedItem = generatePairedItemData(items.length);
+
 					const data = await downloadRecordAttachments.call(
 						this,
 						responseData.records as IRecord[],
 						downloadFieldNames,
-						pairedItem,
 					);
 					return [data];
 				}
 
-				// We can return from here
-				const itemData = generatePairedItemData(items.length);
-
-				return [
-					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
-						itemData,
-					}),
-				];
+				return [this.helpers.returnJsonArray(returnData)];
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
@@ -792,7 +782,7 @@ export class AirtableV1 implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -880,7 +870,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}

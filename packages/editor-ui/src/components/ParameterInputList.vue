@@ -1,166 +1,3 @@
-<template>
-	<div class="parameter-input-list-wrapper">
-		<div
-			v-for="(parameter, index) in filteredParameters"
-			:key="parameter.name"
-			:class="{ indent }"
-			data-test-id="parameter-item"
-		>
-			<slot v-if="indexToShowSlotAt === index" />
-
-			<div
-				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
-				class="parameter-item"
-			>
-				<MultipleParameter
-					:parameter="parameter"
-					:values="getParameterValue(parameter.name)"
-					:node-values="nodeValues"
-					:path="getPath(parameter.name)"
-					:is-read-only="isReadOnly"
-					@value-changed="valueChanged"
-				/>
-			</div>
-
-			<ImportCurlParameter
-				v-else-if="parameter.type === 'curlImport'"
-				:is-read-only="isReadOnly"
-				@value-changed="valueChanged"
-			/>
-
-			<n8n-notice
-				v-else-if="parameter.type === 'notice'"
-				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
-				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				@action="onNoticeAction"
-			/>
-
-			<n8n-button
-				v-else-if="parameter.type === 'button'"
-				class="parameter-item"
-				block
-				@click="onButtonAction(parameter)"
-			>
-				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
-			</n8n-button>
-
-			<div
-				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
-				class="multi-parameter"
-			>
-				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="mini"
-					icon="trash"
-					class="delete-option"
-					:title="$locale.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></n8n-icon-button>
-				<n8n-input-label
-					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-					:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
-					size="small"
-					:underline="true"
-					color="text-dark"
-				/>
-				<Suspense v-if="!asyncLoadingError">
-					<template #default>
-						<LazyCollectionParameter
-							v-if="parameter.type === 'collection'"
-							:parameter="parameter"
-							:values="getParameterValue(parameter.name)"
-							:node-values="nodeValues"
-							:path="getPath(parameter.name)"
-							:is-read-only="isReadOnly"
-							@value-changed="valueChanged"
-						/>
-						<LazyFixedCollectionParameter
-							v-else-if="parameter.type === 'fixedCollection'"
-							:parameter="parameter"
-							:values="getParameterValue(parameter.name)"
-							:node-values="nodeValues"
-							:path="getPath(parameter.name)"
-							:is-read-only="isReadOnly"
-							@value-changed="valueChanged"
-						/>
-					</template>
-					<template #fallback>
-						<n8n-text size="small" class="async-notice">
-							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
-							{{ $locale.baseText('parameterInputList.loadingFields') }}
-						</n8n-text>
-					</template>
-				</Suspense>
-				<n8n-text v-else size="small" color="danger" class="async-notice">
-					<n8n-icon icon="exclamation-triangle" size="xsmall" />
-					{{ $locale.baseText('parameterInputList.loadingError') }}
-				</n8n-text>
-			</div>
-			<ResourceMapper
-				v-else-if="parameter.type === 'resourceMapper'"
-				:parameter="parameter"
-				:node="node"
-				:path="getPath(parameter.name)"
-				:dependent-parameters-values="getDependentParametersValues(parameter)"
-				input-size="small"
-				label-size="small"
-				@value-changed="valueChanged"
-			/>
-			<FilterConditions
-				v-else-if="parameter.type === 'filter'"
-				:parameter="parameter"
-				:value="getParameterValue(parameter.name)"
-				:path="getPath(parameter.name)"
-				:node="node"
-				:read-only="isReadOnly"
-				@value-changed="valueChanged"
-			/>
-			<AssignmentCollection
-				v-else-if="parameter.type === 'assignmentCollection'"
-				:parameter="parameter"
-				:value="getParameterValue(parameter.name)"
-				:path="getPath(parameter.name)"
-				:node="node"
-				:is-read-only="isReadOnly"
-				@value-changed="valueChanged"
-			/>
-			<div
-				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
-				class="parameter-item"
-			>
-				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="mini"
-					icon="trash"
-					class="delete-option"
-					:title="$locale.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></n8n-icon-button>
-
-				<ParameterInputFull
-					:parameter="parameter"
-					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="getParameterValue(parameter.name)"
-					:display-options="shouldShowOptions(parameter)"
-					:path="getPath(parameter.name)"
-					:is-read-only="isReadOnly"
-					:hide-label="false"
-					:node-values="nodeValues"
-					@update="valueChanged"
-					@blur="onParameterBlur(parameter.name)"
-				/>
-			</div>
-		</div>
-		<div v-if="filteredParameters.length === 0" :class="{ indent }">
-			<slot />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type {
 	INodeParameters,
@@ -168,20 +5,27 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
+import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
+import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import {
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	KEEP_AUTH_IN_NDV_FOR_NODES,
+	WAIT_NODE_TYPE,
+} from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -189,7 +33,10 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
+import { captureException } from '@sentry/vue';
+import { computedWithControl } from '@vueuse/core';
 import { get, set } from 'lodash-es';
+import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from 'n8n-design-system';
 import { useRouter } from 'vue-router';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
@@ -198,6 +45,9 @@ const LazyFixedCollectionParameter = defineAsyncComponent(
 const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./CollectionParameter.vue'),
 );
+
+// Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
+const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
 	nodeValues: INodeParameters;
@@ -224,6 +74,7 @@ const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
+const i18n = useI18n();
 
 onErrorCaptured((e, component) => {
 	if (
@@ -235,7 +86,7 @@ onErrorCaptured((e, component) => {
 	}
 	asyncLoadingError.value = true;
 	console.error(e);
-	window?.Sentry?.captureException(e, {
+	captureException(e, {
 		tags: {
 			asyncLoadingError: true,
 		},
@@ -251,9 +102,29 @@ const nodeType = computed(() => {
 	return null;
 });
 
-const filteredParameters = computed(() => {
-	return props.parameters.filter((parameter: INodeProperties) => displayNodeParameter(parameter));
-});
+const filteredParameters = computedWithControl(
+	[() => props.parameters, () => props.nodeValues] as WatchSource[],
+	() => {
+		const parameters = props.parameters.filter((parameter: INodeProperties) =>
+			displayNodeParameter(parameter),
+		);
+
+		const activeNode = ndvStore.activeNode;
+
+		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, activeNode.name);
+		}
+		if (
+			activeNode &&
+			activeNode.type === WAIT_NODE_TYPE &&
+			activeNode.parameters.resume === 'form'
+		) {
+			return updateWaitParameters(parameters, activeNode.name);
+		}
+
+		return parameters;
+	},
+);
 
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
@@ -311,6 +182,90 @@ watch(filteredParameterNames, (newValue, oldValue) => {
 		}
 	}
 });
+
+function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const connectedNodes = workflow.getChildNodes(triggerName);
+
+	const hasFormPage = connectedNodes.some((nodeName) => {
+		const node = workflow.getNode(nodeName);
+		return node && node.type === FORM_NODE_TYPE;
+	});
+
+	if (hasFormPage) {
+		const triggerParameters: INodeProperties[] = [];
+
+		for (const parameter of parameters) {
+			if (parameter.name === 'responseMode') {
+				triggerParameters.push({
+					displayName: 'On submission, the user will be taken to the next form node',
+					name: 'formResponseModeNotice',
+					type: 'notice',
+					default: '',
+				});
+
+				continue;
+			}
+
+			if (parameter.name === ADD_FORM_NOTICE) continue;
+
+			if (parameter.name === 'options') {
+				const options = (parameter.options as INodeProperties[]).filter(
+					(option) => option.name !== 'respondWithOptions',
+				);
+				triggerParameters.push({
+					...parameter,
+					options,
+				});
+				continue;
+			}
+
+			triggerParameters.push(parameter);
+		}
+		return triggerParameters;
+	}
+
+	return parameters;
+}
+
+function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const parentNodes = workflow.getParentNodes(nodeName);
+
+	const formTriggerName = parentNodes.find(
+		(node) => workflow.nodes[node].type === FORM_TRIGGER_NODE_TYPE,
+	);
+	if (!formTriggerName) return parameters;
+
+	const connectedNodes = workflow.getChildNodes(formTriggerName);
+
+	const hasFormPage = connectedNodes.some((nodeName) => {
+		const node = workflow.getNode(nodeName);
+		return node && node.type === FORM_NODE_TYPE;
+	});
+
+	if (hasFormPage) {
+		const waitNodeParameters: INodeProperties[] = [];
+
+		for (const parameter of parameters) {
+			if (parameter.name === 'options') {
+				const options = (parameter.options as INodeProperties[]).filter(
+					(option) => option.name !== 'respondWithOptions' && option.name !== 'webhookSuffix',
+				);
+				waitNodeParameters.push({
+					...parameter,
+					options,
+				});
+				continue;
+			}
+
+			waitNodeParameters.push(parameter);
+		}
+		return waitNodeParameters;
+	}
+
+	return parameters;
+}
 
 function onParameterBlur(parameterName: string) {
 	emit('parameterBlur', parameterName);
@@ -380,7 +335,10 @@ function mustHideDuringCustomApiCall(
 	return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 }
 
-function displayNodeParameter(parameter: INodeProperties): boolean {
+function displayNodeParameter(
+	parameter: INodeProperties,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
+): boolean {
 	if (parameter.type === 'hidden') {
 		return false;
 	}
@@ -401,7 +359,7 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		return false;
 	}
 
-	if (parameter.displayOptions === undefined) {
+	if (parameter[displayKey] === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
@@ -460,13 +418,19 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		if (props.path) {
 			rawValues = deepCopy(props.nodeValues);
 			set(rawValues, props.path, nodeValues);
-			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value);
+			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value, displayKey);
 		} else {
-			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value);
+			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value, displayKey);
 		}
 	}
 
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, node.value);
+	return nodeHelpers.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		node.value,
+		displayKey,
+	);
 }
 
 function valueChanged(parameterData: IUpdateInformation): void {
@@ -479,18 +443,19 @@ function onNoticeAction(action: string) {
 	}
 }
 
+function getParameterIssues(parameter: INodeProperties): string[] {
+	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
+		return [];
+	}
+	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+
+	return issues.parameters?.[parameter.name] ?? [];
+}
+
 /**
  * Handles default node button parameter type actions
  * @param parameter
  */
-function onButtonAction(parameter: INodeProperties) {
-	const action: string | undefined = parameter.typeOptions?.action;
-
-	switch (action) {
-		default:
-			return;
-	}
-}
 
 function shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
 	// TODO: For now, hide all fields that are used in authentication fields displayOptions
@@ -535,14 +500,204 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 }
 </script>
 
+<template>
+	<div class="parameter-input-list-wrapper">
+		<div
+			v-for="(parameter, index) in filteredParameters"
+			:key="parameter.name"
+			:class="{ indent }"
+			data-test-id="parameter-item"
+		>
+			<slot v-if="indexToShowSlotAt === index" />
+
+			<div
+				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
+				class="parameter-item"
+			>
+				<MultipleParameter
+					:parameter="parameter"
+					:values="getParameterValue(parameter.name)"
+					:node-values="nodeValues"
+					:path="getPath(parameter.name)"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
+
+			<ImportCurlParameter
+				v-else-if="parameter.type === 'curlImport'"
+				:is-read-only="isReadOnly"
+				@value-changed="valueChanged"
+			/>
+
+			<N8nNotice
+				v-else-if="parameter.type === 'notice'"
+				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+				:content="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+				@action="onNoticeAction"
+			/>
+
+			<div v-else-if="parameter.type === 'button'" class="parameter-item">
+				<ButtonParameter
+					:parameter="parameter"
+					:path="path"
+					:value="getParameterValue(parameter.name)"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
+
+			<div
+				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
+				class="multi-parameter"
+			>
+				<N8nInputLabel
+					:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
+					size="small"
+					:underline="true"
+					:input-name="parameter.name"
+					color="text-dark"
+				>
+					<template
+						v-if="
+							showIssuesInLabelFor.includes(parameter.type) &&
+							getParameterIssues(parameter).length > 0
+						"
+						#issues
+					>
+						<N8nTooltip>
+							<template #content>
+								<span v-for="(issue, i) in getParameterIssues(parameter)" :key="i">{{
+									issue
+								}}</span>
+							</template>
+							<N8nIcon icon="exclamation-triangle" size="small" color="danger" />
+						</N8nTooltip>
+					</template>
+				</N8nInputLabel>
+				<Suspense v-if="!asyncLoadingError">
+					<template #default>
+						<LazyCollectionParameter
+							v-if="parameter.type === 'collection'"
+							:parameter="parameter"
+							:values="getParameterValue(parameter.name)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+						<LazyFixedCollectionParameter
+							v-else-if="parameter.type === 'fixedCollection'"
+							:parameter="parameter"
+							:values="getParameterValue(parameter.name)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+					</template>
+					<template #fallback>
+						<N8nText size="small" class="async-notice">
+							<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+							{{ i18n.baseText('parameterInputList.loadingFields') }}
+						</N8nText>
+					</template>
+				</Suspense>
+				<N8nText v-else size="small" color="danger" class="async-notice">
+					<N8nIcon icon="exclamation-triangle" size="xsmall" />
+					{{ i18n.baseText('parameterInputList.loadingError') }}
+				</N8nText>
+				<N8nIconButton
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="icon-button"
+					:title="i18n.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></N8nIconButton>
+			</div>
+			<ResourceMapper
+				v-else-if="parameter.type === 'resourceMapper'"
+				:parameter="parameter"
+				:node="node"
+				:path="getPath(parameter.name)"
+				:dependent-parameters-values="getDependentParametersValues(parameter)"
+				:is-read-only="isReadOnly"
+				input-size="small"
+				label-size="small"
+				@value-changed="valueChanged"
+			/>
+			<FilterConditions
+				v-else-if="parameter.type === 'filter'"
+				:parameter="parameter"
+				:value="getParameterValue(parameter.name)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:read-only="isReadOnly"
+				@value-changed="valueChanged"
+			/>
+			<AssignmentCollection
+				v-else-if="parameter.type === 'assignmentCollection'"
+				:parameter="parameter"
+				:value="getParameterValue(parameter.name)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:is-read-only="isReadOnly"
+				@value-changed="valueChanged"
+			/>
+			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
+				<N8nIconButton
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="icon-button"
+					:title="i18n.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></N8nIconButton>
+
+				<ParameterInputFull
+					:parameter="parameter"
+					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
+					:value="getParameterValue(parameter.name)"
+					:display-options="shouldShowOptions(parameter)"
+					:path="getPath(parameter.name)"
+					:is-read-only="
+						isReadOnly ||
+						(parameter.disabledOptions && displayNodeParameter(parameter, 'disabledOptions'))
+					"
+					:hide-label="false"
+					:node-values="nodeValues"
+					@update="valueChanged"
+					@blur="onParameterBlur(parameter.name)"
+				/>
+			</div>
+		</div>
+		<div v-if="filteredParameters.length === 0" :class="{ indent }">
+			<slot />
+		</div>
+	</div>
+</template>
+
 <style lang="scss">
 .parameter-input-list-wrapper {
-	.delete-option {
+	--disabled-fill: var(--color-background-base);
+	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: 0;
-		left: calc(-1 * var(--spacing-2xs));
+		left: calc(-0.5 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
+		Button {
+			color: var(--color-icon-base);
+		}
+	}
+	.icon-button > Button:hover {
+		color: var(--color-icon-hover);
 	}
 
 	.indent > div {
@@ -562,8 +717,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 		position: relative;
 		margin: var(--spacing-xs) 0;
 	}
-	.parameter-item:hover > .delete-option,
-	.multi-parameter:hover > .delete-option {
+	.parameter-item:hover > .icon-button,
+	.multi-parameter:hover > .icon-button {
 		opacity: 1;
 	}
 

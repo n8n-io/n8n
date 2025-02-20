@@ -1,6 +1,6 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from '@n8n/api-types';
 
 export async function dismissBannerPermanently(
 	context: IRestApiContext,

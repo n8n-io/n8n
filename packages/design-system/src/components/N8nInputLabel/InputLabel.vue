@@ -1,57 +1,11 @@
-<template>
-	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
-		<label
-			v-if="label || $slots.options"
-			:for="inputName"
-			:class="{
-				'n8n-input-label': true,
-				[$style.inputLabel]: true,
-				[$style.heading]: !!label,
-				[$style.underline]: underline,
-				[$style[size]]: true,
-				[$style.overflow]: !!$slots.options,
-			}"
-		>
-			<div v-if="label" :class="$style.title">
-				<N8nText :bold="bold" :size="size" :compact="compact" :color="color">
-					{{ label }}
-					<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
-				</N8nText>
-			</div>
-			<span
-				v-if="tooltipText && label"
-				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
-			>
-				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
-					<N8nIcon icon="question-circle" size="small" />
-					<template #content>
-						<div v-html="addTargetBlank(tooltipText)" />
-					</template>
-				</N8nTooltip>
-			</span>
-			<div
-				v-if="$slots.options && label"
-				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
-			/>
-			<div
-				v-if="$slots.options"
-				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
-				:data-test-id="`${inputName}-parameter-input-options-container`"
-			>
-				<slot name="options" />
-			</div>
-		</label>
-		<slot />
-	</div>
-</template>
-
 <script lang="ts" setup>
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
 import type { TextColor } from 'n8n-design-system/types/text';
 
-const SIZE = ['small', 'medium'] as const;
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
+
+const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
@@ -78,24 +32,132 @@ const addTargetBlank = (html: string) =>
 	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
 </script>
 
+<template>
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.withOptions]: $slots.options,
+		}"
+		v-bind="$attrs"
+		data-test-id="input-label"
+	>
+		<div :class="$style.labelRow">
+			<label
+				v-if="label || $slots.options"
+				:for="inputName"
+				:class="{
+					'n8n-input-label': true,
+					[$style.inputLabel]: true,
+					[$style.heading]: !!label,
+					[$style.underline]: underline,
+					[$style[size]]: true,
+					[$style.overflow]: !!$slots.options,
+				}"
+			>
+				<div :class="$style['main-content']">
+					<div v-if="label" :class="$style.title">
+						<N8nText
+							:bold="bold"
+							:size="size"
+							:compact="compact"
+							:color="color"
+							:class="{
+								[$style.textEllipses]: showOptions,
+							}"
+						>
+							{{ label }}
+							<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
+						</N8nText>
+					</div>
+					<span
+						v-if="tooltipText && label"
+						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
+					>
+						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
+							<N8nIcon icon="question-circle" size="small" />
+							<template #content>
+								<div v-n8n-html="addTargetBlank(tooltipText)" />
+							</template>
+						</N8nTooltip>
+					</span>
+				</div>
+				<div :class="$style['trailing-content']">
+					<div
+						v-if="$slots.options && label"
+						:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
+					/>
+					<div
+						v-if="$slots.options"
+						:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+						:data-test-id="`${inputName}-parameter-input-options-container`"
+					>
+						<slot name="options" />
+					</div>
+					<div
+						v-if="$slots.issues"
+						:class="$style.issues"
+						:data-test-id="`${inputName}-parameter-input-issues-container`"
+					>
+						<slot name="issues" />
+					</div>
+				</div>
+			</label>
+			<div
+				v-if="$slots.persistentOptions"
+				class="pl-4xs"
+				:data-test-id="`${inputName}-parameter-input-persistent-options-container`"
+			>
+				<slot name="persistentOptions" />
+			</div>
+		</div>
+		<slot />
+	</div>
+</template>
+
 <style lang="scss" module>
 .container {
 	display: flex;
 	flex-direction: column;
+
+	label {
+		display: flex;
+		justify-content: space-between;
+	}
 }
+
+.labelRow {
+	flex-direction: row;
+	display: flex;
+}
+
+.main-content {
+	display: flex;
+	&:hover {
+		.infoIcon {
+			opacity: 1;
+
+			&:hover {
+				color: var(--color-text-base);
+			}
+		}
+	}
+}
+
+.trailing-content {
+	display: flex;
+	gap: var(--spacing-3xs);
+
+	* {
+		align-self: center;
+	}
+}
+
 .inputLabel {
 	display: block;
+	flex-grow: 1;
 }
 .container:hover,
 .inputLabel:hover {
-	.infoIcon {
-		opacity: 1;
-
-		&:hover {
-			color: var(--color-text-base);
-		}
-	}
-
 	.options {
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
@@ -104,6 +166,12 @@ const addTargetBlank = (html: string) =>
 	.overlay {
 		opacity: 1;
 		transition: opacity 100ms ease-in; // transition on hover in
+	}
+}
+.withOptions:hover {
+	.title > span {
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 }
 
@@ -128,10 +196,13 @@ const addTargetBlank = (html: string) =>
 .options {
 	opacity: 0;
 	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
+	display: flex;
+	align-self: center;
+}
 
-	> * {
-		float: right;
-	}
+.issues {
+	display: flex;
+	align-self: center;
 }
 
 .overlay {
@@ -169,14 +240,19 @@ const addTargetBlank = (html: string) =>
 	overflow-y: clip;
 }
 
+.textEllipses {
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
 .heading {
 	display: flex;
 
 	&.small {
-		margin-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing-5xs);
 	}
 	&.medium {
-		margin-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing-2xs);
 	}
 }
 
@@ -185,10 +261,19 @@ const addTargetBlank = (html: string) =>
 }
 
 :root .tooltipPopper {
+	line-height: var(--font-line-height-compact);
 	max-width: 400px;
 
 	li {
 		margin-left: var(--spacing-s);
+	}
+
+	code {
+		color: var(--color-text-dark);
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-medium);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
 	}
 }
 </style>

@@ -1,0 +1,140 @@
+{
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "via": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "object",
+                    "properties": {
+                        "rel": {
+                            "type": "null"
+                        }
+                    },
+                    "required": [
+                        "from",
+                        "to",
+                        "rel"
+                    ]
+                }
+            },
+            "required": [
+                "channel",
+                "source"
+            ]
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "generated_timestamp": {
+            "type": "integer"
+        },
+        "description": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "submitter_id": {
+            "type": "integer"
+        },
+        "forum_topic_id": {
+            "type": "null"
+        },
+        "problem_id": {
+            "type": "null"
+        },
+        "has_incidents": {
+            "type": "boolean"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "value"
+                ]
+            }
+        },
+        "satisfaction_rating": {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "score"
+            ]
+        },
+        "custom_status_id": {
+            "type": "integer"
+        },
+        "encoded_id": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "value"
+                ]
+            }
+        },
+        "ticket_form_id": {
+            "type": "integer"
+        },
+        "brand_id": {
+            "type": "integer"
+        },
+        "allow_channelback": {
+            "type": "boolean"
+        },
+        "allow_attachments": {
+            "type": "boolean"
+        },
+        "from_messaging_channel": {
+            "type": "boolean"
+        }
+    }
+}

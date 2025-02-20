@@ -1,8 +1,9 @@
-import { CacheService } from '@/services/cache/cache.service';
-import config from '@/config';
-import { sleep } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
-import Container from 'typedi';
+import { Container } from '@n8n/di';
+import { sleep } from 'n8n-workflow';
+
+import config from '@/config';
+import { CacheService } from '@/services/cache/cache.service';
 
 jest.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');

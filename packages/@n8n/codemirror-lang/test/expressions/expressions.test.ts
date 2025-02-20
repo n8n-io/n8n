@@ -1,6 +1,7 @@
+import { fileTests as runTestFile } from '@lezer/generator/dist/test';
 import fs from 'fs';
 import path from 'path';
-import { fileTests as runTestFile } from '@lezer/generator/dist/test';
+
 import { n8nLanguage } from '../../src/expressions/index';
 
 describe('expressions language', () => {

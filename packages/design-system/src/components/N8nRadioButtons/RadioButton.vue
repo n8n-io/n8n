@@ -1,3 +1,19 @@
+<script lang="ts" setup>
+interface RadioButtonProps {
+	label: string;
+	value: string;
+	active?: boolean;
+	disabled?: boolean;
+	size?: 'small' | 'medium';
+}
+
+withDefaults(defineProps<RadioButtonProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
+});
+</script>
+
 <template>
 	<label
 		role="radio"
@@ -22,22 +38,6 @@
 		</div>
 	</label>
 </template>
-
-<script lang="ts" setup>
-interface RadioButtonProps {
-	label: string;
-	value: string;
-	active?: boolean;
-	disabled?: boolean;
-	size?: 'small' | 'medium';
-}
-
-withDefaults(defineProps<RadioButtonProps>(), {
-	active: false,
-	disabled: false,
-	size: 'medium',
-});
-</script>
 
 <style lang="scss" module>
 .container {

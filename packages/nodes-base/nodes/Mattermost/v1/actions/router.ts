@@ -1,10 +1,10 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import * as channel from './channel';
+import type { Mattermost } from './Interfaces';
 import * as message from './message';
 import * as reaction from './reaction';
 import * as user from './user';
-import type { Mattermost } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -42,7 +42,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			);
 			operationResult.push(...executionData);
 		} catch (err) {
-			if (this.continueOnFail(err)) {
+			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
 			} else {
 				if (err.context) err.context.itemIndex = i;

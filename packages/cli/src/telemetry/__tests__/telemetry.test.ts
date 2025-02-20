@@ -1,10 +1,11 @@
+import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { Telemetry } from '@/telemetry';
-import config from '@/config';
-import { flushPromises } from '@test/flushPromises';
-import { PostHogClient } from '@/posthog';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+
+import config from '@/config';
+import { PostHogClient } from '@/posthog';
+import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
 jest.unmock('@/telemetry');
@@ -20,6 +21,10 @@ describe('Telemetry', () => {
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const globalConfig = mock<GlobalConfig>({
+		diagnostics: { enabled: true },
+		logging: { level: 'info', outputs: ['console'] },
+	});
 
 	beforeAll(() => {
 		// @ts-expect-error Spying on private method
@@ -27,7 +32,6 @@ describe('Telemetry', () => {
 
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
 	});
 
@@ -35,29 +39,22 @@ describe('Telemetry', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		startPulseSpy.mockRestore();
-		await telemetry.trackN8nStop();
+		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
 		spyTrack.mockClear();
 
-		const postHog = new PostHogClient(instanceSettings);
+		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
+		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
 
 	afterEach(async () => {
-		await telemetry.trackN8nStop();
-	});
-
-	describe('trackN8nStop', () => {
-		test('should call track method', async () => {
-			await telemetry.trackN8nStop();
-			expect(spyTrack).toHaveBeenCalledTimes(1);
-		});
+		await telemetry.stopTracking();
 	});
 
 	describe('trackWorkflowExecution', () => {
@@ -267,159 +264,41 @@ describe('Telemetry', () => {
 		});
 	});
 
-	describe('pulse', () => {
-		let pulseSpy: jest.SpyInstance;
-		beforeAll(() => {
-			startPulseSpy.mockRestore();
-		});
-
-		beforeEach(() => {
-			fakeJestSystemTime(testDateTime);
-			pulseSpy = jest.spyOn(Telemetry.prototype as any, 'pulse').mockName('pulseSpy');
-		});
-
-		afterEach(() => {
-			pulseSpy.mockClear();
-		});
-
-		xtest('should trigger pulse in intervals', async () => {
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			jest.advanceTimersToNextTimer();
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledWith('pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-
-			jest.advanceTimersToNextTimer();
-
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(2);
-			expect(spyTrack).toHaveBeenCalledTimes(2);
-			expect(spyTrack).toHaveBeenCalledWith('pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-		});
-
-		xtest('should track workflow counts correctly', async () => {
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			let execBuffer = telemetry.getCountsBuffer();
-
-			// expect clear counters on start
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			const payload = {
-				workflow_id: '1',
-				is_manual: true,
-				success: true,
-				error_node_type: 'custom-nodes-base.node-type',
+	describe('Rudderstack', () => {
+		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
 			};
 
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
+			telemetry.identify(traits);
 
-			payload.is_manual = false;
-			payload.success = true;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.is_manual = true;
-			payload.success = false;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.is_manual = false;
-			payload.success = false;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.workflow_id = '2';
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			expect(spyTrack).toHaveBeenCalledTimes(0);
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			jest.advanceTimersToNextTimer();
-
-			execBuffer = telemetry.getCountsBuffer();
-
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledTimes(3);
-			expect(spyTrack).toHaveBeenNthCalledWith(
-				1,
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: '1',
-					user_id: undefined,
-					manual_error: {
-						count: 2,
-						first: testDateTime,
-					},
-					manual_success: {
-						count: 2,
-						first: testDateTime,
-					},
-					prod_error: {
-						count: 2,
-						first: testDateTime,
-					},
-					prod_success: {
-						count: 2,
-						first: testDateTime,
-					},
+			const expectedArgs = {
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: {
+					ip: '0.0.0.0', // RudderStack anonymized IP
 				},
-				{ withPostHog: true },
-			);
-			expect(spyTrack).toHaveBeenNthCalledWith(
-				2,
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: '2',
-					user_id: undefined,
-					prod_error: {
-						count: 2,
-						first: testDateTime,
+			};
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+		});
+
+		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					context: {
+						ip: '0.0.0.0', // RudderStack anonymized IP
 					},
-				},
-				{ withPostHog: true },
+				}),
 			);
-			expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			// Adding a second step here because we believe PostHog may use timers for sending data
-			// and adding posthog to the above metric was causing the pulseSpy timer to not be ran
-			jest.advanceTimersToNextTimer();
-
-			execBuffer = telemetry.getCountsBuffer();
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			// @TODO: Flushing promises here is not working
-
-			// expect(pulseSpy).toBeCalledTimes(2);
-			// expect(spyTrack).toHaveBeenCalledTimes(4);
-			// expect(spyTrack).toHaveBeenNthCalledWith(4, 'pulse', {
-			// 	plan_name_current: 'Community',
-			// 	quota: -1,
-			// 	usage: 0,
-			// });
 		});
 	});
 });

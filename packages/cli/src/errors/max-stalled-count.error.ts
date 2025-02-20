@@ -1,13 +1,16 @@
 import { ApplicationError } from 'n8n-workflow';
 
 /**
- * See https://github.com/OptimalBits/bull/blob/60fa88f08637f0325639988a3f054880a04ce402/docs/README.md?plain=1#L133
+ * @docs https://docs.bullmq.io/guide/workers/stalled-jobs
  */
 export class MaxStalledCountError extends ApplicationError {
 	constructor(cause: Error) {
-		super('The execution has reached the maximum number of attempts and will no longer retry.', {
-			level: 'warning',
-			cause,
-		});
+		super(
+			'This execution failed to be processed too many times and will no longer retry. To allow this execution to complete, please break down your workflow or scale up your workers or adjust your worker settings.',
+			{
+				level: 'warning',
+				cause,
+			},
+		);
 	}
 }

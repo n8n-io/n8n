@@ -1,33 +1,37 @@
-import { plainToInstance } from 'class-transformer';
+import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import { Response } from 'express';
+import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
-import { User } from '@db/entities/User';
-import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { Project } from '@/databases/entities/project';
+import { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import {
-	ListQuery,
-	UserRequest,
-	UserRoleChangePayload,
-	UserSettingsUpdatePayload,
-} from '@/requests';
-import type { PublicUser } from '@/Interfaces';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { UserService } from '@/services/user.service';
-import { listQueryMiddleware } from '@/middlewares';
-import { Logger } from '@/Logger';
+	GlobalScope,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	Body,
+	Param,
+} from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ExternalHooks } from '@/ExternalHooks';
-import { validateEntity } from '@/GenericHelpers';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/Project';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ProjectService } from '@/services/project.service';
 import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import type { PublicUser } from '@/interfaces';
+import { listQueryMiddleware } from '@/middlewares';
+import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
+import { ProjectService } from '@/services/project.service.ee';
+import { UserService } from '@/services/user.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/users')
 export class UsersController {
@@ -124,13 +128,12 @@ export class UsersController {
 
 	@Patch('/:id/settings')
 	@GlobalScope('user:update')
-	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
-
-		const id = req.params.id;
-
+	async updateUserSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: SettingsUpdateRequestDto,
+		@Param('id') id: string,
+	) {
 		await this.userService.updateSettings(id, payload);
 
 		const user = await this.userRepository.findOneOrFail({
@@ -237,7 +240,7 @@ export class UsersController {
 		}
 
 		for (const credential of ownedCredentials) {
-			await this.credentialsService.delete(credential);
+			await this.credentialsService.delete(userToDelete, credential.id);
 		}
 
 		await this.userService.getManager().transaction(async (trx) => {
@@ -263,18 +266,16 @@ export class UsersController {
 	@Patch('/:id/role')
 	@GlobalScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
-	async changeGlobalRole(req: UserRequest.ChangeRole) {
+	async changeGlobalRole(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: RoleChangeRequestDto,
+		@Param('id') id: string,
+	) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const payload = plainToInstance(UserRoleChangePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
-		await validateEntity(payload);
-
-		const targetUser = await this.userRepository.findOne({
-			where: { id: req.params.id },
-		});
+		const targetUser = await this.userRepository.findOneBy({ id });
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}

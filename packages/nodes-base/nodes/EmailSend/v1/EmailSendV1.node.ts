@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
+import { NodeConnectionType } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
@@ -22,8 +21,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Send Email',
 		color: '#00bb88',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'smtp',
@@ -110,7 +109,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -226,7 +225,7 @@ export class EmailSendV1 implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
 							error: error.message,

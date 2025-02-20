@@ -6,6 +6,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
+	AI_UNCATEGORIZED_CATEGORY,
 } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -17,12 +18,15 @@ import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useDebounce } from '@/composables/useDebounce';
 
 const i18n = useI18n();
+const { callDebounced } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -40,10 +44,6 @@ const searchPlaceholder = computed(() =>
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
 function getDefaultActiveIndex(search: string = ''): number {
-	if (activeViewStack.value.activeIndex) {
-		return activeViewStack.value.activeIndex;
-	}
-
 	if (activeViewStack.value.mode === 'actions') {
 		// For actions, set the active focus to the first action, not category
 		return 1;
@@ -59,6 +59,19 @@ function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
+		if (value.length) {
+			callDebounced(
+				nodeCreatorStore.onNodeFilterChanged,
+				{ trailing: true, debounceTime: 2000 },
+				{
+					newValue: value,
+					filteredNodes: activeViewStack.value.items ?? [],
+					filterMode: activeViewStack.value.rootView ?? 'Regular',
+					subcategory: activeViewStack.value.subcategory,
+					title: activeViewStack.value.title,
+				},
+			);
+		}
 	}
 }
 
@@ -83,6 +96,7 @@ watch(
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
 			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+			[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
 		};
 
 		const itemKey = selectedView;
@@ -164,9 +178,7 @@ function onBackButton() {
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
 				:placeholder="
-					searchPlaceholder
-						? searchPlaceholder
-						: $locale.baseText('nodeCreator.searchBar.searchNodes')
+					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
 				"
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"
@@ -250,7 +262,7 @@ function onBackButton() {
 	height: 100%;
 	background-color: $node-creator-background-color;
 	--color-background-node-icon-badge: var(--color-background-xlight);
-	width: 385px;
+	width: var(--node-creator-width);
 	display: flex;
 	flex-direction: column;
 
@@ -293,6 +305,7 @@ function onBackButton() {
 	line-height: 24px;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-l);
+	margin: 0;
 
 	.hasBg & {
 		font-size: var(--font-size-s-m);
@@ -303,6 +316,7 @@ function onBackButton() {
 	margin-top: var(--spacing-4xs);
 	font-size: var(--font-size-s);
 	line-height: 19px;
+
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-regular);
 }

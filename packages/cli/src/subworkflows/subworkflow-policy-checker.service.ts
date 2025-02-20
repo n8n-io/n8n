@@ -1,10 +1,13 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { OwnershipService } from '@/services/ownership.service';
-import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
+import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
+
+import type { Project } from '@/databases/entities/project';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { AccessService } from '@/services/access.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -13,15 +16,16 @@ type DenialPolicy = Exclude<Policy, 'any'>;
 export class SubworkflowPolicyChecker {
 	constructor(
 		private readonly logger: Logger,
-		private readonly license: License,
 		private readonly ownershipService: OwnershipService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly accessService: AccessService,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
 	 * Check whether the parent workflow is allowed to call the subworkflow.
 	 */
-	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode) {
+	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode, userId?: string) {
 		const { id: subworkflowId } = subworkflow;
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
@@ -30,6 +34,8 @@ export class SubworkflowPolicyChecker {
 
 		if (policy === 'any') return;
 
+		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
+
 		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
 			parentWorkflowId,
 			subworkflowId,
@@ -37,30 +43,42 @@ export class SubworkflowPolicyChecker {
 
 		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
-		if (
-			policy === 'none' ||
-			(policy === 'workflowsFromAList' && !this.hasParentListed(subworkflow, parentWorkflowId)) ||
-			(policy === 'workflowsFromSameOwner' && !areOwnedBySameProject)
-		) {
-			this.logDenial({ parentWorkflowId, subworkflowId, policy });
+		if (policy === 'workflowsFromSameOwner' && areOwnedBySameProject) return;
 
-			throw new SubworkflowPolicyDenialError({
-				subworkflowId,
-				subworkflowProject,
-				areOwnedBySameProject,
-				node,
-			});
-		}
+		this.logDenial({ parentWorkflowId, subworkflowId, policy });
+
+		const errorDetails = await this.errorDetails(subworkflowProject, subworkflow, userId);
+
+		throw new SubworkflowPolicyDenialError({
+			subworkflowId,
+			subworkflowProject,
+			node,
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			...errorDetails,
+		});
+	}
+
+	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
+		const hasReadAccess = userId
+			? await this.accessService.hasReadAccess(userId, subworkflow.id)
+			: false; /* no user ID in policy check for error workflow, so `false` to keep error message generic */
+
+		if (subworkflowProject.type === 'team') return { hasReadAccess };
+
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(subworkflowProject.id);
+
+		return {
+			hasReadAccess,
+			ownerName: owner ? owner.firstName + ' ' + owner.lastName : 'No owner (team project)',
+		};
 	}
 
 	/**
 	 * Find the subworkflow's caller policy.
 	 */
 	private findPolicy(subworkflow: Workflow): WorkflowSettings.CallerPolicy {
-		if (!this.license.isSharingEnabled()) return 'workflowsFromSameOwner';
-
 		return (
-			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+			subworkflow.settings.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
 		);
 	}
 
@@ -85,7 +103,7 @@ export class SubworkflowPolicyChecker {
 	/**
 	 * Whether the subworkflow has the parent workflow listed as a caller.
 	 */
-	private hasParentListed(subworkflow: Workflow, parentWorkflowId: string) {
+	private isListed(subworkflow: Workflow, parentWorkflowId: string) {
 		const callerIds =
 			subworkflow.settings.callerIds
 				?.split(',')
@@ -114,7 +132,6 @@ export class SubworkflowPolicyChecker {
 			reason: this.denialReasons[policy],
 			parentWorkflowId,
 			subworkflowId,
-			isSharingEnabled: this.license.isSharingEnabled(),
 		});
 	}
 }

@@ -172,6 +172,49 @@ module.exports = {
 		},
 	},
 
+	'no-useless-catch-throw': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Disallow `try-catch` blocks where the `catch` only contains a `throw error`.',
+				recommended: 'error',
+			},
+			messages: {
+				noUselessCatchThrow: 'Remove useless `catch` block.',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CatchClause(node) {
+					if (
+						node.body.body.length === 1 &&
+						node.body.body[0].type === 'ThrowStatement' &&
+						node.body.body[0].argument.type === 'Identifier' &&
+						node.body.body[0].argument.name === node.param.name
+					) {
+						context.report({
+							node,
+							messageId: 'noUselessCatchThrow',
+							fix(fixer) {
+								const tryStatement = node.parent;
+								const tryBlock = tryStatement.block;
+								const sourceCode = context.getSourceCode();
+								const tryBlockText = sourceCode.getText(tryBlock);
+								const tryBlockTextWithoutBraces = tryBlockText.slice(1, -1).trim();
+								const indentedTryBlockText = tryBlockTextWithoutBraces
+									.split('\n')
+									.map((line) => line.replace(/\t/, ''))
+									.join('\n');
+								return fixer.replaceText(tryStatement, indentedTryBlockText);
+							},
+						});
+					}
+				},
+			};
+		},
+	},
+
 	'no-skipped-tests': {
 		meta: {
 			type: 'problem',
@@ -182,12 +225,14 @@ module.exports = {
 			messages: {
 				removeSkip: 'Remove `.skip()` call',
 				removeOnly: 'Remove `.only()` call',
+				removeXPrefix: 'Remove `x` prefix',
 			},
 			fixable: 'code',
 		},
 		create(context) {
 			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
 			const SKIPPING_METHODS = new Set(['skip', 'only']);
+			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'xdescribe']);
 			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
 
 			return {
@@ -205,6 +250,18 @@ module.exports = {
 								const [start, end] = node.property.range;
 								return fixer.removeRange([start - '.'.length, end]);
 							},
+						});
+					}
+				},
+				CallExpression(node) {
+					if (
+						node.callee.type === 'Identifier' &&
+						PREFIXED_TESTING_FUNCTIONS.has(node.callee.name)
+					) {
+						context.report({
+							messageId: 'removeXPrefix',
+							node,
+							fix: (fixer) => fixer.replaceText(node.callee, 'test'),
 						});
 					}
 				},
@@ -473,6 +530,29 @@ module.exports = {
 							node: node.superClass,
 							messageId: 'noExtendsEventEmitter',
 						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-untyped-config-class-field': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Enforce explicit typing of config class fields',
+				recommended: 'error',
+			},
+			messages: {
+				noUntypedConfigClassField:
+					'Class field must have an explicit type annotation, e.g. `field: type = value`. See: https://github.com/n8n-io/n8n/pull/10433',
+			},
+		},
+		create(context) {
+			return {
+				PropertyDefinition(node) {
+					if (!node.typeAnnotation) {
+						context.report({ node: node.key, messageId: 'noUntypedConfigClassField' });
 					}
 				},
 			};

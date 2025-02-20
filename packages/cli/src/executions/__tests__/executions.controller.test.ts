@@ -1,10 +1,11 @@
 import { mock } from 'jest-mock-extended';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionsController } from '@/executions/executions.controller';
-import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
-import type { ExecutionService } from '@/executions/execution.service';
-import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
+import { ExecutionsController } from '@/executions/executions.controller';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
@@ -73,6 +74,8 @@ describe('ExecutionsController', () => {
 				range: { lastId: undefined, firstId: undefined, limit: 20 },
 			},
 		];
+
+		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
 
 		describe('if either status or range provided', () => {
 			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(

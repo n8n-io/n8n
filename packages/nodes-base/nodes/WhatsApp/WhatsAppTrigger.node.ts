@@ -7,7 +7,9 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
+
 import {
 	appWebhookSubscriptionCreate,
 	appWebhookSubscriptionDelete,
@@ -29,7 +31,7 @@ export class WhatsAppTrigger implements INodeType {
 			name: 'WhatsApp Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'whatsAppTriggerApi',

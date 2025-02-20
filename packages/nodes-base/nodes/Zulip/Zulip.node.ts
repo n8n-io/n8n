@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,14 +8,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
 import { streamFields, streamOperations } from './StreamDescription';
-import { userFields, userOperations } from './UserDescription';
 import type { IPrincipal, IStream } from './StreamInterface';
+import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {
@@ -29,8 +30,9 @@ export class Zulip implements INodeType {
 		defaults: {
 			name: 'Zulip',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zulipApi',
@@ -457,7 +459,7 @@ export class Zulip implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

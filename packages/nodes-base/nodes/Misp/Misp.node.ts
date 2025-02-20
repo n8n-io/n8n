@@ -1,20 +1,12 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import {
-	mispApiRequest,
-	mispApiRequestAllItems,
-	mispApiRestSearch,
-	throwOnEmptyUpdate,
-	throwOnInvalidUrl,
-	throwOnMissingSharingGroup,
-} from './GenericFunctions';
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import {
 	attributeFields,
@@ -40,7 +32,14 @@ import {
 	warninglistFields,
 	warninglistOperations,
 } from './descriptions';
-
+import {
+	mispApiRequest,
+	mispApiRequestAllItems,
+	mispApiRestSearch,
+	throwOnEmptyUpdate,
+	throwOnInvalidUrl,
+	throwOnMissingSharingGroup,
+} from './GenericFunctions';
 import type { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
 
 export class Misp implements INodeType {
@@ -55,8 +54,9 @@ export class Misp implements INodeType {
 		defaults: {
 			name: 'MISP',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mispApi',
@@ -767,7 +767,7 @@ export class Misp implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,8 +1,53 @@
+<script lang="ts" setup>
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+
+import type { UserAction } from 'n8n-design-system/types';
+import type { IconOrientation, IconSize } from 'n8n-design-system/types/icon';
+
+import N8nIcon from '../N8nIcon';
+
+const SIZE = ['mini', 'small', 'medium'] as const;
+const THEME = ['default', 'dark'] as const;
+
+interface ActionToggleProps {
+	actions?: UserAction[];
+	placement?: Placement;
+	size?: (typeof SIZE)[number];
+	iconSize?: IconSize;
+	theme?: (typeof THEME)[number];
+	iconOrientation?: IconOrientation;
+	loading?: boolean;
+	loadingRowCount?: number;
+	disabled?: boolean;
+}
+
+defineOptions({ name: 'N8nActionToggle' });
+withDefaults(defineProps<ActionToggleProps>(), {
+	actions: () => [],
+	placement: 'bottom',
+	size: 'medium',
+	theme: 'default',
+	iconSize: 'medium',
+	iconOrientation: 'vertical',
+	loading: false,
+	loadingRowCount: 3,
+	disabled: false,
+});
+
+const emit = defineEmits<{
+	action: [value: string];
+	'visible-change': [value: boolean];
+}>();
+const onCommand = (value: string) => emit('action', value);
+const onVisibleChange = (value: boolean) => emit('visible-change', value);
+</script>
+
 <template>
 	<span :class="$style.container" data-test-id="action-toggle" @click.stop.prevent>
 		<ElDropdown
 			:placement="placement"
 			:size="size"
+			:disabled="disabled"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
@@ -17,7 +62,18 @@
 			</slot>
 
 			<template #dropdown>
-				<ElDropdownMenu data-test-id="action-toggle-dropdown">
+				<ElDropdownMenu
+					v-if="loading"
+					:class="$style['loading-dropdown']"
+					data-test-id="action-toggle-loading-dropdown"
+				>
+					<ElDropdownItem v-for="index in loadingRowCount" :key="index" :disabled="true">
+						<template #default>
+							<N8nLoading :class="$style.loading" animated variant="text" />
+						</template>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+				<ElDropdownMenu v-else data-test-id="action-toggle-dropdown">
 					<ElDropdownItem
 						v-for="action in actions"
 						:key="action.value"
@@ -40,41 +96,6 @@
 		</ElDropdown>
 	</span>
 </template>
-
-<script lang="ts" setup>
-import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
-import type { UserAction } from 'n8n-design-system/types';
-import N8nIcon from '../N8nIcon';
-import type { IconOrientation, IconSize } from 'n8n-design-system/types/icon';
-
-const SIZE = ['mini', 'small', 'medium'] as const;
-const THEME = ['default', 'dark'] as const;
-
-interface ActionToggleProps {
-	actions?: UserAction[];
-	placement?: Placement;
-	size?: (typeof SIZE)[number];
-	iconSize?: IconSize;
-	theme?: (typeof THEME)[number];
-	iconOrientation?: IconOrientation;
-}
-
-defineOptions({ name: 'N8nActionToggle' });
-withDefaults(defineProps<ActionToggleProps>(), {
-	actions: () => [],
-	placement: 'bottom',
-	size: 'medium',
-	theme: 'default',
-	iconOrientation: 'vertical',
-});
-
-const emit = defineEmits<{
-	action: [value: string];
-	'visible-change': [value: boolean];
-}>();
-const onCommand = (value: string) => emit('action', value);
-const onVisibleChange = (value: boolean) => emit('visible-change', value);
-</script>
 
 <style lang="scss" module>
 .container > * {
@@ -110,5 +131,18 @@ const onVisibleChange = (value: boolean) => emit('visible-change', value);
 
 li:hover .iconContainer svg {
 	color: var(--color-primary-tint-1);
+}
+
+.loading-dropdown {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing-xs) 0;
+	gap: var(--spacing-2xs);
+}
+
+.loading {
+	display: flex;
+	width: 100%;
+	min-width: var(--spacing-3xl);
 }
 </style>

@@ -4,9 +4,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
+
 import {
 	generateReturning,
 	getItemCopy,
@@ -28,8 +28,9 @@ export class CrateDb implements INodeType {
 		defaults: {
 			name: 'CrateDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'crateDb',

@@ -10,7 +10,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { moceanApiRequest } from './GenericFunctions';
 
@@ -26,8 +26,9 @@ export class Mocean implements INodeType {
 		defaults: {
 			name: 'Mocean',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'moceanApi',
@@ -283,7 +284,7 @@ export class Mocean implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}

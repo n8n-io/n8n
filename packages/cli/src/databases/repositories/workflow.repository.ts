@@ -1,21 +1,22 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import {
-	DataSource,
-	Repository,
-	In,
-	Like,
-	type UpdateResult,
-	type FindOptionsWhere,
-	type FindOptionsSelect,
-	type FindManyOptions,
-	type FindOptionsRelations,
+import { Service } from '@n8n/di';
+import { DataSource, Repository, In, Like } from '@n8n/typeorm';
+import type {
+	SelectQueryBuilder,
+	UpdateResult,
+	FindOptionsWhere,
+	FindOptionsSelect,
+	FindManyOptions,
+	FindOptionsRelations,
 } from '@n8n/typeorm';
+
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
-import config from '@/config';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { WebhookEntity } from '../entities/WebhookEntity';
+
+import { TagEntity } from '../entities/tag-entity';
+import { WebhookEntity } from '../entities/webhook-entity';
+import { WorkflowEntity } from '../entities/workflow-entity';
+import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
@@ -36,17 +37,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getAllActive() {
-		return await this.find({
+	async getAllActiveIds() {
+		const result = await this.find({
+			select: { id: true },
 			where: { active: true },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
+
+		return result.map(({ id }) => id);
 	}
 
-	async getActiveIds() {
+	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
 		const activeWorkflows = await this.find({
 			select: ['id'],
 			where: { active: true },
+			// 'take' and 'order' are only needed when maxResults is provided:
+			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
 		return activeWorkflows.map((workflow) => workflow.id);
 	}
@@ -93,82 +99,220 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
-		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
-
-		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
-			options.filter.shared = { projectId: options.filter.projectId };
-			delete options.filter.projectId;
+	async getMany(sharedWorkflowIds: string[], options: ListQuery.Options = {}) {
+		if (sharedWorkflowIds.length === 0) {
+			return { workflows: [], count: 0 };
 		}
 
-		const where: FindOptionsWhere<WorkflowEntity> = {
-			...options?.filter,
-			id: In(sharedWorkflowIds),
-		};
+		const qb = this.createBaseQuery(sharedWorkflowIds);
 
-		const reqTags = options?.filter?.tags;
+		this.applyFilters(qb, options.filter);
+		this.applySelect(qb, options.select);
+		this.applyRelations(qb, options.select);
+		this.applySorting(qb, options.sortBy);
+		this.applyPagination(qb, options);
 
-		if (isStringArray(reqTags)) {
-			where.tags = reqTags.map((tag) => ({ name: tag }));
-		}
-
-		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
-
-		const select: Select = options?.select
-			? { ...options.select } // copy to enable field removal without affecting original
-			: {
-					name: true,
-					active: true,
-					createdAt: true,
-					updatedAt: true,
-					versionId: true,
-					shared: { role: true },
-				};
-
-		delete select?.ownedBy; // remove non-entity field, handled after query
-
-		const relations: string[] = [];
-
-		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
-		const isDefaultSelect = options?.select === undefined;
-		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
-		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
-
-		if (areTagsEnabled && areTagsRequested) {
-			relations.push('tags');
-			select.tags = { id: true, name: true };
-		}
-
-		if (isOwnedByIncluded) relations.push('shared', 'shared.project');
-
-		if (typeof where.name === 'string' && where.name !== '') {
-			where.name = Like(`%${where.name}%`);
-		}
-
-		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select: { ...select, id: true },
-			where,
-		};
-
-		if (isDefaultSelect || options?.select?.updatedAt === true) {
-			findManyOptions.order = { updatedAt: 'ASC' };
-		}
-
-		if (relations.length > 0) {
-			findManyOptions.relations = relations;
-		}
-
-		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
-		}
-
-		const [workflows, count] = (await this.findAndCount(findManyOptions)) as [
+		const [workflows, count] = (await qb.getManyAndCount()) as [
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
 
 		return { workflows, count };
+	}
+
+	private createBaseQuery(sharedWorkflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
+		return this.createQueryBuilder('workflow').where('workflow.id IN (:...sharedWorkflowIds)', {
+			sharedWorkflowIds,
+		});
+	}
+
+	private applyFilters(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter?: ListQuery.Options['filter'],
+	): void {
+		if (!filter) return;
+
+		this.applyNameFilter(qb, filter);
+		this.applyActiveFilter(qb, filter);
+		this.applyTagsFilter(qb, filter);
+		this.applyProjectFilter(qb, filter);
+	}
+
+	private applyNameFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.name === 'string' && filter.name !== '') {
+			qb.andWhere('LOWER(workflow.name) LIKE :name', {
+				name: `%${filter.name.toLowerCase()}%`,
+			});
+		}
+	}
+
+	private applyActiveFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.active === 'boolean') {
+			qb.andWhere('workflow.active = :active', { active: filter.active });
+		}
+	}
+
+	private applyTagsFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (isStringArray(filter?.tags) && filter.tags.length > 0) {
+			const subQuery = qb
+				.subQuery()
+				.select('wt.workflowId')
+				.from(WorkflowTagMapping, 'wt')
+				.innerJoin(TagEntity, 'filter_tags', 'filter_tags.id = wt.tagId')
+				.where('filter_tags.name IN (:...tagNames)', { tagNames: filter.tags })
+				.groupBy('wt.workflowId')
+				.having('COUNT(DISTINCT filter_tags.name) = :tagCount', { tagCount: filter.tags.length });
+
+			qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`).setParameters({
+				tagNames: filter.tags,
+				tagCount: filter.tags.length,
+			});
+		}
+	}
+
+	private applyProjectFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
+			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
+				projectId: filter.projectId,
+			});
+		}
+	}
+
+	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		// Check if 'shared' join already exists from project filter
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'shared')) {
+			qb.leftJoin('workflow.shared', 'shared');
+		}
+
+		// Add the necessary selects
+		qb.addSelect([
+			'shared.role',
+			'shared.createdAt',
+			'shared.updatedAt',
+			'shared.workflowId',
+			'shared.projectId',
+		])
+			.leftJoin('shared.project', 'project')
+			.addSelect([
+				'project.id',
+				'project.name',
+				'project.type',
+				'project.icon',
+				'project.createdAt',
+				'project.updatedAt',
+			]);
+	}
+
+	private applySelect(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		select?: Record<string, boolean>,
+	): void {
+		// Always start with workflow.id
+		qb.select(['workflow.id']);
+
+		if (!select) {
+			// Default select fields when no select option provided
+			qb.addSelect([
+				'workflow.name',
+				'workflow.active',
+				'workflow.createdAt',
+				'workflow.updatedAt',
+				'workflow.versionId',
+			]);
+			return;
+		}
+
+		// Handle special fields separately
+		const regularFields = Object.entries(select).filter(
+			([field]) => !['ownedBy', 'tags'].includes(field),
+		);
+
+		// Add regular fields
+		regularFields.forEach(([field, include]) => {
+			if (include) {
+				qb.addSelect(`workflow.${field}`);
+			}
+		});
+	}
+
+	private applyRelations(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		select?: Record<string, boolean>,
+	): void {
+		const areTagsEnabled = !this.globalConfig.tags.disabled;
+		const isDefaultSelect = select === undefined;
+		const areTagsRequested = isDefaultSelect || select?.tags;
+		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
+
+		if (areTagsEnabled && areTagsRequested) {
+			this.applyTagsRelation(qb);
+		}
+
+		if (isOwnedByIncluded) {
+			this.applyOwnedByRelation(qb);
+		}
+	}
+
+	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		qb.leftJoin('workflow.tags', 'tags')
+			.addSelect(['tags.id', 'tags.name'])
+			.addOrderBy('tags.createdAt', 'ASC');
+	}
+
+	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {
+		if (!sortBy) {
+			this.applyDefaultSorting(qb);
+			return;
+		}
+
+		const [column, direction] = this.parseSortingParams(sortBy);
+		this.applySortingByColumn(qb, column, direction);
+	}
+
+	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
+		const [column, order] = sortBy.split(':');
+		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
+	}
+
+	private applyDefaultSorting(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		qb.orderBy('workflow.updatedAt', 'ASC');
+	}
+
+	private applySortingByColumn(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		column: string,
+		direction: 'ASC' | 'DESC',
+	): void {
+		if (column === 'name') {
+			qb.addSelect('LOWER(workflow.name)', 'workflow_name_lower').orderBy(
+				'workflow_name_lower',
+				direction,
+			);
+			return;
+		}
+
+		qb.orderBy(`workflow.${column}`, direction);
+	}
+
+	private applyPagination(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		options: ListQuery.Options,
+	): void {
+		if (options?.take) {
+			qb.skip(options.skip ?? 0).take(options.take);
+		}
 	}
 
 	async findStartingWith(workflowName: string): Promise<Array<{ name: string }>> {

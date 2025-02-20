@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateVariables1677501636754 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

@@ -4,10 +4,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodePropertyOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -19,6 +19,23 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+
+export function isJSON(str: string) {
+	try {
+		JSON.parse(str.trim());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function stringToArray(str: NodeParameterValueType | undefined) {
+	if (str === undefined) return [];
+	return String(str)
+		.split(',')
+		.filter((entry) => entry)
+		.map((entry) => entry.trim());
+}
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
@@ -234,17 +251,15 @@ export function configureQueryRunner(
 					.flat();
 
 				if (!returnData.length) {
-					const pairedItem = generatePairedItemData(queries.length);
-
 					if ((options?.nodeVersion as number) < 2.3) {
 						if (emptyReturnData.length) {
-							emptyReturnData[0].pairedItem = pairedItem;
+							emptyReturnData[0].pairedItem = undefined;
 						}
 						returnData = emptyReturnData;
 					} else {
 						returnData = queries.every((query) => isSelectQuery(query.query))
 							? []
-							: [{ json: { success: true }, pairedItem }];
+							: [{ json: { success: true } }];
 					}
 				}
 			} catch (err) {
@@ -374,6 +389,24 @@ export function prepareItem(values: IDataObject[]) {
 	}, {} as IDataObject);
 
 	return item;
+}
+
+export function hasJsonDataTypeInSchema(schema: ColumnInfo[]) {
+	return schema.some(({ data_type }) => data_type === 'json');
+}
+
+export function convertValuesToJsonWithPgp(
+	pgp: PgpClient,
+	schema: ColumnInfo[],
+	values: IDataObject,
+) {
+	schema
+		.filter(({ data_type }: { data_type: string }) => data_type === 'json')
+		.forEach(({ column_name }) => {
+			values[column_name] = pgp.as.json(values[column_name], true);
+		});
+
+	return values;
 }
 
 export async function columnFeatureSupport(

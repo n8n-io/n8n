@@ -1,11 +1,13 @@
-import { ProjectService } from '@/services/project.service';
-import * as testDb from '../shared/testDb';
-import Container from 'typedi';
-import { createMember } from '../shared/db/users';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { ProjectRole } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { createMember } from '../shared/db/users';
+import * as testDb from '../shared/test-db';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;

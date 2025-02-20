@@ -61,6 +61,7 @@ export const AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME = 'OpenAI Chat Model'
 export const AI_MEMORY_POSTGRES_NODE_NAME = 'Postgres Chat Memory';
 export const AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME = 'Auto-fixing Output Parser';
 export const WEBHOOK_NODE_NAME = 'Webhook';
+export const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Workflow';
 
 export const META_KEY = Cypress.platform === 'darwin' ? 'meta' : 'ctrl';
 

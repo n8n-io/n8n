@@ -5,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { humanticAiApiRequest } from './GenericFunctions';
-
 import { profileFields, profileOperations } from './ProfileDescription';
 
 export class HumanticAi implements INodeType {
@@ -23,8 +23,9 @@ export class HumanticAi implements INodeType {
 		defaults: {
 			name: 'Humantic AI',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'humanticAiApi',

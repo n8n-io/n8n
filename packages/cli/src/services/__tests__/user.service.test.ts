@@ -1,12 +1,12 @@
+import { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@db/entities/User';
-import { UserService } from '@/services/user.service';
-import { UrlService } from '@/services/url.service';
-import { mockInstance } from '@test/mocking';
+import { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { GlobalConfig } from '@n8n/config';
+import { UrlService } from '@/services/url.service';
+import { UserService } from '@/services/user.service';
+import { mockInstance } from '@test/mocking';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

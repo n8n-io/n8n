@@ -1,4 +1,3 @@
-import { createServer, type AddressInfo } from 'node:net';
 import mysql2 from 'mysql2/promise';
 import type {
 	ICredentialTestFunctions,
@@ -6,10 +5,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { createServer, type AddressInfo } from 'node:net';
 
-import { formatPrivateKey } from '@utils/utilities';
-import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
 import { LOCALHOST } from '@utils/constants';
+import { formatPrivateKey } from '@utils/utilities';
+
+import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
 
 export async function createPool(
 	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions,
@@ -24,6 +25,7 @@ export async function createPool(
 		password: credentials.password,
 		multipleStatements: true,
 		supportBigNumbers: true,
+		decimalNumbers: false,
 	};
 
 	if (credentials.ssl) {
@@ -55,11 +57,15 @@ export async function createPool(
 		connectionOptions.bigNumberStrings = true;
 	}
 
+	if (options?.decimalNumbers === true) {
+		connectionOptions.decimalNumbers = true;
+	}
+
 	if (!credentials.sshTunnel) {
 		return mysql2.createPool(connectionOptions);
 	} else {
 		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-			credentials.privateKey = formatPrivateKey(credentials.privateKey as string);
+			credentials.privateKey = formatPrivateKey(credentials.privateKey);
 		}
 		const sshClient = await this.helpers.getSSHClient(credentials);
 

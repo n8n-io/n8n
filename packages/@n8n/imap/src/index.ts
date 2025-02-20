@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import Imap from 'imap';
-import { ImapSimple } from './ImapSimple';
+
 import { ConnectionClosedError, ConnectionEndedError, ConnectionTimeoutError } from './errors';
+import { ImapSimple } from './ImapSimple';
 import type { ImapSimpleOptions, MessagePart } from './types';
 
 /**

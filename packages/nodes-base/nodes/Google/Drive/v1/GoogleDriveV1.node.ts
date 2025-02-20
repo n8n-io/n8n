@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { Readable } from 'stream';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -9,15 +7,15 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
-
+import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
-import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
 
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../constants';
 
 const UPLOAD_CHUNK_SIZE = 256 * 1024;
 
@@ -32,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Drive',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -2722,7 +2720,7 @@ export class GoogleDriveV1 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {

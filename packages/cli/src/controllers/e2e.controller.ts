@@ -1,22 +1,24 @@
+import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { Request } from 'express';
+import { Logger } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { License } from '@/License';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { Patch, Post, RestController } from '@/decorators';
-import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
-import { MfaService } from '@/Mfa/mfa.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
+import type { FeatureReturnType } from '@/license';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
-import Container from 'typedi';
-import { Logger } from '@/Logger';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -45,6 +47,16 @@ const tablesToTruncate = [
 	'workflows_tags',
 ];
 
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
+
 type ResetRequest = Request<
 	{},
 	{},
@@ -59,10 +71,8 @@ type PushRequest = Request<
 	{},
 	{},
 	{
-		type: IPushDataType;
 		pushRef: string;
-		data: object;
-	}
+	} & PushMessage
 >;
 
 @RestController('/e2e')
@@ -87,14 +97,35 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_ADMIN]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_EDITOR]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT]: false,
+		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
+		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
-	private numericFeatures: Record<NumericLicenseFeature, number> = {
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
 		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
 		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]: 1,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TRIGGER_LIMIT],
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.VARIABLES_LIMIT],
+		[LICENSE_QUOTAS.USERS_LIMIT]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.USERS_LIMIT],
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT],
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
+		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
+		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT],
 	};
 
 	constructor(
@@ -111,9 +142,18 @@ export class E2EController {
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
-			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
+
+		// Ugly hack to satisfy biome parser
+		const getFeatureValue = <T extends keyof FeatureReturnType>(
+			feature: T,
+		): FeatureReturnType[T] => {
+			if (feature in this.numericFeatures) {
+				return this.numericFeatures[feature as NumericLicenseFeature] as FeatureReturnType[T];
+			} else {
+				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+			}
+		};
+		license.getFeatureValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
@@ -130,7 +170,8 @@ export class E2EController {
 
 	@Post('/push', { skipAuth: true })
 	async pushSend(req: PushRequest) {
-		this.push.broadcast(req.body.type, req.body.data);
+		const { pushRef: _, ...pushMsg } = req.body;
+		this.push.broadcast(pushMsg);
 	}
 
 	@Patch('/feature', { skipAuth: true })
@@ -155,6 +196,11 @@ export class E2EController {
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 

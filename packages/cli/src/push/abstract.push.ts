@@ -1,6 +1,15 @@
+import type { PushMessage } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/Interfaces';
-import type { Logger } from '@/Logger';
+
+import type { User } from '@/databases/entities/user';
+import type { OnPushMessage } from '@/push/types';
+import { TypedEmitter } from '@/typed-emitter';
+
+export interface AbstractPushEvents {
+	message: OnPushMessage;
+}
 
 /**
  * Abstract class for two-way push communication.
@@ -8,16 +17,27 @@ import type { Logger } from '@/Logger';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> {
-	protected connections: Record<string, T> = {};
+@Service()
+export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
+	protected connections: Record<string, Connection> = {};
 
-	protected abstract close(connection: T): void;
-	protected abstract sendToOneConnection(connection: T, data: string): void;
+	protected userIdByPushRef: Record<string, string> = {};
 
-	constructor(protected readonly logger: Logger) {}
+	protected abstract close(connection: Connection): void;
+	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract ping(connection: Connection): void;
 
-	protected add(pushRef: string, connection: T) {
-		const { connections } = this;
+	constructor(
+		protected readonly logger: Logger,
+		protected readonly errorReporter: ErrorReporter,
+	) {
+		super();
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
+	}
+
+	protected add(pushRef: string, userId: User['id'], connection: Connection) {
+		const { connections, userIdByPushRef } = this;
 		this.logger.debug('Add editor-UI session', { pushRef });
 
 		const existingConnection = connections[pushRef];
@@ -28,6 +48,15 @@ export abstract class AbstractPush<T> {
 		}
 
 		connections[pushRef] = connection;
+		userIdByPushRef[pushRef] = userId;
+	}
+
+	protected onMessageReceived(pushRef: string, msg: unknown) {
+		this.logger.debug('Received message from editor-UI', { pushRef, msg });
+
+		const userId = this.userIdByPushRef[pushRef];
+
+		this.emit('message', { pushRef, userId, msg });
 	}
 
 	protected remove(pushRef?: string) {
@@ -36,10 +65,11 @@ export abstract class AbstractPush<T> {
 		this.logger.debug('Removed editor-UI session', { pushRef });
 
 		delete this.connections[pushRef];
+		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
+		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
 		});
@@ -53,17 +83,32 @@ export abstract class AbstractPush<T> {
 		}
 	}
 
-	sendToAll(type: IPushDataType, data?: unknown) {
-		this.sendTo(type, data, Object.keys(this.connections));
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
+		}
 	}
 
-	sendToOne(type: IPushDataType, data: unknown, pushRef: string) {
+	sendToAll(pushMsg: PushMessage) {
+		this.sendTo(pushMsg, Object.keys(this.connections));
+	}
+
+	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendTo(type, data, [pushRef]);
+		this.sendTo(pushMsg, [pushRef]);
+	}
+
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+		const { connections } = this;
+		const userPushRefs = Object.keys(connections).filter((pushRef) =>
+			userIds.includes(this.userIdByPushRef[pushRef]),
+		);
+
+		this.sendTo(pushMsg, userPushRefs);
 	}
 
 	closeAllConnections() {

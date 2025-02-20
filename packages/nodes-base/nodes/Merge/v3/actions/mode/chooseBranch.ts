@@ -73,7 +73,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
@@ -106,5 +106,5 @@ export async function execute(
 		}
 	}
 
-	return returnData;
+	return [returnData];
 }

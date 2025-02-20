@@ -1,4 +1,8 @@
-import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import assign from 'lodash/assign';
+import assignWith from 'lodash/assignWith';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import mergeWith from 'lodash/mergeWith';
 import type {
 	GenericValue,
 	IBinaryKeyData,
@@ -8,12 +12,7 @@ import type {
 	INodeParameters,
 	IPairedItemData,
 } from 'n8n-workflow';
-
-import assign from 'lodash/assign';
-import assignWith from 'lodash/assignWith';
-import get from 'lodash/get';
-import merge from 'lodash/merge';
-import mergeWith from 'lodash/mergeWith';
+import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 

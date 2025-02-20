@@ -1,6 +1,8 @@
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { OpenAIClient } from '@langchain/openai';
+import type { BaseMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
+import type { OpenAIClient } from '@langchain/openai';
+import type { BufferWindowMemory } from 'langchain/memory';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
 // since these functions are not exported
@@ -42,4 +44,8 @@ export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.
 			parameters: zodToJsonSchema(tool.schema),
 		},
 	};
+}
+
+export async function getChatMessages(memory: BufferWindowMemory): Promise<BaseMessage[]> {
+	return (await memory.loadMemoryVariables({}))[memory.memoryKey] as BaseMessage[];
 }

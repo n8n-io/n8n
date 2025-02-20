@@ -1,0 +1,1 @@
+export { Memoized } from './memoized';

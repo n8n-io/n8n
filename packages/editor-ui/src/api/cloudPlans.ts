@@ -13,7 +13,7 @@ export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.
 	return await get(context.baseUrl, '/cloud/proxy/user/me');
 }
 
-export async function confirmEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {
+export async function sendConfirmationEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {
 	return await post(context.baseUrl, '/cloud/proxy/user/resend-confirmation-email');
 }
 

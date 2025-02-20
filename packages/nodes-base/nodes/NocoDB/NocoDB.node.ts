@@ -9,10 +9,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
 
 export class NocoDB implements INodeType {
@@ -27,8 +26,9 @@ export class NocoDB implements INodeType {
 		defaults: {
 			name: 'NocoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'nocoDb',
@@ -405,7 +405,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...body);
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -468,7 +468,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...responseData);
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -541,7 +541,7 @@ export class NocoDB implements INodeType {
 						return [data];
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.toString() } });
 					} else {
 						throw error;
@@ -617,7 +617,7 @@ export class NocoDB implements INodeType {
 							newItems.push(...executionData);
 						}
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.toString() }),
 								{ itemData: { item: i } },
@@ -759,7 +759,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...body);
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);

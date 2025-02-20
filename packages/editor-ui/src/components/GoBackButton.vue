@@ -1,20 +1,22 @@
-<template>
-	<div :class="$style.wrapper" @click="navigateTo">
-		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
-		<div :class="$style.text" v-text="$locale.baseText('template.buttons.goBackButton')" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 
 const router = useRouter();
+const i18n = useI18n();
 
 const navigateTo = () => {
 	void router.push({ name: VIEWS.TEMPLATES });
 };
 </script>
+
+<template>
+	<div :class="$style.wrapper" @click="navigateTo">
+		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
+		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .wrapper {

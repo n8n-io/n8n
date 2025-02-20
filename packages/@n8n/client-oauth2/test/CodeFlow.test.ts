@@ -1,7 +1,9 @@
 import nock from 'nock';
-import { ClientOAuth2, ClientOAuth2Token } from '../src';
-import * as config from './config';
+
 import { AuthError } from '@/utils';
+
+import * as config from './config';
+import { ClientOAuth2, ClientOAuth2Token } from '../src';
 
 describe('CodeFlow', () => {
 	beforeAll(async () => {

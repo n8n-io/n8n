@@ -1,22 +1,29 @@
 import type { IRestApiContext, ITag } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
 
-export async function getTags(context: IRestApiContext, withUsageCount = false): Promise<ITag[]> {
-	return await makeRestApiRequest(context, 'GET', '/tags', { withUsageCount });
-}
+type TagsApiEndpoint = '/tags' | '/annotation-tags';
 
-export async function createTag(context: IRestApiContext, params: { name: string }): Promise<ITag> {
-	return await makeRestApiRequest(context, 'POST', '/tags', params);
-}
-
-export async function updateTag(
-	context: IRestApiContext,
-	id: string,
-	params: { name: string },
-): Promise<ITag> {
-	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
-}
-
-export async function deleteTag(context: IRestApiContext, id: string): Promise<boolean> {
-	return await makeRestApiRequest(context, 'DELETE', `/tags/${id}`);
+export function createTagsApi(endpoint: TagsApiEndpoint) {
+	return {
+		getTags: async (context: IRestApiContext, data: RetrieveTagQueryDto): Promise<ITag[]> => {
+			return await makeRestApiRequest(context, 'GET', endpoint, data);
+		},
+		createTag: async (
+			context: IRestApiContext,
+			data: CreateOrUpdateTagRequestDto,
+		): Promise<ITag> => {
+			return await makeRestApiRequest(context, 'POST', endpoint, data);
+		},
+		updateTag: async (
+			context: IRestApiContext,
+			id: string,
+			data: CreateOrUpdateTagRequestDto,
+		): Promise<ITag> => {
+			return await makeRestApiRequest(context, 'PATCH', `${endpoint}/${id}`, data);
+		},
+		deleteTag: async (context: IRestApiContext, id: string): Promise<boolean> => {
+			return await makeRestApiRequest(context, 'DELETE', `${endpoint}/${id}`);
+		},
+	};
 }

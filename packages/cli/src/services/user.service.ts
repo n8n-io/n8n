@@ -1,18 +1,17 @@
-import { Container, Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
-import type { User, AssignableRole } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import type { Invitation, PublicUser } from '@/Interfaces';
-import type { PostHogClient } from '@/posthog';
-import { Logger } from '@/Logger';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalHooks } from '@/InternalHooks';
-import { UrlService } from '@/services/url.service';
-import type { UserRequest } from '@/requests';
+import type { User, AssignableRole } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
+import type { Invitation, PublicUser } from '@/interfaces';
+import type { PostHogClient } from '@/posthog';
+import type { UserRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 @Service()
 export class UserService {
@@ -59,7 +58,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -131,6 +130,7 @@ export class UserService {
 						email,
 						inviteAcceptUrl,
 						emailSent: false,
+						role,
 					},
 					error: '',
 				};
@@ -139,15 +139,15 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
-						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						Container.get(InternalHooks).onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
+
+						this.eventService.emit('user-transactional-email-sent', {
+							userId: id,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 					}
 
@@ -160,16 +160,14 @@ export class UserService {
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						Container.get(InternalHooks).onEmailFailed({
+						this.eventService.emit('email-failed', {
 							user: owner,
-							message_type: 'New user invite',
-							public_api: false,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
-						this.eventService.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
-							domain,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -215,9 +213,8 @@ export class UserService {
 					),
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
 			this.logger.error('Failed to create user shells', { userShells: createdUsers });
-			throw new InternalServerError('An error occurred during user creation');
+			throw new InternalServerError('An error occurred during user creation', error);
 		}
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));

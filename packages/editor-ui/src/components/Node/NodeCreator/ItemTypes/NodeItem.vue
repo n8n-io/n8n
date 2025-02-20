@@ -1,45 +1,3 @@
-<template>
-	<!-- Node Item is draggable only if it doesn't contain actions -->
-	<n8n-node-creator-node
-		:draggable="!showActionArrow"
-		:class="$style.nodeItem"
-		:description="description"
-		:title="displayName"
-		:show-action-arrow="showActionArrow"
-		:is-trigger="isTrigger"
-		:data-test-id="dataTestId"
-		:tag="nodeType.tag"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
-	>
-		<template #icon>
-			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
-		</template>
-
-		<template v-if="isCommunityNode" #tooltip>
-			<p
-				:class="$style.communityNodeIcon"
-				@click="onCommunityNodeTooltipClick"
-				v-html="
-					i18n.baseText('generic.communityNode.tooltip', {
-						interpolate: {
-							packageName: nodeType.name.split('.')[0],
-							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-						},
-					})
-				"
-			/>
-		</template>
-		<template #dragContent>
-			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
-			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
-				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
-			</div>
-		</template>
-	</n8n-node-creator-node>
-</template>
-
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -48,14 +6,15 @@ import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
+	HITL_SUBCATEGORY,
 } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
+import { useViewStacks } from '../composables/useViewStacks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeType } from '@/composables/useNodeType';
@@ -76,6 +35,7 @@ const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
 const { getAddedNodesAndConnections } = useActions();
+const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });
@@ -85,6 +45,9 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (isSendAndWaitCategory.value) {
+		return '';
+	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
 		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
@@ -97,13 +60,14 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
-const showActionArrow = computed(() => hasActions.value);
+const showActionArrow = computed(() => hasActions.value && !isSendAndWaitCategory.value);
+const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
 );
 
 const hasActions = computed(() => {
-	return nodeActions.value.length > 1;
+	return nodeActions.value.length > 1 && !activeViewStack.hideActions;
 });
 
 const nodeActions = computed(() => {
@@ -133,15 +97,6 @@ const isTrigger = computed<boolean>(() => {
 });
 
 function onDragStart(event: DragEvent): void {
-	/**
-	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-	 * All browsers attach the correct page coordinates to the "dragover" event.
-	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-	 */
-	document.body.addEventListener('dragover', onDragOver);
-
-	const { pageX: x, pageY: y } = event;
-
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
 		event.dataTransfer.dropEffect = 'copy';
@@ -153,22 +108,9 @@ function onDragStart(event: DragEvent): void {
 	}
 
 	dragging.value = true;
-	draggablePosition.value = { x, y };
-}
-
-function onDragOver(event: DragEvent): void {
-	if (!dragging.value || (event.pageX === 0 && event.pageY === 0)) {
-		return;
-	}
-
-	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
-
-	draggablePosition.value = { x, y };
 }
 
 function onDragEnd(): void {
-	document.body.removeEventListener('dragover', onDragOver);
-
 	dragging.value = false;
 	setTimeout(() => {
 		draggablePosition.value = { x: -100, y: -100 };
@@ -181,6 +123,53 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	}
 }
 </script>
+
+<template>
+	<!-- Node Item is draggable only if it doesn't contain actions -->
+	<N8nNodeCreatorNode
+		:draggable="!showActionArrow"
+		:class="$style.nodeItem"
+		:description="description"
+		:title="displayName"
+		:show-action-arrow="showActionArrow"
+		:is-trigger="isTrigger"
+		:data-test-id="dataTestId"
+		:tag="nodeType.tag"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
+	>
+		<template #icon>
+			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
+		</template>
+
+		<template v-if="isCommunityNode" #tooltip>
+			<p
+				:class="$style.communityNodeIcon"
+				@click="onCommunityNodeTooltipClick"
+				v-n8n-html="
+					i18n.baseText('generic.communityNode.tooltip', {
+						interpolate: {
+							packageName: nodeType.name.split('.')[0],
+							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+						},
+					})
+				"
+			/>
+		</template>
+		<template #dragContent>
+			<div
+				ref="draggableDataTransfer"
+				v-show="dragging"
+				:class="$style.draggable"
+				:style="draggableStyle"
+			>
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
+			</div>
+		</template>
+	</N8nNodeCreatorNode>
+</template>
+
 <style lang="scss" module>
 .nodeItem {
 	--trigger-icon-background-color: #{$trigger-icon-background-color};

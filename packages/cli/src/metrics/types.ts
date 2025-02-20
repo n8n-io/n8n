@@ -1,4 +1,4 @@
-export type MetricCategory = 'default' | 'routes' | 'cache' | 'logs';
+export type MetricCategory = 'default' | 'routes' | 'cache' | 'logs' | 'queue';
 
 export type MetricLabel =
 	| 'credentialsType'

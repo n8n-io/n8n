@@ -5,7 +5,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -21,10 +21,15 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	MOVE: 'move',
 };
 
+const emit = defineEmits<{
+	click: [credentialId: string];
+}>();
+
 const props = withDefaults(
 	defineProps<{
 		data: ICredentialsResponse;
 		readOnly?: boolean;
+		needsSetup?: boolean;
 	}>(),
 	{
 		data: () => ({
@@ -35,6 +40,7 @@ const props = withDefaults(
 			name: '',
 			sharedWithProjects: [],
 			homeProject: {} as ProjectSharingData,
+			isManaged: false,
 		}),
 		readOnly: false,
 	},
@@ -48,7 +54,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() => getCredentialPermissions(props.data));
+const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
 	const items = [
 		{
@@ -83,7 +89,7 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 function onClick() {
-	uiStore.openExistingCredential(props.data.id);
+	emit('click', props.data.id);
 }
 
 async function onAction(action: string) {
@@ -131,29 +137,36 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
+				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+					{{ locale.baseText('credentials.item.needsSetup') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
@@ -172,9 +185,10 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
+	--card--padding: 0 0 0 var(--spacing-s);
+
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-	padding: 0 0 0 var(--spacing-s);
 	align-items: stretch;
 
 	&:hover {
@@ -185,10 +199,6 @@ function moveResource() {
 .cardHeading {
 	font-size: var(--font-size-s);
 	padding: var(--spacing-s) 0 0;
-
-	span {
-		color: var(--color-text-light);
-	}
 }
 
 .cardDescription {
@@ -206,5 +216,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-wrap: wrap;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0;
+	}
+
+	.cardBadge {
+		margin-right: auto;
+	}
 }
 </style>

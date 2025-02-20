@@ -9,7 +9,9 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
+import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
 import {
 	payoutFields,
 	payoutItemFields,
@@ -24,7 +26,6 @@ import type {
 	RecipientType,
 	RecipientWallet,
 } from './PaymentInteface';
-import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 export class PayPal implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,8 +39,8 @@ export class PayPal implements INodeType {
 		defaults: {
 			name: 'PayPal',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'payPalApi',
@@ -242,7 +243,7 @@ export class PayPal implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

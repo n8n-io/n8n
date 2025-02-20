@@ -7,11 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { storyblokApiRequest, storyblokApiRequestAllItems } from './GenericFunctions';
-
 import { storyContentFields, storyContentOperations } from './StoryContentDescription';
-
 import { storyManagementFields, storyManagementOperations } from './StoryManagementDescription';
 
 export class Storyblok implements INodeType {
@@ -26,8 +25,9 @@ export class Storyblok implements INodeType {
 		defaults: {
 			name: 'Storyblok',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'storyblokContentApi',
@@ -348,7 +348,7 @@ export class Storyblok implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

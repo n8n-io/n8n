@@ -9,10 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
-
-import { schema } from './Schema';
-
 import type {
 	ICredential,
 	ICtx,
@@ -22,6 +18,8 @@ import type {
 	IRow,
 	IRowObject,
 } from './Interfaces';
+import { schema } from './Schema';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {

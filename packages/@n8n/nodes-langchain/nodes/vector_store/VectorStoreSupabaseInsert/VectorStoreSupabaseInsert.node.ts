@@ -1,3 +1,7 @@
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
+import { createClient } from '@supabase/supabase-js';
 import {
 	type IExecuteFunctions,
 	type INodeType,
@@ -5,15 +9,12 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
-import type { Document } from '@langchain/core/documents';
-import { createClient } from '@supabase/supabase-js';
-import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { processDocuments } from '../shared/processDocuments';
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
+import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseInsert implements INodeType {
@@ -94,7 +95,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 	methods = { listSearch: { supabaseTableNameSearch } };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing data for Supabase Insert Vector Store');
+		this.logger.debug('Executing data for Supabase Insert Vector Store');
 
 		const items = this.getInputData(0);
 		const tableName = this.getNodeParameter('tableName', 0, '', { extractValue: true }) as string;

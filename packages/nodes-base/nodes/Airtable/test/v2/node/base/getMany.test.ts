@@ -1,7 +1,4 @@
-import nock from 'nock';
-
 import * as getMany from '../../../../v2/actions/base/getMany.operation';
-
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -34,15 +31,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, base => getMany', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should return all bases', async () => {
 		const nodeParameters = {
 			resource: 'base',
@@ -61,11 +49,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 1',
 					permissionLevel: 'create',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 			{
 				json: {
@@ -73,11 +56,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 2',
 					permissionLevel: 'edit',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 			{
 				json: {
@@ -85,11 +63,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 3',
 					permissionLevel: 'create',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 		]);
 	});
@@ -113,11 +86,6 @@ describe('Test AirtableV2, base => getMany', () => {
 					name: 'base 2',
 					permissionLevel: 'edit',
 				},
-				pairedItem: [
-					{
-						item: 0,
-					},
-				],
 			},
 		]);
 	});

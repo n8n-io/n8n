@@ -1,22 +1,19 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IHttpRequestMethods,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
 import { contactJourneyFields, contactJourneyOperations } from './ContactJourneyDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
+import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Autopilot implements INodeType {
@@ -31,8 +28,9 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'autopilotApi',
@@ -305,7 +303,7 @@ export class Autopilot implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
 						[{ json: { error: error.message } }],
 						{ itemData: { item: i } },

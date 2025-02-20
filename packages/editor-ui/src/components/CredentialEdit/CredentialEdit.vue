@@ -1,118 +1,3 @@
-<template>
-	<Modal
-		:name="modalName"
-		:custom-class="$style.credentialModal"
-		:event-bus="modalBus"
-		:loading="loading"
-		:before-close="beforeClose"
-		width="70%"
-		height="80%"
-	>
-		<template #header>
-			<div :class="$style.header">
-				<div :class="$style.credInfo">
-					<div :class="$style.credIcon">
-						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
-					</div>
-					<InlineNameEdit
-						:model-value="credentialName"
-						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.update || !credentialType"
-						type="Credential"
-						data-test-id="credential-name"
-						@update:model-value="onNameEdit"
-					/>
-				</div>
-				<div :class="$style.credActions">
-					<n8n-icon-button
-						v-if="currentCredential && credentialPermissions.delete"
-						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
-						icon="trash"
-						type="tertiary"
-						:disabled="isSaving"
-						:loading="isDeleting"
-						data-test-id="credential-delete-button"
-						@click="deleteCredential"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:saved="!hasUnsavedChanges && !isTesting"
-						:is-saving="isSaving || isTesting"
-						:saving-label="
-							isTesting
-								? $locale.baseText('credentialEdit.credentialEdit.testing')
-								: $locale.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
-					/>
-				</div>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.container" data-test-id="credential-edit-dialog">
-				<div :class="$style.sidebar">
-					<n8n-menu
-						mode="tabs"
-						:items="sidebarItems"
-						:transparent-background="true"
-						@select="onTabSelect"
-					></n8n-menu>
-				</div>
-				<div
-					v-if="activeTab === 'connection' && credentialType"
-					ref="contentRef"
-					:class="$style.mainContent"
-				>
-					<CredentialConfig
-						:credential-type="credentialType"
-						:credential-properties="credentialProperties"
-						:credential-data="credentialData"
-						:credential-id="credentialId"
-						:show-validation-warning="showValidationWarning"
-						:auth-error="authError"
-						:tested-successfully="testedSuccessfully"
-						:is-o-auth-type="isOAuthType"
-						:is-o-auth-connected="isOAuthConnected"
-						:is-retesting="isRetesting"
-						:parent-types="parentTypes"
-						:required-properties-filled="requiredPropertiesFilled"
-						:credential-permissions="credentialPermissions"
-						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
-						:mode="mode"
-						:selected-credential="selectedCredential"
-						:show-auth-type-selector="requiredCredentials"
-						@update="onDataChange"
-						@oauth="oAuthCredentialAuthorize"
-						@retest="retestCredential"
-						@scroll-to-top="scrollToTop"
-						@auth-type-changed="onAuthTypeChanged"
-					/>
-				</div>
-				<div v-else-if="showSharingContent" :class="$style.mainContent">
-					<CredentialSharing
-						:credential="currentCredential"
-						:credential-data="credentialData"
-						:credential-id="credentialId"
-						:credential-permissions="credentialPermissions"
-						:modal-bus="modalBus"
-						@update:model-value="onChangeSharedWith"
-					/>
-				</div>
-				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-					<CredentialInfo
-						:current-credential="currentCredential"
-						:credential-permissions="credentialPermissions"
-					/>
-				</div>
-				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
-					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>
-				</div>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 
@@ -137,7 +22,6 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -145,15 +29,14 @@ import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { Project, ProjectSharingData } from '@/types/projects.types';
 import { assert } from '@/utils/assert';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -169,7 +52,6 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
-import type { CredentialScope } from '@n8n/permissions';
 
 type Props = {
 	modalName: string;
@@ -206,6 +88,7 @@ const isDeleting = ref(false);
 const isSaving = ref(false);
 const isTesting = ref(false);
 const hasUnsavedChanges = ref(false);
+const isSaved = ref(false);
 const loading = ref(false);
 const showValidationWarning = ref(false);
 const testedSuccessfully = ref(false);
@@ -275,6 +158,11 @@ const credentialTypeName = computed(() => {
 		return selectedCredentialType.value.name;
 	}
 	return `${props.activeId}`;
+});
+
+const isEditingManagedCredential = computed(() => {
+	if (!props.activeId) return false;
+	return credentialsStore.getCredentialById(props.activeId)?.isManaged ?? false;
 });
 
 const isCredentialTestable = computed(() => {
@@ -395,14 +283,10 @@ const requiredPropertiesFilled = computed(() => {
 	return true;
 });
 
-const credentialPermissions = computed<PermissionsMap<CredentialScope>>(() => {
-	if (loading.value) {
-		return {} as PermissionsMap<CredentialScope>;
-	}
-
-	return getCredentialPermissions(
-		(credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse,
-	);
+const credentialPermissions = computed(() => {
+	return getResourcePermissions(
+		(currentCredential.value as ICredentialsResponse)?.scopes ?? homeProject.value?.scopes,
+	).credential;
 });
 
 const sidebarItems = computed(() => {
@@ -439,12 +323,17 @@ const defaultCredentialTypeName = computed(() => {
 
 const showSaveButton = computed(() => {
 	return (
-		(hasUnsavedChanges.value || !!credentialId.value) &&
-		(credentialPermissions.value.create || credentialPermissions.value.update)
+		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
+		(credentialPermissions.value.create ?? credentialPermissions.value.update)
 	);
 });
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
+
+const homeProject = computed(() => {
+	const { currentProject, personalProject } = projectsStore;
+	return currentProject ?? personalProject;
+});
 
 onMounted(async () => {
 	requiredCredentials.value =
@@ -456,14 +345,9 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const { currentProject, personalProject } = projectsStore;
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-		const homeProject = currentProject ?? personalProject ?? {};
-
 		credentialData.value = {
 			...credentialData.value,
-			scopes,
-			homeProject,
+			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
 		await loadCurrentCredential();
@@ -524,7 +408,7 @@ async function beforeClose() {
 			},
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (isOAuthType.value && !isOAuthConnected.value) {
+	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
@@ -541,6 +425,7 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
+		uiStore.activeCredentialType = null;
 		return true;
 	} else if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
@@ -638,14 +523,13 @@ async function loadCurrentCredential() {
 
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
-	const tabName: string = tab.replaceAll('coming-soon/', '');
 	const credType: string = credentialType.value ? credentialType.value.name : '';
 	const activeNode: INode | null = ndvStore.activeNode;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
-		tab: tabName,
+		tab,
 		workflow_id: workflowsStore.workflowId,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
@@ -718,6 +602,10 @@ function scrollToBottom() {
 }
 
 async function retestCredential() {
+	if (isEditingManagedCredential.value) {
+		return;
+	}
+
 	if (!isCredentialTestable.value || !credentialTypeName.value) {
 		authError.value = '';
 		testedSuccessfully.value = false;
@@ -793,35 +681,16 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			.sharedWithProjects as ProjectSharingData[];
 	}
 
+	if (credentialData.value.homeProject) {
+		credentialDetails.homeProject = credentialData.value.homeProject as ProjectSharingData;
+	}
+
 	let credential: ICredentialsResponse | null = null;
 
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		credential = await createCredential(credentialDetails, projectsStore.currentProjectId);
-
-		let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
-		let toastText = '';
-
-		if (!credentialDetails.sharedWithProjects) {
-			toastText = i18n.baseText('credentials.create.personal.toast.text');
-		}
-
-		if (projectsStore.currentProject) {
-			toastTitle = i18n.baseText('credentials.create.project.toast.title', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-
-			toastText = i18n.baseText('credentials.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-		}
-
-		toast.showMessage({
-			title: toastTitle,
-			message: toastText,
-			type: 'success',
-		});
+		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -888,15 +757,53 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	return credential;
 }
 
+const createToastMessagingForNewCredentials = (
+	credentialDetails: ICredentialsDecrypted,
+	project?: Project | null,
+) => {
+	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
+	let toastText = '';
+
+	if (!credentialDetails.sharedWithProjects) {
+		toastText = i18n.baseText('credentials.create.personal.toast.text');
+	}
+
+	if (
+		projectsStore.currentProject &&
+		projectsStore.currentProject.id !== projectsStore.personalProject?.id
+	) {
+		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+
+		toastText = i18n.baseText('credentials.create.project.toast.text', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+	}
+
+	return {
+		title: toastTitle,
+		message: toastText,
+	};
+};
+
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	projectId?: string,
+	project?: Project | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 
 	try {
-		credential = await credentialsStore.createNewCredential(credentialDetails, projectId);
+		credential = await credentialsStore.createNewCredential(credentialDetails, project?.id);
 		hasUnsavedChanges.value = false;
+
+		const { title, message } = createToastMessagingForNewCredentials(credentialDetails, project);
+
+		toast.showMessage({
+			title,
+			message,
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(
 			error,
@@ -944,6 +851,7 @@ async function updateCredential(
 			isSharedWithChanged.value = false;
 		}
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 
 		if (credential) {
 			await externalHooks.run('credential.saved', {
@@ -995,6 +903,7 @@ async function deleteCredential() {
 		isDeleting.value = true;
 		await credentialsStore.deleteCredential({ id: credentialId.value });
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -1103,6 +1012,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
 	if (credentialsForType) {
 		selectedCredential.value = credentialsForType.name;
+		uiStore.activeCredentialType = credentialsForType.name;
 		resetCredentialData();
 		// Update current node auth type so credentials dropdown can be displayed properly
 		updateNodeAuthType(ndvStore.activeNode, type);
@@ -1140,6 +1050,118 @@ function resetCredentialData(): void {
 	};
 }
 </script>
+
+<template>
+	<Modal
+		:name="modalName"
+		:custom-class="$style.credentialModal"
+		:event-bus="modalBus"
+		:loading="loading"
+		:before-close="beforeClose"
+		width="70%"
+		height="80%"
+	>
+		<template #header>
+			<div :class="$style.header">
+				<div :class="$style.credInfo">
+					<div :class="$style.credIcon">
+						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
+					</div>
+					<InlineNameEdit
+						:model-value="credentialName"
+						:subtitle="credentialType ? credentialType.displayName : ''"
+						:readonly="
+							!credentialPermissions.update || !credentialType || isEditingManagedCredential
+						"
+						type="Credential"
+						data-test-id="credential-name"
+						@update:model-value="onNameEdit"
+					/>
+				</div>
+				<div :class="$style.credActions">
+					<n8n-icon-button
+						v-if="currentCredential && credentialPermissions.delete"
+						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
+						icon="trash"
+						type="tertiary"
+						:disabled="isSaving"
+						:loading="isDeleting"
+						data-test-id="credential-delete-button"
+						@click="deleteCredential"
+					/>
+					<SaveButton
+						v-if="showSaveButton"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:is-saving="isSaving || isTesting"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
+					/>
+				</div>
+			</div>
+		</template>
+		<template #content>
+			<div :class="$style.container" data-test-id="credential-edit-dialog">
+				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
+					<n8n-menu
+						mode="tabs"
+						:items="sidebarItems"
+						:transparent-background="true"
+						@select="onTabSelect"
+					></n8n-menu>
+				</div>
+				<div
+					v-if="activeTab === 'connection' && credentialType"
+					ref="contentRef"
+					:class="$style.mainContent"
+				>
+					<CredentialConfig
+						:credential-type="credentialType"
+						:credential-properties="credentialProperties"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:is-managed="isEditingManagedCredential"
+						:show-validation-warning="showValidationWarning"
+						:auth-error="authError"
+						:tested-successfully="testedSuccessfully"
+						:is-o-auth-type="isOAuthType"
+						:is-o-auth-connected="isOAuthConnected"
+						:is-retesting="isRetesting"
+						:parent-types="parentTypes"
+						:required-properties-filled="requiredPropertiesFilled"
+						:credential-permissions="credentialPermissions"
+						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
+						:mode="mode"
+						:selected-credential="selectedCredential"
+						:show-auth-type-selector="requiredCredentials"
+						@update="onDataChange"
+						@oauth="oAuthCredentialAuthorize"
+						@retest="retestCredential"
+						@scroll-to-top="scrollToTop"
+						@auth-type-changed="onAuthTypeChanged"
+					/>
+				</div>
+				<div v-else-if="showSharingContent" :class="$style.mainContent">
+					<CredentialSharing
+						:credential="currentCredential"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:credential-permissions="credentialPermissions"
+						:modal-bus="modalBus"
+						@update:model-value="onChangeSharedWith"
+					/>
+				</div>
+				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
+					<CredentialInfo :current-credential="currentCredential" />
+				</div>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style module lang="scss">
 .credentialModal {

@@ -1,4 +1,5 @@
 import { fireEvent, waitFor } from '@testing-library/vue';
+
 import {
 	createFetchResponse,
 	createGetLatestMessagesResponse,

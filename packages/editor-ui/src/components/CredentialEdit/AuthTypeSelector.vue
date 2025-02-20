@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import { useI18n } from '@/composables/useI18n';
 import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+
+const i18n = useI18n();
 
 const props = defineProps<Props>();
 
@@ -133,8 +136,8 @@ defineExpose({
 		</div>
 		<div>
 			<n8n-input-label
-				:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-				:tooltip-text="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+				:label="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
+				:tooltip-text="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
 				:required="true"
 			/>
 		</div>

@@ -1,5 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
+
 import { settings } from './commands';
 
 before(() => {
@@ -17,6 +18,8 @@ beforeEach(() => {
 
 	cy.window().then((win): void => {
 		win.localStorage.setItem('N8N_THEME', 'light');
+		win.localStorage.setItem('N8N_AUTOCOMPLETE_ONBOARDED', 'true');
+		win.localStorage.setItem('N8N_MAPPING_ONBOARDED', 'true');
 	});
 
 	cy.intercept('GET', '/rest/settings', (req) => {
@@ -35,7 +38,21 @@ beforeEach(() => {
 		data: { status: 'success', message: 'Tested successfully' },
 	}).as('credentialTest');
 
-	cy.intercept('POST', '/rest/license/renew', {});
+	cy.intercept('POST', '/rest/license/renew', {
+		data: {
+			usage: {
+				activeWorkflowTriggers: {
+					limit: -1,
+					value: 0,
+					warningThreshold: 0.8,
+				},
+			},
+			license: {
+				planId: '',
+				planName: 'Community',
+			},
+		},
+	});
 
 	cy.intercept({ pathname: '/api/health' }, { status: 'OK' }).as('healthCheck');
 	cy.intercept({ pathname: '/api/versions/*' }, [

@@ -51,3 +51,33 @@ ruleTester.run('no-json-parse-json-stringify', rules['no-json-parse-json-stringi
 		},
 	],
 });
+
+ruleTester.run('no-useless-catch-throw', rules['no-useless-catch-throw'], {
+	valid: [
+		{
+			code: 'try { foo(); } catch (e) { console.error(e); }',
+		},
+		{
+			code: 'try { foo(); } catch (e) { throw new Error("Custom error"); }',
+		},
+	],
+	invalid: [
+		{
+			code: `
+try {
+	// Some comment
+	if (foo) {
+		bar();
+	}
+} catch (e) {
+	throw e;
+}`,
+			errors: [{ messageId: 'noUselessCatchThrow' }],
+			output: `
+// Some comment
+if (foo) {
+	bar();
+}`,
+		},
+	],
+});

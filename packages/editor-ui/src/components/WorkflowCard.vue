@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -25,6 +25,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -38,6 +39,7 @@ const props = withDefaults(
 	defineProps<{
 		data: IWorkflowDb;
 		readOnly?: boolean;
+		workflowListEventBus?: EventBus;
 	}>(),
 	{
 		data: () => ({
@@ -53,12 +55,15 @@ const props = withDefaults(
 			versionId: '',
 		}),
 		readOnly: false,
+		workflowListEventBus: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
+	'workflow:deleted': [];
+	'workflow:active-toggle': [value: { id: string; active: boolean }];
 }>();
 
 const toast = useToast();
@@ -75,7 +80,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
+const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 const actions = computed(() => {
 	const items = [
 		{
@@ -88,7 +93,7 @@ const actions = computed(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -160,6 +165,7 @@ async function onAction(action: string) {
 					tags: (props.data.tags ?? []).map((tag) =>
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
+					externalEventBus: props.workflowListEventBus,
 				},
 			});
 			break;
@@ -217,6 +223,7 @@ async function deleteWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 		type: 'success',
 	});
+	emit('workflow:deleted');
 }
 
 function moveResource() {
@@ -226,9 +233,14 @@ function moveResource() {
 			resource: props.data,
 			resourceType: ResourceType.Workflow,
 			resourceTypeLabel: resourceTypeLabel.value,
+			eventBus: props.workflowListEventBus,
 		},
 	});
 }
+
+const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
+	emit('workflow:active-toggle', value);
+};
 </script>
 
 <template>
@@ -236,16 +248,19 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }}
+					>{{ locale.baseText('workflows.item.updated') }}
 					<TimeAgo :date="String(data.updatedAt)" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
-					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 				<span
 					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -265,6 +280,7 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
@@ -274,7 +290,9 @@ function moveResource() {
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
+					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
+					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
 
 				<n8n-action-toggle
@@ -325,5 +343,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-direction: column;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0 var(--spacing-s) var(--spacing-s);
+	}
+
+	.cardBadge {
+		margin-right: auto;
+	}
 }
 </style>

@@ -2,12 +2,13 @@
 	<head>
 		<meta charset='UTF-8' />
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+		<meta name="description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:title" content="{{formTitle}}" />
+		<meta property="og:description" content="{{formDescriptionMetadata}}" />
+		<meta property="og:type" content="website" />
+		<meta property="og:image" content="/static/og_image.png" />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
-		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
-			rel='stylesheet'
-			type='text/css'
-		/>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 		<title>{{formTitle}}</title>
 		<style>
 			*,
@@ -20,7 +21,7 @@
 
 			body {
 				font-family:
-					Open Sans,
+					"Open Sans",
 					sans-serif;
 				font-weight: 400;
 				font-size: 12px;
@@ -226,6 +227,7 @@
 
 			.multiselect-checkbox {
 				vertical-align: middle;
+				min-width: 18px;
 			}
 
 			input[type='checkbox'] {
@@ -282,6 +284,60 @@
 					display: inline-block;
 			}
 
+			div.html {
+					text-align: left;
+					color: #555;
+					font-size: 14px;
+			}
+			div.html h1, div.html h2, div.html h3, div.html h4, div.html h5, div.html h6, div.html p, div.html ul, div.html ol, div.html a {
+					font-weight: 400;
+					font-style: normal;
+					margin-bottom: 8px;
+			}
+			div.html li {
+					margin-bottom: 8px;
+					margin-left: 24px;
+			}
+			div.html ul, div.html ol {
+					font-size: 14px;
+					display: flex;
+					flex-direction: column;
+					align-self: stretch;
+					line-height: normal;
+			}
+			div.html b {
+					font-weight: 600;
+			}
+			div.html h1 {
+					font-size: 28px;
+					line-height: 35px;
+			}
+			div.html h2 {
+					font-size: 20px;
+					line-height: 26px;
+			}
+			div.html h3 {
+					font-size: 16px;
+					line-height: 24px;
+			}
+			div.html h4 {
+					font-size: 14px;
+					line-height: 18px;
+			}
+			div.html h5 {
+					font-size: 12px;
+			}
+			div.html h6 {
+					font-size: 10px;
+			}
+			div.html p {
+					margin-bottom: 8px;
+			}
+			div.html a {
+					color:  #FF6D5A;
+					font-size: 14px;
+			}
+
 			@media only screen and (max-width: 500px) {
 				body {
 					background-color: white;
@@ -315,7 +371,7 @@
 			<section>
 				{{#if testRun}}
 					<div class='test-notice'>
-						<p>This is test version of your form. Use it only for testing your Form Trigger.</p>
+						<p>This is test version of your form</p>
 					</div>
 					<hr>
 				{{/if}}
@@ -326,7 +382,7 @@
 					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
 						<div class='form-header'>
 							<h1>{{formTitle}}</h1>
-							<p style="white-space: pre-line">{{formDescription}} </p>
+							<p style="white-space: pre-line">{{{formDescription}}} </p>
 						</div>
 
 						<div class='inputs-wrapper'>
@@ -363,6 +419,17 @@
 											This field is required
 										</p>
 									</div>
+								{{/if}}
+
+								{{#if isHtml}}
+									<div class="form-group html">
+										{{{html}}}
+										<input type="hidden" id="{{id}}" name="{{id}}" value="{{html}}" />
+									</div>
+								{{/if}}
+
+								{{#if isHidden}}
+									<input type="hidden" id="{{id}}" name="{{id}}" value="{{hiddenValue}}" />
 								{{/if}}
 
 								{{#if isTextarea}}
@@ -428,7 +495,7 @@
 										d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
 									/>
 								</svg></span>
-							Submit form
+							{{ buttonLabel }}
 						</button>
 					</form>
 				{{else}}
@@ -449,7 +516,11 @@
 
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>
-						<h1 id='submitted-header'>Form Submitted</h1>
+						{{#if formSubmittedHeader}}
+							<h1 id='submitted-header'>{{formSubmittedHeader}}</h1>
+						{{else}}
+							<h1 id='submitted-header'>Form Submitted</h1>
+						{{/if}}
 						{{#if formSubmittedText}}
 							<p id='submitted-content'>
 								{{formSubmittedText}}
@@ -708,17 +779,27 @@
 								if (json?.redirectURL) {
 									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
 									window.location.replace(url);
-								} else if (json?.formSubmittedText) {
+									return;
+								}
+
+								if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
-								} else {
-									document.body.innerHTML = text;
+									return;
 								}
-								return;
+
+								if (text) {
+									document.body.innerHTML = text;
+									return;
+								}
 							}
 
 							if (response.status === 200) {
+								if(response.redirected) {
+									window.location.replace(response.url);
+									return;
+								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
 									window.location.replace(redirectUrl.href);
@@ -731,7 +812,7 @@
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
-									'An error occurred in the workflow handling this form';
+									'Please try again or contact support if the problem persists';
 							}
 
 							return;

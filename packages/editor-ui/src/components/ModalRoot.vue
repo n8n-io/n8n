@@ -1,3 +1,25 @@
+<script setup lang="ts">
+import { useUIStore } from '@/stores/ui.store';
+
+defineProps<{
+	name: string;
+	keepAlive?: boolean;
+}>();
+
+defineSlots<{
+	default: {
+		modalName: string;
+		active: boolean;
+		open: boolean;
+		activeId: string;
+		mode: string;
+		data: Record<string, unknown>;
+	};
+}>();
+
+const uiStore = useUIStore();
+</script>
+
 <template>
 	<div v-if="uiStore.modalsById[name].open || keepAlive">
 		<slot
@@ -10,27 +32,3 @@
 		></slot>
 	</div>
 </template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
-import { mapStores } from 'pinia';
-import type { ModalKey } from '@/Interface';
-
-export default defineComponent({
-	name: 'ModalRoot',
-	props: {
-		name: {
-			type: String as PropType<ModalKey>,
-			required: true,
-		},
-		keepAlive: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-});
-</script>

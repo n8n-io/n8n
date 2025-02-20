@@ -1,3 +1,5 @@
+import type { INodeExecutionData } from 'n8n-workflow';
+
 import {
 	compareItems,
 	flattenKeys,
@@ -5,6 +7,7 @@ import {
 	getResolvables,
 	keysToLowercase,
 	shuffleArray,
+	sortItemKeysByPriorityList,
 	wrapData,
 } from '@utils/utilities';
 
@@ -250,5 +253,62 @@ describe('compareItems', () => {
 		const keys = ['a.b.c.d'];
 		const result = compareItems(obj1, obj2, keys, true);
 		expect(result).toBe(true);
+	});
+});
+
+describe('sortItemKeysByPriorityList', () => {
+	it('should reorder keys based on priority list', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2 } }];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['b', 'a', 'c']);
+	});
+
+	it('should sort keys not in the priority list alphabetically', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2, d: 4 } }];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['b', 'a', 'c', 'd']);
+	});
+
+	it('should sort all keys alphabetically when priority list is empty', () => {
+		const data: INodeExecutionData[] = [{ json: { c: 3, a: 1, b: 2 } }];
+		const priorityList: string[] = [];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'c']);
+	});
+
+	it('should handle an empty data array', () => {
+		const data: INodeExecutionData[] = [];
+		const priorityList = ['b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		// Expect an empty array since there is no data
+		expect(result).toEqual([]);
+	});
+
+	it('should handle a single object in the data array', () => {
+		const data: INodeExecutionData[] = [{ json: { d: 4, b: 2, a: 1 } }];
+		const priorityList = ['a', 'b', 'c'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'd']);
+	});
+
+	it('should handle duplicate keys in the priority list gracefully', () => {
+		const data: INodeExecutionData[] = [{ json: { d: 4, b: 2, a: 1 } }];
+		const priorityList = ['a', 'b', 'a'];
+
+		const result = sortItemKeysByPriorityList(data, priorityList);
+
+		expect(Object.keys(result[0].json)).toEqual(['a', 'b', 'd']);
 	});
 });
