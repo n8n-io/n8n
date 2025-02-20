@@ -8,9 +8,6 @@ import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
 import { TagEntity } from '../entities/tag-entity';
 
-export const isFolder = (item: unknown): item is Folder =>
-	typeof item === 'object' && item !== null && 'resource' in item && item.resource === 'folder';
-
 @Service()
 export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
@@ -54,13 +51,12 @@ export class FolderRepository extends Repository<Folder> {
 			.leftJoinAndSelect('folder.homeProject', 'homeProject')
 			.leftJoinAndSelect('folder.parentFolder', 'parentFolder')
 			.leftJoinAndSelect('folder.tags', 'tags')
-			.leftJoinAndSelect('folder.workflows', 'workflows')
+			.loadRelationCountAndMap('folder.workflowsCount', 'folder.workflows')
 			.select([
 				'folder',
 				...this.getProjectFields('homeProject'),
 				...this.getTagFields(),
 				...this.getParentFolderFields('parentFolder'),
-				'workflows.id',
 			]);
 	}
 
@@ -102,9 +98,8 @@ export class FolderRepository extends Repository<Folder> {
 			selections.push(...this.getParentFolderFields('parentFolder'));
 		}
 
-		if (select?.workflows) {
-			query.leftJoinAndSelect('folder.workflows', 'workflows');
-			selections.push('workflows.id');
+		if (select?.workflowsCount) {
+			query.loadRelationCountAndMap('folder.workflowsCount', 'folder.workflows');
 		}
 	}
 

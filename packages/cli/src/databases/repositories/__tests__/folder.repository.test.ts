@@ -333,25 +333,22 @@ describe('FolderRepository', () => {
 				});
 			});
 
-			it('should return id, name and workflows when specified', async () => {
+			it('should return id, name and workflowsCount when specified', async () => {
 				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
-						workflows: true,
+						workflowsCount: true,
 					},
 				});
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
-					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflows']);
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflowsCount']);
 					expect(folder.id).toBeDefined();
 					expect(folder.name).toBeDefined();
-					expect(Array.isArray(folder.workflows)).toBeTruthy();
+					expect(folder.workflowsCount).toBeDefined();
 				});
-
-				expect(folders[0].workflows).toHaveLength(1);
-				expect(folders[0].workflows[0].id).toBe(workflowWithTestFolder.id);
 			});
 
 			it('should return timestamps when specified', async () => {
@@ -387,7 +384,7 @@ describe('FolderRepository', () => {
 							type: expect.any(String),
 							icon: null,
 						},
-						workflows: expect.any(Array),
+						workflowsCount: expect.any(Number),
 						tags: expect.any(Array),
 					});
 				});

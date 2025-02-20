@@ -17,7 +17,6 @@ import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { isFolder } from '@/databases/repositories/folder.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import type { WorkflowAndFolderUnionFull } from '@/databases/repositories/workflow.repository';
@@ -106,7 +105,6 @@ export class WorkflowService {
 		this.cleanupSharedField(workflows);
 
 		if (includeFolders) {
-			this.addWorkflowsCount(workflowsAndFolders);
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
@@ -161,16 +159,6 @@ export class WorkflowService {
 		*/
 		workflows.forEach((workflow) => {
 			delete workflow.shared;
-		});
-	}
-
-	private addWorkflowsCount(workflowsAndFolders: WorkflowAndFolderUnionFull[]) {
-		workflowsAndFolders.forEach((wf) => {
-			if (isFolder(wf)) {
-				wf.workflowsCount = wf?.workflows?.length ?? 0;
-				//@ts-expect-error needed because property it's not optional
-				delete wf?.workflows;
-			}
 		});
 	}
 

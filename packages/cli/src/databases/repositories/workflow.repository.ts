@@ -34,7 +34,7 @@ type WorkflowAndFolderUnion = {
 export type WorkflowAndFolderUnionFull = (
 	| ListQuery.Workflow.Plain
 	| ListQuery.Workflow.WithSharing
-	| (Folder & { workflowsCount?: number })
+	| Folder
 ) & {
 	resource: ResourceType;
 };
