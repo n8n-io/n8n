@@ -53,12 +53,47 @@ function shouldCommandMarkDirty(
 			incomingNodes.includes(command.nodeName) &&
 			(command.newState ||
 				Object.keys(getOutgoingConnectors(command.nodeName)).some(
-					(type) => type !== NodeConnectionType.Main,
+					(type) => (type as NodeConnectionType) !== NodeConnectionType.Main,
 				))
 		);
 	}
 
 	return false;
+}
+
+/**
+ * If given node is part of a loop, returns the set of nodes that forms the loop, otherwise returns undefined.
+ */
+function findLoop(
+	nodeName: string,
+	visited: Set<string>,
+	getIncomingConnections: (nodeName: string) => INodeConnections,
+): Set<string> | undefined {
+	if (visited.has(nodeName)) {
+		return visited;
+	}
+
+	const visitedCopy = new Set(visited);
+
+	visitedCopy.add(nodeName);
+
+	for (const [type, typeConnections] of Object.entries(getIncomingConnections(nodeName))) {
+		if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
+			continue;
+		}
+
+		for (const connections of typeConnections) {
+			for (const { node } of connections ?? []) {
+				const loop = findLoop(node, visitedCopy, getIncomingConnections);
+
+				if (loop) {
+					return loop;
+				}
+			}
+		}
+	}
+
+	return undefined;
 }
 
 /**
@@ -124,6 +159,48 @@ export function useNodeDirtiness() {
 		return undefined;
 	}
 
+	/**
+	 * Depth of node is defined as the minimum distance (number of connections) from the trigger node
+	 */
+	const depthByName = computed(() => {
+		const depth: Record<string, number> = {};
+
+		function setDepthRecursively(nodeName: string, current: number, visited: Set<string>) {
+			if (visited.has(nodeName)) {
+				return;
+			}
+
+			const myVisited = new Set<string>(visited);
+
+			myVisited.add(nodeName);
+
+			for (const [type, typeConnections] of Object.entries(
+				workflowsStore.outgoingConnectionsByNodeName(nodeName),
+			)) {
+				if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
+					continue;
+				}
+
+				for (const connections of typeConnections) {
+					for (const { node } of connections ?? []) {
+						if (!depth[node] || depth[node] > current) {
+							depth[node] = current;
+						}
+
+						setDepthRecursively(node, current + 1, myVisited);
+					}
+				}
+			}
+		}
+
+		for (const trigger of workflowsStore.workflowTriggerNodes) {
+			depth[trigger.name] = 0;
+			setDepthRecursively(trigger.name, 1, new Set());
+		}
+
+		return depth;
+	});
+
 	const dirtinessByName = computed(() => {
 		// Do not highlight dirtiness if new partial execution is not enabled
 		if (settingsStore.partialExecutionVersion === 1) {
@@ -132,6 +209,25 @@ export function useNodeDirtiness() {
 
 		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
+
+		function setDirtiness(nodeName: string, value: CanvasNodeDirtiness) {
+			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
+
+			const loop = findLoop(nodeName, new Set(), workflowsStore.incomingConnectionsByNodeName);
+
+			if (!loop) {
+				return;
+			}
+
+			const loopEntryNodeName = [...loop].sort(
+				(a, b) => (depthByName.value[a] ?? 0) - (depthByName.value[b] ?? 0),
+			)?.[0];
+
+			if (loopEntryNodeName) {
+				// If a node in a loop becomes dirty, the first node in the loop should also be dirty
+				dirtiness[loopEntryNodeName] = dirtiness[loopEntryNodeName] ?? 'upstream-dirty';
+			}
+		}
 
 		for (const [nodeName, runData] of Object.entries(runDataByNode)) {
 			const runAt = runData[0]?.startTime ?? 0;
@@ -143,14 +239,14 @@ export function useNodeDirtiness() {
 			const parameterUpdate = getParameterUpdateType(nodeName, runAt);
 
 			if (parameterUpdate) {
-				dirtiness[nodeName] = parameterUpdate;
+				setDirtiness(nodeName, parameterUpdate);
 				continue;
 			}
 
 			const connectionUpdate = getConnectionUpdateType(nodeName, runAt);
 
 			if (connectionUpdate) {
-				dirtiness[nodeName] = connectionUpdate;
+				setDirtiness(nodeName, connectionUpdate);
 				continue;
 			}
 
@@ -168,14 +264,14 @@ export function useNodeDirtiness() {
 				});
 
 			if (hasInputPinnedDataChanged) {
-				dirtiness[nodeName] = 'pinned-data-updated';
+				setDirtiness(nodeName, 'pinned-data-updated');
 				continue;
 			}
 
 			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
 
 			if (pinnedDataLastRemovedAt > runAt) {
-				dirtiness[nodeName] = 'pinned-data-updated';
+				setDirtiness(nodeName, 'pinned-data-updated');
 				continue;
 			}
 		}

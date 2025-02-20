@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -21,6 +22,7 @@ import {
 } from 'vue-router';
 
 describe(useNodeDirtiness, () => {
+	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let historyHelper: ReturnType<typeof useHistoryHelper>;
@@ -35,11 +37,14 @@ describe(useNodeDirtiness, () => {
 
 		const TestComponent = defineComponent({
 			setup() {
+				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				settingsStore = useSettingsStore();
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
 				canvasOperations = useCanvasOperations({ router: useRouter() });
 				uiStore = useUIStore();
+
+				nodeTypeStore.setNodeTypes(defaultNodeDescriptions);
 
 				// Enable new partial execution
 				settingsStore.settings = {
@@ -63,27 +68,16 @@ describe(useNodeDirtiness, () => {
 	});
 
 	it('should be an empty object if no change has been made to the workflow', () => {
-		setupTestWorkflow('a✅, b✅, c✅');
+		setupTestWorkflow('a🚨✅, b✅, c✅');
 
 		expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
-	});
-
-	it('should return even if the connections forms a loop', () => {
-		setupTestWorkflow('a✅ -> b✅ -> c -> d✅ -> b');
-
-		expect(() => {
-			canvasOperations.setNodeParameters('b', { foo: 1 });
-
-			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-			useNodeDirtiness().dirtinessByName.value;
-		}).not.toThrow();
 	});
 
 	describe('injecting a node', () => {
 		it("should mark a node as 'incoming-connections-updated' if a new node is injected as its parent", async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
-			setupTestWorkflow('a✅ -> b✅');
+			setupTestWorkflow('a🚨✅ -> b✅');
 
 			uiStore.lastInteractedWithNodeConnection = {
 				source: 'a',
@@ -104,7 +98,7 @@ describe(useNodeDirtiness, () => {
 		it("should mark a node as 'incoming-connections-updated' if a parent node is replaced by removing a node", async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
-			setupTestWorkflow('a✅ -> b✅ -> c✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.deleteNodes(['b'], { trackHistory: true }); // 'a' becomes new parent of 'c'
 
@@ -116,7 +110,7 @@ describe(useNodeDirtiness, () => {
 		it("should mark a node as 'incoming-connections-updated' if a parent node get removed", async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
-			setupTestWorkflow('a✅ -> b✅ -> c✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.deleteNodes(['a'], { trackHistory: true }); // 'b' has no parent node anymore
 
@@ -128,7 +122,7 @@ describe(useNodeDirtiness, () => {
 
 	describe('updating node parameters', () => {
 		it("should mark a node as 'parameters-updated' if its parameter has changed", () => {
-			setupTestWorkflow('a✅, b✅, c✅');
+			setupTestWorkflow('a🚨✅, b✅, c✅');
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
@@ -140,7 +134,7 @@ describe(useNodeDirtiness, () => {
 		it('should clear dirtiness if a dirty node gets new run data', () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
-			setupTestWorkflow('a✅ -> b✅ -> c✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
@@ -174,7 +168,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it("should not update dirtiness if the node hasn't run yet", () => {
-			setupTestWorkflow('a✅, b, c✅');
+			setupTestWorkflow('a🚨✅, b, c✅');
 
 			canvasOperations.setNodeParameters('b', { foo: 1 });
 
@@ -186,7 +180,7 @@ describe(useNodeDirtiness, () => {
 		it("should mark a node as 'incoming-connections-updated' if a new incoming connection is added", () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
-			setupTestWorkflow('a✅ -> b✅ -> c✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.createConnection({ source: 'a', target: 'c' }, { trackHistory: true });
 
@@ -198,7 +192,7 @@ describe(useNodeDirtiness, () => {
 
 	describe('enabling/disabling nodes', () => {
 		it('should mark downstream nodes dirty if the node is set to disabled', () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅ -> d✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');
 
 			canvasOperations.toggleNodesDisabled(['b'], {
 				trackHistory: true,
@@ -210,7 +204,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should not mark anything dirty if a disabled node is set to enabled', () => {
-			setupTestWorkflow('a✅ -> b🚫 -> c✅ -> d✅');
+			setupTestWorkflow('a🚨✅ -> b🚫 -> c✅ -> d✅');
 
 			canvasOperations.toggleNodesDisabled(['b'], {
 				trackHistory: true,
@@ -220,7 +214,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should restore original dirtiness after undoing a command', async () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅ -> d✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');
 
 			canvasOperations.toggleNodesDisabled(['b'], {
 				trackHistory: true,
@@ -233,7 +227,7 @@ describe(useNodeDirtiness, () => {
 
 	describe('pinned data', () => {
 		it('should not change dirtiness when data is pinned', async () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
 			canvasOperations.toggleNodesPinned(['b'], 'pin-icon-click', {
 				trackHistory: true,
@@ -243,7 +237,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should update dirtiness when pinned data is removed from a node with run data', async () => {
-			setupTestWorkflow('a✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
+			setupTestWorkflow('a🚨✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
 			canvasOperations.toggleNodesPinned(['b'], 'pin-icon-click', {
 				trackHistory: true,
@@ -255,7 +249,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should update dirtiness when an existing pinned data of an incoming node is updated', async () => {
-			setupTestWorkflow('a✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
+			setupTestWorkflow('a🚨✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
 			workflowsStore.pinData({ node: workflowsStore.nodesByName.b, data: [{ json: {} }] });
 
@@ -269,7 +263,7 @@ describe(useNodeDirtiness, () => {
 
 	describe('sub-nodes', () => {
 		it('should mark its parent nodes with run data as dirty when parameters of a sub node has changed', () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f✅🧠 -> b');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠 -> b, e🧠 -> f✅🧠 -> b');
 
 			canvasOperations.setNodeParameters('e', { foo: 1 });
 
@@ -281,7 +275,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should change dirtiness if a disabled sub node is set to enabled', () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠🚫 -> b');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠🚫 -> b');
 
 			canvasOperations.toggleNodesDisabled(['d'], {
 				trackHistory: true,
@@ -293,7 +287,7 @@ describe(useNodeDirtiness, () => {
 		});
 
 		it('should change dirtiness if a sub node is removed', () => {
-			setupTestWorkflow('a✅ -> b✅ -> c✅, d🧠 -> b');
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d🧠 -> b');
 
 			canvasOperations.deleteNodes(['d'], { trackHistory: true });
 
@@ -303,10 +297,24 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
+	describe('workflow with a loop', () => {
+		it('should change the dirtiness of the first node in the loop when one of nodes in the loop becomes dirty', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> e✅ -> f✅ -> c✅');
+
+			canvasOperations.setNodeParameters('e', { foo: 1 });
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				c: 'upstream-dirty',
+				e: 'parameters-updated',
+			});
+		});
+	});
+
 	/**
 	 * Setup test data in the workflow store using given diagram.
 	 *
 	 * [Symbols]
+	 * - 🚨: Trigger node
 	 * - ✅: Node with run data
 	 * - 🚫: Disabled node
 	 * - 📌: Node with pinned data
@@ -346,6 +354,7 @@ describe(useNodeDirtiness, () => {
 						id: name,
 						name,
 						disabled: attributes.includes('🚫'),
+						type: attributes.includes('🚨') ? MANUAL_TRIGGER_NODE_TYPE : SET_NODE_TYPE,
 					});
 
 				if (attributes.includes('✅')) {
