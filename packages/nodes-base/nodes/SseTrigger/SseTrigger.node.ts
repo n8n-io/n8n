@@ -4,6 +4,7 @@ import type {
 	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 	ITriggerResponse,
 } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse } from 'n8n-workflow';
@@ -36,7 +37,34 @@ export class SseTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
+		credentials: [
+			{
+				name: 'httpHeaderAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['headerAuth'],
+					},
+				},
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+				],
+				default: 'none',
+			},
 			{
 				displayName: 'URL',
 				name: 'url',
@@ -51,8 +79,24 @@ export class SseTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const url = this.getNodeParameter('url') as string;
+		let httpHeaderAuth;
+		let requestOptions: IRequestOptions = {};
 
-		const eventSource = new EventSource(url);
+		try {
+			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		} catch (error) {
+			// Do nothing
+		}
+
+		requestOptions = {
+			headers: {},
+		};
+
+		if (httpHeaderAuth !== undefined) {
+			requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+		}
+
+		const eventSource = new EventSource(url, { headers: requestOptions.headers });
 
 		eventSource.onmessage = (event) => {
 			const eventData = jsonParse<IDataObject>(event.data as string, {
