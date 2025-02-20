@@ -294,9 +294,9 @@ export abstract class BaseCommand extends Command {
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.shutdownService.shutdown();
 
-			await this.errorReporter.shutdown();
-
 			await this.shutdownService.waitForShutdown();
+
+			await this.errorReporter.shutdown();
 
 			await this.stopProcess();
 
