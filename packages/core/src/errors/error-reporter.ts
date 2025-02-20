@@ -30,8 +30,6 @@ const RELEASE_EXPIRATION_WARNING =
 
 @Service()
 export class ErrorReporter {
-	private enabled = true;
-
 	private expirationTimer?: NodeJS.Timeout;
 
 	/** Hashes of error stack traces, to deduplicate error reports. */
@@ -95,8 +93,9 @@ export class ErrorReporter {
 			}
 			// Once this release expires, reject all events
 			this.expirationTimer = setTimeout(() => {
-				this.enabled = false;
 				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				this.report = this.defaultReport;
 			}, releaseExpiresInMs);
 		}
 
@@ -147,8 +146,6 @@ export class ErrorReporter {
 	}
 
 	async beforeSend(event: ErrorEvent, hint: EventHint) {
-		if (!this.enabled) return null;
-
 		let { originalException } = hint;
 
 		if (!originalException) return null;
