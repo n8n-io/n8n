@@ -256,11 +256,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			folders: Folder[];
 		},
 	): WorkflowAndFolderUnionFull[] {
+		const workflowsMap = new Map(extraData.workflows.map((workflow) => [workflow.id, workflow]));
+		const foldersMap = new Map(extraData.folders.map((folder) => [folder.id, folder]));
+
 		return baseData.map((item) => {
-			const extraItem =
-				item.resource === 'folder'
-					? extraData.folders.find((folder) => folder.id === item.id)
-					: extraData.workflows.find((workflow) => workflow.id === item.id);
+			const lookupMap = item.resource === 'folder' ? foldersMap : workflowsMap;
+			const extraItem = lookupMap.get(item.id);
 
 			return extraItem ? { ...item, ...extraItem } : item;
 		});
