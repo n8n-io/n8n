@@ -11,7 +11,8 @@ withDefaults(defineProps<TagProps>(), {
 
 <template>
 	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
-		{{ text }}
+		<slot v-if="$slots['tag']" name="tag" />
+		<span v-else>{{ text }}</span>
 	</span>
 </template>
 

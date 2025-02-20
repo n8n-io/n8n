@@ -503,7 +503,6 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS = 'TestDefinitionRuns',
 	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
 	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
 	NEW_TEST_DEFINITION = 'NewTestDefinition',

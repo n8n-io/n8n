@@ -60,24 +60,28 @@ const TEST_DEF_A: TestDefinitionRecord = {
 	name: 'Test Definition A',
 	workflowId: '123',
 	description: 'Description A',
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 const TEST_DEF_B: TestDefinitionRecord = {
 	id: '2',
 	name: 'Test Definition B',
 	workflowId: '123',
 	description: 'Description B',
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 const TEST_DEF_NEW: TestDefinitionRecord = {
 	id: '3',
 	name: 'New Test Definition',
 	workflowId: '123',
 	description: 'New Description',
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 
 const TEST_METRIC = {
 	id: 'metric1',
 	name: 'Test Metric',
 	testDefinitionId: '1',
+	createdAt: '2023-01-01T00:00:00.000Z',
 };
 
 const TEST_RUN: TestRunRecord = {
@@ -89,6 +93,9 @@ const TEST_RUN: TestRunRecord = {
 	updatedAt: '2024-01-01',
 	runAt: '2024-01-01',
 	completedAt: '2024-01-01',
+	failedCases: 0,
+	totalCases: 1,
+	passedCases: 1,
 };
 
 describe('testDefinition.store.ee', () => {
@@ -140,10 +147,7 @@ describe('testDefinition.store.ee', () => {
 				'2': TEST_DEF_B,
 			});
 			expect(store.isLoading).toBe(false);
-			expect(result).toEqual({
-				count: 2,
-				testDefinitions: [TEST_DEF_A, TEST_DEF_B],
-			});
+			expect(result).toEqual([TEST_DEF_A, TEST_DEF_B]);
 		});
 
 		test('Fetching Test Definitions with force flag', async () => {
@@ -159,10 +163,7 @@ describe('testDefinition.store.ee', () => {
 				'2': TEST_DEF_B,
 			});
 			expect(store.isLoading).toBe(false);
-			expect(result).toEqual({
-				count: 2,
-				testDefinitions: [TEST_DEF_A, TEST_DEF_B],
-			});
+			expect(result).toEqual([TEST_DEF_A, TEST_DEF_B]);
 		});
 
 		test('Fetching Test Definitions when already fetched', async () => {
@@ -198,6 +199,7 @@ describe('testDefinition.store.ee', () => {
 				name: 'Updated Test Definition A',
 				description: 'Updated Description A',
 				workflowId: '123',
+				createdAt: '2023-01-01T00:00:00.000Z',
 			};
 
 			store.upsertTestDefinitions([updatedDefinition]);
@@ -246,7 +248,7 @@ describe('testDefinition.store.ee', () => {
 				workflowId: '123',
 			});
 			expect(store.testDefinitionsById).toEqual({
-				'1': params,
+				'1': { ...TEST_DEF_A, ...params },
 				'2': TEST_DEF_B,
 			});
 			expect(result).toEqual(params);

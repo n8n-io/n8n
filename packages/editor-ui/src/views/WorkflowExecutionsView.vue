@@ -125,6 +125,7 @@ async function initializeRoute() {
 			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				query: route.query,
 			})
 			.catch(() => {});
 	}

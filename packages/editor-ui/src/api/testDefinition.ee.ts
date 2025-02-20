@@ -9,7 +9,7 @@ export interface TestDefinitionRecord {
 	annotationTagId?: string | null;
 	description?: string | null;
 	updatedAt?: string;
-	createdAt?: string;
+	createdAt: string;
 	annotationTag?: string | null;
 	mockedNodes?: Array<{ name: string; id: string }>;
 }
@@ -52,6 +52,9 @@ export interface TestRunRecord {
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
+	failedCases?: number;
+	passedCases?: number;
+	totalCases?: number;
 }
 
 interface GetTestRunParams {

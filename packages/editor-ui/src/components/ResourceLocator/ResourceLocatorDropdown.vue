@@ -213,7 +213,7 @@ defineExpose({ isWithinDropdown });
 		:width="width"
 		:popper-class="$style.popover"
 		:visible="show"
-		:teleported="false"
+		:teleported="true"
 		data-test-id="resource-locator-dropdown"
 	>
 		<div v-if="errorView" :class="$style.messageContainer">

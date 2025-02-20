@@ -6,11 +6,14 @@ import userEvent from '@testing-library/user-event';
 const renderComponent = createComponentRenderer(MetricsInput);
 
 describe('MetricsInput', () => {
-	let props: { modelValue: Array<{ name: string }> };
+	let props: { modelValue: Array<{ id?: string; name: string }> };
 
 	beforeEach(() => {
 		props = {
-			modelValue: [{ name: 'Metric 1' }, { name: 'Metric 2' }],
+			modelValue: [
+				{ name: 'Metric 1', id: 'metric-1' },
+				{ name: 'Metric 2', id: 'metric-2' },
+			],
 		};
 	});
 
@@ -62,7 +65,7 @@ describe('MetricsInput', () => {
 		// Check the structure of one of the emissions
 		// Initial: [{ name: 'Metric 1' }, { name: 'Metric 2' }]
 		// After first click: [{ name: 'Metric 1' }, { name: 'Metric 2' }, { name: '' }]
-		expect(updateEvents[0]).toEqual([[{ name: 'Metric 1' }, { name: 'Metric 2' }, { name: '' }]]);
+		expect(updateEvents[0]).toEqual([[...props.modelValue, { name: '' }]]);
 	});
 
 	it('should emit "deleteMetric" event when a delete button is clicked', async () => {
@@ -76,7 +79,7 @@ describe('MetricsInput', () => {
 		await userEvent.click(deleteButtons[1]);
 
 		expect(emitted('deleteMetric')).toBeTruthy();
-		expect(emitted('deleteMetric')[0]).toEqual([{ name: 'Metric 2' }]);
+		expect(emitted('deleteMetric')[0]).toEqual([props.modelValue[1]]);
 	});
 
 	it('should emit multiple update events as the user types and reflect the final name correctly', async () => {
@@ -129,7 +132,7 @@ describe('MetricsInput', () => {
 		await userEvent.click(deleteButtons[0]);
 
 		expect(emitted('deleteMetric')).toBeTruthy();
-		expect(emitted('deleteMetric')[0]).toEqual([{ name: 'Metric 1' }]);
+		expect(emitted('deleteMetric')[0]).toEqual([props.modelValue[0]]);
 
 		await rerender({ modelValue: [{ name: 'Metric 2' }] });
 		const updatedInputs = getAllByPlaceholderText('Enter metric name');
