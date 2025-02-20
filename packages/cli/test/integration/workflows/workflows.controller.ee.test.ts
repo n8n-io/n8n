@@ -8,9 +8,9 @@ import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { License } from '@/license';
 import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 import { mockInstance } from '@test/mocking';
@@ -24,7 +24,12 @@ import {
 import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
-import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
+import {
+	createWorkflow,
+	getWorkflowSharing,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+} from '../shared/db/workflows';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
@@ -49,7 +54,6 @@ let workflowRepository: WorkflowRepository;
 
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
-const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
@@ -100,15 +104,15 @@ describe('router should switch based on flag', () => {
 	});
 
 	test('when sharing is disabled', async () => {
-		sharingSpy.mockReturnValueOnce(false);
-
+		license.disable('feat:sharing');
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
 			.send({ shareWithIds: [memberPersonalProject.id] })
-			.expect(404);
+			.expect(403);
 	});
 
 	test('when sharing is enabled', async () => {
+		license.enable('feat:sharing');
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
 			.send({ shareWithIds: [memberPersonalProject.id] })
@@ -295,6 +299,52 @@ describe('PUT /workflows/:workflowId/share', () => {
 
 		config.set('userManagement.emails.mode', 'smtp');
 	});
+
+	test('should ignore sharing with owner project', async () => {
+		// ARRANGE
+		const project = ownerPersonalProject;
+		const workflow = await createWorkflow({ name: 'My workflow' }, project);
+
+		await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [project.id] })
+			.expect(200);
+
+		const sharedWorkflows = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(sharedWorkflows).toHaveLength(1);
+		expect(sharedWorkflows).toEqual([
+			expect.objectContaining({ projectId: project.id, role: 'workflow:owner' }),
+		]);
+	});
+
+	test('should ignore sharing with project that already has it shared', async () => {
+		// ARRANGE
+		const project = ownerPersonalProject;
+		const workflow = await createWorkflow({ name: 'My workflow' }, project);
+
+		const project2 = memberPersonalProject;
+		await shareWorkflowWithProjects(workflow, [{ project: project2 }]);
+
+		await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [project2.id] })
+			.expect(200);
+
+		const sharedWorkflows = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(sharedWorkflows).toHaveLength(2);
+		expect(sharedWorkflows).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ projectId: project.id, role: 'workflow:owner' }),
+				expect.objectContaining({ projectId: project2.id, role: 'workflow:editor' }),
+			]),
+		);
+	});
 });
 
 describe('GET /workflows/new', () => {
@@ -302,7 +352,7 @@ describe('GET /workflows/new', () => {
 		test(`should return an auto-incremented name, even when sharing is ${
 			sharingEnabled ? 'enabled' : 'disabled'
 		}`, async () => {
-			sharingSpy.mockReturnValueOnce(sharingEnabled);
+			license.enable('feat:sharing');
 
 			await createWorkflow({ name: 'My workflow' }, owner);
 			await createWorkflow({ name: 'My workflow 7' }, owner);
