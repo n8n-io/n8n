@@ -53,7 +53,7 @@ describe('Manual partial execution', () => {
 
 			getZoomToFitButton().click();
 
-			// First, execute the while workflow
+			// First, execute the whole workflow
 			clickExecuteWorkflowButton();
 
 			getNodeByName('A').findChildByTestId('canvas-node-status-success').should('be.visible');
