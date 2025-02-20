@@ -163,8 +163,10 @@ const onAction = async (action: string) => {
 						>
 							<template v-if="data.homeProject" #prepend>
 								<div :class="$style['home-project']">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="small" />
-									<n8n-text size="small">{{ projectName }}</n8n-text>
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+										projectName
+									}}</n8n-text>
 								</div>
 							</template>
 						</n8n-breadcrumbs>
@@ -222,6 +224,7 @@ const onAction = async (action: string) => {
 .home-project {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-3xs);
 	color: var(--color-text-dark);
 }
 </style>

@@ -3,15 +3,17 @@ import type { ProjectIcon } from '@/types/projects.types';
 
 type Props = {
 	icon: ProjectIcon;
-	size?: 'small' | 'medium' | 'large';
+	size?: 'mini' | 'small' | 'medium' | 'large';
 	round?: boolean;
 	borderLess?: boolean;
+	color?: 'text-light' | 'text-base' | 'text-dark';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	round: false,
 	borderLess: false,
+	color: 'text-base',
 });
 </script>
 <template>
@@ -23,9 +25,10 @@ const props = withDefaults(defineProps<Props>(), {
 		]"
 	>
 		<N8nIcon
-			v-if="props.icon.type === 'icon'"
-			:icon="props.icon.value"
-			color="text-light"
+			v-if="icon.type === 'icon'"
+			:icon="icon.value"
+			:class="$style.icon"
+			:color="color"
 		></N8nIcon>
 		<N8nText v-else-if="icon.type === 'emoji'" color="text-light" :class="$style.emoji">
 			{{ icon.value }}
@@ -47,6 +50,19 @@ const props = withDefaults(defineProps<Props>(), {
 
 	&.borderless {
 		border: none;
+	}
+}
+
+.mini {
+	width: var(--spacing-xs);
+	height: var(--spacing-xs);
+
+	.icon {
+		font-size: var(--font-size-2xs);
+	}
+
+	.emoji {
+		font-size: var(--font-size-3xs);
 	}
 }
 
