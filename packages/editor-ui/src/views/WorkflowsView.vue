@@ -131,7 +131,7 @@ const projectName = computed(() => {
 });
 
 const workflowListResources = computed<Resource[]>(() => {
-	const resources: Resource[] = workflowsAndFolders.value.map((resource) => {
+	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
 				resourceType: 'folders',

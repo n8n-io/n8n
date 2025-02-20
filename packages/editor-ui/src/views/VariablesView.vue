@@ -130,9 +130,12 @@ const columns = computed(() => {
 
 const handleSubmit = async (variable: EnvironmentVariable) => {
 	try {
-		const { id, ...rest } = variable;
+		const { id } = variable;
 		if (id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			await environmentsStore.createVariable(rest);
+			await environmentsStore.createVariable({
+				value: variable.value,
+				key: variable.key,
+			});
 		} else {
 			await environmentsStore.updateVariable({
 				id: variable.id,
@@ -163,7 +166,11 @@ const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 			return;
 		}
 
-		await environmentsStore.deleteVariable(variable);
+		await environmentsStore.deleteVariable({
+			id: variable.id,
+			value: variable.value,
+			key: variable.key,
+		});
 		removeEditableVariable(variable.id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
