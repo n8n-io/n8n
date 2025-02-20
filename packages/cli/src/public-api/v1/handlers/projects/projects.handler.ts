@@ -1,11 +1,19 @@
-import { CreateProjectDto, DeleteProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import {
+	AddUsersToProjectDto,
+	ChangeUserRoleInProject,
+	CreateProjectDto,
+	DeleteProjectDto,
+	UpdateProjectDto,
+} from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { ProjectController } from '@/controllers/project.controller';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { AuthenticatedRequest } from '@/requests';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -85,6 +93,69 @@ export = {
 					numberOfTotalRecords: count,
 				}),
 			});
+		},
+	],
+	addUsersToProject: [
+		isLicensed('feat:projectRole:admin'),
+		globalScope('project:update'),
+		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
+			const payload = AddUsersToProjectDto.safeParse(req.body);
+			if (payload.error) {
+				return res.status(400).json(payload.error.errors[0]);
+			}
+
+			try {
+				await Container.get(ProjectService).addUsersToProject(
+					req.params.projectId,
+					payload.data.relations,
+				);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
+
+			return res.status(201).send();
+		},
+	],
+	changeUserRoleInProject: [
+		isLicensed('feat:projectRole:admin'),
+		globalScope('project:update'),
+		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
+			const payload = ChangeUserRoleInProject.safeParse(req.body);
+			if (payload.error) {
+				return res.status(400).json(payload.error.errors[0]);
+			}
+
+			const { projectId, userId } = req.params;
+			const { role } = payload.data;
+			try {
+				await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
+
+			return res.status(204).send();
+		},
+	],
+	deleteUserFromProject: [
+		isLicensed('feat:projectRole:admin'),
+		globalScope('project:update'),
+		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
+			const { projectId, userId } = req.params;
+			try {
+				await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).send({ message: error.message });
+				}
+				throw error;
+			}
+			return res.status(204).send();
 		},
 	],
 };
