@@ -13,10 +13,15 @@ export const infoToast = () => cy.get('.el-notification:has(.el-notification--in
  * Actions
  */
 export const clearNotifications = () => {
-	const buttons = successToast().find('.el-notification__closeBtn');
-	buttons.then(($buttons) => {
-		if ($buttons.length) {
-			buttons.click({ multiple: true });
-		}
-	});
+	//cy.document().then((document) => {
+	//	const toasts = document.querySelectorAll('.el-notification:has(.el-notification--success)');
+	//	Array.from(toasts)
+	//		.map((toast) => toast.querySelector('.el-notification__closeBtn'))
+	//		.forEach((button) => {
+	//			if (button && Cypress.dom.isAttached(button)) {
+	//				cy.wrap(button).click();
+	//			}
+	//		});
+	//});
+	//return successToast().find('.el-notification__closeBtn').click({ multiple: true, force: true });
 };
