@@ -38,6 +38,13 @@ describe('PrometheusMetricsService', () => {
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
 			},
+			rest: 'rest',
+			form: 'form',
+			formTest: 'form-test',
+			formWaiting: 'form-waiting',
+			webhook: 'webhook',
+			webhookTest: 'webhook-test',
+			webhookWaiting: 'webhook-waiting',
 		},
 	});
 
@@ -145,10 +152,16 @@ describe('PrometheusMetricsService', () => {
 				includeStatusCode: false,
 			});
 
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+				name: 'n8n_last_activity',
+				help: 'last instance activity (backend request).',
+				labelNames: ['timestamp'],
+			});
+
 			expect(app.use).toHaveBeenCalledWith(
 				[
-					'/rest/',
 					'/api/',
+					'/rest/',
 					'/webhook/',
 					'/webhook-waiting/',
 					'/webhook-test/',
