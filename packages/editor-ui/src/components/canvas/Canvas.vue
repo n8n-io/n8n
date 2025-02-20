@@ -155,21 +155,21 @@ const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', contro
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
-onKeyDown(
-	panningKeyCode.value,
-	() => {
-		selectionKeyCode.value = null;
-		panningMouseButton.value = [0, 1];
-	},
-	{
-		dedupe: true,
-	},
-);
+function switchToPanningMode() {
+	selectionKeyCode.value = null;
+	panningMouseButton.value = [0, 1];
+}
 
-onKeyUp(panningKeyCode.value, () => {
+function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+}
+
+onKeyDown(panningKeyCode.value, switchToPanningMode, {
+	dedupe: true,
 });
+
+onKeyUp(panningKeyCode.value, switchToSelectionMode);
 
 /**
  * Rename node key bindings
@@ -673,6 +673,14 @@ function onMinimapMouseLeave() {
 }
 
 /**
+ * Window Events
+ */
+
+function onWindowBlur() {
+	switchToSelectionMode();
+}
+
+/**
  * Lifecycle
  */
 
@@ -681,11 +689,15 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+
+	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
+
+	window.removeEventListener('blur', onWindowBlur);
 });
 
 onPaneReady(async () => {
