@@ -100,6 +100,7 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -122,7 +123,9 @@ const workflowResources = computed<Resource[]>(() => {
 		tags: workflow.tags,
 	}));
 	// Mock folders for testing
-	// addTestFolders(resources);
+	if (foldersEnabled.value) {
+		addTestFolders(resources);
+	}
 	return resources;
 });
 
