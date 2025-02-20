@@ -31,11 +31,6 @@ export type TestTableColumn<TRow> = {
 };
 
 type TableRow = T & { id: string };
-
-type TableRowWithStatus = TableRow & { status: string };
-
-const MIN_TABLE_HEIGHT = 350;
-const MAX_TABLE_HEIGHT = 1400;
 const props = withDefaults(
 	defineProps<{
 		data: TableRow[];
@@ -103,10 +98,6 @@ const handleColumnResize = (
 		column.width = column.minWidth;
 	}
 };
-
-function hasStatus(row: unknown): row is TableRowWithStatus {
-	return typeof row === 'object' && row !== null && 'status' in row;
-}
 
 defineSlots<{
 	id(props: { row: TableRow }): unknown;

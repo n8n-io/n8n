@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
-import { VIEWS } from '@/constants';
 import { N8nIcon, N8nText } from 'n8n-design-system';
 import { computed, ref } from 'vue';
 import type { TestTableColumn } from '../shared/TestTableBase.vue';
@@ -43,26 +42,6 @@ const runSummaries = computed(() => {
 		return { ...run, status };
 	});
 });
-
-const metrics = computed(() => {
-	return props.runs.reduce((acc, run) => {
-		const metricKeys = Object.keys(run.metrics ?? {});
-		return [...new Set([...acc, ...metricKeys])];
-	}, [] as string[]);
-});
-
-const getErrorTooltipLinkRoute = (row: TestRunRecord) => {
-	if (row.errorCode === 'EVALUATION_WORKFLOW_NOT_FOUND') {
-		return {
-			name: VIEWS.TEST_DEFINITION_EDIT,
-			params: {
-				testId: row.testDefinitionId,
-			},
-		};
-	}
-
-	return undefined;
-};
 
 function onSelectionChange(runs: TestRunRecord[]) {
 	selectedRows.value = runs;
