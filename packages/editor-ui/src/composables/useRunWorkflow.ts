@@ -351,6 +351,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					nodes: workflowData.nodes,
 					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
 					destinationNode: options.destinationNode,
+					triggerNode: options.triggerNode,
 					pinData,
 					directParentNodes,
 					source: options.source,

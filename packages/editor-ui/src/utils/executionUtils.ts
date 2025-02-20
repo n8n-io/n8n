@@ -105,6 +105,7 @@ export function displayForm({
 	runData,
 	pinData,
 	destinationNode,
+	triggerNode,
 	directParentNodes,
 	source,
 	getTestUrl,
@@ -113,11 +114,14 @@ export function displayForm({
 	runData: IRunData | undefined;
 	pinData: IPinData;
 	destinationNode: string | undefined;
+	triggerNode: string | undefined;
 	directParentNodes: string[];
 	source: string | undefined;
 	getTestUrl: (node: INode) => string;
 }) {
 	for (const node of nodes) {
+		if (triggerNode !== undefined && triggerNode !== node.name) continue;
+
 		const hasNodeRun = runData && runData?.hasOwnProperty(node.name);
 
 		if (hasNodeRun || pinData[node.name]) continue;
