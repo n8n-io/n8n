@@ -103,7 +103,7 @@ const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
 				}
 				const createdTag = await tagsApi.createTag(rootStore.restApiContext, { name: tagName });
 				upsertTags([createdTag]);
-				return createdTag;
+
 				return createdTag;
 			};
 

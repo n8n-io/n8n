@@ -75,7 +75,6 @@ const handleDefineEvaluation = async () => {
 	if (projectId) {
 		workflow.projectId = projectId;
 	}
-	// telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
 	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 	const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: newWorkflow.id } });

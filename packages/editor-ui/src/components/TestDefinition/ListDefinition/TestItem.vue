@@ -123,7 +123,7 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 	align-items: center;
 	background-color: var(--color-background-xlight);
 	padding: var(--spacing-xs) 20px var(--spacing-xs) var(--spacing-m);
-	gap: 16px;
+	gap: var(--spacing-s);
 	border-bottom: 1px solid var(--color-foreground-base);
 	cursor: pointer;
 

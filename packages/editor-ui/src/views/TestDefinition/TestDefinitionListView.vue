@@ -81,7 +81,6 @@ function isTestRunning(testId: string) {
 	return testDefinitionStore.lastRunByTestId[testId]?.status === 'running';
 }
 
-// // Action handlers
 function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
 }
@@ -173,9 +172,9 @@ async function onDeleteTest(testId: string) {
 		/>
 		<template v-else>
 			<div :class="$style.header">
-				<N8nHeading size="xlarge" color="text-dark" bold>{{
-					locale.baseText('testDefinition.list.tests')
-				}}</N8nHeading>
+				<N8nHeading size="xlarge" color="text-dark" bold>
+					{{ locale.baseText('testDefinition.list.tests') }}
+				</N8nHeading>
 				<div>
 					<N8nButton
 						:label="locale.baseText('testDefinition.list.createNew')"

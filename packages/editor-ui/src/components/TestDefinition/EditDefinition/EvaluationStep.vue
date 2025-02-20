@@ -57,6 +57,8 @@ const handleMouseEnter = () => {
 const handleMouseLeave = () => {
 	showTooltip.value = false;
 };
+
+const renderIssues = computed(() => props.showIssues && props.issues.length);
 </script>
 
 <template>
@@ -87,7 +89,7 @@ const handleMouseLeave = () => {
 							</N8nInfoTip>
 						</span>
 					</h3>
-					<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
+					<span v-if="renderIssues" :class="$style.warningIcon">
 						<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
 							{{ issues.map((issue) => issue.message).join(', ') }}
 						</N8nInfoTip>

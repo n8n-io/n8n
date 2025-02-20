@@ -55,7 +55,7 @@ const filteredTestCases = computed(() => {
 	return testCases.value;
 });
 
-const formatedTime = computed(() =>
+const formattedTime = computed(() =>
 	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
 );
 
@@ -234,9 +234,9 @@ onMounted(async () => {
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
 				<n8n-heading size="large" :bold="true">{{ test?.name }}</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
-				<n8n-heading size="large" :bold="true"
-					>{{ locale.baseText('testDefinition.listRuns.runNumber') }}{{ run?.id }}</n8n-heading
-				>
+				<n8n-heading size="large" :bold="true">
+					{{ locale.baseText('testDefinition.listRuns.runNumber') }}{{ run?.id }}
+				</n8n-heading>
 			</button>
 		</div>
 		<el-scrollbar always :wrap-class="$style.scrollableSummary" class="mb-m">
@@ -253,9 +253,9 @@ onMounted(async () => {
 						{{ locale.baseText('testDefinition.runDetail.ranAt') }}
 					</N8nText>
 					<div>
-						<N8nText v-for="item in formatedTime" :key="item" size="medium" tag="div">{{
-							item
-						}}</N8nText>
+						<N8nText v-for="item in formattedTime" :key="item" size="medium" tag="div">
+							{{ item }}
+						</N8nText>
 					</div>
 				</div>
 
@@ -270,9 +270,9 @@ onMounted(async () => {
 
 				<div v-for="(value, key) in metrics" :key="key" :class="$style.summaryCard">
 					<N8nTooltip :content="key" placement="top">
-						<N8nText size="small" style="text-overflow: ellipsis; overflow: hidden">{{
-							key
-						}}</N8nText>
+						<N8nText size="small" style="text-overflow: ellipsis; overflow: hidden">
+							{{ key }}
+						</N8nText>
 					</N8nTooltip>
 
 					<N8nText size="xlarge" style="font-size: 32px" bold>{{ value.toFixed(2) }}</N8nText>
@@ -398,39 +398,11 @@ onMounted(async () => {
 	background-color: var(--color-background-xlight);
 }
 
-.cardGrid {
-	// display: grid;
-	// grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
-	// gap: var(--spacing-xs);
-	// margin-bottom: var(--spacing-m);
-	// display: flex;
-	// border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	// border-radius: 6px;
-	// overflow-x: auto;
-	// scrollbar-color: var(--color-foreground-base) transparent;
-	// min-height: 94px;
-	// &::-webkit-scrollbar {
-	// 	height: 8px;
-	// }
-	// &::-webkit-scrollbar-thumb {
-	// 	background: rgba(0, 0, 0, 0.5);
-	// 	// border-radius: 4px;
-	// }
-	// &::-webkit-scrollbar-track {
-	// 	background: transparent;
-	// }
-}
-
 .summaryCard {
 	padding: var(--spacing-s);
-	/*border-top: 0;
-	border-bottom: 0;
-	border-left: 0;
-	border-radius: 0;*/
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	flex-basis: 169px;
 	flex-shrink: 0;
-	// background-color: transparent;
 	max-width: 170px;
 	display: flex;
 	flex-direction: column;
@@ -442,20 +414,6 @@ onMounted(async () => {
 	}
 }
 
-// :global {
-// 	.new {
-// 		color: var(--color-info);
-// 	}
-// 	.running {
-// 		color: var(--color-warning);
-// 	}
-// 	.completed {
-// 		color: var(--color-success);
-// 	}
-// 	.error {
-// 		color: var(--color-danger);
-// 	}
-// }
 :global(.el-scrollbar__bar) {
 	opacity: 1;
 }

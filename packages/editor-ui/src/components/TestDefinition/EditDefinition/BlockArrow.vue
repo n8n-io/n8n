@@ -1,21 +1,23 @@
 <script setup lang="ts">
-defineProps<{
+import { computed, useCssModule } from 'vue';
+
+const props = defineProps<{
 	state?: 'default' | 'error' | 'success';
 	hoverable?: boolean;
 }>();
+
+const css = useCssModule();
+
+const classes = computed(() => ({
+	[css.arrowConnector]: true,
+	[css.hoverable]: props.hoverable,
+	[css.error]: props.state === 'error',
+	[css.success]: props.state === 'success',
+}));
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.arrowConnector,
-			{
-				[$style.hoverable]: hoverable,
-				[$style.error]: state === 'error',
-				[$style.success]: state === 'success',
-			},
-		]"
-	>
+	<div :class="classes">
 		<div :class="$style.stalk"></div>
 		<div :class="$style.arrowHead"></div>
 	</div>

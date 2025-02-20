@@ -200,7 +200,6 @@ export const useTestDefinitionStore = defineStore(
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
 		 */
 		const fetchAll = async (params?: { force?: boolean; workflowId?: string }) => {
-			console.log('🚀 ~ fetchAll ~ workflowId:');
 			const { force = false, workflowId } = params ?? {};
 			if (!force && fetchedAll.value && !workflowId) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
