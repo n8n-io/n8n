@@ -54,10 +54,12 @@ export class WorkflowToolService {
 		name,
 		description,
 		itemIndex,
+		returnAllItems,
 	}: {
 		name: string;
 		description: string;
 		itemIndex: number;
+		returnAllItems?: boolean;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
@@ -70,7 +72,7 @@ export class WorkflowToolService {
 			]);
 
 			try {
-				const response = await this.runFunction(query, itemIndex, runManager);
+				const response = await this.runFunction(query, itemIndex, runManager, returnAllItems);
 				const processedResponse = this.handleToolResponse(response);
 
 				// Once the sub-workflow is executed, add the output data to the context
@@ -135,6 +137,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
+		returnAllItems?: boolean,
 	): Promise<{ response: string; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
@@ -155,7 +158,13 @@ export class WorkflowToolService {
 			throw new NodeOperationError(this.context.getNode(), error as Error);
 		}
 
-		const response: string | undefined = get(receivedData, 'data[0][0].json') as string | undefined;
+		let response: string | undefined;
+		if (returnAllItems) {
+			const firstRunItems = receivedData?.data?.[0];
+			response = JSON.stringify(firstRunItems?.map((item) => item.json) ?? []);
+		} else {
+			response = get(receivedData, 'data[0][0].json') as string | undefined;
+		}
 		if (response === undefined) {
 			throw new NodeOperationError(
 				this.context.getNode(),
@@ -174,6 +183,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
+		returnAllItems?: boolean,
 	): Promise<string> {
 		const source = this.context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = this.context.getWorkflowDataProxy(0);
@@ -189,6 +199,7 @@ export class WorkflowToolService {
 			items,
 			workflowProxy,
 			runManager,
+			returnAllItems,
 		);
 		return response;
 	}
