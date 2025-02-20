@@ -19,7 +19,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import type { WorkflowAndFolderUnionFull } from '@/databases/repositories/workflow.repository';
+import type { WorkflowAFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -67,7 +67,7 @@ export class WorkflowService {
 	) {
 		let count;
 		let workflows;
-		let workflowsAndFolders: WorkflowAndFolderUnionFull[] = [];
+		let workflowsAndFolders: WorkflowAFolderUnionFull[] = [];
 
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
@@ -163,7 +163,7 @@ export class WorkflowService {
 	}
 
 	private mergeProcessedWorkflows(
-		workflowsAndFolders: WorkflowAndFolderUnionFull[],
+		workflowsAndFolders: WorkflowAFolderUnionFull[],
 		processedWorkflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 	) {
 		const workflowMap = new Map(processedWorkflows.map((workflow) => [workflow.id, workflow]));
