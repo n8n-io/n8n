@@ -1,5 +1,7 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
@@ -12,8 +14,6 @@ import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
-import { Container } from '@n8n/di';
-import { randomString } from 'n8n-workflow';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
 	return mock<AuthenticatedRequest>({
