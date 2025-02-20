@@ -106,6 +106,8 @@ describe('FolderRepository', () => {
 			});
 
 			it('should filter folders by parent folder ID', async () => {
+				let folders: Folder[];
+				let count: number;
 				const parentFolder = await createFolder(project, { name: 'Parent' });
 				await createFolder(project, {
 					name: 'Child 1',
@@ -117,7 +119,7 @@ describe('FolderRepository', () => {
 				});
 				await createFolder(project, { name: 'Unrelated' });
 
-				const [folders, count] = await folderRepository.getManyAndCount({
+				[folders, count] = await folderRepository.getManyAndCount({
 					filter: { parentFolderId: parentFolder.id },
 				});
 
@@ -126,6 +128,17 @@ describe('FolderRepository', () => {
 				expect(folders.map((f) => f.name).sort()).toEqual(['Child 1', 'Child 2']);
 				folders.forEach((folder) => {
 					expect(folder.parentFolder?.id).toBe(parentFolder.id);
+				});
+
+				[folders, count] = await folderRepository.getManyAndCount({
+					filter: { parentFolderId: '0' },
+				});
+
+				expect(count).toBe(2);
+				expect(folders).toHaveLength(2);
+				expect(folders.map((f) => f.name).sort()).toEqual(['Parent', 'Unrelated']);
+				folders.forEach((folder) => {
+					expect(folder.parentFolder).toBe(null);
 				});
 			});
 

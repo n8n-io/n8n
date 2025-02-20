@@ -144,12 +144,12 @@ export class FolderRepository extends Repository<Folder> {
 			});
 		}
 
-		if (filter?.parentFolderId) {
+		if (filter?.parentFolderId === '0') {
+			query.andWhere('folder.parentFolderId IS NULL');
+		} else if (filter?.parentFolderId) {
 			query.andWhere('folder.parentFolderId = :parentFolderId', {
 				parentFolderId: filter.parentFolderId,
 			});
-		} else {
-			query.andWhere('folder.parentFolderId IS NULL');
 		}
 	}
 
