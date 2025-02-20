@@ -35,6 +35,7 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 let owner: User;
 let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
@@ -71,6 +72,7 @@ beforeEach(async () => {
 	ownerPersonalProject = await getPersonalProject(owner);
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
+	memberPersonalProject = await getPersonalProject(member);
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 });
@@ -1349,10 +1351,10 @@ describe('PUT /workflows/:workflowId/share', () => {
 
 	test('should ignore sharing with project that already has it shared', async () => {
 		// ARRANGE
-		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const project = ownerPersonalProject;
 		const workflow = await createWorkflow({ name: 'My workflow' }, project);
 
-		const project2 = await projectService.createTeamProject(owner, { name: 'Team Project 2' });
+		const project2 = memberPersonalProject;
 		await shareWorkflowWithProjects(workflow, [{ project: project2 }]);
 
 		await authOwnerAgent
