@@ -160,7 +160,7 @@ export class WorkflowToolService {
 
 		let response: string | undefined;
 		if (returnAllItems) {
-			response = JSON.stringify(receivedData?.data?.[0]?.map((item) => item.json));
+			response = receivedData?.data?.[0]?.map((item) => item.json) as string | undefined;
 		} else {
 			response = get(receivedData, 'data[0][0].json') as string | undefined;
 		}
