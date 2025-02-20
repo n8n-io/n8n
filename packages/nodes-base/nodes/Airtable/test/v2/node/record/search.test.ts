@@ -90,6 +90,7 @@ describe('Test AirtableV2, search operation', () => {
 			{
 				fields: ['foo', 'bar'],
 				filterByFormula: 'foo',
+				returnFieldsByFieldId: false,
 				sort: [{ direction: 'desc', field: 'bar' }],
 				view: 'viwView',
 			},
@@ -132,7 +133,12 @@ describe('Test AirtableV2, search operation', () => {
 			'GET',
 			'appYoLbase/tblltable',
 			{},
-			{ fields: ['foo', 'bar'], filterByFormula: 'foo', maxRecords: 1 },
+			{
+				fields: ['foo', 'bar'],
+				filterByFormula: 'foo',
+				maxRecords: 1,
+				returnFieldsByFieldId: false,
+			},
 		);
 
 		expect(result).toHaveLength(1);

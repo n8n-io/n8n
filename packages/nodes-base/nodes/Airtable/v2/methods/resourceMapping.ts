@@ -101,7 +101,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 		const isReadOnly = airtableReadOnlyFields.includes(field.type);
 		const options = constructOptions(field);
 		fields.push({
-			id: field.name,
+			id: field.id,
 			displayName: field.name,
 			required: false,
 			defaultMatch: false,
