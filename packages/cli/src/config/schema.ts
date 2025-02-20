@@ -370,4 +370,13 @@ export const schema = {
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
+
+	folders: {
+		enabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_FOLDERS_ENABLED',
+			doc: 'Temporary env variable to enable folders feature',
+		},
+	},
 };
