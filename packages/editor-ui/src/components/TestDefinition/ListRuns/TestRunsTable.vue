@@ -106,7 +106,6 @@ async function deleteRuns() {
 			@selection-change="onSelectionChange"
 		>
 			<template #status="{ row }">
-				<!-- 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success' -->
 				<div
 					style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
 				>
@@ -122,27 +121,6 @@ async function deleteRuns() {
 						{{ row.status }}
 					</N8nText>
 				</div>
-
-				<!-- <div style="display: inline-flex; gap: 8px; text-transform: capitalize">
-					<template v-if="row.status === 'running'">
-						<N8nIcon icon="spinner" spin color="warning"></N8nIcon>
-						<N8nText size="small" color="warning"> {{ row.status }} </N8nText>
-					</template>
-					<template v-else-if="row.status === 'completed' || row.status === 'success'">
-						<N8nIcon icon="check-circle" color="success"></N8nIcon>
-						<N8nText size="small" color="success"> {{ row.status }} </N8nText>
-					</template>
-					<template v-else-if="row.status === 'error'">
-						{{ (() => console.log(row))() }}
-						<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
-						<N8nText size="small" color="danger">
-							{{ row.failedCases }} {{ row.failedCases > 1 ? 'Errors' : 'Error' }}
-						</N8nText>
-					</template>
-					<N8nText v-else size="small">
-						{{ row.status }}
-					</N8nText>
-				</div> -->
 			</template>
 		</TestTableBase>
 	</div>

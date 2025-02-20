@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
-import { useCssModule } from 'vue';
-import { computed } from 'vue';
-import { ref, nextTick } from 'vue';
+import { computed, nextTick, ref, useCssModule } from 'vue';
 
 interface EvaluationStep {
 	title?: string;
@@ -73,9 +71,6 @@ const handleMouseLeave = () => {
 		>
 			<div :class="$style.content">
 				<div :class="$style.header" @click="toggleExpand">
-					<!-- <div :class="[$style.icon, warning && $style.warning]">
-						<slot name="icon" />
-					</div> -->
 					<h3 :class="$style.title">
 						<span :class="$style.label">
 							<slot v-if="$slots.title" name="title" />
