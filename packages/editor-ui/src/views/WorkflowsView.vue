@@ -43,7 +43,6 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import type { Folder } from '@/types/folders.types';
 
 interface Filters extends BaseFilters {
@@ -434,47 +433,6 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
-// TODO: Simplify this function, ideally implement navigation using links
-const navigateToFolder = async (folderId: string) => {
-	if (route.name === VIEWS.WORKFLOWS) {
-		await router.push({
-			name: VIEWS.FOLDERS,
-			params: { folderId },
-			query: route.query,
-		});
-	} else if (route.name === VIEWS.PROJECTS_WORKFLOWS) {
-		await router.push({
-			name: VIEWS.PROJECTS_FOLDERS,
-			params: { folderId },
-			query: route.query,
-		});
-	} else if (route.name === VIEWS.PROJECTS_FOLDERS) {
-		await router.push({
-			name: VIEWS.PROJECTS_FOLDERS,
-			params: { folderId },
-			query: route.query,
-		});
-	} else if (route.name === VIEWS.FOLDERS) {
-		await router.push({
-			name: VIEWS.FOLDERS,
-			params: { folderId },
-			query: route.query,
-		});
-	}
-	await fetchWorkflows();
-};
-
-const onFolderCardAction = async (payload: { action: string; folderId: string }) => {
-	switch (payload.action) {
-		case FOLDER_LIST_ITEM_ACTIONS.OPEN:
-			await navigateToFolder(payload.folderId);
-			break;
-		default:
-			break;
-	}
-};
-
-// @ts-expect-error test function
 const addTestFolders = (resources: Resource[]) => {
 	const testFolder1: Folder = {
 		id: '1',
@@ -659,8 +617,6 @@ const addTestFolders = (resources: Resource[]) => {
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
 				:data="data as FolderResource"
 				class="mb-2xs"
-				@click="navigateToFolder((data as FolderResource).id)"
-				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else

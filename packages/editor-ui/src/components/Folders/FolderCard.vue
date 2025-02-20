@@ -4,6 +4,8 @@ import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
 import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
 import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useI18n } from '@/composables/useI18n';
+import { useRoute, useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 type Props = {
 	data: FolderResource;
@@ -12,6 +14,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
@@ -92,59 +96,89 @@ const projectName = computed(() => {
 	return props.data.homeProject?.name;
 });
 
-const onAction = (action: string) => {
+const cardUrl = computed(() => {
+	const isProjectRoute = route.params.projectId !== undefined;
+	if (isProjectRoute) {
+		return router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: {
+				projectId: route.params.projectId as string,
+				folderId: props.data.id,
+			},
+			query: route.query,
+		}).href;
+	}
+	return router.resolve({
+		name: VIEWS.FOLDERS,
+		params: { folderId: props.data.id },
+		query: route.query,
+	}).href;
+});
+
+const onAction = async (action: string) => {
+	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
+		await router.push(cardUrl.value);
+		return;
+	}
 	emit('action', { action, folderId: props.data.id });
 };
 </script>
 
 <template>
-	<n8n-card :class="$style.card">
-		<template #prepend>
-			<n8n-icon :class="$style['folder-icon']" icon="folder" size="large" />
-		</template>
-		<template #header>
-			<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
-				{{ data.name }}
-			</n8n-heading>
-		</template>
-		<template #footer>
-			<div :class="$style['card-footer']">
-				<n8n-text size="small" color="text-light" :class="$style['info-cell']">
-					{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
-				</n8n-text>
-				<n8n-text size="small" color="text-light" :class="$style['info-cell']">
-					{{ i18n.baseText('workerList.item.lastUpdated') }}
-					<TimeAgo :date="String(data.updatedAt)" />
-				</n8n-text>
-				<n8n-text size="small" color="text-light" :class="$style['info-cell']">
-					{{ i18n.baseText('workflows.item.created') }} <TimeAgo :date="String(data.createdAt)" />
-				</n8n-text>
-			</div>
-		</template>
-		<template #append>
-			<div :class="$style['card-actions']" @click.stop>
-				<n8n-breadcrumbs
-					:items="breadCrumbsItems"
-					:path-truncated="true"
-					:show-border="true"
-					:highlight-last-item="false"
-					theme="small"
-					data-test-id="folder-card-breadcrumbs"
-				>
-					<template v-if="data.homeProject" #prepend>
-						<ProjectIcon :icon="projectIcon" :border-less="true" size="small" />
-						<n8n-text size="small">{{ projectName }}</n8n-text>
-					</template>
-				</n8n-breadcrumbs>
-				<n8n-action-toggle
-					:actions="actions"
-					theme="dark"
-					data-test-id="workflow-card-actions"
-					@action="onAction"
-				/>
-			</div>
-		</template>
-	</n8n-card>
+	<div>
+		<router-link :to="cardUrl">
+			<n8n-card :class="$style.card">
+				<template #prepend>
+					<n8n-icon :class="$style['folder-icon']" icon="folder" size="large" />
+				</template>
+				<template #header>
+					<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+						{{ data.name }}
+					</n8n-heading>
+				</template>
+				<template #footer>
+					<div :class="$style['card-footer']">
+						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+							{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
+						</n8n-text>
+						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+							{{ i18n.baseText('workerList.item.lastUpdated') }}
+							<TimeAgo :date="String(data.updatedAt)" />
+						</n8n-text>
+						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+							{{ i18n.baseText('workflows.item.created') }}
+							<TimeAgo :date="String(data.createdAt)" />
+						</n8n-text>
+					</div>
+				</template>
+				<template #append>
+					<div :class="$style['card-actions']" @click.prevent>
+						<n8n-breadcrumbs
+							:items="breadCrumbsItems"
+							:path-truncated="true"
+							:show-border="true"
+							:highlight-last-item="false"
+							theme="small"
+							data-test-id="folder-card-breadcrumbs"
+						>
+							<template v-if="data.homeProject" #prepend>
+								<div :class="$style['home-project']">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="small" />
+									<n8n-text size="small">{{ projectName }}</n8n-text>
+								</div>
+							</template>
+						</n8n-breadcrumbs>
+						<n8n-action-toggle
+							:actions="actions"
+							theme="dark"
+							data-test-id="workflow-card-actions"
+							@action="onAction"
+						/>
+					</div>
+				</template>
+			</n8n-card>
+		</router-link>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -183,5 +217,11 @@ const onAction = (action: string) => {
 .card-actions {
 	display: flex;
 	gap: var(--spacing-xs);
+}
+
+.home-project {
+	display: flex;
+	align-items: center;
+	color: var(--color-text-dark);
 }
 </style>

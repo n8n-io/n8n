@@ -244,6 +244,7 @@ const handleTooltipClose = () => {
 	.tooltip-ellipsis {
 		cursor: pointer;
 		user-select: none;
+		color: var(--color-text-base);
 	}
 	&.disabled {
 		.dots,
