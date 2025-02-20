@@ -9,6 +9,9 @@ export class GenericConfig {
 	@Env('N8N_RELEASE_TYPE')
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' = 'dev';
 
+	@Env('N8N_RELEASE_DATE')
+	releaseDate?: Date;
+
 	/** Grace period (in seconds) to wait for components to shut down before process exit. */
 	@Env('N8N_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
