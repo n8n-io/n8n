@@ -131,39 +131,36 @@ const projectName = computed(() => {
 });
 
 const workflowListResources = computed<Resource[]>(() => {
-	const resources: Resource[] = workflowsAndFolders.value
-		.map((resource) => {
-			if (resource.resource === 'folder') {
-				return {
-					resourceType: 'folders',
-					id: resource.id,
-					name: resource.name,
-					createdAt: resource.createdAt.toString(),
-					updatedAt: resource.updatedAt.toString(),
-					homeProject: resource.homeProject,
-					sharedWithProjects: resource.sharedWithProjects,
-					workflowCount: resource.workflowCount,
-					parentFolder: resource.parentFolder,
-				} as FolderResource;
-			}
-			if (resource.resource === 'workflow') {
-				return {
-					resourceType: 'workflows',
-					id: resource.id,
-					name: resource.name,
-					active: resource.active ?? false,
-					updatedAt: resource.updatedAt.toString(),
-					createdAt: resource.createdAt.toString(),
-					homeProject: resource.homeProject,
-					scopes: resource.scopes,
-					sharedWithProjects: resource.sharedWithProjects,
-					readOnly: !getResourcePermissions(resource.scopes).workflow.update,
-					tags: resource.tags,
-				} as WorkflowResource;
-			}
-			return undefined;
-		})
-		.filter((resource): resource is FolderResource | WorkflowResource => resource !== undefined);
+	const resources: Resource[] = workflowsAndFolders.value.map((resource) => {
+		if (resource.resource === 'folder') {
+			return {
+				resourceType: 'folders',
+				id: resource.id,
+				name: resource.name,
+				createdAt: resource.createdAt.toString(),
+				updatedAt: resource.updatedAt.toString(),
+				homeProject: resource.homeProject,
+				sharedWithProjects: resource.sharedWithProjects,
+				workflowCount: resource.workflowCount,
+				parentFolder: resource.parentFolder,
+			} as FolderResource;
+		} else {
+			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
+			return {
+				resourceType: 'workflows',
+				id: resource.id,
+				name: resource.name,
+				active: resource.active ?? false,
+				updatedAt: resource.updatedAt.toString(),
+				createdAt: resource.createdAt.toString(),
+				homeProject: resource.homeProject,
+				scopes: resource.scopes,
+				sharedWithProjects: resource.sharedWithProjects,
+				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
+				tags: resource.tags,
+			} as WorkflowResource;
+		}
+	});
 	return resources;
 });
 
