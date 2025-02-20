@@ -121,13 +121,13 @@ const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
 	return items;
 });
 
-const homeProject = computed(() => projectsStore.currentProject);
+const currentProject = computed(() => projectsStore.currentProject);
 
 const projectName = computed(() => {
-	if (homeProject.value?.type === ProjectTypes.Personal) {
+	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
-	return homeProject.value?.name;
+	return currentProject.value?.name;
 });
 
 const workflowListResources = computed<Resource[]>(() => {
@@ -547,7 +547,7 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 				:path-truncated="currentFolder?.parentFolder !== undefined"
 				data-test-id="folder-card-breadcrumbs"
 			>
-				<template v-if="homeProject" #prepend>
+				<template v-if="currentProject" #prepend>
 					<div :class="$style['home-project']">
 						<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
 					</div>

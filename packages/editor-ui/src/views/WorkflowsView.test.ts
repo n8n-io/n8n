@@ -48,7 +48,7 @@ const renderComponent = createComponentRenderer(WorkflowsView, {
 });
 
 const initialState = {
-	[STORES.SETTINGS]: { settings: { enterprise: { sharing: false } } },
+	[STORES.SETTINGS]: { settings: { enterprise: { sharing: false }, folders: { enabled: false } } },
 };
 
 describe('WorkflowsView', () => {
@@ -173,6 +173,7 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					tags: [TEST_TAG.name],
 				}),
+				expect.any(Boolean),
 			);
 		});
 
@@ -193,6 +194,7 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					name: 'one',
 				}),
+				expect.any(Boolean),
 			);
 		});
 
@@ -213,6 +215,7 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					active: true,
 				}),
+				expect.any(Boolean),
 			);
 		});
 

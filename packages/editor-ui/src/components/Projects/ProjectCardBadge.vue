@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
-import { type Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
+import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, WorkflowResource } from '../layouts/ResourcesListLayout.vue';
 
