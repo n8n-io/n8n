@@ -316,6 +316,23 @@ export interface IWorkflowDb {
 	meta?: WorkflowMetadata;
 }
 
+export interface WorkflowListResourceDB {
+	resource: 'workflow' | 'folder';
+	id: string;
+	name: string;
+	createdAt: number | string;
+	updatedAt: number | string;
+	active?: boolean;
+	workflowCount?: number;
+	parentFolder?: { id: string; name: string };
+	homeProject?: ProjectSharingData;
+	tags?: ITag[];
+	scopes?: Scope[];
+	versionId?: string;
+	meta?: WorkflowMetadata;
+	sharedWithProjects?: ProjectSharingData[];
+}
+
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
 	id: string;

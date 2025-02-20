@@ -73,6 +73,9 @@ watch(
 	() => route?.name,
 	() => {
 		selectedTab.value = route?.name;
+		// Select workflows tab if folders tab is selected
+		selectedTab.value =
+			route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;
 	},
 	{ immediate: true },
 );

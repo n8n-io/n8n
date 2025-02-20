@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import type { ICredentialTypeMap } from '@/Interface';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import ResourcesListLayout, {
 	type Resource,
 	type BaseFilters,
+	type CredentialsResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import {
@@ -76,6 +77,7 @@ const needsSetup = (data: string | undefined): boolean => {
 
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
+		resourceType: 'credentials',
 		id: credential.id,
 		name: credential.name,
 		value: '',
@@ -83,10 +85,10 @@ const allCredentials = computed<Resource[]>(() =>
 		createdAt: credential.createdAt,
 		homeProject: credential.homeProject,
 		scopes: credential.scopes,
-		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
+		type: credential.type,
 	})),
 );
 
@@ -125,7 +127,7 @@ listenForModalChanges({
 });
 
 const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
-	const Resource = resource as ICredentialsResponse & { needsSetup: boolean };
+	const Resource = resource as CredentialsResource;
 	const filtersToApply = newFilters as Filters;
 	if (filtersToApply.type && filtersToApply.type.length > 0) {
 		matches = matches && filtersToApply.type.includes(Resource.type);

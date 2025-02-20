@@ -53,7 +53,7 @@ const hasHiddenItems = computed(() => {
 });
 
 const showEllipsis = computed(() => {
-	return hasHiddenItems.value || props.pathTruncated;
+	return props.items.length && (hasHiddenItems.value || props.pathTruncated);
 });
 
 const dropdownDisabled = computed(() => {
@@ -137,7 +137,9 @@ const handleTooltipClose = () => {
 	>
 		<slot name="prepend"></slot>
 		<ul :class="$style.list">
-			<li v-if="$slots.prepend" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
+			<li v-if="$slots.prepend && items.length" :class="$style.separator" aria-hidden="true">
+				{{ separator }}
+			</li>
 			<li
 				v-if="showEllipsis"
 				:class="{ [$style.ellipsis]: true, [$style.disabled]: dropdownDisabled }"
@@ -218,7 +220,7 @@ const handleTooltipClose = () => {
 
 	&.small {
 		display: inline-flex;
-		padding: var(--spacing-4xs) var(--spacing-2xs);
+		padding: var(--spacing-4xs) var(--spacing-3xs);
 	}
 
 	&.border {
@@ -242,6 +244,7 @@ const handleTooltipClose = () => {
 	.tooltip-ellipsis {
 		cursor: pointer;
 		user-select: none;
+		color: var(--color-text-base);
 	}
 	&.disabled {
 		.dots,
