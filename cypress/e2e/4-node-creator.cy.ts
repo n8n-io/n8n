@@ -376,7 +376,8 @@ describe('Node Creator', () => {
 		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
 	});
 
-	it('should have most relevenat nodes on top when searching', () => {
+	// TODO: Move these to unit tests (packages/editor-ui/src/utils/sortUtils.test.ts)
+	it('should have most relevant nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
@@ -466,7 +467,8 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('time');
-		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Schedule Trigger');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Date & Time');
 		nodeCreatorFeature.getters.nodeItemName().eq(2).should('have.text', 'Wait');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('mail');
