@@ -147,13 +147,10 @@ describe('testDefinition.store.ee', () => {
 				'2': TEST_DEF_B,
 			});
 			expect(store.isLoading).toBe(false);
-			expect(result).toEqual({
-				count: 2,
-				testDefinitions: [TEST_DEF_A, TEST_DEF_B],
-			});
+			expect(result).toEqual([TEST_DEF_A, TEST_DEF_B]);
 		});
 
-		test.only('Fetching Test Definitions with force flag', async () => {
+		test('Fetching Test Definitions with force flag', async () => {
 			expect(store.isLoading).toBe(false);
 
 			const result = await store.fetchAll({ force: true, workflowId: '123' });
