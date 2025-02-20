@@ -5,7 +5,6 @@ import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -33,9 +32,7 @@ import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
-let ownerPersonalProject: Project;
 let member: User;
-let memberPersonalProject: Project;
 let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
@@ -69,10 +66,8 @@ beforeEach(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 	owner = await createOwner();
-	ownerPersonalProject = await getPersonalProject(owner);
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
-	memberPersonalProject = await getPersonalProject(member);
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 });
