@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -144,6 +145,39 @@ describe('PublicApiKeyService', () => {
 					apiVersion: 'v1',
 				}),
 			);
+		});
+
+		it('should return false if expired JWT is used', async () => {
+			//Arrange
+
+			const path = '/test';
+			const method = 'GET';
+			const apiVersion = 'v1';
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const dateInThePast = DateTime.now().minus({ days: 1 }).toUnixInteger();
+
+			const owner = await createOwnerWithApiKey({
+				expiresAt: dateInThePast,
+			});
+
+			const [{ apiKey }] = owner.apiKeys;
+
+			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
+
+			//Act
+
+			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
+
+			//Assert
+
+			expect(response).toBe(false);
 		});
 
 		it('should work with non JWT (legacy) api keys', async () => {
