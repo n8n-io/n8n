@@ -9,6 +9,7 @@ import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -24,6 +25,7 @@ export class PrometheusMetricsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -39,6 +41,7 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			activeWorkflowCount: this.globalConfig.endpoints.metrics.includeActiveWorkflowCountMetric,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -58,6 +61,7 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
+		this.initActiveWorkflowCountMetric();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -282,6 +286,42 @@ export class PrometheusMetricsService {
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);
 			this.counters.failed?.inc(jobCounts.failed);
+		});
+	}
+
+	/**
+	 * Setup active workflow count metric
+	 *
+	 * This metric is updated every time metrics are collected.
+	 * We also cache the value of active workflow counts so we
+	 * don't hit the database on every metrics query. Both the
+	 * metric being enabled and the TTL of the cached value is
+	 * configurable.
+	 */
+	private initActiveWorkflowCountMetric() {
+		if (!this.includes.metrics.activeWorkflowCount) return;
+
+		const workflowRepository = this.workflowRepository;
+		const cacheService = this.cacheService;
+		const cacheKey = 'metrics:active-workflow-count';
+		const cacheTtl = this.globalConfig.endpoints.metrics.activeWorkflowCountInterval * 1_000;
+
+		new promClient.Gauge({
+			name: this.prefix + 'active_workflow_count',
+			help: 'Total number of active workflows.',
+			async collect() {
+				const value = await cacheService.get<string>(cacheKey);
+				const numericValue = value !== undefined ? parseInt(value, 10) : undefined;
+
+				if (numericValue !== undefined && Number.isFinite(numericValue)) {
+					this.set(numericValue);
+				} else {
+					const activeWorkflowCount = await workflowRepository.getActiveCount();
+					await cacheService.set(cacheKey, activeWorkflowCount.toString(), cacheTtl);
+
+					this.set(activeWorkflowCount);
+				}
+			},
 		});
 	}
 
