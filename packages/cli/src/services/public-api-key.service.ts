@@ -17,6 +17,7 @@ const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
+const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 
 @Service()
 export class PublicApiKeyService {
@@ -107,14 +108,17 @@ export class PublicApiKeyService {
 
 			if (!user) return false;
 
-			try {
-				this.jwtService.verify(providedApiKey, {
-					issuer: API_KEY_ISSUER,
-					audience: API_KEY_AUDIENCE,
-				});
-			} catch (e) {
-				if (e instanceof TokenExpiredError) return false;
-				throw e;
+			// Legacy API keys are not JWTs and do not need to be verified.
+			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
+				try {
+					this.jwtService.verify(providedApiKey, {
+						issuer: API_KEY_ISSUER,
+						audience: API_KEY_AUDIENCE,
+					});
+				} catch (e) {
+					if (e instanceof TokenExpiredError) return false;
+					throw e;
+				}
 			}
 
 			this.eventService.emit('public-api-invoked', {
