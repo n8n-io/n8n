@@ -17,6 +17,7 @@ import type { Scope } from '@n8n/permissions';
 import type { ITag } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import type { FolderShortInfo } from '@/types/folders.types';
+import { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
@@ -158,6 +159,7 @@ const slots = defineSlots<{
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
 	item(props: { item: unknown; index: number }): unknown;
+	breadcrumbs(): unknown;
 }>();
 
 //computed
@@ -539,6 +541,7 @@ const loadPaginationFromQueryString = async () => {
 				<template #header>
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
+							<slot name="breadcrumbs"></slot>
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
@@ -552,19 +555,6 @@ const loadPaginationFromQueryString = async () => {
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<ResourceFiltersDropdown
-								v-if="showFiltersDropdown"
-								:keys="filterKeys"
-								:reset="resetFilters"
-								:model-value="filtersModel"
-								:shareable="shareable"
-								@update:model-value="onUpdateFilters"
-								@update:filters-length="onUpdateFiltersLength"
-							>
-								<template #default="resourceFiltersSlotProps">
-									<slot name="filters" v-bind="resourceFiltersSlotProps" />
-								</template>
-							</ResourceFiltersDropdown>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
 									<n8n-option
@@ -576,6 +566,20 @@ const loadPaginationFromQueryString = async () => {
 									/>
 								</n8n-select>
 							</div>
+							<ResourceFiltersDropdown
+								v-if="showFiltersDropdown"
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="shareable"
+								:just-icon="true"
+								@update:model-value="onUpdateFilters"
+								@update:filters-length="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
 						</div>
 						<slot name="add-button"></slot>
 					</div>
@@ -680,9 +684,10 @@ const loadPaginationFromQueryString = async () => {
 .filters {
 	display: grid;
 	grid-auto-flow: column;
-	grid-auto-columns: max-content;
+	grid-auto-columns: 1fr max-content max-content max-content;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	justify-content: end;
 	width: 100%;
 
 	@include mixins.breakpoint('xs-only') {
@@ -696,7 +701,7 @@ const loadPaginationFromQueryString = async () => {
 }
 
 .search {
-	max-width: 240px;
+	// max-width: 240px;
 
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;

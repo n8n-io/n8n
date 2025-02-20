@@ -20,6 +20,7 @@ const router = useRouter();
 
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
+	folderOpened: [{ folder: FolderResource }];
 }>();
 
 const actions = computed(() => {
@@ -122,6 +123,7 @@ const getFolderUrl = (folderId: string) => {
 
 const onAction = async (action: string) => {
 	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
+		emit('folderOpened', { folder: props.data });
 		await router.push(cardUrl.value);
 		return;
 	}
@@ -137,7 +139,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 
 <template>
 	<div>
-		<router-link :to="cardUrl">
+		<router-link :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<n8n-card :class="$style.card">
 				<template #prepend>
 					<n8n-icon :class="$style['folder-icon']" icon="folder" size="large" />

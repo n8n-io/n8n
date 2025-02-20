@@ -15,12 +15,14 @@ const props = withDefaults(
 		keys?: string[];
 		shareable?: boolean;
 		reset?: () => void;
+		justIcon?: boolean;
 	}>(),
 	{
 		modelValue: () => ({}),
 		keys: () => [],
 		shareable: true,
 		reset: () => {},
+		justIcon: false,
 	},
 );
 
@@ -112,18 +114,21 @@ onBeforeMount(async () => {
 				icon="filter"
 				type="tertiary"
 				:active="hasFilters"
-				:class="$style['filter-button']"
+				:class="{
+					[$style['filter-button']]: true,
+					[$style['no-label']]: justIcon && filtersLength === 0,
+				}"
 				data-test-id="resources-list-filters-trigger"
 			>
 				<n8n-badge
-					v-show="filtersLength > 0"
+					v-if="filtersLength > 0"
 					:class="$style['filter-button-count']"
 					data-test-id="resources-list-filters-count"
 					theme="primary"
 				>
 					{{ filtersLength }}
 				</n8n-badge>
-				<span :class="$style['filter-button-text']">
+				<span v-if="!justIcon" :class="$style['filter-button-text']">
 					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
 				</span>
 			</n8n-button>
@@ -162,6 +167,12 @@ onBeforeMount(async () => {
 .filter-button {
 	height: 40px;
 	align-items: center;
+
+	&.no-label {
+		span + span {
+			margin: 0;
+		}
+	}
 
 	.filter-button-count {
 		margin-right: var(--spacing-4xs);

@@ -44,6 +44,9 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { Folder } from '@/types/folders.types';
+import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { ProjectIcon as HomeIcon, ProjectTypes } from '@/types/projects.types';
+import { isFolderResource } from '@/utils/typeGuards';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -94,6 +97,8 @@ const workflows = ref<IWorkflowDb[]>([]);
 
 const easyAICalloutVisible = ref(true);
 
+const currentFolder = ref<FolderResource | undefined>(undefined);
+
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
@@ -105,7 +110,26 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const currentFolder = computed(() => route.params?.folderId as string | undefined);
+const showMainBreadcrumbs = computed(() => foldersEnabled.value && currentFolder.value);
+
+const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
+	if (!showMainBreadcrumbs.value || !currentFolder.value) return;
+	const items: PathItem[] = [];
+	items.push({
+		id: currentFolder.value.id,
+		label: currentFolder.value.name,
+	});
+	return items;
+});
+
+const homeProject = computed(() => projectsStore.currentProject);
+
+const projectName = computed(() => {
+	if (homeProject.value?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return homeProject.value?.name;
+});
 
 const workflowResources = computed<Resource[]>(() => {
 	const resources: Resource[] = workflows.value.map((workflow) => ({
@@ -227,6 +251,7 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
+	currentFolder.value = undefined;
 	await setFiltersFromQueryString();
 	const [, workflowsPage] = await Promise.all([
 		usersStore.fetchUsers(),
@@ -433,6 +458,10 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
+const onFolderOpened = (data: { folder: FolderResource }) => {
+	currentFolder.value = data.folder;
+};
+
 const addTestFolders = (resources: Resource[]) => {
 	const testFolder1: Folder = {
 		id: '1',
@@ -538,7 +567,7 @@ const addTestFolders = (resources: Resource[]) => {
 		});
 	} else {
 		const subfolders: Folder[] = folders.filter(
-			(folder) => folder.parentFolder?.id === currentFolder.value,
+			(folder) => folder.parentFolder?.id === currentFolder.value?.id,
 		);
 		subfolders.forEach((folder) => {
 			resources.unshift({
@@ -612,11 +641,27 @@ const addTestFolders = (resources: Resource[]) => {
 				</template>
 			</N8nCallout>
 		</template>
+		<template #breadcrumbs>
+			<n8n-breadcrumbs
+				v-if="mainBreadcrumbsItems"
+				:items="mainBreadcrumbsItems"
+				:highlight-last-item="false"
+				:path-truncated="currentFolder?.parentFolder !== undefined"
+				data-test-id="folder-card-breadcrumbs"
+			>
+				<template v-if="homeProject" #prepend>
+					<div :class="$style['home-project']">
+						<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+					</div>
+				</template>
+			</n8n-breadcrumbs>
+		</template>
 		<template #item="{ item: data }">
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
 				:data="data as FolderResource"
 				class="mb-2xs"
+				@folderOpened="onFolderOpened"
 			/>
 			<WorkflowCard
 				v-else
@@ -763,5 +808,10 @@ const addTestFolders = (resources: Resource[]) => {
 		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
+}
+
+.home-project {
+	display: flex;
+	align-items: center;
 }
 </style>
