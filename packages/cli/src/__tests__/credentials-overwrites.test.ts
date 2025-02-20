@@ -35,13 +35,15 @@ describe('CredentialsOverwrites', () => {
 		credentialsOverwrites = new CredentialsOverwrites(globalConfig, credentialTypes, logger);
 	});
 
-	it('should parse and set overwrite data from config in the constructor', () => {
-		expect(credentialsOverwrites.getAll()).toEqual({
-			parent: { password: 'pass' },
-			test: {
-				password: 'pass',
-				username: 'user',
-			},
+	describe('constructor', () => {
+		it('should parse and set overwrite data from config', () => {
+			expect(credentialsOverwrites.getAll()).toEqual({
+				parent: { password: 'pass' },
+				test: {
+					password: 'pass',
+					username: 'user',
+				},
+			});
 		});
 	});
 
