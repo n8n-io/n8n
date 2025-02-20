@@ -15,7 +15,7 @@ import type {
 	NodeHint,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 /*
@@ -247,6 +247,31 @@ export function getGenericHints({
 	hasNodeRun: boolean;
 }) {
 	const nodeHints: NodeHint[] = [];
+
+	// tools hints
+
+	if (node.type === HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE && hasNodeRun) {
+		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
+		const placeholderRegex = /\{[a-zA-Z0-9_]+\}/;
+		if (!placeholderRegex.test(stringifiedParameters)) {
+			nodeHints.push({
+				message:
+					'No parameters are set up to be filled by AI. Add <code>{placeholder_name}</code> to the relevant parameter to do so.',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+			});
+		}
+	} else if (node.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
+		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
+		if (!stringifiedParameters.includes('$fromAI')) {
+			nodeHints.push({
+				message:
+					"No parameters are currently configured for AI input.<br /> To enable AI-generated values, click the button on the left of the relevant parameter or manually add the following expression: <code>{{ $fromAI('placeholder_name') }}</code>.",
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+			});
+		}
+	}
 
 	// add limit reached hint
 	if (hasNodeRun && workflowNode.parameters.limit) {
