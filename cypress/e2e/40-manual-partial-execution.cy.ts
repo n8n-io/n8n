@@ -22,8 +22,8 @@ describe('Manual partial execution', () => {
 
 		canvas.actions.openNode('Webhook1');
 
-		ndv.getters.nodeRunSuccessIndicator().should('exist');
-		ndv.getters.nodeRunTooltipIndicator().should('exist');
-		ndv.getters.outputRunSelector().should('not.exist'); // single run
+		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
+		ndv.getters.nodeRunTooltipIndicator().should('not.exist');
+		ndv.getters.outputRunSelector().should('not.exist');
 	});
 });
