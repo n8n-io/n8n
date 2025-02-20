@@ -546,7 +546,7 @@ export class TestRunnerService {
 			// Send telemetry event
 			this.telemetry.track('Test run finished', {
 				test_id: test.id,
-				test_run_id: testRun.id,
+				run_id: testRun.id,
 				status: testRunEndStatusForTelemetry,
 			});
 		}
