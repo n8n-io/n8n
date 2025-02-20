@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { VIEWS } from '@/constants';
 import { SAMPLE_EVALUATION_WORKFLOW } from '@/constants.workflows';
 import type { IWorkflowDataCreate } from '@/Interface';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nLink } from 'n8n-design-system';
 import type { INodeParameterResourceLocator, IPinData } from 'n8n-workflow';
 import { computed, ref } from 'vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/stores/projects.store';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
 
 interface WorkflowSelectorProps {
 	modelValue: INodeParameterResourceLocator;
@@ -26,7 +26,10 @@ const props = withDefaults(defineProps<WorkflowSelectorProps>(), {
 	sampleWorkflowName: undefined,
 });
 
-const emit = defineEmits<{ 'update:modelValue': [value: WorkflowSelectorProps['modelValue']] }>();
+const emit = defineEmits<{
+	'update:modelValue': [value: WorkflowSelectorProps['modelValue']];
+	workflowCreated: [workflowId: string];
+}>();
 const locale = useI18n();
 
 const projectStore = useProjectsStore();
@@ -114,6 +117,7 @@ const handleDefineEvaluation = async () => {
 			:sample-workflow="sampleWorkflow"
 			:new-resource-label="locale.baseText('testDefinition.workflow.createNew')"
 			@update:model-value="updateModelValue"
+			@workflow-created="emit('workflowCreated', $event)"
 		/>
 	</div>
 </template>

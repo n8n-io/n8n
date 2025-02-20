@@ -2,6 +2,7 @@
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
@@ -32,6 +33,7 @@ const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
 const workflowStore = useWorkflowsStore();
+const telemetry = useTelemetry();
 
 const visibility = useDocumentVisibility();
 watch(visibility, async () => {
@@ -161,6 +163,13 @@ const updateDescription = (value: string) => {
 	state.value.description.value = value;
 	void handleUpdateTestDebounced();
 };
+
+function onEvaluationWorkflowCreated(workflowId: string) {
+	telemetry.track('User created evaluation workflow from test', {
+		test_id: props.testId,
+		subworkflow_id: workflowId,
+	});
+}
 </script>
 
 <template>
@@ -262,6 +271,7 @@ const updateDescription = (value: string) => {
 					@open-pinning-modal="openPinningModal"
 					@delete-metric="onDeleteMetric"
 					@open-executions-view-for-tag="openExecutionsViewForTag"
+					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 				/>
 			</div>
 		</div>

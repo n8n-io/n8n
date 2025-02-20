@@ -57,6 +57,7 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 	focus: [];
 	blur: [];
+	workflowCreated: [workflowId: string];
 }>();
 
 const workflowsStore = useWorkflowsStore();
@@ -238,6 +239,8 @@ const onAddResourceClicked = async () => {
 	hideDropdown();
 
 	window.open(href, '_blank');
+
+	emit('workflowCreated', newWorkflow.id);
 };
 </script>
 <template>

@@ -29,6 +29,7 @@ const emit = defineEmits<{
 	deleteMetric: [metric: TestMetricRecord];
 	openExecutionsViewForTag: [];
 	renameTag: [tag: string];
+	evaluationWorkflowCreated: [workflowId: string];
 }>();
 
 const locale = useI18n();
@@ -229,6 +230,7 @@ function hideTooltip() {
 						:example-pinned-data="examplePinnedData"
 						:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
 						:sample-workflow-name="sampleWorkflowName"
+						@workflow-created="$emit('evaluationWorkflowCreated', $event)"
 					/>
 				</template>
 			</EvaluationStep>

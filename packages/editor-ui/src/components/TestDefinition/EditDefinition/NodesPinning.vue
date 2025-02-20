@@ -2,6 +2,7 @@
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
@@ -15,6 +16,7 @@ const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
+const telemetry = useTelemetry();
 
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
@@ -91,7 +93,6 @@ function disableAllNodes() {
 	}
 }
 function onPinButtonClick(data: CanvasNodeData) {
-	console.log('click');
 	const nodeName = getNodeNameById(data.id);
 	if (!nodeName) return;
 
@@ -102,6 +103,13 @@ function onPinButtonClick(data: CanvasNodeData) {
 
 	emit('update:modelValue', updatedNodes);
 	updateNodeClasses([data.id], !isPinned);
+
+	if (!isPinned) {
+		telemetry.track('User selected node to be mocked', {
+			node_id: data.id,
+			test_id: testId.value,
+		});
+	}
 }
 function isPinButtonVisible(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
 	return outputs.length === 1 && inputs.length >= 1;
