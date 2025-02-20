@@ -68,7 +68,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 							id: 'a748051d-ebdb-4fcf-aaed-02756130ce2a',
 							name: 'latency',
 							value:
-								'={{(() => {\n\tconst getNodeLatency = (nodeRuns) => {\n\t\tif (nodeRuns[0].data.main === undefined) return 0;\n\t\treturn nodeRuns.reduce((acc, node) => acc + node.executionTime, 0);\n\t};\n\t\n\tconst latency = Object\n\t\t.values($json.newExecution)\n\t\t.reduce((acc, node) => acc + getNodeLatency(node), 0);\n\t\n\treturn latency;\n})()}}',
+								'={{(() => {\n  const newExecutionRuns = Object.values($json.newExecution)\n    .reduce((acc, node) => {\n      acc.push(node.runs.filter(run => run.output.main !== undefined))\n      return acc\n    }, []).flat()\n\n  const latency = newExecutionRuns.reduce((acc, run) => acc + run.executionTime, 0)\n\n  return latency\n})()}}',
 							type: 'number',
 						},
 					],
