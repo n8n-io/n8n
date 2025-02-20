@@ -52,9 +52,9 @@ export interface TestRunRecord {
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
-	failedCases: number;
-	passedCases: number;
-	totalCases: number;
+	failedCases?: number;
+	passedCases?: number;
+	totalCases?: number;
 }
 
 interface GetTestRunParams {
