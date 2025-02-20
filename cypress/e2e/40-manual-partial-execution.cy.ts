@@ -4,7 +4,7 @@ const canvas = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Manual partial execution', () => {
-	it('should execute parent nodes with no run data only once', () => {
+	it('should not execute parent nodes with no run data', () => {
 		canvas.actions.visit();
 
 		cy.fixture('manual-partial-execution.json').then((data) => {
