@@ -379,7 +379,7 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
-const updateTimeSavedPerExecution = (value) => {
+const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue) ? undefined : numValue;
 };

@@ -1,8 +1,9 @@
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -24,7 +25,7 @@ vi.mock('vue-router', async () => ({
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
-let pinia: ReturnType<typeof createPinia>;
+let pinia: ReturnType<typeof createTestingPinia>;
 
 let fetchAllWorkflowsSpy: MockInstance<(typeof workflowsStore)['fetchAllWorkflows']>;
 
@@ -46,7 +47,9 @@ describe('WorkflowSettingsVue', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		settingsStore = mockedStore(useSettingsStore);
 
-		settingsStore.settings.enterprise = {};
+		settingsStore.settings = {
+			enterprise: {},
+		} as FrontendSettings;
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		fetchAllWorkflowsSpy = workflowsStore.fetchAllWorkflows.mockResolvedValue([
@@ -215,13 +218,34 @@ describe('WorkflowSettingsVue', () => {
 
 		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
 
-		await userEvent.type(container.querySelector('#timeSavedPerExecution'), '10');
+		await userEvent.type(container.querySelector('#timeSavedPerExecution') as Element, '10');
 		expect(container.querySelector('#timeSavedPerExecution')).toHaveValue(10);
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
 		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({ settings: expect.objectContaining({ timeSavedPerExecution: 10 }) }),
+		);
+	});
+
+	it('should remove time saved per execution setting', async () => {
+		workflowsStore.workflowSettings.timeSavedPerExecution = 10;
+
+		const { container, getByRole } = createComponent();
+		await nextTick();
+
+		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
+		await waitFor(() => expect(container.querySelector('#timeSavedPerExecution')).toHaveValue(10));
+
+		await userEvent.clear(container.querySelector('#timeSavedPerExecution') as Element);
+		expect(container.querySelector('#timeSavedPerExecution')).not.toHaveValue();
+
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				settings: expect.not.objectContaining({ timeSavedPerExecution: 10 }),
+			}),
 		);
 	});
 });
