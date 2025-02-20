@@ -40,6 +40,7 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
+import { debounce } from 'lodash-es';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -237,7 +238,11 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	loading.value = true;
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 
@@ -252,6 +257,7 @@ const fetchWorkflows = async () => {
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 		},
 	);
+	delayedLoading.cancel();
 	workflows.value = fetchedWorkflows;
 	loading.value = false;
 	return fetchedWorkflows;
