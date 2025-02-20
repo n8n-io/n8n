@@ -1,6 +1,5 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
@@ -54,23 +53,25 @@ export class WorkflowToolService {
 		name,
 		description,
 		itemIndex,
+		returnAllItems,
 	}: {
 		name: string;
 		description: string;
 		itemIndex: number;
+		returnAllItems?: boolean;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
-		): Promise<string> => {
+		): Promise<IDataObject | IDataObject[] | string> => {
 			const { index } = this.context.addInputData(NodeConnectionType.AiTool, [
 				[{ json: { query } }],
 			]);
 
 			try {
-				const response = await this.runFunction(query, itemIndex, runManager);
+				const response = await this.runFunction(query, itemIndex, runManager, returnAllItems);
 				const processedResponse = this.handleToolResponse(response);
 
 				// Once the sub-workflow is executed, add the output data to the context
@@ -135,7 +136,8 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: string; subExecutionId: string }> {
+		returnAllItems?: boolean,
+	): Promise<{ response: string | IDataObject | IDataObject[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await this.context.executeWorkflow(
@@ -155,7 +157,12 @@ export class WorkflowToolService {
 			throw new NodeOperationError(this.context.getNode(), error as Error);
 		}
 
-		const response: string | undefined = get(receivedData, 'data[0][0].json') as string | undefined;
+		let response: IDataObject | IDataObject[] | undefined;
+		if (returnAllItems) {
+			response = receivedData?.data?.[0]?.map((item) => item.json);
+		} else {
+			response = receivedData?.data?.[0]?.[0]?.json;
+		}
 		if (response === undefined) {
 			throw new NodeOperationError(
 				this.context.getNode(),
@@ -174,7 +181,8 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<string> {
+		returnAllItems?: boolean,
+	): Promise<string | IDataObject | IDataObject[]> {
 		const source = this.context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = this.context.getWorkflowDataProxy(0);
 
@@ -189,6 +197,7 @@ export class WorkflowToolService {
 			items,
 			workflowProxy,
 			runManager,
+			returnAllItems,
 		);
 		return response;
 	}
@@ -283,7 +292,10 @@ export class WorkflowToolService {
 	private async createStructuredTool(
 		name: string,
 		description: string,
-		func: (query: string | IDataObject, runManager?: CallbackManagerForToolRun) => Promise<string>,
+		func: (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		) => Promise<string | IDataObject | IDataObject[]>,
 	): Promise<DynamicStructuredTool | DynamicTool> {
 		const collectedArguments = await this.extractFromAIParameters();
 
