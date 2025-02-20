@@ -50,7 +50,6 @@ const props = withDefaults(
 const tableRef = ref<TableInstance>();
 const selectedRows = ref<TableRow[]>([]);
 const localData = ref<TableRow[]>([]);
-const tableHeight = ref<string>('100%');
 const emit = defineEmits<{
 	rowClick: [row: TableRow];
 	selectionChange: [rows: TableRow[]];
