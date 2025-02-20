@@ -169,32 +169,72 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			options,
 		);
 
+		const query = this.buildUnionQuery(baseQuery, {
+			sortByColumn,
+			sortByDirection,
+			pagination: {
+				take: options.take,
+				skip: options.skip ?? 0,
+			},
+		});
+
+		const workflowsAndFolders = await query.getRawMany<WorkflowFolderUnionRow>();
+		return this.removeNameLowerFromResults(workflowsAndFolders);
+	}
+
+	private buildUnionQuery(
+		baseQuery: SelectQueryBuilder<any>,
+		options: {
+			sortByColumn: string;
+			sortByDirection: 'ASC' | 'DESC';
+			pagination: {
+				take?: number;
+				skip: number;
+			};
+		},
+	) {
 		const query = baseQuery
 			.select(`${baseQuery.escape('RESULT')}.*`)
 			.from('RESULT_QUERY', 'RESULT');
+
+		this.applySortingToUnionQuery(query, baseQuery, options);
+		this.applyPaginationToUnionQuery(query, options.pagination);
+
+		return query;
+	}
+
+	private applySortingToUnionQuery(
+		query: SelectQueryBuilder<any>,
+		baseQuery: SelectQueryBuilder<any>,
+		options: { sortByColumn: string; sortByDirection: 'ASC' | 'DESC' },
+	) {
+		const { sortByColumn, sortByDirection } = options;
+
+		const resultTableEscaped = baseQuery.escape('RESULT');
+		const nameColumnEscaped = baseQuery.escape('name');
+		const sortByColumnEscaped = baseQuery.escape(sortByColumn);
+
 		if (sortByColumn === 'name') {
 			query
-				.addSelect(`LOWER(${baseQuery.escape('RESULT')}.${baseQuery.escape('name')})`, 'name_lower')
+				.addSelect(`LOWER(${resultTableEscaped}.${nameColumnEscaped})`, 'name_lower')
 				.orderBy('name_lower', sortByDirection);
 		} else {
-			query.orderBy(
-				`${baseQuery.escape('RESULT')}.${baseQuery.escape(sortByColumn)}`,
-				sortByDirection,
-			);
+			query.orderBy(`${resultTableEscaped}.${sortByColumnEscaped}`, sortByDirection);
 		}
+	}
 
-		if (options.take) {
-			query.take(options.take);
+	private applyPaginationToUnionQuery(
+		query: SelectQueryBuilder<any>,
+		pagination: { take?: number; skip: number },
+	) {
+		if (pagination.take) {
+			query.take(pagination.take);
 		}
+		query.skip(pagination.skip);
+	}
 
-		query.skip(options.skip ?? 0);
-
-		const workflowsAndFolders = await query.getRawMany<WorkflowFolderUnionRow>();
-
-		return workflowsAndFolders.map((item) => {
-			const { name_lower, ...rest } = item;
-			return rest;
-		});
+	private removeNameLowerFromResults(results: WorkflowFolderUnionRow[]) {
+		return results.map(({ name_lower, ...rest }) => rest);
 	}
 
 	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
