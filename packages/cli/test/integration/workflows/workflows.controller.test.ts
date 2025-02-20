@@ -909,6 +909,40 @@ describe('GET /workflows', () => {
 				]),
 			});
 		});
+
+		test('should select workflow field: parentFolder', async () => {
+			const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				owner.id,
+			);
+			const folder = await createFolder(ownerPersonalProject, { name: 'Folder 1' });
+
+			await createWorkflow({ parentFolder: folder }, owner);
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('select=["parentFolder"]')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 2,
+				data: arrayContaining([
+					{
+						id: any(String),
+						parentFolder: {
+							id: folder.id,
+							name: folder.name,
+							createdAt: expect.any(String),
+							updatedAt: expect.any(String),
+						},
+					},
+					{
+						id: any(String),
+						parentFolder: null,
+					},
+				]),
+			});
+		});
 	});
 
 	describe('sortBy', () => {

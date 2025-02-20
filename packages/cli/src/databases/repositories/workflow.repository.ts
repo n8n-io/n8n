@@ -419,6 +419,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',
+				'workflow.parentFolderId',
 			]);
 			return;
 		}
@@ -428,7 +429,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		// Handle special fields separately
 		const regularFields = Object.entries(select).filter(
-			([field]) => !['ownedBy', 'tags'].includes(field),
+			([field]) => !['ownedBy', 'tags', 'parentFolder'].includes(field),
 		);
 
 		// Add regular fields
@@ -450,6 +451,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const isDefaultSelect = select === undefined;
 		const areTagsRequested = isDefaultSelect || select?.tags;
 		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
+		const isParentFolderIncluded = isDefaultSelect || select?.parentFolder;
+
+		if (isParentFolderIncluded) {
+			qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+		}
 
 		if (areTagsEnabled && areTagsRequested) {
 			this.applyTagsRelation(qb);
