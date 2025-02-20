@@ -46,16 +46,16 @@ const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true }
 const renameTag = async () => {
 	const { prompt } = useMessage();
 
-	const result = await prompt('Enter new tag name', {
+	const result = await prompt(locale.baseText('testDefinition.edit.step.tag.placeholder'), {
 		inputValue: props.tagsById[tags.value.value[0]]?.name,
-		inputPlaceholder: 'Enter new tag name',
+		inputPlaceholder: locale.baseText('testDefinition.edit.step.tag.placeholder'),
 		inputValidator: (value) => {
 			if (!value) {
-				return 'Tag name is required';
+				return locale.baseText('testDefinition.edit.step.tag.validation.required');
 			}
 
 			if (value.length > 21) {
-				return 'Tag name is too long';
+				return locale.baseText('testDefinition.edit.step.tag.validation.tooLong');
 			}
 
 			return true;

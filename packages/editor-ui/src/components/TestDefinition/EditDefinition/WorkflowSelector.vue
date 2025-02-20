@@ -92,10 +92,10 @@ const handleDefineEvaluation = async () => {
 	<div class="mt-xs">
 		<template v-if="!modelValue.value">
 			<N8nButton type="secondary" class="mb-xs" @click="handleDefineEvaluation">
-				Create new evaluation workflow
+				{{ locale.baseText('testDefinition.workflow.createNew') }}
 			</N8nButton>
 			<N8nLink class="mb-xs" style="display: block" @click="selectorVisible = !selectorVisible">
-				or use existing evaluation sub-workflow
+				{{ locale.baseText('testDefinition.workflow.createNew.or') }}
 			</N8nLink>
 		</template>
 
