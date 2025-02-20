@@ -233,6 +233,9 @@ export class FrontendService {
 			},
 			easyAIWorkflowOnboarded: false,
 			partialExecution: this.globalConfig.partialExecutions,
+			folders: {
+				enabled: false,
+			},
 		};
 	}
 
@@ -359,6 +362,8 @@ export class FrontendService {
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+
+		this.settings.folders.enabled = config.get('folders.enabled');
 
 		return this.settings;
 	}
