@@ -340,7 +340,7 @@ export class TestRunnerService {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
-			this.telemetry.track('User runs test', {
+			this.telemetry.track('User ran test', {
 				user_id: user.id,
 				test_id: test.id,
 				run_id: testRun.id,

@@ -203,16 +203,10 @@ watch(
 );
 
 function onEvaluationWorkflowCreated(workflowId: string) {
-	telemetry.track(
-		'User created evaluation workflow from test',
-		{
-			test_id: testId.value,
-			subworkflow_id: workflowId,
-		},
-		{
-			withPostHog: true,
-		},
-	);
+	telemetry.track('User created evaluation workflow from test', {
+		test_id: testId.value,
+		subworkflow_id: workflowId,
+	});
 }
 </script>
 
