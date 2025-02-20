@@ -92,14 +92,58 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
-		// The fallback should never happen since handleLLMStart should always set the run details
-		// but just in case, we set the index to the length of the runsMap
+		// 1. Retrieve run details (index, messages, etc.)
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
-		);
+		const showThinking = this.executionFunctions.getNodeParameter(
+			'showThinking',
+			runDetails.index,
+			false,
+		) as boolean;
 
+		// Read the format from node parameters, e.g. "default" or "json"
+		const format = this.executionFunctions.getNodeParameter(
+			'options.format',
+			runDetails.index,
+			'default',
+		) as string;
+
+		// 2. Flatten all generations’ text into one combined string
+		let combinedText = output.generations
+			.flatMap((generationArray) => generationArray.map((gen) => gen.text))
+			.join('\n\n');
+
+		// 3. Strip <think>...</think> tags if showThinking is false
+		if (!showThinking) {
+			combinedText = combinedText.replace(/<think>[\s\S]*?<\/think>/g, '');
+		}
+
+		// 4. If format is 'json', parse a code block if present
+		if (format === 'json') {
+			const jsonMatch = combinedText.match(/```json\s*([\s\S]*?)\s*```/);
+			if (jsonMatch) {
+				try {
+					const parsedJson = JSON.parse(jsonMatch[1]);
+					// Example: store the re-stringified JSON
+					combinedText = JSON.stringify(parsedJson, null, 2);
+				} catch (err) {
+					console.warn('Failed to parse JSON code block:', err);
+				}
+			}
+		}
+
+		// 5. Overwrite output.generations to hold just one final combined generation
+		output.generations = [
+			[
+				{
+					text: combinedText,
+					// Preserve any generationInfo you want, or leave it empty if you prefer
+					generationInfo: {},
+				},
+			],
+		];
+
+		// 6. Compute token usage or estimates as you were doing
 		const tokenUsageEstimate = {
 			completionTokens: 0,
 			promptTokens: 0,
@@ -108,14 +152,16 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		const tokenUsage = this.options.tokensUsageParser(output.llmOutput);
 
 		if (output.generations.length > 0) {
+			// Estimate completion tokens from the final text
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(
 				output.generations,
 			);
-
 			tokenUsageEstimate.promptTokens = this.promptTokensEstimate;
 			tokenUsageEstimate.totalTokens =
 				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
 		}
+
+		// Build the response object for output
 		const response: {
 			response: { generations: LLMResult['generations'] };
 			tokenUsageEstimate?: typeof tokenUsageEstimate;
@@ -124,27 +170,29 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			response: { generations: output.generations },
 		};
 
-		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
+		// If the LLM returned real token usage, attach it; otherwise attach estimate
 		if (tokenUsage.completionTokens > 0) {
 			response.tokenUsage = tokenUsage;
 		} else {
 			response.tokenUsageEstimate = tokenUsageEstimate;
 		}
 
+		// 7. (Optional) Log the messages used in the prompt
 		const parsedMessages =
 			typeof runDetails.messages === 'string'
 				? runDetails.messages
 				: runDetails.messages.map((message) => {
 						if (typeof message === 'string') return message;
 						if (typeof message?.toJSON === 'function') return message.toJSON();
-
 						return message;
 					});
 
+		// 8. Send the final response object to n8n
 		this.executionFunctions.addOutputData(this.connectionType, runDetails.index, [
 			[{ json: { ...response } }],
 		]);
 
+		// 9. Log event (if needed)
 		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
