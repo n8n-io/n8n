@@ -60,7 +60,7 @@ export class CredentialsOverwrites {
 		return returnData;
 	}
 
-	private getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
+	getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
