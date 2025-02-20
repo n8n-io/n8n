@@ -239,7 +239,7 @@ onMounted(async () => {
 				</n8n-heading>
 			</button>
 		</div>
-		<el-scrollbar always :wrap-class="$style.scrollableSummary" class="mb-m">
+		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
 					<N8nText size="small">
@@ -396,6 +396,16 @@ onMounted(async () => {
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-radius: 5px;
 	background-color: var(--color-background-xlight);
+
+	:global(.el-scrollbar__bar) {
+		opacity: 1;
+	}
+	:global(.el-scrollbar__thumb) {
+		background-color: var(--color-foreground-base);
+		&:hover {
+			background-color: var(--color-foreground-dark);
+		}
+	}
 }
 
 .summaryCard {
@@ -411,16 +421,6 @@ onMounted(async () => {
 	&:first-child {
 		border-top-left-radius: inherit;
 		border-bottom-left-radius: inherit;
-	}
-}
-
-:global(.el-scrollbar__bar) {
-	opacity: 1;
-}
-:global(.el-scrollbar__thumb) {
-	background-color: var(--color-foreground-base);
-	&:hover {
-		background-color: var(--color-foreground-dark);
 	}
 }
 </style>
