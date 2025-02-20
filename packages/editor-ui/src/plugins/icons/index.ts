@@ -167,6 +167,8 @@ import {
 	faPowerOff,
 	faPaperPlane,
 	faExclamationCircle,
+	faMinusCircle,
+	faAdjust,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark, faVault, faRefresh } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -348,6 +350,8 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faPowerOff);
 		addIcon(faPaperPlane);
 		addIcon(faRefresh);
+		addIcon(faMinusCircle);
+		addIcon(faAdjust);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
