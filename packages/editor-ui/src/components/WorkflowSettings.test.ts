@@ -30,7 +30,6 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let fetchAllWorkflowsSpy: MockInstance<(typeof workflowsStore)['fetchAllWorkflows']>;
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
-	pinia,
 	global: {
 		stubs: {
 			Modal: {
@@ -83,14 +82,14 @@ describe('WorkflowSettingsVue', () => {
 
 	it('should render correctly', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 
@@ -101,7 +100,7 @@ describe('WorkflowSettingsVue', () => {
 
 	it('should render workflow caller policy when sharing is enabled', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 
@@ -110,7 +109,7 @@ describe('WorkflowSettingsVue', () => {
 
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy'));
@@ -121,7 +120,7 @@ describe('WorkflowSettingsVue', () => {
 
 	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 		const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
@@ -137,7 +136,7 @@ describe('WorkflowSettingsVue', () => {
 		const validWorkflowList = '1234567890, abcde, efgh, 1234';
 
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 
@@ -154,7 +153,7 @@ describe('WorkflowSettingsVue', () => {
 		const cleanedUpWorkflowList = '1234567890, abcde, efgh, 1234';
 
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent();
+		const { getByTestId } = createComponent({ pinia });
 
 		await nextTick();
 
@@ -203,7 +202,7 @@ describe('WorkflowSettingsVue', () => {
 		'should show %s dropdown correct default value as %s',
 		async (testId, optionText, storeSetter) => {
 			storeSetter();
-			const { getByTestId } = createComponent();
+			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
 			const dropdownItems = await getDropdownItems(getByTestId(testId));
@@ -213,7 +212,7 @@ describe('WorkflowSettingsVue', () => {
 	);
 
 	it('should save time saved per execution correctly', async () => {
-		const { container, getByRole } = createComponent();
+		const { container, getByRole } = createComponent({ pinia });
 		await nextTick();
 
 		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
@@ -231,7 +230,7 @@ describe('WorkflowSettingsVue', () => {
 	it('should remove time saved per execution setting', async () => {
 		workflowsStore.workflowSettings.timeSavedPerExecution = 10;
 
-		const { container, getByRole } = createComponent();
+		const { container, getByRole } = createComponent({ pinia });
 		await nextTick();
 
 		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
