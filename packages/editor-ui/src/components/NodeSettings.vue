@@ -49,6 +49,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { completeExpressionSyntax } from '@/utils/expressions';
 
 const props = withDefaults(
 	defineProps<{
@@ -473,6 +474,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		}
 	} else if (parameterData.name.startsWith('parameters.')) {
 		// A node parameter changed
+
+		newValue = completeExpressionSyntax(newValue);
 
 		const nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
 		if (!nodeType) {

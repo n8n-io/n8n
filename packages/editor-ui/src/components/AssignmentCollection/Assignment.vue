@@ -11,6 +11,7 @@ import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { N8nIconButton } from 'n8n-design-system';
+import { completeExpressionSyntax } from '@/utils/expressions';
 
 interface Props {
 	path: string;
@@ -90,7 +91,7 @@ const hint = computed(() => resolvedExpressionString.value);
 const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
 
 const onAssignmentNameChange = (update: IUpdateInformation): void => {
-	assignment.value.name = update.value as string;
+	assignment.value.name = completeExpressionSyntax(update.value as string);
 };
 
 const onAssignmentTypeChange = (update: string): void => {
@@ -102,7 +103,7 @@ const onAssignmentTypeChange = (update: string): void => {
 };
 
 const onAssignmentValueChange = (update: IUpdateInformation): void => {
-	assignment.value.value = update.value as string;
+	assignment.value.value = completeExpressionSyntax(update.value as string);
 };
 
 const onRemove = (): void => {

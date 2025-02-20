@@ -813,9 +813,20 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
-	// Only update the value if it has changed
+
 	const oldValue = get(node.value, props.path);
-	if (oldValue !== undefined && oldValue === value) {
+
+	if (
+		!oldValue &&
+		typeof value === 'string' &&
+		!value.startsWith('=') &&
+		value.includes('{{') &&
+		value.includes('}}')
+	) {
+		// if no old value and updated value has an expression, add '=' prefix to swith to expression mode
+		value = '=' + value;
+	} else if (oldValue !== undefined && oldValue === value) {
+		// Only update the value if it has changed
 		return;
 	}
 
