@@ -13,6 +13,9 @@ import { Project } from './project';
 import { TagEntity } from './tag-entity';
 import { type WorkflowEntity } from './workflow-entity';
 
+export type FolderWithWorkflowsCount = Folder & {
+	workflowsCount: boolean;
+};
 @Entity()
 export class Folder extends WithTimestampsAndStringId {
 	@Column()
@@ -28,8 +31,6 @@ export class Folder extends WithTimestampsAndStringId {
 
 	@OneToMany('WorkflowEntity', 'parentFolder')
 	workflows: WorkflowEntity[];
-
-	workflowsCount?: number;
 
 	@ManyToMany(() => TagEntity)
 	@JoinTable({

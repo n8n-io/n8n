@@ -14,7 +14,7 @@ import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
 import { FolderRepository } from './folder.repository';
-import type { Folder } from '../entities/folder';
+import type { Folder, FolderWithWorkflowsCount } from '../entities/folder';
 import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
@@ -34,7 +34,7 @@ type WorkflowFolderUnionRow = {
 export type WorkflowFolderUnionFull = (
 	| ListQuery.Workflow.Plain
 	| ListQuery.Workflow.WithSharing
-	| Folder
+	| FolderWithWorkflowsCount
 ) & {
 	resource: ResourceType;
 };
