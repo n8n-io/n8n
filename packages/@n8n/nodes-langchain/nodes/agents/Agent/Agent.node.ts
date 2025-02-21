@@ -256,7 +256,7 @@ export class Agent implements INodeType {
 		icon: 'fa:robot',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -331,10 +331,17 @@ export class Agent implements INodeType {
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
 			},
-			// Make Tools Agent the default agent for versions 1.6 and above
+			// Make Tools Agent the default agent for versions 1.6 and 1.7
 			{
 				...agentTypeProperty,
-				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.6 } }] } },
+				displayOptions: { show: { '@version': [{ _cnd: { between: { from: 1.6, to: 1.7 } } }] } },
+				default: 'toolsAgent',
+			},
+			// Make Tools Agent the only agent option for versions 1.8 and above
+			{
+				...agentTypeProperty,
+				type: 'hidden',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.8 } }] } },
 				default: 'toolsAgent',
 			},
 			{
