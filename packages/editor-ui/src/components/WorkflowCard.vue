@@ -26,7 +26,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from 'n8n-design-system/utils';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
-import { ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
