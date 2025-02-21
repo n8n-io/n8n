@@ -7,12 +7,16 @@ import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { UserAction } from '@/Interface';
 
 type Props = {
 	data: FolderResource;
+	actions: UserAction[];
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	actions: () => [],
+});
 
 const i18n = useI18n();
 const route = useRoute();
@@ -22,51 +26,6 @@ const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
 }>();
-
-const actions = computed(() => {
-	const items = [
-		{
-			label: 'Open',
-			value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
-		},
-		{
-			label: 'Create Folder',
-			value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
-			disabled: true,
-		},
-		{
-			label: 'Create Workflow',
-			value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
-			disabled: true,
-		},
-		{
-			label: 'Rename',
-			value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
-			disabled: true,
-		},
-		{
-			label: 'Move to Folder',
-			value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
-			disabled: true,
-		},
-		{
-			label: 'Change Owner',
-			value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
-			disabled: true,
-		},
-		{
-			label: 'Manage Tags',
-			value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
-			disabled: true,
-		},
-		{
-			label: 'Delete',
-			value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
-			disabled: true,
-		},
-	];
-	return items;
-});
 
 const breadCrumbsItems = computed(() => {
 	if (props.data.parentFolder) {
@@ -103,20 +62,12 @@ const cardUrl = computed(() => {
 });
 
 const getFolderUrl = (folderId: string) => {
-	const isProjectRoute = route.params.projectId !== undefined;
-	if (isProjectRoute) {
-		return router.resolve({
-			name: VIEWS.PROJECTS_FOLDERS,
-			params: {
-				projectId: route.params.projectId as string,
-				folderId,
-			},
-			query: route.query,
-		}).href;
-	}
 	return router.resolve({
-		name: VIEWS.FOLDERS,
-		params: { folderId },
+		name: VIEWS.PROJECTS_FOLDERS,
+		params: {
+			projectId: route.params.projectId as string,
+			folderId,
+		},
 		query: route.query,
 	}).href;
 };
@@ -142,7 +93,12 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 		<router-link :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<n8n-card :class="$style.card">
 				<template #prepend>
-					<n8n-icon :class="$style['folder-icon']" icon="folder" size="large" />
+					<n8n-icon
+						data-test-id="folder-card-icon"
+						:class="$style['folder-icon']"
+						icon="folder"
+						size="large"
+					/>
 				</template>
 				<template #header>
 					<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
@@ -151,14 +107,29 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
-						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="$style['info-cell']"
+							data-test-id="folder-card-workflow-count"
+						>
 							{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
 						</n8n-text>
-						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="$style['info-cell']"
+							data-test-id="folder-card-last-updated"
+						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
 							<TimeAgo :date="String(data.updatedAt)" />
 						</n8n-text>
-						<n8n-text size="small" color="text-light" :class="$style['info-cell']">
+						<n8n-text
+							size="small"
+							color="text-light"
+							:class="$style['info-cell']"
+							data-test-id="folder-card-created"
+						>
 							{{ i18n.baseText('workflows.item.created') }}
 							<TimeAgo :date="String(data.createdAt)" />
 						</n8n-text>
@@ -185,9 +156,10 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 							</template>
 						</n8n-breadcrumbs>
 						<n8n-action-toggle
+							v-if="actions.length"
 							:actions="actions"
 							theme="dark"
-							data-test-id="workflow-card-actions"
+							data-test-id="folder-card-actions"
 							@action="onAction"
 						/>
 					</div>

@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, WorkflowListResourceDB } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResourceDB } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -45,6 +45,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -100,6 +101,49 @@ const currentFolder = ref<FolderResource | undefined>(undefined);
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
+
+const folderCardActions = ref<UserAction[]>([
+	{
+		label: 'Open',
+		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
+		disabled: false,
+	},
+	{
+		label: 'Create Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+		disabled: true,
+	},
+	{
+		label: 'Create Workflow',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
+		disabled: true,
+	},
+	{
+		label: 'Rename',
+		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
+		disabled: true,
+	},
+	{
+		label: 'Move to Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
+		disabled: true,
+	},
+	{
+		label: 'Change Owner',
+		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
+		disabled: true,
+	},
+	{
+		label: 'Manage Tags',
+		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
+		disabled: true,
+	},
+	{
+		label: 'Delete',
+		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
+		disabled: true,
+	},
+]);
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
@@ -558,8 +602,9 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
 				:data="data as FolderResource"
+				:actions="folderCardActions"
 				class="mb-2xs"
-				@folderOpened="onFolderOpened"
+				@folder-opened="onFolderOpened"
 			/>
 			<WorkflowCard
 				v-else
