@@ -27,7 +27,6 @@ import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import N8nInput from 'n8n-design-system/components/N8nInput';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -490,7 +489,7 @@ onMounted(async () => {
 						{{ i18n.baseText('workflowSettings.executionOrder') + ':' }}
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.executionOrder"
 							placeholder="Select Execution Order"
 							size="medium"
@@ -499,29 +498,29 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-execution-order"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option in executionOrderOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 
 				<el-row data-test-id="error-workflow">
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.errorWorkflow') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
@@ -529,58 +528,58 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ i18n.baseText('workflowSettings.callerPolicy') + ':' }}
-							<n8n-tooltip placement="top">
+							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
 								<font-awesome-icon icon="question-circle" />
-							</n8n-tooltip>
+							</N8nTooltip>
 						</el-col>
 
 						<el-col :span="14" class="ignore-key-press-canvas">
-							<n8n-select
+							<N8nSelect
 								v-model="workflowSettings.callerPolicy"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
 							>
-								<n8n-option
+								<N8nOption
 									v-for="option of workflowCallerPolicyOptions"
 									:key="option.key"
 									:label="option.value"
 									:value="option.key"
 								>
-								</n8n-option>
-							</n8n-select>
+								</N8nOption>
+							</N8nSelect>
 						</el-col>
 					</el-row>
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<el-col :span="10" class="setting-name">
 							{{ i18n.baseText('workflowSettings.callerIds') + ':' }}
-							<n8n-tooltip placement="top">
+							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
 								<font-awesome-icon icon="question-circle" />
-							</n8n-tooltip>
+							</N8nTooltip>
 						</el-col>
 						<el-col :span="14">
-							<n8n-input
+							<N8nInput
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:placeholder="i18n.baseText('workflowSettings.callerIds.placeholder')"
@@ -594,15 +593,15 @@ onMounted(async () => {
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.timezone') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
 							filterable
@@ -610,28 +609,28 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-timezone"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="timezone of timezones"
 								:key="timezone.key"
 								:label="timezone.value"
 								:value="timezone.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
@@ -639,28 +638,28 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-failed-executions"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
@@ -668,28 +667,28 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-success-executions"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.saveManualExecutions') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
@@ -697,28 +696,28 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-manual-executions"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option of saveManualOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.saveExecutionProgress') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
-						<n8n-select
+						<N8nSelect
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
@@ -726,25 +725,25 @@ onMounted(async () => {
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-execution-progress"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
-							</n8n-option>
-						</n8n-select>
+							</N8nOption>
+						</N8nSelect>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') + ':' }}
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
 							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14">
 						<div>
@@ -766,25 +765,25 @@ onMounted(async () => {
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ i18n.baseText('workflowSettings.timeoutAfter') + ':' }}
-							<n8n-tooltip placement="top">
+							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
 								<font-awesome-icon icon="question-circle" />
-							</n8n-tooltip>
+							</N8nTooltip>
 						</el-col>
 						<el-col :span="4">
-							<n8n-input
+							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
 								:min="0"
 								@update:model-value="(value: string) => setTheTimeout('hours', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
-							</n8n-input>
+							</N8nInput>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input
+							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.minutes"
 								:min="0"
@@ -792,10 +791,10 @@ onMounted(async () => {
 								@update:model-value="(value: string) => setTheTimeout('minutes', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
-							</n8n-input>
+							</N8nInput>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input
+							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.seconds"
 								:min="0"
@@ -803,7 +802,7 @@ onMounted(async () => {
 								@update:model-value="(value: string) => setTheTimeout('seconds', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
-							</n8n-input>
+							</N8nInput>
 						</el-col>
 					</el-row>
 				</div>
@@ -828,7 +827,7 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
-				<n8n-button
+				<N8nButton
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
 					size="large"
