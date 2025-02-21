@@ -583,36 +583,20 @@ export function useCanvasMapping({
 		const runDataTotal =
 			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
 
-		function getStatus(): CanvasConnectionData['status'] | undefined {
-			if (nodeExecutionRunningById.value[connection.source]) {
-				return 'running';
-			}
-
-			if (
-				nodePinnedDataById.value[connection.source] &&
-				nodeExecutionRunDataById.value[connection.source]
-			) {
-				return 'pinned';
-			}
-
-			if (nodeHasIssuesById.value[connection.source]) {
-				return 'error';
-			}
-
-			const sourceNodeName = connection.data?.source.node;
-
-			if (sourceNodeName && dirtinessByName.value[sourceNodeName] !== undefined) {
-				return 'warning';
-			}
-
-			if (runDataTotal > 0) {
-				return 'success';
-			}
-
-			return undefined;
+		let status: CanvasConnectionData['status'];
+		if (nodeExecutionRunningById.value[connection.source]) {
+			status = 'running';
+		} else if (
+			nodePinnedDataById.value[connection.source] &&
+			nodeExecutionRunDataById.value[connection.source]
+		) {
+			status = 'pinned';
+		} else if (nodeHasIssuesById.value[connection.source]) {
+			status = 'error';
+		} else if (runDataTotal > 0) {
+			status = 'success';
 		}
 
-		const status = getStatus();
 		const maxConnections = [
 			...nodeInputsById.value[connection.source],
 			...nodeInputsById.value[connection.target],

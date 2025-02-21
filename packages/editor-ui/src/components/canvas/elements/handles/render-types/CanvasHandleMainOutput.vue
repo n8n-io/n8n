@@ -41,13 +41,7 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusType = computed(() =>
-	renderOptions.value.dirtiness !== undefined
-		? 'warning'
-		: runDataTotal.value > 0
-			? 'success'
-			: 'default',
-);
+const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>

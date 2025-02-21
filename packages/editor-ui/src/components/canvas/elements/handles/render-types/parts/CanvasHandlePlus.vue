@@ -7,7 +7,7 @@ const props = withDefaults(
 		handleClasses?: string;
 		plusSize?: number;
 		lineSize?: number;
-		type?: 'success' | 'warning' | 'secondary' | 'default';
+		type?: 'success' | 'secondary' | 'default';
 	}>(),
 	{
 		position: 'right',
@@ -160,12 +160,6 @@ function onClick(event: MouseEvent) {
 	&.success {
 		.line {
 			stroke: var(--color-success);
-		}
-	}
-
-	&.warning {
-		.line {
-			stroke: var(--color-warning);
 		}
 	}
 

@@ -124,7 +124,7 @@ export type CanvasNode = Node<CanvasNodeData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	status?: 'success' | 'error' | 'warning' | 'pinned' | 'running';
+	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
 }
 
