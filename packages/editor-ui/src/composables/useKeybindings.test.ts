@@ -163,4 +163,30 @@ describe('useKeybindings', () => {
 		document.dispatchEvent(event);
 		expect(handler).toHaveBeenCalled();
 	});
+
+	it('should not call handler when window is blurred, until it is focused back', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ a: handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'a' });
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalled();
+
+		const blurEvent = new Event('blur');
+		window.dispatchEvent(blurEvent);
+
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalledTimes(1);
+
+		const focusEvent = new Event('focus');
+		window.dispatchEvent(focusEvent);
+
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalledTimes(2);
+	});
 });
