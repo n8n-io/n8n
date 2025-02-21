@@ -636,8 +636,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 
 async function onTidyUp() {
 	const applyOnSelection = selectedNodes.value.length > 1;
-	const newPositions = layout(applyOnSelection ? 'selection' : 'all');
-	onUpdateNodesPosition(newPositions);
+	const { nodes } = layout(applyOnSelection ? 'selection' : 'all');
+
+	onUpdateNodesPosition(nodes.map((node) => ({ id: node.id, position: { x: node.x, y: node.y } })));
+
 	if (!applyOnSelection) {
 		await nextTick();
 		await onFitView();
