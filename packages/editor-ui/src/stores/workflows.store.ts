@@ -826,7 +826,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		const storedPinData = payload.data.map((item) =>
-			isJsonKeyObject(item) ? { json: item.json } : { json: item },
+			// TODO: write test
+			isJsonKeyObject(item) ? item : { json: item },
 		);
 
 		workflow.value = {
