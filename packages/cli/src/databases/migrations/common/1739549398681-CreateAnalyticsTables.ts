@@ -88,10 +88,10 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 			})
 			.withIndexOn(
 				[
-					names.c.analyticsByPeriod.metaId,
+					names.c.analyticsByPeriod.periodStart,
 					names.c.analyticsByPeriod.type,
 					names.c.analyticsByPeriod.periodUnit,
-					names.c.analyticsByPeriod.periodStart,
+					names.c.analyticsByPeriod.metaId,
 				],
 				true,
 			);
