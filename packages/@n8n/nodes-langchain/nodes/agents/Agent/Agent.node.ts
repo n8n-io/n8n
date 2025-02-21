@@ -27,7 +27,13 @@ import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
-	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
+	agent:
+		| 'toolsAgent'
+		| 'conversationalAgent'
+		| 'openAiFunctionsAgent'
+		| 'planAndExecuteAgent'
+		| 'reActAgent'
+		| 'sqlAgent',
 	hasOutputParser?: boolean,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
@@ -319,6 +325,24 @@ export class Agent implements INodeType {
 				displayOptions: {
 					show: {
 						agent: ['conversationalAgent', 'toolsAgent'],
+					},
+				},
+			},
+			{
+				displayName:
+					"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						agent: [
+							'conversationalAgent',
+							'openAiFunctionsAgent',
+							'planAndExecuteAgent',
+							'reActAgent',
+							'sqlAgent',
+						],
 					},
 				},
 			},
