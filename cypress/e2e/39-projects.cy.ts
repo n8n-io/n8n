@@ -299,7 +299,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.workflowCards()
 				.should('have.length', 3)
 				.filter(':not(:contains("Personal"))')
-				.should('have.length', 3)
+				.should('have.length', 3);
 
 			cy.log('Move the workflow from Project 1 to Project 2');
 			projects.getMenuItems().first().click();
