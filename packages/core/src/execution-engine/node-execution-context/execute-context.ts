@@ -11,6 +11,7 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	NodeExecutionHint,
 	Result,
 	Workflow,
 	WorkflowExecuteMode,
@@ -22,25 +23,23 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
+import { BaseExecuteContext } from './base-execute-context';
 import {
-	returnJsonArray,
-	copyInputItems,
-	normalizeItems,
-	constructExecutionMetaData,
 	assertBinaryData,
 	getBinaryDataBuffer,
 	copyBinaryFile,
-	getRequestHelperFunctions,
 	getBinaryHelperFunctions,
-	getSSHTunnelFunctions,
-	getFileSystemHelperFunctions,
-	getCheckProcessedHelperFunctions,
 	detectBinaryEncoding,
-} from '@/node-execute-functions';
-
-import { BaseExecuteContext } from './base-execute-context';
+} from './utils/binary-helper-functions';
+import { constructExecutionMetaData } from './utils/construct-execution-metadata';
+import { copyInputItems } from './utils/copy-input-items';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { normalizeItems } from './utils/normalize-items';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];
@@ -48,6 +47,8 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
 
 	readonly getNodeParameter: IExecuteFunctions['getNodeParameter'];
+
+	readonly hints: NodeExecutionHint[] = [];
 
 	constructor(
 		workflow: Workflow,
@@ -91,7 +92,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
@@ -192,7 +193,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
-		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+		await this.additionalData.hooks?.runHook('sendResponse', [response]);
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
@@ -207,5 +208,9 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	getParentCallbackManager(): CallbackManager | undefined {
 		return this.additionalData.parentCallbackManager;
+	}
+
+	addExecutionHints(...hints: NodeExecutionHint[]) {
+		this.hints.push(...hints);
 	}
 }

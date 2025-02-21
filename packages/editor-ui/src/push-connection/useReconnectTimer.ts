@@ -29,6 +29,7 @@ export const useReconnectTimer = ({ onAttempt, onAttemptScheduled }: UseReconnec
 		}, delay);
 	};
 
+	/** Stops the reconnect timer. NOTE: This does not reset the reconnect attempts. */
 	const stopReconnectTimer = () => {
 		if (reconnectTimer.value) {
 			clearTimeout(reconnectTimer.value);

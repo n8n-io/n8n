@@ -1,4 +1,4 @@
-import type { ExecutionError } from 'n8n-workflow/src';
+import type { ExecutionError } from 'n8n-workflow';
 
 import {
 	closeManualChatModal,

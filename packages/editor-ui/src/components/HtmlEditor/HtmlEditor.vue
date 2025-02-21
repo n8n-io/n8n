@@ -25,7 +25,6 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue, watch } from
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { htmlEditorEventBus } from '@/event-bus';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
@@ -33,6 +32,10 @@ import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
 import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import {
+	expressionCloseBrackets,
+	expressionCloseBracketsConfig,
+} from '@/plugins/codemirror/expressionCloseBrackets';
 
 type Props = {
 	modelValue: string;
@@ -56,12 +59,12 @@ const editorValue = ref<string>(props.modelValue);
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
-	new LanguageSupport(
-		htmlLanguage,
+	new LanguageSupport(htmlLanguage, [
+		htmlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
 		n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
-	),
+	]),
 	autoCloseTags,
-	expressionInputHandler(),
+	expressionCloseBrackets(),
 	Prec.highest(keymap.of(editorKeymap)),
 	indentOnInput(),
 	codeEditorTheme({

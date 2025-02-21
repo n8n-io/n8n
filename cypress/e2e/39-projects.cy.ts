@@ -225,10 +225,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should move resources between projects', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
-			// Create a workflow and a credential in the Home project
+			cy.log('Create a workflow and a credential in the Home project');
 			workflowsPage.getters.workflowCards().should('not.have.length');
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
@@ -238,12 +240,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getProjectTabCredentials().should('be.visible').click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Home project');
-
 			clearNotifications();
 
-			// Create a project and add a credential and a workflow to it
+			cy.log('Create a project and add a credential and a workflow to it');
 			projects.createProject('Project 1');
 			clearNotifications();
+
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Project 1');
@@ -252,12 +254,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
-
 			clearNotifications();
 
-			// Create another project and add a credential and a workflow to it
+			cy.log('Create another project and add a credential and a workflow to it');
 			projects.createProject('Project 2');
 			clearNotifications();
+
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Project 2');
@@ -268,7 +270,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
 			clearNotifications();
 
-			// Move the workflow Personal from Home to Project 1
+			cy.log('Move the workflow Personal from Home to Project 1');
 			projects.getHomeButton().click();
 			workflowsPage.getters
 				.workflowCards()
@@ -291,6 +293,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
+			cy.wait('@getResources');
 
 			workflowsPage.getters
 				.workflowCards()
@@ -298,7 +301,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Personal")')
 				.should('not.exist');
 
-			// Move the workflow from Project 1 to Project 2
+			cy.log('Move the workflow from Project 1 to Project 2');
 			projects.getMenuItems().first().click();
 			workflowsPage.getters.workflowCards().should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
@@ -316,13 +319,13 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Project 2")')
 				.click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
 
-			// Move the workflow from Project 2 to a member user
+			cy.log('Move the workflow from Project 2 to a member user');
 			projects.getMenuItems().last().click();
 			workflowsPage.getters.workflowCards().should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
-			clearNotifications();
 
 			projects
 				.getResourceMoveModal()
@@ -337,9 +340,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.click();
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
 			workflowsPage.getters.workflowCards().should('have.length', 1);
 
-			// Move the workflow from member user back to Home
+			cy.log('Move the workflow from member user back to Home');
 			projects.getHomeButton().click();
 			workflowsPage.getters
 				.workflowCards()
@@ -363,13 +369,15 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
+			cy.wait('@getResources');
+
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
 				.filter(':contains("Personal")')
 				.should('have.length', 1);
 
-			// Move the credential from Project 1 to Project 2
+			cy.log('Move the credential from Project 1 to Project 2');
 			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
@@ -389,9 +397,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
+			cy.wait('@getResources');
+
 			credentialsPage.getters.credentialCards().should('not.have.length');
 
-			// Move the credential from Project 2 to admin user
+			cy.log('Move the credential from Project 2 to admin user');
 			projects.getMenuItems().last().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 2);
@@ -411,9 +421,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(`:contains("${INSTANCE_ADMIN.email}")`)
 				.click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
 			credentialsPage.getters.credentialCards().should('have.length', 1);
 
-			// Move the credential from admin user back to instance owner
+			cy.log('Move the credential from admin user back to instance owner');
 			projects.getHomeButton().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 3);
@@ -432,9 +445,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(`:contains("${INSTANCE_OWNER.email}")`)
 				.click();
-			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
+			cy.wait('@getResources');
 
 			credentialsPage.getters
 				.credentialCards()
@@ -442,7 +456,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Personal")')
 				.should('have.length', 2);
 
-			// Move the credential from admin user back to its original project (Project 1)
+			cy.log('Move the credential from admin user back to its original project (Project 1)');
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
 			credentialsPage.getters.credentialMoveButton().click();
 
@@ -458,6 +472,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Project 1")')
 				.click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
 
 			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();

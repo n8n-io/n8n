@@ -5,7 +5,6 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeExecutionOutput,
 	type NodeExecutionHint,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -147,7 +146,7 @@ export class Summarize implements INodeType {
 								default: false,
 								displayOptions: {
 									show: {
-										aggregation: ['append', 'concatenate'],
+										aggregation: ['append', 'concatenate', 'count', 'countUnique'],
 									},
 								},
 							},
@@ -345,6 +344,10 @@ export class Summarize implements INodeType {
 			}
 		}
 
+		if (fieldsNotFound.length) {
+			this.addExecutionHints(...fieldsNotFound);
+		}
+
 		if (options.outputFormat === 'singleItem') {
 			const executionData: INodeExecutionData = {
 				json: aggregationResult,
@@ -352,7 +355,7 @@ export class Summarize implements INodeType {
 					item: index,
 				})),
 			};
-			return new NodeExecutionOutput([[executionData]], fieldsNotFound);
+			return [[executionData]];
 		} else {
 			if (!fieldsToSplitBy.length) {
 				const { pairedItems, ...json } = aggregationResult;
@@ -362,7 +365,7 @@ export class Summarize implements INodeType {
 						item: index,
 					})),
 				};
-				return new NodeExecutionOutput([[executionData]], fieldsNotFound);
+				return [[executionData]];
 			}
 			let returnData: IDataObject[] = [];
 			if (nodeVersion > 1) {
@@ -379,7 +382,7 @@ export class Summarize implements INodeType {
 					})),
 				};
 			});
-			return new NodeExecutionOutput([executionData], fieldsNotFound);
+			return [executionData];
 		}
 	}
 }

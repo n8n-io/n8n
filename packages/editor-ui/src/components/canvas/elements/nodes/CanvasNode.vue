@@ -16,7 +16,7 @@ import type {
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
 } from '@/types';
-import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
@@ -35,11 +35,13 @@ import {
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { isEqual } from 'lodash-es';
+import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
+	nearbyHovered?: boolean;
 };
 
 const slots = defineSlots<{
@@ -406,12 +408,24 @@ onBeforeUnmount(() => {
 			/>
 			<!-- @TODO :color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
+
+		<CanvasNodeTrigger
+			v-if="
+				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
+			"
+			:name="data.name"
+			:type="data.type"
+			:hovered="nearbyHovered"
+			:disabled="isDisabled"
+			:read-only="readOnly"
+			:class="$style.trigger"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .canvasNode {
-	&:hover,
+	&:hover:not(:has(> .trigger:hover)), // exclude .trigger which has extended hit zone
 	&:focus-within,
 	&.showToolbar {
 		.canvasNodeToolbar {

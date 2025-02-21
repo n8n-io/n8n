@@ -37,7 +37,6 @@ import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
-import '@/controllers/curl.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
@@ -392,6 +391,7 @@ export class Server extends AbstractServer {
 					method === 'GET' &&
 					accept &&
 					(accept.includes('text/html') || accept.includes('*/*')) &&
+					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

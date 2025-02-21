@@ -1,0 +1,96 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`GmailTrigger should handle duplicates and different date fields 1`] = `
+[
+  [
+    {
+      "json": {
+        "date": "1727777957863",
+        "historyId": "testHistoryId",
+        "id": "2",
+        "labels": [
+          {
+            "id": "testLabelId",
+            "name": "Test Label Name",
+          },
+        ],
+        "payload": {
+          "body": {
+            "attachmentId": "testAttachmentId",
+            "data": "dGVzdA==",
+            "size": 4,
+          },
+          "filename": "foo.txt",
+          "mimeType": "text/plain",
+          "partId": "testPartId",
+          "parts": [],
+        },
+        "raw": "dGVzdA==",
+        "sizeEstimate": 4,
+        "snippet": "test",
+        "testHeader": "testHeaderValue",
+        "threadId": "testThreadId",
+      },
+    },
+    {
+      "json": {
+        "headers": {
+          "date": "Thu, 5 Dec 2024 08:30:00 -0800",
+        },
+        "historyId": "testHistoryId",
+        "id": "3",
+        "labels": [
+          {
+            "id": "testLabelId",
+            "name": "Test Label Name",
+          },
+        ],
+        "payload": {
+          "body": {
+            "attachmentId": "testAttachmentId",
+            "data": "dGVzdA==",
+            "size": 4,
+          },
+          "filename": "foo.txt",
+          "mimeType": "text/plain",
+          "partId": "testPartId",
+          "parts": [],
+        },
+        "raw": "dGVzdA==",
+        "sizeEstimate": 4,
+        "snippet": "test",
+        "testHeader": "testHeaderValue",
+        "threadId": "testThreadId",
+      },
+    },
+    {
+      "json": {
+        "historyId": "testHistoryId",
+        "id": "4",
+        "labels": [
+          {
+            "id": "testLabelId",
+            "name": "Test Label Name",
+          },
+        ],
+        "payload": {
+          "body": {
+            "attachmentId": "testAttachmentId",
+            "data": "dGVzdA==",
+            "size": 4,
+          },
+          "filename": "foo.txt",
+          "mimeType": "text/plain",
+          "partId": "testPartId",
+          "parts": [],
+        },
+        "raw": "dGVzdA==",
+        "sizeEstimate": 4,
+        "snippet": "test",
+        "testHeader": "testHeaderValue",
+        "threadId": "testThreadId",
+      },
+    },
+  ],
+]
+`;

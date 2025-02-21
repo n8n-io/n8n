@@ -19,6 +19,7 @@ import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -62,6 +63,7 @@ export abstract class BaseCommand extends Command {
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
 
+		const { releaseDate } = this.globalConfig.generic;
 		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
@@ -69,6 +71,7 @@ export abstract class BaseCommand extends Command {
 			environment,
 			release: n8nVersion,
 			serverName: deploymentName,
+			releaseDate,
 		});
 		initExpressionEvaluator();
 
@@ -259,6 +262,10 @@ export abstract class BaseCommand extends Command {
 		Container.get(WorkflowHistoryManager).init();
 	}
 
+	async cleanupTestRunner() {
+		await Container.get(TestRunnerService).cleanupIncompleteRuns();
+	}
+
 	async finally(error: Error | undefined) {
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
@@ -288,6 +295,8 @@ export abstract class BaseCommand extends Command {
 			this.shutdownService.shutdown();
 
 			await this.shutdownService.waitForShutdown();
+
+			await this.errorReporter.shutdown();
 
 			await this.stopProcess();
 

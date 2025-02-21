@@ -1,6 +1,5 @@
 import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import type { Connection } from '@jsplumb/core';
 import type {
 	BannerName,
 	FrontendSettings,
@@ -405,6 +404,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
+	triggerNode?: string;
 }
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
@@ -1455,16 +1455,6 @@ export type ToggleNodeCreatorOptions = {
 
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
-
-export type NewConnectionInfo = {
-	sourceId: string;
-	index: number;
-	eventSource: NodeCreatorOpenSource;
-	connection?: Connection;
-	nodeCreatorView?: NodeFilterType;
-	outputType?: NodeConnectionType;
-	endpointUuid?: string;
-};
 
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'

@@ -1,6 +1,7 @@
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '@n8n/frontend-vitest-config';
@@ -63,6 +64,15 @@ const plugins = [
 			}),
 		],
 	}),
+	viteStaticCopy({
+		targets: [
+			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				dest: 'public',
+			},
+		],
+	}),
 	vue(),
 	svgLoader(),
 	legacy({
@@ -73,6 +83,7 @@ const plugins = [
 ];
 
 const { RELEASE: release } = process.env;
+const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
 	defineConfig({
@@ -100,7 +111,12 @@ export default mergeConfig(
 		build: {
 			minify: !!release,
 			sourcemap: !!release,
-			target: browserslistToEsbuild(browsers),
+			target,
+		},
+		optimizeDeps: {
+			esbuildOptions: {
+				target,
+			},
 		},
 		worker: {
 			format: 'es',

@@ -31,6 +31,18 @@ export class Credentials<
 	}
 
 	/**
+	 * Update parts of the credential data.
+	 * This decrypts the data, modifies it, and then re-encrypts the updated data back to a string.
+	 */
+	updateData(toUpdate: Partial<T>, toDelete: Array<keyof T> = []) {
+		const updatedData: T = { ...this.getData(), ...toUpdate };
+		for (const key of toDelete) {
+			delete updatedData[key];
+		}
+		this.setData(updatedData);
+	}
+
+	/**
 	 * Returns the decrypted credential object
 	 */
 	getData(): T {

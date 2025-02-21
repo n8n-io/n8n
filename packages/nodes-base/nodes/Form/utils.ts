@@ -187,9 +187,10 @@ export function prepareFormData({
 	return formData;
 }
 
-const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
+export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const nodeVersion = context.getNode().typeVersion;
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
@@ -206,13 +207,26 @@ const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(`${context.getNode().name} node not correctly configured`),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+			},
+		);
+	}
+
+	if (isRespondToWebhookConnected && nodeVersion > 2.1) {
+		throw new NodeOperationError(
+			context.getNode(),
+			new Error(
+				'The "Respond to Webhook" node is not supported in workflows initiated by the "n8n Form Trigger"',
+			),
+			{
+				description:
+					'To configure your response, add an "n8n Form" node and set the "Page Type" to "Form Ending"',
 			},
 		);
 	}
@@ -462,7 +476,7 @@ export async function formWebhook(
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
-		const responseMode = context.getNodeParameter('responseMode', '') as string;
+		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
 		let redirectUrl;
@@ -490,15 +504,14 @@ export async function formWebhook(
 			buttonLabel = options.buttonLabel;
 		}
 
-		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name, {
-				includeNodeParameters: true,
-			});
-			const hasNextPage = isFormConnected(connectedNodes);
+		const connectedNodes = context.getChildNodes(context.getNode().name, {
+			includeNodeParameters: true,
+		});
+		const hasNextPage = isFormConnected(connectedNodes);
 
-			if (hasNextPage) {
-				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
-			}
+		if (hasNextPage) {
+			redirectUrl = undefined;
+			responseMode = 'responseNode';
 		}
 
 		renderForm({

@@ -101,8 +101,8 @@ export function getNodeCreatorItems() {
 	return cy.getByTestId('item-iterator-item');
 }
 
-export function getExecuteWorkflowButton() {
-	return cy.getByTestId('execute-workflow-button');
+export function getExecuteWorkflowButton(triggerNodeName?: string) {
+	return cy.getByTestId(`execute-workflow-button${triggerNodeName ? `-${triggerNodeName}` : ''}`);
 }
 
 export function getManualChatButton() {
@@ -294,8 +294,8 @@ export function addRetrieverNodeToParent(nodeName: string, parentNodeName: strin
 	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
 }
 
-export function clickExecuteWorkflowButton() {
-	getExecuteWorkflowButton().click();
+export function clickExecuteWorkflowButton(triggerNodeName?: string) {
+	getExecuteWorkflowButton(triggerNodeName).click();
 }
 
 export function clickManualChatButton() {

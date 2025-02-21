@@ -1,4 +1,4 @@
-import type { WorkflowEntity as Workflow } from '@/databases/entities/workflow-entity';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 export namespace Risk {
 	export type Category = 'database' | 'credentials' | 'nodes' | 'instance' | 'filesystem';
@@ -62,16 +62,16 @@ export namespace Risk {
 		[reportTitle: string]: Report;
 	};
 
-	export type SyncReportFn = (workflows: Workflow[]) => StandardReport | null;
+	export type SyncReportFn = (workflows: IWorkflowBase[]) => StandardReport | null;
 
-	export type AsyncReportFn = (workflows: Workflow[]) => Promise<Report | null>;
+	export type AsyncReportFn = (workflows: IWorkflowBase[]) => Promise<Report | null>;
 }
 
 export namespace n8n {
 	export type Version = {
 		name: string;
 		nodes: Array<
-			Workflow['nodes'][number] & {
+			IWorkflowBase['nodes'][number] & {
 				iconData?: { type: string; fileBuffer: string }; // removed to declutter report
 			}
 		>;
@@ -86,5 +86,5 @@ export namespace n8n {
 }
 
 export interface RiskReporter {
-	report(workflows: Workflow[]): Promise<Risk.Report | null>;
+	report(workflows: IWorkflowBase[]): Promise<Risk.Report | null>;
 }

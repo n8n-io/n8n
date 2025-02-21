@@ -5,7 +5,7 @@ import WorkflowExecutionsSidebar from '@/components/executions/workflow/Workflow
 import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { getNodeViewTab } from '@/utils/canvasUtils';
+import { getNodeViewTab } from '@/utils/nodeViewUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const props = withDefaults(

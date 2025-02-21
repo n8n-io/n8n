@@ -16,9 +16,8 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@/stores/root.store';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IPinData } from 'n8n-workflow';
+import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
 	testId?: string;
@@ -33,7 +32,6 @@ const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
 
 const {
@@ -169,22 +167,16 @@ function toggleConfig() {
 }
 
 async function getExamplePinnedDataForTags() {
-	const evaluationWorkflowExecutions = await executionsStore.fetchExecutions({
-		workflowId: currentWorkflowId.value,
-		annotationTags: state.value.tags.value,
-	});
-	if (evaluationWorkflowExecutions.count > 0) {
-		const firstExecution = evaluationWorkflowExecutions.results[0];
-		const executionData = await executionsStore.fetchExecution(firstExecution.id);
-		const resultData = executionData?.data?.resultData.runData;
+	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(
+		testId.value,
+		state.value.tags.value[0],
+	);
 
+	if (exampleInput !== null) {
 		examplePinnedData.value = {
 			'When called by a test run': [
 				{
-					json: {
-						originalExecution: resultData,
-						newExecution: resultData,
-					},
+					json: exampleInput as IDataObject,
 				},
 			],
 		};
@@ -194,10 +186,10 @@ async function getExamplePinnedDataForTags() {
 // Debounced watchers for auto-saving
 watch(
 	() => state.value.metrics,
-	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
+	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400, trailing: true }),
 	{ deep: true },
 );
-watch(() => state.value.tags, getExamplePinnedDataForTags);
+watch(() => state.value.tags.value, getExamplePinnedDataForTags);
 watch(
 	() => [
 		state.value.description,
@@ -206,9 +198,16 @@ watch(
 		state.value.evaluationWorkflow,
 		state.value.mockedNodes,
 	],
-	debounce(onSaveTest, { debounceTime: 400 }),
+	debounce(onSaveTest, { debounceTime: 400, trailing: true }),
 	{ deep: true },
 );
+
+function onEvaluationWorkflowCreated(workflowId: string) {
+	telemetry.track('User created evaluation workflow from test', {
+		test_id: testId.value,
+		subworkflow_id: workflowId,
+	});
+}
 </script>
 
 <template>
@@ -269,6 +268,7 @@ watch(
 				:sample-workflow-name="workflowName"
 				@open-pinning-modal="openPinningModal"
 				@delete-metric="onDeleteMetric"
+				@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 			/>
 		</div>
 	</div>

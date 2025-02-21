@@ -86,9 +86,30 @@ export abstract class AbstractOAuthController {
 		return await WorkflowExecuteAdditionalData.getBase();
 	}
 
-	protected async getDecryptedData(
+	/**
+	 * Allow decrypted data to evaluate expressions that include $secrets and apply overwrites
+	 */
+	protected async getDecryptedDataForAuthUri(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		return await this.getDecryptedData(credential, additionalData, false);
+	}
+
+	/**
+	 * Do not apply overwrites here because that removes the CSRF state, and breaks the oauth flow
+	 */
+	protected async getDecryptedDataForCallback(
+		credential: ICredentialsDb,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		return await this.getDecryptedData(credential, additionalData, true);
+	}
+
+	private async getDecryptedData(
+		credential: ICredentialsDb,
+		additionalData: IWorkflowExecuteAdditionalData,
+		raw: boolean,
 	) {
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
@@ -96,7 +117,7 @@ export abstract class AbstractOAuthController {
 			credential.type,
 			'internal',
 			undefined,
-			true,
+			raw,
 		);
 	}
 
@@ -115,10 +136,11 @@ export abstract class AbstractOAuthController {
 
 	protected async encryptAndSaveData(
 		credential: ICredentialsDb,
-		decryptedData: ICredentialDataDecryptedObject,
+		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[] = [],
 	) {
-		const credentials = new Credentials(credential, credential.type);
-		credentials.setData(decryptedData);
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
@@ -183,7 +205,10 @@ export abstract class AbstractOAuthController {
 		}
 
 		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
+			credential,
+			additionalData,
+		);
 		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedDataOriginal,

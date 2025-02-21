@@ -3,9 +3,14 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import {
+	LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+} from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useLocalStorage } from '@vueuse/core';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -106,6 +111,8 @@ const isStrikethroughVisible = computed(() => {
 
 const showTooltip = ref(false);
 
+const triggerButtonVariant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
+
 watch(initialized, () => {
 	if (initialized.value) {
 		showTooltip.value = true;
@@ -128,12 +135,14 @@ function openContextMenu(event: MouseEvent) {
 	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
-		<CanvasNodeTriggerIcon v-if="renderOptions.trigger" />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
+				<div v-if="renderOptions.trigger && triggerButtonVariant === 1" :class="$style.triggerIcon">
+					<FontAwesomeIcon icon="bolt" size="lg" />
+				</div>
 			</div>
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
@@ -155,7 +164,7 @@ function openContextMenu(event: MouseEvent) {
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 40px;
+	--configurable-node--icon-offset: 30px;
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
@@ -212,6 +221,7 @@ function openContextMenu(event: MouseEvent) {
 			position: relative;
 			margin-top: 0;
 			margin-left: var(--spacing-s);
+			margin-right: var(--spacing-s);
 			width: auto;
 			min-width: unset;
 			max-width: calc(
@@ -222,6 +232,10 @@ function openContextMenu(event: MouseEvent) {
 		}
 
 		.label {
+			text-align: left;
+		}
+
+		.subtitle {
 			text-align: left;
 		}
 
@@ -312,5 +326,12 @@ function openContextMenu(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
+}
+
+.triggerIcon {
+	display: inline;
+	position: static;
+	color: var(--color-primary);
+	padding: var(--spacing-4xs);
 }
 </style>

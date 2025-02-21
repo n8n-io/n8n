@@ -133,16 +133,6 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const activeTriggerNodeCount = computed(
-		() =>
-			nodes.value.filter(
-				(node) =>
-					nodeTypeDescriptionByNodeId.value[node.id]?.eventTriggerDescription !== '' &&
-					isTriggerNodeById.value[node.id] &&
-					!node.disabled,
-			).length,
-	);
-
 	const nodeSubtitleById = computed(() => {
 		return nodes.value.reduce<Record<string, string>>((acc, node) => {
 			try {
@@ -255,13 +245,28 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const nodeTooltipById = computed(() =>
-		nodes.value.reduce<Record<string, string | undefined>>((acc, node) => {
+	const nodeTooltipById = computed(() => {
+		if (!workflowsStore.isWorkflowRunning) {
+			return {};
+		}
+
+		const activeTriggerNodeCount = nodes.value.filter(
+			(node) => isTriggerNodeById.value[node.id] && !node.disabled,
+		).length;
+		const triggerNodeName = workflowsStore.getWorkflowExecution?.triggerNode;
+
+		// For workflows with multiple active trigger nodes, we show a tooltip only when
+		// trigger node name is known
+		if (triggerNodeName === undefined && activeTriggerNodeCount !== 1) {
+			return {};
+		}
+
+		return nodes.value.reduce<Record<string, string | undefined>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
 			if (nodeTypeDescription && isTriggerNodeById.value[node.id]) {
 				if (
-					activeTriggerNodeCount.value !== 1 ||
-					!workflowsStore.isWorkflowRunning ||
+					!!node.disabled ||
+					(triggerNodeName !== undefined && triggerNodeName !== node.name) ||
 					!['new', 'unknown', 'waiting'].includes(nodeExecutionStatusById.value[node.id])
 				) {
 					return acc;
@@ -283,8 +288,8 @@ export function useCanvasMapping({
 			}
 
 			return acc;
-		}, {}),
-	);
+		}, {});
+	});
 
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {

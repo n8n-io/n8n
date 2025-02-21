@@ -10,6 +10,12 @@ defineProps<{
 const { render } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const popperOptions = {
+	modifiers: [
+		{ name: 'flip', enabled: false }, // show tooltip always above the node
+	],
+};
 </script>
 
 <template>
@@ -19,6 +25,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 		:visible="true"
 		:teleported="false"
 		:popper-class="$style.popper"
+		:popper-options="popperOptions"
 	>
 		<template #content>
 			{{ renderOptions.tooltip }}
@@ -33,7 +40,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 	top: 0;
 	left: 0;
 	width: 100%;
-	height: 1px;
+	height: 100%;
 }
 
 .popper {

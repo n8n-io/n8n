@@ -29,6 +29,7 @@ defineProps<{
 const emit = defineEmits<{
 	openPinningModal: [];
 	deleteMetric: [metric: Partial<TestMetricRecord>];
+	evaluationWorkflowCreated: [workflowId: string];
 }>();
 
 const locale = useI18n();
@@ -145,6 +146,7 @@ function showFieldIssues(fieldKey: string) {
 					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
 					:sample-workflow-name="sampleWorkflowName"
 					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
+					@workflow-created="$emit('evaluationWorkflowCreated', $event)"
 				/>
 			</template>
 		</EvaluationStep>

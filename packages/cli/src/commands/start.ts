@@ -67,11 +67,13 @@ export class Start extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
+
 	/**
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
 
 		open(editorUrl, { wait: true }).catch(() => {
 			this.logger.info(
@@ -222,6 +224,11 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
+		if (!isMultiMainEnabled) {
+			await this.cleanupTestRunner();
+			this.logger.debug('Test runner cleanup complete');
+		}
+
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
@@ -323,7 +330,8 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
+
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

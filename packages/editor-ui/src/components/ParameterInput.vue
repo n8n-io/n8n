@@ -814,9 +814,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		return;
 	}
 	// Only update the value if it has changed
-	const oldValue = node.value?.parameters
-		? nodeHelpers.getParameterValue(node.value?.parameters, props.parameter.name, '')
-		: undefined;
+	const oldValue = get(node.value, props.path);
 	if (oldValue !== undefined && oldValue === value) {
 		return;
 	}
@@ -1067,11 +1065,11 @@ watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
 });
 
-// Focus input field when changing from fixed value to expression
+// Focus input field when changing between fixed and expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (!props.isReadOnly && isExpression && !wasExpression) {
+	if (!props.isReadOnly && isExpression !== wasExpression) {
 		await nextTick();
-		inputField.value?.focus();
+		await setFocus();
 	}
 });
 

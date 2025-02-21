@@ -46,5 +46,26 @@ describe('ManualExecutionService', () => {
 				name: 'node2',
 			});
 		});
+
+		it('Should return triggerToStartFrom trigger node', () => {
+			const data = {
+				pinData: {
+					node1: {},
+					node2: {},
+				},
+				triggerToStartFrom: { name: 'node3' },
+			} as unknown as IWorkflowExecutionDataProcess;
+			const workflow = {
+				getNode(nodeName: string) {
+					return {
+						name: nodeName,
+					};
+				},
+			} as unknown as Workflow;
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
+			expect(executionStartNode).toEqual({
+				name: 'node3',
+			});
+		});
 	});
 });

@@ -26,7 +26,10 @@ const i18n = useI18n();
 const wasModalOpenedFromHere = ref(false);
 
 const availableCredentials = computed(() => {
-	return credentialsStore.getCredentialsByType(props.credentialType);
+	const credByType = credentialsStore.getCredentialsByType(props.credentialType);
+	// Only show personal credentials since templates are created in personal by default
+	// Here, we don't care about sharing because credentials cannot be shared with personal project
+	return credByType.filter((credential) => credential.homeProject?.type === 'personal');
 });
 
 const credentialOptions = computed(() => {
@@ -98,6 +101,7 @@ listenForModalChanges({
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
 				:selected-credential-id="props.selectedCredentialId"
+				data-test-id="credential-dropdown"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>

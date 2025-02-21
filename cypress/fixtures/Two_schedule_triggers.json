@@ -1,0 +1,76 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "6a8c3d85-26f8-4f28-ace9-55a196a23d37",
+							"name": "prevNode",
+							"value": "={{ $prevNode.name }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, -100],
+			"id": "351ce967-0399-4a78-848a-9cc69b831796",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, -100],
+			"id": "cf2f58a8-1fbb-4c70-b2b1-9e06bee7ec47",
+			"name": "Trigger A"
+		},
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 100],
+			"id": "4fade34e-2bfc-4a2e-a8ed-03ab2ed9c690",
+			"name": "Trigger B"
+		}
+	],
+	"connections": {
+		"Trigger A": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Trigger B": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "0dd4627b77a5a795ab9bf073e5812be94dd8d1a5f012248ef2a4acac09be12cb"
+	}
+}

@@ -23,6 +23,13 @@ export class ManualExecutionService {
 
 	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
+
+		// If the user chose a trigger to start from we honor this.
+		if (data.triggerToStartFrom?.name) {
+			startNode = workflow.getNode(data.triggerToStartFrom.name) ?? undefined;
+		}
+
+		// Old logic for partial executions v1
 		if (
 			data.startNodes?.length === 1 &&
 			Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
