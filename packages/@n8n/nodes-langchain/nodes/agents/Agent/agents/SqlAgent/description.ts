@@ -194,6 +194,13 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				default: 10,
 				description: 'The maximum number of results to return',
 			},
+			{
+				displayName: 'Max Iterations',
+				name: 'maxIterations',
+				type: 'number',
+				default: 10,
+				description: 'The maximum number of iterations the agent will run before stopping',
+			},
 		],
 	},
 ];
