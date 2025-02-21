@@ -63,4 +63,22 @@ export class ProjectController {
 			throw e;
 		}
 	}
+
+	@Get('/:folderId/path')
+	@ProjectScope('folder:read')
+	async getFolderPathToRoot(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+	) {
+		try {
+			const response = await this.folderRepository.getFolderPathTypeORM(
+				this.folderRepository,
+				req.params.folderId,
+			);
+
+			return response;
+		} catch (e) {
+			throw e;
+		}
+	}
 }

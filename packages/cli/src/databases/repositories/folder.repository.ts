@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
@@ -7,6 +10,12 @@ import type { ListQuery } from '@/requests';
 import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
 import { TagEntity } from '../entities/tag-entity';
+
+interface SimpleFolderNode {
+	id: string;
+	name: string;
+	children: SimpleFolderNode[];
+}
 
 @Service()
 export class FolderRepository extends Repository<Folder> {
@@ -216,5 +225,82 @@ export class FolderRepository extends Repository<Folder> {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
+	}
+
+	async getFolderPathTypeORM(
+		folderRepository: Repository<Folder>,
+		folderId: string,
+	): Promise<SimpleFolderNode[]> {
+		const result = await folderRepository
+			.createQueryBuilder('folder')
+			.select([
+				'folder.id as folder_id',
+				'folder.name as folder_name',
+				'folder.parentFolderId as folder_parentfolderid',
+			])
+			.where((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('f.id')
+					.from(Folder, 'f')
+					.where((subQb) => {
+						const recursiveQuery = `
+							WITH RECURSIVE folder_path(id, parentFolderId) AS (
+								SELECT id, parentFolderId
+								FROM folder
+								WHERE id = :folderId
+
+								UNION ALL
+
+								SELECT f.id, f.parentFolderId
+								FROM folder f
+								INNER JOIN folder_path fp ON f.id = fp.parentFolderId
+							)
+							SELECT id FROM folder_path
+						`;
+						return `f.id IN (${recursiveQuery})`;
+					})
+					.getQuery();
+				return `folder.id IN ${subQuery}`;
+			})
+			.setParameter('folderId', folderId)
+			.orderBy('folder.parentFolderId', 'DESC', 'NULLS FIRST')
+			.getRawMany();
+
+		return this.transformFolderPathToTree(result);
+	}
+
+	private transformFolderPathToTree(flatPath: any[]): SimpleFolderNode[] {
+		if (!flatPath || flatPath.length === 0) {
+			return [];
+		}
+
+		// Create a map of all folders
+		const folderMap = new Map<string, SimpleFolderNode>();
+
+		// First pass: create all nodes
+		flatPath.forEach((folder) => {
+			folderMap.set(folder.folder_id, {
+				id: folder.folder_id,
+				name: folder.folder_name,
+				children: [],
+			});
+		});
+
+		let rootNode: SimpleFolderNode | null = null;
+
+		// Second pass: build the tree
+		flatPath.forEach((folder) => {
+			const currentNode = folderMap.get(folder.folder_id)!;
+
+			if (folder.folder_parentfolderid && folderMap.has(folder.folder_parentfolderid)) {
+				const parentNode = folderMap.get(folder.folder_parentfolderid)!;
+				parentNode.children = [currentNode];
+			} else {
+				rootNode = currentNode;
+			}
+		});
+
+		return rootNode ? [rootNode] : [];
 	}
 }
