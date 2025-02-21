@@ -170,6 +170,7 @@ const filtersModel = computed({
 
 const showEmptyState = computed(() => {
 	return (
+		route.params.folderId === undefined &&
 		props.resources.length === 0 &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&

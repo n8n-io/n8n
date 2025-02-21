@@ -186,7 +186,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
-				workflowCount: resource.workflowCount,
+				workflowCount: resource.workflowsCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
@@ -203,6 +203,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				sharedWithProjects: resource.sharedWithProjects,
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
+				parentFolder: (resource as WorkflowResource).parentFolder,
 			} as WorkflowResource;
 		}
 	});
@@ -261,6 +262,7 @@ watch(
 		if (!newVal) {
 			currentFolder.value = undefined;
 		}
+		await fetchWorkflows();
 	},
 );
 
@@ -342,6 +344,7 @@ const fetchWorkflows = async () => {
 	loading.value = true;
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
+	const parentFolder = (route.params?.folderId as string) || '0';
 
 	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 		routeProjectId ?? homeProjectFilter,
@@ -352,9 +355,13 @@ const fetchWorkflows = async () => {
 			name: filters.value.search || undefined,
 			active: filters.value.status ? Boolean(filters.value.status) : undefined,
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+			parentFolderId: parentFolder,
 		},
 		showFolders.value,
 	);
+	// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
+	currentFolder.value = fetchedResources[0]?.parentFolder;
+
 	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
 	return fetchedResources;
@@ -591,12 +598,14 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 				v-if="mainBreadcrumbsItems"
 				:items="mainBreadcrumbsItems"
 				:highlight-last-item="false"
-				:path-truncated="currentFolder?.parentFolder !== undefined"
+				:path-truncated="currentFolder !== undefined"
 				data-test-id="folder-card-breadcrumbs"
 			>
 				<template v-if="currentProject" #prepend>
 					<div :class="$style['home-project']">
-						<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						<n8n-link :to="`/projects/${currentProject.id}`">
+							<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						</n8n-link>
 					</div>
 				</template>
 			</n8n-breadcrumbs>

@@ -484,7 +484,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: { name?: string; tags?: string[]; active?: boolean } = {},
+		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
 		includeFolders: boolean = false,
 	): Promise<WorkflowListResourceDB[]> {
 		const filter = { ...filters, projectId };

@@ -33,7 +33,6 @@ const breadCrumbsItems = computed(() => {
 			{
 				id: props.data.parentFolder.id,
 				label: props.data.parentFolder.name,
-				href: getFolderUrl(props.data.parentFolder.id),
 			},
 		];
 	}
@@ -148,10 +147,12 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						>
 							<template v-if="data.homeProject" #prepend>
 								<div :class="$style['home-project']">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-										projectName
-									}}</n8n-text>
+									<n8n-link :to="`/projects/${data.homeProject.id}`">
+										<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+										<n8n-text size="small" :compact="true" :bold="true" color="text-base">
+											{{ projectName }}
+										</n8n-text>
+									</n8n-link>
 								</div>
 							</template>
 						</n8n-breadcrumbs>
@@ -207,7 +208,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	gap: var(--spacing-xs);
 }
 
-.home-project {
+.home-project span {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);

@@ -328,7 +328,7 @@ export interface IFolderDb {
 	name: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	workflowCount?: number;
+	workflowsCount?: number;
 	parentFolder?: { id: string; name: string };
 	homeProject?: ProjectSharingData;
 	tags?: ITag[];
