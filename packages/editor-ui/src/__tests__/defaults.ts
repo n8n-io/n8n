@@ -138,6 +138,8 @@ export const defaultSettings: FrontendSettings = {
 	easyAIWorkflowOnboarded: false,
 	partialExecution: {
 		version: 1,
-		enforce: false,
+	},
+	folders: {
+		enabled: false,
 	},
 };

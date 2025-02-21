@@ -850,7 +850,7 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"]])(
+		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"], ['$items()']])(
 			'should have all input items in the context as %s',
 			async (expression) => {
 				const outcome = await executeForAllItems({

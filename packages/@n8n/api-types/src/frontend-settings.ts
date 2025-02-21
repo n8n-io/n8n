@@ -156,6 +156,9 @@ export interface FrontendSettings {
 	mfa: {
 		enabled: boolean;
 	};
+	folders: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
@@ -178,6 +181,5 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	partialExecution: {
 		version: 1 | 2;
-		enforce: boolean;
 	};
 }

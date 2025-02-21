@@ -508,6 +508,9 @@ export class Workflow {
 					return;
 				}
 
+				// Ignore connections for nodes that don't exist in this workflow
+				if (!(connection.node in this.nodes)) return;
+
 				addNodes = this.getHighestNode(connection.node, undefined, checkedNodes);
 
 				if (addNodes.length === 0) {

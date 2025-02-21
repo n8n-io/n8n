@@ -487,7 +487,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 }
 
 export function createCredentialsFromCredentialsEntity(
-	credential: CredentialsEntity,
+	credential: ICredentialsDb,
 	encrypt = false,
 ): Credentials {
 	const { id, name, type, data } = credential;
