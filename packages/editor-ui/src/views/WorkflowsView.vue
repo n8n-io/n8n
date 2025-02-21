@@ -324,7 +324,6 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
-	currentFolder.value = undefined;
 	await setFiltersFromQueryString();
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
@@ -364,8 +363,10 @@ const fetchWorkflows = async () => {
 		},
 		showFolders.value,
 	);
-	// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
-	currentFolder.value = fetchedResources[0]?.parentFolder;
+	if (!currentFolder.value && fetchedResources.length) {
+		// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
+		currentFolder.value = fetchedResources[0]?.parentFolder;
+	}
 
 	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
