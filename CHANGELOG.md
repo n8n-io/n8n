@@ -1,3 +1,12 @@
+## [1.80.2](https://github.com/n8n-io/n8n/compare/n8n@1.80.1...n8n@1.80.2) (2025-02-21)
+
+
+### Bug Fixes
+
+* **core:** Make sure middleware works with legacy API Keys ([#13390](https://github.com/n8n-io/n8n/issues/13390)) ([c4fe0b5](https://github.com/n8n-io/n8n/commit/c4fe0b550cda96b288ce17d5d46d2fa7b6e72eb5))
+
+
+
 ## [1.80.1](https://github.com/n8n-io/n8n/compare/n8n@1.80.0...n8n@1.80.1) (2025-02-20)
 
 
