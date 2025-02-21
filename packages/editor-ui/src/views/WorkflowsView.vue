@@ -40,6 +40,9 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useAsyncState } from '@vueuse/core';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -75,6 +78,11 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
+
+const insightsStore = useInsightsStore();
+const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
+	immediate: true,
+});
 
 const loading = ref(false);
 const filters = ref<Filters>({
@@ -446,7 +454,9 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader>
+				<InsightsSummary class="summary" :summaries="summaries"> </InsightsSummary>
+			</ProjectHeader>
 		</template>
 		<template #callout>
 			<N8nCallout
