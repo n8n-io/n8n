@@ -35,7 +35,7 @@ const names = {
 };
 
 export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
-	async up({ dbType, schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(names.t.analyticsMetadata)
 			.withColumns(
 				column(names.c.analyticsMetadata.metaId).int.primary.autoGenerate,
@@ -55,8 +55,6 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 				onDelete: 'SET NULL',
 			});
 
-		const timestampDefault =
-			dbType === 'mariadb' || dbType === 'mysqldb' ? 'CURRENT_TIMESTAMP' : "'NOW'";
 		const typeComment = '0: time_saved_minutes, 1: runtime_milliseconds, 2: success, 3: failure';
 
 		await createTable(names.t.analyticsRaw)
@@ -65,7 +63,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 				column(names.c.analyticsRaw.metaId).int.notNull,
 				column('type').int.notNull.comment(typeComment),
 				column('value').int.notNull,
-				column('timestamp').timestamp(0).default(timestampDefault).notNull,
+				column('timestamp').timestamp(0).default('CURRENT_TIMESTAMP').notNull,
 			)
 			.withForeignKey(names.c.analyticsRaw.metaId, {
 				tableName: names.t.analyticsMetadata,
