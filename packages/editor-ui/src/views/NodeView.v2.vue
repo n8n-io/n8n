@@ -383,7 +383,11 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
-	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
+	await workflowsStore.getNewWorkflowData(
+		undefined,
+		projectsStore.currentProjectId,
+		route.query.parentFolderId as string | undefined,
+	);
 	workflowsStore.makeNewWorkflowShareable();
 
 	uiStore.nodeViewInitialized = true;

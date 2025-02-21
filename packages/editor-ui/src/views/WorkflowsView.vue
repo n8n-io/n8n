@@ -307,7 +307,7 @@ const addWorkflow = () => {
 	uiStore.nodeViewInitialized = false;
 	void router.push({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { projectId: route.params?.projectId },
+		query: { projectId: route.params?.projectId, parentFolderId: route.params?.folderId },
 	});
 
 	telemetry.track('User clicked add workflow button', {
@@ -555,6 +555,7 @@ const addFolder = async () => {
 			inputErrorMessage: i18n.baseText('generic.invalidName'),
 			inputValue: '',
 			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			customClass: 'add-folder-modal',
 		},
 	);
 	const promptResponse = await promptResponsePromise;
@@ -848,5 +849,21 @@ const addFolder = async () => {
 
 .add-folder-button {
 	width: 40px;
+}
+</style>
+
+<style lang="scss">
+.add-folder-modal {
+	width: 500px;
+	padding-bottom: 0;
+	.el-message-box__message {
+		font-size: var(--font-size-xl);
+	}
+	.el-message-box__btns {
+		padding: 0 var(--spacing-l) var(--spacing-l);
+	}
+	.el-message-box__content {
+		padding: var(--spacing-l);
+	}
 }
 </style>
