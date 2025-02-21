@@ -1,7 +1,15 @@
 import type { Driver, TableColumnOptions } from '@n8n/typeorm';
 
 export class Column {
-	private type: 'int' | 'boolean' | 'varchar' | 'text' | 'json' | 'timestamp' | 'uuid';
+	private type:
+		| 'int'
+		| 'boolean'
+		| 'varchar'
+		| 'text'
+		| 'json'
+		| 'timestamp'
+		| 'timestamp-no-timezone'
+		| 'uuid';
 
 	private isGenerated = false;
 
@@ -43,8 +51,8 @@ export class Column {
 		return this;
 	}
 
-	timestamp(msPrecision = 3) {
-		this.type = 'timestamp';
+	timestamp(msPrecision = 3, convertTimezones = true) {
+		this.type = convertTimezones ? 'timestamp' : 'timestamp-no-timezone';
 		this.length = msPrecision ?? 'auto';
 		return this;
 	}
@@ -102,6 +110,8 @@ export class Column {
 			options.type = 'tinyint(1)';
 		} else if (type === 'timestamp') {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
+		} else if (type === 'timestamp-no-timezone') {
+			options.type = isPostgres ? 'timestamp' : 'datetime';
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
 		} else if (type === 'uuid') {
