@@ -63,7 +63,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 				column(names.c.analyticsRaw.metaId).int.notNull,
 				column('type').int.notNull.comment(typeComment),
 				column('value').int.notNull,
-				column('timestamp').timestamp(0, false).default('CURRENT_TIMESTAMP').notNull,
+				column('timestamp').timestampNoTimezone(0).default('CURRENT_TIMESTAMP').notNull,
 			)
 			.withForeignKey(names.c.analyticsRaw.metaId, {
 				tableName: names.t.analyticsMetadata,
@@ -80,7 +80,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 				column(names.c.analyticsByPeriod.periodUnit).int.notNull.comment(
 					'0: hour, 1: day, 2: week',
 				),
-				column(names.c.analyticsByPeriod.periodStart).timestamp(0, false),
+				column(names.c.analyticsByPeriod.periodStart).timestampNoTimezone(0),
 			)
 			.withForeignKey(names.c.analyticsByPeriod.metaId, {
 				tableName: names.t.analyticsMetadata,

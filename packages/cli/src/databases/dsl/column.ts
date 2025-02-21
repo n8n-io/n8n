@@ -7,8 +7,8 @@ export class Column {
 		| 'varchar'
 		| 'text'
 		| 'json'
+		| 'timestamptz'
 		| 'timestamp'
-		| 'timestamp-no-timezone'
 		| 'uuid';
 
 	private isGenerated = false;
@@ -53,8 +53,23 @@ export class Column {
 		return this;
 	}
 
-	timestamp(msPrecision = 3, convertTimezones = true) {
-		this.type = convertTimezones ? 'timestamp' : 'timestamp-no-timezone';
+	/**
+	 * @deprecated use `timestampTimezone` instead
+	 **/
+	timestamp(msPrecision = 3) {
+		this.type = 'timestamptz';
+		this.length = msPrecision ?? 'auto';
+		return this;
+	}
+
+	timestampTimezone(msPrecision = 3) {
+		this.type = 'timestamptz';
+		this.length = msPrecision ?? 'auto';
+		return this;
+	}
+
+	timestampNoTimezone(msPrecision = 3) {
+		this.type = 'timestamp';
 		this.length = msPrecision ?? 'auto';
 		return this;
 	}
@@ -115,9 +130,9 @@ export class Column {
 			options.type = 'integer';
 		} else if (type === 'boolean' && isMysql) {
 			options.type = 'tinyint(1)';
-		} else if (type === 'timestamp') {
+		} else if (type === 'timestamptz') {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
-		} else if (type === 'timestamp-no-timezone') {
+		} else if (type === 'timestamp') {
 			options.type = isPostgres ? 'timestamp' : 'datetime';
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
@@ -128,7 +143,10 @@ export class Column {
 			if (isSqlite) options.type = 'varchar';
 		}
 
-		if ((type === 'varchar' || type === 'timestamp') && length !== 'auto') {
+		if (
+			(type === 'varchar' || type === 'timestamptz' || type === 'timestamp') &&
+			length !== 'auto'
+		) {
 			options.type = `${options.type}(${length})`;
 		}
 
@@ -142,7 +160,7 @@ export class Column {
 		}
 
 		if (this.defaultValue !== undefined) {
-			if (type === 'timestamp' && this.defaultValue === 'NOW()') {
+			if ((type === 'timestamptz' || type === 'timestamp') && this.defaultValue === 'NOW()') {
 				options.default = isSqlite
 					? "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
 					: 'CURRENT_TIMESTAMP(3)';
