@@ -9,7 +9,7 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import type { WorkflowAFolderUnionFull } from '@/databases/repositories/workflow.repository';
+import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
 import type { ListQuery } from '@/requests';
@@ -64,7 +64,7 @@ beforeEach(async () => {
 		'WorkflowHistory',
 		'Project',
 		'ProjectRelation',
-		'Folder'
+		'Folder',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
@@ -75,9 +75,6 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 });
 
-beforeEach(async () => {
-	jest.resetAllMocks();
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory', 'Folder']);
 afterEach(() => {
 	jest.clearAllMocks();
 });
@@ -1275,7 +1272,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(3);
 
-			const workflows = response.body.data as Array<WorkflowAFolderUnionFull & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<WorkflowFolderUnionFull & { scopes: Scope[] }>;
 			const wf1 = workflows.find((wf) => wf.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((wf) => wf.id === savedWorkflow2.id)!;
 			const f1 = workflows.find((wf) => wf.id === savedFolder1.id)!;
@@ -1307,7 +1304,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(3);
 
-			const workflows = response.body.data as Array<WorkflowAFolderUnionFull & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<WorkflowFolderUnionFull & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 			const f1 = workflows.find((wf) => wf.id === savedFolder1.id)!;
@@ -1345,7 +1342,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.length).toBe(3);
 
-			const workflows = response.body.data as Array<WorkflowAFolderUnionFull & { scopes: Scope[] }>;
+			const workflows = response.body.data as Array<WorkflowFolderUnionFull & { scopes: Scope[] }>;
 			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
 			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
 			const f1 = workflows.find((wf) => wf.id === savedFolder1.id)!;

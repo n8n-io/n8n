@@ -31,7 +31,7 @@ type WorkflowFolderUnionRow = {
 	updatedAt: Date;
 };
 
-export type WorkflowAFolderUnionFull = (
+export type WorkflowFolderUnionFull = (
 	| ListQuery.Workflow.Plain
 	| ListQuery.Workflow.WithSharing
 	| Folder
@@ -299,7 +299,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			workflows: ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[];
 			folders: Folder[];
 		},
-	): WorkflowAFolderUnionFull[] {
+	): WorkflowFolderUnionFull[] {
 		const workflowsMap = new Map(extraData.workflows.map((workflow) => [workflow.id, workflow]));
 		const foldersMap = new Map(extraData.folders.map((folder) => [folder.id, folder]));
 
