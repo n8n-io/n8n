@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, UserAction, WorkflowListResourceDB } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResourceDB, WorkflowResourceDB } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -46,6 +46,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { isResponseWorkflowResource } from '@/utils/typeGuards';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -519,9 +520,11 @@ const onSortUpdated = async (sort: string) => {
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
-	const workflow = workflowsAndFolders.value.find((w) => w.id === data.id);
+	const workflow: WorkflowResourceDB | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowResourceDB => isResponseWorkflowResource(w) && w.id === data.id,
+	);
 	if (!workflow) return;
-	workflow.active = data.active === true;
+	workflow.active = data.active;
 };
 
 const onFolderOpened = (data: { folder: FolderResource }) => {

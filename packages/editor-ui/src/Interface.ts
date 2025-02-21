@@ -314,24 +314,28 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
+	resource?: 'workflow';
 }
 
-export interface WorkflowListResourceDB {
-	resource: 'workflow' | 'folder';
+// For workflow list we don't need the full workflow data
+export type WorkflowResourceDB = Omit<
+	IWorkflowDb,
+	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
+>;
+export interface IFolderDb {
+	resource: 'folder';
 	id: string;
 	name: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	active?: boolean;
 	workflowCount?: number;
 	parentFolder?: { id: string; name: string };
 	homeProject?: ProjectSharingData;
 	tags?: ITag[];
-	scopes?: Scope[];
-	versionId?: string;
-	meta?: WorkflowMetadata;
 	sharedWithProjects?: ProjectSharingData[];
 }
+
+export type WorkflowListResourceDB = WorkflowResourceDB | IFolderDb;
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
