@@ -190,6 +190,18 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
+	describe('removing a connection', () => {
+		it('should not change dirtiness', () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
+
+			canvasOperations.deleteConnection({ source: 'a', target: 'b' }, { trackHistory: true });
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+		});
+	});
+
 	describe('enabling/disabling nodes', () => {
 		it('should mark downstream nodes dirty if the node is set to disabled', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');

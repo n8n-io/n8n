@@ -4,6 +4,7 @@ import {
 	BulkCommand,
 	EnableNodeToggleCommand,
 	RemoveConnectionCommand,
+	RemoveNodeCommand,
 	type Undoable,
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
@@ -19,12 +20,19 @@ import { computed } from 'vue';
 function shouldCommandMarkDirty(
 	command: Undoable,
 	nodeName: string,
+	siblingCommands: Undoable[],
 	getIncomingConnections: (nodeName: string) => INodeConnections,
 	getOutgoingConnectors: (nodeName: string) => INodeConnections,
 ): boolean {
 	if (command instanceof BulkCommand) {
 		return command.commands.some((cmd) =>
-			shouldCommandMarkDirty(cmd, nodeName, getIncomingConnections, getOutgoingConnectors),
+			shouldCommandMarkDirty(
+				cmd,
+				nodeName,
+				command.commands,
+				getIncomingConnections,
+				getOutgoingConnectors,
+			),
 		);
 	}
 
@@ -32,17 +40,24 @@ function shouldCommandMarkDirty(
 		return command.connectionData[1]?.node === nodeName;
 	}
 
+	if (command instanceof RemoveConnectionCommand) {
+		const [from, to] = command.connectionData;
+
+		if (to.node !== nodeName) {
+			return false;
+		}
+
+		// the connection was removed along with its source node
+		return siblingCommands.some(
+			(sibling) => sibling instanceof RemoveNodeCommand && sibling.node.name === from.node,
+		);
+	}
+
 	const incomingNodes = Object.values(getIncomingConnections(nodeName))
 		.flat()
 		.flat()
 		.filter((connection) => connection !== null)
 		.map((connection) => connection.node);
-
-	if (command instanceof RemoveConnectionCommand) {
-		const [from, to] = command.connectionData;
-
-		return to.node === nodeName && !incomingNodes.includes(from.node);
-	}
 
 	if (command instanceof AddNodeCommand) {
 		return incomingNodes.includes(command.node.name);
@@ -142,6 +157,7 @@ export function useNodeDirtiness() {
 				shouldCommandMarkDirty(
 					command,
 					nodeName,
+					[],
 					workflowsStore.incomingConnectionsByNodeName,
 					workflowsStore.outgoingConnectionsByNodeName,
 				)
