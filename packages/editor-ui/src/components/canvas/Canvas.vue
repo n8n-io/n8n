@@ -123,6 +123,7 @@ const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
+	nodesSelectionActive,
 	viewportRef,
 	fitView,
 	zoomIn,
@@ -319,6 +320,9 @@ const hoveredTriggerNode = useCanvasNodeHover(triggerNodes, vueFlow, (nodeRect) 
 }));
 
 watch(selectedNodes, (nodes) => {
+	if (nodes.length > 1) {
+		nodesSelectionActive.value = true;
+	}
 	if (!lastSelectedNode.value || !nodes.find((node) => node.id === lastSelectedNode.value?.id)) {
 		lastSelectedNode.value = nodes[nodes.length - 1];
 	}
@@ -853,6 +857,7 @@ provide(CanvasKey, {
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
+			@tidy-up="onTidyUp"
 		/>
 
 		<Suspense>

@@ -66,24 +66,13 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 			.sort((nodeA, nodeB) => sortNodePositions(nodeA.position, nodeB.position));
 		const nodeIdSet = new Set(nodes.map((node) => node.id));
 
-		graphNodes.forEach(({ id: nodeId, data, dimensions: { width, height } }) => {
-			const finalHeight = isAiParentNode(data) ? height : height;
-			graph.setNode(nodeId, { width, height: finalHeight });
+		graphNodes.forEach(({ id: nodeId, dimensions: { width, height } }) => {
+			graph.setNode(nodeId, { width, height });
 		});
 
 		edges
 			.filter((edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target))
 			.forEach((edge) => graph.setEdge(edge.source, edge.target));
-
-		graph.nodes().forEach((nodeId) => {
-			const node = graph.node(nodeId);
-			const successors = graph.successors(nodeId);
-
-			// Leave space for + handle (only when node has no connected outputs)
-			if (!successors || successors.length === 0) {
-				graph.setNode(nodeId, { ...node, width: node.width });
-			}
-		});
 
 		return graph;
 	}
@@ -102,9 +91,12 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		subGraph.setDefaultEdgeLabel(() => ({}));
 		const nodeIdSet = new Set(nodeIds);
 
-		nodeIds.forEach((nodeId) => {
-			subGraph.setNode(nodeId, parent.node(nodeId));
-		});
+		parent
+			.nodes()
+			.filter((nodeId) => nodeIdSet.has(nodeId))
+			.forEach((nodeId) => {
+				subGraph.setNode(nodeId, parent.node(nodeId));
+			});
 
 		parent
 			.edges()
@@ -149,9 +141,12 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		subGraph.setDefaultEdgeLabel(() => ({}));
 		const nodeIdSet = new Set(nodeIds);
 
-		nodeIds.forEach((nodeId) => {
-			subGraph.setNode(nodeId, parent.node(nodeId));
-		});
+		parent
+			.nodes()
+			.filter((nodeId) => nodeIdSet.has(nodeId))
+			.forEach((nodeId) => {
+				subGraph.setNode(nodeId, parent.node(nodeId));
+			});
 
 		parent
 			.edges()
@@ -161,13 +156,10 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		return subGraph;
 	}
 
-	function calculateBoundingBox<T>(
-		nodes: T[],
-		getBoundingBox: (node: T) => BoundingBox,
-	): BoundingBox {
-		const { minX, minY, maxX, maxY } = nodes.reduce(
+	function compositeBoundingBox(boxes: BoundingBox[]): BoundingBox {
+		const { minX, minY, maxX, maxY } = boxes.reduce(
 			(bbox, node) => {
-				const { x, y, width, height } = getBoundingBox(node);
+				const { x, y, width, height } = node;
 				return {
 					minX: Math.min(bbox.minX, x),
 					maxX: Math.max(bbox.maxX, x + width),
@@ -195,24 +187,23 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		};
 	}
 
-	function boundingBoxFromBoxes(boxes: BoundingBox[]): BoundingBox {
-		return calculateBoundingBox(boxes, (box) => box);
+	function boundingBoxFromDagreNode(node: dagre.Node): BoundingBox {
+		return {
+			x: node.x - node.width / 2,
+			y: node.y - node.height / 2,
+			width: node.width,
+			height: node.height,
+		};
 	}
 
 	function boundingBoxFromGraph(graph: dagre.graphlib.Graph): BoundingBox {
-		return calculateBoundingBox(
-			graph.nodes().map((nodeId) => graph.node(nodeId)),
-			(node) => ({
-				x: node.x,
-				y: node.y,
-				width: node.width,
-				height: node.height,
-			}),
+		return compositeBoundingBox(
+			graph.nodes().map((nodeId) => boundingBoxFromDagreNode(graph.node(nodeId))),
 		);
 	}
 
 	function boundingBoxFromCanvasNodes(nodes: Array<GraphNode<CanvasNodeData>>): BoundingBox {
-		return calculateBoundingBox(nodes, boundingBoxFromCanvasNode);
+		return compositeBoundingBox(nodes.map(boundingBoxFromCanvasNode));
 	}
 
 	function isCoveredBy(parent: BoundingBox, child: BoundingBox) {
@@ -233,6 +224,24 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		const containerCenter = container.x + container.width / 2;
 		const newX = containerCenter - target.width / 2;
 		return newX;
+	}
+
+	function intersects(container: BoundingBox, target: BoundingBox, padding = 0): boolean {
+		// Add padding to target box dimensions
+		const targetWithPadding = {
+			x: target.x - padding,
+			y: target.y - padding,
+			width: target.width + padding * 2,
+			height: target.height + padding * 2,
+		};
+
+		const noIntersection =
+			targetWithPadding.x + targetWithPadding.width < container.x ||
+			targetWithPadding.x > container.x + container.width ||
+			targetWithPadding.y + targetWithPadding.height < container.y ||
+			targetWithPadding.y > container.y + container.height;
+
+		return !noIntersection;
 	}
 
 	function isAiParentNode(node: CanvasNodeData) {
@@ -286,46 +295,44 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 
 		// Divide workflow in to subgraphs
 		// A subgraph contains a group of connected nodes that is not connected to any node outside of this group
-		const subgraphs = dagre.graphlib.alg
-			.components(parentGraph)
-			.map((nodeIds) => createDagreSubGraph({ nodeIds, parent: parentGraph }))
-			.map((subgraph) => {
-				const aiRoots = subgraph
-					.nodes()
-					.map((nodeId) => nodeById[nodeId].data)
-					.filter(isAiParentNode);
+		const subgraphs = dagre.graphlib.alg.components(parentGraph).map((nodeIds) => {
+			const subgraph = createDagreSubGraph({ nodeIds, parent: parentGraph });
+			const aiParentNodes = subgraph
+				.nodes()
+				.map((nodeId) => nodeById[nodeId].data)
+				.filter(isAiParentNode);
 
-				const aiGraphs = aiRoots
-					.map((root) => {
-						const configNodeIds = getAllConnectedAiConfigNodes({ graph: subgraph, nodeById, root });
-						const allAiNodeIds = configNodeIds.concat(root.id);
-						const aiGraph = createAiSubGraph({
-							parent: subgraph,
-							nodeIds: allAiNodeIds,
-						});
-						configNodeIds.forEach((nodeId) => subgraph.removeNode(nodeId));
-						const rootEdges = subgraph
-							.edges()
-							.filter((edge) => edge.v === root.id || edge.w === root.id);
-						return {
-							root,
-							rootEdges,
-							aiGraph,
-						};
-					})
-					.map(({ root, rootEdges, aiGraph }) => {
-						dagre.layout(aiGraph);
-						const aiBoundingBox = boundingBoxFromGraph(aiGraph);
-						subgraph.setNode(root.id, { width: aiBoundingBox.width, height: aiBoundingBox.height });
-						rootEdges.forEach((edge) => subgraph.setEdge(edge));
+			const aiGraphs = aiParentNodes.map((aiParentNode) => {
+				const configNodeIds = getAllConnectedAiConfigNodes({
+					graph: subgraph,
+					nodeById,
+					root: aiParentNode,
+				});
+				const allAiNodeIds = configNodeIds.concat(aiParentNode.id);
+				const aiGraph = createAiSubGraph({
+					parent: subgraph,
+					nodeIds: allAiNodeIds,
+				});
+				configNodeIds.forEach((nodeId) => subgraph.removeNode(nodeId));
+				const rootEdges = subgraph
+					.edges()
+					.filter((edge) => edge.v === aiParentNode.id || edge.w === aiParentNode.id);
 
-						return { graph: aiGraph, boundingBox: aiBoundingBox, root };
-					});
+				dagre.layout(aiGraph);
+				const aiBoundingBox = boundingBoxFromGraph(aiGraph);
+				subgraph.setNode(aiParentNode.id, {
+					width: aiBoundingBox.width,
+					height: aiBoundingBox.height,
+				});
+				rootEdges.forEach((edge) => subgraph.setEdge(edge));
 
-				dagre.layout(subgraph);
-
-				return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
+				return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentNode };
 			});
+
+			dagre.layout(subgraph);
+
+			return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
+		});
 
 		const compositeGraph = createDagreVerticalGraph({
 			nodes: subgraphs.map(({ boundingBox }, index) => ({
@@ -336,20 +343,16 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 
 		dagre.layout(compositeGraph);
 
-		const positionedNodes = subgraphs
-			.map(({ graph, aiGraphs }, index) => {
+		const boundingBoxByNodeId = subgraphs
+			.flatMap(({ graph, aiGraphs }, index) => {
 				const subgraphPosition = compositeGraph.node(index.toString());
-				return {
-					graph,
-					aiGraphs,
-					offset: {
-						x: 0,
-						y: subgraphPosition.y - subgraphPosition.height / 2,
-					},
+
+				const aiParentNodes = new Set(aiGraphs.map(({ aiParentNode }) => aiParentNode.id));
+				const offset = {
+					x: 0,
+					y: subgraphPosition.y - subgraphPosition.height / 2,
 				};
-			})
-			.flatMap(({ graph, aiGraphs, offset }) => {
-				const aiRoots = new Set(aiGraphs.map(({ root }) => root.id));
+
 				return graph.nodes().flatMap((nodeId) => {
 					const { x, y, width, height } = graph.node(nodeId);
 					const positionedNode = {
@@ -362,57 +365,86 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 						},
 					};
 
-					if (aiRoots.has(nodeId)) {
-						const aiGraph = aiGraphs.find(({ root }) => root.id === nodeId);
+					if (aiParentNodes.has(nodeId)) {
+						const aiGraph = aiGraphs.find(({ aiParentNode }) => aiParentNode.id === nodeId);
 
 						if (!aiGraph) return [];
 
-						const parentBox = positionedNode.boundingBox;
+						const aiParentNodeBox = positionedNode.boundingBox;
+
 						const parentOffset = {
-							x: parentBox.x,
-							y: parentBox.y,
+							x: aiParentNodeBox.x,
+							y: aiParentNodeBox.y,
 						};
 
 						return aiGraph.graph.nodes().map((aiNodeId) => {
-							const { x, y, width, height } = aiGraph.graph.node(aiNodeId);
+							const aiNode = aiGraph.graph.node(aiNodeId);
+							const aiBoundingBox = {
+								x: aiNode.x + parentOffset.x - aiNode.width / 2,
+								y: aiNode.y + parentOffset.y - aiNode.height / 2,
+								width: aiNode.width,
+								height: aiNode.height,
+							};
 
 							return {
 								id: aiNodeId,
-								boundingBox: {
-									x: x + parentOffset.x - width / 2,
-									y: y + parentOffset.y - height / 2,
-									width,
-									height,
-								},
+								boundingBox: aiBoundingBox,
 							};
 						});
 					}
 
 					return positionedNode;
 				});
+			})
+			.reduce(
+				(acc, node) => {
+					acc[node.id] = node.boundingBox;
+					return acc;
+				},
+				{} as Record<string, BoundingBox>,
+			);
+
+		// Adjust AI node vertical position
+		subgraphs
+			.flatMap(({ aiGraphs }) => aiGraphs)
+			.forEach(({ graph }) => {
+				const aiNodes = graph.nodes();
+				const aiGraphBoundingBox = compositeBoundingBox(
+					aiNodes.map((nodeId) => boundingBoxByNodeId[nodeId]).filter(isPresent),
+				);
+				const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - NODE_SIZE / 2;
+				aiGraphBoundingBox.y += aiNodeVerticalCorrection;
+
+				const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
+					.filter(([id]) => !graph.hasNode(id))
+					.some(([, nodeBoundingBox]) =>
+						intersects(aiGraphBoundingBox, nodeBoundingBox, NODE_Y_SPACING),
+					);
+
+				if (!hasConflictingNodes) {
+					for (const aiNode of aiNodes) {
+						boundingBoxByNodeId[aiNode].y += aiNodeVerticalCorrection;
+					}
+				}
 			});
 
-		const boundingBoxAfter = boundingBoxFromBoxes(positionedNodes.map((node) => node.boundingBox));
+		const positionedNodes = Object.entries(boundingBoxByNodeId).map(([id, boundingBox]) => ({
+			id,
+			boundingBox,
+		}));
+		const boundingBoxAfter = compositeBoundingBox(positionedNodes.map((node) => node.boundingBox));
 
 		const anchor = {
 			x: boundingBoxAfter.x - boundingBoxBefore.x,
 			y: boundingBoxAfter.y - boundingBoxBefore.y,
 		};
 
-		const nodePositionUpdates = positionedNodes.map(({ id, boundingBox }) => {
-			return {
-				id,
-				x: snapToGrid(boundingBox.x - anchor.x),
-				y: snapToGrid(boundingBox.y - anchor.y),
-			};
-		});
-
 		const stickies = nodes
 			.filter((node) => node.data.type === STICKY_NODE_TYPE)
 			.map((node) => findNode(node.id))
 			.filter(isPresent);
 
-		const stickyPositionUpdates = stickies
+		const positionedStickies = stickies
 			.map((sticky) => {
 				const stickyBox = boundingBoxFromCanvasNode(sticky);
 				const coveredNodes = nonStickyNodes.filter((node) =>
@@ -421,27 +453,36 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 
 				if (coveredNodes.length === 0) return null;
 
-				const coveredNodesBoxAfter = boundingBoxFromBoxes(
+				const coveredNodesBoxAfter = compositeBoundingBox(
 					positionedNodes
 						.filter((node) => coveredNodes.some((covered) => covered.id === node.id))
 						.map(({ boundingBox }) => boundingBox),
 				);
 				return {
 					id: sticky.id,
-					x: centerHorizontally(coveredNodesBoxAfter, stickyBox) - anchor.x,
-					y:
-						coveredNodesBoxAfter.y +
-						coveredNodesBoxAfter.height -
-						stickyBox.height -
-						anchor.y +
-						STICKY_BOTTOM_PADDING,
+					boundingBox: {
+						x: centerHorizontally(coveredNodesBoxAfter, stickyBox),
+						y:
+							coveredNodesBoxAfter.y +
+							coveredNodesBoxAfter.height -
+							stickyBox.height +
+							STICKY_BOTTOM_PADDING,
+						height: stickyBox.height,
+						width: stickyBox.width,
+					},
 				};
 			})
 			.filter(isPresent);
 
 		return {
 			boundingBox: boundingBoxAfter,
-			nodes: nodePositionUpdates.concat(stickyPositionUpdates),
+			nodes: positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
+				return {
+					id,
+					x: snapToGrid(boundingBox.x - anchor.x),
+					y: snapToGrid(boundingBox.y - anchor.y),
+				};
+			}),
 		};
 	}
 

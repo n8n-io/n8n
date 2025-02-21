@@ -3,6 +3,7 @@ import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import IconAutoLayout from 'virtual:icons/fluent/glance-horizontal-sparkles-24-filled';
 
 const props = withDefaults(
 	defineProps<{
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 	'zoom-in': [];
 	'zoom-out': [];
 	'zoom-to-fit': [];
+	'tidy-up': [];
 }>();
 
 const i18n = useI18n();
@@ -38,6 +40,10 @@ function onZoomOut() {
 
 function onZoomToFit() {
 	emit('zoom-to-fit');
+}
+
+function onTidyUp() {
+	emit('tidy-up');
 }
 </script>
 <template>
@@ -85,8 +91,31 @@ function onZoomToFit() {
 				@click="onResetZoom"
 			/>
 		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.tidyUp')"
+			:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
+		>
+			<N8nButton
+				square
+				type="tertiary"
+				size="large"
+				data-test-id="tidy-up-button"
+				:class="$style.iconButton"
+				@click="onTidyUp"
+			>
+				<IconAutoLayout :height="20" :width="20" />
+			</N8nButton>
+		</KeyboardShortcutTooltip>
 	</Controls>
 </template>
+
+<style module lang="scss">
+.iconButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+</style>
 
 <style lang="scss">
 .vue-flow__controls {
