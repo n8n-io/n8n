@@ -25,7 +25,9 @@ export abstract class ExecutionBaseError extends ApplicationError {
 	constructor(message: string, options: ExecutionBaseErrorOptions = {}) {
 		super(message, options);
 
-		this.name = this.constructor.name;
+		// TODO: write test, fixes:
+		// `Cannot assign to read only property 'name' of object 'Error...`
+		Object.defineProperty(this, 'name', { value: this.constructor.name });
 		this.timestamp = Date.now();
 
 		const { cause, errorResponse } = options;

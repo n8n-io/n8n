@@ -691,19 +691,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
@@ -786,9 +773,8 @@ export class WorkflowDataProxy {
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
-					throw createInvalidPairedItemError({
-						nodeName: sourceData.previousNode,
-					});
+					// TODO: write test
+					throw createMissingPairedItemError(sourceData?.previousNode, usedMethodName);
 				}
 
 				const itemPreviousNode: INodeExecutionData = previousNodeOutputData[pairedItem.item];
@@ -936,9 +922,8 @@ export class WorkflowDataProxy {
 			}
 
 			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
-				throw createInvalidPairedItemError({
-					nodeName: sourceData.previousNode,
-				});
+				// TODO: write test
+				throw createMissingPairedItemError(sourceData?.previousNode, usedMethodName);
 			}
 
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
