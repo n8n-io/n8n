@@ -140,9 +140,9 @@ describe('Google Sheet - Delete', () => {
 			if (param === 'numberToDelete') return 1;
 			return null;
 		}) as unknown as IExecuteFunctions['getNodeParameter'];
-		mockExecuteFunctions.helpers = jest.fn(() => {
-			constructExecutionMetaData: jest.fn((data) => data);
-		}) as unknown as IExecuteFunctions['helpers'];
+		mockExecuteFunctions.helpers = {
+			constructExecutionMetaData: jest.fn((data) => data),
+		} as unknown as IExecuteFunctions['helpers'];
 
 		const result = await execute.call(
 			mockExecuteFunctions as IExecuteFunctions,
