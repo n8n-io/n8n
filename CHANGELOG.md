@@ -1,3 +1,12 @@
+## [1.79.3](https://github.com/n8n-io/n8n/compare/n8n@1.79.2...n8n@1.79.3) (2025-02-21)
+
+
+### Bug Fixes
+
+* **core:** Make sure middleware works with legacy API Keys ([#13390](https://github.com/n8n-io/n8n/issues/13390)) ([537df8a](https://github.com/n8n-io/n8n/commit/537df8a745ec4956da9898593c962d16e2d4097b))
+
+
+
 ## [1.79.2](https://github.com/n8n-io/n8n/compare/n8n@1.79.1...n8n@1.79.2) (2025-02-20)
 
 
