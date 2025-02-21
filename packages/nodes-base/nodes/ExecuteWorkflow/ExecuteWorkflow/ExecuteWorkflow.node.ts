@@ -445,6 +445,7 @@ export class ExecuteWorkflow implements INodeType {
 
 				return workflowResult;
 			} catch (error) {
+				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {
 					const metadata = parseErrorMetadata(error);
 					return [
@@ -452,6 +453,7 @@ export class ExecuteWorkflow implements INodeType {
 							{
 								json: { error: error.message },
 								metadata,
+								pairedItem,
 							},
 						],
 					];
