@@ -7,7 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES, VIEWS } from '@/constants';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import type { IUser } from '@/Interface';
+import type { IUser, WorkflowListResourceDB } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { Project } from '@/types/projects.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -273,5 +273,65 @@ describe('WorkflowsView', () => {
 
 		await sourceControl.pullWorkfolder(true);
 		expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
+	});
+
+	it('should render workflow and folder cards', async () => {
+		const TEST_WORKFLOW_RESOURCE: WorkflowListResourceDB = {
+			resource: 'workflow',
+			id: '1',
+			name: 'Workflow 1',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			active: true,
+			homeProject: {
+				id: '1',
+				name: 'Project 1',
+				icon: null,
+				type: 'team',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+		};
+		const TEST_FOLDER_RESOURCE: WorkflowListResourceDB = {
+			resource: 'folder',
+			id: '2',
+			name: 'Folder 2',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			workflowCount: 1,
+			homeProject: {
+				id: '1',
+				name: 'Project 1',
+				icon: null,
+				type: 'team',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+		};
+		// mock router resolve:
+		router.resolve = vi.fn().mockResolvedValue({
+			href: '/projects/1/folders/1',
+		});
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+			TEST_WORKFLOW_RESOURCE,
+			TEST_FOLDER_RESOURCE,
+		]);
+		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		const { getByTestId } = renderComponent({
+			pinia,
+			global: {
+				stubs: {
+					'router-link': {
+						template: '<div data-test-id="folder-card"><slot /></div>',
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();
+		expect(getByTestId('resources-list-wrapper').querySelectorAll('.listItem')).toHaveLength(2);
+		expect(getByTestId('workflow-card-name')).toHaveTextContent(TEST_WORKFLOW_RESOURCE.name);
+		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 });

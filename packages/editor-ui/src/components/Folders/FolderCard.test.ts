@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import FolderCard from './FolderCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
-import { UserAction } from '@/Interface';
+import type { UserAction } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();

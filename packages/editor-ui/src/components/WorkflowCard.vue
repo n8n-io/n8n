@@ -232,7 +232,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click="onClick" data-test-id="workflow-card">
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
