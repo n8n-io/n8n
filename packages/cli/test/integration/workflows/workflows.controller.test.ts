@@ -40,9 +40,13 @@ let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
-
-const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['workflows'],
+	enabledFeatures: ['feat:sharing'],
+	quotas: {
+		'quota:maxTeamProjects': -1,
+	},
+});
 const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
@@ -50,9 +54,20 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
+let projectService: ProjectService;
 
-beforeAll(async () => {
+beforeEach(async () => {
+	await testDb.truncate([
+		'Workflow',
+		'SharedWorkflow',
+		'Tag',
+		'WorkflowHistory',
+		'Project',
+		'ProjectRelation',
+		'Folder'
+	]);
 	projectRepository = Container.get(ProjectRepository);
+	projectService = Container.get(ProjectService);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -63,6 +78,8 @@ beforeAll(async () => {
 beforeEach(async () => {
 	jest.resetAllMocks();
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory', 'Folder']);
+afterEach(() => {
+	jest.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -273,7 +290,7 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:admin');
+		await projectService.addUser(project.id, owner.id, 'project:admin');
 
 		//
 		// ACT
@@ -347,7 +364,7 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, member.id, 'project:viewer');
+		await projectService.addUser(project.id, member.id, 'project:viewer');
 
 		//
 		// ACT
