@@ -44,6 +44,7 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -67,6 +68,7 @@ export class WorkflowsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderRepository: FolderRepository,
 	) {}
 
 	@Post('/')
@@ -116,9 +118,17 @@ export class WorkflowsController {
 
 		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
+			const { projectId, parentFolderId } = req.body;
+
+			if (!parentFolderId) {
+				newWorkflow.parentFolder = null;
+			} else {
+				const parentFolder = await this.folderRepository.findOne({ where: { id: parentFolderId } });
+				newWorkflow.parentFolder = parentFolder;
+			}
+
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const { projectId } = req.body;
 			project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
