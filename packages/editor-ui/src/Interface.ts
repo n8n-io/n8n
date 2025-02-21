@@ -337,6 +337,14 @@ export interface IFolderDb {
 
 export type WorkflowListResourceDB = WorkflowResourceDB | IFolderDb;
 
+export type FolderCreateResponse = {
+	id: string;
+	name: string;
+	createdAt: string;
+	updatedAt: string;
+	parentFolder?: { id: string; name: string };
+};
+
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
 	id: string;

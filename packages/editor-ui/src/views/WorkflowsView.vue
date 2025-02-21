@@ -15,6 +15,7 @@ import {
 	EnterpriseEditionFeature,
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
+	MODAL_CONFIRM,
 } from '@/constants';
 import type { IUser, UserAction, WorkflowListResourceDB, WorkflowResourceDB } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
@@ -47,6 +48,8 @@ import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Bread
 import { ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import { isResponseWorkflowResource } from '@/utils/typeGuards';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -70,6 +73,8 @@ const WORKFLOWS_SORT_MAP = {
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
+const message = useMessage();
+const toast = useToast();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
@@ -537,6 +542,51 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 const onFolderOpened = (data: { folder: FolderResource }) => {
 	currentFolder.value = data.folder;
 };
+
+const addFolder = async () => {
+	if (!route.params.projectId) return;
+	const currentParent = currentFolder.value?.name || projectName.value;
+	if (!currentParent) return;
+	const promptResponsePromise = message.prompt(
+		i18n.baseText('folders.add.modal.message', { interpolate: { parent: currentParent } }),
+		{
+			confirmButtonText: i18n.baseText('generic.create'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			inputErrorMessage: i18n.baseText('generic.invalidName'),
+			inputValue: '',
+			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+		},
+	);
+	const promptResponse = await promptResponsePromise;
+	if (promptResponse.action === MODAL_CONFIRM) {
+		const folderName = promptResponse.value;
+		// Create folder
+		try {
+			const newFolder = await workflowsStore.createFolder(
+				folderName,
+				route.params.projectId as string,
+				route.params.folderId as string | undefined,
+			);
+			let newFolderURL = `/projects/${route.params.projectId}`;
+			if (newFolder.parentFolder) {
+				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.parentFolder.id}/workflows`;
+			}
+			toast.showMessage({
+				title: i18n.baseText('folders.add.success.title'),
+				message: i18n.baseText('folders.add.success.message', {
+					interpolate: {
+						link: newFolderURL,
+						name: newFolder.name,
+					},
+				}),
+				type: 'success',
+			});
+			await fetchWorkflows();
+		} catch (error) {
+			toast.showError(error, 'Error creating folder');
+		}
+	}
+};
 </script>
 
 <template>
@@ -563,6 +613,21 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 	>
 		<template #header>
 			<ProjectHeader />
+		</template>
+		<template v-if="showFolders" #add-button>
+			<N8nTooltip placement="top">
+				<template #content>
+					{{ i18n.baseText('folders.add.button.tooltip') }}
+				</template>
+				<N8nButton
+					size="large"
+					icon="folder-plus"
+					type="tertiary"
+					data-test-id="add-folder-button"
+					:class="$style['add-folder-button']"
+					@click="addFolder"
+				/>
+			</N8nTooltip>
 		</template>
 		<template #callout>
 			<N8nCallout
@@ -661,6 +726,17 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 					<N8nText size="large" class="mt-xs" color="text-dark">
 						{{ i18n.baseText('workflows.empty.startFromScratch') }}
 					</N8nText>
+				</N8nCard>
+				<N8nCard
+					:class="$style.emptyStateCard"
+					hoverable
+					data-test-id="new-workflow-card"
+					@click="addFolder"
+				>
+					<N8nIcon :class="$style.emptyStateCardIcon" icon="folder" />
+					<N8nText size="large" class="mt-xs" color="text-dark">{{
+						i18n.baseText('folders.add')
+					}}</N8nText>
 				</N8nCard>
 				<N8nCard
 					v-if="showEasyAIWorkflowCallout"
@@ -768,5 +844,9 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 .home-project {
 	display: flex;
 	align-items: center;
+}
+
+.add-folder-button {
+	width: 40px;
 }
 </style>

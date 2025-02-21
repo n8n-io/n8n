@@ -32,6 +32,7 @@ import type {
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
 	WorkflowListResourceDB,
+	FolderCreateResponse,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -516,6 +517,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 		setWorkflows(workflows);
 		return workflows;
+	}
+
+	async function createFolder(
+		name: string,
+		projectId: string,
+		parentFolderId?: string,
+	): Promise<FolderCreateResponse> {
+		console.log('createFolder', name, projectId, parentFolderId);
+		return await workflowsApi.createFolder(
+			rootStore.restApiContext,
+			projectId,
+			name,
+			parentFolderId,
+		);
 	}
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
@@ -1780,5 +1795,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setConnections,
 		markExecutionAsStopped,
 		totalWorkflowCount,
+		createFolder,
 	};
 });
