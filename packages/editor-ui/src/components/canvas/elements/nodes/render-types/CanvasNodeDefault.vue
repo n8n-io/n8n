@@ -164,7 +164,7 @@ function openContextMenu(event: MouseEvent) {
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
-	--configurable-node--icon-offset: 40px;
+	--configurable-node--icon-offset: 30px;
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);

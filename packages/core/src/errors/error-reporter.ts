@@ -16,6 +16,7 @@ type ErrorReporterInitOptions = {
 	release: string;
 	environment: string;
 	serverName: string;
+	releaseDate?: Date;
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -23,8 +24,14 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
+const SIX_WEEKS_IN_MS = 6 * 7 * 24 * 60 * 60 * 1000;
+const RELEASE_EXPIRATION_WARNING =
+	'Error tracking disabled because this release is older than 6 weeks.';
+
 @Service()
 export class ErrorReporter {
+	private expirationTimer?: NodeJS.Timeout;
+
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
@@ -61,6 +68,7 @@ export class ErrorReporter {
 	}
 
 	async shutdown(timeoutInMs = 1000) {
+		clearTimeout(this.expirationTimer);
 		await close(timeoutInMs);
 	}
 
@@ -71,10 +79,25 @@ export class ErrorReporter {
 		release,
 		environment,
 		serverName,
+		releaseDate,
 	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
+
+		if (releaseDate) {
+			const releaseExpiresInMs = releaseDate.getTime() + SIX_WEEKS_IN_MS - Date.now();
+			if (releaseExpiresInMs <= 0) {
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				return;
+			}
+			// Once this release expires, reject all events
+			this.expirationTimer = setTimeout(() => {
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				this.report = this.defaultReport;
+			}, releaseExpiresInMs);
+		}
 
 		if (!dsn) return;
 

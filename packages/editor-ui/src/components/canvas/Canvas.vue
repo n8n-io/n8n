@@ -46,11 +46,12 @@ const emit = defineEmits<{
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id: string];
+	'update:node:selected': [id?: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'click:node': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -323,6 +324,8 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	emit('click:node', node.id);
+
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
 	}
@@ -344,8 +347,7 @@ function clearSelectedNodes() {
 }
 
 function onSelectNode() {
-	if (!lastSelectedNode.value) return;
-	emit('update:node:selected', lastSelectedNode.value.id);
+	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
 function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
