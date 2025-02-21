@@ -224,7 +224,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		it.only('should move resources between projects', () => {
+		it('should move resources between projects', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 
 			cy.signinAsOwner();
