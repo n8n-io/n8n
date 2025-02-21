@@ -57,12 +57,13 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 
 		const timestampDefault =
 			dbType === 'mariadb' || dbType === 'mysqldb' ? 'CURRENT_TIMESTAMP' : "'NOW'";
+		const typeComment = '0: time_saved_minutes, 1: runtime_milliseconds, 2: success, 3: failure';
 
 		await createTable(names.t.analyticsRaw)
 			.withColumns(
 				column('id').int.primary.autoGenerate,
 				column(names.c.analyticsRaw.metaId).int.notNull,
-				column('type').int.notNull,
+				column('type').int.notNull.comment(typeComment),
 				column('value').int.notNull,
 				column('timestamp').timestamp(0).default(timestampDefault).notNull,
 			)
@@ -76,10 +77,12 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 			.withColumns(
 				column('id').int.primary.autoGenerate,
 				column(names.c.analyticsByPeriod.metaId).int.notNull,
-				column(names.c.analyticsByPeriod.type).int.notNull,
+				column(names.c.analyticsByPeriod.type).int.notNull.comment(typeComment),
 				column('value').int.notNull,
-				column(names.c.analyticsByPeriod.periodUnit).int.notNull,
 				column(names.c.analyticsByPeriod.periodStart).timestamp(0),
+				column(names.c.analyticsByPeriod.periodUnit).int.notNull.comment(
+					'0: hour, 1: day, 2: week',
+				),
 			)
 			.withForeignKey(names.c.analyticsByPeriod.metaId, {
 				tableName: names.t.analyticsMetadata,
