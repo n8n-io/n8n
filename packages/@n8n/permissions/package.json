@@ -19,5 +19,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
-  ]
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
 }

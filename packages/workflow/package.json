@@ -32,6 +32,7 @@
   "devDependencies": {
     "@langchain/core": "catalog:",
     "@n8n/config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",

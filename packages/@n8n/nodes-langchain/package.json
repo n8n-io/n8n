@@ -158,6 +158,7 @@
     "@mozilla/readability": "0.5.0",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
+    "@n8n/typescript-config": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "4.0.0",
     "@qdrant/js-client-rest": "1.11.0",

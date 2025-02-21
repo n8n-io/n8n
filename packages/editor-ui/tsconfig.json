@@ -1,5 +1,5 @@
 {
-	"extends": "@n8n/frontend-typescript-config",
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"baseUrl": ".",
 		"rootDirs": [

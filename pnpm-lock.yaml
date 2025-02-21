@@ -302,6 +302,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -324,6 +327,9 @@ importers:
         specifier: ^8.1.4
         version: 8.1.4
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -358,6 +364,9 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../storybook
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.1(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.7.2))
@@ -385,6 +394,10 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.7.4
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -401,6 +414,9 @@ importers:
       '@lezer/generator':
         specifier: ^1.7.0
         version: 1.7.0
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/config:
     dependencies:
@@ -410,12 +426,20 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/di:
     dependencies:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/imap:
     dependencies:
@@ -435,6 +459,9 @@ importers:
         specifier: 0.0.4
         version: 0.0.4
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/imap':
         specifier: ^0.8.40
         version: 0.8.40
@@ -450,6 +477,9 @@ importers:
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
@@ -534,6 +564,9 @@ importers:
       '@n8n/typeorm':
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
@@ -647,7 +680,11 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
-  packages/@n8n/permissions: {}
+  packages/@n8n/permissions:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/storybook:
     devDependencies:
@@ -730,9 +767,14 @@ importers:
         specifier: '>=8.17.1'
         version: 8.17.1
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195
+
+  packages/@n8n/typescript-config: {}
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -1055,6 +1097,9 @@ importers:
         specifier: 'catalog:'
         version: 3.24.1
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@redocly/cli':
         specifier: ^1.25.5
         version: 1.25.5(encoding@0.1.13)(enzyme@3.11.0)
@@ -1236,6 +1281,9 @@ importers:
         specifier: 'catalog:'
         version: 3.24.1
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@types/aws4':
         specifier: ^1.5.1
         version: 1.11.2
@@ -1315,15 +1363,15 @@ importers:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
         version: link:../frontend/tooling/eslint-config
-      '@n8n/frontend-typescript-config':
-        specifier: workspace:*
-        version: link:../frontend/tooling/typescript-config
       '@n8n/frontend-vitest-config':
         specifier: workspace:*
         version: link:../frontend/tooling/vitest-config
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../@n8n/storybook
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -1616,12 +1664,12 @@ importers:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
         version: link:../frontend/tooling/eslint-config
-      '@n8n/frontend-typescript-config':
-        specifier: workspace:*
-        version: link:../frontend/tooling/typescript-config
       '@n8n/frontend-vitest-config':
         specifier: workspace:*
         version: link:../frontend/tooling/vitest-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@pinia/testing':
         specifier: ^0.1.6
         version: 0.1.6(pinia@2.2.4(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2)))(vue@3.5.13(typescript@5.7.2))
@@ -1694,12 +1742,12 @@ importers:
       '@n8n/frontend-eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@n8n/frontend-typescript-config':
-        specifier: workspace:*
-        version: link:../../tooling/typescript-config
       '@n8n/frontend-vitest-config':
         specifier: workspace:*
         version: link:../../tooling/vitest-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.6.3
@@ -1749,8 +1797,6 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
 
-  packages/frontend/tooling/typescript-config: {}
-
   packages/frontend/tooling/vitest-config:
     devDependencies:
       vite:
@@ -1790,6 +1836,9 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@types/inquirer':
         specifier: ^6.5.0
         version: 6.5.0
@@ -1998,6 +2047,9 @@ importers:
         specifier: 'catalog:'
         version: 0.6.2
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.1
@@ -2143,6 +2195,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../@n8n/typescript-config
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
