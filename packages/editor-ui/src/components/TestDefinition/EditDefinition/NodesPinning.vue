@@ -9,12 +9,14 @@ import { createEventBus, N8nTooltip } from 'n8n-design-system';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
+const telemetry = useTelemetry();
 
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
@@ -101,6 +103,13 @@ function onPinButtonClick(data: CanvasNodeData) {
 
 	emit('update:modelValue', updatedNodes);
 	updateNodeClasses([data.id], !isPinned);
+
+	if (!isPinned) {
+		telemetry.track('User selected node to be mocked', {
+			node_id: data.id,
+			test_id: testId.value,
+		});
+	}
 }
 function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
 	return outputs.length === 1;

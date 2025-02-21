@@ -21,7 +21,10 @@ const props = withDefaults(defineProps<WorkflowSelectorProps>(), {
 	sampleWorkflowName: undefined,
 });
 
-defineEmits<{ 'update:modelValue': [value: WorkflowSelectorProps['modelValue']] }>();
+defineEmits<{
+	'update:modelValue': [value: WorkflowSelectorProps['modelValue']];
+	workflowCreated: [workflowId: string];
+}>();
 const locale = useI18n();
 
 const subworkflowName = computed(() => {
@@ -63,6 +66,7 @@ const sampleWorkflow = computed<IWorkflowDataCreate>(() => {
 				allow-new
 				:sample-workflow="sampleWorkflow"
 				@update:model-value="$emit('update:modelValue', $event)"
+				@workflow-created="$emit('workflowCreated', $event)"
 			/>
 		</n8n-input-label>
 	</div>
