@@ -16,6 +16,7 @@ import { type WorkflowEntity } from './workflow-entity';
 export type FolderWithWorkflowsCount = Folder & {
 	workflowsCount: boolean;
 };
+
 @Entity()
 export class Folder extends WithTimestampsAndStringId {
 	@Column()
