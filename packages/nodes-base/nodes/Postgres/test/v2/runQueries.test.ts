@@ -49,7 +49,7 @@ describe('Test PostgresV2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true }, pairedItem: undefined }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
 	});
 });
