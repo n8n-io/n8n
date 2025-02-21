@@ -808,18 +808,25 @@ onMounted(async () => {
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						<label for="timeSavedPerExecution">{{
-							i18n.baseText('workflowSettings.timeSavedPerExecution') + ':'
-						}}</label>
+						<label for="timeSavedPerExecution">
+							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') + ':' }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip') }}
+								</template>
+								<font-awesome-icon icon="question-circle" />
+							</N8nTooltip>
+						</label>
 					</el-col>
-					<el-col :span="2">
-						<div>
+					<el-col :span="14">
+						<div class="time-saved">
 							<N8nInput
 								id="timeSavedPerExecution"
 								type="number"
 								v-model="workflowSettings.timeSavedPerExecution"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
+							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
 						</div>
 					</el-col>
 				</el-row>
@@ -865,5 +872,18 @@ onMounted(async () => {
 
 .timeout-input {
 	margin-left: 5px;
+}
+
+.time-saved {
+	display: flex;
+	align-items: center;
+
+	:deep(.el-input) {
+		width: 64px;
+	}
+
+	span {
+		margin-left: var(--spacing-2xs);
+	}
 }
 </style>
