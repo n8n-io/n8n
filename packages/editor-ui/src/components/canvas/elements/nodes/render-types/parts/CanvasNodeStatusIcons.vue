@@ -72,18 +72,17 @@ const dirtiness = computed(() =>
 	>
 		<FontAwesomeIcon icon="sync-alt" spin />
 	</div>
-	<div
-		v-else-if="dirtiness !== undefined"
-		data-test-id="canvas-node-status-warning"
-		:class="[$style.status, $style.warning]"
-	>
+	<div v-else-if="dirtiness !== undefined">
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
 				{{
 					i18n.baseText(dirtiness === 'parameters-updated' ? 'node.dirty' : 'node.subjectToChange')
 				}}
 			</template>
-			<FontAwesomeIcon icon="triangle" />
+			<div data-test-id="canvas-node-status-warning" :class="[$style.status, $style.warning]">
+				<FontAwesomeIcon icon="triangle" />
+				<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
+			</div>
 		</N8nTooltip>
 	</div>
 	<div
@@ -101,10 +100,10 @@ const dirtiness = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-5xs);
+	font-weight: 600;
 }
 
 .runData {
-	font-weight: 600;
 	color: var(--color-success);
 }
 
