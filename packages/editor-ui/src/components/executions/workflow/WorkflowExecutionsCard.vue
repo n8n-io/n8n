@@ -78,6 +78,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: currentWorkflow, executionId: execution.id },
+				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
