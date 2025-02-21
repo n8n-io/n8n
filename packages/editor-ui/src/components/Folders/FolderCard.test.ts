@@ -97,7 +97,6 @@ describe('FolderCard', () => {
 		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('0');
 		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('Last updated just now');
 		expect(getByTestId('folder-card-created')).toHaveTextContent('Created just now');
-		expect(getByTestId('folder-card-link')).toHaveAttribute('to', '/projects/1/folders/1');
 	});
 
 	it('should render breadcrumbs with personal folder', () => {

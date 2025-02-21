@@ -298,7 +298,7 @@ describe('WorkflowsView', () => {
 			name: 'Folder 2',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			workflowCount: 1,
+			workflowsCount: 1,
 			homeProject: {
 				id: '1',
 				name: 'Project 1',

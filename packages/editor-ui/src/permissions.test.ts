@@ -27,6 +27,7 @@ describe('permissions', () => {
 			variable: {},
 			workersView: {},
 			workflow: {},
+			folder: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -115,6 +116,7 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			folder: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
