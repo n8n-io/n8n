@@ -23,6 +23,8 @@ export class Column {
 
 	private primaryKeyConstraintName: string | undefined;
 
+	private commentValue: string | undefined;
+
 	constructor(private name: string) {}
 
 	get bool() {
@@ -88,6 +90,11 @@ export class Column {
 		return this;
 	}
 
+	comment(comment: string) {
+		this.commentValue = comment;
+		return this;
+	}
+
 	// eslint-disable-next-line complexity
 	toOptions(driver: Driver): TableColumnOptions {
 		const { name, type, isNullable, isPrimary, isGenerated, length, primaryKeyConstraintName } =
@@ -142,6 +149,10 @@ export class Column {
 			} else {
 				options.default = this.defaultValue;
 			}
+		}
+
+		if (this.commentValue) {
+			options.comment = this.commentValue;
 		}
 
 		return options;
