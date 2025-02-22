@@ -13,4 +13,5 @@ export const ERROR_MESSAGES = {
 	TIMEOUT_MINUTES_INVALID: `Timeout must be between ${MIN_TIMEOUT_MINUTES} and ${MAX_TIMEOUT_MINUTES} minutes`,
 	URL_INVALID: "'URL' must start with 'http' or 'https'",
 	PROFILE_NAME_REQUIRED: "'Profile Name' is required when 'Save Profile' is enabled",
+	REQUIRED_PARAMETER: "Please fill the '{{field}}' parameter",
 };

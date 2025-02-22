@@ -7,7 +7,33 @@ import {
 	MIN_TIMEOUT_MINUTES,
 	MAX_TIMEOUT_MINUTES,
 } from './constants';
-import type { IAirtopResponse } from './transport/response.type';
+import type { IAirtopResponse } from './transport/types';
+
+/**
+ * Validate a required string field
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @param field - The field to validate
+ * @param fieldName - The name of the field
+ */
+export function validateRequiredStringField(
+	this: IExecuteFunctions,
+	index: number,
+	field: string,
+	fieldName: string,
+) {
+	let value = this.getNodeParameter(field, index) as string;
+	value = (value || '').trim();
+	const errorMessage = ERROR_MESSAGES.REQUIRED_PARAMETER.replace('{{field}}', fieldName);
+
+	if (!value) {
+		throw new NodeOperationError(this.getNode(), errorMessage, {
+			itemIndex: index,
+		});
+	}
+
+	return value;
+}
 
 /**
  * Validate the session ID parameter

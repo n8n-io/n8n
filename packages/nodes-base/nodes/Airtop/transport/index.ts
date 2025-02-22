@@ -6,7 +6,7 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-import type { IAirtopResponse } from './response.type';
+import type { IAirtopResponse } from './types';
 import { BASE_URL } from '../constants';
 
 export async function apiRequest(

@@ -5,6 +5,16 @@ import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
+const baseNodeParameters = {
+	resource: 'window',
+	operation: 'create',
+	sessionId: 'test-session-123',
+	url: 'https://example.com',
+	getLiveView: false,
+	disableResize: false,
+	additionalFields: {},
+};
+
 jest.mock('../../../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../../../transport');
 	return {
@@ -43,16 +53,7 @@ describe('Test Airtop, window create operation', () => {
 	});
 
 	it('should create a window with minimal parameters', async () => {
-		const nodeParameters = {
-			resource: 'window',
-			operation: 'create',
-			sessionId: 'test-session-123',
-			url: 'https://example.com',
-			getLiveView: false,
-			additionalFields: {},
-		};
-
-		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+		const result = await create.execute.call(createMockExecuteFunction(baseNodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
@@ -66,7 +67,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(result).toEqual([
 			{
 				json: {
-					sessionId: 'test-session-123',
+					sessionId: baseNodeParameters.sessionId,
 					windowId: 'win-123',
 					status: 'success',
 					data: {
@@ -79,11 +80,48 @@ describe('Test Airtop, window create operation', () => {
 
 	it('should create a window with live view', async () => {
 		const nodeParameters = {
-			resource: 'window',
-			operation: 'create',
-			sessionId: 'test-session-123',
-			url: 'https://example.com',
+			...baseNodeParameters,
 			getLiveView: true,
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			'/sessions/test-session-123/windows',
+			{
+				url: 'https://example.com',
+			},
+		);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/sessions/test-session-123/windows/win-123',
+			undefined,
+			{ disableResize: false },
+		);
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: baseNodeParameters.sessionId,
+					windowId: 'win-123',
+					status: 'success',
+					data: {
+						liveViewUrl: 'https://live.airtop.ai/123-abcd',
+					},
+				},
+			},
+		]);
+	});
+
+	it('should create a window with live view and disabled resize', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			getLiveView: true,
+			disableResize: true,
 			additionalFields: {},
 		};
 
@@ -102,12 +140,14 @@ describe('Test Airtop, window create operation', () => {
 			2,
 			'GET',
 			'/sessions/test-session-123/windows/win-123',
+			undefined,
+			{ disableResize: true },
 		);
 
 		expect(result).toEqual([
 			{
 				json: {
-					sessionId: 'test-session-123',
+					sessionId: baseNodeParameters.sessionId,
 					windowId: 'win-123',
 					status: 'success',
 					data: {
@@ -118,12 +158,10 @@ describe('Test Airtop, window create operation', () => {
 		]);
 	});
 
-	it('should throw error when sessionId is empty', async () => {
+	it("should throw error when 'sessionId' parameter is empty", async () => {
 		const nodeParameters = {
-			resource: 'window',
-			operation: 'create',
+			...baseNodeParameters,
 			sessionId: '',
-			url: 'https://example.com',
 		};
 
 		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
