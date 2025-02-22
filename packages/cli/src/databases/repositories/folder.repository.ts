@@ -1,3 +1,4 @@
+import type { CreateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
@@ -8,6 +9,8 @@ import type { FolderWithWorkflowsCount } from '../entities/folder';
 import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
 import { TagEntity } from '../entities/tag-entity';
+import { Project } from '../entities/project';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 
 @Service()
 export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
@@ -225,5 +228,36 @@ export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
+	}
+
+	async findOneOrFailFolderInProject(folderId: string, projectId: string): Promise<Folder | null> {
+		return await this.findOneOrFail({
+			where: {
+				id: folderId,
+				homeProject: {
+					id: projectId,
+				},
+			},
+		});
+	}
+
+	async createFolder({ parentFolderId, name }: CreateFolderDto, project: Project) {
+		let parentFolder = null;
+		if (parentFolderId) {
+			try {
+				parentFolder = await this.findOneOrFailFolderInProject(parentFolderId, project.id);
+			} catch {
+				throw new FolderNotFoundError(parentFolderId);
+			}
+		}
+
+		const { homeProject, ...folder } = await this.save(
+			this.create({
+				name,
+				homeProject: { id: project.id },
+				parentFolder,
+			}),
+		);
+		return folder;
 	}
 }
