@@ -48,6 +48,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'project:list',
 	'project:read',
 	'folder:create',
+	'folder:read',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -65,6 +66,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'project:list',
 	'project:read',
 	'folder:create',
+	'folder:read',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -74,4 +76,5 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'folder:read',
 ];

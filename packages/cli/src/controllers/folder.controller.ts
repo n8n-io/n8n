@@ -30,13 +30,13 @@ export class ProjectController {
 		}
 	}
 
-	@Get('/:folderId/path')
+	@Get('/:folderId/tree')
 	@ProjectScope('folder:read')
-	async getFolderPathToRoot(
+	async getFolderTree(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
 	) {
-		const response = await this.folderRepository.getFolderPath(req.params.folderId);
+		const response = await this.folderRepository.getFolderTree(req.params.folderId);
 
 		return response;
 	}
