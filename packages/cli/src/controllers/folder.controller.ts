@@ -30,28 +30,12 @@ export class ProjectController {
 		}
 	}
 
-	@Get('/:folderId')
-	@ProjectScope('folder:read')
-	async getFolder(
-		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
-		_res: Response,
-	) {
-		const project = await this.projectsService.getProject(req.params.projectId);
-
-		const folder = await this.folderRepository.findOneOrFail({
-			where: { id: req.params.folderId, homeProject: project },
-		});
-
-		return folder;
-	}
-
 	@Get('/:folderId/path')
 	@ProjectScope('folder:read')
 	async getFolderPathToRoot(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
 	) {
-		console.log('gpt requet');
 		const response = await this.folderRepository.getFolderPath(req.params.folderId);
 
 		return response;
