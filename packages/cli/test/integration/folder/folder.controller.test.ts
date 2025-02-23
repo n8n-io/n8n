@@ -118,9 +118,9 @@ describe('POST /projects/:projectId/folders', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.post(`/projects/${memberTeamProject.id}/folders`)
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should create folder in root of specified project', async () => {
