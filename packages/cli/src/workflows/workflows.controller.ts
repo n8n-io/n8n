@@ -59,6 +59,7 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { FolderService } from '@/services/folder.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -82,6 +83,7 @@ export class WorkflowsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderService: FolderService,
 	) {}
 
 	@Post('/')
@@ -133,7 +135,7 @@ export class WorkflowsController {
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const { projectId } = req.body;
+			const { projectId, parentFolderId } = req.body;
 			project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
@@ -155,6 +157,14 @@ export class WorkflowsController {
 				throw new ApplicationError('No personal project found');
 			}
 
+			if (parentFolderId) {
+				let parentFolder = null;
+				try {
+					parentFolder = await this.folderService.getFolderInProject(parentFolderId, project.id);
+					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
+				} catch {}
+			}
+
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
 				projectId: project.id,
@@ -167,7 +177,7 @@ export class WorkflowsController {
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true },
+				{ em: transactionManager, includeTags: true, includeParentFolder: true },
 			);
 		});
 
