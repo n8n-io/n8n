@@ -9,6 +9,18 @@ import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
 import { TagEntity } from '../entities/tag-entity';
 
+export interface SimpleFolderNode {
+	id: string;
+	name: string;
+	children: SimpleFolderNode[];
+}
+
+interface FolderPathRow {
+	folder_id: string;
+	folder_name: string;
+	folder_parent_folder_id: string | null;
+}
+
 @Service()
 export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 	constructor(dataSource: DataSource) {
