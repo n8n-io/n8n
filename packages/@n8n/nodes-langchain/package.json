@@ -177,7 +177,6 @@
     "lodash": "catalog:",
     "mammoth": "1.7.2",
     "mime-types": "2.1.35",
-    "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "4.78.1",
