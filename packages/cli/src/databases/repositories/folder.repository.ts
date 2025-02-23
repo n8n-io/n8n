@@ -240,24 +240,4 @@ export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 			},
 		});
 	}
-
-	async createFolder({ parentFolderId, name }: CreateFolderDto, project: Project) {
-		let parentFolder = null;
-		if (parentFolderId) {
-			try {
-				parentFolder = await this.findOneOrFailFolderInProject(parentFolderId, project.id);
-			} catch {
-				throw new FolderNotFoundError(parentFolderId);
-			}
-		}
-
-		const { homeProject, ...folder } = await this.save(
-			this.create({
-				name,
-				homeProject: { id: project.id },
-				parentFolder,
-			}),
-		);
-		return folder;
-	}
 }
