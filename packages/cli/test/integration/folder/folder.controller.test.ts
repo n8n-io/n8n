@@ -106,6 +106,23 @@ describe('POST /projects/:projectId/folders', () => {
 		expect(foldersInDb).toHaveLength(1);
 	});
 
+	test('should not allow creating folder with parent that exists in another project', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const memberTeamProject = await createTeamProject('test project', member);
+		const ownerRootFolderInPersonalProject = await createFolder(ownerPersonalProject);
+		await createFolder(memberTeamProject);
+
+		const payload = {
+			name: 'Test Folder',
+			parentFolderId: ownerRootFolderInPersonalProject.id,
+		};
+
+		await authMemberAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send(payload)
+			.expect(403);
+	});
+
 	test('should create folder in root of specified project', async () => {
 		const project = await createTeamProject('test', owner);
 		const payload = {
