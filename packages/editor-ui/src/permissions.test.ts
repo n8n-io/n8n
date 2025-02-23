@@ -58,6 +58,7 @@ describe('permissions', () => {
 			'workflow:read',
 			'workflow:share',
 			'workflow:update',
+			'folder:create',
 		];
 
 		const permissionRecord: PermissionsRecord = {
