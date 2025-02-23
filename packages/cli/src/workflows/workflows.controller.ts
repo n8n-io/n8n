@@ -46,6 +46,7 @@ import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
+import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -59,7 +60,6 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
-import { FolderService } from '@/services/folder.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
