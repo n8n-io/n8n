@@ -7,13 +7,13 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IHttpRequestMethods,
 	IRunData,
+	IWorkflowBase,
 } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
-import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -217,7 +217,7 @@ export class TestWebhooks implements IWebhookManager {
 	 */
 	async needsWebhook(options: {
 		userId: string;
-		workflowEntity: IWorkflowDb;
+		workflowEntity: IWorkflowBase;
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
@@ -434,9 +434,10 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Convert a `WorkflowEntity` from `typeorm` to a temporary `Workflow` from `n8n-workflow`.
+	 * Convert a `IWorkflowBase` interface (e.g. `WorkflowEntity`) to a temporary
+	 * `Workflow` from `n8n-workflow`.
 	 */
-	toWorkflow(workflowEntity: IWorkflowDb) {
+	toWorkflow(workflowEntity: IWorkflowBase) {
 		return new Workflow({
 			id: workflowEntity.id,
 			name: workflowEntity.name,

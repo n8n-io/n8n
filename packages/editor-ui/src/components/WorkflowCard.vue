@@ -25,6 +25,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -38,6 +39,7 @@ const props = withDefaults(
 	defineProps<{
 		data: IWorkflowDb;
 		readOnly?: boolean;
+		workflowListEventBus?: EventBus;
 	}>(),
 	{
 		data: () => ({
@@ -53,12 +55,15 @@ const props = withDefaults(
 			versionId: '',
 		}),
 		readOnly: false,
+		workflowListEventBus: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
+	'workflow:deleted': [];
+	'workflow:active-toggle': [value: { id: string; active: boolean }];
 }>();
 
 const toast = useToast();
@@ -160,6 +165,7 @@ async function onAction(action: string) {
 					tags: (props.data.tags ?? []).map((tag) =>
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
+					externalEventBus: props.workflowListEventBus,
 				},
 			});
 			break;
@@ -217,6 +223,7 @@ async function deleteWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 		type: 'success',
 	});
+	emit('workflow:deleted');
 }
 
 function moveResource() {
@@ -226,9 +233,14 @@ function moveResource() {
 			resource: props.data,
 			resourceType: ResourceType.Workflow,
 			resourceTypeLabel: resourceTypeLabel.value,
+			eventBus: props.workflowListEventBus,
 		},
 	});
 }
+
+const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
+	emit('workflow:active-toggle', value);
+};
 </script>
 
 <template>
@@ -280,6 +292,7 @@ function moveResource() {
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
+					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
 
 				<n8n-action-toggle

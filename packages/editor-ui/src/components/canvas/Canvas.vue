@@ -22,6 +22,7 @@ import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, wa
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -45,11 +46,12 @@ const emit = defineEmits<{
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id: string];
+	'update:node:selected': [id?: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'click:node': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -145,28 +147,54 @@ const classes = computed(() => ({
 }));
 
 /**
- * Key bindings
+ * Panning and Selection key bindings
  */
 
-const disableKeyBindings = computed(() => !props.keyBindings);
-
-/**
- * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
- */
-
+// @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
-onKeyDown(panningKeyCode.value, () => {
+function switchToPanningMode() {
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
-});
+}
 
-onKeyUp(panningKeyCode.value, () => {
+function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+}
+
+onKeyDown(panningKeyCode.value, switchToPanningMode, {
+	dedupe: true,
 });
+
+onKeyUp(panningKeyCode.value, switchToSelectionMode);
+
+/**
+ * Rename node key bindings
+ * We differentiate between short and long press because the space key is also used for activating panning
+ */
+
+const renameKeyCode = ' ';
+
+useShortKeyPress(
+	renameKeyCode,
+	() => {
+		if (lastSelectedNode.value) {
+			emit('update:node:name', lastSelectedNode.value.id);
+		}
+	},
+	{
+		disabled: toRef(props, 'readOnly'),
+	},
+);
+
+/**
+ * Key bindings
+ */
+
+const disableKeyBindings = computed(() => !props.keyBindings);
 
 function selectLeftNode(id: string) {
 	const incomingNodes = getIncomingNodes(id);
@@ -296,6 +324,8 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	emit('click:node', node.id);
+
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
 	}
@@ -317,8 +347,7 @@ function clearSelectedNodes() {
 }
 
 function onSelectNode() {
-	if (!lastSelectedNode.value) return;
-	emit('update:node:selected', lastSelectedNode.value.id);
+	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
 function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
@@ -644,6 +673,14 @@ function onMinimapMouseLeave() {
 }
 
 /**
+ * Window Events
+ */
+
+function onWindowBlur() {
+	switchToSelectionMode();
+}
+
+/**
  * Lifecycle
  */
 
@@ -652,11 +689,15 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+
+	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
+
+	window.removeEventListener('blur', onWindowBlur);
 });
 
 onPaneReady(async () => {

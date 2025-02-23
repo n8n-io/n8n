@@ -103,6 +103,11 @@ export class License {
 			});
 
 			await this.manager.initialize();
+
+			const features = this.manager.getFeatures();
+			this.checkIsLicensedForMultiMain(features);
+			this.checkIsLicensedForBinaryDataS3(features);
+
 			this.logger.debug('License initialized');
 		} catch (error: unknown) {
 			if (error instanceof Error) {
@@ -129,43 +134,19 @@ export class License {
 	async onFeatureChange(_features: TFeatures): Promise<void> {
 		this.logger.debug('License feature change detected', _features);
 
-		if (config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled) {
-			const isMultiMainLicensed =
-				(_features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as boolean | undefined) ?? false;
+		this.checkIsLicensedForMultiMain(_features);
+		this.checkIsLicensedForBinaryDataS3(_features);
 
-			this.instanceSettings.setMultiMainLicensed(isMultiMainLicensed);
-
-			if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
-				this.logger
-					.scoped(['scaling', 'multi-main-setup', 'license'])
-					.debug('Instance is not leader, skipping sending of "reload-license" command...');
-				return;
-			}
-
-			if (this.globalConfig.multiMainSetup.enabled && !isMultiMainLicensed) {
-				this.logger
-					.scoped(['scaling', 'multi-main-setup', 'license'])
-					.debug(
-						'License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
-					);
-			}
+		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+			this.logger
+				.scoped(['scaling', 'multi-main-setup', 'license'])
+				.debug('Instance is not leader, skipping sending of "reload-license" command...');
+			return;
 		}
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
-		}
-
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = _features['feat:binaryDataS3'];
-
-		if (isS3Selected && isS3Available && !isS3Licensed) {
-			this.logger.debug(
-				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
-			);
-
-			Container.get(ObjectStoreService).setReadonly(true);
 		}
 	}
 
@@ -406,5 +387,46 @@ export class License {
 		}
 		await this.init({ forceRecreate: true });
 		this.logger.debug('License reinitialized');
+	}
+
+	/**
+	 * Ensures that the instance is licensed for multi-main setup if multi-main mode is enabled
+	 */
+	private checkIsLicensedForMultiMain(features: TFeatures) {
+		const isMultiMainEnabled =
+			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled;
+		if (!isMultiMainEnabled) {
+			return;
+		}
+
+		const isMultiMainLicensed =
+			(features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as boolean | undefined) ?? false;
+
+		this.instanceSettings.setMultiMainLicensed(isMultiMainLicensed);
+
+		if (!isMultiMainLicensed) {
+			this.logger
+				.scoped(['scaling', 'multi-main-setup', 'license'])
+				.debug(
+					'License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
+				);
+		}
+	}
+
+	/**
+	 * Ensures that the instance is licensed for binary data S3 if S3 is selected and available
+	 */
+	private checkIsLicensedForBinaryDataS3(features: TFeatures) {
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = features['feat:binaryDataS3'];
+
+		if (isS3Selected && isS3Available && !isS3Licensed) {
+			this.logger.debug(
+				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
+			);
+
+			Container.get(ObjectStoreService).setReadonly(true);
+		}
 	}
 }

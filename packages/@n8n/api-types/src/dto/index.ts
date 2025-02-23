@@ -39,12 +39,15 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 
+export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
+export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
+export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

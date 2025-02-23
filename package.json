@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.78.0",
+  "version": "1.80.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
-    "pnpm": ">=9.15"
+    "pnpm": ">=10.2.1"
   },
-  "packageManager": "pnpm@9.15.5",
+  "packageManager": "pnpm@10.2.1",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",

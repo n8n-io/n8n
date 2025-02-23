@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+import { ref } from 'vue';
 
 import type { UserAction } from 'n8n-design-system/types';
 import type { IconOrientation, IconSize } from 'n8n-design-system/types/icon';
@@ -16,6 +17,9 @@ interface ActionToggleProps {
 	iconSize?: IconSize;
 	theme?: (typeof THEME)[number];
 	iconOrientation?: IconOrientation;
+	loading?: boolean;
+	loadingRowCount?: number;
+	disabled?: boolean;
 }
 
 defineOptions({ name: 'N8nActionToggle' });
@@ -24,22 +28,40 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	placement: 'bottom',
 	size: 'medium',
 	theme: 'default',
+	iconSize: 'medium',
 	iconOrientation: 'vertical',
+	loading: false,
+	loadingRowCount: 3,
+	disabled: false,
 });
 
+const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 const emit = defineEmits<{
 	action: [value: string];
 	'visible-change': [value: boolean];
 }>();
 const onCommand = (value: string) => emit('action', value);
 const onVisibleChange = (value: boolean) => emit('visible-change', value);
+const openActionToggle = (isOpen: boolean) => {
+	if (isOpen) {
+		actionToggleRef.value?.handleOpen();
+	} else {
+		actionToggleRef.value?.handleClose();
+	}
+};
+
+defineExpose({
+	openActionToggle,
+});
 </script>
 
 <template>
 	<span :class="$style.container" data-test-id="action-toggle" @click.stop.prevent>
 		<ElDropdown
+			ref="actionToggleRef"
 			:placement="placement"
 			:size="size"
+			:disabled="disabled"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"
@@ -54,7 +76,18 @@ const onVisibleChange = (value: boolean) => emit('visible-change', value);
 			</slot>
 
 			<template #dropdown>
-				<ElDropdownMenu data-test-id="action-toggle-dropdown">
+				<ElDropdownMenu
+					v-if="loading"
+					:class="$style['loading-dropdown']"
+					data-test-id="action-toggle-loading-dropdown"
+				>
+					<ElDropdownItem v-for="index in loadingRowCount" :key="index" :disabled="true">
+						<template #default>
+							<N8nLoading :class="$style.loading" animated variant="text" />
+						</template>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+				<ElDropdownMenu v-else data-test-id="action-toggle-dropdown">
 					<ElDropdownItem
 						v-for="action in actions"
 						:key="action.value"
@@ -112,5 +145,18 @@ const onVisibleChange = (value: boolean) => emit('visible-change', value);
 
 li:hover .iconContainer svg {
 	color: var(--color-primary-tint-1);
+}
+
+.loading-dropdown {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing-xs) 0;
+	gap: var(--spacing-2xs);
+}
+
+.loading {
+	display: flex;
+	width: 100%;
+	min-width: var(--spacing-3xl);
 }
 </style>

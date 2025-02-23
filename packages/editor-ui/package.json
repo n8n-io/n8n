@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.78.0",
+  "version": "1.80.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -29,11 +29,6 @@
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.26.3",
     "@fontsource/open-sans": "^4.5.0",
-    "@jsplumb/browser-ui": "^5.13.2",
-    "@jsplumb/common": "^5.13.2",
-    "@jsplumb/connector-bezier": "^5.13.2",
-    "@jsplumb/core": "^5.13.2",
-    "@jsplumb/util": "^5.13.2",
     "@lezer/common": "^1.0.4",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
@@ -50,7 +45,7 @@
     "@vue-flow/minimap": "^1.5.2",
     "@vue-flow/node-resizer": "^1.4.0",
     "@vueuse/components": "^10.11.0",
-    "@vueuse/core": "^10.11.0",
+    "@vueuse/core": "catalog:frontend",
     "axios": "catalog:",
     "bowser": "2.11.0",
     "change-case": "^5.4.4",

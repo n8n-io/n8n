@@ -295,6 +295,8 @@ async function startExecution(
 		throw objectToError(
 			{
 				...executionError,
+				executionId,
+				workflowId: workflowData.id,
 				stack: executionError?.stack,
 				message: executionError?.message,
 			},
@@ -322,6 +324,8 @@ async function startExecution(
 	throw objectToError(
 		{
 			...error,
+			executionId,
+			workflowId: workflowData.id,
 			stack: error?.stack,
 		},
 		workflow,

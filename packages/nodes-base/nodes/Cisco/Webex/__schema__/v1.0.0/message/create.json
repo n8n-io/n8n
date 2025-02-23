@@ -1,0 +1,35 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"roomId": {
+			"type": "string"
+		},
+		"roomType": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		},
+		"personId": {
+			"type": "string"
+		},
+		"personEmail": {
+			"type": "string"
+		},
+		"created": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"roomId",
+		"roomType",
+		"text",
+		"personId",
+		"personEmail",
+		"created"
+	]
+}
