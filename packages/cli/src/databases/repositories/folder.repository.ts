@@ -1,15 +1,12 @@
-import type { CreateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
 
 import type { FolderWithWorkflowsCount } from '../entities/folder';
 import { Folder } from '../entities/folder';
 import { FolderTagMapping } from '../entities/folder-tag-mapping';
-import type { Project } from '../entities/project';
 import { TagEntity } from '../entities/tag-entity';
 
 @Service()
