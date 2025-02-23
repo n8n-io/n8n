@@ -115,6 +115,9 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			folder: {
+				create: true,
+			},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
