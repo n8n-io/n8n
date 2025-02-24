@@ -331,55 +331,6 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
 
-  packages/@n8n/chat:
-    dependencies:
-      '@vueuse/core':
-        specifier: ^10.11.0
-        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
-      highlight.js:
-        specifier: catalog:frontend
-        version: 11.9.0
-      markdown-it-link-attributes:
-        specifier: ^4.0.1
-        version: 4.0.1
-      uuid:
-        specifier: 'catalog:'
-        version: 10.0.0
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.13(typescript@5.7.2)
-      vue-markdown-render:
-        specifier: catalog:frontend
-        version: 2.2.1(vue@3.5.13(typescript@5.7.2))
-    devDependencies:
-      '@iconify-json/mdi':
-        specifier: ^1.1.54
-        version: 1.1.63
-      '@n8n/storybook':
-        specifier: workspace:*
-        version: link:../storybook
-      '@vitejs/plugin-vue':
-        specifier: catalog:frontend
-        version: 5.2.1(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.7.2))
-      '@vitest/coverage-v8':
-        specifier: catalog:frontend
-        version: 3.0.5(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
-      unplugin-icons:
-        specifier: ^0.19.0
-        version: 0.19.0(@vue/compiler-sfc@3.5.13)
-      vite:
-        specifier: catalog:frontend
-        version: 6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
-      vite-plugin-dts:
-        specifier: ^4.3.0
-        version: 4.3.0(@types/node@18.16.16)(rollup@4.24.0)(typescript@5.7.2)(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))
-      vitest:
-        specifier: catalog:frontend
-        version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
-      vue-tsc:
-        specifier: ^2.1.10
-        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
-
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
@@ -1437,7 +1388,7 @@ importers:
         version: link:../@n8n/api-types
       '@n8n/chat':
         specifier: workspace:*
-        version: link:../@n8n/chat
+        version: link:../frontend/@n8n/chat
       '@n8n/codemirror-lang':
         specifier: workspace:*
         version: link:../@n8n/codemirror-lang
@@ -1688,6 +1639,55 @@ importers:
       vitest-mock-extended:
         specifier: catalog:frontend
         version: 2.0.2(typescript@5.7.2)(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
+      vue-tsc:
+        specifier: ^2.1.10
+        version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
+
+  packages/frontend/@n8n/chat:
+    dependencies:
+      '@vueuse/core':
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
+      highlight.js:
+        specifier: catalog:frontend
+        version: 11.9.0
+      markdown-it-link-attributes:
+        specifier: ^4.0.1
+        version: 4.0.1
+      uuid:
+        specifier: 'catalog:'
+        version: 10.0.0
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.7.2)
+      vue-markdown-render:
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.5.13(typescript@5.7.2))
+    devDependencies:
+      '@iconify-json/mdi':
+        specifier: ^1.1.54
+        version: 1.1.63
+      '@n8n/storybook':
+        specifier: workspace:*
+        version: link:../../../@n8n/storybook
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.1(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.7.2))
+      '@vitest/coverage-v8':
+        specifier: catalog:frontend
+        version: 3.0.5(vitest@3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
+      unplugin-icons:
+        specifier: ^0.19.0
+        version: 0.19.0(@vue/compiler-sfc@3.5.13)
+      vite:
+        specifier: catalog:frontend
+        version: 6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
+      vite-plugin-dts:
+        specifier: ^4.3.0
+        version: 4.3.0(@types/node@18.16.16)(rollup@4.24.0)(typescript@5.7.2)(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))
+      vitest:
+        specifier: catalog:frontend
+        version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
       vue-tsc:
         specifier: ^2.1.10
         version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
@@ -16171,7 +16171,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.10
       '@iconify/types': 2.0.0
-      debug: 4.3.7
+      debug: 4.4.0
       kolorist: 1.8.0
       local-pkg: 0.5.0
       mlly: 1.7.1
@@ -27492,7 +27492,7 @@ snapshots:
       '@antfu/install-pkg': 0.3.3
       '@antfu/utils': 0.7.10
       '@iconify/utils': 2.1.25
-      debug: 4.3.5
+      debug: 4.4.0
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.11.0
