@@ -46,11 +46,12 @@ const emit = defineEmits<{
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id: string];
+	'update:node:selected': [id?: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'click:node': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -154,21 +155,21 @@ const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', contro
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
-onKeyDown(
-	panningKeyCode.value,
-	() => {
-		selectionKeyCode.value = null;
-		panningMouseButton.value = [0, 1];
-	},
-	{
-		dedupe: true,
-	},
-);
+function switchToPanningMode() {
+	selectionKeyCode.value = null;
+	panningMouseButton.value = [0, 1];
+}
 
-onKeyUp(panningKeyCode.value, () => {
+function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+}
+
+onKeyDown(panningKeyCode.value, switchToPanningMode, {
+	dedupe: true,
 });
+
+onKeyUp(panningKeyCode.value, switchToSelectionMode);
 
 /**
  * Rename node key bindings
@@ -323,6 +324,8 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	emit('click:node', node.id);
+
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
 	}
@@ -344,8 +347,7 @@ function clearSelectedNodes() {
 }
 
 function onSelectNode() {
-	if (!lastSelectedNode.value) return;
-	emit('update:node:selected', lastSelectedNode.value.id);
+	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
 function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
@@ -671,6 +673,14 @@ function onMinimapMouseLeave() {
 }
 
 /**
+ * Window Events
+ */
+
+function onWindowBlur() {
+	switchToSelectionMode();
+}
+
+/**
  * Lifecycle
  */
 
@@ -679,11 +689,15 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+
+	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
+
+	window.removeEventListener('blur', onWindowBlur);
 });
 
 onPaneReady(async () => {

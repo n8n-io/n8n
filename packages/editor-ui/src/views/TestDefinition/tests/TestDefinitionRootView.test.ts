@@ -1,16 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createPinia, setActivePinia } from 'pinia';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import TestDefinitionRootView from '../TestDefinitionRootView.vue';
-import { useRouter } from 'vue-router';
+
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
-import * as workflowsApi from '@/api/workflows';
 
-vi.mock('vue-router');
-vi.mock('@/api/workflows');
+import { waitFor } from '@testing-library/vue';
 
 describe('TestDefinitionRootView', () => {
 	const renderComponent = createComponentRenderer(TestDefinitionRootView);
@@ -33,55 +30,33 @@ describe('TestDefinitionRootView', () => {
 	};
 
 	beforeEach(() => {
-		setActivePinia(createPinia());
-
-		vi.mocked(useRouter).mockReturnValue({
-			currentRoute: {
-				value: {
-					params: {
-						name: 'workflow123',
-					},
-				},
-			},
-		} as unknown as ReturnType<typeof useRouter>);
-
-		vi.mocked(workflowsApi.getWorkflow).mockResolvedValue({
-			...mockWorkflow,
-			id: 'workflow123',
-		});
+		createTestingPinia();
 	});
 
 	it('should initialize workflow on mount if not already initialized', async () => {
-		const pinia = createTestingPinia();
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflow = mockWorkflow;
+		const newWorkflowId = 'workflow123';
 
-		const newWorkflow = {
-			...mockWorkflow,
-			id: 'workflow123',
-		};
-		workflowsStore.fetchWorkflow.mockResolvedValue(newWorkflow);
+		renderComponent({ props: { name: newWorkflowId } });
 
-		renderComponent({ pinia });
-
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow123');
+		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId);
 	});
 
 	it('should not initialize workflow if already loaded', async () => {
-		const pinia = createTestingPinia();
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow = {
-			...mockWorkflow,
-			id: 'workflow123',
-		};
+		workflowsStore.workflow = mockWorkflow;
 
-		renderComponent({ pinia });
+		renderComponent({ props: { name: mockWorkflow.id } });
 
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
 	});
 
-	it('should render router view', () => {
-		const { container } = renderComponent();
-		expect(container.querySelector('router-view')).toBeTruthy();
+	it('should render router view', async () => {
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+
+		await waitFor(() => expect(container.querySelector('router-view')).toBeTruthy());
 	});
 });

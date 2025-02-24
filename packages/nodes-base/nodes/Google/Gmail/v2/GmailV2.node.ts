@@ -13,10 +13,10 @@ import { labelFields, labelOperations } from './LabelDescription';
 import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
-	configureWaitTillDate,
 	createEmail,
 	getSendAndWaitProperties,
 	sendAndWaitWebhook,

@@ -16,13 +16,33 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseJsonToFormFields,
 	NodeConnectionType,
-	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
 import { renderFormCompletion } from './formCompletionUtils';
 import { renderFormNode } from './formNodeUtils';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
+import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
 import { prepareFormReturnItem, resolveRawData } from '../Form/utils';
+
+const waitTimeProperties: INodeProperties[] = [
+	{
+		displayName: 'Limit Wait Time',
+		name: 'limitWaitTime',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to limit the time this node should wait for a user response before execution resumes',
+	},
+	...updateDisplayOptions(
+		{
+			show: {
+				limitWaitTime: [true],
+			},
+		},
+		limitWaitTimeProperties,
+	),
+];
 
 export const formFieldsProperties: INodeProperties[] = [
 	{
@@ -71,6 +91,7 @@ const pageProperties = updateDisplayOptions(
 	},
 	[
 		...formFieldsProperties,
+		...waitTimeProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -177,6 +198,7 @@ const completionProperties = updateDisplayOptions(
 			placeholder: 'e.g. Thanks for filling the form',
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
+		...waitTimeProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -221,7 +243,7 @@ export class Form extends Node {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: 'onReceived',
+				responseMode: 'responseNode',
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
@@ -359,7 +381,15 @@ export class Form extends Node {
 			);
 		}
 
-		await context.putExecutionToWait(WAIT_INDEFINITELY);
+		const waitTill = configureWaitTillDate(context, 'root');
+		await context.putExecutionToWait(waitTill);
+
+		context.sendResponse({
+			headers: {
+				location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+			},
+			statusCode: 307,
+		});
 
 		return [context.getInputData()];
 	}
