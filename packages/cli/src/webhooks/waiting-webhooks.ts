@@ -237,10 +237,8 @@ export class WaitingWebhooks implements IWebhookManager {
 				req,
 				res,
 				(error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					resolve(data);
+					if (error !== null) reject(error);
+					else resolve(data);
 				},
 			);
 		});

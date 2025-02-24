@@ -151,14 +151,10 @@ export class LiveWebhooks implements IWebhookManager {
 				request,
 				response,
 				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
+					if (error !== null) reject(error);
+					else resolve(data);
 				},
-			);
+			).then(async () => await this.workflowStaticDataService.saveStaticData(workflow));
 		});
 	}
 
