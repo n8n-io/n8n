@@ -1,8 +1,9 @@
-import type { CreateFolderDto } from '@n8n/api-types';
+import type { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { Folder } from '@/databases/entities/folder';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -35,6 +36,11 @@ export class FolderService {
 		const { homeProject, ...folder } = await this.folderRepository.save(folderEntity);
 
 		return folder;
+	}
+
+	async updateFolder(folderId: string, projectId: string, { name }: UpdateFolderDto) {
+		await this.getFolderInProject(folderId, projectId);
+		return await this.folderRepository.update({ id: folderId }, { name });
 	}
 
 	async getFolderInProject(folderId: string, projectId: string) {
