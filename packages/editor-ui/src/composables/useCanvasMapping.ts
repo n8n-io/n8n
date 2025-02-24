@@ -27,7 +27,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtilsV2';
+} from '@/utils/canvasUtils';
 import type {
 	ExecutionStatus,
 	ExecutionSummary,

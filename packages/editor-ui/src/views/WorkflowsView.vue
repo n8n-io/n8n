@@ -46,6 +46,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { debounce } from 'lodash-es';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -340,7 +341,11 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	loading.value = true;
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || '0';
@@ -361,6 +366,7 @@ const fetchWorkflows = async () => {
 	// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
 	currentFolder.value = fetchedResources[0]?.parentFolder;
 
+	delayedLoading.cancel();
 	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
 	return fetchedResources;
