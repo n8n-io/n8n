@@ -3,9 +3,9 @@ import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 
 
 import { mediaFields, mediaTypeFields } from './MediaDescription';
 import { messageFields, messageTypeFields } from './MessagesDescription';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
 import {
-	configureWaitTillDate,
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
 	sendAndWaitWebhook,

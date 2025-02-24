@@ -973,15 +973,19 @@ export class WorkflowExecute {
 	}
 
 	private getCustomOperation(node: INode, type: INodeType) {
-    if (!node.parameters || !type.customOperations) {
-      return undefined;
-    }
-    
+		if (!type.customOperations) return undefined;
+
+		if (!node.parameters) return undefined;
+
+		const { customOperations } = type;
 		const { resource, operation } = node.parameters;
 
-		if (typeof resource !== 'string' || typeof operation !== 'string') return;
+		if (typeof resource !== 'string' || typeof operation !== 'string') return undefined;
+		if (!customOperations[resource] || !customOperations[resource][operation]) return undefined;
 
-		return type.customOperations?.[resource]?.[operation];
+		const customOperation = customOperations[resource][operation];
+
+		return customOperation;
 	}
 
 	/** Executes the given node */
