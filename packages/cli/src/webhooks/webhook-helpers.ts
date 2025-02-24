@@ -813,6 +813,7 @@ export async function executeWebhook(
 					}
 
 					const internalServerError = new InternalServerError(e.message, e);
+					// @ts-expect-error Disregarding while we refactor this file
 					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});
