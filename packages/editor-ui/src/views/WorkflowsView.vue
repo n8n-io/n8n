@@ -119,7 +119,7 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: 'Create Folder',
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
-		disabled: true,
+		disabled: false,
 	},
 	{
 		label: 'Create Workflow',
@@ -567,13 +567,9 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
-// TODO: Refactor this
-const addFolder = async () => {
-	if (!route.params.projectId) return;
-	const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
-	if (!currentParent) return;
+const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
 	const promptResponsePromise = message.prompt(
-		i18n.baseText('folders.add.modal.message', { interpolate: { parent: currentParent } }),
+		i18n.baseText('folders.add.modal.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
@@ -591,7 +587,7 @@ const addFolder = async () => {
 			const newFolder = await foldersStore.createFolder(
 				folderName,
 				route.params.projectId as string,
-				route.params.folderId as string | undefined,
+				parent.type === 'folder' ? parent.id : undefined,
 			);
 			let newFolderURL = `/projects/${route.params.projectId}`;
 			if (newFolder.parentFolder) {
@@ -607,11 +603,23 @@ const addFolder = async () => {
 				}),
 				type: 'success',
 			});
+			// TODO: Do not fetch if we are on empty state
 			await fetchWorkflows();
 		} catch (error) {
 			toast.showError(error, 'Error creating folder');
 		}
 	}
+};
+
+const onAddFolderButtonClick = async () => {
+	if (!route.params.projectId) return;
+	const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
+	if (!currentParent) return;
+	await createFolder({
+		id: (route.params.folderId as string) ?? '-1',
+		name: currentParent,
+		type: currentFolder.value ? 'folder' : 'project',
+	});
 };
 
 const onBreadcrumbItemClick = (item: PathItem) => {
@@ -624,6 +632,39 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 			.catch((error) => {
 				toast.showError(error, 'Error navigating to folder');
 			});
+	}
+};
+
+const onBreadCrumbsAction = async (action: string) => {
+	switch (action) {
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
+			if (!route.params.projectId) return;
+			const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
+			if (!currentParent) return;
+			await createFolder({
+				id: (route.params.folderId as string) ?? '-1',
+				name: currentParent,
+				type: currentFolder.value ? 'folder' : 'project',
+			});
+			break;
+		default:
+			break;
+	}
+};
+
+const onFolderCardAction = async (payload: { action: string; folderId: string }) => {
+	const clickedFolder = foldersStore.getCachedFolder(payload.folderId);
+	if (!clickedFolder) return;
+	switch (payload.action) {
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
+			await createFolder({
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+				type: 'folder',
+			});
+			break;
+		default:
+			break;
 	}
 };
 </script>
@@ -664,7 +705,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					@click="addFolder"
+					@click="onAddFolderButtonClick"
 				/>
 			</N8nTooltip>
 		</template>
@@ -705,7 +746,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 					:highlight-last-item="false"
 					:path-truncated="mainBreadcrumbsItems[0].parentFolder"
 					data-test-id="folder-card-breadcrumbs"
-					@itemSelected="onBreadcrumbItemClick"
+					@item-selected="onBreadcrumbItemClick"
 				>
 					<template v-if="currentProject" #prepend>
 						<div :class="$style['home-project']">
@@ -720,6 +761,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 					:actions="mainBreadcrumbsActions"
 					theme="dark"
 					data-test-id="folder-breadcrumbs-actions"
+					@action="onBreadCrumbsAction"
 				/>
 			</div>
 		</template>
@@ -729,6 +771,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				class="mb-2xs"
+				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
