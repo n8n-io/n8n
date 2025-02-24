@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, UserAction, WorkflowListResourceDB, WorkflowResourceDB } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResourceDB, WorkflowListItem } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -527,8 +527,8 @@ const onSortUpdated = async (sort: string) => {
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
-	const workflow: WorkflowResourceDB | undefined = workflowsAndFolders.value.find(
-		(w): w is WorkflowResourceDB => isResponseWorkflowResource(w) && w.id === data.id,
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => isResponseWorkflowResource(w) && w.id === data.id,
 	);
 	if (!workflow) return;
 	workflow.active = data.active;

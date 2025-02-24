@@ -318,11 +318,11 @@ export interface IWorkflowDb {
 }
 
 // For workflow list we don't need the full workflow data
-export type WorkflowResourceDB = Omit<
+export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
 >;
-export interface IFolderDb {
+export interface FolderListItem {
 	resource: 'folder';
 	id: string;
 	name: string;
@@ -335,7 +335,7 @@ export interface IFolderDb {
 	sharedWithProjects?: ProjectSharingData[];
 }
 
-export type WorkflowListResourceDB = WorkflowResourceDB | IFolderDb;
+export type WorkflowListResourceDB = WorkflowListItem | FolderListItem;
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
