@@ -276,6 +276,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
+	const connectionsByDestinationNode = computed(() =>
+		Workflow.getConnectionsByDestination(workflow.value.connections),
+	);
+
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
 			return null;
@@ -294,7 +298,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
-		return getCurrentWorkflow().connectionsByDestinationNode[nodeName] ?? {};
+		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
+			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
+		}
+		return {};
 	}
 
 	function nodeHasOutputConnection(nodeName: string): boolean {
