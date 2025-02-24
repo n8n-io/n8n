@@ -5,9 +5,9 @@ import type { FolderCreateResponse } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 
-const rootStore = useRootStore();
-
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
+	const rootStore = useRootStore();
+
 	const currentFolderId = ref<string | null>(null);
 
 	const foldersCache = ref<Record<string, { id: string; name: string; parentFolder?: string }>>({});
