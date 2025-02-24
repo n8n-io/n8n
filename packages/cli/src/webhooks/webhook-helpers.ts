@@ -179,15 +179,12 @@ export async function executeWebhook(
 	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	destinationNode?: string,
 ): Promise<string | undefined> {
-	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 	if (executionId) {
 		additionalData.executionId = executionId;
+		additionalKeys.$executionId = executionId;
 	}
-
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$executionId: executionId,
-	};
 
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
@@ -333,10 +330,6 @@ export async function executeWebhook(
 				workflowData: [[{ json: {} }]],
 			};
 		}
-
-		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$executionId: executionId,
-		};
 
 		if (webhookData.webhookDescription.responseHeaders !== undefined) {
 			const responseHeaders = workflow.expression.getComplexParameterValue(
@@ -556,6 +549,7 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+		additionalKeys.$executionId = executionId;
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
@@ -630,10 +624,6 @@ export async function executeWebhook(
 						didSendResponse = true;
 						return data;
 					}
-
-					const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-						$executionId: executionId,
-					};
 
 					if (!didSendResponse) {
 						let data: IDataObject | IDataObject[] | undefined;
