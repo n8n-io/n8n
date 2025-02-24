@@ -50,6 +50,7 @@ import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import { isResponseWorkflowResource } from '@/utils/typeGuards';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { useFoldersStore } from '@/stores/folders.store';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -85,6 +86,8 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
+const foldersStore = useFoldersStore();
+
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 
@@ -101,8 +104,6 @@ const workflowListEventBus = createEventBus();
 const workflowsAndFolders = ref<WorkflowListResourceDB[]>([]);
 
 const easyAICalloutVisible = ref(true);
-
-const currentFolder = ref<FolderResource | undefined>(undefined);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -160,10 +161,19 @@ const isShareable = computed(
 );
 
 const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
+const currentFolder = computed(() => foldersStore.currentFolderInfo);
 
 const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
 	if (!showFolders.value || !currentFolder.value) return;
 	const items: PathItem[] = [];
+	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
+	if (parent) {
+		items.push({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+		});
+	}
 	items.push({
 		id: currentFolder.value.id,
 		label: currentFolder.value.name,
@@ -264,9 +274,7 @@ watch(
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
-		if (!newVal) {
-			currentFolder.value = undefined;
-		}
+		foldersStore.currentFolderId = newVal as string;
 		await fetchWorkflows();
 	},
 );
@@ -363,10 +371,11 @@ const fetchWorkflows = async () => {
 		},
 		showFolders.value,
 	);
-	if (!currentFolder.value && fetchedResources.length) {
-		// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
-		currentFolder.value = fetchedResources[0]?.parentFolder;
-	}
+	foldersStore.cacheFolders(
+		fetchedResources
+			.filter((resource) => resource.resource === 'folder')
+			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+	);
 
 	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
@@ -541,12 +550,13 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 };
 
 const onFolderOpened = (data: { folder: FolderResource }) => {
-	currentFolder.value = data.folder;
+	console.log('Folder opened', data.folder);
 };
 
+// TODO: Refactor this
 const addFolder = async () => {
 	if (!route.params.projectId) return;
-	const currentParent = currentFolder.value?.name || projectName.value;
+	const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
 	if (!currentParent) return;
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.modal.message', { interpolate: { parent: currentParent } }),
@@ -665,7 +675,7 @@ const addFolder = async () => {
 				v-if="mainBreadcrumbsItems"
 				:items="mainBreadcrumbsItems"
 				:highlight-last-item="false"
-				:path-truncated="currentFolder !== undefined"
+				:path-truncated="foldersStore.currentFolderId !== undefined"
 				data-test-id="folder-card-breadcrumbs"
 			>
 				<template v-if="currentProject" #prepend>
