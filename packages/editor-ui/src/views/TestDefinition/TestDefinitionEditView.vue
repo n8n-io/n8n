@@ -232,10 +232,9 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:maxlength="260"
 					max-height="none"
 					type="Test description"
-					:class="$style.editDescription"
 					@update:model-value="updateDescription"
 				>
-					<N8nText size="small" color="text-base">{{ state.description.value }}</N8nText>
+					<N8nText size="medium" color="text-base">{{ state.description.value }}</N8nText>
 				</InlineNameEdit>
 			</div>
 
