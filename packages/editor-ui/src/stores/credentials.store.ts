@@ -300,11 +300,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		projectId?: string,
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
-		const credential = await credentialsApi.createNewCredential(
-			rootStore.restApiContext,
-			data,
+		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
+			name: data.name,
+			type: data.type,
+			data: data.data ?? {},
 			projectId,
-		);
+		});
 
 		if (data?.homeProject && !credential.homeProject) {
 			credential.homeProject = data.homeProject as ProjectSharingData;

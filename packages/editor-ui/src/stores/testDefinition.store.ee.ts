@@ -172,6 +172,15 @@ export const useTestDefinitionStore = defineStore(
 			return testDefinition;
 		};
 
+		const fetchTestDefinitionsByWorkflowId = async (workflowId: string) => {
+			const testDefinitions = await testDefinitionsApi.getTestDefinitions(
+				rootStore.restApiContext,
+				{ workflowId },
+			);
+			setAllTestDefinitions(testDefinitions.testDefinitions);
+			return testDefinitions.testDefinitions;
+		};
+
 		const fetchTestCaseExecutions = async (params: { testDefinitionId: string; runId: string }) => {
 			const testCaseExecutions = await testDefinitionsApi.getTestCaseExecutions(
 				rootStore.restApiContext,
@@ -202,16 +211,15 @@ export const useTestDefinitionStore = defineStore(
 
 			loading.value = true;
 			try {
-				const retrievedDefinitions = await testDefinitionsApi.getTestDefinitions(
-					rootStore.restApiContext,
-					{ workflowId },
-				);
+				if (!workflowId) {
+					return;
+				}
 
-				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
+				const retrievedDefinitions = await fetchTestDefinitionsByWorkflowId(workflowId);
 				fetchedAll.value = true;
 
 				await Promise.all([
-					tagsStore.fetchAll({ withUsageCount: true }),
+					tagsStore.fetchAll({ force: true, withUsageCount: true }),
 					fetchRunsForAllTests(),
 					fetchMetricsForAllTests(),
 				]);
@@ -219,6 +227,14 @@ export const useTestDefinitionStore = defineStore(
 			} finally {
 				loading.value = false;
 			}
+		};
+
+		const fetchExampleEvaluationInput = async (testId: string, annotationTagId: string) => {
+			return await testDefinitionsApi.getExampleEvaluationInput(
+				rootStore.restApiContext,
+				testId,
+				annotationTagId,
+			);
 		};
 
 		/**
@@ -455,8 +471,10 @@ export const useTestDefinitionStore = defineStore(
 
 			// Methods
 			fetchTestDefinition,
+			fetchTestDefinitionsByWorkflowId,
 			fetchTestCaseExecutions,
 			fetchAll,
+			fetchExampleEvaluationInput,
 			create,
 			update,
 			deleteById,

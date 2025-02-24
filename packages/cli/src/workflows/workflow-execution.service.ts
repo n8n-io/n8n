@@ -87,6 +87,18 @@ export class WorkflowExecutionService {
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
+	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
+		const node = workflow.nodes.find((n) => n.name === destinationNode);
+
+		if (node === undefined) {
+			return false;
+		}
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		return nodeType.description.group.includes('trigger');
+	}
+
 	async executeManually(
 		{
 			workflowData,
@@ -106,6 +118,23 @@ export class WorkflowExecutionService {
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
 		);
+
+		// TODO: Reverse the order of events, first find out if the execution is
+		// partial or full, if it's partial create the execution and run, if it's
+		// full get the data first and only then create the execution.
+		//
+		// If the destination node is a trigger, then per definition this
+		// is not a partial execution and thus we can ignore the run data.
+		// If we don't do this we'll end up creating an execution, calling the
+		// partial execution flow, finding out that we don't have run data to
+		// create the execution stack and have to cancel the execution, come back
+		// here and either create the runData (e.g. scheduler trigger) or wait for
+		// a webhook or event.
+		if (destinationNode) {
+			if (this.isDestinationNodeATrigger(destinationNode, workflowData)) {
+				runData = undefined;
+			}
+		}
 
 		// if we have a trigger to start from and it's not the pinned trigger
 		// ignore the pinned trigger
@@ -178,7 +207,7 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData,
+					runData: runData ?? {},
 				},
 				manualData: {
 					userId: data.userId,
