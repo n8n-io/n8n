@@ -10,11 +10,13 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import type { Project } from '@/databases/entities/project';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -39,6 +41,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -210,6 +213,13 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError(errorMessage);
 		}
 
+		let project: Project;
+		try {
+			project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+		} catch (error) {
+			throw new NotFoundError('Cannot find workflow');
+		}
+
 		const runExecutionData = execution.data;
 
 		return await new Promise((resolve, reject) => {
@@ -223,9 +233,9 @@ export class WaitingWebhooks implements IWebhookManager {
 				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,
+				project.id,
 				req,
 				res,
-
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);

@@ -11,12 +11,14 @@ import type {
 } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
+import type { Project } from '@/databases/entities/project';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { removeTrailingSlash } from '@/utils';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
@@ -45,6 +47,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly webhookService: WebhookService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -103,12 +106,18 @@ export class TestWebhooks implements IWebhookManager {
 
 		const { destinationNode, pushRef, workflowEntity, webhook: testWebhook } = registration;
 
+		let project: Project;
+		try {
+			project = await this.ownershipService.getWorkflowProjectCached(workflowEntity.id);
+		} catch (error) {
+			throw new NotFoundError('Cannot find workflow');
+		}
+
 		const workflow = this.toWorkflow(workflowEntity);
 
 		if (testWebhook.staticData) workflow.setTestStaticData(testWebhook.staticData);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
-
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
@@ -125,6 +134,7 @@ export class TestWebhooks implements IWebhookManager {
 					pushRef,
 					undefined, // IRunExecutionData
 					undefined, // executionId
+					project.id,
 					request,
 					response,
 					(error: Error | null, data: IWebhookResponseCallbackData) => {

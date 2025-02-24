@@ -48,10 +48,8 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { parseBody } from '@/middlewares';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
@@ -175,6 +173,7 @@ export async function executeWebhook(
 	pushRef: string | undefined,
 	runExecutionData: IRunExecutionData | undefined,
 	executionId: string | undefined,
+	projectId: Project['id'],
 	req: WebhookRequest,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
@@ -185,13 +184,6 @@ export async function executeWebhook(
 		workflowStartNode.type,
 		workflowStartNode.typeVersion,
 	);
-
-	let project: Project | undefined = undefined;
-	try {
-		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-	} catch (error) {
-		throw new NotFoundError('Cannot find workflow');
-	}
 
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase();
@@ -221,7 +213,6 @@ export async function executeWebhook(
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new ApplicationError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -499,7 +490,7 @@ export async function executeWebhook(
 			pushRef,
 			workflowData,
 			pinData,
-			projectId: project?.id,
+			projectId,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data

@@ -4,10 +4,12 @@ import { Logger } from 'n8n-core';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
+import type { Project } from '@/databases/entities/project';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -33,6 +35,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -92,17 +95,25 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
+		const { workflowId } = webhook;
 		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
+			where: { id: workflowId },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
 
 		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
+
+		let project: Project;
+		try {
+			project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+		} catch (error) {
+			throw new NotFoundError('Cannot find workflow');
 		}
 
 		const workflow = new Workflow({
-			id: webhook.workflowId,
+			id: workflowId,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
@@ -121,7 +132,6 @@ export class LiveWebhooks implements IWebhookManager {
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
-
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
@@ -137,6 +147,7 @@ export class LiveWebhooks implements IWebhookManager {
 				undefined,
 				undefined,
 				undefined,
+				project.id,
 				request,
 				response,
 				async (error: Error | null, data: object) => {
