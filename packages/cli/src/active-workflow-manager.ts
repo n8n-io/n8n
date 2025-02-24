@@ -648,11 +648,6 @@ export class ActiveWorkflowManager {
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-			if (nodeType === undefined) {
-				// Type is not known so check is not possible
-				continue;
-			}
-
 			if (
 				nodeType.poll !== undefined ||
 				nodeType.trigger !== undefined ||

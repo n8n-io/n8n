@@ -92,18 +92,6 @@ export class Workflow {
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-			if (nodeType === undefined) {
-				// Go on to next node when its type is not known.
-				// For now do not error because that causes problems with
-				// expression resolution also then when the unknown node
-				// does not get used.
-				continue;
-				// throw new ApplicationError(`Node with unknown node type`, {
-				// 	tags: { nodeType: node.type },
-				// 	extra: { node },
-				// });
-			}
-
 			// Add default values
 			const nodeParameters = NodeHelpers.getNodeParameters(
 				nodeType.description.properties,

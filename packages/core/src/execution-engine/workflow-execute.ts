@@ -39,7 +39,6 @@ import type {
 	NodeExecutionHint,
 	IRunNodeResponse,
 	IWorkflowIssues,
-	INodeIssues,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -937,7 +936,6 @@ export class WorkflowExecute {
 		}
 
 		for (const nodeName of checkNodes) {
-			let nodeIssues: INodeIssues | null = null;
 			const node = workflow.nodes[nodeName];
 
 			if (node.disabled === true) {
@@ -946,18 +944,11 @@ export class WorkflowExecute {
 
 			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-			if (nodeType === undefined) {
-				// Node type is not known
-				nodeIssues = {
-					typeUnknown: true,
-				};
-			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(
-					nodeType.description.properties,
-					node,
-					inputData.pinDataNodeNames,
-				);
-			}
+			const nodeIssues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				inputData.pinDataNodeNames,
+			);
 
 			if (nodeIssues !== null) {
 				workflowIssues[node.name] = nodeIssues;

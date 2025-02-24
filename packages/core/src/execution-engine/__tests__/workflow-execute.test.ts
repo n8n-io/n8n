@@ -459,7 +459,6 @@ describe('WorkflowExecute', () => {
 	describe('checkReadyForExecution', () => {
 		const disabledNode = mock<INode>({ name: 'Disabled Node', disabled: true });
 		const startNode = mock<INode>({ name: 'Start Node' });
-		const unknownNode = mock<INode>({ name: 'Unknown Node', type: 'unknownNode' });
 
 		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
@@ -504,22 +503,6 @@ describe('WorkflowExecute', () => {
 			});
 			expect(issues).toBe(null);
 			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(1);
-			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
-		});
-
-		it('should return typeUnknown for unknown nodes', () => {
-			const workflow = new Workflow({
-				nodes: [unknownNode],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
-
-			const issues = workflowExecute.checkReadyForExecution(workflow, {
-				startNode: unknownNode.name,
-			});
-			expect(issues).toEqual({ [unknownNode.name]: { typeUnknown: true } });
-			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
 			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
 		});
 
