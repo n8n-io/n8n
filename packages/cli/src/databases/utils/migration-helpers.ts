@@ -4,7 +4,7 @@ import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { RuntimeError, jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
@@ -69,7 +69,7 @@ const runDisablingForeignKeys = async (
 ) => {
 	const { dbType, queryRunner } = context;
 	if (dbType !== 'sqlite')
-		throw new UnexpectedError('Disabling transactions only available in sqlite');
+		throw new RuntimeError('Disabling transactions only available in sqlite');
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
 	try {

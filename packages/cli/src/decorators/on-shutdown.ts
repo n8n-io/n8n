@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { RuntimeError } from 'n8n-workflow';
 
 import { DEFAULT_SHUTDOWN_PRIORITY } from '@/constants';
 import { type ServiceClass, ShutdownService } from '@/shutdown/shutdown.service';
@@ -33,6 +33,8 @@ export const OnShutdown =
 			Container.get(ShutdownService).register(priority, { serviceClass, methodName });
 		} else {
 			const name = `${serviceClass.name}.${methodName}()`;
-			throw new UserError(`${name} must be a method on ${serviceClass.name} to use "OnShutdown"`);
+			throw new RuntimeError(
+				`${name} must be a method on ${serviceClass.name} to use "OnShutdown"`,
+			);
 		}
 	};
