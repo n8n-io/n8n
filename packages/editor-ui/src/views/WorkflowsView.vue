@@ -589,7 +589,6 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 	const promptResponse = await promptResponsePromise;
 	if (promptResponse.action === MODAL_CONFIRM) {
 		const folderName = promptResponse.value;
-		// Create folder
 		try {
 			const newFolder = await foldersStore.createFolder(
 				folderName,

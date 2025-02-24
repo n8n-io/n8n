@@ -306,26 +306,27 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
-				<n8n-breadcrumbs
-					v-else
-					:items="breadCrumbsItems"
-					:path-truncated="true"
-					:show-border="true"
-					:highlight-last-item="false"
-					theme="small"
-					data-test-id="folder-card-breadcrumbs"
-				>
-					<template v-if="data.homeProject" #prepend>
-						<div :class="$style['home-project']">
-							<n8n-link :to="`/projects/${data.homeProject.id}`">
-								<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-								<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-									projectName
-								}}</n8n-text>
-							</n8n-link>
-						</div>
-					</template>
-				</n8n-breadcrumbs>
+				<div v-else :class="$style.breadcrumbs">
+					<n8n-breadcrumbs
+						:items="breadCrumbsItems"
+						:path-truncated="true"
+						:show-border="true"
+						:highlight-last-item="false"
+						theme="small"
+						data-test-id="folder-card-breadcrumbs"
+					>
+						<template v-if="data.homeProject" #prepend>
+							<div :class="$style['home-project']">
+								<n8n-link :to="`/projects/${data.homeProject.id}`">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+										projectName
+									}}</n8n-text>
+								</n8n-link>
+							</div>
+						</template>
+					</n8n-breadcrumbs>
+				</div>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -405,7 +406,8 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		padding: 0 var(--spacing-s) var(--spacing-s);
 	}
 
-	.cardBadge {
+	.cardBadge,
+	.breadcrumbs {
 		margin-right: auto;
 	}
 }

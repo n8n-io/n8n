@@ -214,4 +214,20 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	gap: var(--spacing-3xs);
 	color: var(--color-text-dark);
 }
+
+@include mixins.breakpoint('sm-and-down') {
+	.card {
+		flex-wrap: wrap;
+
+		:global(.n8n-card-append) {
+			width: 100%;
+			margin-top: var(--spacing-3xs);
+			padding-left: 40px;
+		}
+		.card-actions {
+			width: 100%;
+			justify-content: space-between;
+		}
+	}
+}
 </style>
