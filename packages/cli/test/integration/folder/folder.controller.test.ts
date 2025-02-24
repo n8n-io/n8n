@@ -4,13 +4,13 @@ import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createFolder } from '@test-integration/db/folders';
+import { createTag } from '@test-integration/db/tags';
 
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createOwner, createMember } from '../shared/db/users';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { createTag } from '@test-integration/db/tags';
 
 let owner: User;
 let member: User;
