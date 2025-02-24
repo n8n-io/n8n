@@ -393,45 +393,30 @@ export async function executeWebhook(
 		// Now that we know that the workflow should run we can return the default response
 		// directly if responseMode it set to "onReceived" and a response should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
+			const responseCallbackData: IWebhookResponseCallbackData = { responseCode };
 			// Return response directly and do not wait for the workflow to finish
-			if (responseData === 'noData') {
-				// Return without data
-				responseCallback(null, {
-					responseCode,
-				});
-			} else if (responseData) {
-				// Return the data specified in the response data option
-				responseCallback(null, {
-					data: responseData as IDataObject,
-					responseCode,
-				});
+			if (responseData) {
+				responseCallbackData.data = responseData as IDataObject;
 			} else if (webhookResultData.webhookResponse !== undefined) {
-				// Data to respond with is given
-				responseCallback(null, {
-					data: webhookResultData.webhookResponse,
-					responseCode,
-				});
+				responseCallbackData.data = webhookResultData.webhookResponse;
 			} else {
-				responseCallback(null, {
-					data: {
-						message: 'Workflow was started',
-					},
-					responseCode,
-				});
+				responseCallbackData.data = { message: 'Workflow was started' };
 			}
 
+			responseCallback(null, responseCallbackData);
 			didSendResponse = true;
 		}
 
 		// Initialize the data of the webhook node
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: workflowStartNode,
-			data: {
-				main: webhookResultData.workflowData,
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: workflowStartNode,
+				data: {
+					main: webhookResultData.workflowData,
+				},
+				source: null,
 			},
-			source: null,
-		});
+		];
 
 		runExecutionData =
 			runExecutionData ||
