@@ -179,7 +179,7 @@ const workflowListResources = computed<Resource[]>(() => {
 	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
-				resourceType: 'folders',
+				resourceType: 'folder',
 				id: resource.id,
 				name: resource.name,
 				createdAt: resource.createdAt.toString(),
@@ -192,7 +192,7 @@ const workflowListResources = computed<Resource[]>(() => {
 		} else {
 			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
 			return {
-				resourceType: 'workflows',
+				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
@@ -612,7 +612,7 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 		</template>
 		<template #item="{ item: data }">
 			<FolderCard
-				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
+				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				class="mb-2xs"

@@ -77,7 +77,7 @@ const needsSetup = (data: string | undefined): boolean => {
 
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
-		resourceType: 'credentials',
+		resourceType: 'credential',
 		id: credential.id,
 		name: credential.name,
 		value: '',

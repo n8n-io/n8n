@@ -26,7 +26,7 @@ export type BaseResource = {
 };
 
 export type FolderResource = BaseResource & {
-	resourceType: 'folders';
+	resourceType: 'folder';
 	updatedAt: string;
 	createdAt: string;
 	readOnly: boolean;
@@ -37,7 +37,7 @@ export type FolderResource = BaseResource & {
 };
 
 export type WorkflowResource = BaseResource & {
-	resourceType: 'workflows';
+	resourceType: 'workflow';
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -50,13 +50,13 @@ export type WorkflowResource = BaseResource & {
 };
 
 export type VariableResource = BaseResource & {
-	resourceType: 'variables';
+	resourceType: 'variable';
 	key?: string;
 	value?: string;
 };
 
 export type CredentialsResource = BaseResource & {
-	resourceType: 'credentials';
+	resourceType: 'credential';
 	updatedAt: string;
 	createdAt: string;
 	type: string;
