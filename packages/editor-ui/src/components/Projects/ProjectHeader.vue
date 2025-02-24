@@ -81,6 +81,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			name: VIEWS.NEW_WORKFLOW,
 			query: {
 				projectId,
+				parentFolderId: route.params.folderId as string,
 			},
 		});
 	},

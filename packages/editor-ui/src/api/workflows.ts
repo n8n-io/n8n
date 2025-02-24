@@ -1,4 +1,5 @@
 import type {
+	FolderCreateResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRestApiContext,
@@ -83,4 +84,16 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 		'GET',
 		`/executions/${executionId}`,
 	);
+}
+
+export async function createFolder(
+	context: IRestApiContext,
+	projectId: string,
+	name: string,
+	parentFolderId?: string,
+): Promise<FolderCreateResponse> {
+	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/folders`, {
+		name,
+		parentFolderId,
+	});
 }

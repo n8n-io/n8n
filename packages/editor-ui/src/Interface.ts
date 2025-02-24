@@ -351,6 +351,11 @@ export interface FolderListItem extends BaseFolderItem {
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
+export type FolderCreateResponse = Omit<
+	FolderListItem,
+	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
+>;
+
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
 	id: string;

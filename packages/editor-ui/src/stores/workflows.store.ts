@@ -524,7 +524,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowData;
 	}
 
-	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
+	async function getNewWorkflowData(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
 			settings: { ...defaults.settings },
@@ -533,6 +537,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const data: IDataObject = {
 				name,
 				projectId,
+				parentFolderId,
 			};
 
 			workflowData = await workflowsApi.getNewWorkflow(

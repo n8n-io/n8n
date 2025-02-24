@@ -73,6 +73,7 @@ import {
 	faFlask,
 	faFolder,
 	faFolderOpen,
+	faFolderPlus,
 	faFont,
 	faGlobeAmericas,
 	faGift,
@@ -255,6 +256,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faFlask);
 		addIcon(faFolder);
 		addIcon(faFolderOpen);
+		addIcon(faFolderPlus);
 		addIcon(faFont);
 		addIcon(faGift);
 		addIcon(faGlobe);
