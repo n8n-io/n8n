@@ -280,7 +280,7 @@ describe('GET /projects/:projectId/folders/:folderId/tree', () => {
 	});
 });
 
-describe.only('PATCH /projects/:projectId/folders/:folderId', () => {
+describe('PATCH /projects/:projectId/folders/:folderId', () => {
 	test('should not update folder when project does not exist', async () => {
 		const payload = {
 			name: 'Updated Folder Name',
