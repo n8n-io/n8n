@@ -194,7 +194,6 @@ async function onDeleteTest(testId: string) {
 				</div>
 			</div>
 			<div :class="$style.testList" data-test-id="test-definition-list">
-				<div data-test-id="debug">{{ listItems.length }}</div>
 				<TestItem
 					v-for="item in listItems"
 					:key="item.id"
