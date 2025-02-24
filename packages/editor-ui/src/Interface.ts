@@ -58,7 +58,6 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { FolderShortInfo } from './types/folders.types';
 
 export * from 'n8n-design-system/types';
 
@@ -331,9 +330,14 @@ export type WorkflowListItem = Omit<
 	parentFolder?: { id: string; name: string };
 };
 
+export type FolderShortInfo = {
+	id: string;
+	name: string;
+};
+
 export type BaseFolderItem = BaseResource & {
-	createdAt: string | number;
-	updatedAt: string | number;
+	createdAt: string;
+	updatedAt: string;
 	workflowCount: number;
 	parentFolder?: FolderShortInfo;
 	homeProject?: ProjectSharingData;

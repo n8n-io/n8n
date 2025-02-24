@@ -14,9 +14,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, ITag } from '@/Interface';
+import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
-import type { FolderShortInfo } from '@/types/folders.types';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
