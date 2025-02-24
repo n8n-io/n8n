@@ -202,6 +202,13 @@ const projectName = computed(() => {
 	return currentProject.value?.name;
 });
 
+const currentParentName = computed(() => {
+	if (currentFolder.value) {
+		return currentFolder.value.name;
+	}
+	return projectName.value;
+});
+
 const workflowListResources = computed<Resource[]>(() => {
 	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
@@ -569,7 +576,7 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
 	const promptResponsePromise = message.prompt(
-		i18n.baseText('folders.add.modal.message', { interpolate: { parent: parent.name } }),
+		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
@@ -611,7 +618,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 	}
 };
 
-const onAddFolderButtonClick = async () => {
+const createFolderInCurrent = async () => {
 	if (!route.params.projectId) return;
 	const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
 	if (!currentParent) return;
@@ -692,12 +699,18 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
 		<template v-if="showFolders" #add-button>
 			<N8nTooltip placement="top">
 				<template #content>
-					{{ i18n.baseText('folders.add.button.tooltip') }}
+					{{
+						currentParentName
+							? i18n.baseText('folders.add.to.parent.message', {
+									interpolate: { parent: currentParentName },
+								})
+							: i18n.baseText('folders.add.here.message')
+					}}
 				</template>
 				<N8nButton
 					size="large"
@@ -705,7 +718,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					@click="onAddFolderButtonClick"
+					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
 		</template>
