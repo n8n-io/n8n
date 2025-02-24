@@ -95,7 +95,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getFixedNodesList, getNodeViewTab } from '@/utils/nodeViewUtils';
+import { getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
@@ -108,7 +108,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
@@ -910,7 +910,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 	initializeWorkspace({
 		...workflowData,
-		nodes: getFixedNodesList<INodeUi>(workflowData.nodes),
+		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
 
 	fitView();

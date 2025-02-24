@@ -15,10 +15,7 @@ import {
 } from '@/__tests__/mocks';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	createCanvasConnectionHandleString,
-	createCanvasConnectionId,
-} from '@/utils/canvasUtilsV2';
+import { createCanvasConnectionHandleString, createCanvasConnectionId } from '@/utils/canvasUtils';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { MarkerType } from '@vue-flow/core';
 import { createTestingPinia } from '@pinia/testing';

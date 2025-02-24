@@ -31,7 +31,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
-} from '@/utils/canvasUtilsV2';
+} from '@/utils/canvasUtils';
 import type { Connection } from '@vue-flow/core';
 import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
