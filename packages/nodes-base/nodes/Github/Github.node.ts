@@ -6,8 +6,10 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import {
 	getFileSha,
@@ -17,6 +19,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import { getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { defaultWebhookDescription } from '../Webhook/description';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +35,24 @@ export class Github implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		webhooks: [
+			{
+				...defaultWebhookDescription,
+				path: '',
+				restartWebhook: true,
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+			},
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: '',
+				restartWebhook: true,
+				isFullPath: true,
+				isForm: true,
+			},
+		],
 		credentials: [
 			{
 				name: 'githubApi',
@@ -641,7 +662,20 @@ export class Github implements INodeType {
 					},
 				},
 			},
-
+			{
+				displayName: 'Wait for Workflow Completion',
+				name: 'waitForCompletion',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+			},
 			// ----------------------------------
 			//         file
 			// ----------------------------------
@@ -1985,6 +2019,27 @@ export class Github implements INodeType {
 		},
 	};
 
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const requestObject = this.getRequestObject();
+
+		const responseData = {
+			headers: requestObject.headers,
+			params: requestObject.params,
+			query: requestObject.query,
+			body: requestObject.body,
+			webhookUrl: this.getNodeWebhookUrl('default'),
+			executionMode: this.getMode(),
+		};
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(responseData)],
+			webhookResponse: {
+				statusCode: 200,
+				body: { message: 'Webhook received successfully', data: responseData },
+			},
+		};
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -2521,6 +2576,27 @@ export class Github implements INodeType {
 							});
 						}
 						body.inputs = inputs;
+
+						const waitForCompletion = this.getNodeParameter('waitForCompletion', i) as boolean;
+
+						if (waitForCompletion) {
+							// Generate a webhook URL for the GitHub workflow to call when done
+							const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+							if (!resumeUrl) {
+								throw new NodeOperationError(this.getNode(), 'Webhook URL is missing.', {
+									itemIndex: i,
+								});
+							}
+
+							body.inputs = {
+								...body.inputs,
+								resumeUrl,
+							};
+							await githubApiRequest.call(this, requestMethod, endpoint, body);
+
+							const waitTill = WAIT_INDEFINITELY;
+							await this.putExecutionToWait(waitTill);
+						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
 						//         enable
