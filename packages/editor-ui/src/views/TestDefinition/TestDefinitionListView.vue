@@ -29,18 +29,23 @@ const toast = useToast();
 const locale = useI18n();
 const { confirm } = useMessage();
 
-const { state: tests, isLoading } = useAsyncState(
+const { isLoading } = useAsyncState(
 	async () => {
 		await testDefinitionStore.fetchAll({ workflowId: props.name });
 
 		const response = testDefinitionStore.allTestDefinitionsByWorkflowId[props.name] ?? [];
 		response.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
 
-		return response;
+		return [];
 	},
 	[],
-	{ onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')) },
+	{
+		onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')),
+		shallow: false,
+	},
 );
+
+const tests = computed(() => testDefinitionStore.allTestDefinitionsByWorkflowId[props.name]);
 
 const listItems = computed(() =>
 	orderBy(tests.value, [(test) => new Date(test.updatedAt ?? test.createdAt)], ['desc']).map(
@@ -56,17 +61,11 @@ const listItems = computed(() =>
 
 const commands = {
 	delete: onDeleteTest,
-	edit: onEditTest,
 } as const;
 
 type Action = { label: string; value: keyof typeof commands; disabled: boolean };
 
 const actions = computed<Action[]>(() => [
-	{
-		label: 'Edit test',
-		value: 'edit',
-		disabled: false,
-	},
 	{
 		label: 'Delete',
 		value: 'delete',
@@ -252,7 +251,7 @@ async function onDeleteTest(testId: string) {
 .container {
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: 1184px;
 	margin: auto;
 	padding: var(--spacing-xl) var(--spacing-l);
 }
