@@ -34,6 +34,9 @@ export const HEADER_HEIGHT = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
 
+/**
+ * Returns the leftmost and topmost node from the given list of nodes
+ */
 export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
 	return nodes.reduce((leftmostTop, node) => {
 		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
@@ -44,6 +47,9 @@ export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[
 	}, nodes[0]);
 };
 
+/**
+ * Checks if the given position is available for a new node
+ */
 const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	if (Math.abs(position1[0] - position2[0]) <= 100) {
 		if (Math.abs(position1[1] - position2[1]) <= 50) {
@@ -54,6 +60,9 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	return true;
 };
 
+/**
+ * Returns the closest number divisible by the given number
+ */
 const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
 	const quotient = Math.ceil(inputNumber / divisibleBy);
 
@@ -73,6 +82,9 @@ const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): num
 	return inputNumber2;
 };
 
+/**
+ * Returns the new position for a node based on the given position and the nodes in the workflow
+ */
 export const getNewNodePosition = (
 	nodes: INodeUi[],
 	newPosition: XYPosition,
@@ -113,6 +125,9 @@ export const getNewNodePosition = (
 	return targetPosition;
 };
 
+/**
+ * Returns the position of a mouse or touch event
+ */
 export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	// @ts-ignore
 	const x = e.pageX !== undefined ? e.pageX : e.touches?.[0]?.pageX ? e.touches[0].pageX : 0;
@@ -122,6 +137,9 @@ export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	return [x, y];
 };
 
+/**
+ * Returns the relative position of a point on the canvas
+ */
 export const getRelativePosition = (
 	x: number,
 	y: number,
@@ -131,12 +149,9 @@ export const getRelativePosition = (
 	return [(x - offset[0]) / scale, (y - offset[1]) / scale];
 };
 
-export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
-	const { editorWidth, editorHeight } = getContentDimensions();
-
-	return getRelativePosition(editorWidth / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
-};
-
+/**
+ * Returns the width and height of the node view content
+ */
 const getContentDimensions = (): { editorWidth: number; editorHeight: number } => {
 	let contentWidth = window.innerWidth;
 	let contentHeight = window.innerHeight;
@@ -153,7 +168,21 @@ const getContentDimensions = (): { editorWidth: number; editorHeight: number } =
 	};
 };
 
-export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
+/**
+ * Returns the position of the canvas center
+ */
+export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
+	const { editorWidth, editorHeight } = getContentDimensions();
+
+	return getRelativePosition(editorWidth / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
+};
+
+/**
+ * Normalize node positions based on the leftmost top node
+ */
+export const getNodesWithNormalizedPosition = <T extends { position: XYPosition }>(
+	workflowNodes: T[],
+): T[] => {
 	const nodes = [...workflowNodes];
 
 	if (nodes.length) {
@@ -229,6 +258,9 @@ export function isElementIntersection(
 	return isWithinVerticalBounds && isWithinHorizontalBounds;
 }
 
+/**
+ * Returns the node hints based on the node type and execution data
+ */
 export function getGenericHints({
 	workflowNode,
 	node,

@@ -48,7 +48,7 @@ import {
 } from '@/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 
