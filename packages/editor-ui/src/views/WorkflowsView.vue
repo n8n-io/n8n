@@ -1,8 +1,11 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import ResourcesListLayout, {
-	type Resource,
-	type BaseFilters,
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type {
+	Resource,
+	BaseFilters,
+	FolderResource,
+	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
@@ -13,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResource, WorkflowListItem } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -40,6 +43,9 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { ProjectTypes } from '@/types/projects.types';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import { debounce } from 'lodash-es';
 
 interface Filters extends BaseFilters {
@@ -87,36 +93,122 @@ const filters = ref<Filters>({
 
 const workflowListEventBus = createEventBus();
 
-const workflows = ref<IWorkflowDb[]>([]);
+const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const easyAICalloutVisible = ref(true);
+
+const currentFolder = ref<FolderResource | undefined>(undefined);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
+const folderCardActions = ref<UserAction[]>([
+	{
+		label: 'Open',
+		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
+		disabled: false,
+	},
+	{
+		label: 'Create Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+		disabled: true,
+	},
+	{
+		label: 'Create Workflow',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
+		disabled: true,
+	},
+	{
+		label: 'Rename',
+		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
+		disabled: true,
+	},
+	{
+		label: 'Move to Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
+		disabled: true,
+	},
+	{
+		label: 'Change Owner',
+		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
+		disabled: true,
+	},
+	{
+		label: 'Manage Tags',
+		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
+		disabled: true,
+	},
+	{
+		label: 'Delete',
+		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
+		disabled: true,
+	},
+]);
+
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const workflowResources = computed<Resource[]>(() =>
-	workflows.value.map((workflow) => ({
-		id: workflow.id,
-		name: workflow.name,
-		value: '',
-		active: workflow.active,
-		updatedAt: workflow.updatedAt.toString(),
-		createdAt: workflow.createdAt.toString(),
-		homeProject: workflow.homeProject,
-		scopes: workflow.scopes,
-		type: 'workflow',
-		sharedWithProjects: workflow.sharedWithProjects,
-		readOnly: !getResourcePermissions(workflow.scopes).workflow.update,
-		tags: workflow.tags,
-	})),
-);
+const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
+
+const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
+	if (!showFolders.value || !currentFolder.value) return;
+	const items: PathItem[] = [];
+	items.push({
+		id: currentFolder.value.id,
+		label: currentFolder.value.name,
+	});
+	return items;
+});
+
+const currentProject = computed(() => projectsStore.currentProject);
+
+const projectName = computed(() => {
+	if (currentProject.value?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return currentProject.value?.name;
+});
+
+const workflowListResources = computed<Resource[]>(() => {
+	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
+		if (resource.resource === 'folder') {
+			return {
+				resourceType: 'folder',
+				id: resource.id,
+				name: resource.name,
+				createdAt: resource.createdAt.toString(),
+				updatedAt: resource.updatedAt.toString(),
+				homeProject: resource.homeProject,
+				sharedWithProjects: resource.sharedWithProjects,
+				workflowCount: resource.workflowCount,
+				parentFolder: resource.parentFolder,
+			} as FolderResource;
+		} else {
+			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
+			return {
+				resourceType: 'workflow',
+				id: resource.id,
+				name: resource.name,
+				active: resource.active ?? false,
+				updatedAt: resource.updatedAt.toString(),
+				createdAt: resource.createdAt.toString(),
+				homeProject: resource.homeProject,
+				scopes: resource.scopes,
+				sharedWithProjects: resource.sharedWithProjects,
+				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
+				tags: resource.tags,
+				parentFolder: resource.parentFolder,
+			} as WorkflowResource;
+		}
+	});
+	return resources;
+});
 
 const statusFilterOptions = computed(() => [
 	{
@@ -161,6 +253,16 @@ watch(
 	() => route.params?.projectId,
 	async () => {
 		await initialize();
+	},
+);
+
+watch(
+	() => route.params?.folderId,
+	async (newVal) => {
+		if (!newVal) {
+			currentFolder.value = undefined;
+		}
+		await fetchWorkflows();
 	},
 );
 
@@ -217,13 +319,14 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
+	currentFolder.value = undefined;
 	await setFiltersFromQueryString();
-	const [, workflowsPage] = await Promise.all([
+	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
-	workflows.value = workflowsPage;
+	workflowsAndFolders.value = resourcesPage;
 	loading.value = false;
 };
 
@@ -245,8 +348,9 @@ const fetchWorkflows = async () => {
 	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
+	const parentFolder = (route.params?.folderId as string) || '0';
 
-	const fetchedWorkflows = await workflowsStore.fetchWorkflowsPage(
+	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 		routeProjectId ?? homeProjectFilter,
 		currentPage.value,
 		pageSize.value,
@@ -255,12 +359,17 @@ const fetchWorkflows = async () => {
 			name: filters.value.search || undefined,
 			active: filters.value.status ? Boolean(filters.value.status) : undefined,
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+			parentFolderId: parentFolder,
 		},
+		showFolders.value,
 	);
+	// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
+	currentFolder.value = fetchedResources[0]?.parentFolder;
+
 	delayedLoading.cancel();
-	workflows.value = fetchedWorkflows;
+	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
-	return fetchedWorkflows;
+	return fetchedResources;
 };
 
 const onClickTag = async (tagId: string) => {
@@ -423,9 +532,15 @@ const onSortUpdated = async (sort: string) => {
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
-	const workflow = workflows.value.find((w) => w.id === data.id);
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
 	if (!workflow) return;
 	workflow.active = data.active;
+};
+
+const onFolderOpened = (data: { folder: FolderResource }) => {
+	currentFolder.value = data.folder;
 };
 </script>
 
@@ -434,7 +549,7 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
-		:resources="workflowResources"
+		:resources="workflowListResources"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
@@ -483,11 +598,36 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 				</template>
 			</N8nCallout>
 		</template>
+		<template #breadcrumbs>
+			<n8n-breadcrumbs
+				v-if="mainBreadcrumbsItems"
+				:items="mainBreadcrumbsItems"
+				:highlight-last-item="false"
+				:path-truncated="currentFolder !== undefined"
+				data-test-id="folder-card-breadcrumbs"
+			>
+				<template v-if="currentProject" #prepend>
+					<div :class="$style['home-project']">
+						<n8n-link :to="`/projects/${currentProject.id}`">
+							<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						</n8n-link>
+					</div>
+				</template>
+			</n8n-breadcrumbs>
+		</template>
 		<template #item="{ item: data }">
+			<FolderCard
+				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+				:data="data as FolderResource"
+				:actions="folderCardActions"
+				class="mb-2xs"
+				@folder-opened="onFolderOpened"
+			/>
 			<WorkflowCard
+				v-else
 				data-test-id="resources-list-item"
 				class="mb-2xs"
-				:data="data as IWorkflowDb"
+				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
@@ -628,5 +768,10 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
+}
+
+.home-project {
+	display: flex;
+	align-items: center;
 }
 </style>

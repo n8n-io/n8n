@@ -31,6 +31,7 @@ import type {
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
+	WorkflowListResource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -483,8 +484,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: { name?: string; tags?: string[]; active?: boolean } = {},
-	): Promise<IWorkflowDb[]> {
+		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
+		includeFolders: boolean = false,
+	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -492,13 +494,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			sortBy,
 		};
 
-		const { count, data } = await workflowsApi.getWorkflows(
+		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
+			includeFolders ? includeFolders : undefined,
 		);
 
-		setWorkflows(data);
 		totalWorkflowCount.value = count;
 		return data;
 	}
