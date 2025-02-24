@@ -1,6 +1,6 @@
 import dagre from '@dagrejs/dagre';
 
-import { useVueFlow, type GraphNode, type XYPosition } from '@vue-flow/core';
+import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
 import { STICKY_NODE_TYPE } from '../constants';
 import {
 	CanvasNodeRenderType,
@@ -39,6 +39,7 @@ const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	const {
 		findNode,
+		findEdge,
 		getSelectedNodes,
 		edges: allEdges,
 		nodes: allNodes,
@@ -51,9 +52,26 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		return { nodes: allNodes.value, edges: allEdges.value };
 	}
 
-	function sortNodePositions(nodeA: XYPosition, nodeB: XYPosition): number {
-		const yDiff = nodeA.y - nodeB.y;
-		return yDiff === 0 ? nodeA.x - nodeB.x : yDiff;
+	function sortByPosition(posA: XYPosition, posB: XYPosition): number {
+		const yDiff = posA.y - posB.y;
+		return yDiff === 0 ? posA.x - posB.x : yDiff;
+	}
+
+	function sortNodesByPosition(nodeA: GraphNode, nodeB: GraphNode): number {
+		const hasEdgesA = allEdges.value.some((edge) => edge.target === nodeA.id);
+		const hasEdgesB = allEdges.value.some((edge) => edge.target === nodeB.id);
+
+		if (!hasEdgesA && hasEdgesB) return -1;
+		if (hasEdgesA && !hasEdgesB) return 1;
+		return sortByPosition(nodeA.position, nodeB.position);
+	}
+
+	function sortEdgesByPosition(edgeA: GraphEdge, edgeB: GraphEdge): number {
+		return sortByPosition(positionFromEdge(edgeA), positionFromEdge(edgeB));
+	}
+
+	function positionFromEdge(edge: GraphEdge): XYPosition {
+		return { x: edge.targetX, y: edge.targetY };
 	}
 
 	function createDagreGraph({ nodes, edges }: CanvasLayoutTargetData) {
@@ -63,15 +81,19 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		const graphNodes = nodes
 			.map((node) => findNode<CanvasNodeData>(node.id))
 			.filter(isPresent)
-			.sort((nodeA, nodeB) => sortNodePositions(nodeA.position, nodeB.position));
+			.sort(sortNodesByPosition);
+
 		const nodeIdSet = new Set(nodes.map((node) => node.id));
 
-		graphNodes.forEach(({ id: nodeId, dimensions: { width, height } }) => {
-			graph.setNode(nodeId, { width, height });
+		graphNodes.forEach(({ id: nodeId, position: { x, y }, dimensions: { width, height } }) => {
+			graph.setNode(nodeId, { width, height, x, y });
 		});
 
 		edges
+			.map((node) => findEdge<CanvasNodeData>(node.id))
+			.filter(isPresent)
 			.filter((edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target))
+			.sort(sortEdgesByPosition)
 			.forEach((edge) => graph.setEdge(edge.source, edge.target));
 
 		return graph;
@@ -117,7 +139,9 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		});
 		subGraph.setDefaultEdgeLabel(() => ({}));
 
-		nodes.forEach(({ id, box: { width, height } }) => subGraph.setNode(id, { width, height }));
+		nodes.forEach(({ id, box: { x, y, width, height } }) =>
+			subGraph.setNode(id, { x, y, width, height }),
+		);
 
 		nodes.forEach((node, index) => {
 			if (!nodes[index + 1]) return;
@@ -156,6 +180,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		return subGraph;
 	}
 
+	// For a list of bounding boxes, return the bounding box that contains them all
 	function compositeBoundingBox(boxes: BoundingBox[]): BoundingBox {
 		const { minX, minY, maxX, maxY } = boxes.reduce(
 			(bbox, node) => {
@@ -206,6 +231,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 		return compositeBoundingBox(nodes.map(boundingBoxFromCanvasNode));
 	}
 
+	// Is the `child` bounding box completely contained in the `parent` bounding box
 	function isCoveredBy(parent: BoundingBox, child: BoundingBox) {
 		const childRight = child.x + child.width;
 		const childBottom = child.y + child.height;
@@ -302,6 +328,8 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 				.map((nodeId) => nodeById[nodeId].data)
 				.filter(isAiParentNode);
 
+			// Create a subgraph for each AI (configurable) node and apply a top-bottom layout
+			// Then add the bounding box of this layout back into the parent graph before doing layout
 			const aiGraphs = aiParentNodes.map((aiParentNode) => {
 				const configNodeIds = getAllConnectedAiConfigNodes({
 					graph: subgraph,
@@ -318,7 +346,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 					.edges()
 					.filter((edge) => edge.v === aiParentNode.id || edge.w === aiParentNode.id);
 
-				dagre.layout(aiGraph);
+				dagre.layout(aiGraph, { disableOptimalOrderHeuristic: true });
 				const aiBoundingBox = boundingBoxFromGraph(aiGraph);
 				subgraph.setNode(aiParentNode.id, {
 					width: aiBoundingBox.width,
@@ -329,7 +357,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 				return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentNode };
 			});
 
-			dagre.layout(subgraph);
+			dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
 
 			return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
 		});
@@ -341,7 +369,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 			})),
 		});
 
-		dagre.layout(compositeGraph);
+		dagre.layout(compositeGraph, { disableOptimalOrderHeuristic: true });
 
 		const boundingBoxByNodeId = subgraphs
 			.flatMap(({ graph, aiGraphs }, index) => {
@@ -404,7 +432,9 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 				{} as Record<string, BoundingBox>,
 			);
 
-		// Adjust AI node vertical position
+		// Post process AI node vertical position
+		// The bounding box of the AI node sublayout is vertically centered with the other nodes, but we want it to be top-aligned when possible
+		// We need to be careful to only do this when it would not overlap with other nodes
 		subgraphs
 			.flatMap(({ aiGraphs }) => aiGraphs)
 			.forEach(({ graph }) => {
