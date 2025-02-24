@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import { type Class, ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
-import { ApplicationError, assert, UnexpectedError, UserError } from 'n8n-workflow';
+import { assert, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 
@@ -14,10 +14,9 @@ export interface ShutdownHandler {
 }
 
 /** Error reported when a listener fails to shutdown gracefully */
-export class ComponentShutdownError extends ApplicationError {
+export class ComponentShutdownError extends UnexpectedError {
 	constructor(componentName: string, cause: Error) {
 		super('Failed to shutdown gracefully', {
-			level: 'error',
 			cause,
 			extra: { component: componentName },
 		});

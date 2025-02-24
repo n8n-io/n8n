@@ -2,11 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
-import {
-	ApplicationError,
-	UnexpectedError,
-	type ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
+import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
@@ -168,7 +164,6 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			if (error instanceof ApplicationError) throw error;
 			throw new UnexpectedError('Failed to export workflows to work folder', { cause: error });
 		}
 	}

@@ -1,3 +1,3 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-export class SharedWorkflowNotFoundError extends ApplicationError {}
+export class SharedWorkflowNotFoundError extends UnexpectedError {}

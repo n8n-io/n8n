@@ -1,9 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 /**
  * Special Error which allows to return also an error code and http status code
  */
-export abstract class ResponseError extends ApplicationError {
+export abstract class ResponseError extends UnexpectedError {
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
