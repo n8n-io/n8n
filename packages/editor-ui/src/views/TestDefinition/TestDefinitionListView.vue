@@ -56,17 +56,11 @@ const listItems = computed(() =>
 
 const commands = {
 	delete: onDeleteTest,
-	edit: onEditTest,
 } as const;
 
 type Action = { label: string; value: keyof typeof commands; disabled: boolean };
 
 const actions = computed<Action[]>(() => [
-	{
-		label: 'Edit test',
-		value: 'edit',
-		disabled: false,
-	},
 	{
 		label: 'Delete',
 		value: 'delete',
@@ -252,7 +246,7 @@ async function onDeleteTest(testId: string) {
 .container {
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: 1184px;
 	margin: auto;
 	padding: var(--spacing-xl) var(--spacing-l);
 }

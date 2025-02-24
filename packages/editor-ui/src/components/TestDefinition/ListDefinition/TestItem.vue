@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const locale = useI18n();
 
-type IconDefinition = { icon: string; color: IconColor };
+type IconDefinition = { icon: string; color: IconColor; spin?: boolean };
 
 const statusesColorDictionary: Record<TestRunRecord['status'], IconDefinition> = {
 	new: {
@@ -25,6 +25,7 @@ const statusesColorDictionary: Record<TestRunRecord['status'], IconDefinition> =
 	running: {
 		icon: 'spinner',
 		color: 'secondary',
+		spin: true,
 	},
 	completed: {
 		icon: 'exclamation-circle',
@@ -36,7 +37,7 @@ const statusesColorDictionary: Record<TestRunRecord['status'], IconDefinition> =
 	},
 	cancelled: {
 		icon: 'minus-circle',
-		color: 'success',
+		color: 'foreground-xdark',
 	},
 	warning: {
 		icon: 'exclamation-circle',
@@ -76,7 +77,7 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 	<div :class="$style.testCard">
 		<div :class="$style.testCardContent">
 			<div>
-				<N8nText bold tag="div">{{ name }}</N8nText>
+				<N8nText bold tag="div" :class="$style.name">{{ name }}</N8nText>
 				<N8nText tag="div" color="text-base" size="small">
 					{{
 						locale.baseText('testDefinition.list.item.tests', {
@@ -87,12 +88,10 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 			</div>
 			<div>
 				<div :class="$style.status">
-					<N8nIcon :icon="statusRender.icon" size="small" :color="statusRender.color"></N8nIcon>
-					<div>
-						<N8nText size="small" color="text-base">
-							{{ statusRender.label }}
-						</N8nText>
-					</div>
+					<N8nIcon v-bind="statusRender" size="small" />
+					<N8nText size="small" color="text-base">
+						{{ statusRender.label }}
+					</N8nText>
 				</div>
 
 				<N8nText v-if="errors?.length" tag="div" color="text-base" size="small" class="ml-m">
