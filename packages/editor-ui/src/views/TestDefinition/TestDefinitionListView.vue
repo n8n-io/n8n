@@ -29,18 +29,23 @@ const toast = useToast();
 const locale = useI18n();
 const { confirm } = useMessage();
 
-const { state: tests, isLoading } = useAsyncState(
+const { isLoading } = useAsyncState(
 	async () => {
 		await testDefinitionStore.fetchAll({ workflowId: props.name });
 
 		const response = testDefinitionStore.allTestDefinitionsByWorkflowId[props.name] ?? [];
 		response.forEach((test) => testDefinitionStore.updateRunFieldIssues(test.id));
 
-		return response;
+		return [];
 	},
 	[],
-	{ onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')) },
+	{
+		onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')),
+		shallow: false,
+	},
 );
+
+const tests = computed(() => testDefinitionStore.allTestDefinitionsByWorkflowId[props.name]);
 
 const listItems = computed(() =>
 	orderBy(tests.value, [(test) => new Date(test.updatedAt ?? test.createdAt)], ['desc']).map(
