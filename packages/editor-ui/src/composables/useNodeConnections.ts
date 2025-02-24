@@ -4,7 +4,7 @@ import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { Connection } from '@vue-flow/core';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
 
 export function useNodeConnections({
 	inputs,

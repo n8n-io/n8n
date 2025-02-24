@@ -3,14 +3,9 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import {
-	LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT,
-	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
-} from '@/constants';
+import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
-import { useLocalStorage } from '@vueuse/core';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -111,8 +106,6 @@ const isStrikethroughVisible = computed(() => {
 
 const showTooltip = ref(false);
 
-const triggerButtonVariant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
-
 watch(initialized, () => {
 	if (initialized.value) {
 		showTooltip.value = true;
@@ -140,9 +133,6 @@ function openContextMenu(event: MouseEvent) {
 		<div :class="$style.description">
 			<div v-if="label" :class="$style.label">
 				{{ label }}
-				<div v-if="renderOptions.trigger && triggerButtonVariant === 1" :class="$style.triggerIcon">
-					<FontAwesomeIcon icon="bolt" size="lg" />
-				</div>
 			</div>
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
@@ -326,12 +316,5 @@ function openContextMenu(event: MouseEvent) {
 	position: absolute;
 	bottom: var(--canvas-node--status-icons-offset);
 	right: var(--canvas-node--status-icons-offset);
-}
-
-.triggerIcon {
-	display: inline;
-	position: static;
-	color: var(--color-primary);
-	padding: var(--spacing-4xs);
 }
 </style>
