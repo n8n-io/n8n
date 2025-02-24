@@ -48,6 +48,10 @@ export class FolderService {
 	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
 		await this.getFolderInProject(folderId, projectId);
 
+		const escapedParentFolderId = this.folderRepository
+			.createQueryBuilder()
+			.escape('parentFolderId');
+
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
 			.select('folder.id', 'id')
@@ -58,7 +62,7 @@ export class FolderService {
 			.createQueryBuilder('f')
 			.select('f.id', 'id')
 			.addSelect('f.parentFolderId', 'parentFolderId')
-			.innerJoin('folder_path', 'fp', 'f.id = fp."parentFolderId"');
+			.innerJoin('folder_path', 'fp', `f.id = fp.${escapedParentFolderId}`);
 
 		const mainQuery = this.folderRepository
 			.createQueryBuilder('folder')
