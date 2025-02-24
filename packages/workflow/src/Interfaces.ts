@@ -1598,6 +1598,9 @@ export interface INodeType {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
+	// This is intended for nodes that do not define an execute method, such as routing nodes.
+	// It will be called instead of execute for a specific resource + operation.
+	// If both are defined, this will take precedence over execute for the that resource + operation
 	customOperations?: {
 		[resource: string]: {
 			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
