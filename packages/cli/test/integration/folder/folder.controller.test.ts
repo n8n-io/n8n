@@ -203,3 +203,79 @@ describe('POST /projects/:projectId/folders', () => {
 		expect(folderInDb?.name).toBe(payload.name);
 	});
 });
+
+describe('GET /projects/:projectId/folders/:folderId/tree', () => {
+	test('should not get folder tree when project does not exist', async () => {
+		await authOwnerAgent.get('/projects/non-existing-id/folders/some-folder-id/tree').expect(403);
+	});
+
+	test('should not get folder tree when folder does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		await authOwnerAgent
+			.get(`/projects/${project.id}/folders/non-existing-folder/tree`)
+			.expect(404);
+	});
+
+	test('should not get folder tree if user has no access to project', async () => {
+		const project = await createTeamProject('test project', owner);
+		const folder = await createFolder(project);
+
+		await authMemberAgent.get(`/projects/${project.id}/folders/${folder.id}/tree`).expect(403);
+	});
+
+	test("should not allow getting folder tree from another user's personal project", async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder = await createFolder(ownerPersonalProject);
+
+		await authMemberAgent
+			.get(`/projects/${ownerPersonalProject.id}/folders/${folder.id}/tree`)
+			.expect(403);
+	});
+
+	test('should get nested folder structure', async () => {
+		const project = await createTeamProject('test', owner);
+		const rootFolder = await createFolder(project, { name: 'Root' });
+
+		const childFolder1 = await createFolder(project, {
+			name: 'Child 1',
+			parentFolder: rootFolder,
+		});
+
+		await createFolder(project, {
+			name: 'Child 2',
+			parentFolder: rootFolder,
+		});
+
+		const grandchildFolder = await createFolder(project, {
+			name: 'Grandchild',
+			parentFolder: childFolder1,
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${project.id}/folders/${grandchildFolder.id}/tree`)
+			.expect(200);
+
+		expect(response.body.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: rootFolder.id,
+					name: 'Root',
+					children: expect.arrayContaining([
+						expect.objectContaining({
+							id: childFolder1.id,
+							name: 'Child 1',
+							children: expect.arrayContaining([
+								expect.objectContaining({
+									id: grandchildFolder.id,
+									name: 'Grandchild',
+									children: [],
+								}),
+							]),
+						}),
+					]),
+				}),
+			]),
+		);
+	});
+});
