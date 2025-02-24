@@ -14,27 +14,54 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
+import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
+import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 
-export type Resource = {
-	id: string;
-	name?: string;
-	value?: string;
-	key?: string;
-	updatedAt?: string;
-	createdAt?: string;
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
+
+export type FolderResource = BaseFolderItem & {
+	resourceType: 'folder';
+	readOnly: boolean;
+};
+
+export type WorkflowResource = BaseResource & {
+	resourceType: 'workflow';
+	updatedAt: string;
+	createdAt: string;
+	active: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
-	type?: string;
+	tags?: ITag[] | string[];
 	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	parentFolder?: FolderShortInfo;
 };
+
+export type VariableResource = BaseResource & {
+	resourceType: 'variable';
+	key?: string;
+	value?: string;
+};
+
+export type CredentialsResource = BaseResource & {
+	resourceType: 'credential';
+	updatedAt: string;
+	createdAt: string;
+	type: string;
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	sharedWithProjects?: ProjectSharingData[];
+	readOnly: boolean;
+	needsSetup: boolean;
+};
+
+export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
 
 export type BaseFilters = {
 	search: string;
 	homeProject: string;
 	[key: string]: boolean | string | string[];
 };
-
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables';
 
 const route = useRoute();
 const router = useRouter();
@@ -106,7 +133,7 @@ const emit = defineEmits<{
 	'update:search': [value: string];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	header(): unknown;
 	empty(): unknown;
 	preamble(): unknown;
@@ -120,6 +147,7 @@ defineSlots<{
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
 	item(props: { item: unknown; index: number }): unknown;
+	breadcrumbs(): unknown;
 }>();
 
 //computed
@@ -130,6 +158,7 @@ const filtersModel = computed({
 
 const showEmptyState = computed(() => {
 	return (
+		route.params.folderId === undefined &&
 		props.resources.length === 0 &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&
@@ -149,7 +178,7 @@ const filteredAndSortedResources = computed(() => {
 	const filtered = props.resources.filter((resource) => {
 		let matches = true;
 
-		if (filtersModel.value.homeProject) {
+		if (filtersModel.value.homeProject && isSharedResource(resource)) {
 			matches =
 				matches &&
 				!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
@@ -168,12 +197,19 @@ const filteredAndSortedResources = computed(() => {
 	});
 
 	return filtered.sort((a, b) => {
+		const sortableByDate = isResourceSortableByDate(a) && isResourceSortableByDate(b);
 		switch (sortBy.value) {
 			case 'lastUpdated':
+				if (!sortableByDate) {
+					return 0;
+				}
 				return props.sortFns.lastUpdated
 					? props.sortFns.lastUpdated(a, b)
 					: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
 			case 'lastCreated':
+				if (!sortableByDate) {
+					return 0;
+				}
 				return props.sortFns.lastCreated
 					? props.sortFns.lastCreated(a, b)
 					: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
@@ -494,6 +530,7 @@ const loadPaginationFromQueryString = async () => {
 				<template #header>
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
+							<slot name="breadcrumbs"></slot>
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
@@ -507,19 +544,6 @@ const loadPaginationFromQueryString = async () => {
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<ResourceFiltersDropdown
-								v-if="showFiltersDropdown"
-								:keys="filterKeys"
-								:reset="resetFilters"
-								:model-value="filtersModel"
-								:shareable="shareable"
-								@update:model-value="onUpdateFilters"
-								@update:filters-length="onUpdateFiltersLength"
-							>
-								<template #default="resourceFiltersSlotProps">
-									<slot name="filters" v-bind="resourceFiltersSlotProps" />
-								</template>
-							</ResourceFiltersDropdown>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
 									<n8n-option
@@ -531,6 +555,20 @@ const loadPaginationFromQueryString = async () => {
 									/>
 								</n8n-select>
 							</div>
+							<ResourceFiltersDropdown
+								v-if="showFiltersDropdown"
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="shareable"
+								:just-icon="true"
+								@update:model-value="onUpdateFilters"
+								@update:filters-length="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
 						</div>
 						<slot name="add-button"></slot>
 					</div>
@@ -630,14 +668,16 @@ const loadPaginationFromQueryString = async () => {
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
+	gap: var(--spacing-2xs);
 }
 
 .filters {
 	display: grid;
 	grid-auto-flow: column;
-	grid-auto-columns: max-content;
+	grid-auto-columns: 1fr max-content max-content max-content;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	justify-content: end;
 	width: 100%;
 
 	@include mixins.breakpoint('xs-only') {
@@ -651,7 +691,7 @@ const loadPaginationFromQueryString = async () => {
 }
 
 .search {
-	max-width: 240px;
+	// max-width: 240px;
 
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
