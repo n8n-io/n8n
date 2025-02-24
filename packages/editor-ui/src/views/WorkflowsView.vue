@@ -17,7 +17,7 @@ import {
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
 } from '@/constants';
-import type { IUser, UserAction, WorkflowListResourceDB, WorkflowResourceDB } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResource, WorkflowListItem } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -47,7 +47,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
-import { isResponseWorkflowResource } from '@/utils/typeGuards';
+import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
@@ -101,7 +101,7 @@ const filters = ref<Filters>({
 
 const workflowListEventBus = createEventBus();
 
-const workflowsAndFolders = ref<WorkflowListResourceDB[]>([]);
+const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const easyAICalloutVisible = ref(true);
 
@@ -194,20 +194,20 @@ const workflowListResources = computed<Resource[]>(() => {
 	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
-				resourceType: 'folders',
+				resourceType: 'folder',
 				id: resource.id,
 				name: resource.name,
 				createdAt: resource.createdAt.toString(),
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
-				workflowCount: resource.workflowsCount,
+				workflowCount: resource.workflowCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
 			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
 			return {
-				resourceType: 'workflows',
+				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
@@ -218,7 +218,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				sharedWithProjects: resource.sharedWithProjects,
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
-				parentFolder: (resource as WorkflowResource).parentFolder,
+				parentFolder: resource.parentFolder,
 			} as WorkflowResource;
 		}
 	});
@@ -353,7 +353,11 @@ const setPageSize = async (size: number) => {
 };
 
 const fetchWorkflows = async () => {
-	loading.value = true;
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || '0';
@@ -377,6 +381,7 @@ const fetchWorkflows = async () => {
 			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 	);
 
+	delayedLoading.cancel();
 	workflowsAndFolders.value = fetchedResources;
 	loading.value = false;
 	return fetchedResources;
@@ -542,8 +547,8 @@ const onSortUpdated = async (sort: string) => {
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
-	const workflow: WorkflowResourceDB | undefined = workflowsAndFolders.value.find(
-		(w): w is WorkflowResourceDB => isResponseWorkflowResource(w) && w.id === data.id,
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
@@ -689,7 +694,7 @@ const addFolder = async () => {
 		</template>
 		<template #item="{ item: data }">
 			<FolderCard
-				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folders'"
+				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				class="mb-2xs"

@@ -14,30 +14,18 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { ITag } from '@/Interface';
+import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
-import type { FolderShortInfo } from '@/types/folders.types';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
-export type BaseResource = {
-	id: string;
-	name: string;
-};
-
-export type FolderResource = BaseResource & {
-	resourceType: 'folders';
-	updatedAt: string;
-	createdAt: string;
+export type FolderResource = BaseFolderItem & {
+	resourceType: 'folder';
 	readOnly: boolean;
-	workflowCount: number;
-	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
-	parentFolder?: FolderShortInfo;
 };
 
 export type WorkflowResource = BaseResource & {
-	resourceType: 'workflows';
+	resourceType: 'workflow';
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -50,13 +38,13 @@ export type WorkflowResource = BaseResource & {
 };
 
 export type VariableResource = BaseResource & {
-	resourceType: 'variables';
+	resourceType: 'variable';
 	key?: string;
 	value?: string;
 };
 
 export type CredentialsResource = BaseResource & {
-	resourceType: 'credentials';
+	resourceType: 'credential';
 	updatedAt: string;
 	createdAt: string;
 	type: string;
@@ -601,7 +589,7 @@ const loadPaginationFromQueryString = async () => {
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading">
+				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
 					<n8n-loading :rows="rowsPerPage" :shrink-last="false" />
 				</div>
 				<div
@@ -787,6 +775,9 @@ const loadPaginationFromQueryString = async () => {
 			height: 69px;
 		}
 	}
+}
+.resource-list-loading-instant {
+	animation: 0.01s linear 0s forwards changeVisibility;
 }
 
 @keyframes changeVisibility {

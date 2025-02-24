@@ -5,13 +5,7 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type {
-	IExecutionResponse,
-	ICredentialsResponse,
-	NewCredentialsModal,
-	WorkflowListResourceDB,
-	WorkflowResourceDB,
-} from '@/Interface';
+import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
@@ -113,19 +107,19 @@ export function isComponentPublicInstance(value: unknown): value is ComponentPub
 }
 
 export function isWorkflowResource(value: Resource): value is WorkflowResource {
-	return value.resourceType === 'workflows';
+	return value.resourceType === 'workflow';
 }
 
 export function isFolderResource(value: Resource): value is FolderResource {
-	return value.resourceType === 'folders';
+	return value.resourceType === 'folder';
 }
 
 export function isVariableResource(value: Resource): value is VariableResource {
-	return value.resourceType === 'variables';
+	return value.resourceType === 'variable';
 }
 
 export function isCredentialsResource(value: Resource): value is CredentialsResource {
-	return value.resourceType === 'credentials';
+	return value.resourceType === 'credential';
 }
 
 export function isSharedResource(
@@ -138,10 +132,4 @@ export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
-}
-
-export function isResponseWorkflowResource(
-	value: WorkflowListResourceDB,
-): value is WorkflowResourceDB {
-	return value.resource === 'workflow';
 }

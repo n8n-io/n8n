@@ -31,7 +31,7 @@ import type {
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
-	WorkflowListResourceDB,
+	WorkflowListResource,
 	FolderCreateResponse,
 } from '@/Interface';
 import { defineStore } from 'pinia';
@@ -487,7 +487,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		sortBy?: string,
 		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
 		includeFolders: boolean = false,
-	): Promise<WorkflowListResourceDB[]> {
+	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -524,7 +524,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		projectId: string,
 		parentFolderId?: string,
 	): Promise<FolderCreateResponse> {
-		console.log('createFolder', name, projectId, parentFolderId);
 		return await workflowsApi.createFolder(
 			rootStore.restApiContext,
 			projectId,

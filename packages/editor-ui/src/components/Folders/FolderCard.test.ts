@@ -30,7 +30,7 @@ const DEFAULT_FOLDER: FolderResource = {
 	name: 'Folder 1',
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
-	resourceType: 'folders',
+	resourceType: 'folder',
 	readOnly: false,
 	workflowCount: 0,
 	homeProject: {
@@ -48,7 +48,7 @@ const PARENT_FOLDER: FolderResource = {
 	name: 'Folder 2',
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
-	resourceType: 'folders',
+	resourceType: 'folder',
 	readOnly: false,
 	workflowCount: 0,
 	homeProject: {

@@ -318,32 +318,44 @@ export interface IWorkflowDb {
 }
 
 // For workflow list we don't need the full workflow data
-export type WorkflowResourceDB = Omit<
+export type BaseResource = {
+	id: string;
+	name: string;
+};
+
+export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
->;
-export interface IFolderDb {
-	resource: 'folder';
-	id: string;
-	name: string;
-	createdAt: number | string;
-	updatedAt: number | string;
-	workflowsCount?: number;
-	parentFolder?: { id: string; name: string };
-	homeProject?: ProjectSharingData;
-	tags?: ITag[];
-	sharedWithProjects?: ProjectSharingData[];
-}
-
-export type WorkflowListResourceDB = WorkflowResourceDB | IFolderDb;
-
-export type FolderCreateResponse = {
-	id: string;
-	name: string;
-	createdAt: string;
-	updatedAt: string;
+> & {
+	resource: 'workflow';
 	parentFolder?: { id: string; name: string };
 };
+
+export type FolderShortInfo = {
+	id: string;
+	name: string;
+};
+
+export type BaseFolderItem = BaseResource & {
+	createdAt: string;
+	updatedAt: string;
+	workflowCount: number;
+	parentFolder?: FolderShortInfo;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
+	tags?: ITag[];
+};
+
+export interface FolderListItem extends BaseFolderItem {
+	resource: 'folder';
+}
+
+export type FolderCreateResponse = Omit<
+	FolderListItem,
+	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
+>;
+
+export type WorkflowListResource = WorkflowListItem | FolderListItem;
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
