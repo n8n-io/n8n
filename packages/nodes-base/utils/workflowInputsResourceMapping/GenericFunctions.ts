@@ -1,6 +1,6 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import lodash from 'lodash';
+import _ from 'lodash';
 import type {
 	FieldValueOption,
 	FieldType,
@@ -137,7 +137,7 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
 			index,
 			pairedItem: { item: index },
-			json: lodash.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
+			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
 		}));
 
 		return filteredInputData;
