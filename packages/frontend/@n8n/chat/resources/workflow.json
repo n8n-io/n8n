@@ -9,10 +9,7 @@
 			"name": "OpenAI Chat Model",
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 			"typeVersion": 1,
-			"position": [
-				640,
-				540
-			],
+			"position": [640, 540],
 			"credentials": {
 				"openAiApi": {
 					"id": "cIIkOhl7tUX1KsL6",
@@ -28,10 +25,7 @@
 			"name": "Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
-			"position": [
-				340,
-				540
-			]
+			"position": [340, 540]
 		},
 		{
 			"parameters": {
@@ -42,10 +36,7 @@
 			"name": "AI Agent",
 			"type": "@n8n/n8n-nodes-langchain.agent",
 			"typeVersion": 1.1,
-			"position": [
-				620,
-				300
-			]
+			"position": [620, 300]
 		},
 		{
 			"parameters": {
@@ -58,10 +49,7 @@
 			"name": "Chat Trigger",
 			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
 			"typeVersion": 1,
-			"position": [
-				340,
-				300
-			],
+			"position": [340, 300],
 			"webhookId": "f406671e-c954-4691-b39a-66c90aa2f103"
 		}
 	],
