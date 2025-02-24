@@ -88,9 +88,22 @@ const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
 				return retrievedTags;
 			};
 
-			const create = async (name: string) => {
-				const createdTag = await tagsApi.createTag(rootStore.restApiContext, { name });
+			const create = async (
+				name: string,
+				{ incrementExisting }: { incrementExisting?: boolean } = {},
+			) => {
+				let tagName = name;
+
+				if (incrementExisting) {
+					const tagNameRegex = new RegExp(tagName);
+					const existingTags = allTags.value.filter((tag) => tagNameRegex.test(tag.name));
+					if (existingTags.length > 0) {
+						tagName = `${tagName} (${existingTags.length + 1})`;
+					}
+				}
+				const createdTag = await tagsApi.createTag(rootStore.restApiContext, { name: tagName });
 				upsertTags([createdTag]);
+
 				return createdTag;
 			};
 

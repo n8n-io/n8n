@@ -442,7 +442,6 @@ export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
-export const LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT = 'Canvas.TriggerButtonVariant';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -503,7 +502,6 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS = 'TestDefinitionRuns',
 	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
 	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
 	NEW_TEST_DEFINITION = 'NewTestDefinition',

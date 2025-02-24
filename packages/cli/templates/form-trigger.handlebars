@@ -779,14 +779,20 @@
 								if (json?.redirectURL) {
 									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
 									window.location.replace(url);
-								} else if (json?.formSubmittedText) {
+									return;
+								}
+
+								if (json?.formSubmittedText) {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
-								} else {
-									document.body.innerHTML = text;
+									return;
 								}
-								return;
+
+								if (text) {
+									document.body.innerHTML = text;
+									return;
+								}
 							}
 
 							if (response.status === 200) {
@@ -814,18 +820,6 @@
 						.catch(function (error) {
 							console.error('Error:', error);
 						});
-
-					const isWaitingForm = window.location.href.includes('form-waiting');
-					if(isWaitingForm) {
-						const interval = setInterval(function() {
-							const isSubmited = document.querySelector('#submitted-form').style.display;
-							if(isSubmited === 'block') {
-								clearInterval(interval);
-								return;
-							}
-							window.location.reload();
-						}, 2000);
-					}
 				}
 			});
 		</script>

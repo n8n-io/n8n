@@ -1,4 +1,5 @@
 import {
+	CreateCredentialDto,
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
@@ -7,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Logger } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -24,14 +26,14 @@ import {
 	RestController,
 	ProjectScope,
 } from '@/decorators';
-import { Param, Query } from '@/decorators/args';
+import { Body, Param, Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { CredentialRequest } from '@/requests';
+import { AuthenticatedRequest, CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
@@ -162,8 +164,15 @@ export class CredentialsController {
 	}
 
 	@Post('/')
-	async createCredentials(req: CredentialRequest.Create) {
-		const newCredential = await this.credentialsService.createCredential(req.body, req.user);
+	async createCredentials(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: CreateCredentialDto,
+	) {
+		const newCredential = await this.credentialsService.createUnmanagedCredential(
+			payload,
+			req.user,
+		);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			newCredential.id,
@@ -217,10 +226,12 @@ export class CredentialsController {
 			req.body,
 			decryptedData,
 		);
-		const newCredentialData = this.credentialsService.createEncryptedData(
-			credentialId,
-			preparedCredentialData,
-		);
+		const newCredentialData = this.credentialsService.createEncryptedData({
+			id: credential.id,
+			name: preparedCredentialData.name,
+			type: preparedCredentialData.type,
+			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+		});
 
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
@@ -319,7 +330,12 @@ export class CredentialsController {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(
+				req.user,
+				credential.id,
+				toShare,
+				trx,
+			);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;

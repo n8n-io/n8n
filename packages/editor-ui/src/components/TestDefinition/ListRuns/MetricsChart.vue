@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue';
-import { Line } from 'vue-chartjs';
-import { useMetricsChart } from '../composables/useMetricsChart';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
 import type { AppliedThemeOption } from '@/Interface';
+import { computed, watchEffect } from 'vue';
+import { Line } from 'vue-chartjs';
+import { useMetricsChart } from '../composables/useMetricsChart';
 
 const emit = defineEmits<{
 	'update:selectedMetric': [value: string];
@@ -59,7 +59,6 @@ watchEffect(() => {
 					:value="metric"
 				/>
 			</N8nSelect>
-			<N8nText>{{ locale.baseText('testDefinition.listRuns.metricsOverTime') }}</N8nText>
 		</div>
 		<div :class="$style.chartWrapper">
 			<Line
@@ -84,7 +83,6 @@ watchEffect(() => {
 		justify-content: flex-start;
 		align-items: center;
 		gap: var(--spacing-s);
-		margin-bottom: var(--spacing-m);
 		padding: var(--spacing-xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
@@ -101,7 +99,7 @@ watchEffect(() => {
 
 	.chartWrapper {
 		position: relative;
-		height: var(--metrics-chart-height, 400px);
+		height: var(--metrics-chart-height, 200px);
 		width: 100%;
 		padding: var(--spacing-s);
 	}

@@ -106,13 +106,12 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should report error if hook execution fails', async () => {
-			hookFn.mockRejectedValueOnce(new Error('Hook failed'));
+			const error = new Error('Hook failed');
+			hookFn.mockRejectedValueOnce(error);
 			// eslint-disable-next-line @typescript-eslint/dot-notation
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(
-				ApplicationError,
-			);
+			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(ApplicationError), {
 				level: 'fatal',

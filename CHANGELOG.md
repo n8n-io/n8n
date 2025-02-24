@@ -1,3 +1,28 @@
+# [1.80.0](https://github.com/n8n-io/n8n/compare/n8n@1.79.0...n8n@1.80.0) (2025-02-17)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Move model retrieval into try/catch to fix continueOnFail handling ([#13165](https://github.com/n8n-io/n8n/issues/13165)) ([47c5688](https://github.com/n8n-io/n8n/commit/47c5688618001a51c9412c5d07fd25d85b8d1b8d))
+* **Code Tool Node:** Fix Input Schema Parameter not hiding correctly ([#13245](https://github.com/n8n-io/n8n/issues/13245)) ([8e15ebf](https://github.com/n8n-io/n8n/commit/8e15ebf8333d06b5fe4d5bf8ee39f285b31332d7))
+* **core:** Redact credentials ([#13263](https://github.com/n8n-io/n8n/issues/13263)) ([052f177](https://github.com/n8n-io/n8n/commit/052f17744d072cd16ce90ea94fa9873b4ea2ffed))
+* **core:** Reduce risk of race condition during workflow activation loop ([#13186](https://github.com/n8n-io/n8n/issues/13186)) ([64c5b6e](https://github.com/n8n-io/n8n/commit/64c5b6e0604ce9da6b19dd5f04e61e38209b3153))
+* **core:** Run full manual execution when a trigger is executed even if run data exists ([#13194](https://github.com/n8n-io/n8n/issues/13194)) ([66acb1b](https://github.com/n8n-io/n8n/commit/66acb1bcb68926526ed98a5fe5b89bdaa74148d6))
+* Display correct editor URL ([#13251](https://github.com/n8n-io/n8n/issues/13251)) ([67a4ed1](https://github.com/n8n-io/n8n/commit/67a4ed18a13cb2bc54b3472b9a8beb2f274c2bd2))
+* **editor:** Add template id to metadata when saving workflows from json ([#13172](https://github.com/n8n-io/n8n/issues/13172)) ([2a92032](https://github.com/n8n-io/n8n/commit/2a92032704ebc4e0cdd11aa59b6834a9d891ffb0))
+* **editor:** Fix page size resetting when filters are reset on workflows page ([#13265](https://github.com/n8n-io/n8n/issues/13265)) ([b4380d0](https://github.com/n8n-io/n8n/commit/b4380d05087e1213641ee322875cf51bf706d2f5))
+* **editor:** Open autocompletion when starting an expression ([#13249](https://github.com/n8n-io/n8n/issues/13249)) ([6377635](https://github.com/n8n-io/n8n/commit/6377635bf03387c8d0ae5d54848113258bbabacc))
+* **editor:** Prevent pagination setting from being overwritten in URL ([#13266](https://github.com/n8n-io/n8n/issues/13266)) ([d1e65a1](https://github.com/n8n-io/n8n/commit/d1e65a1cd5841f1d4e815f8da36713cdb18281a4))
+* **editor:** Propagate isReadOnly to ResourceMapper `Attempt to Convert Types` switch ([#13216](https://github.com/n8n-io/n8n/issues/13216)) ([617f841](https://github.com/n8n-io/n8n/commit/617f841e0d82f2b40fcf9ac4bf2cb6a8010b517f))
+* **editor:** Render assignments without ID correctly ([#13252](https://github.com/n8n-io/n8n/issues/13252)) ([d116f12](https://github.com/n8n-io/n8n/commit/d116f121e351e3d81e1b5d6c52eb3e5c3b68ae43))
+
+
+### Features
+
+* **editor:** Add pagination to the workflows list ([#13100](https://github.com/n8n-io/n8n/issues/13100)) ([8e37088](https://github.com/n8n-io/n8n/commit/8e370882490d569ff85bba6b7f0a1320fab5eb91))
+
+
+
 # [1.79.0](https://github.com/n8n-io/n8n/compare/n8n@1.78.0...n8n@1.79.0) (2025-02-13)
 
 
