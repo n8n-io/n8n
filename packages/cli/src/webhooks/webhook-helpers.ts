@@ -107,7 +107,7 @@ export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
 	method: string,
-) {
+): WebhookResponseMode | undefined {
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return undefined;
 	}
@@ -186,10 +186,6 @@ export async function executeWebhook(
 		workflowStartNode.typeVersion,
 	);
 
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$executionId: executionId,
-	};
-
 	let project: Project | undefined = undefined;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
@@ -204,21 +200,29 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	// Get the responseMode
-	let responseMode;
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$executionId: executionId,
+	};
 
 	//check if response mode should be set automatically, e.g. multipage form
-	responseMode = autoDetectResponseMode(workflowStartNode, workflow, req.method);
-
-	if (!responseMode) {
-		responseMode = workflow.expression.getSimpleParameterValue(
+	const responseMode =
+		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
+		(workflow.expression.getSimpleParameterValue(
 			workflowStartNode,
 			webhookData.webhookDescription.responseMode,
 			executionMode,
 			additionalKeys,
 			undefined,
 			'onReceived',
-		) as WebhookResponseMode;
+		) as WebhookResponseMode);
+
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
+		// If the mode is not known we error. Is probably best like that instead of using
+		// the default that people know as early as possible (probably already testing phase)
+		// that something does not resolve properly.
+		const errorMessage = `The response mode '${responseMode}' is not valid!`;
+		responseCallback(new ApplicationError(errorMessage), {});
+		throw new InternalServerError(errorMessage);
 	}
 
 	const responseCode = workflow.expression.getSimpleParameterValue(
@@ -238,15 +242,6 @@ export async function executeWebhook(
 		undefined,
 		'firstEntryJson',
 	);
-
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
-		// If the mode is not known we error. Is probably best like that instead of using
-		// the default that people know as early as possible (probably already testing phase)
-		// that something does not resolve properly.
-		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new ApplicationError(errorMessage), {});
-		throw new InternalServerError(errorMessage);
-	}
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
