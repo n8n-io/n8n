@@ -117,7 +117,7 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 							{{ key }}
 						</N8nText>
 						<N8nText color="text-base" size="small" bold>
-							{{ value }}
+							{{ Math.round((value + Number.EPSILON) * 100) / 100 }}
 						</N8nText>
 					</template>
 				</template>
