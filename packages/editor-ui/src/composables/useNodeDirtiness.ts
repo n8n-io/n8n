@@ -209,9 +209,16 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const trigger of workflowsStore.workflowTriggerNodes) {
-			depth[trigger.name] = 0;
-			setDepthRecursively(trigger.name, 1, new Set());
+		for (const startNode of workflowsStore.allNodes) {
+			const hasIncomingNode =
+				Object.keys(workflowsStore.incomingConnectionsByNodeName(startNode.name)).length > 0;
+
+			if (hasIncomingNode) {
+				continue;
+			}
+
+			depth[startNode.name] = 0;
+			setDepthRecursively(startNode.name, 1, new Set());
 		}
 
 		return depth;
