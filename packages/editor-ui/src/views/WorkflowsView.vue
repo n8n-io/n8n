@@ -109,11 +109,12 @@ const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
-const folderCardActions = ref<UserAction[]>([
+const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
 	{
 		label: 'Open',
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
 		disabled: false,
+		onlyAvailableOn: 'card',
 	},
 	{
 		label: 'Create Folder',
@@ -151,6 +152,16 @@ const folderCardActions = ref<UserAction[]>([
 		disabled: true,
 	},
 ]);
+const folderCardActions = computed(() =>
+	folderActions.value.filter(
+		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
+	),
+);
+const mainBreadcrumbsActions = computed(() =>
+	folderActions.value.filter(
+		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
+	),
+);
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
@@ -556,10 +567,6 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
-const onFolderOpened = (data: { folder: FolderResource }) => {
-	console.log('Folder opened', data.folder);
-};
-
 // TODO: Refactor this
 const addFolder = async () => {
 	if (!route.params.projectId) return;
@@ -604,6 +611,19 @@ const addFolder = async () => {
 		} catch (error) {
 			toast.showError(error, 'Error creating folder');
 		}
+	}
+};
+
+const onBreadcrumbItemClick = (item: PathItem) => {
+	if (item.href) {
+		void router
+			.push(item.href)
+			.then(() => {
+				foldersStore.currentFolderId = item.id;
+			})
+			.catch((error) => {
+				toast.showError(error, 'Error navigating to folder');
+			});
 	}
 };
 </script>
@@ -678,21 +698,30 @@ const addFolder = async () => {
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<n8n-breadcrumbs
-				v-if="mainBreadcrumbsItems"
-				:items="mainBreadcrumbsItems"
-				:highlight-last-item="false"
-				:path-truncated="mainBreadcrumbsItems[0].parentFolder"
-				data-test-id="folder-card-breadcrumbs"
-			>
-				<template v-if="currentProject" #prepend>
-					<div :class="$style['home-project']">
-						<n8n-link :to="`/projects/${currentProject.id}`">
-							<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
-						</n8n-link>
-					</div>
-				</template>
-			</n8n-breadcrumbs>
+			<div :class="$style['breadcrumbs-container']">
+				<n8n-breadcrumbs
+					v-if="mainBreadcrumbsItems"
+					:items="mainBreadcrumbsItems"
+					:highlight-last-item="false"
+					:path-truncated="mainBreadcrumbsItems[0].parentFolder"
+					data-test-id="folder-card-breadcrumbs"
+					@itemSelected="onBreadcrumbItemClick"
+				>
+					<template v-if="currentProject" #prepend>
+						<div :class="$style['home-project']">
+							<n8n-link :to="`/projects/${currentProject.id}`">
+								<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+							</n8n-link>
+						</div>
+					</template>
+				</n8n-breadcrumbs>
+				<n8n-action-toggle
+					v-if="mainBreadcrumbsItems"
+					:actions="mainBreadcrumbsActions"
+					theme="dark"
+					data-test-id="folder-breadcrumbs-actions"
+				/>
+			</div>
 		</template>
 		<template #item="{ item: data }">
 			<FolderCard
@@ -700,7 +729,6 @@ const addFolder = async () => {
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				class="mb-2xs"
-				@folder-opened="onFolderOpened"
 			/>
 			<WorkflowCard
 				v-else
@@ -856,6 +884,11 @@ const addFolder = async () => {
 
 .add-folder-button {
 	width: 40px;
+}
+
+.breadcrumbs-container {
+	display: flex;
+	align-items: center;
 }
 </style>
 
