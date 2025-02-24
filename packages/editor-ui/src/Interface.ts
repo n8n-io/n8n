@@ -58,7 +58,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import { FolderShortInfo } from './types/folders.types';
+import type { FolderShortInfo } from './types/folders.types';
 
 export * from 'n8n-design-system/types';
 
