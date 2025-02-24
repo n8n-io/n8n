@@ -1517,7 +1517,7 @@ onUpdated(async () => {
 			>
 				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value.toString()"
+					:key="`${option.value}`"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
