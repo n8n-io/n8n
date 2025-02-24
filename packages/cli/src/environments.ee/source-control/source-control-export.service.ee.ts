@@ -164,6 +164,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
+			if (error instanceof UnexpectedError) throw error;
 			throw new UnexpectedError('Failed to export workflows to work folder', { cause: error });
 		}
 	}

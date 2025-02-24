@@ -1,7 +1,7 @@
 import type { TaskRunner } from '@n8n/task-runner';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-export class TaskRunnerDisconnectedError extends UserError {
+export class TaskRunnerDisconnectedError extends UnexpectedError {
 	description: string;
 
 	constructor(
