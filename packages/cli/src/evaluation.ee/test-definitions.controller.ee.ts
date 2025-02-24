@@ -145,4 +145,20 @@ export class TestDefinitionsController {
 
 		res.status(202).json({ success: true });
 	}
+
+	@Get('/:id/example-evaluation-input')
+	async exampleEvaluationInput(req: TestDefinitionsRequest.ExampleEvaluationInput) {
+		const { id: testDefinitionId } = req.params;
+		const { annotationTagId } = req.query;
+
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		const testDefinition = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
+		if (!testDefinition) throw new NotFoundError('Test definition not found');
+
+		return await this.testRunnerService.getExampleEvaluationInputData(
+			testDefinition,
+			annotationTagId,
+		);
+	}
 }

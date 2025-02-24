@@ -10,12 +10,12 @@ import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
 
-export type IResource = {
+export type Resource = {
 	id: string;
 	name?: string;
 	value?: string;
@@ -28,54 +28,82 @@ export type IResource = {
 	sharedWithProjects?: ProjectSharingData[];
 };
 
-export interface IFilters {
+export type BaseFilters = {
 	search: string;
 	homeProject: string;
 	[key: string]: boolean | string | string[];
-}
+};
 
-type IResourceKeyType = 'credentials' | 'workflows' | 'variables';
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables';
+
+const route = useRoute();
+const router = useRouter();
+const i18n = useI18n();
+const { callDebounced } = useDebounce();
+const usersStore = useUsersStore();
+const telemetry = useTelemetry();
 
 const props = withDefaults(
 	defineProps<{
-		resourceKey: IResourceKeyType;
-		displayName?: (resource: IResource) => string;
-		resources: IResource[];
+		resourceKey: ResourceKeyType;
+		displayName?: (resource: Resource) => string;
+		resources: Resource[];
 		disabled: boolean;
 		initialize?: () => Promise<void>;
-		filters?: IFilters;
+		filters?: BaseFilters;
 		additionalFiltersHandler?: (
-			resource: IResource,
-			filters: IFilters,
+			resource: Resource,
+			filters: BaseFilters,
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
 		showFiltersDropdown?: boolean;
-		sortFns?: Record<string, (a: IResource, b: IResource) => number>;
+		sortFns?: Record<string, (a: Resource, b: Resource) => number>;
 		sortOptions?: string[];
-		type?: 'datatable' | 'list';
+		type?: 'datatable' | 'list-full' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
 		loading: boolean;
+		customPageSize?: number;
+		availablePageSizeOptions?: number[];
+		totalItems?: number;
+		resourcesRefreshing?: boolean;
+		// Set to true if sorting and filtering is done outside of the component
+		dontPerformSortingAndFiltering?: boolean;
 	}>(),
 	{
-		displayName: (resource: IResource) => resource.name || '',
+		displayName: (resource: Resource) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
 		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		type: 'list',
+		type: 'list-full',
 		typeProps: () => ({ itemSize: 80 }),
 		loading: true,
 		additionalFiltersHandler: undefined,
 		showFiltersDropdown: true,
 		shareable: true,
+		customPageSize: 25,
+		availablePageSizeOptions: () => [10, 25, 50, 100],
+		totalItems: 0,
+		dontPerformSortingAndFiltering: false,
+		resourcesRefreshing: false,
 	},
 );
 
+const sortBy = ref(props.sortOptions[0]);
+const hasFilters = ref(false);
+const currentPage = ref(1);
+const rowsPerPage = ref<number>(props.customPageSize);
+const resettingFilters = ref(false);
+const search = ref<HTMLElement | null>(null);
+
 const emit = defineEmits<{
-	'update:filters': [value: IFilters];
+	'update:filters': [value: BaseFilters];
 	'click:add': [event: Event];
+	'update:current-page': [page: number];
+	'update:page-size': [pageSize: number];
 	sort: [value: string];
+	'update:search': [value: string];
 }>();
 
 defineSlots<{
@@ -91,29 +119,33 @@ defineSlots<{
 	}): unknown;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+	item(props: { item: unknown; index: number }): unknown;
 }>();
 
-const route = useRoute();
-const i18n = useI18n();
-const { callDebounced } = useDebounce();
-const usersStore = useUsersStore();
-const telemetry = useTelemetry();
-
-const sortBy = ref(props.sortOptions[0]);
-const hasFilters = ref(false);
-const filtersModel = ref(props.filters);
-const currentPage = ref(1);
-const rowsPerPage = ref<number>(25);
-const resettingFilters = ref(false);
-const search = ref<HTMLElement | null>(null);
-
 //computed
+const filtersModel = computed({
+	get: () => props.filters,
+	set: (newValue) => emit('update:filters', newValue),
+});
+
+const showEmptyState = computed(() => {
+	return (
+		props.resources.length === 0 &&
+		// Don't show empty state if resources are refreshing or if filters are being set
+		!hasFilters.value &&
+		!filtersModel.value.search &&
+		!props.resourcesRefreshing
+	);
+});
 
 const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
 });
 
 const filteredAndSortedResources = computed(() => {
+	if (props.dontPerformSortingAndFiltering) {
+		return props.resources;
+	}
 	const filtered = props.resources.filter((resource) => {
 		let matches = true;
 
@@ -159,126 +191,15 @@ const filteredAndSortedResources = computed(() => {
 	});
 });
 
-//methods
-
-const focusSearchInput = () => {
-	if (search.value) {
-		search.value.focus();
-	}
-};
-
-const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find((key) => {
-		if (key === 'search') return false;
-
-		if (typeof props.filters[key] === 'boolean') {
-			return props.filters[key];
-		}
-
-		if (Array.isArray(props.filters[key])) {
-			return props.filters[key].length > 0;
-		}
-
-		return props.filters[key] !== '';
-	});
-};
-
-const setRowsPerPage = (numberOfRowsPerPage: number) => {
-	rowsPerPage.value = numberOfRowsPerPage;
-};
-
-const setCurrentPage = (page: number) => {
-	currentPage.value = page;
-};
-
-defineExpose({
-	currentPage,
-	setCurrentPage,
-});
-
-const sendFiltersTelemetry = (source: string) => {
-	// Prevent sending multiple telemetry events when resetting filters
-	// Timeout is required to wait for search debounce to be over
-	if (resettingFilters.value) {
-		if (source !== 'reset') {
-			return;
-		}
-
-		setTimeout(() => (resettingFilters.value = false), 1500);
-	}
-
-	const filters = filtersModel.value as Record<string, string[] | string | boolean>;
-	const filtersSet: string[] = [];
-	const filterValues: Array<string[] | string | boolean | null> = [];
-
-	Object.keys(filters).forEach((key) => {
-		if (filters[key]) {
-			filtersSet.push(key);
-			filterValues.push(key === 'search' ? null : filters[key]);
-		}
-	});
-
-	telemetry.track(`User set filters in ${props.resourceKey} list`, {
-		filters_set: filtersSet,
-		filter_values: filterValues,
-		[`${props.resourceKey}_total_in_view`]: props.resources.length,
-		[`${props.resourceKey}_after_filtering`]: filteredAndSortedResources.value.length,
-	});
-};
-
-const onAddButtonClick = (e: Event) => {
-	emit('click:add', e);
-};
-
-const onUpdateFilters = (e: IFilters) => {
-	emit('update:filters', e);
-};
-
-const resetFilters = () => {
-	Object.keys(filtersModel.value).forEach((key) => {
-		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
-	});
-
-	resettingFilters.value = true;
-	sendFiltersTelemetry('reset');
-	emit('update:filters', filtersModel.value);
-};
-
-const itemSize = () => {
-	if ('itemSize' in props.typeProps) {
-		return props.typeProps.itemSize;
-	}
-	return 0;
-};
-
-const getColumns = () => {
-	if ('columns' in props.typeProps) {
-		return props.typeProps.columns;
-	}
-	return {};
-};
-
-const sendSortingTelemetry = () => {
-	telemetry.track(`User changed sorting in ${props.resourceKey} list`, {
-		sorting: sortBy.value,
-	});
-};
-
-const onUpdateFiltersLength = (length: number) => {
-	hasFilters.value = length > 0;
-};
-
-const onSearch = (s: string) => {
-	filtersModel.value.search = s;
-	emit('update:filters', filtersModel.value);
-};
-
 //watchers
 
 watch(
 	() => props.filters,
 	(value) => {
 		filtersModel.value = value;
+		if (hasAppliedFilters()) {
+			hasFilters.value = true;
+		}
 	},
 );
 
@@ -332,12 +253,22 @@ watch(
 
 watch(
 	() => route?.params?.projectId,
-	() => {
-		resetFilters();
+	async () => {
+		await resetFilters();
 	},
 );
 
+watch(
+	() => props.resources,
+	async () => {
+		await nextTick();
+		focusSearchInput();
+	},
+);
+
+// Lifecycle hooks
 onMounted(async () => {
+	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
 
@@ -347,6 +278,180 @@ onMounted(async () => {
 		hasFilters.value = true;
 	}
 });
+
+//methods
+const focusSearchInput = () => {
+	if (search.value) {
+		search.value.focus();
+	}
+};
+
+const hasAppliedFilters = (): boolean => {
+	return !!filterKeys.value.find((key) => {
+		if (key === 'search') return false;
+
+		if (typeof props.filters[key] === 'boolean') {
+			return props.filters[key];
+		}
+
+		if (Array.isArray(props.filters[key])) {
+			return props.filters[key].length > 0;
+		}
+
+		return props.filters[key] !== '';
+	});
+};
+
+const setRowsPerPage = async (numberOfRowsPerPage: number) => {
+	rowsPerPage.value = numberOfRowsPerPage;
+	await savePaginationToQueryString();
+	emit('update:page-size', numberOfRowsPerPage);
+};
+
+const setCurrentPage = async (page: number) => {
+	currentPage.value = page;
+	await savePaginationToQueryString();
+	emit('update:current-page', page);
+};
+
+defineExpose({
+	currentPage,
+	setCurrentPage,
+});
+
+const sendFiltersTelemetry = (source: string) => {
+	// Prevent sending multiple telemetry events when resetting filters
+	// Timeout is required to wait for search debounce to be over
+	if (resettingFilters.value) {
+		if (source !== 'reset') {
+			return;
+		}
+
+		setTimeout(() => (resettingFilters.value = false), 1500);
+	}
+
+	const filters = filtersModel.value as Record<string, string[] | string | boolean>;
+	const filtersSet: string[] = [];
+	const filterValues: Array<string[] | string | boolean | null> = [];
+
+	Object.keys(filters).forEach((key) => {
+		if (filters[key]) {
+			filtersSet.push(key);
+			filterValues.push(key === 'search' ? null : filters[key]);
+		}
+	});
+
+	telemetry.track(`User set filters in ${props.resourceKey} list`, {
+		filters_set: filtersSet,
+		filter_values: filterValues,
+		[`${props.resourceKey}_total_in_view`]: props.resources.length,
+		[`${props.resourceKey}_after_filtering`]: filteredAndSortedResources.value.length,
+	});
+};
+
+const onAddButtonClick = (e: Event) => {
+	emit('click:add', e);
+};
+
+const onUpdateFilters = (e: BaseFilters) => {
+	emit('update:filters', e);
+};
+
+const resetFilters = async () => {
+	Object.keys(filtersModel.value).forEach((key) => {
+		filtersModel.value[key] = Array.isArray(filtersModel.value[key]) ? [] : '';
+	});
+
+	// Reset the current page
+	await setCurrentPage(1);
+
+	resettingFilters.value = true;
+	hasFilters.value = false;
+	sendFiltersTelemetry('reset');
+	emit('update:filters', filtersModel.value);
+};
+
+const itemSize = () => {
+	if ('itemSize' in props.typeProps) {
+		return props.typeProps.itemSize;
+	}
+	return 0;
+};
+
+const getColumns = () => {
+	if ('columns' in props.typeProps) {
+		return props.typeProps.columns;
+	}
+	return {};
+};
+
+const sendSortingTelemetry = () => {
+	telemetry.track(`User changed sorting in ${props.resourceKey} list`, {
+		sorting: sortBy.value,
+	});
+};
+
+const onUpdateFiltersLength = (length: number) => {
+	hasFilters.value = length > 0;
+};
+
+const onSearch = (s: string) => {
+	filtersModel.value.search = s;
+	emit('update:search', s);
+};
+
+const findNearestPageSize = (size: number): number => {
+	return props.availablePageSizeOptions.reduce((prev, curr) =>
+		Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev,
+	);
+};
+
+const savePaginationToQueryString = async () => {
+	// For now, only available for paginated lists
+	if (props.type !== 'list-paginated') {
+		return;
+	}
+	const currentQuery = { ...route.query };
+
+	// Update pagination parameters
+	if (currentPage.value !== 1) {
+		currentQuery.page = currentPage.value.toString();
+	} else {
+		delete currentQuery.page;
+	}
+
+	if (rowsPerPage.value !== props.customPageSize) {
+		currentQuery.pageSize = rowsPerPage.value.toString();
+	} else {
+		delete currentQuery.pageSize;
+	}
+
+	await router.replace({
+		query: Object.keys(currentQuery).length ? currentQuery : undefined,
+	});
+};
+
+const loadPaginationFromQueryString = async () => {
+	// For now, only available for paginated lists
+	if (props.type !== 'list-paginated') {
+		return;
+	}
+	const query = router.currentRoute.value.query;
+
+	if (query.page) {
+		await setCurrentPage(parseInt(query.page as string, 10));
+	}
+
+	if (query.pageSize) {
+		const parsedSize = parseInt(query.pageSize as string, 10);
+		// Round to the nearest available page size, this will prevent users from passing arbitrary values
+		await setRowsPerPage(findNearestPageSize(parsedSize));
+	}
+
+	if (query.sort) {
+		sortBy.value = query.sort as string;
+	}
+};
 </script>
 
 <template>
@@ -358,7 +463,7 @@ onMounted(async () => {
 			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
-			<div v-if="resources.length === 0">
+			<div v-if="showEmptyState">
 				<slot name="empty">
 					<n8n-action-box
 						data-test-id="empty-resources-list"
@@ -446,13 +551,18 @@ onMounted(async () => {
 
 				<slot name="preamble" />
 
+				<div v-if="resourcesRefreshing" class="resource-list-loading">
+					<n8n-loading :rows="rowsPerPage" :shrink-last="false" />
+				</div>
 				<div
-					v-if="filteredAndSortedResources.length > 0"
+					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
+					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
 				>
+					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
 					<n8n-recycle-scroller
-						v-if="type === 'list'"
+						v-if="type === 'list-full'"
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
@@ -462,6 +572,30 @@ onMounted(async () => {
 							<slot :data="item" :update-item-size="updateItemSize" />
 						</template>
 					</n8n-recycle-scroller>
+					<!-- PAGINATED LIST -->
+					<div v-else-if="type === 'list-paginated'" :class="$style.paginatedListWrapper">
+						<div :class="$style.listItems">
+							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
+								<slot name="item" :item="item" :index="index">
+									{{ item }}
+								</slot>
+							</div>
+						</div>
+						<div :class="$style.listPagination">
+							<el-pagination
+								v-model:current-page="currentPage"
+								v-model:page-size="rowsPerPage"
+								background
+								:total="totalItems"
+								:page-sizes="availablePageSizeOptions"
+								layout="total, prev, pager, next, sizes"
+								data-test-id="resources-list-pagination"
+								@update:current-page="setCurrentPage"
+								@size-change="setRowsPerPage"
+							></el-pagination>
+						</div>
+					</div>
+					<!-- DATATABLE -->
 					<n8n-datatable
 						v-if="type === 'datatable'"
 						data-test-id="resources-table"
@@ -528,6 +662,35 @@ onMounted(async () => {
 	position: absolute;
 	height: 100%;
 	width: 100%;
+}
+
+.paginatedListWrapper {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: auto;
+	gap: var(--spacing-m);
+}
+
+.listPagination {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: var(--spacing-l);
+
+	:global(.el-pagination__sizes) {
+		height: 100%;
+		position: relative;
+		top: -1px;
+
+		input {
+			height: 100%;
+			min-height: 28px;
+		}
+
+		:global(.el-input__suffix) {
+			width: var(--spacing-m);
+		}
+	}
 }
 
 .sort-and-filter {

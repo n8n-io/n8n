@@ -6,16 +6,20 @@ import {
 	makeOverrideValue,
 	parseOverrides,
 } from './fromAIOverrideUtils';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, NodePropertyTypes } from 'n8n-workflow';
 
 const DISPLAY_NAME = 'aDisplayName';
 const PARAMETER_NAME = 'aName';
 
-const makeContext = (value: string, path?: string): OverrideContext => ({
+const makeContext = (
+	value: string,
+	path?: string,
+	type: NodePropertyTypes = 'string',
+): OverrideContext => ({
 	parameter: {
 		name: PARAMETER_NAME,
 		displayName: DISPLAY_NAME,
-		type: 'string',
+		type,
 	},
 	value,
 	path: path ?? `parameters.${PARAMETER_NAME}`,
@@ -77,6 +81,7 @@ describe('makeOverrideValue', () => {
 		['ai node type on denylist', makeContext(''), AI_DENYLIST_NODE_TYPE],
 		['vector store type', makeContext(''), AI_VECTOR_STORE_NODE_TYPE],
 		['denied parameter name', makeContext('', 'parameters.toolName'), AI_NODE_TYPE],
+		['denied parameter type', makeContext('', undefined, 'credentialsSelect'), AI_NODE_TYPE],
 	])('should not create an override for %s', (_name, context, nodeType) => {
 		expect(makeOverrideValue(context, nodeType)).toBeNull();
 	});

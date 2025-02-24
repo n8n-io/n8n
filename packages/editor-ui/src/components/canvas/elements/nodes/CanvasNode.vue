@@ -417,6 +417,7 @@ onBeforeUnmount(() => {
 			:type="data.type"
 			:hovered="nearbyHovered"
 			:disabled="isDisabled"
+			:read-only="readOnly"
 			:class="$style.trigger"
 		/>
 	</div>

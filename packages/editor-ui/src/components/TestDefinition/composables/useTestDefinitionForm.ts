@@ -56,9 +56,9 @@ export function useTestDefinitionForm() {
 	/**
 	 * Load test data including metrics.
 	 */
-	const loadTestData = async (testId: string) => {
+	const loadTestData = async (testId: string, workflowId: string) => {
 		try {
-			await evaluationsStore.fetchAll({ force: true });
+			await evaluationsStore.fetchAll({ force: true, workflowId });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {
@@ -86,6 +86,7 @@ export function useTestDefinitionForm() {
 				};
 				state.value.metrics = metrics;
 				state.value.mockedNodes = testDefinition.mockedNodes ?? [];
+				evaluationsStore.updateRunFieldIssues(testDefinition.id);
 			}
 		} catch (error) {
 			console.error('Failed to load test data', error);
@@ -114,6 +115,10 @@ export function useTestDefinitionForm() {
 		state.value.metrics = state.value.metrics.filter((metric) => metric.id !== metricId);
 	};
 
+	/**
+	 * This method would perform unnecessary updates on the BE
+	 * it's a performance degradation candidate if metrics reach certain amount
+	 */
 	const updateMetrics = async (testId: string) => {
 		const promises = state.value.metrics.map(async (metric) => {
 			if (!metric.name) return;
@@ -159,9 +164,7 @@ export function useTestDefinitionForm() {
 			if (annotationTagId) {
 				params.annotationTagId = annotationTagId;
 			}
-			if (state.value.mockedNodes.length > 0) {
-				params.mockedNodes = state.value.mockedNodes;
-			}
+			params.mockedNodes = state.value.mockedNodes;
 
 			const response = await evaluationsStore.update({ ...params, id: testId });
 			return response;

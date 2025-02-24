@@ -146,7 +146,7 @@ export class Summarize implements INodeType {
 								default: false,
 								displayOptions: {
 									show: {
-										aggregation: ['append', 'concatenate'],
+										aggregation: ['append', 'concatenate', 'count', 'countUnique'],
 									},
 								},
 							},

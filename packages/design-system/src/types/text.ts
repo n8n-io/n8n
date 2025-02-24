@@ -3,6 +3,7 @@ export type TextSize = (typeof TEXT_SIZE)[number];
 
 const TEXT_COLOR = [
 	'primary',
+	'secondary',
 	'text-dark',
 	'text-base',
 	'text-light',
@@ -10,6 +11,8 @@ const TEXT_COLOR = [
 	'danger',
 	'success',
 	'warning',
+	'foreground-dark',
+	'foreground-xdark',
 ] as const;
 export type TextColor = (typeof TEXT_COLOR)[number];
 

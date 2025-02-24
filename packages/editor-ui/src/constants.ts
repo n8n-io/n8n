@@ -33,6 +33,7 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
+export const DEFAULT_WORKFLOW_PAGE_SIZE = 10;
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -502,7 +503,6 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS = 'TestDefinitionRuns',
 	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
 	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
 	NEW_TEST_DEFINITION = 'NewTestDefinition',
