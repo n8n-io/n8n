@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
+import lodash from 'lodash';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -38,7 +39,6 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
-import _ from 'lodash';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -319,7 +319,7 @@ export class LoadNodesAndCredentials {
 			const description: INodeTypeBaseDescription | INodeTypeDescription =
 				usableNode.usableAsTool === true
 					? structuredClone(usableNode)
-					: _.merge({}, usableNode, usableNode.usableAsTool);
+					: lodash.merge({}, usableNode, usableNode.usableAsTool);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
@@ -503,15 +503,14 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		const resources = item.description.codex?.resources ?? {};
-
 		item.description.codex = {
+			...item.description.codex,
 			categories: ['AI'],
 			subcategories: {
+				...item.description.codex?.subcategories,
 				AI: ['Tools'],
-				Tools: ['Other Tools'],
+				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
 			},
-			resources,
 		};
 		return item;
 	}

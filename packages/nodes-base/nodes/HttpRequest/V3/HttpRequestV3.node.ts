@@ -73,7 +73,7 @@ export class HttpRequestV3 implements INodeType {
 			properties: mainProperties,
 			usableAsTool: {
 				codex: {
-					subcategories: { AI: ['Recommended Tools'] },
+					subcategories: { Tools: ['Recommended Tools'] },
 				},
 			},
 		};

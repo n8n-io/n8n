@@ -45,6 +45,7 @@ export class ToolHttpRequest implements INodeType {
 			name: 'HTTP Request',
 		},
 		credentials: [],
+		hidden: true,
 		codex: {
 			categories: ['AI'],
 			subcategories: {
