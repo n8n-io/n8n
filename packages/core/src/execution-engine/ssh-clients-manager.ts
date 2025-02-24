@@ -3,6 +3,33 @@ import type { SSHCredentials } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Client, type ConnectConfig } from 'ssh2';
 
+/**
+ * Service that manages SSH client connections used during workflow execution.
+ * Handles connection pooling, lifecycle management, and cleanup of SSH connections.
+ *
+ * ### Responsibilities
+ *
+ * - Creating and caching SSH client connections
+ * - Reusing existing connections based on credentials
+ * - Cleaning up stale connections
+ * - Ensuring proper shutdown of connections
+ *
+ * ### Connection Lifecycle
+ *
+ * ```mermaid
+ * flowchart TD
+ *     A[getClient(credentials)] --> B{Connection exists?}
+ *     B -->|Yes| C[Update lastUsed timestamp]
+ *     B -->|No| D[Create new SSH connection]
+ *     C --> E[Return existing client]
+ *     D --> F[Cache client]
+ *     F --> E
+ *     G[Periodic cleanup] --> H[Check all connections]
+ *     H --> I{Connection stale?}
+ *     I -->|Yes| J[Close connection]
+ *     I -->|No| H
+ * ```
+ */
 @Service()
 export class SSHClientsManager {
 	readonly clients = new Map<string, { client: Client; lastUsed: Date }>();

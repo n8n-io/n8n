@@ -41,6 +41,32 @@ import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 
+/**
+ * A utility class that helps route execution based on the node type and implementation.
+ * This component is responsible for determining the right execution path for different
+ * node types and handling their specific execution requirements.
+ *
+ * ## Responsibilities
+ *
+ * - Routing execution to the correct node implementation
+ * - Handling declarative REST API nodes
+ * - Providing node configuration for dynamic nodes
+ * - Executing node business logic with appropriate context
+ *
+ * ## Execution Flow
+ *
+ * ```mermaid
+ * flowchart TD
+ *     A[Node Execution] --> B{Node Type}
+ *     B -->|Declarative API| C[executeDeclarativeApi]
+ *     B -->|Regular Node| D[executeStandardNode]
+ *     C --> E[Pre-process parameters]
+ *     D --> F[Execute node method]
+ *     E --> G[Execute API request]
+ *     F --> H[Return results]
+ *     G --> H
+ * ```
+ */
 export class RoutingNode {
 	constructor(
 		private readonly context: ExecuteContext,
