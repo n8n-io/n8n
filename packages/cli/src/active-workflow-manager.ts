@@ -34,7 +34,6 @@ import {
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveExecutions } from '@/active-executions';
 import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
@@ -73,7 +72,6 @@ export class ActiveWorkflowManager {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeWorkflows: ActiveWorkflows,
-		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
@@ -285,25 +283,15 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
+				void this.workflowExecutionService.runWorkflow(
 					workflowData,
 					node,
 					data,
 					additionalData,
 					mode,
 					responsePromise,
+					donePromise,
 				);
-
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					void executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
 			};
 
 			const __emitError = (error: ExecutionError) => {
@@ -337,26 +325,17 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
+				void this.workflowExecutionService.runWorkflow(
 					workflowData,
 					node,
 					data,
 					additionalData,
 					mode,
 					responsePromise,
+					donePromise,
 				);
-
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
 			};
+
 			const emitError = (error: Error): void => {
 				this.logger.info(
 					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,

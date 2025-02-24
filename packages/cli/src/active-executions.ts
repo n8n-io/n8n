@@ -146,6 +146,11 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
+	rejectResponsePromise(executionId: string, reason: Error) {
+		const execution = this.activeExecutions[executionId];
+		execution?.responsePromise?.reject(reason);
+	}
+
 	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string): void {
 		const execution = this.activeExecutions[executionId];
@@ -175,6 +180,7 @@ export class ActiveExecutions {
 	}
 
 	/** Resolve the response promise in an execution. */
+	// TODO: delete this method
 	resolveExecutionResponsePromise(executionId: string) {
 		// TODO: This should probably be refactored.
 		// The reason for adding this method is that the Form node works in 'responseNode' mode

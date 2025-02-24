@@ -7,8 +7,6 @@ import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
 	IPinData,
 	IRun,
 	WorkflowExecuteMode,
@@ -127,7 +125,6 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
@@ -141,13 +138,9 @@ export class WorkflowRunner {
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
 			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 			await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
-			responsePromise?.reject(error);
+			this.activeExecutions.rejectResponsePromise(executionId, error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
-		}
-
-		if (responsePromise) {
-			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
 		// @TODO: Reduce to true branch once feature is stable

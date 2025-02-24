@@ -532,7 +532,6 @@ export async function executeWebhook(
 			true,
 			!didSendResponse,
 			executionId,
-			responsePromise,
 		);
 		additionalKeys.$executionId = executionId;
 
@@ -542,6 +541,10 @@ export async function executeWebhook(
 		);
 
 		const activeExecutions = Container.get(ActiveExecutions);
+
+		if (responsePromise) {
+			activeExecutions.attachResponsePromise(executionId, responsePromise);
+		}
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId);

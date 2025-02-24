@@ -13,9 +13,11 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	IRun,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { ensureError, SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -42,6 +44,7 @@ export class WorkflowExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly activeExecutions: ActiveExecutions,
 	) {}
 
 	async runWorkflow(
@@ -51,6 +54,7 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -84,7 +88,24 @@ export class WorkflowExecutionService {
 			workflowData,
 		};
 
-		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		try {
+			const executionId = await this.workflowRunner.run(runData, true);
+
+			if (responsePromise) {
+				this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+			}
+			if (donePromise) {
+				this.activeExecutions
+					.getPostExecutePromise(executionId)
+					.then(donePromise.resolve)
+					.catch(donePromise.reject);
+			}
+			return executionId;
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(error.message, { error });
+			throw error;
+		}
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
