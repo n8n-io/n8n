@@ -591,12 +591,6 @@ const createFields: INodeProperties[] = [
 					'Specifies the expiration date option for the request. This header is valid for accounts with hierarchical namespace enabled.',
 				default: 'Absolute',
 				options: [
-					// {
-					// 	name: 'Relative to Now',
-					// 	value: 'RelativeToNow',
-					// 	description:
-					// 		'Sets the expiration date relative to the current time. Expiry Time must be specified as the number of milliseconds to elapse from the present time.',
-					// },
 					{
 						name: 'Expire',
 						value: 'Absolute',
