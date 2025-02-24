@@ -134,11 +134,10 @@ describe('TestDefinitionListView', () => {
 	it('should delete test and show success message', async () => {
 		const testDefinitionStore = mockedStore(useTestDefinitionStore);
 		testDefinitionStore.allTestDefinitionsByWorkflowId[workflowId] = mockTestDefinitions;
-		testDefinitionStore.startTestRun.mockRejectedValueOnce(new Error('Run failed'));
 
 		message.confirm.mockResolvedValueOnce(MODAL_CONFIRM);
 
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: { name: workflowId },
 		});
 
@@ -157,6 +156,17 @@ describe('TestDefinitionListView', () => {
 
 		expect(testDefinitionStore.deleteById).toHaveBeenCalledWith(testToDelete);
 		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+
+		/**
+		 * since the actions are mocked by default,
+		 * double check the UI updates correctly
+		 */
+		testDefinitionStore.allTestDefinitionsByWorkflowId = {
+			[workflowId]: [mockTestDefinitions[1], mockTestDefinitions[2]],
+		};
+		await waitFor(() =>
+			expect(queryByTestId(`test-actions-${testToDelete}`)).not.toBeInTheDocument(),
+		);
 	});
 
 	it('should sort tests by updated date in descending order', async () => {

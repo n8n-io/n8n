@@ -173,13 +173,13 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 </script>
 
 <template>
-	<div v-if="!isLoading" :class="[$style.container, { [$style.noRuns]: !hasRuns }]">
+	<div v-if="!isLoading" :class="[$style.container]">
 		<div :class="$style.header">
 			<div style="display: flex; align-items: center">
 				<N8nIconButton
 					icon="arrow-left"
 					type="tertiary"
-					:class="$style.arrowBack"
+					text
 					@click="router.push({ name: VIEWS.TEST_DEFINITION, params: { testId } })"
 				></N8nIconButton>
 				<InlineNameEdit
@@ -232,17 +232,17 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:maxlength="260"
 					max-height="none"
 					type="Test description"
-					:class="$style.editDescription"
 					@update:model-value="updateDescription"
 				>
-					<N8nText size="small" color="text-base">{{ state.description.value }}</N8nText>
+					<N8nText size="medium" color="text-base">{{ state.description.value }}</N8nText>
 				</InlineNameEdit>
 			</div>
 
-			<div :class="$style.content">
+			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
 				<RunsSection
-					v-if="runs.length > 0"
+					v-if="hasRuns"
 					v-model:selectedMetric="selectedMetric"
+					:class="$style.runs"
 					:runs="runs"
 					:test-id="testId"
 					:applied-theme="appliedTheme"
@@ -250,12 +250,13 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 				/>
 
 				<ConfigSection
+					v-if="showConfig"
 					v-model:tags="state.tags"
 					v-model:evaluationWorkflow="state.evaluationWorkflow"
 					v-model:metrics="state.metrics"
 					v-model:mockedNodes="state.mockedNodes"
+					:class="$style.config"
 					:cancel-editing="cancelEditing"
-					:show-config="showConfig"
 					:tags-by-id="tagsById"
 					:is-loading="isLoading"
 					:get-field-issues="getFieldIssues"
@@ -282,8 +283,16 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 .content {
 	display: flex;
 	justify-content: center;
-
 	gap: var(--spacing-m);
+	padding-bottom: var(--spacing-m);
+}
+
+.config {
+	width: 480px;
+
+	.contentWithRuns & {
+		width: 400px;
+	}
 }
 
 .header {
