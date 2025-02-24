@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, UserAction, WorkflowListResourceDB, WorkflowListItem } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResource, WorkflowListItem } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -93,7 +93,7 @@ const filters = ref<Filters>({
 
 const workflowListEventBus = createEventBus();
 
-const workflowsAndFolders = ref<WorkflowListResourceDB[]>([]);
+const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const easyAICalloutVisible = ref(true);
 
@@ -203,7 +203,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				sharedWithProjects: resource.sharedWithProjects,
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
-				parentFolder: (resource as WorkflowResource).parentFolder,
+				parentFolder: resource.parentFolder,
 			} as WorkflowResource;
 		}
 	});

@@ -7,7 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES, VIEWS } from '@/constants';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import type { IUser, WorkflowListResourceDB } from '@/Interface';
+import type { IUser, WorkflowListResource } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { Project } from '@/types/projects.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -276,7 +276,7 @@ describe('WorkflowsView', () => {
 	});
 
 	it('should render workflow and folder cards', async () => {
-		const TEST_WORKFLOW_RESOURCE: WorkflowListResourceDB = {
+		const TEST_WORKFLOW_RESOURCE: WorkflowListResource = {
 			resource: 'workflow',
 			id: '1',
 			name: 'Workflow 1',
@@ -292,7 +292,7 @@ describe('WorkflowsView', () => {
 				updatedAt: new Date().toISOString(),
 			},
 		};
-		const TEST_FOLDER_RESOURCE: WorkflowListResourceDB = {
+		const TEST_FOLDER_RESOURCE: WorkflowListResource = {
 			resource: 'folder',
 			id: '2',
 			name: 'Folder 2',

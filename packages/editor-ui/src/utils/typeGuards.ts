@@ -9,7 +9,7 @@ import type {
 	IExecutionResponse,
 	ICredentialsResponse,
 	NewCredentialsModal,
-	WorkflowListResourceDB,
+	WorkflowListResource,
 	WorkflowListItem,
 } from '@/Interface';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
@@ -140,8 +140,6 @@ export function isResourceSortableByDate(
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
 }
 
-export function isResponseWorkflowResource(
-	value: WorkflowListResourceDB,
-): value is WorkflowListItem {
+export function isResponseWorkflowResource(value: WorkflowListResource): value is WorkflowListItem {
 	return value.resource === 'workflow';
 }
