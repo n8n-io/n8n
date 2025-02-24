@@ -164,15 +164,37 @@ export class TestRunnerService {
 			pastExecutionWorkflowData,
 		);
 
+		const startNodesData = this.getStartNodesData(
+			workflow,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
+
 		// Prepare the data to run the workflow
+		// Evaluation executions should run the same way as manual,
+		// because they need pinned data and partial execution logic
 		const data: IWorkflowExecutionDataProcess = {
-			...this.getStartNodesData(workflow, pastExecutionData, pastExecutionWorkflowData),
+			...startNodesData,
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
 			workflowData: { ...workflow, pinData },
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
+			executionData: {
+				startData: {
+					startNodes: startNodesData.startNodes,
+				},
+				resultData: {
+					pinData,
+					runData: {},
+				},
+				manualData: {
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: startNodesData.triggerToStartFrom,
+				},
+			},
 		};
 
 		// Trigger the workflow under test with mocked data

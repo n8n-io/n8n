@@ -260,7 +260,8 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
-			if (data.executionData !== undefined) {
+			// Evaluation executions use the same logic as manual executions
+			if (data.executionData !== undefined && data.executionMode !== 'evaluation') {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
 				});
