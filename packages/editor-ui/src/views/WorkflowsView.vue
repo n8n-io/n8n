@@ -553,7 +553,7 @@ const addFolder = async () => {
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('generic.invalidName'),
+			inputErrorMessage: i18n.baseText('folders.add.invalidName.message'),
 			inputValue: '',
 			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
 			customClass: 'add-folder-modal',

@@ -891,6 +891,7 @@
 	"folders.add.modal.message": "Create folder in \"{parent}\"",
 	"folders.add.success.title": "Folder created",
 	"folders.add.success.message": "<a href=\"{link}\">Open {name}</a> now",
+	"folders.add.invalidName.message": "Please provide a valid folder name",
 	"generic.oauth1Api": "OAuth1 API",
 	"generic.oauth2Api": "OAuth2 API",
 	"genericHelpers.loading": "Loading",
