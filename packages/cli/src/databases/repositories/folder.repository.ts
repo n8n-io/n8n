@@ -101,8 +101,8 @@ export class FolderRepository extends Repository<FolderWithWorkflowCount> {
 			selections.push(...this.getParentFolderFields('parentFolder'));
 		}
 
-		if (select?.workflowsCount) {
-			query.loadRelationCountAndMap('folder.workflowsCount', 'folder.workflows');
+		if (select?.workflowCount) {
+			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows');
 		}
 	}
 
