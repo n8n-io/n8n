@@ -58,6 +58,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
+import { FolderShortInfo } from './types/folders.types';
 
 export * from 'n8n-design-system/types';
 
@@ -317,6 +318,11 @@ export interface IWorkflowDb {
 }
 
 // For workflow list we don't need the full workflow data
+export type BaseResource = {
+	id: string;
+	name: string;
+};
+
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
@@ -324,17 +330,19 @@ export type WorkflowListItem = Omit<
 	resource: 'workflow';
 	parentFolder?: { id: string; name: string };
 };
-export interface FolderListItem {
-	resource: 'folder';
-	id: string;
-	name: string;
-	createdAt: number | string;
-	updatedAt: number | string;
-	workflowsCount?: number;
-	parentFolder?: { id: string; name: string };
+
+export type BaseFolderItem = BaseResource & {
+	createdAt: string | number;
+	updatedAt: string | number;
+	workflowCount: number;
+	parentFolder?: FolderShortInfo;
 	homeProject?: ProjectSharingData;
-	tags?: ITag[];
 	sharedWithProjects?: ProjectSharingData[];
+	tags?: ITag[];
+};
+
+export interface FolderListItem extends BaseFolderItem {
+	resource: 'folder';
 }
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;

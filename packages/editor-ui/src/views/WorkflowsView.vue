@@ -46,7 +46,6 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
-import { isResponseWorkflowResource } from '@/utils/typeGuards';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -186,7 +185,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
-				workflowCount: resource.workflowsCount,
+				workflowCount: resource.workflowCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
@@ -528,7 +527,7 @@ const onSortUpdated = async (sort: string) => {
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
-		(w): w is WorkflowListItem => isResponseWorkflowResource(w) && w.id === data.id,
+		(w): w is WorkflowListItem => w.id === data.id,
 	);
 	if (!workflow) return;
 	workflow.active = data.active;

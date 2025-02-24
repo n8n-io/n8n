@@ -14,26 +14,15 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { ITag } from '@/Interface';
+import type { BaseFolderItem, BaseResource, ITag } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import type { FolderShortInfo } from '@/types/folders.types';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
-export type BaseResource = {
-	id: string;
-	name: string;
-};
-
-export type FolderResource = BaseResource & {
+export type FolderResource = BaseFolderItem & {
 	resourceType: 'folder';
-	updatedAt: string;
-	createdAt: string;
 	readOnly: boolean;
-	workflowCount: number;
-	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
-	parentFolder?: FolderShortInfo;
 };
 
 export type WorkflowResource = BaseResource & {

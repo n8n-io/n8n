@@ -5,13 +5,7 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type {
-	IExecutionResponse,
-	ICredentialsResponse,
-	NewCredentialsModal,
-	WorkflowListResource,
-	WorkflowListItem,
-} from '@/Interface';
+import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
@@ -138,8 +132,4 @@ export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
-}
-
-export function isResponseWorkflowResource(value: WorkflowListResource): value is WorkflowListItem {
-	return value.resource === 'workflow';
 }
