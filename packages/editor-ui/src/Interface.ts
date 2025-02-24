@@ -316,6 +316,41 @@ export interface IWorkflowDb {
 	meta?: WorkflowMetadata;
 }
 
+// For workflow list we don't need the full workflow data
+export type BaseResource = {
+	id: string;
+	name: string;
+};
+
+export type WorkflowListItem = Omit<
+	IWorkflowDb,
+	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
+> & {
+	resource: 'workflow';
+	parentFolder?: { id: string; name: string };
+};
+
+export type FolderShortInfo = {
+	id: string;
+	name: string;
+};
+
+export type BaseFolderItem = BaseResource & {
+	createdAt: string;
+	updatedAt: string;
+	workflowCount: number;
+	parentFolder?: FolderShortInfo;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
+	tags?: ITag[];
+};
+
+export interface FolderListItem extends BaseFolderItem {
+	resource: 'folder';
+}
+
+export type WorkflowListResource = WorkflowListItem | FolderListItem;
+
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
 	id: string;
