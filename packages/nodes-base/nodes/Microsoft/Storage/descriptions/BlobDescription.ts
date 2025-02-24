@@ -142,12 +142,23 @@ export const blobOperations: INodeProperties[] = [
 								};
 
 								let fileName: string | undefined;
-								if (newItem.json.contentDisposition) {
-									const fileNameMatch = (newItem.json.contentDisposition as string).match(
-										/filename="(.+)"/,
-									);
-									if (fileNameMatch !== null) {
-										fileName = fileNameMatch[1];
+								if (headerData.contentDisposition) {
+									let fileNameMatch =
+										/filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(
+											headerData.contentDisposition as string,
+										);
+									fileName =
+										fileNameMatch && fileNameMatch.length > 1
+											? fileNameMatch[3] || fileNameMatch[2]
+											: undefined;
+									if (fileName) {
+										fileName = decodeURIComponent(fileName);
+									} else {
+										fileNameMatch = /filename="?([^"]*?)"?(;|$)/g.exec(
+											headerData.contentDisposition as string,
+										);
+										fileName =
+											fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
 									}
 								}
 
@@ -155,7 +166,7 @@ export const blobOperations: INodeProperties[] = [
 								newItem.binary!.data = await this.helpers.prepareBinaryData(
 									response.body as Buffer,
 									fileName,
-									newItem.json.contentType as string,
+									headerData.contentType as string,
 								);
 
 								return [newItem];
