@@ -289,6 +289,32 @@ export class Linear implements INodeType {
 						responseData = await linearApiRequest.call(this, body);
 						responseData = responseData?.data?.issueUpdate?.issue;
 					}
+					if (operation === 'addComment') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body: IGraphqlBody = {
+							query: query.addComment(),
+							variables: {
+								issueId,
+								body: this.getNodeParameter('comment', i),
+							},
+						};
+
+						responseData = await linearApiRequest.call(this, body);
+						responseData = responseData?.data?.commentCreate;
+					}
+					if (operation === 'addLink') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const body: IGraphqlBody = {
+							query: query.addIssueLink(),
+							variables: {
+								issueId,
+								url: this.getNodeParameter('link', i),
+							},
+						};
+
+						responseData = await linearApiRequest.call(this, body);
+						responseData = responseData?.data?.attachmentLinkURL;
+					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
