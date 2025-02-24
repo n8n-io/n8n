@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { Folder } from '@/databases/entities/folder';
 
 export interface SimpleFolderNode {
 	id: string;
