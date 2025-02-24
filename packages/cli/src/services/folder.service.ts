@@ -72,7 +72,7 @@ export class FolderService {
 			.createQueryBuilder('f')
 			.select('f.id', 'id')
 			.addSelect('f.parentFolderId', 'parentFolderId')
-			.innerJoin('folder_path', 'fp', 'f.id = fp.parentFolderId');
+			.innerJoin('folder_path', 'fp', 'f.id = fp."parentFolderId"');
 
 		const mainQuery = this.folderRepository
 			.createQueryBuilder('folder')
