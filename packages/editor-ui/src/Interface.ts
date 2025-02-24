@@ -314,7 +314,6 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	resource?: 'workflow';
 }
 
 // For workflow list we don't need the full workflow data
