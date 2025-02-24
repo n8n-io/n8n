@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -18,7 +19,6 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
@@ -27,7 +27,7 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const CanvasChat = async () => await import('@/components/CanvasChat/CanvasChat.vue');
-const NodeView = async () => await import('@/views/NodeViewSwitcher.vue');
+const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
@@ -61,6 +61,8 @@ const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const TestDefinitionListView = async () =>
 	await import('./views/TestDefinition/TestDefinitionListView.vue');
+const TestDefinitionNewView = async () =>
+	await import('./views/TestDefinition/TestDefinitionNewView.vue');
 const TestDefinitionEditView = async () =>
 	await import('./views/TestDefinition/TestDefinitionEditView.vue');
 const TestDefinitionRootView = async () =>
@@ -264,64 +266,41 @@ export const routes: RouteRecordRaw[] = [
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
+		props: true,
 		meta: {
 			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => useTestDefinitionStore().isFeatureEnabled,
+			},
 		},
 		children: [
 			{
 				path: '',
 				name: VIEWS.TEST_DEFINITION,
-				components: {
-					default: TestDefinitionListView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
+				component: TestDefinitionListView,
+				props: true,
 			},
 			{
 				path: 'new',
 				name: VIEWS.NEW_TEST_DEFINITION,
-				components: {
-					default: TestDefinitionEditView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
+				component: TestDefinitionNewView,
+				props: true,
 			},
 			{
 				path: ':testId',
 				name: VIEWS.TEST_DEFINITION_EDIT,
+				props: true,
 				components: {
 					default: TestDefinitionEditView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
-			},
-			{
-				path: ':testId/runs',
-				name: VIEWS.TEST_DEFINITION_RUNS,
-				components: {
-					default: TestDefinitionRunsListView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
 				},
 			},
 			{
 				path: ':testId/runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+				props: true,
 				components: {
 					default: TestDefinitionRunDetailView,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
 				},
 			},
 		],

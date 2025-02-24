@@ -37,6 +37,7 @@ catalogs:
     '@testing-library/user-event': ^14.6.0
     '@testing-library/vue': ^8.1.0
     '@vue/tsconfig': ^0.7.0
+    '@vueuse/core': ^10.11.0
     '@vitest/coverage-v8': ^3.0.5
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1

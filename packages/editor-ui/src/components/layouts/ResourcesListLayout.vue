@@ -557,6 +557,7 @@ const loadPaginationFromQueryString = async () => {
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
+					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
 				>
 					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
@@ -588,6 +589,7 @@ const loadPaginationFromQueryString = async () => {
 								:total="totalItems"
 								:page-sizes="availablePageSizeOptions"
 								layout="total, prev, pager, next, sizes"
+								data-test-id="resources-list-pagination"
 								@update:current-page="setCurrentPage"
 								@size-change="setRowsPerPage"
 							></el-pagination>
