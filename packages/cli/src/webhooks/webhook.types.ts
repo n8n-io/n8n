@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
+import type { IHttpRequestMethods, IN8nHttpFullResponse } from 'n8n-workflow';
 
 export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 
@@ -26,12 +26,12 @@ export interface IWebhookManager {
 		httpMethod: IHttpRequestMethods,
 	) => Promise<WebhookAccessControlOptions | undefined>;
 
-	executeWebhook(req: WebhookRequest, res: Response): Promise<IWebhookResponseCallbackData>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<void>;
 }
 
-export interface IWebhookResponseCallbackData {
-	data?: IDataObject | IDataObject[];
-	headers?: object;
-	noWebhookResponse?: boolean;
-	responseCode?: number;
-}
+export type IWebhookResponsePromiseData =
+	| { noWebhookResponse: true }
+	| {
+			noWebhookResponse?: false;
+			response: IN8nHttpFullResponse;
+	  };

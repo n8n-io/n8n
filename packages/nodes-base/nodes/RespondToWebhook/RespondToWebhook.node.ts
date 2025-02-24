@@ -23,6 +23,12 @@ import type { Readable } from 'stream';
 
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
+type Options = {
+	responseHeaders: { entries: Array<{ name: string; value: string }> };
+	responseCode: number;
+	responseKey: string;
+};
+
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
@@ -323,19 +329,16 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const respondWith = this.getNodeParameter('respondWith', 0) as string;
-			const options = this.getNodeParameter('options', 0, {});
+			const options = this.getNodeParameter('options', 0, {}) as Options;
 
-			const headers = {} as IDataObject;
-			if (options.responseHeaders) {
-				for (const header of (options.responseHeaders as IDataObject).entries as IDataObject[]) {
-					if (typeof header.name !== 'string') {
-						header.name = header.name?.toString();
-					}
-					headers[header.name?.toLowerCase() as string] = header.value?.toString();
+			const headers: IN8nHttpFullResponse['headers'] = {};
+			if (options.responseHeaders?.entries?.length) {
+				for (const header of options.responseHeaders.entries) {
+					headers[String(header.name).toLowerCase()] = String(header.value);
 				}
 			}
 
-			let statusCode = (options.responseCode as number) || 200;
+			let statusCode = options.responseCode ?? 200;
 			let responseBody: IN8nHttpResponse | Readable;
 			if (respondWith === 'json') {
 				const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
@@ -381,11 +384,11 @@ export class RespondToWebhook implements INodeType {
 			} else if (respondWith === 'allIncomingItems') {
 				const respondItems = items.map((item) => item.json);
 				responseBody = options.responseKey
-					? set({}, options.responseKey as string, respondItems)
+					? set({}, options.responseKey, respondItems)
 					: respondItems;
 			} else if (respondWith === 'firstIncomingItem') {
 				responseBody = options.responseKey
-					? set({}, options.responseKey as string, items[0].json)
+					? set({}, options.responseKey, items[0].json)
 					: items[0].json;
 			} else if (respondWith === 'text') {
 				responseBody = this.getNodeParameter('responseBody', 0) as string;
@@ -418,7 +421,7 @@ export class RespondToWebhook implements INodeType {
 					responseBody = { binaryData };
 				} else {
 					responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
-					headers['content-length'] = (responseBody as Buffer).length;
+					headers['content-length'] = String((responseBody as Buffer).length);
 				}
 
 				if (!headers['content-type']) {
@@ -426,7 +429,7 @@ export class RespondToWebhook implements INodeType {
 				}
 			} else if (respondWith === 'redirect') {
 				headers.location = this.getNodeParameter('redirectURL', 0) as string;
-				statusCode = (options.responseCode as number) ?? 307;
+				statusCode = options.responseCode ?? 307;
 			} else if (respondWith !== 'noData') {
 				throw new NodeOperationError(
 					this.getNode(),
