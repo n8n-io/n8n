@@ -1,0 +1,171 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useCanvasLayout > should layout a basic workflow 1`] = `
+{
+  "boundingBox": {
+    "height": 100,
+    "width": 620,
+    "x": 0,
+    "y": 0,
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "x": 100,
+      "y": 100,
+    },
+    {
+      "id": "node2",
+      "x": 360,
+      "y": 100,
+    },
+    {
+      "id": "node3",
+      "x": 620,
+      "y": 100,
+    },
+  ],
+}
+`;
+
+exports[`useCanvasLayout > should layout a basic workflow with selected nodes 1`] = `
+{
+  "boundingBox": {
+    "height": 100,
+    "width": 620,
+    "x": 0,
+    "y": 0,
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "x": 100,
+      "y": 100,
+    },
+    {
+      "id": "node2",
+      "x": 360,
+      "y": 100,
+    },
+    {
+      "id": "node3",
+      "x": 620,
+      "y": 100,
+    },
+  ],
+}
+`;
+
+exports[`useCanvasLayout > should layout a workflow with AI nodes 1`] = `
+{
+  "boundingBox": {
+    "height": 540,
+    "width": 900,
+    "x": 0,
+    "y": 220,
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "x": 100,
+      "y": 100,
+    },
+    {
+      "id": "aiTool1",
+      "x": 360,
+      "y": 320,
+    },
+    {
+      "id": "aiTool2",
+      "x": 500,
+      "y": 320,
+    },
+    {
+      "id": "aiTool3",
+      "x": 640,
+      "y": 540,
+    },
+    {
+      "id": "aiAgent",
+      "x": 500,
+      "y": 100,
+    },
+    {
+      "id": "configurableAiTool",
+      "x": 640,
+      "y": 320,
+    },
+    {
+      "id": "node2",
+      "x": 900,
+      "y": 100,
+    },
+  ],
+}
+`;
+
+exports[`useCanvasLayout > should layout a workflow with sticky notes 1`] = `
+{
+  "boundingBox": {
+    "height": 100,
+    "width": 880,
+    "x": 0,
+    "y": 0,
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "x": 0,
+      "y": 0,
+    },
+    {
+      "id": "node2",
+      "x": 260,
+      "y": 0,
+    },
+    {
+      "id": "node3",
+      "x": 520,
+      "y": 0,
+    },
+    {
+      "id": "node4",
+      "x": 780,
+      "y": 0,
+    },
+    {
+      "id": "sticky",
+      "x": 180,
+      "y": -220,
+    },
+  ],
+}
+`;
+
+exports[`useCanvasLayout > should not reorder nodes vertically as it affects execution order 1`] = `
+{
+  "boundingBox": {
+    "height": 320,
+    "width": 360,
+    "x": 0,
+    "y": 0,
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "x": 0,
+      "y": -100,
+    },
+    {
+      "id": "node3",
+      "x": 260,
+      "y": -200,
+    },
+    {
+      "id": "node2",
+      "x": 260,
+      "y": 20,
+    },
+  ],
+}
+`;

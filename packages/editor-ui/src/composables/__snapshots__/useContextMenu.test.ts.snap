@@ -85,6 +85,18 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "label": "Clear selection",
   },
   {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
     "disabled": true,
     "divided": true,
     "id": "delete",
@@ -152,6 +164,18 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "disabled": false,
     "id": "deselect_all",
     "label": "Clear selection",
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
   },
   {
     "disabled": true,
@@ -252,6 +276,18 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     "label": "Clear selection",
   },
   {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
     "disabled": false,
     "divided": true,
     "id": "delete",
@@ -350,6 +386,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "label": "Clear selection",
   },
   {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
     "disabled": false,
     "divided": true,
     "id": "delete",
@@ -417,6 +465,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "disabled": false,
     "id": "deselect_all",
     "label": "Clear selection",
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
   },
   {
     "disabled": false,
@@ -491,6 +551,18 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     "disabled": false,
     "id": "deselect_all",
     "label": "Clear selection",
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up selection",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
   },
   {
     "disabled": false,
