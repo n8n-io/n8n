@@ -6,6 +6,9 @@ import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionType } from 'n8n-workflow';
 
+/**
+ * Maps multiple legacy n8n connections to VueFlow connections
+ */
 export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,
 	nodes: INodeUi[],
@@ -75,6 +78,9 @@ export function mapLegacyConnectionsToCanvasConnections(
 	return mappedConnections;
 }
 
+/**
+ * Maps a single legacy n8n connection to a VueFlow connection
+ */
 export function mapLegacyConnectionToCanvasConnection(
 	sourceNode: INodeUi,
 	targetNode: INodeUi,
@@ -101,6 +107,12 @@ export function mapLegacyConnectionToCanvasConnection(
 	};
 }
 
+/**
+ * Parses a canvas connection handle string into its parts:
+ * - mode
+ * - type
+ * - index
+ */
 export function parseCanvasConnectionHandleString(handle: string | null | undefined) {
 	const [mode, type, index] = (handle ?? '').split('/');
 
@@ -118,6 +130,9 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	};
 }
 
+/**
+ * Creates a canvas connection handle string from its parts
+ */
 export function createCanvasConnectionHandleString({
 	mode,
 	type = NodeConnectionType.Main,
@@ -130,10 +145,16 @@ export function createCanvasConnectionHandleString({
 	return `${mode}/${type}/${index}`;
 }
 
+/**
+ * Creates a canvas connection ID from a connection
+ */
 export function createCanvasConnectionId(connection: Connection) {
 	return `[${connection.source}/${connection.sourceHandle}][${connection.target}/${connection.targetHandle}]`;
 }
 
+/**
+ * Maps a VueFlow connection to a legacy n8n connection
+ */
 export function mapCanvasConnectionToLegacyConnection(
 	sourceNode: INodeUi,
 	targetNode: INodeUi,
@@ -165,6 +186,9 @@ export function mapCanvasConnectionToLegacyConnection(
 	];
 }
 
+/**
+ * Maps legacy n8n node inputs to VueFlow connection handles
+ */
 export function mapLegacyEndpointsToCanvasConnectionPort(
 	endpoints: INodeTypeDescription['inputs'],
 	endpointNames: string[] = [],
@@ -196,6 +220,9 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	});
 }
 
+/**
+ * Checks if two bounding boxes overlap
+ */
 export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 	return !(
 		// node1 is completely to the left of node2
@@ -211,6 +238,9 @@ export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 	);
 }
 
+/**
+ * Inserts spacers between endpoints to visually separate them
+ */
 export function insertSpacersBetweenEndpoints<T>(
 	endpoints: T[],
 	requiredEndpointsCount = 0,
