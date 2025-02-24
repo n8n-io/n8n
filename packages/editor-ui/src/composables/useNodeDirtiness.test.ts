@@ -48,7 +48,7 @@ describe(useNodeDirtiness, () => {
 
 				// Enable new partial execution
 				settingsStore.settings = {
-					partialExecution: { version: 2, enforce: true },
+					partialExecution: { version: 2 },
 				} as FrontendSettings;
 			},
 			template: '<div />',
@@ -174,6 +174,14 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
+
+		it('should not update dirtiness when the notes field is updated', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
+
+			workflowsStore.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
+		});
 	});
 
 	describe('adding a connection', () => {
@@ -237,6 +245,11 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.toggleNodesDisabled([workflowsStore.nodesByName.b.id], {
 				trackHistory: true,
 			});
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				c: 'incoming-connections-updated',
+			});
+
 			await historyHelper.undo();
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});

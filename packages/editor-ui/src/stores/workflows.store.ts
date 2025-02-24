@@ -1250,7 +1250,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			[updateInformation.key]: updateInformation.value,
 		});
 
-		if (updateInformation.key !== 'position') {
+		const excludeKeys = ['position', 'notes', 'notesInFlow'];
+
+		if (!excludeKeys.includes(updateInformation.key)) {
 			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
 		}
 	}
