@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
 
@@ -182,7 +182,7 @@ export function normalizeAndValidateSourceControlledFilePath(
 	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
 
 	if (!isContainedWithin(gitFolderPath, filePath)) {
-		throw new ApplicationError(`File path ${filePath} is invalid`);
+		throw new UserError(`File path ${filePath} is invalid`);
 	}
 
 	return normalizedPath;

@@ -26,7 +26,7 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -71,7 +71,7 @@ export class LoadNodesAndCredentials {
 	) {}
 
 	async init() {
-		if (inTest) throw new ApplicationError('Not available in tests');
+		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
@@ -293,7 +293,7 @@ export class LoadNodesAndCredentials {
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
-			throw new ApplicationError(
+			throw new UserError(
 				picocolors.red(
 					`nodes package ${loader.packageName} is already loaded.\n Please delete this second copy at path ${dir}`,
 				),
