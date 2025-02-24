@@ -199,7 +199,7 @@ const popperModifiers = [
 .actions {
 	margin-left: auto;
 	display: flex;
-	gap: 8px;
+	gap: var(--spacing-2xs);
 }
 
 .cardContent {
