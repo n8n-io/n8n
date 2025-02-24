@@ -179,15 +179,8 @@ export async function executeWebhook(
 	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	destinationNode?: string,
 ): Promise<string | undefined> {
-	// Get the nodeType to know which responseMode is set
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(
-		workflowStartNode.type,
-		workflowStartNode.typeVersion,
-	);
-
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase();
-
 	if (executionId) {
 		additionalData.executionId = executionId;
 	}
@@ -298,7 +291,7 @@ export async function executeWebhook(
 			});
 		} catch (err) {
 			// Send error response to webhook caller
-			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
+			const webhookType = ['formTrigger', 'form'].includes(workflowStartNode.type)
 				? 'Form'
 				: 'Webhook';
 			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
