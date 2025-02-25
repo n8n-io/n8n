@@ -23,7 +23,7 @@ export async function sms77ApiRequest(
 ): Promise<any> {
 	const options: IRequestOptions = {
 		headers: {
-			Accept: 'application/json',
+		
 			SentWith: 'n8n',
 		},
 		qs,
