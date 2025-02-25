@@ -574,9 +574,10 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				route.params.projectId as string,
 				parent.type === 'folder' ? parent.id : undefined,
 			);
+
 			let newFolderURL = `/projects/${route.params.projectId}`;
 			if (newFolder.parentFolder) {
-				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.parentFolder.id}/workflows`;
+				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
 			toast.showMessage({
 				title: i18n.baseText('folders.add.success.title'),
