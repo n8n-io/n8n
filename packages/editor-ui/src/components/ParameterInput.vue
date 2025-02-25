@@ -823,7 +823,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	}
 
 	if (!oldValue && oldValue !== undefined && isStringWithExpressionSyntax(value)) {
-		// if empty old value and updated value has an expression, add '=' prefix to swith to expression mode
+		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
 
