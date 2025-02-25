@@ -651,6 +651,7 @@
       "dist/nodes/MQTT/MqttTrigger.node.js",
       "dist/nodes/Msg91/Msg91.node.js",
       "dist/nodes/MySql/MySql.node.js",
+      "dist/nodes/MyCustomNode/MyCustomNode.node.js",
       "dist/nodes/N8n/N8n.node.js",
       "dist/nodes/N8nTrainingCustomerDatastore/N8nTrainingCustomerDatastore.node.js",
       "dist/nodes/N8nTrainingCustomerMessenger/N8nTrainingCustomerMessenger.node.js",
