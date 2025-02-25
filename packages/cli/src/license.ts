@@ -381,14 +381,6 @@ export class License {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 
-	async reinit() {
-		if (this.manager) {
-			await this.manager.reset();
-		}
-		await this.init({ forceRecreate: true });
-		this.logger.debug('License reinitialized');
-	}
-
 	/**
 	 * Ensures that the instance is licensed for multi-main setup if multi-main mode is enabled
 	 */
@@ -428,5 +420,13 @@ export class License {
 
 			Container.get(ObjectStoreService).setReadonly(true);
 		}
+	}
+
+	enableAutoRenewals() {
+		this.manager?.enableAutoRenewals();
+	}
+
+	disableAutoRenewals() {
+		this.manager?.disableAutoRenewals();
 	}
 }
