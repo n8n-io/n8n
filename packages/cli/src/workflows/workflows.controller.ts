@@ -158,9 +158,12 @@ export class WorkflowsController {
 			}
 
 			if (parentFolderId) {
-				let parentFolder = null;
 				try {
-					parentFolder = await this.folderService.getFolderInProject(parentFolderId, project.id);
+					const parentFolder = await this.folderService.getFolderInProject(
+						parentFolderId,
+						project.id,
+						transactionManager,
+					);
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
 				} catch {}
 			}
