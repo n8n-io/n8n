@@ -62,9 +62,9 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'Tag',
 		'WorkflowHistory',
+		'Folder',
 		'Project',
 		'ProjectRelation',
-		'Folder',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
