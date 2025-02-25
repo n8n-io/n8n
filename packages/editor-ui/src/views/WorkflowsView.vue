@@ -893,11 +893,6 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 	}
 }
 
-.home-project {
-	display: flex;
-	align-items: center;
-}
-
 .add-folder-button {
 	width: 40px;
 }

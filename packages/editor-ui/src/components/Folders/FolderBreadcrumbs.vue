@@ -8,6 +8,8 @@ import { type PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Bread
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+export type FolderPathItem = PathItem & { parentFolder?: string };
+
 type Props = {
 	actions: UserAction[];
 };
@@ -36,9 +38,9 @@ const projectName = computed(() => {
 	return currentProject.value?.name;
 });
 
-const visibleItems = computed<Array<PathItem & { parentFolder?: string }> | undefined>(() => {
-	if (!currentFolder.value) return;
-	const items: Array<PathItem & { parentFolder?: string }> = [];
+const visibleItems = computed<FolderPathItem[]>(() => {
+	if (!currentFolder.value) return [];
+	const items: FolderPathItem[] = [];
 	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
 	if (parent) {
 		items.push({
@@ -95,5 +97,14 @@ const onAction = (action: string) => {
 .container {
 	display: flex;
 	align-items: center;
+}
+
+.home-project {
+	display: flex;
+	align-items: center;
+
+	&:hover * {
+		color: var(--color-text-dark);
+	}
 }
 </style>
