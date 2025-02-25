@@ -57,6 +57,16 @@ let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 
 beforeEach(async () => {
+	await testDb.truncate([
+		'SharedWorkflow',
+		'WorkflowHistory',
+		'ProjectRelation',
+		'Folder',
+		'Workflow',
+		'Tag',
+		'Project',
+		'User',
+	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 	owner = await createOwner();
@@ -67,21 +77,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	try {
-		await testDb.truncate([
-			'SharedWorkflow', // Depends on Workflow and Project
-			'WorkflowHistory', // Probably depends on Workflow
-			'ProjectRelation', // Depends on Project and User
-			'Folder', // Depends on Project and Folder (self)
-			'Workflow', // Depends on Folder
-			'Tag', // No foreign keys shown
-			'Project',
-			'User',
-		]);
-	} catch (e) {
-		console.error('Error truncating tables:', e);
-	}
-
 	jest.clearAllMocks();
 });
 
@@ -385,18 +380,14 @@ describe('POST /workflows', () => {
 			});
 	});
 
-	test.only('create link workflow with folder if one is provided', async () => {
+	test('create link workflow with folder if one is provided', async () => {
 		//
 		// ARRANGE
 		//
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const folder = await createFolder(personalProject, { name: 'Folder 1' });
 
-		console.log('Folder:', folder);
-
 		const workflow = makeWorkflow();
-
-		console.log('Workflow:', workflow);
 
 		//
 		// ACT
@@ -404,8 +395,6 @@ describe('POST /workflows', () => {
 		const response = await authOwnerAgent
 			.post('/workflows')
 			.send({ ...workflow, parentFolderId: folder.id });
-
-		console.log('Response:', response.body);
 
 		//
 		// ASSERT
