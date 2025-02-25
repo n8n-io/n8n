@@ -817,12 +817,14 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 
 	const oldValue = get(node.value, props.path);
 
-	if (!oldValue && isStringWithExpressionSyntax(value)) {
-		// if no old value and updated value has an expression, add '=' prefix to swith to expression mode
-		value = '=' + value;
-	} else if (oldValue !== undefined && oldValue === value) {
+	if (oldValue !== undefined && oldValue === value) {
 		// Only update the value if it has changed
 		return;
+	}
+
+	if (!oldValue && oldValue !== undefined && isStringWithExpressionSyntax(value)) {
+		// if empty old value and updated value has an expression, add '=' prefix to swith to expression mode
+		value = '=' + value;
 	}
 
 	if (props.parameter.name === 'nodeCredentialType') {
