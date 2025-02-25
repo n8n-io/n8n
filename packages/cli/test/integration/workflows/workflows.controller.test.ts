@@ -380,12 +380,14 @@ describe('POST /workflows', () => {
 			});
 	});
 
-	test('create link workflow with folder if one is provided', async () => {
+	test.only('create link workflow with folder if one is provided', async () => {
 		//
 		// ARRANGE
 		//
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const folder = await createFolder(personalProject, { name: 'Folder 1' });
+
+		console.log('Folder:', folder);
 
 		const workflow = makeWorkflow();
 
@@ -396,6 +398,8 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...workflow, parentFolderId: folder.id })
 			.expect(200);
+
+		console.log('Response:', response.body.data);
 
 		//
 		// ASSERT

@@ -162,7 +162,10 @@ export class WorkflowsController {
 				try {
 					parentFolder = await this.folderService.getFolderInProject(parentFolderId, project.id);
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-				} catch {}
+				} catch (e) {
+					this.logger.error('Failed to link workflow with folder', { userId: req.user.id });
+					throw new InternalServerError('Failed to save workflow');
+				}
 			}
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
