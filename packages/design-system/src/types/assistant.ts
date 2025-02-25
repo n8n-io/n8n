@@ -13,7 +13,7 @@ export namespace ChatUI {
 		content: string;
 	}
 
-	interface CodeDiffMessage {
+	export interface CodeDiffMessage {
 		role: 'assistant';
 		type: 'code-diff';
 		description?: string;
@@ -24,10 +24,70 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
-	interface EndSessionMessage {
+	export interface EndSessionMessage {
 		role: 'assistant';
 		type: 'event';
 		eventName: 'end-session';
+	}
+
+	export interface SessionTimeoutMessage {
+		role: 'assistant';
+		type: 'event';
+		eventName: 'session-timeout';
+	}
+
+	export interface SessionErrorMessage {
+		role: 'assistant';
+		type: 'event';
+		eventName: 'session-error';
+	}
+
+	export interface GeneratedStepsMessage {
+		role: 'assistant';
+		type: 'workflow-step';
+		steps: string[];
+	}
+
+	export interface GeneratedNodesMessage {
+		role: 'assistant';
+		type: 'workflow-node';
+		nodes: string[];
+	}
+
+	export interface ComposedNodesMessage {
+		role: 'assistant';
+		type: 'workflow-composed';
+		nodes: Array<{
+			parameters: Record<string, unknown>;
+			type: string;
+			name: string;
+			position: [number, number];
+		}>;
+	}
+
+	export interface ComposedConnectionsMessage {
+		role: 'assistant';
+		type: 'workflow-connections';
+		workflowJSON: {
+			nodes: Array<{
+				parameters: Record<string, unknown>;
+				type: string;
+				name: string;
+				position: [number, number];
+			}>;
+			connections: Record<
+				string,
+				{
+					main: Array<
+						Array<{
+							node: string;
+							type: string;
+							index: number;
+						}>
+					>;
+				}
+			>;
+		};
 	}
 
 	export interface QuickReply {
@@ -51,11 +111,63 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
+	export interface WorkflowStepMessage {
+		role: 'assistant';
+		type: 'workflow-step';
+		steps: string[];
+	}
+
+	export interface WorkflowNodeMessage {
+		role: 'assistant';
+		type: 'workflow-node';
+		nodes: string[];
+	}
+
+	export interface WorkflowComposedMessage {
+		role: 'assistant';
+		type: 'workflow-composed';
+		nodes: Array<{
+			parameters: Record<string, unknown>;
+			type: string;
+			name: string;
+			position: [number, number];
+		}>;
+	}
+
+	export interface WorkflowConnectionsMessage {
+		role: 'assistant';
+		type: 'workflow-connections';
+		workflowJSON: {
+			nodes: Array<{
+				parameters: Record<string, unknown>;
+				type: string;
+				name: string;
+				position: [number, number];
+			}>;
+			connections: Record<
+				string,
+				{
+					main: Array<
+						Array<{
+							node: string;
+							type: string;
+							index: number;
+						}>
+					>;
+				}
+			>;
+		};
+	}
+
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
 		| SummaryBlock
 		| AgentSuggestionMessage
+		| GeneratedStepsMessage
+		| GeneratedNodesMessage
+		| ComposedNodesMessage
+		| ComposedConnectionsMessage
 	) & {
 		quickReplies?: QuickReply[];
 	};
@@ -64,7 +176,13 @@ export namespace ChatUI {
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
+		| SessionTimeoutMessage
+		| SessionErrorMessage
 		| AgentSuggestionMessage
+		| WorkflowStepMessage
+		| WorkflowNodeMessage
+		| WorkflowComposedMessage
+		| WorkflowConnectionsMessage
 	) & {
 		id: string;
 		read: boolean;

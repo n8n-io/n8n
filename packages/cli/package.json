@@ -83,6 +83,23 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
+    "@google-ai/generativelanguage": "2.6.0",
+    "@google/generative-ai": "0.21.0",
+    "@langchain/anthropic": "0.3.11",
+    "@langchain/cohere": "0.3.2",
+    "@langchain/community": "0.3.24",
+    "@langchain/core": "catalog:",
+    "@langchain/google-genai": "0.1.6",
+    "@langchain/groq": "0.1.3",
+    "@langchain/langgraph": "^0.2.45",
+    "@langchain/mistralai": "0.2.0",
+    "@langchain/ollama": "0.1.4",
+    "@langchain/openai": "0.3.17",
+    "@langchain/pinecone": "0.1.3",
+    "@langchain/qdrant": "0.1.1",
+    "@langchain/redis": "0.1.0",
+    "@langchain/textsplitters": "0.1.0",
+    "langchain": "0.3.11",
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@google-cloud/secret-manager": "^5.6.0",
@@ -172,6 +189,8 @@
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",
     "yamljs": "0.3.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "zod-to-json-schema": "3.23.3",
+    "openai": "4.78.1"
   }
 }

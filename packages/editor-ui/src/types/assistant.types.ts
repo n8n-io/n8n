@@ -173,6 +173,54 @@ export namespace ChatRequest {
 		step: string;
 	}
 
+	interface WorkflowStepMessage {
+		role: 'assistant';
+		type: 'workflow-step';
+		steps: string[];
+	}
+
+	interface WorkflowNodeMessage {
+		role: 'assistant';
+		type: 'workflow-node';
+		nodes: string[];
+	}
+
+	interface WorkflowComposedMessage {
+		role: 'assistant';
+		type: 'workflow-composed';
+		nodes: Array<{
+			parameters: Record<string, unknown>;
+			type: string;
+			name: string;
+			position: [number, number];
+		}>;
+	}
+
+	interface WorkflowConnectionsMessage {
+		role: 'assistant';
+		type: 'workflow-connections';
+		workflowJSON: {
+			nodes: Array<{
+				parameters: Record<string, unknown>;
+				type: string;
+				name: string;
+				position: [number, number];
+			}>;
+			connections: Record<
+				string,
+				{
+					main: Array<
+						Array<{
+							node: string;
+							type: string;
+							index: number;
+						}>
+					>;
+				}
+			>;
+		};
+	}
+
 	export type MessageResponse =
 		| ((
 				| AssistantChatMessage
@@ -180,6 +228,10 @@ export namespace ChatRequest {
 				| AssistantSummaryMessage
 				| AgentChatMessage
 				| AgentThinkingStep
+				| WorkflowStepMessage
+				| WorkflowNodeMessage
+				| WorkflowComposedMessage
+				| WorkflowConnectionsMessage
 		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })

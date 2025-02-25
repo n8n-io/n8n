@@ -78,7 +78,7 @@ Chat.args = {
 			id: '2',
 			type: 'block',
 			role: 'assistant',
-			title: 'Credential doesn’t have correct permissions to send a message',
+			title: "Credential doesn't have correct permissions to send a message",
 			content:
 				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
 			read: false,
@@ -117,7 +117,7 @@ JustSummary.args = {
 			id: '123',
 			role: 'assistant',
 			type: 'block',
-			title: 'Credential doesn’t have correct permissions to send a message',
+			title: "Credential doesn't have correct permissions to send a message",
 			content:
 				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
 			read: false,
@@ -136,7 +136,7 @@ SummaryTitleStreaming.args = {
 			id: '123',
 			role: 'assistant',
 			type: 'block',
-			title: 'Credential doesn’t have',
+			title: "Credential doesn't have",
 			content: '',
 			read: false,
 		},
@@ -155,7 +155,7 @@ SummaryContentStreaming.args = {
 			id: '123',
 			role: 'assistant',
 			type: 'block',
-			title: 'Credential doesn’t have correct permissions to send a message',
+			title: "Credential doesn't have correct permissions to send a message",
 			content: 'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur',
 			read: false,
 		},
@@ -369,6 +369,122 @@ RichTextMessage.args = {
 				},
 			],
 			read: true,
+		},
+	]),
+};
+
+export const WorkflowStepsChat = Template.bind({});
+WorkflowStepsChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '123',
+			type: 'workflow-step',
+			role: 'assistant',
+			steps: [
+				'Create a new HTTP Trigger node',
+				'Add a Transform node to process the data',
+				'Connect to your database using PostgreSQL node',
+				'Send confirmation email with SendGrid node',
+			],
+			read: false,
+		},
+	]),
+};
+
+export const WorkflowNodesChat = Template.bind({});
+WorkflowNodesChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '124',
+			type: 'workflow-node',
+			role: 'assistant',
+			nodes: ['HTTP Trigger', 'Transform', 'PostgreSQL', 'SendGrid'],
+			read: false,
+		},
+	]),
+};
+
+export const ComposedNodesChat = Template.bind({});
+ComposedNodesChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '125',
+			type: 'workflow-composed',
+			role: 'assistant',
+			nodes: [
+				{
+					name: 'HTTP Trigger',
+					type: 'n8n-nodes-base.httpTrigger',
+					parameters: {
+						path: '/webhook',
+						authentication: 'none',
+					},
+					position: [100, 100],
+				},
+				{
+					name: 'Transform',
+					type: 'n8n-nodes-base.set',
+					parameters: {
+						values: { field: 'value' },
+					},
+					position: [300, 100],
+				},
+			],
+			read: false,
+		},
+	]),
+};
+
+export const ComposedConnectionsChat = Template.bind({});
+ComposedConnectionsChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '126',
+			type: 'workflow-connections',
+			role: 'assistant',
+			workflowJSON: {
+				nodes: [
+					{
+						name: 'HTTP Trigger',
+						type: 'n8n-nodes-base.httpTrigger',
+						parameters: {
+							path: '/webhook',
+							authentication: 'none',
+						},
+						position: [100, 100],
+					},
+					{
+						name: 'Transform',
+						type: 'n8n-nodes-base.set',
+						parameters: {
+							values: { field: 'value' },
+						},
+						position: [300, 100],
+					},
+				],
+				connections: {
+					'HTTP Trigger': {
+						main: [[{ node: 'Transform', type: 'main', index: 0 }]],
+					},
+				},
+			},
+			read: false,
 		},
 	]),
 };

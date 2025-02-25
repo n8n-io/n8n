@@ -4,10 +4,10 @@ import { useRoute } from 'vue-router';
 import { v4 as uuid } from 'uuid';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
-import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import AskAssistantBuild from '@/components/AskAssistant/Agent/AskAssistantBuild.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
@@ -124,7 +124,7 @@ watch(defaultLocale, (newLocale) => {
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
-		<AskAssistantChat />
+		<AskAssistantBuild />
 	</div>
 </template>
 
