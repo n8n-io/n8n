@@ -339,7 +339,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							</template>
 						</i18n-t>
 					</template>
-					<N8nIcon icon="lock" size="xsmall" :class="$style.readOnlyEnvironmentIcon" />
+					<N8nIcon
+						data-test-id="read-only-env-icon"
+						icon="lock"
+						size="xsmall"
+						:class="$style.readOnlyEnvironmentIcon"
+					/>
 				</N8nTooltip>
 			</Logo>
 			<N8nNavigationDropdown
