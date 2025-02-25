@@ -57,6 +57,16 @@ let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 
 beforeEach(async () => {
+	projectRepository = Container.get(ProjectRepository);
+	projectService = Container.get(ProjectService);
+	owner = await createOwner();
+	authOwnerAgent = testServer.authAgentFor(owner);
+	member = await createMember();
+	authMemberAgent = testServer.authAgentFor(member);
+	anotherMember = await createMember();
+});
+
+afterEach(async () => {
 	await testDb.truncate([
 		'SharedWorkflow', // Depends on Workflow and Project
 		'WorkflowHistory', // Probably depends on Workflow
@@ -67,16 +77,6 @@ beforeEach(async () => {
 		'Project',
 		'User',
 	]);
-	projectRepository = Container.get(ProjectRepository);
-	projectService = Container.get(ProjectService);
-	owner = await createOwner();
-	authOwnerAgent = testServer.authAgentFor(owner);
-	member = await createMember();
-	authMemberAgent = testServer.authAgentFor(member);
-	anotherMember = await createMember();
-});
-
-afterEach(() => {
 	jest.clearAllMocks();
 });
 
