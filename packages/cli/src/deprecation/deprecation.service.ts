@@ -56,7 +56,7 @@ export class DeprecationService {
 		{
 			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
 			message:
-				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manaul executions to workers and avoid potential issues in the future.',
+				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
 			matchConfig: config.getEnv('executions.mode') === 'queue',
