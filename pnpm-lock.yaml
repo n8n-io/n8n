@@ -13315,6 +13315,9 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
+  vue-component-type-helpers@2.2.2:
+    resolution: {integrity: sha512-6lLY+n2xz2kCYshl59mL6gy8OUUTmkscmDFMO8i7Lj+QKwgnIFUZmM1i/iTYObtrczZVdw7UakPqDTGwVSGaRg==}
+
   vue-component-type-helpers@2.2.4:
     resolution: {integrity: sha512-F66p0XLbAu92BRz6kakHyAcaUSF7HWpWX/THCqL0TxySSj7z/nok5UUMohfNkkCm1pZtawsdzoJ4p1cjNqCx0Q==}
 
@@ -19477,7 +19480,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.2.4
+      vue-component-type-helpers: 2.2.2
 
   '@vue/tsconfig@0.7.0(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2))':
     optionalDependencies:
@@ -27774,6 +27777,8 @@ snapshots:
       typescript: 5.7.2
 
   vue-component-type-helpers@2.1.10: {}
+
+  vue-component-type-helpers@2.2.2: {}
 
   vue-component-type-helpers@2.2.4: {}
 
