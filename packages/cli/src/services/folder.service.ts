@@ -1,5 +1,7 @@
 import type { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
@@ -51,9 +53,9 @@ export class FolderService {
 		}
 	}
 
-	async getFolderInProject(folderId: string, projectId: string) {
+	async getFolderInProject(folderId: string, projectId: string, em?: EntityManager) {
 		try {
-			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId, em);
 		} catch {
 			throw new FolderNotFoundError(folderId);
 		}

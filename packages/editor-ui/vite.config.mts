@@ -66,10 +66,13 @@ const plugins = [
 	}),
 	viteStaticCopy({
 		targets: [
-			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
+				dest: resolve(__dirname, 'dist'),
+			},
 			{
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: 'public',
+				dest: resolve(__dirname, 'dist'),
 			},
 		],
 	}),
