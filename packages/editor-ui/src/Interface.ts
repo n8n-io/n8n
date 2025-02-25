@@ -243,6 +243,7 @@ export interface IWorkflowDataUpdate {
 
 export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
+	parentFolderId?: string;
 }
 
 /**
