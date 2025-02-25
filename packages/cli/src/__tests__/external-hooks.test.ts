@@ -112,8 +112,13 @@ describe('ExternalHooks', () => {
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
 			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
-
-			expect(errorReporter.error).toHaveBeenCalledWith(UnexpectedError);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'External hook "workflow.create" failed',
+					cause: error,
+				}),
+				{ level: 'fatal' },
+			);
 			expect(logger.error).toHaveBeenCalledWith(
 				'There was a problem running hook "workflow.create"',
 			);
