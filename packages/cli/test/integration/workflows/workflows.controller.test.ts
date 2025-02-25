@@ -405,7 +405,7 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...workflow, parentFolderId: folder.id });
 
-		console.log('Response:', response.body.data);
+		console.log('Response:', response.body);
 
 		//
 		// ASSERT
