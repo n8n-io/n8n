@@ -76,7 +76,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 });
 
-afterEach(async () => {
+afterEach(() => {
 	jest.clearAllMocks();
 });
 
@@ -487,7 +487,7 @@ describe('POST /workflows', () => {
 			parentFolder: null,
 		});
 		expect(response.body.data.shared).toBeUndefined();
-	}, 15000);
+	});
 });
 
 describe('GET /workflows/:workflowId', () => {
