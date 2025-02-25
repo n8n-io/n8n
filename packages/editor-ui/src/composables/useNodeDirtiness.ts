@@ -81,16 +81,16 @@ function shouldCommandMarkDirty(
  */
 function findLoop(
 	nodeName: string,
-	visited: Set<string>,
+	visited: string[],
 	getIncomingConnections: (nodeName: string) => INodeConnections,
-): Set<string> | undefined {
-	if (visited.has(nodeName)) {
-		return visited;
+): string[] | undefined {
+	const index = visited.indexOf(nodeName);
+
+	if (index >= 0) {
+		return visited.slice(index);
 	}
 
-	const visitedCopy = new Set(visited);
-
-	visitedCopy.add(nodeName);
+	const newVisited = [...visited, nodeName];
 
 	for (const [type, typeConnections] of Object.entries(getIncomingConnections(nodeName))) {
 		if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
@@ -99,7 +99,7 @@ function findLoop(
 
 		for (const connections of typeConnections) {
 			for (const { node } of connections ?? []) {
-				const loop = findLoop(node, visitedCopy, getIncomingConnections);
+				const loop = findLoop(node, newVisited, getIncomingConnections);
 
 				if (loop) {
 					return loop;
@@ -125,7 +125,7 @@ export function useNodeDirtiness() {
 			.flatMap(([, typeConnections]) => typeConnections.flat().filter((conn) => conn !== null));
 	}
 
-	function getParameterUpdateType(
+	function getDirtinessByParametersUpdate(
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtiness | undefined {
@@ -134,7 +134,7 @@ export function useNodeDirtiness() {
 		}
 
 		for (const connection of getParentSubNodes(nodeName)) {
-			if (getParameterUpdateType(connection.node, after) !== undefined) {
+			if (getDirtinessByParametersUpdate(connection.node, after) !== undefined) {
 				return 'upstream-dirty';
 			}
 		}
@@ -142,7 +142,7 @@ export function useNodeDirtiness() {
 		return undefined;
 	}
 
-	function getConnectionUpdateType(
+	function getDirtinessByConnectionsUpdate(
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtiness | undefined {
@@ -167,7 +167,7 @@ export function useNodeDirtiness() {
 		}
 
 		for (const connection of getParentSubNodes(nodeName)) {
-			if (getConnectionUpdateType(connection.node, after) !== undefined) {
+			if (getDirtinessByConnectionsUpdate(connection.node, after) !== undefined) {
 				return 'upstream-dirty';
 			}
 		}
@@ -236,17 +236,19 @@ export function useNodeDirtiness() {
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtiness) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, new Set(), workflowsStore.incomingConnectionsByNodeName);
+			const loop = findLoop(nodeName, [], workflowsStore.incomingConnectionsByNodeName);
 
 			if (!loop) {
 				return;
 			}
 
 			const loopEntryNodeName = [...loop].sort(
-				(a, b) => (depthByName.value[a] ?? 0) - (depthByName.value[b] ?? 0),
+				(a, b) =>
+					(depthByName.value[a] ?? Number.MAX_SAFE_INTEGER) -
+					(depthByName.value[b] ?? Number.MAX_SAFE_INTEGER),
 			)?.[0];
 
-			if (loopEntryNodeName) {
+			if (loopEntryNodeName && depthByName.value[loopEntryNodeName]) {
 				// If a node in a loop becomes dirty, the first node in the loop should also be dirty
 				dirtiness[loopEntryNodeName] = dirtiness[loopEntryNodeName] ?? 'upstream-dirty';
 			}
@@ -259,14 +261,14 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const parameterUpdate = getParameterUpdateType(nodeName, runAt);
+			const parameterUpdate = getDirtinessByParametersUpdate(nodeName, runAt);
 
 			if (parameterUpdate) {
 				setDirtiness(nodeName, parameterUpdate);
 				continue;
 			}
 
-			const connectionUpdate = getConnectionUpdateType(nodeName, runAt);
+			const connectionUpdate = getDirtinessByConnectionsUpdate(nodeName, runAt);
 
 			if (connectionUpdate) {
 				setDirtiness(nodeName, connectionUpdate);

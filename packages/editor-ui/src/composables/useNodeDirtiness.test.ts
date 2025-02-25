@@ -329,7 +329,7 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('workflow with a loop', () => {
-		it('should change the dirtiness of the first node in the loop when one of nodes in the loop becomes dirty', () => {
+		it('should change the dirtiness of the first node in a loop when one of nodes in the loop becomes dirty', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> e✅ -> f✅ -> c✅');
 
 			canvasOperations.setNodeParameters(workflowsStore.nodesByName.e.id, { foo: 1 });
@@ -337,6 +337,16 @@ describe(useNodeDirtiness, () => {
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				c: 'upstream-dirty',
 				e: 'parameters-updated',
+			});
+		});
+
+		it('should not choose a node as the first node in a loop if all nodes in the loop have incoming connections', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅, d✅ -> e✅ -> d✅, d -> b');
+
+			canvasOperations.setNodeParameters(workflowsStore.nodesByName.c.id, { foo: 1 });
+
+			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
+				c: 'parameters-updated',
 			});
 		});
 	});
