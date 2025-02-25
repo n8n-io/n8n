@@ -132,10 +132,13 @@ export class JobProcessor {
 		const { pushRef } = job.data;
 
 		const lifecycleHooks = getLifecycleHooksForScalingWorker(
-			execution.mode,
-			job.data.executionId,
-			execution.workflowData,
-			{ retryOf: execution.retryOf ?? undefined, pushRef },
+			{
+				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				retryOf: execution.retryOf,
+				pushRef,
+			},
+			executionId,
 		);
 		additionalData.hooks = lifecycleHooks;
 

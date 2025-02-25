@@ -22,7 +22,6 @@ import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { v4 as uuid } from 'uuid';
 import Draggable from 'vuedraggable';
 
 interface Props {
@@ -46,7 +45,12 @@ const { debounce } = useDebounce();
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function createCondition(): FilterConditionValue {
-	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
+	return {
+		id: crypto.randomUUID(),
+		leftValue: '',
+		rightValue: '',
+		operator: DEFAULT_OPERATOR_VALUE,
+	};
 }
 
 const allowedCombinators = computed<FilterTypeCombinator[]>(
@@ -56,7 +60,10 @@ const allowedCombinators = computed<FilterTypeCombinator[]>(
 const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: {
 		options: props.value?.options ?? DEFAULT_FILTER_OPTIONS,
-		conditions: props.value?.conditions ?? [createCondition()],
+		conditions: props.value?.conditions?.map((condition) => {
+			if (!condition.id) condition.id = crypto.randomUUID();
+			return condition;
+		}) ?? [createCondition()],
 		combinator: props.value?.combinator ?? allowedCombinators.value[0],
 	},
 });
@@ -163,8 +170,8 @@ function getIssues(index: number): string[] {
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<Draggable
-					item-key="id"
 					v-model="state.paramValue.conditions"
+					item-key="id"
 					handle=".drag-handle"
 					:drag-class="$style.dragging"
 					:ghost-class="$style.ghost"
@@ -188,7 +195,7 @@ function getIssues(index: number): string[] {
 								:read-only="readOnly"
 								:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 								:can-drag="index !== 0 || state.paramValue.conditions.length > 1"
-								:path="`${path}.${index}`"
+								:path="`${path}.conditions.${index}`"
 								:issues="getIssues(index)"
 								:class="$style.condition"
 								@update="(value) => onConditionUpdate(index, value)"

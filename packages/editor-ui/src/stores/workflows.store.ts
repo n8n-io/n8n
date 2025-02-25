@@ -2,6 +2,7 @@ import {
 	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
@@ -30,6 +31,7 @@ import type {
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
+	WorkflowListResource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -126,6 +128,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	// For paginated workflow lists
+	const totalWorkflowCount = ref(0);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const activeWorkflows = ref<string[]>([]);
@@ -475,12 +479,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	async function fetchWorkflowsPage(
+		projectId?: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		sortBy?: string,
+		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
+		includeFolders: boolean = false,
+	): Promise<WorkflowListResource[]> {
+		const filter = { ...filters, projectId };
+		const options = {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+			sortBy,
+		};
+
+		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			Object.keys(filter).length ? filter : undefined,
+			Object.keys(options).length ? options : undefined,
+			includeFolders ? includeFolders : undefined,
+		);
+
+		totalWorkflowCount.value = count;
+		return data;
+	}
+
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 		};
 
-		const workflows = await workflowsApi.getWorkflows(
+		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 		);
@@ -1675,6 +1705,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowFromUrl,
 		getActivationError,
 		fetchAllWorkflows,
+		fetchWorkflowsPage,
 		fetchWorkflow,
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
@@ -1748,5 +1779,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		totalWorkflowCount,
 	};
 });

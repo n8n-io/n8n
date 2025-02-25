@@ -1,0 +1,54 @@
+{
+	"type": "object",
+	"properties": {
+		"url": {
+			"type": "string"
+		},
+		"id": {
+			"type": "integer"
+		},
+		"name": {
+			"type": "string"
+		},
+		"shared_tickets": {
+			"type": "boolean"
+		},
+		"shared_comments": {
+			"type": "boolean"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"domain_names": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"tags": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	},
+	"required": [
+		"url",
+		"id",
+		"name",
+		"shared_tickets",
+		"shared_comments",
+		"external_id",
+		"created_at",
+		"updated_at",
+		"domain_names",
+		"details",
+		"notes",
+		"group_id",
+		"tags",
+		"organization_fields"
+	]
+}

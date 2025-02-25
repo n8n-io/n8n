@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeMount } from 'vue';
+import { computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import type { IFilters } from '../layouts/ResourcesListLayout.vue';
+import type { BaseFilters } from '../layouts/ResourcesListLayout.vue';
 import { useI18n } from '@/composables/useI18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
@@ -15,25 +15,36 @@ const props = withDefaults(
 		keys?: string[];
 		shareable?: boolean;
 		reset?: () => void;
+		justIcon?: boolean;
 	}>(),
 	{
 		modelValue: () => ({}),
 		keys: () => [],
 		shareable: true,
 		reset: () => {},
+		justIcon: false,
 	},
 );
 
 const emit = defineEmits<{
-	'update:modelValue': [value: IFilters];
+	'update:modelValue': [value: BaseFilters];
 	'update:filtersLength': [value: number];
 }>();
-
-const selectedProject = ref<ProjectSharingData | null>(null);
 
 const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
+
+const selectedProject = computed<ProjectSharingData | null>({
+	get: () => {
+		return (
+			projectsStore.availableProjects.find(
+				(project) => project.id === props.modelValue.homeProject,
+			) ?? null
+		);
+	},
+	set: (value) => setKeyValue('homeProject', value?.id ?? ''),
+});
 
 const filtersLength = computed(() => {
 	let length = 0;
@@ -67,7 +78,7 @@ const setKeyValue = (key: string, value: unknown) => {
 	const filters = {
 		...props.modelValue,
 		[key]: value,
-	} as IFilters;
+	} as BaseFilters;
 
 	emit('update:modelValue', filters);
 };
@@ -76,7 +87,7 @@ const resetFilters = () => {
 	if (props.reset) {
 		props.reset();
 	} else {
-		const filters = { ...props.modelValue } as IFilters;
+		const filters = { ...props.modelValue } as BaseFilters;
 
 		props.keys.forEach((key) => {
 			filters[key] = Array.isArray(props.modelValue[key]) ? [] : '';
@@ -93,10 +104,6 @@ watch(filtersLength, (value) => {
 
 onBeforeMount(async () => {
 	await projectsStore.getAvailableProjects();
-	selectedProject.value =
-		projectsStore.availableProjects.find(
-			(project) => project.id === props.modelValue.homeProject,
-		) ?? null;
 });
 </script>
 
@@ -107,17 +114,21 @@ onBeforeMount(async () => {
 				icon="filter"
 				type="tertiary"
 				:active="hasFilters"
-				:class="$style['filter-button']"
+				:class="{
+					[$style['filter-button']]: true,
+					[$style['no-label']]: justIcon && filtersLength === 0,
+				}"
 				data-test-id="resources-list-filters-trigger"
 			>
 				<n8n-badge
-					v-show="filtersLength > 0"
+					v-if="filtersLength > 0"
 					:class="$style['filter-button-count']"
+					data-test-id="resources-list-filters-count"
 					theme="primary"
 				>
 					{{ filtersLength }}
 				</n8n-badge>
-				<span :class="$style['filter-button-text']">
+				<span v-if="!justIcon" :class="$style['filter-button-text']">
 					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
 				</span>
 			</n8n-button>
@@ -156,6 +167,12 @@ onBeforeMount(async () => {
 .filter-button {
 	height: 40px;
 	align-items: center;
+
+	&.no-label {
+		span + span {
+			margin: 0;
+		}
+	}
 
 	.filter-button-count {
 		margin-right: var(--spacing-4xs);

@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestProject } from '@/__tests__/data/projects';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import CredentialsView from '@/views/CredentialsView.vue';
@@ -7,10 +8,10 @@ import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import { CREDENTIAL_SELECT_MODAL_KEY, STORES, VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { Project } from '@/types/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
@@ -20,6 +21,11 @@ vi.mock('@/composables/useGlobalEntityCreation', () => ({
 const router = createRouter({
 	history: createWebHistory(),
 	routes: [
+		{
+			name: VIEWS.HOMEPAGE,
+			path: '/',
+			component: { template: '<div></div>' },
+		},
 		{
 			path: '/:credentialId?',
 			name: VIEWS.CREDENTIALS,
@@ -99,25 +105,63 @@ describe('CredentialsView', () => {
 	});
 
 	describe('create credential', () => {
-		it('should show modal based on route param', async () => {
+		it('should show the modal on the route if the user has the scope to create credentials in the project.', async () => {
 			const uiStore = mockedStore(useUIStore);
-			renderComponent({ props: { credentialId: 'create' } });
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = createTestProject({ scopes: ['credential:create'] });
+			const { rerender } = renderComponent();
+			await rerender({ credentialId: 'create' });
 			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
+		});
+
+		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {
+			const uiStore = mockedStore(useUIStore);
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.currentProject = createTestProject({ scopes: ['credential:read'] });
+			const { rerender } = renderComponent();
+			await rerender({ credentialId: 'create' });
+			expect(uiStore.openModal).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('open existing credential', () => {
-		it('should show modal based on route param', async () => {
+		it('should show the modal on the route if the user has permission to read or update', async () => {
 			const uiStore = mockedStore(useUIStore);
-			renderComponent({ props: { credentialId: 'credential-id' } });
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('credential-id');
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockImplementation(() => ({
+				id: 'abc123',
+				name: 'test',
+				type: 'test',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				scopes: ['credential:read'],
+			}));
+			const { rerender } = renderComponent();
+			await rerender({ credentialId: 'abc123' });
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
+		});
+
+		it('should not show the modal on the route if the user has no permission to read or update', async () => {
+			const uiStore = mockedStore(useUIStore);
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockImplementation(() => ({
+				id: 'abc123',
+				name: 'test',
+				type: 'test',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				scopes: ['credential:list'],
+			}));
+			const { rerender } = renderComponent();
+			await rerender({ credentialId: 'abc123' });
+			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
 		});
 
 		it('should update credentialId route param when opened', async () => {
 			const replaceSpy = vi.spyOn(router, 'replace');
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isProjectHome = false;
-			projectsStore.currentProject = { scopes: ['credential:read'] } as Project;
+			projectsStore.currentProject = createTestProject({ scopes: ['credential:read'] });
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.allCredentials = [
 				{

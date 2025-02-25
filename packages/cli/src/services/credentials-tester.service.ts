@@ -172,7 +172,7 @@ export class CredentialsTester {
 
 	// eslint-disable-next-line complexity
 	async testCredentials(
-		user: User,
+		userId: User['id'],
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
@@ -186,7 +186,7 @@ export class CredentialsTester {
 
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
 				credentialsDecrypted.data = this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
@@ -292,7 +292,7 @@ export class CredentialsTester {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(

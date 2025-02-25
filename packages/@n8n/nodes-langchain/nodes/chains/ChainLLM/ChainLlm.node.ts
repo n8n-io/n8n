@@ -338,7 +338,7 @@ export class ChainLlm implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
@@ -524,16 +524,16 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const outputParsers = await getOptionalOutputParsers(this);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				let prompt: string;
+				const llm = (await this.getInputConnectionData(
+					NodeConnectionType.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
+				const outputParsers = await getOptionalOutputParsers(this);
 				if (this.getNode().typeVersion <= 1.3) {
 					prompt = this.getNodeParameter('prompt', itemIndex) as string;
 				} else {

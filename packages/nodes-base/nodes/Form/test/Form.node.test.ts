@@ -11,6 +11,10 @@ import type {
 
 import { Form } from '../Form.node';
 
+jest.mock('../../../utils/sendAndWait/configureWaitTillDate.util', () => ({
+	configureWaitTillDate: jest.fn(), // Mocked function
+}));
+
 describe('Form Node', () => {
 	let form: Form;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
@@ -162,7 +166,7 @@ describe('Form Node', () => {
 				formTitle: 'Form Title',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 				testRun: true,
-				useResponseData: false,
+				useResponseData: true,
 				validForm: true,
 				formSubmittedHeader: undefined,
 			});
@@ -226,6 +230,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '',
 					},
@@ -238,6 +243,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '<div>hey</div>',
 					},
@@ -250,6 +256,7 @@ describe('Form Node', () => {
 						appendAttribution: 'test',
 						formTitle: 'test',
 						message: 'Test Message',
+						redirectUrl: '',
 						title: 'Test Title',
 						responseText: 'my text over here',
 					},
@@ -336,9 +343,14 @@ describe('Form Node', () => {
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponseObject.send).toHaveBeenCalledWith(
-				'<html><head><meta http-equiv="refresh" content="0; url=https://n8n.io"></head></html>',
-			);
+			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: 'test',
+				formTitle: 'test',
+				message: 'Test Message',
+				redirectUrl: 'https://n8n.io',
+				responseText: '',
+				title: 'Test Title',
+			});
 		});
 	});
 });

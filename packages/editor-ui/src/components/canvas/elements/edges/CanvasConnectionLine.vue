@@ -6,7 +6,7 @@ import { computed, onMounted, ref, useCssModule } from 'vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '@/composables/useCanvas';
 import { NodeConnectionType } from 'n8n-workflow';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
 
 const props = defineProps<ConnectionLineProps>();
 

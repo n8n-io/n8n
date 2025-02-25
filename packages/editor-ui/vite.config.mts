@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
+import { posix as pathPosix, resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
@@ -31,11 +31,11 @@ const alias = [
 	},
 	{
 		find: /^@n8n\/chat$/,
-		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src', 'index.ts'),
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'chat', 'src', 'index.ts'),
 	},
 	{
 		find: /^@n8n\/chat\//,
-		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'chat', 'src') + '/',
 	},
 	{
 		find: /^@n8n\/composables(.+)$/,
@@ -66,8 +66,14 @@ const plugins = [
 	}),
 	viteStaticCopy({
 		targets: [
-			{ src: resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: '' },
-			{ src: resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'), dest: '' },
+			{
+				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
+				dest: resolve(__dirname, 'dist'),
+			},
+			{
+				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				dest: resolve(__dirname, 'dist'),
+			},
 		],
 	}),
 	vue(),

@@ -6,17 +6,20 @@ import userEvent from '@testing-library/user-event';
 const renderComponent = createComponentRenderer(MetricsInput);
 
 describe('MetricsInput', () => {
-	let props: { modelValue: Array<{ name: string }> };
+	let props: { modelValue: Array<{ id?: string; name: string }> };
 
 	beforeEach(() => {
 		props = {
-			modelValue: [{ name: 'Metric 1' }, { name: 'Metric 2' }],
+			modelValue: [
+				{ name: 'Metric 1', id: 'metric-1' },
+				{ name: 'Metric 2', id: 'metric-2' },
+			],
 		};
 	});
 
 	it('should render correctly with initial metrics', () => {
 		const { getAllByPlaceholderText } = renderComponent({ props });
-		const inputs = getAllByPlaceholderText('Enter metric name');
+		const inputs = getAllByPlaceholderText('e.g. latency');
 		expect(inputs).toHaveLength(2);
 		expect(inputs[0]).toHaveValue('Metric 1');
 		expect(inputs[1]).toHaveValue('Metric 2');
@@ -28,7 +31,7 @@ describe('MetricsInput', () => {
 				modelValue: [{ name: '' }],
 			},
 		});
-		const inputs = getAllByPlaceholderText('Enter metric name');
+		const inputs = getAllByPlaceholderText('e.g. latency');
 		await userEvent.type(inputs[0], 'Updated Metric 1');
 
 		// Every character typed triggers an update event. Let's check the last emission.
@@ -62,7 +65,7 @@ describe('MetricsInput', () => {
 		// Check the structure of one of the emissions
 		// Initial: [{ name: 'Metric 1' }, { name: 'Metric 2' }]
 		// After first click: [{ name: 'Metric 1' }, { name: 'Metric 2' }, { name: '' }]
-		expect(updateEvents[0]).toEqual([[{ name: 'Metric 1' }, { name: 'Metric 2' }, { name: '' }]]);
+		expect(updateEvents[0]).toEqual([[...props.modelValue, { name: '' }]]);
 	});
 
 	it('should emit "deleteMetric" event when a delete button is clicked', async () => {
@@ -76,7 +79,7 @@ describe('MetricsInput', () => {
 		await userEvent.click(deleteButtons[1]);
 
 		expect(emitted('deleteMetric')).toBeTruthy();
-		expect(emitted('deleteMetric')[0]).toEqual([{ name: 'Metric 2' }]);
+		expect(emitted('deleteMetric')[0]).toEqual([props.modelValue[1]]);
 	});
 
 	it('should emit multiple update events as the user types and reflect the final name correctly', async () => {
@@ -85,7 +88,7 @@ describe('MetricsInput', () => {
 				modelValue: [{ name: '' }],
 			},
 		});
-		const inputs = getAllByPlaceholderText('Enter metric name');
+		const inputs = getAllByPlaceholderText('e.g. latency');
 		await userEvent.type(inputs[0], 'ABC');
 
 		const allEmits = emitted('update:modelValue');
@@ -114,7 +117,7 @@ describe('MetricsInput', () => {
 		const { getAllByPlaceholderText } = renderComponent({
 			props: { modelValue: [{ name: '' }] },
 		});
-		const updatedInputs = getAllByPlaceholderText('Enter metric name');
+		const updatedInputs = getAllByPlaceholderText('e.g. latency');
 		expect(updatedInputs).toHaveLength(1);
 	});
 
@@ -122,17 +125,17 @@ describe('MetricsInput', () => {
 		const { getAllByPlaceholderText, getAllByRole, rerender, emitted } = renderComponent({
 			props,
 		});
-		const inputs = getAllByPlaceholderText('Enter metric name');
+		const inputs = getAllByPlaceholderText('e.g. latency');
 		expect(inputs).toHaveLength(2);
 
 		const deleteButtons = getAllByRole('button', { name: '' });
 		await userEvent.click(deleteButtons[0]);
 
 		expect(emitted('deleteMetric')).toBeTruthy();
-		expect(emitted('deleteMetric')[0]).toEqual([{ name: 'Metric 1' }]);
+		expect(emitted('deleteMetric')[0]).toEqual([props.modelValue[0]]);
 
 		await rerender({ modelValue: [{ name: 'Metric 2' }] });
-		const updatedInputs = getAllByPlaceholderText('Enter metric name');
+		const updatedInputs = getAllByPlaceholderText('e.g. latency');
 		expect(updatedInputs).toHaveLength(1);
 		expect(updatedInputs[0]).toHaveValue('Metric 2');
 	});

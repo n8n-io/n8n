@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
-import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
-import type { ExecutionSummary } from 'n8n-workflow';
-import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { MAIN_HEADER_TABS } from '@/constants';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import { getNodeViewTab } from '@/utils/nodeViewUtils';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { computed } from 'vue';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 
 const props = withDefaults(
 	defineProps<{
@@ -34,7 +34,6 @@ const emit = defineEmits<{
 }>();
 
 const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-const router = useRouter();
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
@@ -66,22 +65,6 @@ const onRetryExecution = (payload: { execution: ExecutionSummary; command: strin
 		loadWorkflow,
 	});
 };
-
-watch(
-	() => props.execution,
-	(value: ExecutionSummary | undefined) => {
-		if (!value) {
-			return;
-		}
-
-		router
-			.push({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: props.workflow.id, executionId: value.id },
-			})
-			.catch(() => {});
-	},
-);
 
 onBeforeRouteLeave(async (to, _, next) => {
 	if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {

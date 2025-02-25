@@ -1,3 +1,4 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -43,6 +44,10 @@ import { RoleService } from '@/services/role.service';
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
+
+type CreateCredentialOptions = CreateCredentialDto & {
+	isManaged: boolean;
+};
 
 @Service()
 export class CredentialsService {
@@ -112,9 +117,16 @@ export class CredentialsService {
 
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (data?.oauthTokenData) {
+						data.oauthTokenData = true;
+					}
+
 					return {
 						...c,
-						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+						data,
 					} as unknown as CredentialsEntity;
 				});
 			}
@@ -273,20 +285,6 @@ export class CredentialsService {
 		});
 	}
 
-	async prepareCreateData(
-		data: CredentialRequest.CredentialProperties,
-	): Promise<CredentialsEntity> {
-		const { id, ...rest } = data;
-
-		// This saves us a merge but requires some type casting. These
-		// types are compatible for this case.
-		const newCredentials = this.credentialsRepository.create(rest as ICredentialsDb);
-
-		await validateEntity(newCredentials);
-
-		return newCredentials;
-	}
-
 	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
@@ -311,10 +309,18 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
-		const credentials = new Credentials({ id: credentialId, name: data.name }, data.type);
+	createEncryptedData(credential: {
+		id: string | null;
+		name: string;
+		type: string;
+		data: ICredentialDataDecryptedObject;
+	}): ICredentialsDb {
+		const credentials = new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
+		credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -441,8 +447,8 @@ export class CredentialsService {
 		await this.credentialsRepository.remove(credential);
 	}
 
-	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
+	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
+		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
@@ -553,7 +559,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.decrypt(sharing.credentials, true);
+			decryptedData = this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -569,6 +575,11 @@ export class CredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };
@@ -661,16 +672,36 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createCredential(credentialsData: CredentialRequest.CredentialProperties, user: User) {
-		const newCredential = await this.prepareCreateData(credentialsData);
+	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: false }, user);
+	}
 
-		const encryptedData = this.createEncryptedData(null, newCredential);
+	/**
+	 * Create a new managed credential in user's account and return it along the scopes.
+	 * Managed credentials are managed by n8n and cannot be edited by the user.
+	 */
+	async createManagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: true }, user);
+	}
+
+	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const encryptedCredential = this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: opts.data as ICredentialDataDecryptedObject,
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: opts.isManaged,
+		});
 
 		const { shared, ...credential } = await this.save(
-			newCredential,
-			encryptedData,
+			credentialEntity,
+			encryptedCredential,
 			user,
-			credentialsData.projectId,
+			opts.projectId,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);

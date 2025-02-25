@@ -4,6 +4,7 @@ import type {
 	IRestApiContext,
 	IWorkflowDb,
 	NewWorkflowResponse,
+	WorkflowListResource,
 } from '@/Interface';
 import type {
 	ExecutionFilters,
@@ -11,7 +12,7 @@ import type {
 	ExecutionSummary,
 	IDataObject,
 } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { getFullApiResponse, makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(
@@ -32,10 +33,25 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
-export async function getWorkflows(context: IRestApiContext, filter?: object) {
-	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
+export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
+	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		...(filter ? { filter } : {}),
+		...(options ? options : {}),
+	});
+}
+
+export async function getWorkflowsAndFolders(
+	context: IRestApiContext,
+	filter?: object,
+	options?: object,
+	includeFolders?: boolean,
+) {
+	return await getFullApiResponse<WorkflowListResource[]>(context, 'GET', '/workflows', {
+		includeScopes: true,
+		includeFolders,
+		...(filter ? { filter } : {}),
+		...(options ? options : {}),
 	});
 }
 

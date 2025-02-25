@@ -1,15 +1,69 @@
-import { mockLogger } from '@test/mocking';
+import { captor, mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
-	const toTest = (envVar: string, value: string, inUse: boolean) => {
-		process.env[envVar] = value;
-		const deprecationService = new DeprecationService(mockLogger());
+	const logger = mock<Logger>();
+	const deprecationService = new DeprecationService(logger);
 
-		deprecationService.warn();
+	beforeEach(() => {
+		// Ignore environment variables coming in from the environment when running
+		// this test suite.
+		process.env = {};
 
-		expect(deprecationService.isInUse(envVar)).toBe(inUse);
+		jest.resetAllMocks();
+	});
+
+	describe('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', () => {
+		test('supports multiple warnings for the same environment variable', () => {
+			// ARRANGE
+			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
+			const dataCaptor = captor();
+
+			// ACT
+			deprecationService.warn();
+
+			// ASSERT
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
+			expect(dataCaptor.value.split('\n')).toEqual(
+				expect.arrayContaining([
+					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
+					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.',
+				]),
+			);
+		});
+	});
+
+	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
+		const originalEnv = process.env[envVar];
+		try {
+			// ARRANGE
+			if (value) {
+				process.env[envVar] = value;
+			} else {
+				delete process.env[envVar];
+			}
+
+			// ACT
+			deprecationService.warn();
+
+			// ASSERT
+			if (mustWarn) {
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn.mock.lastCall?.[0]).toMatch(envVar);
+			} else {
+				expect(logger.warn.mock.lastCall?.[0] ?? '').not.toMatch(envVar);
+			}
+		} finally {
+			// CLEANUP
+			if (originalEnv) {
+				process.env[envVar] = originalEnv;
+			} else {
+				delete process.env[envVar];
+			}
+		}
 	};
 
 	test.each([
@@ -18,16 +72,19 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
-	])('should detect when %s is in use', (envVar, value, inUse) => {
-		toTest(envVar, value, inUse);
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
+		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
+	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
+		toTest(envVar, value, mustWarn);
 	});
 
 	test.each([
 		['default', true],
 		['filesystem', false],
 		['s3', false],
-	])('should handle N8N_BINARY_DATA_MODE as %s', (mode, inUse) => {
-		toTest('N8N_BINARY_DATA_MODE', mode, inUse);
+	])('should handle N8N_BINARY_DATA_MODE as %s', (mode, mustWarn) => {
+		toTest('N8N_BINARY_DATA_MODE', mode, mustWarn);
 	});
 
 	test.each([
@@ -35,7 +92,20 @@ describe('DeprecationService', () => {
 		['postgresdb', false],
 		['mysqldb', true],
 		['mariadb', true],
-	])('should handle DB_TYPE as %s', (dbType, inUse) => {
-		toTest('DB_TYPE', dbType, inUse);
+	])('should handle DB_TYPE as %s', (dbType, mustWarn) => {
+		toTest('DB_TYPE', dbType, mustWarn);
+	});
+
+	describe('N8N_RUNNERS_ENABLED', () => {
+		const envVar = 'N8N_RUNNERS_ENABLED';
+
+		test.each([
+			['false', true],
+			['', true],
+			['true', false],
+			[undefined /* warnIfMissing */, true],
+		])('should handle value: %s', (value, mustWarn) => {
+			toTest(envVar, value, mustWarn);
+		});
 	});
 });

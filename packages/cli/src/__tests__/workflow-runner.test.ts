@@ -9,6 +9,7 @@ import type {
 	ITaskData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	StartNodeData,
 } from 'n8n-workflow';
@@ -19,7 +20,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { Telemetry } from '@/telemetry';
 import { PermissionChecker } from '@/user-management/permission-checker';
@@ -53,7 +53,7 @@ beforeEach(async () => {
 });
 
 describe('processError', () => {
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 	let execution: ExecutionEntity;
 	let hooks: core.ExecutionLifecycleHooks;
 

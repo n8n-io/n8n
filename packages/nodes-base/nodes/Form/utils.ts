@@ -483,7 +483,8 @@ export async function formWebhook(
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
-		const responseMode = context.getNodeParameter('responseMode', '') as string;
+		let responseMode = context.getNodeParameter('responseMode', '') as string;
+
 		let formSubmittedText;
 		let redirectUrl;
 		let appendAttribution = true;
@@ -510,15 +511,14 @@ export async function formWebhook(
 			buttonLabel = options.buttonLabel;
 		}
 
-		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name, {
-				includeNodeParameters: true,
-			});
-			const hasNextPage = isFormConnected(connectedNodes);
+		const connectedNodes = context.getChildNodes(context.getNode().name, {
+			includeNodeParameters: true,
+		});
+		const hasNextPage = isFormConnected(connectedNodes);
 
-			if (hasNextPage) {
-				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
-			}
+		if (hasNextPage) {
+			redirectUrl = undefined;
+			responseMode = 'responseNode';
 		}
 
 		renderForm({

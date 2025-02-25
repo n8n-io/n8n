@@ -667,6 +667,7 @@ defineExpose({
 				}"
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"
+				:is-read-only="isReadOnly"
 				@update="
 					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;

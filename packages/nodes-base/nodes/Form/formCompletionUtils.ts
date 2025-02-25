@@ -21,13 +21,6 @@ export const renderFormCompletion = async (
 	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
 
-	if (redirectUrl) {
-		res.send(
-			`<html><head><meta http-equiv="refresh" content="0; url=${redirectUrl}"></head></html>`,
-		);
-		return { noWebhookResponse: true };
-	}
-
 	let title = options.formTitle;
 	if (!title) {
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
@@ -43,6 +36,7 @@ export const renderFormCompletion = async (
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
 		customCss: options.customCss,
+		redirectUrl,
 	});
 
 	return { noWebhookResponse: true };
