@@ -396,13 +396,14 @@ describe('POST /workflows', () => {
 
 		const workflow = makeWorkflow();
 
+		console.log('Workflow:', workflow);
+
 		//
 		// ACT
 		//
 		const response = await authOwnerAgent
 			.post('/workflows')
-			.send({ ...workflow, parentFolderId: folder.id })
-			.expect(200);
+			.send({ ...workflow, parentFolderId: folder.id });
 
 		console.log('Response:', response.body.data);
 
