@@ -153,7 +153,7 @@ function optionSelected(action: string) {
 						<Assignment
 							:model-value="assignment"
 							:index="index"
-							:path="`${path}.${index}`"
+							:path="`${path}.assignments.${index}`"
 							:issues="getIssues(index)"
 							:class="$style.assignment"
 							:is-read-only="isReadOnly"
