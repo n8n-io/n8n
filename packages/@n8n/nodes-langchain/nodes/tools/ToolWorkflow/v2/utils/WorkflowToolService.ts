@@ -42,10 +42,16 @@ export class WorkflowToolService {
 	// Sub-workflow execution id, will be set after the sub-workflow is executed
 	private subExecutionId: string | undefined;
 
-	constructor(private context: ISupplyDataFunctions) {
+	private returnAllItems: boolean = false;
+
+	constructor(
+		private context: ISupplyDataFunctions,
+		options: { returnAllItems: boolean },
+	) {
 		const subWorkflowInputs = this.context.getNode().parameters
 			.workflowInputs as ResourceMapperValue;
 		this.useSchema = (subWorkflowInputs?.schema ?? []).length > 0;
+		this.returnAllItems = options?.returnAllItems ?? false;
 	}
 
 	// Creates the tool based on the provided parameters
@@ -53,12 +59,10 @@ export class WorkflowToolService {
 		name,
 		description,
 		itemIndex,
-		returnAllItems,
 	}: {
 		name: string;
 		description: string;
 		itemIndex: number;
-		returnAllItems?: boolean;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
@@ -71,7 +75,7 @@ export class WorkflowToolService {
 			]);
 
 			try {
-				const response = await this.runFunction(query, itemIndex, runManager, returnAllItems);
+				const response = await this.runFunction(query, itemIndex, runManager);
 				const processedResponse = this.handleToolResponse(response);
 
 				// Once the sub-workflow is executed, add the output data to the context
@@ -136,7 +140,6 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-		returnAllItems?: boolean,
 	): Promise<{ response: string | IDataObject | IDataObject[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
@@ -158,7 +161,7 @@ export class WorkflowToolService {
 		}
 
 		let response: IDataObject | IDataObject[] | undefined;
-		if (returnAllItems) {
+		if (this.returnAllItems) {
 			response = receivedData?.data?.[0]?.map((item) => item.json);
 		} else {
 			response = receivedData?.data?.[0]?.[0]?.json;
@@ -181,7 +184,6 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-		returnAllItems?: boolean,
 	): Promise<string | IDataObject | IDataObject[]> {
 		const source = this.context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = this.context.getWorkflowDataProxy(0);
@@ -197,7 +199,6 @@ export class WorkflowToolService {
 			items,
 			workflowProxy,
 			runManager,
-			returnAllItems,
 		);
 		return response;
 	}
