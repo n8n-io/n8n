@@ -4,9 +4,8 @@ import * as close from './close.operation';
 import * as create from './create.operation';
 import * as getScreenshot from './getScreenshot.operation';
 import * as load from './load.operation';
-import * as query from './query.operation';
 
-export { create, close, getScreenshot, load, query };
+export { create, close, getScreenshot, load };
 
 export const description: INodeProperties[] = [
 	{
@@ -44,12 +43,6 @@ export const description: INodeProperties[] = [
 				description: 'Load a page in the window',
 				action: 'Load a page',
 			},
-			{
-				name: 'Query Page',
-				value: 'query',
-				description: 'Query the current page content',
-				action: 'Query page',
-			},
 		],
 		default: 'create',
 	},
@@ -70,5 +63,4 @@ export const description: INodeProperties[] = [
 	...create.description,
 	...getScreenshot.description,
 	...load.description,
-	...query.description,
 ];

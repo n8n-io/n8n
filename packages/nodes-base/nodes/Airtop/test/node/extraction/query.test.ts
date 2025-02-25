@@ -1,6 +1,6 @@
 import nock from 'nock';
 
-import * as query from '../../../actions/window/query.operation';
+import * as query from '../../../actions/extraction/query.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
