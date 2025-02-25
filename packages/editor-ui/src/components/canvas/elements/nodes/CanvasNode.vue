@@ -31,7 +31,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import {
 	createCanvasConnectionHandleString,
 	insertSpacersBetweenEndpoints,
-} from '@/utils/canvasUtilsV2';
+} from '@/utils/canvasUtils';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { isEqual } from 'lodash-es';
@@ -417,6 +417,7 @@ onBeforeUnmount(() => {
 			:type="data.type"
 			:hovered="nearbyHovered"
 			:disabled="isDisabled"
+			:read-only="readOnly"
 			:class="$style.trigger"
 		/>
 	</div>

@@ -22,7 +22,7 @@ import { promptTypeOptions } from '@utils/descriptions';
 import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
-import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		name: 'prompt',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Prompt (User Message)',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -252,7 +252,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
-		const chatMessages = await memory.chatHistory.getMessages();
+		const chatMessages = await getChatMessages(memory);
 
 		// Construct a new thread from the chat history to map the memory
 		if (chatMessages.length) {

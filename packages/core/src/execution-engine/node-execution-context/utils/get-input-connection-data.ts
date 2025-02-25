@@ -20,9 +20,9 @@ import {
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
-// eslint-disable-next-line import/no-cycle
-import { SupplyDataContext } from '../../node-execution-context';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
+// eslint-disable-next-line import/no-cycle
+import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,

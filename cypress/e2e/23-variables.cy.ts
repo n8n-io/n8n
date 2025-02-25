@@ -101,18 +101,22 @@ describe('Variables', () => {
 			variablesPage.getters.searchBar().type('NEW');
 			variablesPage.getters.variablesRows().should('have.length', 1);
 			variablesPage.getters.variableRow('NEW').should('contain.text', 'ENV_VAR_NEW');
+			cy.url().should('include', 'search=NEW');
 
 			// Multiple Results
 			variablesPage.getters.searchBar().clear().type('ENV_VAR');
 			variablesPage.getters.variablesRows().should('have.length', 2);
+			cy.url().should('include', 'search=ENV_VAR');
 
 			// All Results
 			variablesPage.getters.searchBar().clear().type('ENV');
 			variablesPage.getters.variablesRows().should('have.length', 3);
+			cy.url().should('include', 'search=ENV');
 
 			// No Results
 			variablesPage.getters.searchBar().clear().type('Some non-existent variable');
 			variablesPage.getters.variablesRows().should('not.exist');
+			cy.url().should('include', 'search=Some+non-existent+variable');
 
 			cy.contains('No variables found').should('be.visible');
 		});

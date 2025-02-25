@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
@@ -274,7 +274,11 @@ export async function execute(
 		);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
+			const itemData = generatePairedItemData(this.getInputData().length);
+			const executionErrorData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: error.message }),
+				{ itemData },
+			);
 			returnData.push(...executionErrorData);
 		} else {
 			throw error;

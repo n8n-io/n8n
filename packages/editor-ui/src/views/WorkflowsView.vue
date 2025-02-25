@@ -1,8 +1,11 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref } from 'vue';
-import ResourcesListLayout, {
-	type IResource,
-	type IFilters,
+import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type {
+	Resource,
+	BaseFilters,
+	FolderResource,
+	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
@@ -11,8 +14,9 @@ import {
 	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 } from '@/constants';
-import type { IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, UserAction, WorkflowListResource, WorkflowListItem } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -24,7 +28,7 @@ import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
-import { useRoute, useRouter } from 'vue-router';
+import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	N8nCard,
@@ -35,9 +39,33 @@ import {
 	N8nSelect,
 	N8nText,
 } from 'n8n-design-system';
-import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useDebounce } from '@/composables/useDebounce';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { ProjectTypes } from '@/types/projects.types';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { debounce } from 'lodash-es';
+
+interface Filters extends BaseFilters {
+	status: string | boolean;
+	tags: string[];
+}
+
+const StatusFilter = {
+	ACTIVE: true,
+	DEACTIVATED: false,
+	ALL: '',
+};
+
+/** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
+const WORKFLOWS_SORT_MAP = {
+	lastUpdated: 'updatedAt:desc',
+	lastCreated: 'createdAt:desc',
+	nameAsc: 'name:asc',
+	nameDesc: 'name:desc',
+} as const;
 
 const i18n = useI18n();
 const route = useRoute();
@@ -53,17 +81,7 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
-
-interface Filters extends IFilters {
-	status: string | boolean;
-	tags: string[];
-}
-
-const StatusFilter = {
-	ACTIVE: true,
-	DEACTIVATED: false,
-	ALL: '',
-};
+const { callDebounced } = useDebounce();
 
 const loading = ref(false);
 const filters = ref<Filters>({
@@ -72,14 +90,125 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+
+const workflowListEventBus = createEventBus();
+
+const workflowsAndFolders = ref<WorkflowListResource[]>([]);
+
 const easyAICalloutVisible = ref(true);
 
+const currentFolder = ref<FolderResource | undefined>(undefined);
+
+const currentPage = ref(1);
+const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
+const currentSort = ref('updatedAt:desc');
+
+const folderCardActions = ref<UserAction[]>([
+	{
+		label: 'Open',
+		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
+		disabled: false,
+	},
+	{
+		label: 'Create Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+		disabled: true,
+	},
+	{
+		label: 'Create Workflow',
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
+		disabled: true,
+	},
+	{
+		label: 'Rename',
+		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
+		disabled: true,
+	},
+	{
+		label: 'Move to Folder',
+		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
+		disabled: true,
+	},
+	{
+		label: 'Change Owner',
+		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
+		disabled: true,
+	},
+	{
+		label: 'Manage Tags',
+		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
+		disabled: true,
+	},
+	{
+		label: 'Delete',
+		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
+		disabled: true,
+	},
+]);
+
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
+
+const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
+
+const mainBreadcrumbsItems = computed<PathItem[] | undefined>(() => {
+	if (!showFolders.value || !currentFolder.value) return;
+	const items: PathItem[] = [];
+	items.push({
+		id: currentFolder.value.id,
+		label: currentFolder.value.name,
+	});
+	return items;
+});
+
+const currentProject = computed(() => projectsStore.currentProject);
+
+const projectName = computed(() => {
+	if (currentProject.value?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return currentProject.value?.name;
+});
+
+const workflowListResources = computed<Resource[]>(() => {
+	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
+		if (resource.resource === 'folder') {
+			return {
+				resourceType: 'folder',
+				id: resource.id,
+				name: resource.name,
+				createdAt: resource.createdAt.toString(),
+				updatedAt: resource.updatedAt.toString(),
+				homeProject: resource.homeProject,
+				sharedWithProjects: resource.sharedWithProjects,
+				workflowCount: resource.workflowCount,
+				parentFolder: resource.parentFolder,
+			} as FolderResource;
+		} else {
+			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
+			return {
+				resourceType: 'workflow',
+				id: resource.id,
+				name: resource.name,
+				active: resource.active ?? false,
+				updatedAt: resource.updatedAt.toString(),
+				createdAt: resource.createdAt.toString(),
+				homeProject: resource.homeProject,
+				scopes: resource.scopes,
+				sharedWithProjects: resource.sharedWithProjects,
+				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
+				tags: resource.tags,
+				parentFolder: resource.parentFolder,
+			} as WorkflowResource;
+		}
+	});
+	return resources;
+});
 
 const statusFilterOptions = computed(() => [
 	{
@@ -120,30 +249,53 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iFilters = newFilters as Filters;
-	if (settingsStore.areTagsEnabled && iFilters.tags.length > 0) {
-		matches =
-			matches &&
-			iFilters.tags.every((tag) =>
-				(resource as IWorkflowDb).tags?.find((resourceTag) =>
-					typeof resourceTag === 'object'
-						? `${resourceTag.id}` === `${tag}`
-						: `${resourceTag}` === `${tag}`,
-				),
-			);
-	}
+watch(
+	() => route.params?.projectId,
+	async () => {
+		await initialize();
+	},
+);
 
-	if (newFilters.status !== '') {
-		matches = matches && (resource as IWorkflowDb).active === newFilters.status;
-	}
+watch(
+	() => route.params?.folderId,
+	async (newVal) => {
+		if (!newVal) {
+			currentFolder.value = undefined;
+		}
+		await fetchWorkflows();
+	},
+);
 
-	return matches;
-};
+// Lifecycle hooks
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('workflows.heading'));
+	void usersStore.showPersonalizationSurvey();
+
+	workflowListEventBus.on('resource-moved', fetchWorkflows);
+	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
+});
+
+onBeforeUnmount(() => {
+	workflowListEventBus.off('resource-moved', fetchWorkflows);
+	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
+});
 
 // Methods
-const onFiltersUpdated = (newFilters: IFilters) => {
-	Object.assign(filters.value, newFilters);
+const onFiltersUpdated = async () => {
+	currentPage.value = 1;
+	saveFiltersOnQueryString();
+	await fetchWorkflows();
+};
+
+const onSearchUpdated = async (search: string) => {
+	currentPage.value = 1;
+	saveFiltersOnQueryString();
+	if (search) {
+		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+	} else {
+		// No need to debounce when clearing search
+		await fetchWorkflows();
+	}
 };
 
 const addWorkflow = () => {
@@ -167,41 +319,99 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 
 const initialize = async () => {
 	loading.value = true;
-	await Promise.all([
+	currentFolder.value = undefined;
+	await setFiltersFromQueryString();
+	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
-		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
+		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
+	workflowsAndFolders.value = resourcesPage;
 	loading.value = false;
 };
 
-const onClickTag = (tagId: string) => {
+const setCurrentPage = async (page: number) => {
+	currentPage.value = page;
+	await fetchWorkflows();
+};
+
+const setPageSize = async (size: number) => {
+	pageSize.value = size;
+	await fetchWorkflows();
+};
+
+const fetchWorkflows = async () => {
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
+	const routeProjectId = route.params?.projectId as string | undefined;
+	const homeProjectFilter = filters.value.homeProject || undefined;
+	const parentFolder = (route.params?.folderId as string) || '0';
+
+	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+		routeProjectId ?? homeProjectFilter,
+		currentPage.value,
+		pageSize.value,
+		currentSort.value,
+		{
+			name: filters.value.search || undefined,
+			active: filters.value.status ? Boolean(filters.value.status) : undefined,
+			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+			parentFolderId: parentFolder,
+		},
+		showFolders.value,
+	);
+	// @ts-expect-error - Once we have an endpoint to fetch the path based on Id, we should remove this and fetch the path from the endpoint
+	currentFolder.value = fetchedResources[0]?.parentFolder;
+
+	delayedLoading.cancel();
+	workflowsAndFolders.value = fetchedResources;
+	loading.value = false;
+	return fetchedResources;
+};
+
+const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
+		currentPage.value = 1;
+		saveFiltersOnQueryString();
+		await fetchWorkflows();
 	}
 };
 
 const saveFiltersOnQueryString = () => {
-	const query: { [key: string]: string } = {};
+	// Get current query parameters
+	const currentQuery = { ...route.query };
 
+	// Update filter parameters
 	if (filters.value.search) {
-		query.search = filters.value.search;
+		currentQuery.search = filters.value.search;
+	} else {
+		delete currentQuery.search;
 	}
 
 	if (typeof filters.value.status !== 'string') {
-		query.status = filters.value.status.toString();
+		currentQuery.status = filters.value.status.toString();
+	} else {
+		delete currentQuery.status;
 	}
 
 	if (filters.value.tags.length) {
-		query.tags = filters.value.tags.join(',');
+		currentQuery.tags = filters.value.tags.join(',');
+	} else {
+		delete currentQuery.tags;
 	}
 
 	if (filters.value.homeProject) {
-		query.homeProject = filters.value.homeProject;
+		currentQuery.homeProject = filters.value.homeProject;
+	} else {
+		delete currentQuery.homeProject;
 	}
 
 	void router.replace({
-		query: Object.keys(query).length ? query : undefined,
+		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
 
@@ -210,59 +420,75 @@ function isValidProjectId(projectId: string) {
 }
 
 const setFiltersFromQueryString = async () => {
-	const { tags, status, search, homeProject } = route.query ?? {};
+	const newQuery: LocationQueryRaw = { ...route.query };
+	const { tags, status, search, homeProject, sort } = route.query ?? {};
 
-	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+	// Helper to check if string value is not empty
+	const isValidString = (value: unknown): value is string =>
+		typeof value === 'string' && value.trim().length > 0;
 
-	if (homeProject && typeof homeProject === 'string') {
+	// Handle home project
+	if (isValidString(homeProject)) {
 		await projectsStore.getAvailableProjects();
 		if (isValidProjectId(homeProject)) {
-			filtersToApply.homeProject = homeProject;
+			newQuery.homeProject = homeProject;
+			filters.value.homeProject = homeProject;
+		} else {
+			delete newQuery.homeProject;
 		}
+	} else {
+		delete newQuery.homeProject;
 	}
 
-	if (search && typeof search === 'string') {
-		filtersToApply.search = search;
+	// Handle search
+	if (isValidString(search)) {
+		newQuery.search = search;
+		filters.value.search = search;
+	} else {
+		delete newQuery.search;
 	}
 
-	if (tags && typeof tags === 'string') {
+	// Handle tags
+	if (isValidString(tags)) {
 		await tagsStore.fetchAll();
-		const currentTags = tagsStore.allTags.map((tag) => tag.id);
+		const validTags = tags
+			.split(',')
+			.filter((tag) => tagsStore.allTags.map((t) => t.id).includes(tag));
 
-		filtersToApply.tags = tags.split(',').filter((tag) => currentTags.includes(tag));
+		if (validTags.length) {
+			newQuery.tags = validTags.join(',');
+			filters.value.tags = validTags;
+		} else {
+			delete newQuery.tags;
+		}
+	} else {
+		delete newQuery.tags;
 	}
 
-	if (
-		status &&
-		typeof status === 'string' &&
-		[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
-	) {
-		filtersToApply.status = status === 'true';
+	// Handle status
+	const validStatusValues = [StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()];
+	if (isValidString(status) && validStatusValues.includes(status)) {
+		newQuery.status = status;
+		filters.value.status = status === 'true';
+	} else {
+		delete newQuery.status;
 	}
 
-	if (Object.keys(filtersToApply).length) {
-		Object.assign(filters.value, filtersToApply);
+	// Handle sort
+	if (isValidString(sort)) {
+		const newSort = WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+		newQuery.sort = sort;
+		currentSort.value = newSort;
+	} else {
+		delete newQuery.sort;
 	}
 
-	void router.replace({ query: pickBy(route.query) });
+	void router.replace({ query: newQuery });
 };
 
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
 	after(async () => await initialize());
-});
-
-watch(filters, () => saveFiltersOnQueryString(), { deep: true });
-
-watch(
-	() => route.params?.projectId,
-	async () => await initialize(),
-);
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('workflows.heading'));
-	await setFiltersFromQueryString();
-	void usersStore.showPersonalizationSurvey();
 });
 
 const openAIWorkflow = async (source: string) => {
@@ -293,21 +519,52 @@ const openAIWorkflow = async (source: string) => {
 const dismissEasyAICallout = () => {
 	easyAICalloutVisible.value = false;
 };
+
+const onSortUpdated = async (sort: string) => {
+	currentSort.value =
+		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	if (currentSort.value !== 'updatedAt:desc') {
+		void router.replace({ query: { ...route.query, sort } });
+	} else {
+		void router.replace({ query: { ...route.query, sort: undefined } });
+	}
+	await fetchWorkflows();
+};
+
+const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+	workflow.active = data.active;
+};
+
+const onFolderOpened = (data: { folder: FolderResource }) => {
+	currentFolder.value = data.folder;
+};
 </script>
 
 <template>
 	<ResourcesListLayout
+		v-model:filters="filters"
 		resource-key="workflows"
-		:resources="allWorkflows"
-		:filters="filters"
-		:additional-filters-handler="onFilter"
+		type="list-paginated"
+		:resources="workflowListResources"
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
-		:loading="loading"
+		:loading="false"
+		:resources-refreshing="loading"
+		:custom-page-size="10"
+		:total-items="workflowsStore.totalWorkflowCount"
+		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
+		@update:search="onSearchUpdated"
+		@update:current-page="setCurrentPage"
+		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
+		@sort="onSortUpdated"
 	>
 		<template #header>
 			<ProjectHeader />
@@ -341,14 +598,43 @@ const dismissEasyAICallout = () => {
 				</template>
 			</N8nCallout>
 		</template>
-		<template #default="{ data, updateItemSize }">
+		<template #breadcrumbs>
+			<n8n-breadcrumbs
+				v-if="mainBreadcrumbsItems"
+				:items="mainBreadcrumbsItems"
+				:highlight-last-item="false"
+				:path-truncated="currentFolder !== undefined"
+				data-test-id="folder-card-breadcrumbs"
+			>
+				<template v-if="currentProject" #prepend>
+					<div :class="$style['home-project']">
+						<n8n-link :to="`/projects/${currentProject.id}`">
+							<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						</n8n-link>
+					</div>
+				</template>
+			</n8n-breadcrumbs>
+		</template>
+		<template #item="{ item: data }">
+			<FolderCard
+				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+				:data="data as FolderResource"
+				:actions="folderCardActions"
+				class="mb-2xs"
+				@folder-opened="onFolderOpened"
+			/>
 			<WorkflowCard
+				v-else
 				data-test-id="resources-list-item"
 				class="mb-2xs"
-				:data="data"
+				:data="data as WorkflowResource"
+				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
-				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
+				@workflow:deleted="fetchWorkflows"
+				@workflow:moved="fetchWorkflows"
+				@workflow:duplicated="fetchWorkflows"
+				@workflow:active-toggle="onWorkflowActiveToggle"
 			/>
 		</template>
 		<template #empty>
@@ -482,5 +768,10 @@ const dismissEasyAICallout = () => {
 		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
+}
+
+.home-project {
+	display: flex;
+	align-items: center;
 }
 </style>

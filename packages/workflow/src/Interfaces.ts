@@ -14,7 +14,7 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
-import { ApplicationError, type ExecutionCancelledError } from './errors';
+import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
@@ -398,7 +398,8 @@ export interface INodeTypeNameVersion {
 }
 
 export interface IRunNodeResponse {
-	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
+	data: INodeExecutionData[][] | null | undefined;
+	hints?: NodeExecutionHint[];
 	closeFunction?: CloseFunction;
 }
 
@@ -917,6 +918,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
 		): void;
+
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1553,28 +1556,6 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-export class NodeExecutionOutput extends Array<INodeExecutionData[]> {
-	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
-		super();
-		// TODO: This is a temporary solution for NODE-1740, until we move away from extending native Array class
-		Object.defineProperty(data, 'getHints', {
-			value: () => hints,
-			enumerable: false,
-			writable: false,
-			configurable: false,
-		});
-		return data as NodeExecutionOutput;
-	}
-
-	static [Symbol.hasInstance](instance: unknown) {
-		return Array.isArray(instance) && 'getHints' in instance;
-	}
-
-	getHints(): NodeExecutionHint[] {
-		throw new ApplicationError('This should not have been called');
-	}
-}
-
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
@@ -2050,7 +2031,7 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2214,6 +2195,8 @@ export interface IWaitingForExecutionSource {
 		[key: number]: ITaskDataConnectionsSource;
 	};
 }
+
+export type WorkflowId = IWorkflowBase['id'];
 
 export interface IWorkflowBase {
 	id: string;

@@ -7,7 +7,7 @@ import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
@@ -17,7 +17,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;
-	data: { tags: string[]; id: string; name: string };
+	data: { tags: string[]; id: string; name: string; externalEventBus?: EventBus };
 }>();
 
 const router = useRouter();
@@ -111,6 +111,7 @@ const save = async (): Promise<void> => {
 				workflow_id: props.data.id,
 				sharing_role: workflowHelpers.getWorkflowProjectRole(props.data.id),
 			});
+			props.data.externalEventBus?.emit('workflow-duplicated', { id: props.data.id });
 		}
 	} catch (error) {
 		if (error.httpStatusCode === 403) {

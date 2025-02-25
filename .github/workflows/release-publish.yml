@@ -43,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -103,6 +103,7 @@ jobs:
           context: ./docker/images/n8n
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+            N8N_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true
@@ -144,7 +145,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build

@@ -182,7 +182,7 @@ const showAddFirstProject = computed(
 .plusBtn {
 	margin: 0;
 	padding: 0;
-	color: var(--color-text-lighter);
+	color: var(--color-text-light);
 	display: none;
 }
 

@@ -99,7 +99,7 @@ jobs:
         run: pnpm cypress:install
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: |
             /github/home/.cache
@@ -133,7 +133,7 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: |
             /github/home/.cache

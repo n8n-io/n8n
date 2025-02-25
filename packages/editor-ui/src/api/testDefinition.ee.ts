@@ -9,7 +9,7 @@ export interface TestDefinitionRecord {
 	annotationTagId?: string | null;
 	description?: string | null;
 	updatedAt?: string;
-	createdAt?: string;
+	createdAt: string;
 	annotationTag?: string | null;
 	mockedNodes?: Array<{ name: string; id: string }>;
 }
@@ -43,12 +43,18 @@ export interface UpdateTestResponse {
 export interface TestRunRecord {
 	id: string;
 	testDefinitionId: string;
-	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled';
+	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number>;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;
 	completedAt: string;
+	errorCode?: string;
+	errorDetails?: Record<string, unknown>;
+	finalResult?: 'success' | 'error' | 'warning';
+	failedCases?: number;
+	passedCases?: number;
+	totalCases?: number;
 }
 
 interface GetTestRunParams {
@@ -121,6 +127,18 @@ export async function updateTestDefinition(
 
 export async function deleteTestDefinition(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
+}
+
+export async function getExampleEvaluationInput(
+	context: IRestApiContext,
+	testDefinitionId: string,
+	annotationTagId: string,
+) {
+	return await makeRestApiRequest<Record<string, unknown> | null>(
+		context,
+		'GET',
+		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
+	);
 }
 
 // Metrics

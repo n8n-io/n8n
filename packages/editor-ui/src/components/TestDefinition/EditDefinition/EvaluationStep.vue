@@ -1,84 +1,135 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { ElCollapseTransition } from 'element-plus';
-import { ref, nextTick } from 'vue';
+import { type Modifier, detectOverflow } from '@popperjs/core';
+import { N8nInfoTip, N8nText, N8nTooltip } from 'n8n-design-system';
+import { computed, ref, useCssModule } from 'vue';
 
 interface EvaluationStep {
-	title: string;
+	title?: string;
 	warning?: boolean;
-	small?: boolean;
 	expanded?: boolean;
 	description?: string;
 	issues?: Array<{ field: string; message: string }>;
 	showIssues?: boolean;
+	tooltip: string;
+	externalTooltip?: boolean;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
 	description: '',
 	warning: false,
-	small: false,
-	expanded: true,
+	expanded: false,
 	issues: () => [],
 	showIssues: true,
+	title: '',
 });
 
 const locale = useI18n();
 const isExpanded = ref(props.expanded);
-const contentRef = ref<HTMLElement | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
+const $style = useCssModule();
 
-const toggleExpand = async () => {
-	isExpanded.value = !isExpanded.value;
-	if (isExpanded.value) {
-		await nextTick();
-		if (containerRef.value) {
-			containerRef.value.style.height = 'auto';
-		}
-	}
+const hasIssues = computed(() => props.issues.length > 0);
+
+const containerClass = computed(() => {
+	return {
+		[$style.evaluationStep]: true,
+		[$style['has-issues']]: true,
+	};
+});
+
+const toggleExpand = () => (isExpanded.value = !isExpanded.value);
+
+const renderIssues = computed(() => props.showIssues && props.issues.length);
+const issuesList = computed(() => props.issues.map((issue) => issue.message).join(', '));
+
+/**
+ * @see https://popper.js.org/docs/v2/modifiers/#custom-modifiers
+ */
+const resizeModifier: Modifier<'resize', {}> = {
+	name: 'resize',
+	enabled: true,
+	phase: 'beforeWrite',
+	requires: ['preventOverflow'],
+	fn({ state }) {
+		const overflow = detectOverflow(state);
+		const MARGIN_RIGHT = 15;
+
+		const maxWidth = state.rects.popper.width - overflow.right - MARGIN_RIGHT;
+
+		state.styles.popper.width = `${maxWidth}px`;
+	},
 };
+
+const popperModifiers = [
+	resizeModifier,
+	{ name: 'preventOverflow', options: { boundary: 'document' } },
+	{ name: 'flip', enabled: false }, // prevent the tooltip from flipping
+];
 </script>
 
 <template>
-	<div
-		ref="containerRef"
-		:class="[$style.evaluationStep, small && $style.small]"
-		data-test-id="evaluation-step"
-	>
+	<div :class="containerClass" data-test-id="evaluation-step">
 		<div :class="$style.content">
-			<div :class="$style.header">
-				<div :class="[$style.icon, warning && $style.warning]">
-					<slot name="icon" />
-				</div>
-				<h3 :class="$style.title">{{ title }}</h3>
-				<span v-if="issues.length > 0 && showIssues" :class="$style.warningIcon">
-					<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
-						{{ issues.map((issue) => issue.message).join(', ') }}
-					</N8nInfoTip>
-				</span>
-				<button
-					v-if="$slots.cardContent"
-					:class="$style.collapseButton"
-					:aria-expanded="isExpanded"
-					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
-					data-test-id="evaluation-step-collapse-button"
-					@click="toggleExpand"
-				>
-					{{
-						isExpanded
-							? locale.baseText('testDefinition.edit.step.collapse')
-							: locale.baseText('testDefinition.edit.step.expand')
-					}}
-					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
-				</button>
-			</div>
-			<div v-if="description" :class="$style.description">{{ description }}</div>
-			<ElCollapseTransition v-if="$slots.cardContent">
-				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
-						<slot name="cardContent" />
+			<N8nTooltip
+				placement="right"
+				:disabled="!externalTooltip"
+				:show-arrow="false"
+				:popper-class="$style.evaluationTooltip"
+				:popper-options="{ modifiers: popperModifiers }"
+				:content="tooltip"
+			>
+				<div :class="$style.header" @click="toggleExpand">
+					<div :class="$style.label">
+						<N8nText bold>
+							<slot v-if="$slots.title" name="title" />
+							<template v-else>{{ title }}</template>
+						</N8nText>
+						<N8nInfoTip
+							v-if="!externalTooltip"
+							:class="$style.infoTip"
+							:bold="true"
+							type="tooltip"
+							theme="info"
+							tooltip-placement="top"
+							:enterable="false"
+						>
+							{{ tooltip }}
+						</N8nInfoTip>
+					</div>
+					<div :class="$style.actions">
+						<N8nInfoTip
+							v-if="renderIssues"
+							:bold="true"
+							type="tooltip"
+							theme="warning"
+							tooltip-placement="top"
+							:enterable="false"
+						>
+							{{ issuesList }}
+						</N8nInfoTip>
+						<N8nText
+							v-if="$slots.cardContent"
+							data-test-id="evaluation-step-collapse-button"
+							size="xsmall"
+							:color="hasIssues ? 'primary' : 'text-base'"
+							bold
+						>
+							{{
+								isExpanded
+									? locale.baseText('testDefinition.edit.step.collapse')
+									: locale.baseText('testDefinition.edit.step.configure')
+							}}
+							<font-awesome-icon :icon="isExpanded ? 'angle-up' : 'angle-down'" size="lg" />
+						</N8nText>
 					</div>
 				</div>
-			</ElCollapseTransition>
+			</N8nTooltip>
+			<div v-if="$slots.cardContent && isExpanded" :class="$style.cardContentWrapper">
+				<div :class="$style.cardContent" data-test-id="evaluation-step-content">
+					<N8nText v-if="description" size="small" color="text-light">{{ description }}</N8nText>
+					<slot name="cardContent" />
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -87,20 +138,25 @@ const toggleExpand = async () => {
 .evaluationStep {
 	display: grid;
 	grid-template-columns: 1fr;
-	gap: var(--spacing-m);
-	background: var(--color-background-light);
-	padding: var(--spacing-s);
-	border-radius: var(--border-radius-xlarge);
-	box-shadow: var(--box-shadow-base);
+	background: var(--color-background-xlight);
+	border-radius: var(--border-radius-large);
 	border: var(--border-base);
 	width: 100%;
 	color: var(--color-text-dark);
+	position: relative;
+	z-index: 1;
+}
 
-	&.small {
-		width: 80%;
-		margin-left: auto;
+.evaluationTooltip {
+	&:global(.el-popper) {
+		background-color: transparent;
+		font-size: var(--font-size-xs);
+		color: var(--color-text-light);
+		line-height: 1rem;
+		max-width: 25rem;
 	}
 }
+
 .icon {
 	display: flex;
 	align-items: center;
@@ -117,48 +173,49 @@ const toggleExpand = async () => {
 
 .content {
 	display: grid;
-	gap: var(--spacing-2xs);
 }
 
 .header {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	cursor: pointer;
+	padding: var(--spacing-s);
 }
 
-.title {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-	line-height: 1.125rem;
+.label {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 }
 
-.warningIcon {
-	color: var(--color-warning);
+.infoTip {
+	opacity: 0;
+}
+.evaluationStep:hover .infoTip {
+	opacity: 1;
+}
+
+.actions {
+	margin-left: auto;
+	display: flex;
+	gap: var(--spacing-2xs);
 }
 
 .cardContent {
 	font-size: var(--font-size-s);
-	margin-top: var(--spacing-xs);
-}
-.collapseButton {
-	cursor: pointer;
-	border: none;
-	background: none;
-	padding: 0;
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
-	margin-left: auto;
-	text-wrap: none;
-	overflow: hidden;
-	min-width: fit-content;
-}
-.cardContentWrapper {
-	height: max-content;
+	padding: 0 var(--spacing-s);
+	margin: var(--spacing-s) 0;
 }
 
-.description {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
-	line-height: 1rem;
+.cardContentWrapper {
+	border-top: var(--border-base);
+}
+
+.has-issues {
+	/**
+		* This comment is needed or the css module
+		* will interpret as undefined
+	 */
 }
 </style>

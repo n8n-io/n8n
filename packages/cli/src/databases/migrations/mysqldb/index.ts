@@ -44,6 +44,9 @@ import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExec
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
+import { CreateTestMetricTable1732271325258 } from './1732271325258-CreateTestMetricTable';
+import { AddStatsColumnsToTestRun1736172058779 } from './1736172058779-AddStatsColumnsToTestRun';
+import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTestDefinitionPrimaryKey';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -72,12 +75,12 @@ import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/172
 import { AddProjectIcons1729607673469 } from '../common/1729607673469-AddProjectIcons';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
-import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
 import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
 import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
 import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
-import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
 import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
+import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
+import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -158,4 +161,7 @@ export const mysqlMigrations: Migration[] = [
 	AddProjectIcons1729607673469,
 	AddStatsColumnsToTestRun1736172058779,
 	CreateTestCaseExecutionTable1736947513045,
+	AddErrorColumnsToTestRuns1737715421462,
+	CreateFolderTable1738709609940,
+	FixTestDefinitionPrimaryKey1739873751194,
 ];

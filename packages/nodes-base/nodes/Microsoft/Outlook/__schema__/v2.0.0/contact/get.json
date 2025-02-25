@@ -1,0 +1,44 @@
+{
+	"type": "object",
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"emailAddresses": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"address": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"address"
+				]
+			}
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"businessPhones": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	},
+	"required": [
+		"@odata.context"
+	]
+}

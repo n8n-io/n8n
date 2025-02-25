@@ -13,9 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { getRequestHelperFunctions, returnJsonArray } from '@/node-execute-functions';
-
 import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
@@ -23,6 +20,8 @@ import {
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 } from './utils/binary-helper-functions';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
 
 export class ExecuteSingleContext extends BaseExecuteContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];

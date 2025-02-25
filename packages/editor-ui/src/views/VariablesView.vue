@@ -15,8 +15,9 @@ import VariablesForm from '@/components/VariablesForm.vue';
 import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 
 import ResourcesListLayout, {
-	type IResource,
-	type IFilters,
+	type Resource,
+	type BaseFilters,
+	type VariableResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
@@ -85,7 +86,18 @@ const addEmptyVariableForm = () => {
 	telemetry.track('User clicked add variable button');
 };
 
-const variables = computed(() => [...variableForms.value.values(), ...environmentsStore.variables]);
+const variables = computed<VariableResource[]>(() =>
+	[...variableForms.value.values(), ...environmentsStore.variables].map(
+		(variable) =>
+			({
+				resourceType: 'variable',
+				id: variable.id,
+				name: variable.key,
+				key: variable.key,
+				value: variable.value,
+			}) as VariableResource,
+	),
+);
 
 const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
@@ -118,11 +130,18 @@ const columns = computed(() => {
 
 const handleSubmit = async (variable: EnvironmentVariable) => {
 	try {
-		const { id, ...rest } = variable;
+		const { id } = variable;
 		if (id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			await environmentsStore.createVariable(rest);
+			await environmentsStore.createVariable({
+				value: variable.value,
+				key: variable.key,
+			});
 		} else {
-			await environmentsStore.updateVariable(variable);
+			await environmentsStore.updateVariable({
+				id: variable.id,
+				value: variable.value,
+				key: variable.key,
+			});
 		}
 		removeEditableVariable(id);
 	} catch (error) {
@@ -147,33 +166,41 @@ const handleDeleteVariable = async (variable: EnvironmentVariable) => {
 			return;
 		}
 
-		await environmentsStore.deleteVariable(variable);
+		await environmentsStore.deleteVariable({
+			id: variable.id,
+			value: variable.value,
+			key: variable.key,
+		});
 		removeEditableVariable(variable.id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
 	}
 };
 
-type Filters = IFilters & { incomplete?: boolean };
+type Filters = BaseFilters & { incomplete?: boolean };
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
-const filters = computed<Filters>(
-	() => ({ ...route.query, incomplete: route.query.incomplete?.toString() === 'true' }) as Filters,
-);
+const onSearchUpdated = (search: string) => {
+	updateFilter({ ...filters.value, search });
+};
+const filters = ref<Filters>({
+	...route.query,
+	incomplete: route.query.incomplete?.toString() === 'true',
+} as Filters);
 
-const handleFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iResource = resource as EnvironmentVariable;
+const handleFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
+	const Resource = resource as EnvironmentVariable;
 	const filtersToApply = newFilters as Filters;
 
 	if (filtersToApply.incomplete) {
-		matches = matches && !iResource.value;
+		matches = matches && !Resource.value;
 	}
 
 	return matches;
 };
 
-const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
+const nameSortFn = (a: Resource, b: Resource, direction: 'asc' | 'desc') => {
 	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 		return -1;
 	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
@@ -185,8 +212,8 @@ const nameSortFn = (a: IResource, b: IResource, direction: 'asc' | 'desc') => {
 		: displayName(b).trim().localeCompare(displayName(a).trim());
 };
 const sortFns = {
-	nameAsc: (a: IResource, b: IResource) => nameSortFn(a, b, 'asc'),
-	nameDesc: (a: IResource, b: IResource) => nameSortFn(a, b, 'desc'),
+	nameAsc: (a: Resource, b: Resource) => nameSortFn(a, b, 'asc'),
+	nameDesc: (a: Resource, b: Resource) => nameSortFn(a, b, 'desc'),
 };
 
 const unavailableNoticeProps = computed(() => ({
@@ -203,7 +230,7 @@ function goToUpgrade() {
 	void usePageRedirectionHelper().goToUpgrade('variables', 'upgrade-variables');
 }
 
-function displayName(resource: IResource) {
+function displayName(resource: Resource) {
 	return (resource as EnvironmentVariable).key;
 }
 
@@ -223,10 +250,10 @@ onMounted(() => {
 <template>
 	<ResourcesListLayout
 		ref="layoutRef"
+		v-model:filters="filters"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="variables"
-		:filters="filters"
 		:additional-filters-handler="handleFilter"
 		:shareable="false"
 		:display-name="displayName"
@@ -236,6 +263,7 @@ onMounted(() => {
 		:type-props="{ columns }"
 		:loading="isLoading"
 		@update:filters="updateFilter"
+		@update:search="onSearchUpdated"
 		@click:add="addEmptyVariableForm"
 	>
 		<template #header>
