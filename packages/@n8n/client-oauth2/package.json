@@ -22,5 +22,8 @@
   ],
   "dependencies": {
     "axios": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

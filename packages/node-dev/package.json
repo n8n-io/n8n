@@ -36,6 +36,7 @@
     "src/tsconfig-build.json"
   ],
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/inquirer": "^6.5.0"
   },
   "dependencies": {
