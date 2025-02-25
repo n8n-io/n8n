@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { EntityManager } from '@n8n/typeorm';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -37,9 +38,9 @@ export class FolderService {
 		return folder;
 	}
 
-	async getFolderInProject(folderId: string, projectId: string) {
+	async getFolderInProject(folderId: string, projectId: string, em?: EntityManager) {
 		try {
-			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId, em);
 		} catch {
 			throw new FolderNotFoundError(folderId);
 		}
