@@ -66,6 +66,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
+import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -816,13 +817,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 
 	const oldValue = get(node.value, props.path);
 
-	if (
-		!oldValue &&
-		typeof value === 'string' &&
-		!value.startsWith('=') &&
-		value.includes('{{') &&
-		value.includes('}}')
-	) {
+	if (!oldValue && isStringWithExpressionSyntax(value)) {
 		// if no old value and updated value has an expression, add '=' prefix to swith to expression mode
 		value = '=' + value;
 	} else if (oldValue !== undefined && oldValue === value) {
@@ -833,6 +828,8 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;
 	}
+
+	value = completeExpressionSyntax(value);
 
 	if (value instanceof Date) {
 		value = value.toISOString();

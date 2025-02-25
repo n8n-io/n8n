@@ -148,3 +148,12 @@ export const completeExpressionSyntax = <T>(value: T) => {
 
 	return value;
 };
+
+export const isStringWithExpressionSyntax = <T>(value: T): boolean => {
+	return (
+		typeof value === 'string' &&
+		!value.startsWith('=') &&
+		value.includes('{{') &&
+		value.includes('}}')
+	);
+};
