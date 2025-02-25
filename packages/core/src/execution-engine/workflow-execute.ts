@@ -1022,6 +1022,8 @@ export class WorkflowExecute {
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
+		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
+
 		const customOperation = this.getCustomOperation(node, nodeType);
 
 		let connectionInputData: INodeExecutionData[] = [];
@@ -1186,8 +1188,8 @@ export class WorkflowExecute {
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
-		} else if (nodeType.webhook && !nodeType.description.requestDefaults) {
-			// Check if the node have requestDefaults(RoutingNode),
+		} else if (nodeType.webhook && !isDeclarativeNode) {
+			// Check if the node have requestDefaults(Declarative Node),
 			// else for webhook nodes always simply pass the data through
 			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };

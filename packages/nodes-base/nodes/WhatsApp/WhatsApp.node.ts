@@ -1,7 +1,9 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
+import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
+import { sanitizePhoneNumber } from './MessageFunctions';
 import { messageFields, messageTypeFields } from './MessagesDescription';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
@@ -12,7 +14,6 @@ import {
 } from '../../utils/sendAndWait/utils';
 
 const WHATSAPP_CREDENTIALS_TYPE = 'whatsAppApi';
-const WHATSAPP_BASE_URL = 'https://graph.facebook.com/v13.0/';
 
 export class WhatsApp implements INodeType {
 	description: INodeTypeDescription = {
@@ -76,29 +77,18 @@ export class WhatsApp implements INodeType {
 			async [SEND_AND_WAIT_OPERATION](this: IExecuteFunctions) {
 				try {
 					const phoneNumberId = this.getNodeParameter('phoneNumberId', 0) as string;
-					const recipientPhoneNumber = (
-						this.getNodeParameter('recipientPhoneNumber', 0) as string
-					).replace(/[\-\(\)\+]/g, '');
+
+					const recipientPhoneNumber = sanitizePhoneNumber(
+						this.getNodeParameter('recipientPhoneNumber', 0) as string,
+					);
 
 					const config = getSendAndWaitConfig(this);
 
-					const buttons = config.options.map((option) => {
-						return `*${option.label}:*\n_${config.url}?approved=${option.value}_\n\n`;
-					});
-
-					await this.helpers.requestWithAuthentication.call(this, WHATSAPP_CREDENTIALS_TYPE, {
-						baseURL: WHATSAPP_BASE_URL,
-						method: 'POST',
-						url: `${phoneNumberId}/messages`,
-						body: {
-							messaging_product: 'whatsapp',
-							text: {
-								body: `${config.message}\n\n${buttons.join('')}`,
-							},
-							type: 'text',
-							to: recipientPhoneNumber,
-						},
-					});
+					await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						WHATSAPP_CREDENTIALS_TYPE,
+						createMessage(config, phoneNumberId, recipientPhoneNumber),
+					);
 
 					const waitTill = configureWaitTillDate(this);
 

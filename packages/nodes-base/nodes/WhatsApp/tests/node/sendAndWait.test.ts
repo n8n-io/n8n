@@ -2,7 +2,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { type IExecuteFunctions } from 'n8n-workflow';
 
-import { WhatsApp } from '../WhatsApp.node';
+import { WhatsApp } from '../../WhatsApp.node';
 
 describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 	let whatsApp: WhatsApp;
@@ -13,7 +13,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn().mockResolvedValue({}),
+			httpRequestWithAuthentication: jest.fn().mockResolvedValue({}),
 		} as any;
 	});
 
@@ -48,7 +48,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+		expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'whatsAppApi',
 			{
 				baseURL: 'https://graph.facebook.com/v13.0/',
