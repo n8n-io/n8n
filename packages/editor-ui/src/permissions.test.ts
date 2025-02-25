@@ -27,6 +27,7 @@ describe('permissions', () => {
 			variable: {},
 			workersView: {},
 			workflow: {},
+			folder: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -57,6 +58,7 @@ describe('permissions', () => {
 			'workflow:read',
 			'workflow:share',
 			'workflow:update',
+			'folder:create',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -114,6 +116,9 @@ describe('permissions', () => {
 				read: true,
 				share: true,
 				update: true,
+			},
+			folder: {
+				create: true,
 			},
 		};
 
