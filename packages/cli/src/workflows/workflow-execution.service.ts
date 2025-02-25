@@ -196,10 +196,7 @@ export class WorkflowExecutionService {
 		 * Currently, manual executions in scaling mode are offloaded to workers,
 		 * so we persist all details to give workers full access to them.
 		 */
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-		) {
+		if (config.getEnv('executions.mode') === 'queue') {
 			data.executionData = {
 				startData: {
 					startNodes: data.startNodes,

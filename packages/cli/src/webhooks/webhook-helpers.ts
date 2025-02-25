@@ -565,11 +565,7 @@ export async function executeWebhook(
 				});
 		}
 
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' &&
-			runData.executionMode === 'manual'
-		) {
+		if (config.getEnv('executions.mode') === 'queue' && runData.executionMode === 'manual') {
 			assert(runData.executionData);
 			runData.executionData.isTestWebhook = true;
 		}
