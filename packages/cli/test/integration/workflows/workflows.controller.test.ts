@@ -58,12 +58,12 @@ let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'SharedWorkflow',
-		'Workflow',
-		'Tag',
-		'WorkflowHistory',
-		'Folder',
-		'ProjectRelation',
+		'SharedWorkflow', // Depends on Workflow and Project
+		'WorkflowHistory', // Probably depends on Workflow
+		'ProjectRelation', // Depends on Project and User
+		'Folder', // Depends on Project and Folder (self)
+		'Workflow', // Depends on Folder
+		'Tag', // No foreign keys shown
 		'Project',
 	]);
 	projectRepository = Container.get(ProjectRepository);
