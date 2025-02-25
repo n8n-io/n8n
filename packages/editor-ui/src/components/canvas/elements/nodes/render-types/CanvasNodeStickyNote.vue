@@ -59,12 +59,12 @@ function onInputChange(value: string) {
 	});
 }
 
-function onSetActive(edit: boolean) {
-	if (isActive.value === edit) return;
+function onSetActive(value: boolean) {
+	if (isActive.value === value) return;
 
-	isActive.value = edit;
+	isActive.value = value;
 
-	if (edit) {
+	if (value) {
 		emit('activate', id.value);
 	} else {
 		emit('deactivate', id.value);
@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
 		:edit-mode="isActive"
 		:read-only="isReadOnly"
 		@edit="onSetActive"
-		@dblclick="onActivate"
+		@dblclick.stop="onActivate"
 		@update:model-value="onInputChange"
 		@contextmenu="openContextMenu"
 	/>
