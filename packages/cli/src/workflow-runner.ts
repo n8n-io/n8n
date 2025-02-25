@@ -261,6 +261,7 @@ export class WorkflowRunner {
 			});
 
 			// Evaluation executions use the same logic as manual executions
+			// to use data pinning and start from a specific node
 			if (data.executionData !== undefined && data.executionMode !== 'evaluation') {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
