@@ -462,12 +462,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 <style lang="scss" module>
 .sideMenu {
+	display: grid;
 	position: relative;
 	height: 100%;
+	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	min-width: $sidebar-expanded-width;
-	max-width: 243px;
+	max-width: 244px;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {
