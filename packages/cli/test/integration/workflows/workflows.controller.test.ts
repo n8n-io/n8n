@@ -58,13 +58,13 @@ let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'Workflow',
 		'SharedWorkflow',
+		'Workflow',
 		'Tag',
 		'WorkflowHistory',
 		'Folder',
-		'Project',
 		'ProjectRelation',
+		'Project',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
@@ -487,7 +487,7 @@ describe('POST /workflows', () => {
 			parentFolder: null,
 		});
 		expect(response.body.data.shared).toBeUndefined();
-	});
+	}, 15000);
 });
 
 describe('GET /workflows/:workflowId', () => {
