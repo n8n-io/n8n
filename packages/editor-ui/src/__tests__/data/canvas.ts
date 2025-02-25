@@ -55,7 +55,7 @@ export function createCanvasNodeData({
 
 export function createCanvasNodeElement({
 	id = '1',
-	type = 'node',
+	type = 'default',
 	label = 'Node',
 	position = { x: 100, y: 100 },
 	data,

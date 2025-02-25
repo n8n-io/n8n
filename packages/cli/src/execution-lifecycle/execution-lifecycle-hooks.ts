@@ -376,14 +376,13 @@ export function getLifecycleHooksForSubExecutions(
  * Returns ExecutionLifecycleHooks instance for worker in scaling mode.
  */
 export function getLifecycleHooksForScalingWorker(
-	mode: WorkflowExecuteMode,
+	data: IWorkflowExecutionDataProcess,
 	executionId: string,
-	workflowData: IWorkflowBase,
-	{ pushRef, retryOf }: Omit<HooksSetupParameters, 'saveSettings'> = {},
 ): ExecutionLifecycleHooks {
-	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
+	const { pushRef, retryOf, executionMode, workflowData } = data;
+	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf, saveSettings };
+	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSaveWorker(hooks, optionalParameters);
@@ -391,7 +390,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
 
-	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
+	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		hookFunctionsPush(hooks, optionalParameters);
 	}
 
@@ -402,17 +401,16 @@ export function getLifecycleHooksForScalingWorker(
  * Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker
  */
 export function getLifecycleHooksForScalingMain(
-	mode: WorkflowExecuteMode,
+	data: IWorkflowExecutionDataProcess,
 	executionId: string,
-	workflowData: IWorkflowBase,
-	{ pushRef, retryOf }: Omit<HooksSetupParameters, 'saveSettings'> = {},
 ): ExecutionLifecycleHooks {
-	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
+	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
+	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf, saveSettings };
+	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 
-	hookFunctionsWorkflowEvents(hooks);
+	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -466,11 +464,11 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
 	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks);
+	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

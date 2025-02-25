@@ -12,8 +12,9 @@ import {
 	type ITaskMetadata,
 	type NodeError,
 	type NodeHint,
-	type Workflow,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	type Workflow,
+	parseErrorMetadata,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -300,6 +301,12 @@ const subworkflowExecutionError = computed(() => {
 const hasSubworkflowExecutionError = computed(() =>
 	Boolean(workflowsStore.subWorkflowExecutionError),
 );
+
+// Sub-nodes may wish to display the parent node error as it can contain additional metadata
+const parentNodeError = computed(() => {
+	const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
+	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
+});
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) {
 		return null;
@@ -307,8 +314,7 @@ const workflowRunErrorAsNodeError = computed(() => {
 
 	// If the node is a sub-node, we need to get the parent node error to check for input errors
 	if (isSubNodeType.value && props.paneType === 'input') {
-		const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
-		return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
+		return parentNodeError.value;
 	}
 	return workflowRunData.value?.[node.value?.name]?.[props.runIndex]?.error as NodeError;
 });
@@ -533,13 +539,25 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
+	const errorMetadata = parseErrorMetadata(workflowRunErrorAsNodeError.value);
+	if (errorMetadata !== undefined) {
+		return errorMetadata;
+	}
+
+	// This is needed for the WorkflowRetriever to display the associated execution
+	if (parentNodeError.value) {
+		const subNodeMetadata = parseErrorMetadata(parentNodeError.value);
+		if (subNodeMetadata !== undefined) {
+			return subNodeMetadata;
+		}
+	}
 
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
-const hasReleatedExectuion = computed((): boolean => {
+const hasRelatedExecution = computed(() => {
 	return Boolean(
-		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
+		activeTaskMetadata.value?.subExecution ?? activeTaskMetadata.value?.parentExecution,
 	);
 });
 
@@ -1483,7 +1501,7 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"
@@ -1573,7 +1591,7 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"

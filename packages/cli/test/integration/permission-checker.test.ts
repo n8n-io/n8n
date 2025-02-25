@@ -1,11 +1,10 @@
 import { Container } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -26,7 +25,7 @@ import { mockInstance } from '../shared/mocking';
 
 const ownershipService = mockInstance(OwnershipService);
 
-const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
+const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<IWorkflowBase> => {
 	const workflowDetails = {
 		id: randomInt(1, 10).toString(),
 		name: 'test',

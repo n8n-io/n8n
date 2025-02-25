@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		name: 'prompt',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Prompt (User Message)',
 		name: 'text',
 		type: 'string',
 		default: '',
