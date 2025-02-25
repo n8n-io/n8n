@@ -3,7 +3,6 @@ export { BaseError, type BaseErrorOptions } from './base/base.error';
 export { OperationalError, type OperationalErrorOptions } from './base/operational.error';
 export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.error';
 export { UserError, type UserErrorOptions } from './base/user.error';
-export { RuntimeError } from './base/runtime.error';
 export { ApplicationError } from './application.error';
 export { ExpressionError } from './expression.error';
 export { CredentialAccessError } from './credential-access-error';
