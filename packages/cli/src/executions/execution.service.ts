@@ -14,6 +14,7 @@ import type {
 import {
 	ExecutionStatusList,
 	UnexpectedError,
+	UserError,
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -188,7 +189,7 @@ export class ExecutionService {
 			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
-				throw new UnexpectedError(
+				throw new UserError(
 					'Workflow could not be found and so the data not be loaded for the retry.',
 					{ extra: { workflowId } },
 				);
