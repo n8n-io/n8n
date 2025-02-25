@@ -25,6 +25,7 @@ interface InfoTipProps {
 	type?: (typeof TYPE)[number];
 	bold?: boolean;
 	tooltipPlacement?: Placement;
+	enterable?: boolean;
 }
 
 defineOptions({ name: 'N8nInfoTip' });
@@ -33,6 +34,7 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	type: 'note',
 	bold: true,
 	tooltipPlacement: 'top',
+	enterable: true,
 });
 
 const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
@@ -60,6 +62,7 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 			:placement="tooltipPlacement"
 			:popper-class="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
+			:enterable
 		>
 			<span :class="$style.iconText">
 				<N8nIcon :icon="iconData.icon" :color="iconData.color" />

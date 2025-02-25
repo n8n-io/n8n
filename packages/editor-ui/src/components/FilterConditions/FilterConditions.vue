@@ -195,7 +195,7 @@ function getIssues(index: number): string[] {
 								:read-only="readOnly"
 								:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 								:can-drag="index !== 0 || state.paramValue.conditions.length > 1"
-								:path="`${path}.${index}`"
+								:path="`${path}.conditions.${index}`"
 								:issues="getIssues(index)"
 								:class="$style.condition"
 								@update="(value) => onConditionUpdate(index, value)"

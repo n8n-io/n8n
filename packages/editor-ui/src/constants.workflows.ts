@@ -46,19 +46,19 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 			parameters: {
 				inputSource: 'passthrough',
 			},
-			id: 'ad3156ed-3007-4a09-8527-920505339812',
+			id: 'c20c82d6-5f71-4fb6-a398-a10a6e6944c5',
 			name: 'When called by a test run',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
 			typeVersion: 1.1,
-			position: [620, 380],
+			position: [80, 440],
 		},
 		{
 			parameters: {},
-			id: '5ff0deaf-6ec9-4a0f-a906-70f1d8375e7c',
+			id: '4e14d09a-2699-4659-9a20-e4f4965f473e',
 			name: 'Replace me',
 			type: 'n8n-nodes-base.noOp',
 			typeVersion: 1,
-			position: [860, 380],
+			position: [340, 440],
 		},
 		{
 			parameters: {
@@ -66,87 +66,80 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 					assignments: [
 						{
 							id: 'a748051d-ebdb-4fcf-aaed-02756130ce2a',
-							name: 'my_metric',
-							value: 1,
+							name: 'latency',
+							value:
+								'={{(() => {\n  const newExecutionRuns = Object.values($json.newExecution)\n    .reduce((acc, node) => {\n      acc.push(node.runs.filter(run => run.output.main !== undefined))\n      return acc\n    }, []).flat()\n\n  const latency = newExecutionRuns.reduce((acc, run) => acc + run.executionTime, 0)\n\n  return latency\n})()}}',
 							type: 'number',
 						},
 					],
 				},
 				options: {},
 			},
-			id: '2cae7e85-7808-4cab-85c0-d233f47701a1',
+			id: '33e2e94a-ec48-4e7b-b750-f56718d5105c',
 			name: 'Return metric(s)',
 			type: 'n8n-nodes-base.set',
 			typeVersion: 3.4,
-			position: [1100, 380],
+			position: [600, 440],
 		},
 		{
 			parameters: {
 				content:
-					"### 1. Receive execution data\n\nThis workflow will be passed:\n- A past execution from the test\n- The execution produced by re-running it\n\n\nWe've pinned some example data to get you started",
-				height: 438,
-				width: 217,
+					"### 1. Receive execution data\n\nThis workflow will be passed:\n- The benchmark execution (`$json.originalExecution`)\n- The evaluation execution (`$json.newExecution`) produced by re-running the workflow using trigger data from benchmark execution\n\n\nWe've pinned some example data to get you started",
+				height: 458,
+				width: 257,
 				color: 7,
 			},
-			id: 'ecb90156-30a3-4a90-93d5-6aca702e2f6b',
+			id: '55e5e311-e285-4000-bd1e-900bc3a07da3',
 			name: 'Sticky Note',
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [560, 105],
-		},
-		{
-			parameters: {
-				content: '### 2. Compare actual and expected result\n',
-				height: 439,
-				width: 217,
-				color: 7,
-			},
-			id: '556464f8-b86d-41e2-9249-ca6d541c9147',
-			name: 'Sticky Note1',
-			type: 'n8n-nodes-base.stickyNote',
-			typeVersion: 1,
-			position: [800, 104],
-		},
-		{
-			parameters: {
-				content: '### 3. Return metrics\n\nMetrics should always be numerical',
-				height: 439,
-				width: 217,
-				color: 7,
-			},
-			id: '04c96a00-b360-423a-90a6-b3943c7d832f',
-			name: 'Sticky Note2',
-			type: 'n8n-nodes-base.stickyNote',
-			typeVersion: 1,
-			position: [1040, 104],
+			position: [0, 140],
 		},
 		{
 			parameters: {
 				content:
-					'## Evaluation workflow\nThis workflow is used to check whether a single past execution being tested gives similar results when re-run',
-				height: 105,
-				width: 694,
+					'### 2. Evaluation logic\n\nReplace with logic to perform the tests you want to perform.\n\nE.g. compare against benchmark data, use LLMs to evaluate sentiment, compare token usage, and more.',
+				height: 459,
+				width: 237,
+				color: 7,
 			},
-			id: '2250a6ec-7c4f-45e4-8dfe-c4b50c98b34b',
+			id: 'ea74e341-ff9c-456a-83f0-c10758f0844a',
+			name: 'Sticky Note1',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [280, 140],
+		},
+		{
+			parameters: {
+				content:
+					'### 3. Return metrics\n\nDefine evaluation metrics you want to show on your report.\n\n__Note:__ Metrics need to be numeric',
+				height: 459,
+				width: 217,
+				color: 7,
+			},
+			id: '9b3c3408-19e1-43d5-b2bb-29d61bd129b8',
+			name: 'Sticky Note2',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [540, 140],
+		},
+		{
+			parameters: {
+				content:
+					'## Evaluation workflow\nThis workflow is used to define evaluation logic and calculate metrics. You can compare against benchmark executions, use LLMs to evaluate, or write any other logic you choose.',
+				height: 105,
+				width: 754,
+			},
+			id: '0fc1356e-6238-4557-a920-e50806c1ec13',
 			name: 'Sticky Note3',
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [560, -25],
+			position: [0, 0],
 		},
 	],
-	pinData: {
-		'When called by a test run': [
-			{
-				json: {
-					newExecution: {},
-					originalExecution: {},
-				},
-			},
-		],
-	},
 	connections: {
 		'When called by a test run': {
-			[NodeConnectionType.Main]: [
+			main: [
 				[
 					{
 						node: 'Replace me',
@@ -157,7 +150,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 			],
 		},
 		'Replace me': {
-			[NodeConnectionType.Main]: [
+			main: [
 				[
 					{
 						node: 'Return metric(s)',
@@ -167,6 +160,16 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 				],
 			],
 		},
+	},
+	pinData: {
+		'When called by a test run': [
+			{
+				json: {
+					newExecution: {},
+					originalExecution: {},
+				},
+			},
+		],
 	},
 	settings: {
 		executionOrder: 'v1',

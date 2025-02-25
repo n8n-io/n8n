@@ -7,7 +7,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/constants';
 import type { INodeCreateElement } from '@/Interface';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { NodeConnectionType } from 'n8n-workflow';
 import { CanvasConnectionMode } from '@/types';
 
@@ -56,7 +56,7 @@ vi.mock('@/stores/workflows.store', () => {
 	};
 });
 
-vi.mock('@/utils/canvasUtilsV2', () => {
+vi.mock('@/utils/canvasUtils', () => {
 	return {
 		parseCanvasConnectionHandleString: vi.fn(),
 	};

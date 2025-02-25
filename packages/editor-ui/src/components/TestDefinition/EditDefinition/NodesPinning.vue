@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { computed, onMounted, ref, useCssModule } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
-import { createEventBus, N8nTooltip } from 'n8n-design-system';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { useI18n } from '@/composables/useI18n';
+import { createEventBus, N8nTooltip } from 'n8n-design-system';
+import { computed, onMounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
+const telemetry = useTelemetry();
 
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
@@ -101,10 +103,19 @@ function onPinButtonClick(data: CanvasNodeData) {
 
 	emit('update:modelValue', updatedNodes);
 	updateNodeClasses([data.id], !isPinned);
+
+	if (!isPinned) {
+		telemetry.track('User selected node to be mocked', {
+			node_id: data.id,
+			test_id: testId.value,
+		});
+	}
 }
-function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
-	return outputs.length === 1;
+function isPinButtonVisible(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
+	return outputs.length === 1 && inputs.length >= 1;
 }
+
+const isPinned = (data: CanvasNodeData) => props.modelValue.some((node) => node.id === data.id);
 
 onNodesInitialized(async () => {
 	await fitView();
@@ -133,20 +144,39 @@ onMounted(loadData);
 			:read-only="true"
 			:event-bus="eventBus"
 		>
-			<template #nodeToolbar="{ data, outputs }">
-				<div :class="$style.pinButtonContainer">
-					<N8nTooltip v-if="isPinButtonVisible(outputs)" placement="left">
+			<template #nodeToolbar="{ data, outputs, inputs }">
+				<div
+					v-if="isPinButtonVisible(outputs, inputs)"
+					:class="{
+						[$style.pinButtonContainer]: true,
+						[$style.pinButtonContainerPinned]: isPinned(data),
+					}"
+				>
+					<N8nTooltip placement="left">
 						<template #content>
 							{{ locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip') }}
 						</template>
-						<n8n-icon-button
-							type="tertiary"
-							size="large"
+						<N8nButton
+							v-if="isPinned(data)"
 							icon="thumbtack"
-							:class="$style.pinButton"
+							block
+							type="secondary"
+							:class="$style.customSecondary"
 							data-test-id="node-pin-button"
 							@click="onPinButtonClick(data)"
-						/>
+						>
+							Un Mock
+						</N8nButton>
+						<N8nButton
+							v-else
+							icon="thumbtack"
+							block
+							type="secondary"
+							data-test-id="node-pin-button"
+							@click="onPinButtonClick(data)"
+						>
+							Mock
+						</N8nButton>
 					</N8nTooltip>
 				</div>
 			</template>
@@ -161,30 +191,30 @@ onMounted(loadData);
 }
 .pinButtonContainer {
 	position: absolute;
-	right: 0;
-	display: flex;
-	justify-content: flex-end;
-	bottom: 100%;
-}
+	right: 50%;
+	bottom: -5px;
+	height: calc(100% + 47px);
+	border: 1px solid transparent;
+	padding: 5px 5px;
+	border-radius: 8px;
+	width: calc(100% + 10px);
+	transform: translateX(50%);
 
-.pinButton {
-	cursor: pointer;
-	color: var(--canvas-node--border-color);
-	border: none;
-}
-.notPinnedNode,
-.pinnedNode {
-	:global(.n8n-node-icon) > div {
-		filter: contrast(40%) brightness(1.5) grayscale(100%);
+	&.pinButtonContainerPinned {
+		background-color: hsla(247, 49%, 55%, 1);
 	}
 }
-.pinnedNode {
-	--canvas-node--border-color: hsla(247, 49%, 55%, 1);
 
-	:global(.n8n-node-icon) > div {
-		filter: contrast(40%) brightness(1.5) grayscale(100%);
-	}
+.customSecondary {
+	--button-background-color: hsla(247, 49%, 55%, 1);
+	--button-font-color: var(--color-button-primary-font);
+	--button-border-color: hsla(247, 49%, 55%, 1);
+
+	--button-hover-background-color: hsla(247, 49%, 55%, 1);
+	--button-hover-border-color: var(--color-button-primary-font);
+	--button-hover-font-color: var(--color-button-primary-font);
 }
+
 .spinner {
 	position: absolute;
 	top: 50%;

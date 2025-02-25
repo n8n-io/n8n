@@ -1,39 +1,64 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
-import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue';
-import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
-import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord } from '@/api/testDefinition.ee';
+import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
+import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
+import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
+import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
-import type { ITag, ModalState } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
-import { ref } from 'vue';
+import type { ITag, ModalState } from '@/Interface';
+import { N8nButton, N8nTag, N8nText } from 'n8n-design-system';
 import type { IPinData } from 'n8n-workflow';
+import { computed, ref } from 'vue';
 
-defineProps<{
-	showConfig: boolean;
-	tagUsageCount: number;
-	allTags: ITag[];
+const props = defineProps<{
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
 	examplePinnedData?: IPinData;
 	sampleWorkflowName?: string;
+	hasRuns: boolean;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
 	cancelEditing: (field: keyof EditableFormState) => void;
-	createTag?: (name: string) => Promise<ITag>;
 }>();
-
 const emit = defineEmits<{
 	openPinningModal: [];
-	deleteMetric: [metric: Partial<TestMetricRecord>];
+	deleteMetric: [metric: TestMetricRecord];
+	openExecutionsViewForTag: [];
+	renameTag: [tag: string];
+	evaluationWorkflowCreated: [workflowId: string];
 }>();
 
 const locale = useI18n();
-const changedFieldsKeys = ref<string[]>([]);
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
+
+const renameTag = async () => {
+	const { prompt } = useMessage();
+
+	const result = await prompt(locale.baseText('testDefinition.edit.step.tag.placeholder'), {
+		inputValue: props.tagsById[tags.value.value[0]]?.name,
+		inputPlaceholder: locale.baseText('testDefinition.edit.step.tag.placeholder'),
+		inputValidator: (value) => {
+			if (!value) {
+				return locale.baseText('testDefinition.edit.step.tag.validation.required');
+			}
+
+			if (value.length > 21) {
+				return locale.baseText('testDefinition.edit.step.tag.validation.tooLong');
+			}
+
+			return true;
+		},
+	});
+
+	if (result?.action === 'confirm') {
+		emit('renameTag', result.value);
+	}
+};
+
 const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']>(
 	'evaluationWorkflow',
 	{ required: true },
@@ -45,134 +70,143 @@ const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes
 
 const nodePinningModal = ref<ModalState | null>(null);
 
-function updateChangedFieldsKeys(key: string) {
-	changedFieldsKeys.value.push(key);
-}
+const selectedTag = computed(() => props.tagsById[tags.value.value[0]] ?? {});
 
-function showFieldIssues(fieldKey: string) {
-	return changedFieldsKeys.value.includes(fieldKey);
+function openExecutionsView() {
+	emit('openExecutionsViewForTag');
 }
 </script>
 
 <template>
-	<div :class="[$style.panelBlock, { [$style.hidden]: !showConfig }]">
-		<div :class="$style.panelIntro">
-			{{ locale.baseText('testDefinition.edit.step.intro') }}
+	<div>
+		<div :class="$style.editForm">
+			<template v-if="!hasRuns">
+				<N8nText tag="div" color="text-dark" size="large" class="text-center">
+					{{ locale.baseText('testDefinition.edit.step.intro') }}
+				</N8nText>
+				<BlockArrow class="mt-5xs mb-5xs" />
+			</template>
+
+			<!-- Select Executions -->
+			<EvaluationStep
+				:issues="getFieldIssues('tags')"
+				:tooltip="locale.baseText('testDefinition.edit.step.executions.tooltip')"
+				:external-tooltip="!hasRuns"
+			>
+				<template #title>
+					{{
+						locale.baseText('testDefinition.edit.step.executions', {
+							adjustToNumber: selectedTag?.usageCount ?? 0,
+						})
+					}}
+				</template>
+				<template #cardContent>
+					<div :class="$style.tagInputTag">
+						<i18n-t keypath="testDefinition.edit.step.tag">
+							<template #tag>
+								<N8nTag :text="selectedTag.name" :clickable="true" @click="renameTag">
+									<template #tag>
+										{{ selectedTag.name }} <font-awesome-icon icon="pen" size="sm" />
+									</template>
+								</N8nTag>
+							</template>
+						</i18n-t>
+					</div>
+					<N8nButton
+						label="Select executions"
+						type="tertiary"
+						size="small"
+						@click="openExecutionsView"
+					/>
+				</template>
+			</EvaluationStep>
+			<div :class="$style.nestedSteps">
+				<BlockArrow class="mt-5xs mb-5xs" />
+				<div style="display: flex; flex-direction: column">
+					<BlockArrow class="mt-5xs mb-5xs ml-auto mr-2xl" />
+					<!-- Mocked Nodes -->
+					<EvaluationStep
+						:issues="getFieldIssues('mockedNodes')"
+						:tooltip="locale.baseText('testDefinition.edit.step.nodes.tooltip')"
+						:external-tooltip="!hasRuns"
+					>
+						<template #title>
+							{{
+								locale.baseText('testDefinition.edit.step.mockedNodes', {
+									adjustToNumber: mockedNodes?.length ?? 0,
+								})
+							}}
+							<N8nText>({{ locale.baseText('generic.optional') }})</N8nText>
+						</template>
+						<template #cardContent>
+							<N8nButton
+								size="small"
+								data-test-id="select-nodes-button"
+								:label="locale.baseText('testDefinition.edit.selectNodes')"
+								type="tertiary"
+								@click="$emit('openPinningModal')"
+							/>
+						</template>
+					</EvaluationStep>
+
+					<BlockArrow class="mt-5xs mb-5xs ml-auto mr-2xl" />
+					<!-- Re-run Executions -->
+					<EvaluationStep
+						:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
+						:tooltip="locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip')"
+						:external-tooltip="!hasRuns"
+					/>
+					<BlockArrow class="mt-5xs mb-5xs ml-auto mr-2xl" />
+				</div>
+			</div>
+
+			<!-- Compare Executions -->
+			<EvaluationStep
+				:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
+				:description="locale.baseText('testDefinition.edit.workflowSelectorLabel')"
+				:issues="getFieldIssues('evaluationWorkflow')"
+				:tooltip="locale.baseText('testDefinition.edit.step.compareExecutions.tooltip')"
+				:external-tooltip="!hasRuns"
+			>
+				<template #cardContent>
+					<WorkflowSelector
+						v-model="evaluationWorkflow"
+						:example-pinned-data="examplePinnedData"
+						:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
+						:sample-workflow-name="sampleWorkflowName"
+						@workflow-created="$emit('evaluationWorkflowCreated', $event)"
+					/>
+				</template>
+			</EvaluationStep>
+
+			<BlockArrow class="mt-5xs mb-5xs" />
+			<!-- Metrics -->
+			<EvaluationStep
+				:title="locale.baseText('testDefinition.edit.step.metrics')"
+				:issues="getFieldIssues('metrics')"
+				:description="locale.baseText('testDefinition.edit.step.metrics.description')"
+				:tooltip="locale.baseText('testDefinition.edit.step.metrics.tooltip')"
+				:external-tooltip="!hasRuns"
+			>
+				<template #cardContent>
+					<MetricsInput
+						v-model="metrics"
+						:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
+						class="mt-xs"
+						@delete-metric="(metric) => emit('deleteMetric', metric)"
+					/>
+				</template>
+			</EvaluationStep>
 		</div>
-		<BlockArrow :class="$style.introArrow" />
-		<!-- Select Executions -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="
-				locale.baseText('testDefinition.edit.step.executions', {
-					adjustToNumber: tagUsageCount,
-				})
-			"
-			:description="locale.baseText('testDefinition.edit.step.executions.description')"
-			:issues="getFieldIssues('tags')"
-			:show-issues="showFieldIssues('tags')"
-		>
-			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
-			<template #cardContent>
-				<TagsInput
-					v-model="tags"
-					:class="{ 'has-issues': getFieldIssues('tags') }"
-					:all-tags="allTags"
-					:tags-by-id="tagsById"
-					:is-loading="isLoading"
-					:start-editing="startEditing"
-					:save-changes="saveChanges"
-					:cancel-editing="cancelEditing"
-					:create-tag="createTag"
-					@update:model-value="updateChangedFieldsKeys('tags')"
-				/>
-			</template>
-		</EvaluationStep>
-		<div :class="$style.evaluationArrows">
-			<BlockArrow />
-			<BlockArrow />
-		</div>
-
-		<!-- Mocked Nodes -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="
-				locale.baseText('testDefinition.edit.step.mockedNodes', {
-					adjustToNumber: mockedNodes?.length ?? 0,
-				})
-			"
-			:small="true"
-			:expanded="true"
-			:description="locale.baseText('testDefinition.edit.step.nodes.description')"
-			:issues="getFieldIssues('mockedNodes')"
-			:show-issues="showFieldIssues('mockedNodes')"
-		>
-			<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-			<template #cardContent>
-				<n8n-button
-					size="small"
-					data-test-id="select-nodes-button"
-					:label="locale.baseText('testDefinition.edit.selectNodes')"
-					type="tertiary"
-					@click="$emit('openPinningModal')"
-				/>
-			</template>
-		</EvaluationStep>
-
-		<!-- Re-run Executions -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
-			:small="true"
-			:description="locale.baseText('testDefinition.edit.step.reRunExecutions.description')"
-		>
-			<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
-		</EvaluationStep>
-
-		<!-- Compare Executions -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
-			:description="locale.baseText('testDefinition.edit.step.compareExecutions.description')"
-			:issues="getFieldIssues('evaluationWorkflow')"
-			:show-issues="showFieldIssues('evaluationWorkflow')"
-		>
-			<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
-			<template #cardContent>
-				<WorkflowSelector
-					v-model="evaluationWorkflow"
-					:example-pinned-data="examplePinnedData"
-					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
-					:sample-workflow-name="sampleWorkflowName"
-					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
-				/>
-			</template>
-		</EvaluationStep>
-
-		<!-- Metrics -->
-		<EvaluationStep
-			:class="$style.step"
-			:title="locale.baseText('testDefinition.edit.step.metrics')"
-			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
-			:issues="getFieldIssues('metrics')"
-			:show-issues="showFieldIssues('metrics')"
-		>
-			<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
-			<template #cardContent>
-				<MetricsInput
-					v-model="metrics"
-					:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
-					@delete-metric="(metric) => emit('deleteMetric', metric)"
-					@update:model-value="updateChangedFieldsKeys('metrics')"
-				/>
-			</template>
-		</EvaluationStep>
-
 		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
 			<template #header>
-				<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
-					locale.baseText('testDefinition.edit.selectNodes')
-				}}</N8nHeading>
+				<N8nHeading size="large" :bold="true">
+					{{ locale.baseText('testDefinition.edit.selectNodes') }}
+				</N8nHeading>
+				<br />
+				<N8nText>
+					{{ locale.baseText('testDefinition.edit.modal.description') }}
+				</N8nText>
 			</template>
 			<template #content>
 				<NodesPinning v-model="mockedNodes" data-test-id="nodes-pinning-modal" />
@@ -182,59 +216,16 @@ function showFieldIssues(fieldKey: string) {
 </template>
 
 <style module lang="scss">
-.panelBlock {
-	width: var(--evaluation-edit-panel-width);
+.nestedSteps {
 	display: grid;
-	height: 100%;
-	overflow-y: auto;
-	flex-shrink: 0;
-	padding-bottom: var(--spacing-l);
-	margin-left: var(--spacing-2xl);
-	transition: width 0.2s ease;
-
-	&.hidden {
-		margin-left: 0;
-		width: 0;
-		overflow: hidden;
-		flex-shrink: 1;
-	}
-
-	.noRuns & {
-		overflow-y: initial;
-	}
+	grid-template-columns: 20% 1fr;
 }
 
-.panelIntro {
-	font-size: var(--font-size-m);
-	color: var(--color-text-dark);
-
-	justify-self: center;
-	position: relative;
-	display: block;
-}
-
-.step {
-	position: relative;
-
-	&:not(:first-child) {
-		margin-top: var(--spacing-m);
-	}
-}
-
-.introArrow {
-	--arrow-height: 1.5rem;
-	margin-bottom: -1rem;
-	justify-self: center;
-}
-
-.evaluationArrows {
-	--arrow-height: 23rem;
+.tagInputTag {
 	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	max-width: 80%;
-	margin: 0 auto;
-	margin-bottom: -100%;
-	z-index: 0;
+	gap: var(--spacing-3xs);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
+	margin-bottom: var(--spacing-xs);
 }
 </style>
