@@ -368,7 +368,18 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</N8nTooltip>
 				</template>
 				<template #[createProjectAppendSlotName]="{ item }">
-					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
 						<N8nButton
 							:size="'mini'"
 							style="margin-left: auto"
