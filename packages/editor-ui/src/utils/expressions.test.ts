@@ -1,5 +1,11 @@
 import { ExpressionError } from 'n8n-workflow';
-import { removeExpressionPrefix, stringifyExpressionResult, unwrapExpression } from './expressions';
+import {
+	completeExpressionSyntax,
+	isStringWithExpressionSyntax,
+	removeExpressionPrefix,
+	stringifyExpressionResult,
+	unwrapExpression,
+} from './expressions';
 
 describe('Utils: Expressions', () => {
 	describe('stringifyExpressionResult()', () => {
@@ -51,6 +57,46 @@ describe('Utils: Expressions', () => {
 			[undefined, ''],
 		])('turns "%s" into "%s"', (input, output) => {
 			expect(removeExpressionPrefix(input)).toBe(output);
+		});
+	});
+
+	describe('completeExpressionSyntax', () => {
+		it('should complete expressions with "{{ " at the end', () => {
+			expect(completeExpressionSyntax('test {{ ')).toBe('=test {{  }}');
+		});
+
+		it('should complete expressions with "{{$" at the end', () => {
+			expect(completeExpressionSyntax('test {{$')).toBe('=test {{ $ }}');
+		});
+
+		it('should not modify already valid expressions', () => {
+			expect(completeExpressionSyntax('=valid expression')).toBe('=valid expression');
+		});
+
+		it('should return non-string values unchanged', () => {
+			expect(completeExpressionSyntax(123)).toBe(123);
+			expect(completeExpressionSyntax(true)).toBe(true);
+			expect(completeExpressionSyntax(null)).toBe(null);
+		});
+	});
+
+	describe('isStringWithExpressionSyntax', () => {
+		it('should return true for strings with expression syntax', () => {
+			expect(isStringWithExpressionSyntax('test {{ value }}')).toBe(true);
+		});
+
+		it('should return false for strings without expression syntax', () => {
+			expect(isStringWithExpressionSyntax('just a string')).toBe(false);
+		});
+
+		it('should return false for strings starting with "="', () => {
+			expect(isStringWithExpressionSyntax('=expression {{ value }}')).toBe(false);
+		});
+
+		it('should return false for non-string values', () => {
+			expect(isStringWithExpressionSyntax(123)).toBe(false);
+			expect(isStringWithExpressionSyntax(true)).toBe(false);
+			expect(isStringWithExpressionSyntax(null)).toBe(false);
 		});
 	});
 });
