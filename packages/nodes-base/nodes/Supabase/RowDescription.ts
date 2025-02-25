@@ -170,6 +170,19 @@ export const rowFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Return Inserted Data',
+		name: 'returnData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['row'],
+				operation: ['create'],
+			},
+		},
+		default: true,
+		description: 'Whether to return the inserted data. Disable if RLS policies restrict SELECT.',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                row:delete                                  */
 	/* -------------------------------------------------------------------------- */
