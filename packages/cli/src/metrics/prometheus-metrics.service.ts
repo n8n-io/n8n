@@ -8,7 +8,7 @@ import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, Time } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -304,7 +304,8 @@ export class PrometheusMetricsService {
 		const workflowRepository = this.workflowRepository;
 		const cacheService = this.cacheService;
 		const cacheKey = 'metrics:active-workflow-count';
-		const cacheTtl = this.globalConfig.endpoints.metrics.activeWorkflowCountInterval * 1_000;
+		const cacheTtl =
+			this.globalConfig.endpoints.metrics.activeWorkflowCountInterval * Time.seconds.toMilliseconds;
 
 		new promClient.Gauge({
 			name: this.prefix + 'active_workflow_count',
