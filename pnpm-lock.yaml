@@ -520,7 +520,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(1ea346ff95b1be1e3f1f4333b25e2811)
+        version: 0.3.24(435d3704943f325210ee401ff210a570)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -581,6 +581,9 @@ importers:
       '@xata.io/client':
         specifier: 0.28.4
         version: 0.28.4(typescript@5.7.2)
+      '@zilliz/milvus2-sdk-node':
+        specifier: 2.5.5
+        version: 2.5.5
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -3689,6 +3692,10 @@ packages:
     resolution: {integrity: sha512-vYVqYzHicDqyKB+NQhAc54I1QWCBLCrYG6unqOIcBTHx+7x8C9lcoLj3KVJXs2VB4lUbpWY+Kk9NipcbXYWmvg==}
     engines: {node: '>=12.10.0'}
 
+  '@grpc/grpc-js@1.12.6':
+    resolution: {integrity: sha512-JXUj6PI0oqqzTGvKtzOkxtpsyPRNsrmhh41TtIz/zEB6J+AUiZZ0dxWzcMwO9Ns5rmSPuMdghlTbUuqIM48d3Q==}
+    engines: {node: '>=12.10.0'}
+
   '@grpc/proto-loader@0.7.13':
     resolution: {integrity: sha512-AiXO/bfe9bmxBjxxtYxFAXGZvMaN5s8kO+jBHAJCON8rJoB5YS/D6X7ZNc6XQkuHNmyl4CYaMI1fJ/Gn27RGGw==}
     engines: {node: '>=6'}
@@ -4934,6 +4941,9 @@ packages:
 
   '@otplib/preset-v11@12.0.1':
     resolution: {integrity: sha512-9hSetMI7ECqbFiKICrNa4w70deTUfArtwXykPUvSHWOdzOlfa9ajglu7mNCntlvxycTiOAXkQGwjQCzzDEMRMg==}
+
+  '@petamoriken/float16@3.9.1':
+    resolution: {integrity: sha512-j+ejhYwY6PeB+v1kn7lZFACUIG97u90WxMuGosILFsl9d4Ovi0sjk0GlPfoEcx+FzvXZDAfioD+NGnnPamXgMA==}
 
   '@pinecone-database/pinecone@4.0.0':
     resolution: {integrity: sha512-INYS+GBys9v5BRTyn0tv8srVsPTlSRvE3BPE4Wkc/lOEyAIyB9F7DEMXbeF19FOLEgRwCuHTLjzm1niENl+4FA==}
@@ -6561,6 +6571,9 @@ packages:
     resolution: {integrity: sha512-uRjjusqpoqfmRkTaNuLJ2VohVr67Q5YwDATW3VU7PfzTj6IRaihGrYI7zckGZjxQPBIp63nfvJbM+Yu5ICh0Bg==}
     engines: {node: '>=10.0.0'}
     deprecated: this version has critical issues, please update to the latest version
+
+  '@zilliz/milvus2-sdk-node@2.5.5':
+    resolution: {integrity: sha512-vKDbNu6auOTV0PZSvjKhdXR4wEs+ldREmYA3Ffll2kqJxaljAXmTcDXCw7arFa+/n+xDsg+nP1KTpuZATYDZ8g==}
 
   abab@2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
@@ -16202,6 +16215,11 @@ snapshots:
       '@grpc/proto-loader': 0.7.13
       '@js-sdsl/ordered-map': 4.4.2
 
+  '@grpc/grpc-js@1.12.6':
+    dependencies:
+      '@grpc/proto-loader': 0.7.13
+      '@js-sdsl/ordered-map': 4.4.2
+
   '@grpc/proto-loader@0.7.13':
     dependencies:
       lodash.camelcase: 4.3.0
@@ -16653,7 +16671,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(1ea346ff95b1be1e3f1f4333b25e2811)':
+  '@langchain/community@0.3.24(435d3704943f325210ee401ff210a570)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16693,6 +16711,7 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       '@supabase/supabase-js': 2.45.4
       '@xata.io/client': 0.28.4(typescript@5.7.2)
+      '@zilliz/milvus2-sdk-node': 2.5.5
       cheerio: 1.0.0
       cohere-ai: 7.14.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(encoding@0.1.13)
       crypto-js: 4.2.0
@@ -17438,6 +17457,8 @@ snapshots:
       '@otplib/core': 12.0.1
       '@otplib/plugin-crypto': 12.0.1
       '@otplib/plugin-thirty-two': 12.0.1
+
+  '@petamoriken/float16@3.9.1': {}
 
   '@pinecone-database/pinecone@4.0.0':
     dependencies:
@@ -19632,6 +19653,18 @@ snapshots:
       typescript: 5.7.2
 
   '@xmldom/xmldom@0.8.6': {}
+
+  '@zilliz/milvus2-sdk-node@2.5.5':
+    dependencies:
+      '@grpc/grpc-js': 1.12.6
+      '@grpc/proto-loader': 0.7.13
+      '@opentelemetry/api': 1.9.0
+      '@petamoriken/float16': 3.9.1
+      dayjs: 1.11.10
+      generic-pool: 3.9.0
+      lru-cache: 9.1.2
+      protobufjs: 7.3.0
+      winston: 3.14.2
 
   abab@2.0.6: {}
 

@@ -38,7 +38,8 @@
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/MilvusApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
@@ -119,7 +120,8 @@
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
-      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
+      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.js"
     ]
   },
   "devDependencies": {
@@ -164,6 +166,7 @@
     "@qdrant/js-client-rest": "1.11.0",
     "@supabase/supabase-js": "2.45.4",
     "@xata.io/client": "0.28.4",
+    "@zilliz/milvus2-sdk-node": "2.5.5",
     "basic-auth": "catalog:",
     "cheerio": "1.0.0",
     "cohere-ai": "7.14.0",
