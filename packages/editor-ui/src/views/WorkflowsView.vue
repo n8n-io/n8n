@@ -125,7 +125,7 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: 'Create Workflow',
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
-		disabled: true,
+		disabled: false,
 	},
 	{
 		label: 'Rename',
@@ -641,6 +641,9 @@ const onBreadCrumbsAction = async (action: string) => {
 				type: currentFolder.value ? 'folder' : 'project',
 			});
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
+			addWorkflow();
+			break;
 		default:
 			break;
 	}
@@ -655,6 +658,13 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 				id: clickedFolder.id,
 				name: clickedFolder.name,
 				type: 'folder',
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
+			foldersStore.currentFolderId = clickedFolder.id;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
 			});
 			break;
 		default:
