@@ -1,6 +1,12 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = ['files.content.write', 'files.content.read', 'sharing.read', 'account_info.read'];
+const scopes = [
+	'files.content.write',
+	'files.content.read',
+	'sharing.read',
+	'sharing.write',
+	'account_info.read',
+];
 
 export class DropboxOAuth2Api implements ICredentialType {
 	name = 'dropboxOAuth2Api';
