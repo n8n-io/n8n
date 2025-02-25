@@ -92,6 +92,7 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 
 const loading = ref(false);
+const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
@@ -336,6 +337,7 @@ const initialize = async () => {
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 	]);
+	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
 	loading.value = false;
 };
@@ -373,12 +375,18 @@ const fetchWorkflows = async () => {
 		},
 		showFolders.value,
 	);
-	// TODO: Fetch breadcrumbs items from the API
 	foldersStore.cacheFolders(
 		fetchedResources
 			.filter((resource) => resource.resource === 'folder')
 			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 	);
+	const isCurrentFolderCached = foldersStore.foldersCache[parentFolder] !== undefined;
+	const needToFetchFolderPath = !isCurrentFolderCached && routeProjectId && parentFolder !== '0';
+	if (needToFetchFolderPath) {
+		breadcrumbsLoading.value = true;
+		await foldersStore.getFolderPath(routeProjectId, parentFolder);
+		breadcrumbsLoading.value = false;
+	}
 
 	delayedLoading.cancel();
 	workflowsAndFolders.value = fetchedResources;
@@ -731,7 +739,10 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<div v-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
+			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
+				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+			</div>
+			<div v-else-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
 				<FolderBreadcrumbs
 					:actions="mainBreadcrumbsActions"
 					@item-selected="onBreadcrumbItemClick"
@@ -901,6 +912,14 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 .breadcrumbs-container {
 	display: flex;
 	align-items: center;
+}
+
+.breadcrumbs-loading {
+	:global(.el-skeleton__item) {
+		margin: 0;
+		height: 40px;
+		width: 400px;
+	}
 }
 </style>
 

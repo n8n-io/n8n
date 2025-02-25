@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { STORES } from '@/constants';
-import type { FolderCreateResponse } from '@/Interface';
+import type { FolderCreateResponse, FolderTreeResponseItem } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 
@@ -45,6 +45,42 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		);
 	}
 
+	async function getFolderPath(
+		projectId: string,
+		folderId: string,
+	): Promise<FolderTreeResponseItem[]> {
+		const tree = await workflowsApi.getFolderPath(rootStore.restApiContext, projectId, folderId);
+		const forCache = extractFoldersForCache(tree);
+		cacheFolders(forCache);
+		currentFolderId.value = folderId;
+
+		return tree;
+	}
+
+	function extractFoldersForCache(
+		items: FolderTreeResponseItem[],
+		parentFolderId?: string,
+	): Array<{ id: string; name: string; parentFolder?: string }> {
+		let result: Array<{ id: string; name: string; parentFolder?: string }> = [];
+
+		items.forEach((item) => {
+			// Add current item to result
+			result.push({
+				id: item.id,
+				name: item.name,
+				parentFolder: parentFolderId,
+			});
+
+			// Process children recursively
+			if (item.children && item.children.length > 0) {
+				const childFolders = extractFoldersForCache(item.children, item.id);
+				result = [...result, ...childFolders];
+			}
+		});
+
+		return result;
+	}
+
 	return {
 		currentFolderId,
 		foldersCache,
@@ -52,5 +88,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		cacheFolders,
 		getCachedFolder,
 		createFolder,
+		getFolderPath,
 	};
 });

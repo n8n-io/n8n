@@ -357,6 +357,12 @@ export type FolderCreateResponse = Omit<
 	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
 >;
 
+export type FolderTreeResponseItem = {
+	id: string;
+	name: string;
+	children: FolderTreeResponseItem[];
+};
+
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
 	id: string;

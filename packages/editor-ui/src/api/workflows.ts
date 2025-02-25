@@ -1,5 +1,6 @@
 import type {
 	FolderCreateResponse,
+	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRestApiContext,
@@ -96,4 +97,16 @@ export async function createFolder(
 		name,
 		parentFolderId,
 	});
+}
+
+export async function getFolderPath(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<FolderTreeResponseItem[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/tree`,
+	);
 }
