@@ -197,6 +197,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should successfully execute workflow and return all items', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
 			const workflowInfo = { id: 'test-workflow' };
 			const items: INodeExecutionData[] = [];
 			const workflowProxyMock = {
@@ -214,12 +215,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
-			const result = await service['executeSubWorkflow'](
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
 				workflowInfo,
 				items,
 				workflowProxyMock,
 				undefined,
-				true,
 			);
 
 			expect(result.response).toEqual([TEST_RESPONSE_1, TEST_RESPONSE_2]);

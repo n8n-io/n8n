@@ -46,7 +46,7 @@ export class WorkflowToolService {
 
 	constructor(
 		private context: ISupplyDataFunctions,
-		options: { returnAllItems: boolean },
+		options?: { returnAllItems: boolean },
 	) {
 		const subWorkflowInputs = this.context.getNode().parameters
 			.workflowInputs as ResourceMapperValue;
