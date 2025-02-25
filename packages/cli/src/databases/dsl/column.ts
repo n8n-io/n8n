@@ -13,6 +13,8 @@ export class Column {
 
 	private isGenerated = false;
 
+	private isGenerated2 = false;
+
 	private isNullable = true;
 
 	private isPrimary = false;
@@ -100,8 +102,20 @@ export class Column {
 		return this;
 	}
 
+	/**
+	 * @deprecated, use autoGenerate2 instead
+	 **/
 	get autoGenerate() {
 		this.isGenerated = true;
+		return this;
+	}
+
+	/**
+	 * Prefers `identity` over `increment` (which turns to `serial` for pg)
+	 * See https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_serial
+	 **/
+	get autoGenerate2() {
+		this.isGenerated2 = true;
 		return this;
 	}
 
@@ -112,8 +126,16 @@ export class Column {
 
 	// eslint-disable-next-line complexity
 	toOptions(driver: Driver): TableColumnOptions {
-		const { name, type, isNullable, isPrimary, isGenerated, length, primaryKeyConstraintName } =
-			this;
+		const {
+			name,
+			type,
+			isNullable,
+			isPrimary,
+			isGenerated,
+			isGenerated2,
+			length,
+			primaryKeyConstraintName,
+		} = this;
 		const isMysql = 'mysql' in driver;
 		const isPostgres = 'postgres' in driver;
 		const isSqlite = 'sqlite' in driver;
@@ -155,7 +177,12 @@ export class Column {
 			options.generationStrategy = type === 'uuid' ? 'uuid' : 'increment';
 		}
 
-		if (isPrimary || isGenerated) {
+		if (isGenerated2) {
+			options.isGenerated = true;
+			options.generationStrategy = type === 'uuid' ? 'uuid' : 'identity';
+		}
+
+		if (isPrimary || isGenerated || isGenerated2) {
 			options.isNullable = false;
 		}
 

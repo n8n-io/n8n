@@ -38,7 +38,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(names.t.analyticsMetadata)
 			.withColumns(
-				column(names.c.analyticsMetadata.metaId).int.primary.autoGenerate,
+				column(names.c.analyticsMetadata.metaId).int.primary.autoGenerate2,
 				column(names.c.analyticsMetadata.workflowId).varchar(16),
 				column(names.c.analyticsMetadata.projectId).varchar(36),
 				column('workflowName').varchar(128).notNull,
@@ -59,7 +59,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 
 		await createTable(names.t.analyticsRaw)
 			.withColumns(
-				column('id').int.primary.autoGenerate,
+				column('id').int.primary.autoGenerate2,
 				column(names.c.analyticsRaw.metaId).int.notNull,
 				column('type').int.notNull.comment(typeComment),
 				column('value').int.notNull,
@@ -73,7 +73,7 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 
 		await createTable(names.t.analyticsByPeriod)
 			.withColumns(
-				column('id').int.primary.autoGenerate,
+				column('id').int.primary.autoGenerate2,
 				column(names.c.analyticsByPeriod.metaId).int.notNull,
 				column(names.c.analyticsByPeriod.type).int.notNull.comment(typeComment),
 				column('value').int.notNull,
