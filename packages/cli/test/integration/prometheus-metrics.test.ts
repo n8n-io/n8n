@@ -35,7 +35,6 @@ globalConfig.endpoints.metrics = {
 	includeApiStatusCodeLabel: true,
 	includeQueueMetrics: true,
 	queueMetricsInterval: 20,
-	includeActiveWorkflowCountMetric: true,
 	activeWorkflowCountInterval: 60,
 };
 
@@ -336,8 +335,7 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
 	});
 
-	it('should return active workflow count if enabled', async () => {
-		prometheusService.enableMetric('activeWorkflowCount');
+	it('should return active workflow count', async () => {
 		await prometheusService.init(server.app);
 
 		let response = await agent.get('/metrics');

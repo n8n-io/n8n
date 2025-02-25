@@ -119,7 +119,6 @@ describe('Active workflow count', () => {
 		endpoints: {
 			metrics: {
 				prefix: '',
-				includeActiveWorkflowCountMetric: true,
 				activeWorkflowCountInterval: 30,
 			},
 		},
@@ -140,7 +139,6 @@ describe('Active workflow count', () => {
 	});
 
 	it('should prioritize cached value', async () => {
-		prometheusMetricsService.enableMetric('activeWorkflowCount');
 		await prometheusMetricsService.init(app);
 
 		cacheService.get.mockReturnValueOnce(Promise.resolve('1'));
@@ -160,7 +158,6 @@ active_workflow_count 1"
 	});
 
 	it('should query value from database if cache misses', async () => {
-		prometheusMetricsService.enableMetric('activeWorkflowCount');
 		await prometheusMetricsService.init(app);
 
 		cacheService.get.mockReturnValueOnce(Promise.resolve(undefined));

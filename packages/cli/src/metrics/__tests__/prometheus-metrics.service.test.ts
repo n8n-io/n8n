@@ -221,7 +221,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -234,14 +234,12 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
 
-		it('should setup active workflow count metric if enabled', async () => {
-			prometheusMetricsService.enableMetric('activeWorkflowCount');
-
+		it('should setup active workflow count metric', async () => {
 			await prometheusMetricsService.init(app);
 
 			// First call is n8n version metric

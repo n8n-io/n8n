@@ -41,7 +41,6 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
-			activeWorkflowCount: this.globalConfig.endpoints.metrics.includeActiveWorkflowCountMetric,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -299,8 +298,6 @@ export class PrometheusMetricsService {
 	 * configurable.
 	 */
 	private initActiveWorkflowCountMetric() {
-		if (!this.includes.metrics.activeWorkflowCount) return;
-
 		const workflowRepository = this.workflowRepository;
 		const cacheService = this.cacheService;
 		const cacheKey = 'metrics:active-workflow-count';
