@@ -172,27 +172,6 @@ const isShareable = computed(
 const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
 const currentFolder = computed(() => foldersStore.currentFolderInfo);
 
-const mainBreadcrumbsItems = computed<Array<PathItem & { parentFolder?: string }> | undefined>(
-	() => {
-		if (!showFolders.value || !currentFolder.value) return;
-		const items: Array<PathItem & { parentFolder?: string }> = [];
-		const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
-		if (parent) {
-			items.push({
-				id: parent.id,
-				label: parent.name,
-				href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-				parentFolder: parent.parentFolder,
-			});
-		}
-		items.push({
-			id: currentFolder.value.id,
-			label: currentFolder.value.name,
-		});
-		return items;
-	},
-);
-
 const currentProject = computed(() => projectsStore.currentProject);
 
 const projectName = computed(() => {
@@ -751,28 +730,10 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<div :class="$style['breadcrumbs-container']">
-				<n8n-breadcrumbs
-					v-if="mainBreadcrumbsItems"
-					:items="mainBreadcrumbsItems"
-					:highlight-last-item="false"
-					:path-truncated="mainBreadcrumbsItems[0].parentFolder"
-					data-test-id="folder-card-breadcrumbs"
-					@item-selected="onBreadcrumbItemClick"
-				>
-					<template v-if="currentProject" #prepend>
-						<div :class="$style['home-project']">
-							<n8n-link :to="`/projects/${currentProject.id}`">
-								<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
-							</n8n-link>
-						</div>
-					</template>
-				</n8n-breadcrumbs>
-				<n8n-action-toggle
-					v-if="mainBreadcrumbsItems"
+			<div v-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
+				<FolderBreadcrumbs
 					:actions="mainBreadcrumbsActions"
-					theme="dark"
-					data-test-id="folder-breadcrumbs-actions"
+					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 				/>
 			</div>
