@@ -53,7 +53,29 @@ const visibleItems = computed<FolderPathItem[]>(() => {
 	items.push({
 		id: currentFolder.value.id,
 		label: currentFolder.value.name,
+		parentFolder: parent?.parentFolder,
 	});
+	return items;
+});
+
+const hiddenItems = computed<FolderPathItem[]>(() => {
+	const lastVisibleParent: FolderPathItem = visibleItems.value[visibleItems.value.length - 1];
+	if (!lastVisibleParent) return [];
+	const items: FolderPathItem[] = [];
+	// Go through all the parent folders and add them to the hidden items
+	let parentFolder = lastVisibleParent.parentFolder;
+	while (parentFolder) {
+		const parent = foldersStore.getCachedFolder(parentFolder);
+
+		if (!parent) break;
+		items.unshift({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+		parentFolder = parent.parentFolder;
+	}
 	return items;
 });
 
@@ -72,6 +94,7 @@ const onAction = (action: string) => {
 			:items="visibleItems"
 			:highlight-last-item="false"
 			:path-truncated="visibleItems[0].parentFolder"
+			:hidden-items="hiddenItems"
 			data-test-id="folder-card-breadcrumbs"
 			@item-selected="onItemSelect"
 		>

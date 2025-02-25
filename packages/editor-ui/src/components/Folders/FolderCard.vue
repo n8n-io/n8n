@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { UserAction } from '@/Interface';
+import { type FolderPathItem } from './FolderBreadcrumbs.vue';
+import { useFoldersStore } from '@/stores/folders.store';
 
 type Props = {
 	data: FolderResource;
@@ -22,21 +24,46 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 
+const foldersStore = useFoldersStore();
+
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
 }>();
 
-const breadCrumbsItems = computed(() => {
+const breadCrumbsItems = computed<PathItem[]>(() => {
 	if (props.data.parentFolder) {
+		const parent = foldersStore.getCachedFolder(props.data.parentFolder.id);
 		return [
 			{
 				id: props.data.parentFolder.id,
 				label: props.data.parentFolder.name,
+				parentFolder: parent?.parentFolder,
 			},
 		];
 	}
 	return [];
+});
+
+const hiddenItems = computed<FolderPathItem[]>(() => {
+	const lastVisibleParent: FolderPathItem =
+		breadCrumbsItems.value[breadCrumbsItems.value.length - 1];
+	if (!lastVisibleParent) return [];
+	const items: FolderPathItem[] = [];
+	let parentFolder = lastVisibleParent.parentFolder;
+	while (parentFolder) {
+		const parent = foldersStore.getCachedFolder(parentFolder);
+
+		if (!parent) break;
+		items.unshift({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+		parentFolder = parent.parentFolder;
+	}
+	return items;
 });
 
 const projectIcon = computed<ProjectIcon>(() => {
@@ -138,6 +165,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 					<div :class="$style['card-actions']" @click.prevent>
 						<n8n-breadcrumbs
 							:items="breadCrumbsItems"
+							:hidden-items="hiddenItems"
 							:path-truncated="true"
 							:show-border="true"
 							:highlight-last-item="false"
