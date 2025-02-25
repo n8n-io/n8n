@@ -65,6 +65,7 @@ beforeEach(async () => {
 		'Workflow', // Depends on Folder
 		'Tag', // No foreign keys shown
 		'Project',
+		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
