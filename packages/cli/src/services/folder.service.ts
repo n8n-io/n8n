@@ -1,9 +1,10 @@
 import type { CreateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { EntityManager } from '@n8n/typeorm';
 
 export interface SimpleFolderNode {
 	id: string;
