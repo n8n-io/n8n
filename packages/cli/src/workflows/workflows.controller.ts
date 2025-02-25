@@ -169,7 +169,7 @@ export class WorkflowsController {
 					console.log('updatedWorkflow', updatedWorkflow);
 				} catch (e) {
 					this.logger.error('Failed to link workflow with folder', { userId: req.user.id });
-					throw new InternalServerError('Failed to save workflow');
+					throw new InternalServerError(`${e?.message ?? ''} failed to save workdlow`);
 				}
 			}
 
