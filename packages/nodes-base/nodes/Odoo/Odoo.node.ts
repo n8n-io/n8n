@@ -148,15 +148,7 @@ export class Odoo implements INodeType {
 					params: {
 						service: 'object',
 						method: 'execute',
-						args: [
-							db,
-							userID,
-							password,
-							'ir.model',
-							'search_read',
-							[],
-							['name', 'model', 'modules'],
-						],
+						args: [db, userID, password, 'ir.model', 'search_read', [], ['name', 'model']],
 					},
 					id: randomInt(100),
 				};
@@ -167,7 +159,7 @@ export class Odoo implements INodeType {
 					return {
 						name: model.name,
 						value: model.model,
-						description: `model: ${model.model}<br> modules: ${model.modules}`,
+						description: `model: ${model.model}`,
 					};
 				});
 				return options as INodePropertyOptions[];
