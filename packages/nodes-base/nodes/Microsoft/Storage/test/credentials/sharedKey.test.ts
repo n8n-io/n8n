@@ -4,7 +4,7 @@ import nock from 'nock';
 import { CredentialsHelper, equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Azure Storage Node', () => {
-	const workflows = ['nodes/Microsoft/Storage/test/credentials/sharedKey.workflow.json'];
+	const workflows = ['nodes/Microsoft/Storage/test/workflows/credentials_sharedKey.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	beforeEach(() => {

@@ -3,7 +3,7 @@ import nock from 'nock';
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Azure Storage Node', () => {
-	const workflows = ['nodes/Microsoft/Storage/test/container/create.workflow.json'];
+	const workflows = ['nodes/Microsoft/Storage/test/workflows/container_create.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	beforeEach(() => {

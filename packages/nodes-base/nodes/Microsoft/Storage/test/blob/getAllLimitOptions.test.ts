@@ -3,7 +3,9 @@ import nock from 'nock';
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Azure Storage Node', () => {
-	const workflows = ['nodes/Microsoft/Storage/test/blob/getAllLimitOptions.workflow.json'];
+	const workflows = [
+		'nodes/Microsoft/Storage/test/workflows/blob_getAllLimitOptions.workflow.json',
+	];
 	const workflowTests = workflowToTests(workflows);
 
 	beforeEach(() => {
