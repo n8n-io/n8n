@@ -226,4 +226,15 @@ export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
 	}
+
+	async findOneOrFailFolderInProject(folderId: string, projectId: string): Promise<Folder> {
+		return await this.manager.findOneOrFail(Folder, {
+			where: {
+				id: folderId,
+				homeProject: {
+					id: projectId,
+				},
+			},
+		});
+	}
 }

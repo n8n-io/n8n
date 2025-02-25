@@ -71,6 +71,7 @@ import {
 	faFilter,
 	faFingerprint,
 	faFlask,
+	faFolder,
 	faFolderOpen,
 	faFont,
 	faGlobeAmericas,
@@ -252,6 +253,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faFilter);
 		addIcon(faFingerprint);
 		addIcon(faFlask);
+		addIcon(faFolder);
 		addIcon(faFolderOpen);
 		addIcon(faFont);
 		addIcon(faGift);

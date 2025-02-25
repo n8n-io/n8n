@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IWorkflowDb, IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -18,7 +18,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
@@ -26,6 +25,8 @@ import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from 'n8n-design-system/utils';
+import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
+import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -37,23 +38,11 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 
 const props = withDefaults(
 	defineProps<{
-		data: IWorkflowDb;
+		data: WorkflowResource;
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 	}>(),
 	{
-		data: () => ({
-			id: '',
-			createdAt: '',
-			updatedAt: '',
-			active: false,
-			connections: {},
-			nodes: [],
-			name: '',
-			sharedWithProjects: [],
-			homeProject: {} as ProjectSharingData,
-			versionId: '',
-		}),
 		readOnly: false,
 		workflowListEventBus: undefined,
 	},
@@ -71,6 +60,7 @@ const message = useMessage();
 const locale = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -123,6 +113,35 @@ const formattedCreatedAtDate = computed(() => {
 		props.data.createdAt,
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
+});
+
+const breadCrumbsItems = computed(() => {
+	if (props.data.parentFolder) {
+		return [
+			{
+				id: props.data.parentFolder.id,
+				label: props.data.parentFolder.name,
+			},
+		];
+	}
+	return [];
+});
+
+const projectIcon = computed<CardProjectIcon>(() => {
+	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
+		return props.data.homeProject.icon ?? defaultIcon;
+	}
+	return defaultIcon;
+});
+
+const projectName = computed(() => {
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return props.data.homeProject?.name;
 });
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
@@ -244,7 +263,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" data-test-id="workflow-card" @click="onClick">
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
@@ -280,12 +299,33 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					v-if="!data.parentFolder"
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
+				<n8n-breadcrumbs
+					v-else
+					:items="breadCrumbsItems"
+					:path-truncated="true"
+					:show-border="true"
+					:highlight-last-item="false"
+					theme="small"
+					data-test-id="folder-card-breadcrumbs"
+				>
+					<template v-if="data.homeProject" #prepend>
+						<div :class="$style['home-project']">
+							<n8n-link :to="`/projects/${data.homeProject.id}`">
+								<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+								<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+									projectName
+								}}</n8n-text>
+							</n8n-link>
+						</div>
+					</template>
+				</n8n-breadcrumbs>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -343,6 +383,13 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+.home-project span {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	color: var(--color-text-dark);
 }
 
 @include mixins.breakpoint('sm-and-down') {
