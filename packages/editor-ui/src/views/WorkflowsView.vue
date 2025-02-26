@@ -51,7 +51,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useDebounce } from '@/composables/useDebounce';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
@@ -212,8 +212,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
-				// TODO: Remove 0 once back-end is updated with new name
-				workflowCount: resource.workflowCount ?? 0,
+				workflowCount: resource.workflowCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
@@ -680,10 +679,12 @@ const cardBreadcrumbs = computed(() => {
 
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
+		loading.value = true;
 		void router
 			.push(item.href)
 			.then(() => {
 				foldersStore.currentFolderId = item.id;
+				loading.value = false;
 			})
 			.catch((error) => {
 				toast.showError(error, 'Error navigating to folder');
@@ -778,8 +779,24 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				}),
 				type: 'success',
 			});
-			// TODO: Do not fetch if we are on empty state
-			await fetchWorkflows();
+			// If we are on an empty list, just add the new folder to the list
+			if (!workflowsAndFolders.value.length) {
+				workflowsAndFolders.value = [
+					{
+						id: newFolder.id,
+						name: newFolder.name,
+						resource: 'folder',
+						createdAt: newFolder.createdAt,
+						updatedAt: newFolder.updatedAt,
+						homeProject: projectsStore.currentProject as ProjectSharingData,
+						sharedWithProjects: [],
+						workflowCount: 0,
+					},
+				];
+			} else {
+				// Else fetch again with same filters & pagination applied
+				await fetchWorkflows();
+			}
 		} catch (error) {
 			toast.showError(error, 'Error creating folder');
 		}
@@ -811,7 +828,7 @@ const createFolderInCurrent = async () => {
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="foldersStore.totalWorkflowCount"
+		:total-items="workflowsStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"

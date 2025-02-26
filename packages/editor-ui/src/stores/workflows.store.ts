@@ -496,12 +496,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			sortBy,
 		};
 
-		const { data } = await workflowsApi.getWorkflowsAndFolders(
+		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
 			includeFolders ? includeFolders : undefined,
 		);
+		totalWorkflowCount.value = count;
 
 		return data;
 	}
