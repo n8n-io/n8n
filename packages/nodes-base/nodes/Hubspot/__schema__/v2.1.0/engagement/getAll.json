@@ -203,5 +203,6 @@
         "associations",
         "attachments",
         "metadata"
-    ]
+    ],
+    "version": 1
 }
