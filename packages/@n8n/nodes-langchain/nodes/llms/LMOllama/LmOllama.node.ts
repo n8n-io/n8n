@@ -11,7 +11,7 @@ import {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
+import { ollamaDescription, ollamaModel, ollamaOptions, showThinkingProcess } from './description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -50,6 +50,7 @@ export class LmOllama implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			ollamaModel,
+			showThinkingProcess,
 			ollamaOptions,
 		],
 	};
