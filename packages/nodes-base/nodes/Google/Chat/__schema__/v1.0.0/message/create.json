@@ -104,5 +104,6 @@
         "createTime",
         "thread",
         "space"
-    ]
+    ],
+    "version": 1
 }
