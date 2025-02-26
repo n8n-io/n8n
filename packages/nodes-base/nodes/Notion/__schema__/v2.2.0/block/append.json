@@ -177,5 +177,6 @@
         "request_id": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
