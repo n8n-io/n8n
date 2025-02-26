@@ -1,7 +1,7 @@
-import { CreateFolderDto } from '@n8n/api-types';
+import { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Response } from 'express';
 
-import { Post, RestController, ProjectScope, Body, Get } from '@/decorators';
+import { Post, RestController, ProjectScope, Body, Get, Patch } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -41,6 +41,25 @@ export class ProjectController {
 		try {
 			const tree = await this.folderService.getFolderTree(folderId, projectId);
 			return tree;
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError();
+		}
+	}
+
+	@Patch('/:folderId')
+	@ProjectScope('folder:update')
+	async updateFolder(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+		@Body payload: UpdateFolderDto,
+	) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			await this.folderService.updateFolder(folderId, projectId, payload);
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);

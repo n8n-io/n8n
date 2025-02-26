@@ -1,4 +1,4 @@
-import type { CreateFolderDto } from '@n8n/api-types';
+import type { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -37,6 +37,11 @@ export class FolderService {
 		const { homeProject, ...folder } = await this.folderRepository.save(folderEntity);
 
 		return folder;
+	}
+
+	async updateFolder(folderId: string, projectId: string, { name }: UpdateFolderDto) {
+		await this.getFolderInProject(folderId, projectId);
+		return await this.folderRepository.update({ id: folderId }, { name });
 	}
 
 	async getFolderInProject(folderId: string, projectId: string, em?: EntityManager) {
