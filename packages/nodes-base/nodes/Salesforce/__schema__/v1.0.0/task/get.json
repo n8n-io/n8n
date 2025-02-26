@@ -135,5 +135,6 @@
         "RecurrenceMonthOfYear",
         "RecurrenceRegeneratedType",
         "TaskSubtype"
-    ]
+    ],
+    "version": 1
 }
