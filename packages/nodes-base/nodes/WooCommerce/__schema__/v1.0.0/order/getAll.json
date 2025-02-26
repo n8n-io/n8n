@@ -760,5 +760,6 @@
         "date_paid_gmt",
         "currency_symbol",
         "_links"
-    ]
+    ],
+    "version": 1
 }
