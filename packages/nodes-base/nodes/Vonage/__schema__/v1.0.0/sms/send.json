@@ -22,5 +22,6 @@
     },
     "required": [
         "status"
-    ]
+    ],
+    "version": 1
 }
