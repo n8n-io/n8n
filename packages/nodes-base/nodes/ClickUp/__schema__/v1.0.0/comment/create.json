@@ -156,5 +156,6 @@
         "hist_id",
         "date",
         "version"
-    ]
+    ],
+    "version": 1
 }
