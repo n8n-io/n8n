@@ -1,6 +1,6 @@
-# @n8n/composables
+# @n8n/utils
 
-A collection of Vue composables that provide common functionality across n8n's Front-End packages.
+A collection of utility functions that provide common functionality for both Front-End and Back-End packages.
 
 ## Table of Contents
 
@@ -10,10 +10,11 @@ A collection of Vue composables that provide common functionality across n8n's F
 
 ## Features
 
-- **Reusable Logic**: Encapsulate complex stateful logic into composable functions.
-- **Consistency**: Ensure consistent patterns and practices across our Vue components.
-- **Extensible**: Easily add new composables as our project grows.
-- **Optimized**: Fully compatible with the Composition API.
+- **Reusable Logic**: Build complex, stateful functionality using modular composable functions that you can easily reuse.
+- **Consistent Patterns**: Enjoy a unified approach across n8n packages, making integration and maintenance a breeze.
+- **Type-Safe & Reliable**: Benefit from TypeScript support, which improves the developer experience and code robustness.
+- **Universal Functionality**: Designed to work seamlessly on both the front-end and back-end.
+- **Easily Testable**: A modular design that simplifies testing, maintenance, and rapid development.
 
 ## Contributing
 
