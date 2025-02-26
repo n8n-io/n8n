@@ -43,5 +43,6 @@
         "SystemModstamp": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
