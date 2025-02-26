@@ -177,5 +177,6 @@
         "category_id": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }
