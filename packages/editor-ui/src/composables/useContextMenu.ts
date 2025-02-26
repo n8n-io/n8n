@@ -193,8 +193,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					shortcut: { metaKey: true, keys: ['D'] },
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
-				...selectionActions,
 				...layoutActions,
+				...selectionActions,
 				{
 					id: 'delete',
 					divided: true,
