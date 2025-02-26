@@ -392,13 +392,14 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
+	const outputParsers = await getOptionalOutputParsers(this);
+	const outputParser = outputParsers?.[0];
+	const tools = await getTools(this, outputParser);
+
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const model = await getChatModel(this);
 			const memory = await getOptionalMemory(this);
-			const outputParsers = await getOptionalOutputParsers(this);
-			const outputParser = outputParsers?.[0];
-			const tools = await getTools(this, outputParser);
 
 			const input = getPromptInputByType({
 				ctx: this,
