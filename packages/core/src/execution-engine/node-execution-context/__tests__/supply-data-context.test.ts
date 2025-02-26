@@ -178,8 +178,9 @@ describe('SupplyDataContext', () => {
 
 	describe('cloneWith', () => {
 		it('should return a new copy', () => {
-			const clone = supplyDataContext.cloneWith({ runIndex: 12 });
+			const clone = supplyDataContext.cloneWith({ runIndex: 12, inputData: [] });
 			expect(clone.runIndex).toBe(12);
+			expect(clone.inputData).toEqual([]);
 			expect(clone).not.toBe(supplyDataContext);
 		});
 	});

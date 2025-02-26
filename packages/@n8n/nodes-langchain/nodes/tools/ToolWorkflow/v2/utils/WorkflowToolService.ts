@@ -66,12 +66,14 @@ export class WorkflowToolService {
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
+			const localRunIndex = runIndex++;
 			// We need to clone the context here to handle runIndex correctly
 			// Otherwise the runIndex will be shared between different executions
 			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
-			const context = this.baseContext.cloneWith({ runIndex: runIndex++, inputData: {} });
-
-			const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+			const context = this.baseContext.cloneWith({
+				runIndex: localRunIndex,
+				inputData: [[{ json: { query } }]],
+			});
 			try {
 				const response = await this.runFunction(context, query, itemIndex, runManager);
 				const processedResponse = this.handleToolResponse(response);
@@ -90,7 +92,12 @@ export class WorkflowToolService {
 				const json = jsonParse<IDataObject>(processedResponse, {
 					fallbackValue: { response: processedResponse },
 				});
-				void context.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
+				void context.addOutputData(
+					NodeConnectionType.AiTool,
+					localRunIndex,
+					[[{ json }]],
+					metadata,
+				);
 
 				return processedResponse;
 			} catch (error) {
@@ -98,7 +105,12 @@ export class WorkflowToolService {
 				const errorResponse = `There was an error: "${executionError.message}"`;
 
 				const metadata = parseErrorMetadata(error);
-				void context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
+				void context.addOutputData(
+					NodeConnectionType.AiTool,
+					localRunIndex,
+					executionError,
+					metadata,
+				);
 				return errorResponse;
 			}
 		};

@@ -98,10 +98,16 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(context.addOutputData).toHaveBeenCalled();
 
 			// Here we validate that the runIndex is correctly updated
-			expect(context.cloneWith).toHaveBeenCalledWith({ runIndex: 0, inputData: {} });
+			expect(context.cloneWith).toHaveBeenCalledWith({
+				runIndex: 0,
+				inputData: [[{ json: { query: 'test query' } }]],
+			});
 
-			await tool.func('test query2');
-			expect(context.cloneWith).toHaveBeenCalledWith({ runIndex: 1, inputData: {} });
+			await tool.func('another query');
+			expect(context.cloneWith).toHaveBeenCalledWith({
+				runIndex: 1,
+				inputData: [[{ json: { query: 'another query' } }]],
+			});
 		});
 
 		it('should handle errors during tool execution', async () => {

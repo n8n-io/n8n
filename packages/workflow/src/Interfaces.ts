@@ -986,8 +986,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
 		cloneWith(replacements: {
-			runIndex?: number;
-			inputData?: ITaskDataConnections;
+			runIndex: number;
+			inputData: INodeExecutionData[][];
 		}): ISupplyDataFunctions;
 	};
 

@@ -13,11 +13,10 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -110,23 +109,25 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	cloneWith(replacements: {
-		runIndex?: number;
-		inputData?: ITaskDataConnections;
+		runIndex: number;
+		inputData: INodeExecutionData[][];
 	}): SupplyDataContext {
-		return new SupplyDataContext(
+		const context = new SupplyDataContext(
 			this.workflow,
 			this.node,
 			this.additionalData,
 			this.mode,
 			this.runExecutionData,
-			replacements?.runIndex ?? this.runIndex,
+			replacements.runIndex,
 			this.connectionInputData,
-			replacements?.inputData ?? this.inputData,
+			{},
 			this.connectionType,
 			this.executeData,
 			this.closeFunctions,
 			this.abortSignal,
 		);
+		context.addInputData(NodeConnectionType.AiTool, replacements.inputData);
+		return context;
 	}
 
 	async getInputConnectionData(
