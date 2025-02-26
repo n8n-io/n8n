@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-	entry: ['src/useDeviceSupport.ts'],
+	entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts', '!src/__tests__**/*'],
 	format: ['cjs', 'esm'],
 	clean: true,
 	dts: true,
