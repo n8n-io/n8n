@@ -466,5 +466,6 @@
         "reading_time": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }
