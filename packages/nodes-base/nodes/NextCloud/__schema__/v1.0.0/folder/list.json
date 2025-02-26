@@ -25,5 +25,6 @@
         "lastModified",
         "type",
         "eTag"
-    ]
+    ],
+    "version": 1
 }
