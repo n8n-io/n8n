@@ -2,6 +2,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import * as extraction from './actions/extraction/Extraction.resource';
+import * as interaction from './actions/interaction/Interaction.resource';
 import { router } from './actions/router';
 import * as session from './actions/session/Session.resource';
 import * as window from './actions/window/Window.resource';
@@ -45,12 +46,17 @@ export class Airtop implements INodeType {
 						name: 'Extraction',
 						value: 'extraction',
 					},
+					{
+						name: 'Interaction',
+						value: 'interaction',
+					},
 				],
 				default: 'session',
 			},
 			...session.description,
 			...window.description,
 			...extraction.description,
+			...interaction.description,
 		],
 	};
 

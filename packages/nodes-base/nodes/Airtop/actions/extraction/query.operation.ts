@@ -9,6 +9,20 @@ import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
+		displayName: 'Session ID',
+		name: 'sessionId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['extraction'],
+				operation: ['query'],
+			},
+		},
+		default: '={{ $json["sessionId"] }}',
+		description: 'The ID of the session',
+	},
+	{
 		displayName: 'Window ID',
 		name: 'windowId',
 		type: 'string',
@@ -16,7 +30,7 @@ export const description: INodeProperties[] = [
 		default: '={{ $json["windowId"] }}',
 		displayOptions: {
 			show: {
-				resource: ['window'],
+				resource: ['extraction'],
 				operation: ['query'],
 			},
 		},
@@ -31,9 +45,10 @@ export const description: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
+		placeholder: 'Is there a login modal on this page?',
 		displayOptions: {
 			show: {
-				resource: ['window'],
+				resource: ['extraction'],
 				operation: ['query'],
 			},
 		},
@@ -47,7 +62,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['window'],
+				resource: ['extraction'],
 				operation: ['query'],
 			},
 		},

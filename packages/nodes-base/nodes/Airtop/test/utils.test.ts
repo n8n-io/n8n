@@ -10,9 +10,70 @@ import {
 	validateAirtopApiResponse,
 	validateSessionId,
 	validateUrl,
+	validateRequiredStringField,
 } from '../GenericFunctions';
 
 describe('Test Airtop utils', () => {
+	describe('validateRequiredStringField', () => {
+		it('should validate non-empty string field', () => {
+			const nodeParameters = {
+				testField: 'test-value',
+			};
+
+			const result = validateRequiredStringField.call(
+				createMockExecuteFunction(nodeParameters),
+				0,
+				'testField',
+				'Test Field',
+			);
+			expect(result).toBe('test-value');
+		});
+
+		it('should trim whitespace from string field', () => {
+			const nodeParameters = {
+				testField: '  test-value  ',
+			};
+
+			const result = validateRequiredStringField.call(
+				createMockExecuteFunction(nodeParameters),
+				0,
+				'testField',
+				'Test Field',
+			);
+			expect(result).toBe('test-value');
+		});
+
+		it('should throw error for empty string field', () => {
+			const nodeParameters = {
+				testField: '',
+			};
+
+			expect(() =>
+				validateRequiredStringField.call(
+					createMockExecuteFunction(nodeParameters),
+					0,
+					'testField',
+					'Test Field',
+				),
+			).toThrow(ERROR_MESSAGES.REQUIRED_PARAMETER.replace('{{field}}', 'Test Field'));
+		});
+
+		it('should throw error for whitespace-only string field', () => {
+			const nodeParameters = {
+				testField: '   ',
+			};
+
+			expect(() =>
+				validateRequiredStringField.call(
+					createMockExecuteFunction(nodeParameters),
+					0,
+					'testField',
+					'Test Field',
+				),
+			).toThrow(ERROR_MESSAGES.REQUIRED_PARAMETER.replace('{{field}}', 'Test Field'));
+		});
+	});
+
 	describe('validateProfileName', () => {
 		it('should validate valid profile names', () => {
 			const nodeParameters = {

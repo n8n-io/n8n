@@ -8,7 +8,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { validateAirtopApiResponse, validateSessionId, validateUrl } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
-import type { IAirtopResponse } from '../../transport/response.type';
+import type { IAirtopResponse } from '../../transport/types';
 
 export const description: INodeProperties[] = [
 	{
@@ -16,6 +16,7 @@ export const description: INodeProperties[] = [
 		name: 'url',
 		type: 'string',
 		default: '',
+		placeholder: 'https://google.com',
 		description: 'Initial URL to load in the window. Defaults to http://google.com.',
 		displayOptions: {
 			show: {
@@ -30,6 +31,19 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: "Whether to get the URL of the window's live view",
+		displayOptions: {
+			show: {
+				resource: ['window'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		displayName: 'Disable Resize',
+		name: 'disableResize',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to disable the window from being resized in the Live View',
 		displayOptions: {
 			show: {
 				resource: ['window'],
@@ -91,6 +105,7 @@ export async function execute(
 	const url = validateUrl.call(this, index);
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const getLiveView = this.getNodeParameter('getLiveView', index, false);
+	const disableResize = this.getNodeParameter('disableResize', index, false);
 
 	let response: IAirtopResponse;
 
@@ -111,7 +126,13 @@ export async function execute(
 	const windowId = String(response.data.windowId);
 
 	if (getLiveView) {
-		response = await apiRequest.call(this, 'GET', `/sessions/${sessionId}/windows/${windowId}`);
+		response = await apiRequest.call(
+			this,
+			'GET',
+			`/sessions/${sessionId}/windows/${windowId}`,
+			undefined,
+			{ disableResize },
+		);
 	}
 
 	// validate response

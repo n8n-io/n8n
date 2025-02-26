@@ -3,9 +3,9 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as close from './close.operation';
 import * as create from './create.operation';
 import * as getScreenshot from './getScreenshot.operation';
-import * as query from './query.operation';
+import * as load from './load.operation';
 
-export { create, close, getScreenshot, query };
+export { create, close, getScreenshot, load };
 
 export const description: INodeProperties[] = [
 	{
@@ -20,6 +20,12 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Close',
+				value: 'close',
+				description: 'Close a window',
+				action: 'Close a window',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new window',
@@ -32,16 +38,10 @@ export const description: INodeProperties[] = [
 				action: 'Get screenshot',
 			},
 			{
-				name: 'Query Page',
-				value: 'query',
-				description: 'Query the current page content',
-				action: 'Query page',
-			},
-			{
-				name: 'Close',
-				value: 'close',
-				description: 'Close a window',
-				action: 'Close a window',
+				name: 'Load URL',
+				value: 'load',
+				description: 'Load a page in the window',
+				action: 'Load a page',
 			},
 		],
 		default: 'create',
@@ -59,8 +59,8 @@ export const description: INodeProperties[] = [
 		default: '={{ $json["sessionId"] }}',
 		description: 'The ID of the session',
 	},
+	...close.description,
 	...create.description,
 	...getScreenshot.description,
-	...query.description,
-	...close.description,
+	...load.description,
 ];
