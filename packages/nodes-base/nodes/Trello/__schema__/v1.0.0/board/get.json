@@ -280,5 +280,6 @@
     "required": [
         "id",
         "labelNames"
-    ]
+    ],
+    "version": 1
 }
