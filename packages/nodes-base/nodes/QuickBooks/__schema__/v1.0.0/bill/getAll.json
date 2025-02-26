@@ -259,5 +259,6 @@
         "VendorRef",
         "APAccountRef",
         "TotalAmt"
-    ]
+    ],
+    "version": 1
 }
