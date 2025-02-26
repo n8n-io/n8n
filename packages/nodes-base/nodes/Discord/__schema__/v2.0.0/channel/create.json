@@ -28,5 +28,6 @@
         "nsfw": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
