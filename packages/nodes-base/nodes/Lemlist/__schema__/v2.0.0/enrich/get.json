@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "enrichmentId": {
+            "type": "string"
+        },
+        "enrichmentStatus": {
+            "type": "string"
+        },
+        "input": {
+            "type": "object",
+            "properties": {
+                "linkedinUrl": {
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
+                "companyDomain": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                }
+            }
+        },
+        "data": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "notFound": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "notFound"
+                    ]
+                }
+            }
+        }
+    },
+    "required": [
+        "enrichmentId",
+        "enrichmentStatus",
+        "input",
+        "data"
+    ],
+    "version": 1
+}
