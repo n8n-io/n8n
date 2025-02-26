@@ -246,6 +246,10 @@ describe('WorkflowExecute', () => {
 	});
 
 	describe('runPartialWorkflow2', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
 		//                Dirty         ►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
@@ -452,6 +456,56 @@ describe('WorkflowExecute', () => {
 				runData,
 				new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
 				new Set([node1]),
+			);
+		});
+
+		//                 ►►
+		//                ┌──────┐
+		//                │orphan│
+		//                └──────┘
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│destination│
+		//  └───────┘     └───────────┘
+		test('works with a single node', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const orphan = createNodeData({ name: 'orphan' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination, orphan)
+				.addConnections({ from: trigger, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[destination.name]: [toITaskData([{ data: { nodeName: destination.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				orphan.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(
+				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
 			);
 		});
 	});
