@@ -23,5 +23,6 @@
         "type",
         "path",
         "mode"
-    ]
+    ],
+    "version": 1
 }
