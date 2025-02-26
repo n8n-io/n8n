@@ -42,21 +42,22 @@ export class SdrAgentTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const workflowData = this.getWorkflowStaticData('global');
+		try {
+			const workflowData = this.getWorkflowStaticData('global');
 
-		const segmentId = workflowData.segmentId as number;
-		const sdrAgentId = workflowData.sdrAgentId as number;
+			const segmentId = workflowData.segmentId as number;
+			const sdrAgentId = workflowData.sdrAgentId as number;
 
-		const retryAfterDays = this.getNodeParameter('retryAfterDays', 0) as number;
+			const retryAfterDays = this.getNodeParameter('retryAfterDays', 0) as number;
 
-		if (!sdrAgentId || !segmentId) {
-			throw new Error('SDR Agent ID and Segment ID are required.');
-		}
+			if (!sdrAgentId || !segmentId) {
+				throw new Error('SDR Agent ID and Segment ID are required.');
+			}
 
-		const connection = await getDbConnection();
+			const connection = await getDbConnection();
 
-		let [sdrAgent] = (await connection.execute(
-			`SELECT 
+			let [sdrAgent] = (await connection.execute(
+				`SELECT 
                 sa.*, 
                 sasd.scheduling_hours, 
                 sasd.retry_after_days, 
@@ -71,43 +72,32 @@ export class SdrAgentTrigger implements INodeType {
             WHERE sa.id = ?
             AND sa.status = 'ACTIVE'
             AND sasd.is_enabled = TRUE`,
-			[sdrAgentId],
-		)) as any[];
+				[sdrAgentId],
+			)) as any[];
 
-		if (sdrAgent.length) {
-			sdrAgent = sdrAgent[0];
+			if (sdrAgent.length) {
+				sdrAgent = sdrAgent[0];
 
-			const { scheduling_hours } = sdrAgent;
-			const todaysDayOfTheWeek = getWeekDayOfToday(sdrAgent.offset);
+				const todaysDayOfTheWeek = getWeekDayOfToday(sdrAgent.offset);
 
-			if (scheduling_hours) {
-				const schedulingHoursParsed = scheduling_hours;
-				const isAvailable = checkTimeSlotDayWise(
-					schedulingHoursParsed,
-					todaysDayOfTheWeek,
-					sdrAgent.offset,
-				);
+				if (sdrAgent.scheduling_hours) {
+					const schedulingHoursParsed = sdrAgent.scheduling_hours;
+					const isAvailable = checkTimeSlotDayWise(
+						schedulingHoursParsed,
+						todaysDayOfTheWeek,
+						sdrAgent.offset,
+					);
 
-				// if (isAvailable) {
-				const [contacts] = await connection.execute(
-					`
+					if (isAvailable) {
+						const [contacts] = await connection.execute(
+							`
                         SELECT 
-                            DISTINCT cal.*, 
-                            sdr_agent.agent_phone_number,
-                            sdr_agent.id AS agent_id,
-                            sdr_agent.dynamic_variables AS dynamic_variables,
-                            sdr_agent.uid AS agent_uid,
-                            sdr_agent.general_tools AS general_tools,
-                            sdr_agent.retell_steps AS retell_steps
+                            DISTINCT cal.*
                         FROM customers_and_leads_segments AS cals
                         JOIN customers_and_leads AS cal 
                             ON cals.customers_and_leads_id = cal.id
                         LEFT JOIN sdr_agents_call_details AS sacd 
                             ON sacd.lead_id = cal.id
-                        LEFT JOIN sdr_agents AS sdr_agent 
-                            ON sdr_agent.id = cal.sdr_agent_id
-                        LEFT JOIN s_a_scheduling_details AS scheduling
-                            ON scheduling.sdr_agent_id = sdr_agent.id
                         WHERE 
                             cals.segment_id = ?
                             AND cal.status NOT IN ('calling', 'non-responsive', 'do-not-call')
@@ -117,10 +107,7 @@ export class SdrAgentTrigger implements INodeType {
                             AND (
                                 (SELECT COUNT(*) 
                                 FROM sdr_agents_call_details AS calls 
-                                WHERE calls.lead_id = cal.id) < 
-                                (SELECT max_attempts 
-                                FROM s_a_scheduling_details AS scheduling 
-                                WHERE scheduling.sdr_agent_id = sdr_agent.id)
+                                WHERE calls.lead_id = cal.id) < ?
                                 AND COALESCE((
                                     SELECT MAX(calls.created_at) 
                                     FROM sdr_agents_call_details AS calls 
@@ -130,37 +117,28 @@ export class SdrAgentTrigger implements INodeType {
                                     COALESCE(?, 0) DAY)
                             )            
                         `,
-					[segmentId, sdrAgent.offset, sdrAgent.offset, retryAfterDays],
-				);
-				console.log(contacts);
-				await scheduleLeadsCalls(contacts as any[], sdrAgent.offset);
-
-				// for (const contact of contacts as any[]) {
-				//     const { id, phone_number } = contact;
-
-				//     console.log(`Calling ${phone_number}...`);
-
-				//     try {
-				//         const callResult = await makeCall(phone_number);
-
-				//         console.log(`Call successful for ${phone_number}`);
-
-				//         await updateCallStatus(id, 'completed');
-				//     } catch (error) {
-				//         console.error(`Call failed for ${phone_number}, retrying after ${retryAfterDays} days.`);
-
-				//         await updateCallStatus(id, 'failed');
-				//     }
-				// }
-				// }
+							[segmentId, sdrAgent.offset, sdrAgent.offset, sdrAgent.max_attempts, retryAfterDays],
+						);
+						await scheduleLeadsCalls(contacts as any[], {
+							offset: sdrAgent.offset,
+							agentPhoneNumber: sdrAgent.agent_phone_number,
+						});
+					}
+				}
 			}
-		}
 
-		return {
-			closeFunction: async () => {
-				console.log('Trigger node stopped.');
-			},
-		};
+			return {
+				closeFunction: async () => {
+					console.log('Trigger node stopped.');
+				},
+			};
+		} catch (error) {
+			return {
+				closeFunction: async () => {
+					console.log('Trigger node stopped.');
+				},
+			};
+		}
 	}
 }
 
@@ -203,48 +181,47 @@ async function createPhoneCall(
 	});
 }
 
-async function scheduleLeadsCalls(allNotContactedLeads: any[], offset: string) {
+async function scheduleLeadsCalls(
+	allNotContactedLeads: any[],
+	agentMeta: { offset: string; agentPhoneNumber: string },
+) {
 	const createCallPromises = allNotContactedLeads.map(async (notContactedLead) => {
-		console.log(notContactedLead);
+		const leadInfo = notContactedLead;
 
-		const leadInfo = toCamelCase(notContactedLead);
-		console.log(leadInfo);
-
-		const agentPhoneNumber = leadInfo.agentPhoneNumber;
+		const agentPhoneNumber = agentMeta.agentPhoneNumber;
 		try {
 			if (agentPhoneNumber) {
-				console.log(`Initiating call from ${agentPhoneNumber} to ${leadInfo.phoneNumber} `);
-				const dynamicVariables = (leadInfo.dynamicVariables as string[]) || [];
+				console.log(`Initiating call from ${agentPhoneNumber} to ${leadInfo.phone_number} `);
+				const dynamicVariables = (leadInfo.dynamic_variables as string[]) || [];
 				dynamicVariables.push('companyName');
 
-				const dynamicVariableObj = createDynamicObject(leadInfo?.customFields);
+				const dynamicVariableObj = createDynamicObject(leadInfo?.custom_fields);
 				dynamicVariableObj['leadName'] = leadInfo.name.split(' ')[0];
-				dynamicVariableObj['productName'] = leadInfo.productOfInterest;
-				dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), offset);
-				dynamicVariableObj['companyName'] = leadInfo.companyName;
+				dynamicVariableObj['productName'] = leadInfo.product_of_interest;
+				dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), agentMeta.offset);
+				dynamicVariableObj['companyName'] = leadInfo.company_name;
 
 				const checkDynamicObj = checkDynamicObject(dynamicVariables, {
 					...dynamicVariableObj,
 					...leadInfo,
 				});
-				// console.log(dynamicVariables, { ...dynamicVariableObj, ...leadInfo }, checkDynamicObj);
 
 				if (checkDynamicObj) {
 					const createdCallData = await createPhoneCall(
 						agentPhoneNumber,
-						leadInfo.phoneNumber,
+						leadInfo.phone_number,
 						dynamicVariableObj,
-						leadInfo.companyId,
+						leadInfo.company_id,
 					);
 					const sdrAgentCallDetailsDataToInsert = {
-						sdrAgentId: leadInfo.agentId,
+						sdrAgentId: leadInfo.agent_id,
 						callCurrentStatus: createdCallData.call_status,
 						retellCallId: createdCallData.call_id,
-						companyId: leadInfo.companyId,
+						companyId: leadInfo.company_id,
 						leadId: leadInfo?.id,
 					};
 					// const sdrAgentCall = await this.sdrAgentsService.storeSdrAgentCallDetails(
-					//     sdrAgentCallDetailsDataToInsert,
+					// 	sdrAgentCallDetailsDataToInsert,
 					// );
 
 					// await this.mongodbService.insert(MongoDBCollection.REQUEST_RESPONSE_LOG, { action: ActionTypeE.CREATE, entityId: sdrAgentCall.id, entityType: 'sdr_agents_call_details', platform: PlatformTypeE.RETELL, callId: createdCallData.call_id, retellCall: createdCallData, companyId: sdrAgentCall.companyId, leadId: leadInfo.id })
@@ -263,5 +240,5 @@ async function scheduleLeadsCalls(allNotContactedLeads: any[], offset: string) {
 			console.log('call executer error ', error);
 		}
 	});
-	await Promise.allSettled(createCallPromises);
+	return Promise.allSettled(createCallPromises);
 }
