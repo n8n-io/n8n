@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { STORES } from '@/constants';
-import type { FolderCreateResponse, FolderTreeResponseItem } from '@/Interface';
+import type { FolderCreateResponse, FolderShortInfo, FolderTreeResponseItem } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 
@@ -10,16 +10,19 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	const currentFolderId = ref<string | null>(null);
 
-	const foldersCache = ref<Record<string, { id: string; name: string; parentFolder?: string }>>({});
+	/**
+	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
+	 */
+	const breadcrumbsCache = ref<Record<string, FolderShortInfo>>({});
 
 	const currentFolderInfo = computed(() => {
-		return currentFolderId.value ? foldersCache.value[currentFolderId.value] : null;
+		return currentFolderId.value ? breadcrumbsCache.value[currentFolderId.value] : null;
 	});
 
-	const cacheFolders = (folders: Array<{ id: string; name: string; parentFolder?: string }>) => {
+	const cacheFolders = (folders: FolderShortInfo[]) => {
 		folders.forEach((folder) => {
-			if (!foldersCache.value[folder.id]) {
-				foldersCache.value[folder.id] = {
+			if (!breadcrumbsCache.value[folder.id]) {
+				breadcrumbsCache.value[folder.id] = {
 					id: folder.id,
 					name: folder.name,
 					parentFolder: folder.parentFolder,
@@ -29,7 +32,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	};
 
 	const getCachedFolder = (folderId: string) => {
-		return foldersCache.value[folderId];
+		return breadcrumbsCache.value[folderId];
 	};
 
 	async function createFolder(
@@ -60,8 +63,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	function extractFoldersForCache(
 		items: FolderTreeResponseItem[],
 		parentFolderId?: string,
-	): Array<{ id: string; name: string; parentFolder?: string }> {
-		let result: Array<{ id: string; name: string; parentFolder?: string }> = [];
+	): FolderShortInfo[] {
+		let result: FolderShortInfo[] = [];
 
 		items.forEach((item) => {
 			// Add current item to result
@@ -83,7 +86,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	return {
 		currentFolderId,
-		foldersCache,
+		breadcrumbsCache,
 		currentFolderInfo,
 		cacheFolders,
 		getCachedFolder,

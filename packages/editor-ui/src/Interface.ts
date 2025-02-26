@@ -334,6 +334,7 @@ export type WorkflowListItem = Omit<
 export type FolderShortInfo = {
 	id: string;
 	name: string;
+	parentFolder?: string;
 };
 
 export type BaseFolderItem = BaseResource & {

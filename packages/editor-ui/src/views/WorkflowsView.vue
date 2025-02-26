@@ -383,7 +383,7 @@ const fetchWorkflows = async () => {
 			.filter((resource) => resource.resource === 'folder')
 			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 	);
-	const isCurrentFolderCached = foldersStore.foldersCache[parentFolder] !== undefined;
+	const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder] !== undefined;
 	const needToFetchFolderPath = !isCurrentFolderCached && routeProjectId && parentFolder !== '0';
 	if (needToFetchFolderPath) {
 		breadcrumbsLoading.value = true;
