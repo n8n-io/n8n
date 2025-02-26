@@ -714,7 +714,9 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(id);
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
-			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(new RemoveNodeCommand(node));
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
+				new RemoveNodeCommand(node, expect.any(Number)),
+			);
 		});
 
 		it('should delete node without tracking history', () => {

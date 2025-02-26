@@ -199,6 +199,7 @@ const {
 	revalidateNodeInputConnections,
 	revalidateNodeOutputConnections,
 	setNodeActiveByName,
+	clearNodeActive,
 	addConnections,
 	importWorkflowData,
 	fetchWorkflowDataFromUrl,
@@ -621,8 +622,12 @@ function onClickNode() {
 	closeNodeCreator();
 }
 
-function onSetNodeActive(id: string) {
+function onSetNodeActivated(id: string) {
 	setNodeActive(id);
+}
+
+function onSetNodeDeactivated() {
+	clearNodeActive();
 }
 
 function onSetNodeSelected(id?: string) {
@@ -1728,7 +1733,8 @@ onBeforeUnmount(() => {
 		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
-		@update:node:active="onSetNodeActive"
+		@update:node:activated="onSetNodeActivated"
+		@update:node:deactivated="onSetNodeDeactivated"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:name="onOpenRenameNodeModal"

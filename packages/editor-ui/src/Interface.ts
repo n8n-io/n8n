@@ -884,6 +884,8 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	pinnedDataLastUpdatedAt?: number;
+	pinnedDataLastRemovedAt?: number;
 	pristine: boolean;
 }
 

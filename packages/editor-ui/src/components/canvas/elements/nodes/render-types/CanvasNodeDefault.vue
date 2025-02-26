@@ -12,10 +12,12 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
+	activate: [id: string];
 }>();
 
 const { initialized, viewport } = useCanvas();
 const {
+	id,
 	label,
 	subtitle,
 	inputs,
@@ -59,6 +61,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
+		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 	};
 });
 
@@ -122,10 +125,20 @@ watch(viewport, () => {
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
+
+function onActivate() {
+	emit('activate', id.value);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
+	<div
+		:class="classes"
+		:style="styles"
+		:data-test-id="dataTestId"
+		@contextmenu="openContextMenu"
+		@dblclick.stop="onActivate"
+	>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
@@ -250,6 +263,10 @@ function openContextMenu(event: MouseEvent) {
 
 	&.success {
 		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
+	}
+
+	&.warning {
+		border-color: var(--color-warning);
 	}
 
 	&.error {
