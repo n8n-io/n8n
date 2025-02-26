@@ -38,5 +38,6 @@
         "tags",
         "deeplinks",
         "references"
-    ]
+    ],
+    "version": 1
 }
