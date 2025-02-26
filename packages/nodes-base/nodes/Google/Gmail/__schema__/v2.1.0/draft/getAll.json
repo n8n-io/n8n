@@ -147,5 +147,6 @@
         "date",
         "from",
         "messageId"
-    ]
+    ],
+    "version": 1
 }
