@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/frontend-vitest-config",
+  "name": "@n8n/vitest-config",
   "version": "1.1.0",
   "type": "module",
   "peerDependencies": {
@@ -11,15 +11,13 @@
     "vitest": "catalog:frontend"
   },
   "files": [
-    "index.mjs"
+    "frontend.mjs"
   ],
-  "main": "./index.mjs",
-  "module": "./index.mjs",
   "exports": {
-    ".": {
-      "import": "./index.mjs",
-      "require": "./index.mjs",
-      "types": "./index.d.ts"
+    "./frontend": {
+      "import": "./frontend.mjs",
+      "require": "./frontend.mjs",
+      "types": "./frontend.d.ts"
     },
     "./*": "./*"
   },
