@@ -15,5 +15,6 @@
         "id",
         "name",
         "kind"
-    ]
+    ],
+    "version": 1
 }
