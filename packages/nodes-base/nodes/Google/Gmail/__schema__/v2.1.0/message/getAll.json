@@ -62,5 +62,6 @@
         "id",
         "threadId",
         "sizeEstimate"
-    ]
+    ],
+    "version": 1
 }
