@@ -4,5 +4,6 @@
         "created_at": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
