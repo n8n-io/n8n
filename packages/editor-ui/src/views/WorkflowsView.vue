@@ -369,7 +369,7 @@ const fetchWorkflows = async () => {
 	}, 300);
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
-	const parentFolder = (route.params?.folderId as string) || '0';
+	const parentFolder = (route.params?.folderId as string) || undefined;
 
 	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 		routeProjectId ?? homeProjectFilter,
@@ -389,9 +389,8 @@ const fetchWorkflows = async () => {
 			.filter((resource) => resource.resource === 'folder')
 			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 	);
-	const isCurrentFolderCached =
-		parentFolder !== '0' && foldersStore.breadcrumbsCache[parentFolder] !== undefined;
-	const needToFetchFolderPath = !isCurrentFolderCached && routeProjectId && parentFolder !== '0';
+	const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
+	const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
 	if (needToFetchFolderPath) {
 		breadcrumbsLoading.value = true;
 		await foldersStore.getFolderPath(routeProjectId, parentFolder);
