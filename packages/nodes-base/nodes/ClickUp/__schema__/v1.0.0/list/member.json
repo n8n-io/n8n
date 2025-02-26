@@ -50,5 +50,6 @@
         "initials",
         "profilePicture",
         "profileInfo"
-    ]
+    ],
+    "version": 1
 }
