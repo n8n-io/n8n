@@ -1,5 +1,6 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { isArray } from 'lodash';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
@@ -27,6 +28,10 @@ import {
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { z } from 'zod';
+
+function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
+	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
+}
 
 /**
 	Main class for creating the Workflow tool
@@ -76,7 +81,19 @@ export class WorkflowToolService {
 
 			try {
 				const response = await this.runFunction(query, itemIndex, runManager);
+
 				const processedResponse = this.handleToolResponse(response);
+
+				let responseData: INodeExecutionData[];
+				if (isNodeExecutionData(response)) {
+					responseData = response;
+				} else {
+					const reParsedData = jsonParse<IDataObject>(processedResponse, {
+						fallbackValue: { response: processedResponse },
+					});
+
+					responseData = [{ json: reParsedData }];
+				}
 
 				// Once the sub-workflow is executed, add the output data to the context
 				// This will be used to link the sub-workflow execution in the parent workflow
@@ -89,10 +106,8 @@ export class WorkflowToolService {
 						},
 					};
 				}
-				const json = jsonParse<IDataObject>(processedResponse, {
-					fallbackValue: { response: processedResponse },
-				});
-				void this.context.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
+
+				void this.context.addOutputData(NodeConnectionType.AiTool, index, [responseData], metadata);
 
 				return processedResponse;
 			} catch (error) {
@@ -119,6 +134,14 @@ export class WorkflowToolService {
 			return response.toString();
 		}
 
+		if (isNodeExecutionData(response)) {
+			return JSON.stringify(
+				response.map((item) => item.json),
+				null,
+				2,
+			);
+		}
+
 		if (isObject(response)) {
 			return JSON.stringify(response, null, 2);
 		}
@@ -140,7 +163,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: string | IDataObject | IDataObject[]; subExecutionId: string }> {
+	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await this.context.executeWorkflow(
@@ -160,9 +183,9 @@ export class WorkflowToolService {
 			throw new NodeOperationError(this.context.getNode(), error as Error);
 		}
 
-		let response: IDataObject | IDataObject[] | undefined;
+		let response: IDataObject | INodeExecutionData[] | undefined;
 		if (this.returnAllItems) {
-			response = receivedData?.data?.[0]?.map((item) => item.json);
+			response = receivedData?.data?.[0]?.length ? receivedData.data[0] : undefined;
 		} else {
 			response = receivedData?.data?.[0]?.[0]?.json;
 		}
@@ -184,7 +207,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<string | IDataObject | IDataObject[]> {
+	): Promise<string | IDataObject | INodeExecutionData[]> {
 		const source = this.context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = this.context.getWorkflowDataProxy(0);
 

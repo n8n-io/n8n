@@ -222,7 +222,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				undefined,
 			);
 
-			expect(result.response).toEqual([TEST_RESPONSE_1, TEST_RESPONSE_2]);
+			expect(result.response).toEqual([{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]);
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 
