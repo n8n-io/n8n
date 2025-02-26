@@ -47,6 +47,16 @@ export const enum CanvasNodeRenderType {
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
 
+export const CanvasNodeDirtiness = {
+	PARAMETERS_UPDATED: 'parameters-updated',
+	INCOMING_CONNECTIONS_UPDATED: 'incoming-connections-updated',
+	PINNED_DATA_UPDATED: 'pinned-data-updated',
+	UPSTREAM_DIRTY: 'upstream-dirty',
+} as const;
+
+export type CanvasNodeDirtinessType =
+	(typeof CanvasNodeDirtiness)[keyof typeof CanvasNodeDirtiness];
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
@@ -60,6 +70,7 @@ export type CanvasNodeDefaultRender = {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
 		tooltip?: string;
+		dirtiness?: CanvasNodeDirtinessType;
 	}>;
 };
 

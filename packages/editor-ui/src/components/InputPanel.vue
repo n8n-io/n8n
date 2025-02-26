@@ -12,7 +12,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
-import { N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
+import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
@@ -464,7 +464,16 @@ function activatePane() {
 					/>
 				</N8nTooltip>
 				<N8nText v-if="!readOnly" tag="div" size="small">
-					{{ i18n.baseText('ndv.input.noOutputData.hint') }}
+					<i18n-t keypath="ndv.input.noOutputData.hint">
+						<template #info>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
+								</template>
+								<N8nIcon icon="question-circle" />
+							</N8nTooltip>
+						</template>
+					</i18n-t>
 				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">
