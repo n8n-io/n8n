@@ -357,10 +357,7 @@ async function loadAndSetFieldsToMap(): Promise<void> {
 		});
 
 		if (!isEqual(newSchema, state.paramValue.schema)) {
-			state.paramValue = {
-				...state.paramValue,
-				schema: newSchema,
-			};
+			state.paramValue.schema = newSchema;
 			emitValueChanged();
 		}
 	}
