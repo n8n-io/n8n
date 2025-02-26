@@ -13,8 +13,8 @@ export const useInsightsStore = defineStore('insights', () => {
 	const fetchSummary = async (): Promise<Summary[]> => {
 		return [
 			{
-				id: 'executions',
-				title: 'Executions',
+				id: 'total',
+				title: 'Total',
 				count: 525,
 				deviation: 85,
 				sign: undefined,
@@ -22,7 +22,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			},
 			{
 				id: 'failed',
-				title: 'Failed executions',
+				title: 'Failed',
 				count: 14,
 				deviation: 3,
 				sign: undefined,
@@ -37,20 +37,20 @@ export const useInsightsStore = defineStore('insights', () => {
 				evaluation: 'negative' as const,
 			},
 			{
-				id: 'runTime',
-				title: 'Avg. run time',
-				count: 2.5,
-				deviation: -5,
-				sign: 's',
-				evaluation: 'positive' as const,
-			},
-			{
 				id: 'timeSaved',
 				title: 'Time saved',
 				count: 54,
 				deviation: -5,
 				sign: 'h',
 				evaluation: 'negative' as const,
+			},
+			{
+				id: 'runTime',
+				title: 'Avg. run time',
+				count: 2.5,
+				deviation: -5,
+				sign: 's',
+				evaluation: 'positive' as const,
 			},
 		];
 	};

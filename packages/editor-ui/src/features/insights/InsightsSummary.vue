@@ -19,23 +19,25 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 <template>
 	<div :class="$style.insights">
 		<N8nHeading bold tag="h3" size="medium" class="mb-xs"
-			>Insights from the last 30 days</N8nHeading
+			>Production executions for the last 7 days</N8nHeading
 		>
 		<ul>
 			<li v-for="{ id, title, count, sign, deviation, evaluation } in summaries" :key="id">
 				<p>
 					<strong>{{ title }}</strong>
-					<em
-						>{{ count }} <i>{{ sign }}</i></em
-					>
-					<small>
-						<N8nIcon
-							:class="$style.icon"
-							:icon="evaluation === 'positive' ? 'caret-up' : 'caret-down'"
-							color="text-light"
-						/>
-						{{ getSign(deviation) }} {{ deviation }} {{ sign }}
-					</small>
+					<span>
+						<em
+							>{{ count }} <i>{{ sign }}</i></em
+						>
+						<small :class="evaluation === 'positive' ? $style.up : $style.down">
+							<N8nIcon
+								:class="[$style.icon, evaluation === 'positive' ? $style.up : $style.down]"
+								:icon="evaluation === 'positive' ? 'caret-up' : 'caret-down'"
+								color="text-light"
+							/>
+							{{ getSign(deviation) }} {{ deviation }}
+						</small>
+					</span>
 				</p>
 			</li>
 		</ul>
@@ -48,14 +50,21 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 
 	ul {
 		display: flex;
-		height: 132px;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0 var(--spacing-xl);
+		height: 91px;
+		align-items: stretch;
+		justify-content: flex-start;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 		border-radius: 6px;
 		list-style: none;
 		background-color: var(--color-background-xlight);
+
+		li {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+			padding: 0 var(--spacing-xl) 0 var(--spacing-l);
+		}
 
 		p {
 			display: grid;
@@ -66,6 +75,12 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 				font-weight: 400;
 				white-space: nowrap;
 				margin-bottom: var(--spacing-2xs);
+			}
+
+			span {
+				display: flex;
+				align-items: baseline;
+				gap: var(--spacing-xs);
 			}
 
 			em {
@@ -91,13 +106,20 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 				display: flex;
 				align-items: center;
 				padding: 0 0 0 18px;
-				color: var(--color-text-light);
 				font-size: 14px;
 				font-weight: 400;
 				white-space: nowrap;
 			}
 		}
 	}
+}
+
+.up {
+	color: var(--color-success);
+}
+
+.down {
+	color: var(--color-danger);
 }
 
 .icon {
