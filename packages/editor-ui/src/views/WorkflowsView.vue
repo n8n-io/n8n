@@ -196,7 +196,7 @@ const currentParentName = computed(() => {
 });
 
 const workflowListResources = computed<Resource[]>(() => {
-	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
+	const resources: (Resource | null)[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
 				resourceType: 'folder',
@@ -206,11 +206,11 @@ const workflowListResources = computed<Resource[]>(() => {
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
-				workflowCount: resource.workflowCount,
+				// TODO: Remove 0 once back-end is updated with new name
+				workflowCount: resource.workflowCount ?? 0,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
-		} else {
-			// TODO: Once new endpoint is in place, we'll have to explicitly check for resource type
+		} else if (resource.resource === 'workflow') {
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
@@ -226,8 +226,10 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 			} as WorkflowResource;
 		}
+		// This should not happen since we are only getting workflows and folders from the API
+		return null;
 	});
-	return resources;
+	return resources.filter((r): r is Resource => r !== null);
 });
 
 const statusFilterOptions = computed(() => [
@@ -389,7 +391,8 @@ const fetchWorkflows = async () => {
 			.filter((resource) => resource.resource === 'folder')
 			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 	);
-	const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder] !== undefined;
+	const isCurrentFolderCached =
+		parentFolder !== '0' && foldersStore.breadcrumbsCache[parentFolder] !== undefined;
 	const needToFetchFolderPath = !isCurrentFolderCached && routeProjectId && parentFolder !== '0';
 	if (needToFetchFolderPath) {
 		breadcrumbsLoading.value = true;
