@@ -12,7 +12,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
-import { N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
+import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from 'n8n-design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
@@ -22,7 +22,6 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -471,7 +470,7 @@ function activatePane() {
 								<template #content>
 									{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
 								</template>
-								<FontAwesomeIcon icon="question-circle" />
+								<N8nIcon icon="question-circle" />
 							</N8nTooltip>
 						</template>
 					</i18n-t>
