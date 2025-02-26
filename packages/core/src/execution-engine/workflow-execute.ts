@@ -395,9 +395,7 @@ export class WorkflowExecute {
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
-			throw new ApplicationError(
-				'The destination node is not connected to any trigger. Partial executions need a trigger.',
-			);
+			throw new ApplicationError('Connect a trigger to run this node');
 		}
 
 		// 2. Find the Subgraph
