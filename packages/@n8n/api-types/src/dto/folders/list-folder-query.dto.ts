@@ -35,10 +35,6 @@ const validSelectFields = [
 	'workflowsCount',
 ] as const;
 
-// Valid sort fields and directions
-const validSortFields = ['name', 'createdAt', 'updatedAt'] as const;
-const validSortDirections = ['asc', 'desc'] as const;
-
 // Filter class
 export class FilterDto extends Z.class({
 	parentFolderId: z.string().optional(),
