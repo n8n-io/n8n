@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
+import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 
@@ -20,7 +21,10 @@ interface FolderPathRow {
 
 @Service()
 export class FolderService {
-	constructor(private readonly folderRepository: FolderRepository) {}
+	constructor(
+		private readonly folderRepository: FolderRepository,
+		private readonly folderTagMappingRepository: FolderTagMappingRepository,
+	) {}
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
 		let parentFolder = null;
@@ -39,9 +43,14 @@ export class FolderService {
 		return folder;
 	}
 
-	async updateFolder(folderId: string, projectId: string, { name }: UpdateFolderDto) {
+	async updateFolder(folderId: string, projectId: string, { name, tagIds }: UpdateFolderDto) {
 		await this.getFolderInProject(folderId, projectId);
-		return await this.folderRepository.update({ id: folderId }, { name });
+		if (name) {
+			await this.folderRepository.update({ id: folderId }, { name });
+		}
+		if (tagIds) {
+			await this.folderTagMappingRepository.overwriteTags(folderId, tagIds);
+		}
 	}
 
 	async getFolderInProject(folderId: string, projectId: string, em?: EntityManager) {
