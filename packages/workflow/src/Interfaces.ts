@@ -985,6 +985,10 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		cloneWith(replacements: {
+			runIndex: number;
+			inputData: INodeExecutionData[][];
+		}): ISupplyDataFunctions;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
