@@ -112,5 +112,6 @@
         "name",
         "fileMgmt",
         "maxParallelism"
-    ]
+    ],
+    "version": 1
 }
