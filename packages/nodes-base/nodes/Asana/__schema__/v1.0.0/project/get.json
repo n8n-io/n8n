@@ -401,5 +401,6 @@
         "start_on",
         "team",
         "workspace"
-    ]
+    ],
+    "version": 1
 }
