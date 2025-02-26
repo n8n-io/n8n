@@ -95,5 +95,6 @@
         "updated_at",
         "tags",
         "attachments"
-    ]
+    ],
+    "version": 1
 }
