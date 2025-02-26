@@ -67,7 +67,7 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
-	label: 'Create Workflow',
+	label: i18n.baseText('projects.header.create.workflow'),
 	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -78,7 +78,7 @@ const menu = computed(() => {
 	const items: UserAction[] = [
 		{
 			value: ACTION_TYPES.CREDENTIAL,
-			label: 'Create credential',
+			label: i18n.baseText('projects.header.create.credential'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
@@ -87,7 +87,7 @@ const menu = computed(() => {
 	if (isFoldersFeatureEnabled.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
-			label: 'Create folder',
+			label: i18n.baseText('projects.header.create.folder'),
 			disabled: false,
 		});
 	}
