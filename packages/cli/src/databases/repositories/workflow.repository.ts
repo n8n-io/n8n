@@ -10,6 +10,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
@@ -20,7 +21,6 @@ import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
-import { PROJECT_ROOT } from 'n8n-workflow';
 
 type ResourceType = 'folder' | 'workflow';
 
