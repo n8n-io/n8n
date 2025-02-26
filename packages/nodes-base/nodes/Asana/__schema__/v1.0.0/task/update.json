@@ -306,5 +306,6 @@
         "permalink_url",
         "memberships",
         "followers"
-    ]
+    ],
+    "version": 1
 }
