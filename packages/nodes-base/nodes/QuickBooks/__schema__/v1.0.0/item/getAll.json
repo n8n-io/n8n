@@ -90,5 +90,6 @@
         "Id",
         "SyncToken",
         "MetaData"
-    ]
+    ],
+    "version": 1
 }
