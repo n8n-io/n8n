@@ -7,6 +7,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useRootStore } from '@/stores/root.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { N8nLoading } from 'n8n-design-system';
 import { useRoute, useRouter } from 'vue-router';
 
 const props = defineProps<{
@@ -49,7 +50,7 @@ void createTest(props.name).then(async (test) => {
 		throw new Error('no test found');
 	}
 
-	const tag = generateTagFromName(state.value.name.value);
+	const tag = generateTagFromName(test.name);
 
 	const testTag = await createTag(tag);
 	state.value.tags.value = [testTag.id];
@@ -82,5 +83,5 @@ void createTest(props.name).then(async (test) => {
 </script>
 
 <template>
-	<div>creating {{ name }}</div>
+	<N8nLoading loading :rows="3" />
 </template>
