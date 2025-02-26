@@ -93,5 +93,6 @@
         "status": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
