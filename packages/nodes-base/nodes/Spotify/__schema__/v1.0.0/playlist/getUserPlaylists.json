@@ -96,5 +96,6 @@
     },
     "required": [
         "primary_color"
-    ]
+    ],
+    "version": 1
 }
