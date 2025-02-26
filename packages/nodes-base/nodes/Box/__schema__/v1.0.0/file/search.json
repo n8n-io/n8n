@@ -196,5 +196,6 @@
         "type",
         "id",
         "etag"
-    ]
+    ],
+    "version": 1
 }
