@@ -17,6 +17,7 @@ import {
 	openContextMenu,
 } from '../composables/workflow';
 import { NDV, WorkflowExecutionsTab } from '../pages';
+import { clearNotifications, successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -235,7 +236,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	it('should delete node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME, {
+			method: 'right-click',
+			anchor: 'topLeft',
+		});
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
@@ -484,6 +489,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.executeWorkflow();
+
+		successToast().should('contain.text', 'Workflow executed successfully');
+		clearNotifications();
 
 		ExecutionsTab.actions.switchToExecutionsTab();
 		ExecutionsTab.getters.successfulExecutionListItems().should('have.length', 1);

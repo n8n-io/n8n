@@ -173,6 +173,7 @@ describe('GlobalConfig', () => {
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
+				activeWorkflowCountInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,

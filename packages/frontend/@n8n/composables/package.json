@@ -25,9 +25,9 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "devDependencies": {
-    "@n8n/frontend-eslint-config": "workspace:*",
-    "@n8n/frontend-vitest-config": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",

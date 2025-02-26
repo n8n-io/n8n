@@ -4,6 +4,7 @@ import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createFolder } from '@test-integration/db/folders';
+import { createTag } from '@test-integration/db/tags';
 
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createOwner, createMember } from '../shared/db/users';
@@ -277,5 +278,188 @@ describe('GET /projects/:projectId/folders/:folderId/tree', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('PATCH /projects/:projectId/folders/:folderId', () => {
+	test('should not update folder when project does not exist', async () => {
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authOwnerAgent
+			.patch('/projects/non-existing-id/folders/some-folder-id')
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not update folder when folder does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/non-existing-folder`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test('should not update folder when name is empty', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Original Name' });
+
+		const payload = {
+			name: '',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(400);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Original Name');
+	});
+
+	test('should not update folder if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Original Name' });
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(403);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Original Name');
+	});
+
+	test("should not allow updating folder in another user's personal project", async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original Name' });
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(403);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Original Name');
+	});
+
+	test('should update folder if user has project:editor role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Original Name' });
+		await linkUserToProject(member, project, 'project:editor');
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(200);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Updated Folder Name');
+	});
+
+	test('should update folder if user has project:admin role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Original Name' });
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(200);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Updated Folder Name');
+	});
+
+	test('should update folder in personal project', async () => {
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder = await createFolder(personalProject, { name: 'Original Name' });
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${personalProject.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(200);
+
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
+		expect(folderInDb?.name).toBe('Updated Folder Name');
+	});
+
+	test('should update folder tags', async () => {
+		const project = await createTeamProject('test project', owner);
+		const folder = await createFolder(project, { name: 'Test Folder' });
+		const tag1 = await createTag({ name: 'Tag 1' });
+		const tag2 = await createTag({ name: 'Tag 2' });
+
+		const payload = {
+			tagIds: [tag1.id, tag2.id],
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(200);
+
+		const folderWithTags = await folderRepository.findOne({
+			where: { id: folder.id },
+			relations: ['tags'],
+		});
+
+		expect(folderWithTags?.tags).toHaveLength(2);
+		expect(folderWithTags?.tags.map((t) => t.id).sort()).toEqual([tag1.id, tag2.id].sort());
+	});
+
+	test('should replace existing folder tags with new ones', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const tag1 = await createTag({ name: 'Tag 1' });
+		const tag2 = await createTag({ name: 'Tag 2' });
+		const tag3 = await createTag({ name: 'Tag 3' });
+
+		const folder = await createFolder(project, {
+			name: 'Test Folder',
+			tags: [tag1, tag2],
+		});
+
+		const payload = {
+			tagIds: [tag3.id],
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(200);
+
+		const folderWithTags = await folderRepository.findOne({
+			where: { id: folder.id },
+			relations: ['tags'],
+		});
+
+		expect(folderWithTags?.tags).toHaveLength(1);
+		expect(folderWithTags?.tags[0].id).toBe(tag3.id);
 	});
 });

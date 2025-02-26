@@ -56,3 +56,4 @@ export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
 
 export { CreateFolderDto } from './folders/create-folder.dto';
+export { UpdateFolderDto } from './folders/update-folder.dto';

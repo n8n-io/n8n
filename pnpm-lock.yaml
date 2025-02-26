@@ -154,6 +154,9 @@ patchedDependencies:
   bull@4.12.1:
     hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
+  eslint-plugin-n8n-local-rules:
+    hash: e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2
+    path: patches/eslint-plugin-n8n-local-rules.patch
   pkce-challenge@3.0.0:
     hash: 4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b
     path: patches/pkce-challenge@3.0.0.patch
@@ -171,9 +174,9 @@ importers:
       '@biomejs/biome':
         specifier: ^1.9.0
         version: 1.9.0
-      '@n8n_io/eslint-config':
+      '@n8n/eslint-config':
         specifier: workspace:*
-        version: link:packages/@n8n_io/eslint-config
+        version: link:packages/@n8n/eslint-config
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
@@ -388,6 +391,54 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+
+  packages/@n8n/eslint-config:
+    devDependencies:
+      '@types/eslint':
+        specifier: ^8.56.5
+        version: 8.56.5
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^7.2.0
+        version: 7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2)
+      '@typescript-eslint/parser':
+        specifier: ^7.2.0
+        version: 7.2.0(eslint@8.57.0)(typescript@5.7.2)
+      '@vue/eslint-config-typescript':
+        specifier: ^13.0.0
+        version: 13.0.0(eslint-plugin-vue@9.23.0(eslint@8.57.0))(eslint@8.57.0)(typescript@5.7.2)
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.0
+      eslint-config-airbnb-typescript:
+        specifier: ^18.0.0
+        version: 18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
+      eslint-config-prettier:
+        specifier: ^9.1.0
+        version: 9.1.0(eslint@8.57.0)
+      eslint-import-resolver-typescript:
+        specifier: ^3.6.1
+        version: 3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
+      eslint-plugin-import:
+        specifier: ^2.29.1
+        version: 2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
+      eslint-plugin-lodash:
+        specifier: ^7.4.0
+        version: 7.4.0(eslint@8.57.0)
+      eslint-plugin-n8n-local-rules:
+        specifier: ^1.0.0
+        version: 1.0.0(patch_hash=e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2)
+      eslint-plugin-unicorn:
+        specifier: ^51.0.1
+        version: 51.0.1(eslint@8.57.0)
+      eslint-plugin-unused-imports:
+        specifier: ^3.1.0
+        version: 3.1.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)
+      eslint-plugin-vue:
+        specifier: ^9.23.0
+        version: 9.23.0(eslint@8.57.0)
+      vue-eslint-parser:
+        specifier: ^9.4.2
+        version: 9.4.2(eslint@8.57.0)
 
   packages/@n8n/imap:
     dependencies:
@@ -724,53 +775,14 @@ importers:
 
   packages/@n8n/typescript-config: {}
 
-  packages/@n8n_io/eslint-config:
+  packages/@n8n/vitest-config:
     devDependencies:
-      '@types/eslint':
-        specifier: ^8.56.5
-        version: 8.56.5
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^7.2.0
-        version: 7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2)
-      '@typescript-eslint/parser':
-        specifier: ^7.2.0
-        version: 7.2.0(eslint@8.57.0)(typescript@5.7.2)
-      '@vue/eslint-config-typescript':
-        specifier: ^13.0.0
-        version: 13.0.0(eslint-plugin-vue@9.23.0(eslint@8.57.0))(eslint@8.57.0)(typescript@5.7.2)
-      eslint:
-        specifier: ^8.57.0
-        version: 8.57.0
-      eslint-config-airbnb-typescript:
-        specifier: ^18.0.0
-        version: 18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
-      eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.0(eslint@8.57.0)
-      eslint-import-resolver-typescript:
-        specifier: ^3.6.1
-        version: 3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
-      eslint-plugin-import:
-        specifier: ^2.29.1
-        version: 2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
-      eslint-plugin-lodash:
-        specifier: ^7.4.0
-        version: 7.4.0(eslint@8.57.0)
-      eslint-plugin-n8n-local-rules:
-        specifier: ^1.0.0
-        version: 1.0.0
-      eslint-plugin-unicorn:
-        specifier: ^51.0.1
-        version: 51.0.1(eslint@8.57.0)
-      eslint-plugin-unused-imports:
-        specifier: ^3.1.0
-        version: 3.1.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)
-      eslint-plugin-vue:
-        specifier: ^9.23.0
-        version: 9.23.0(eslint@8.57.0)
-      vue-eslint-parser:
-        specifier: ^9.4.2
-        version: 9.4.2(eslint@8.57.0)
+      vite:
+        specifier: catalog:frontend
+        version: 6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
+      vitest:
+        specifier: catalog:frontend
+        version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
 
   packages/cli:
     dependencies:
@@ -1308,18 +1320,18 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
     devDependencies:
-      '@n8n/frontend-eslint-config':
+      '@n8n/eslint-config':
         specifier: workspace:*
-        version: link:../frontend/tooling/eslint-config
-      '@n8n/frontend-vitest-config':
-        specifier: workspace:*
-        version: link:../frontend/tooling/vitest-config
+        version: link:../@n8n/eslint-config
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../@n8n/storybook
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -1615,15 +1627,15 @@ importers:
       '@iconify/json':
         specifier: ^2.2.228
         version: 2.2.230
-      '@n8n/frontend-eslint-config':
+      '@n8n/eslint-config':
         specifier: workspace:*
-        version: link:../frontend/tooling/eslint-config
-      '@n8n/frontend-vitest-config':
-        specifier: workspace:*
-        version: link:../frontend/tooling/vitest-config
+        version: link:../@n8n/eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../@n8n/vitest-config
       '@pinia/testing':
         specifier: ^0.1.6
         version: 0.1.6(pinia@2.2.4(typescript@5.7.2)(vue@3.5.13(typescript@5.7.2)))(vue@3.5.13(typescript@5.7.2))
@@ -1715,12 +1727,18 @@ importers:
       '@iconify-json/mdi':
         specifier: ^1.1.54
         version: 1.1.63
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../../../@n8n/storybook
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.1(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.7.2))
@@ -1745,15 +1763,15 @@ importers:
 
   packages/frontend/@n8n/composables:
     devDependencies:
-      '@n8n/frontend-eslint-config':
+      '@n8n/eslint-config':
         specifier: workspace:*
-        version: link:../../tooling/eslint-config
-      '@n8n/frontend-vitest-config':
-        specifier: workspace:*
-        version: link:../../tooling/vitest-config
+        version: link:../../../@n8n/eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.6.3
@@ -1793,24 +1811,6 @@ importers:
       vue-tsc:
         specifier: ^2.1.10
         version: 2.1.10(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.7.2)
-
-  packages/frontend/tooling/eslint-config:
-    dependencies:
-      '@n8n_io/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n_io/eslint-config
-      eslint-plugin-n8n-local-rules:
-        specifier: ^1.0.0
-        version: 1.0.0
-
-  packages/frontend/tooling/vitest-config:
-    devDependencies:
-      vite:
-        specifier: catalog:frontend
-        version: 6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
-      vitest:
-        specifier: catalog:frontend
-        version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
 
   packages/node-dev:
     dependencies:
@@ -21732,7 +21732,7 @@ snapshots:
       eslint: 8.57.0
       lodash: 4.17.21
 
-  eslint-plugin-n8n-local-rules@1.0.0: {}
+  eslint-plugin-n8n-local-rules@1.0.0(patch_hash=e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2): {}
 
   eslint-plugin-n8n-nodes-base@1.16.3(eslint@8.57.0)(typescript@5.7.2):
     dependencies:
