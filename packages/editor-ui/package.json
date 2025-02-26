@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.80.0",
+  "version": "1.81.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -93,7 +93,7 @@
   "devDependencies": {
     "@n8n/frontend-eslint-config": "workspace:*",
     "@n8n/frontend-vitest-config": "workspace:*",
-    "@n8n/frontend-typescript-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
     "@faker-js/faker": "^8.0.2",
     "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",

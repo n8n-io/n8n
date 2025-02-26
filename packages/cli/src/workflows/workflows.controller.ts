@@ -158,11 +158,11 @@ export class WorkflowsController {
 			}
 
 			if (parentFolderId) {
-				let parentFolder = null;
 				try {
-					parentFolder = await this.folderService.findFolderInProjectOrFail(
+					const parentFolder = await this.folderService.findFolderInProjectOrFail(
 						parentFolderId,
 						project.id,
+						transactionManager,
 					);
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
 				} catch {}

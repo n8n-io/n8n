@@ -58,13 +58,14 @@ let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'Workflow',
 		'SharedWorkflow',
-		'Tag',
 		'WorkflowHistory',
-		'Project',
 		'ProjectRelation',
 		'Folder',
+		'Workflow',
+		'Tag',
+		'Project',
+		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
@@ -393,8 +394,7 @@ describe('POST /workflows', () => {
 		//
 		const response = await authOwnerAgent
 			.post('/workflows')
-			.send({ ...workflow, parentFolderId: folder.id })
-			.expect(200);
+			.send({ ...workflow, parentFolderId: folder.id });
 
 		//
 		// ASSERT

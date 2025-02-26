@@ -77,6 +77,7 @@ import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/17344
 import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
 import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
+import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { UpdateParentFolderIdColumn1740445074052 } from '../common/1740445074052-UpdateParentFolderIdColumn';
 
 const sqliteMigrations: Migration[] = [
@@ -157,6 +158,7 @@ const sqliteMigrations: Migration[] = [
 	CreateTestCaseExecutionTable1736947513045,
 	AddErrorColumnsToTestRuns1737715421462,
 	CreateFolderTable1738709609940,
+	CreateAnalyticsTables1739549398681,
 	UpdateParentFolderIdColumn1740445074052,
 ];
 

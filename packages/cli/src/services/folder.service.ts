@@ -1,5 +1,7 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 
 import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
@@ -54,9 +56,9 @@ export class FolderService {
 		}
 	}
 
-	async findFolderInProjectOrFail(folderId: string, projectId: string) {
+	async findFolderInProjectOrFail(folderId: string, projectId: string, em?: EntityManager) {
 		try {
-			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId, em);
 		} catch {
 			throw new FolderNotFoundError(folderId);
 		}
@@ -64,6 +66,10 @@ export class FolderService {
 
 	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
 		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const escapedParentFolderId = this.folderRepository
+			.createQueryBuilder()
+			.escape('parentFolderId');
 
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
@@ -75,7 +81,7 @@ export class FolderService {
 			.createQueryBuilder('f')
 			.select('f.id', 'id')
 			.addSelect('f.parentFolderId', 'parentFolderId')
-			.innerJoin('folder_path', 'fp', 'f.id = fp."parentFolderId"');
+			.innerJoin('folder_path', 'fp', `f.id = fp.${escapedParentFolderId}`);
 
 		const mainQuery = this.folderRepository
 			.createQueryBuilder('folder')
