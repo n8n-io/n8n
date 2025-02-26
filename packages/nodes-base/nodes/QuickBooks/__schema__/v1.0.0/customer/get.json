@@ -139,5 +139,6 @@
         "DisplayName",
         "PrintOnCheckName",
         "Active"
-    ]
+    ],
+    "version": 1
 }
