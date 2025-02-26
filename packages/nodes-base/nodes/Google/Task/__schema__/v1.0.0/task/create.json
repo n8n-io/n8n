@@ -28,5 +28,6 @@
         "webViewLink": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
