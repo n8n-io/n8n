@@ -67,13 +67,15 @@ function getTreeNodeDataRec(
 
 	const children = connectedSubNodes.flatMap((name) => {
 		// Only include sub-nodes which have data
-		return aiData
-			.filter(
-				(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
-			)
-			.flatMap((data) =>
-				getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
-			);
+		return (
+			aiData
+				?.filter(
+					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
+				)
+				.flatMap((data) =>
+					getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
+				) ?? []
+		);
 	});
 
 	children.sort((a, b) => a.startTime - b.startTime);
