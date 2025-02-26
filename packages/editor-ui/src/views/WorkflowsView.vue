@@ -196,7 +196,7 @@ const currentParentName = computed(() => {
 });
 
 const workflowListResources = computed<Resource[]>(() => {
-	const resources: (Resource | null)[] = (workflowsAndFolders.value || []).map((resource) => {
+	const resources: Array<Resource | null> = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
 				resourceType: 'folder',
