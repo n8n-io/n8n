@@ -88,9 +88,9 @@ export class SdrAgentTrigger implements INodeType {
 					sdrAgent.offset,
 				);
 
-				if (isAvailable) {
-					const [contacts] = await connection.execute(
-						`
+				// if (isAvailable) {
+				const [contacts] = await connection.execute(
+					`
                         SELECT 
                             DISTINCT cal.*, 
                             sdr_agent.agent_phone_number,
@@ -130,29 +130,29 @@ export class SdrAgentTrigger implements INodeType {
                                     COALESCE(?, 0) DAY)
                             )            
                         `,
-						[segmentId, sdrAgent.offset, sdrAgent.offset, retryAfterDays],
-					);
-					console.log(contacts);
-					// await scheduleLeadsCalls(contacts);
+					[segmentId, sdrAgent.offset, sdrAgent.offset, retryAfterDays],
+				);
+				console.log(contacts);
+				await scheduleLeadsCalls(contacts as any[], sdrAgent.offset);
 
-					// for (const contact of contacts as any[]) {
-					//     const { id, phone_number } = contact;
+				// for (const contact of contacts as any[]) {
+				//     const { id, phone_number } = contact;
 
-					//     console.log(`Calling ${phone_number}...`);
+				//     console.log(`Calling ${phone_number}...`);
 
-					//     try {
-					//         const callResult = await makeCall(phone_number);
+				//     try {
+				//         const callResult = await makeCall(phone_number);
 
-					//         console.log(`Call successful for ${phone_number}`);
+				//         console.log(`Call successful for ${phone_number}`);
 
-					//         await updateCallStatus(id, 'completed');
-					//     } catch (error) {
-					//         console.error(`Call failed for ${phone_number}, retrying after ${retryAfterDays} days.`);
+				//         await updateCallStatus(id, 'completed');
+				//     } catch (error) {
+				//         console.error(`Call failed for ${phone_number}, retrying after ${retryAfterDays} days.`);
 
-					//         await updateCallStatus(id, 'failed');
-					//     }
-					// }
-				}
+				//         await updateCallStatus(id, 'failed');
+				//     }
+				// }
+				// }
 			}
 		}
 
@@ -164,98 +164,104 @@ export class SdrAgentTrigger implements INodeType {
 	}
 }
 
-// async function updateCallStatus(contactId: number, status: string): Promise<void> {
-//     const connection = await getDbConnection();
-//     await connection.execute(
-//         'UPDATE contacts SET call_status = ?, last_called_at = NOW() WHERE id = ?',
-//         [status, contactId]
-//     );
-// }
+async function updateCallStatus(contactId: number, status: string): Promise<void> {
+	const connection = await getDbConnection();
+	await connection.execute(
+		'UPDATE contacts SET call_status = ?, last_called_at = NOW() WHERE id = ?',
+		[status, contactId],
+	);
+}
 
-// async function getCompanyRetellKey(id: number): Promise<string | null> {
-//     const connection = await getDbConnection();
-//     const [companies] = await connection.execute(`SELECT * FROM companies WHERE id = ?`, [id]) as any[];
-//     return companies.length ? companies[0].retell_api_key : null;
-// }
+async function getCompanyRetellKey(id: number): Promise<string | null> {
+	const connection = await getDbConnection();
+	const [companies] = (await connection.execute(`SELECT * FROM companies WHERE id = ?`, [
+		id,
+	])) as any[];
+	return companies.length ? companies[0].retell_api_key : null;
+}
 
-// async function getRetellClient(companyId: number): Promise<Retell> {
-//     const apiKey = await getCompanyRetellKey(companyId);
-//     if (!apiKey) {
-//         throw new Error('API key not found for the company');
-//     }
-//     return new Retell({ apiKey });
-// };
+async function getRetellClient(companyId: number): Promise<Retell> {
+	const apiKey = await getCompanyRetellKey(companyId);
+	if (!apiKey) {
+		throw new Error('API key not found for the company');
+	}
+	return new Retell({ apiKey });
+}
 
-// async function createPhoneCall(
-//     fromNumber: string,
-//     toNumber: string,
-//     dynamicVariables: NormalObjT,
-//     companyId: number
-// ) {
-//     const RetellClient = await getRetellClient(companyId)
+async function createPhoneCall(
+	fromNumber: string,
+	toNumber: string,
+	dynamicVariables: NormalObjT,
+	companyId: number,
+) {
+	const RetellClient = await getRetellClient(companyId);
 
-//     return RetellClient.call.createPhoneCall({
-//         from_number: fromNumber,
-//         to_number: toNumber,
-//         retell_llm_dynamic_variables: dynamicVariables,
-//     });
-// }
+	return RetellClient.call.createPhoneCall({
+		from_number: fromNumber,
+		to_number: toNumber,
+		retell_llm_dynamic_variables: dynamicVariables,
+	});
+}
 
-// async function scheduleLeadsCalls(allNotContactedLeads: any[]) {
-//     const createCallPromises = allNotContactedLeads.map(
-//         async (notContactedLead) => {
-//             const leadInfo = toCamelCase(notContactedLead)
-//             const agentPhoneNumber = leadInfo.agentPhoneNumber;
-//             try {
-//                 if (agentPhoneNumber) {
-//                     console.log(
-//                         `Initiating call from ${agentPhoneNumber} to ${leadInfo.phoneNumber} `,
-//                     );
-//                     const dynamicVariables = JSON.parse(leadInfo.dynamicVariables) as string[] || []
-//                     dynamicVariables.push('companyName')
+async function scheduleLeadsCalls(allNotContactedLeads: any[], offset: string) {
+	const createCallPromises = allNotContactedLeads.map(async (notContactedLead) => {
+		console.log(notContactedLead);
 
-//                     const dynamicVariableObj = createDynamicObject(JSON.parse(leadInfo?.customFields))
-//                     dynamicVariableObj['leadName'] = (leadInfo.name).split(' ')[0]
-//                     dynamicVariableObj['productName'] = leadInfo.productOfInterest
-//                     dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), leadInfo.offset)
-//                     dynamicVariableObj['companyName'] = leadInfo.companyName
+		const leadInfo = toCamelCase(notContactedLead);
+		console.log(leadInfo);
 
-//                     const checkDynamicObj = checkDynamicObject(dynamicVariables, { ...dynamicVariableObj, ...leadInfo })
+		const agentPhoneNumber = leadInfo.agentPhoneNumber;
+		try {
+			if (agentPhoneNumber) {
+				console.log(`Initiating call from ${agentPhoneNumber} to ${leadInfo.phoneNumber} `);
+				const dynamicVariables = (leadInfo.dynamicVariables as string[]) || [];
+				dynamicVariables.push('companyName');
 
-//                     if (checkDynamicObj) {
-//                         const createdCallData = await createPhoneCall(
-//                             agentPhoneNumber,
-//                             leadInfo.phoneNumber,
-//                             dynamicVariableObj,
-//                             leadInfo.companyId
-//                         );
-//                         const sdrAgentCallDetailsDataToInsert = {
-//                             sdrAgentId: leadInfo.agentId,
-//                             callCurrentStatus: createdCallData.call_status,
-//                             retellCallId: createdCallData.call_id,
-//                             companyId: leadInfo.companyId,
-//                             leadId: leadInfo?.id,
-//                         };
-//                         // const sdrAgentCall = await this.sdrAgentsService.storeSdrAgentCallDetails(
-//                         //     sdrAgentCallDetailsDataToInsert,
-//                         // );
+				const dynamicVariableObj = createDynamicObject(leadInfo?.customFields);
+				dynamicVariableObj['leadName'] = leadInfo.name.split(' ')[0];
+				dynamicVariableObj['productName'] = leadInfo.productOfInterest;
+				dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), offset);
+				dynamicVariableObj['companyName'] = leadInfo.companyName;
 
-//                         // await this.mongodbService.insert(MongoDBCollection.REQUEST_RESPONSE_LOG, { action: ActionTypeE.CREATE, entityId: sdrAgentCall.id, entityType: 'sdr_agents_call_details', platform: PlatformTypeE.RETELL, callId: createdCallData.call_id, retellCall: createdCallData, companyId: sdrAgentCall.companyId, leadId: leadInfo.id })
+				const checkDynamicObj = checkDynamicObject(dynamicVariables, {
+					...dynamicVariableObj,
+					...leadInfo,
+				});
+				// console.log(dynamicVariables, { ...dynamicVariableObj, ...leadInfo }, checkDynamicObj);
 
-//                         // await CustomerAndLeadsModel.query()
-//                         //     .update({
-//                         //         status: LeadStatusTypesE.CALLING,
-//                         //         callbackTimestamp: null
-//                         //     })
-//                         //     .where({ id: leadInfo.id })
-//                     } else {
-//                         console.log('not eligible for call - ', leadInfo.id)
-//                     }
-//                 }
-//             } catch (error) {
-//                 console.log('call executer error ', error)
-//             }
-//         },
-//     );
-//     await Promise.allSettled(createCallPromises);
-// }
+				if (checkDynamicObj) {
+					const createdCallData = await createPhoneCall(
+						agentPhoneNumber,
+						leadInfo.phoneNumber,
+						dynamicVariableObj,
+						leadInfo.companyId,
+					);
+					const sdrAgentCallDetailsDataToInsert = {
+						sdrAgentId: leadInfo.agentId,
+						callCurrentStatus: createdCallData.call_status,
+						retellCallId: createdCallData.call_id,
+						companyId: leadInfo.companyId,
+						leadId: leadInfo?.id,
+					};
+					// const sdrAgentCall = await this.sdrAgentsService.storeSdrAgentCallDetails(
+					//     sdrAgentCallDetailsDataToInsert,
+					// );
+
+					// await this.mongodbService.insert(MongoDBCollection.REQUEST_RESPONSE_LOG, { action: ActionTypeE.CREATE, entityId: sdrAgentCall.id, entityType: 'sdr_agents_call_details', platform: PlatformTypeE.RETELL, callId: createdCallData.call_id, retellCall: createdCallData, companyId: sdrAgentCall.companyId, leadId: leadInfo.id })
+
+					// await CustomerAndLeadsModel.query()
+					//     .update({
+					//         status: LeadStatusTypesE.CALLING,
+					//         callbackTimestamp: null
+					//     })
+					//     .where({ id: leadInfo.id })
+				} else {
+					console.log('not eligible for call - ', leadInfo.id);
+				}
+			}
+		} catch (error) {
+			console.log('call executer error ', error);
+		}
+	});
+	await Promise.allSettled(createCallPromises);
+}
