@@ -325,5 +325,6 @@
                 "Address"
             ]
         }
-    }
+    },
+    "version": 1
 }
