@@ -14,7 +14,7 @@ describe(getTreeNodeData, () => {
 		};
 	}
 
-	it.todo('should generate one node per execution', () => {
+	it('should generate one node per execution', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
 				createTestNode({ name: 'A' }),
@@ -48,8 +48,18 @@ describe(getTreeNodeData, () => {
 			),
 		).toEqual([
 			{
+				depth: 0,
+				id: 'A',
+				node: 'A',
+				runIndex: 0,
+				startTime: 0,
 				children: [
 					{
+						depth: 1,
+						id: 'B',
+						node: 'B',
+						runIndex: 0,
+						startTime: +new Date('2025-02-26T00:00:01.000Z'),
 						children: [
 							{
 								children: [],
@@ -57,16 +67,16 @@ describe(getTreeNodeData, () => {
 								id: 'C',
 								node: 'C',
 								runIndex: 0,
-								startTime: 1740528002000,
+								startTime: +new Date('2025-02-26T00:00:02.000Z'),
 							},
 						],
+					},
+					{
 						depth: 1,
 						id: 'B',
 						node: 'B',
-						runIndex: 0,
-						startTime: 1740528001000,
-					},
-					{
+						runIndex: 1,
+						startTime: +new Date('2025-02-26T00:00:03.000Z'),
 						children: [
 							{
 								children: [],
@@ -74,21 +84,11 @@ describe(getTreeNodeData, () => {
 								id: 'C',
 								node: 'C',
 								runIndex: 1,
-								startTime: 1740528004000,
+								startTime: +new Date('2025-02-26T00:00:04.000Z'),
 							},
 						],
-						depth: 1,
-						id: 'B',
-						node: 'B',
-						runIndex: 1,
-						startTime: 1740528003000,
 					},
 				],
-				depth: 0,
-				id: 'A',
-				node: 'A',
-				runIndex: 0,
-				startTime: 0,
 			},
 		]);
 	});

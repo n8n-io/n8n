@@ -42,7 +42,7 @@ export function getTreeNodeData(
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
 ): TreeNode[] {
-	return getTreeNodeDataRec(nodeName, 0, workflow, aiData);
+	return getTreeNodeDataRec(nodeName, 0, workflow, aiData, undefined);
 }
 
 function getTreeNodeDataRec(
@@ -50,9 +50,13 @@ function getTreeNodeDataRec(
 	currentDepth: number,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
+	runIndex: number | undefined,
 ): TreeNode[] {
 	const connections = workflow.connectionsByDestinationNode[nodeName];
-	const resultData = aiData?.filter((data) => data.node === nodeName) ?? [];
+	const resultData =
+		aiData?.filter(
+			(data) => data.node === nodeName && (runIndex === undefined || runIndex === data.runIndex),
+		) ?? [];
 
 	if (!connections) {
 		return resultData.map((d) => createNode(nodeName, currentDepth, d));
@@ -61,10 +65,16 @@ function getTreeNodeDataRec(
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
-	const children = connectedSubNodes
+	const children = connectedSubNodes.flatMap((name) => {
 		// Only include sub-nodes which have data
-		.filter((name) => aiData.find((data) => data.node === name))
-		.flatMap((name) => getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData));
+		return aiData
+			.filter(
+				(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
+			)
+			.flatMap((data) =>
+				getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
+			);
+	});
 
 	children.sort((a, b) => a.startTime - b.startTime);
 
