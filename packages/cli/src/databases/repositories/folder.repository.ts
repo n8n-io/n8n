@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
@@ -225,5 +225,21 @@ export class FolderRepository extends Repository<FolderWithWorkflowCount> {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
+	}
+
+	async findOneOrFailFolderInProject(
+		folderId: string,
+		projectId: string,
+		em?: EntityManager,
+	): Promise<Folder> {
+		const manager = em ?? this.manager;
+		return await manager.findOneOrFail(Folder, {
+			where: {
+				id: folderId,
+				homeProject: {
+					id: projectId,
+				},
+			},
+		});
 	}
 }

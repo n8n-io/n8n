@@ -79,6 +79,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return activeWorkflows.map((workflow) => workflow.id);
 	}
 
+	async getActiveCount() {
+		return await this.count({
+			where: { active: true },
+		});
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },

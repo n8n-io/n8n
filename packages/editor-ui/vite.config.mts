@@ -31,11 +31,11 @@ const alias = [
 	},
 	{
 		find: /^@n8n\/chat$/,
-		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src', 'index.ts'),
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'chat', 'src', 'index.ts'),
 	},
 	{
 		find: /^@n8n\/chat\//,
-		replacement: resolve(__dirname, '..', '@n8n', 'chat', 'src') + '/',
+		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'chat', 'src') + '/',
 	},
 	{
 		find: /^@n8n\/composables(.+)$/,
@@ -66,10 +66,13 @@ const plugins = [
 	}),
 	viteStaticCopy({
 		targets: [
-			{ src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'), dest: 'public' },
+			{
+				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
+				dest: resolve(__dirname, 'dist'),
+			},
 			{
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: 'public',
+				dest: resolve(__dirname, 'dist'),
 			},
 		],
 	}),
