@@ -40,5 +40,6 @@
         "isoDate": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
