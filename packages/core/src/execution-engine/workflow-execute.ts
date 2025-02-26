@@ -364,7 +364,6 @@ export class WorkflowExecute {
 				destination,
 				trigger: destination,
 			});
-			console.log('graph', graph);
 			const filteredNodes = graph.getNodes();
 			runData = cleanRunData(runData, graph, new Set([destination]));
 			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
