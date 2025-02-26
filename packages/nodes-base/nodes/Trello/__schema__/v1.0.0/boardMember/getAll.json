@@ -15,5 +15,6 @@
         "id",
         "fullName",
         "username"
-    ]
+    ],
+    "version": 1
 }
