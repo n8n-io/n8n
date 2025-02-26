@@ -145,5 +145,6 @@
     "required": [
         "opportunity",
         "traceId"
-    ]
+    ],
+    "version": 1
 }
