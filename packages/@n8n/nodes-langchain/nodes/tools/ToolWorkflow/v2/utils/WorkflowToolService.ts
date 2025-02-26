@@ -69,7 +69,7 @@ export class WorkflowToolService {
 			// We need to clone the context here to handle runIndex correctly
 			// Otherwise the runIndex will be shared between different executions
 			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
-			const context = this.baseContext.cloneWith({ runIndex: runIndex++ });
+			const context = this.baseContext.cloneWith({ runIndex: runIndex++, inputData: {} });
 
 			const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 			try {

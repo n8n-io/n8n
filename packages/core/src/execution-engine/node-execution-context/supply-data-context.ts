@@ -109,7 +109,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			)) as ISupplyDataFunctions['getNodeParameter'];
 	}
 
-	cloneWith(replacements: { runIndex?: number }): SupplyDataContext {
+	cloneWith(replacements: {
+		runIndex?: number;
+		inputData?: ITaskDataConnections;
+	}): SupplyDataContext {
 		return new SupplyDataContext(
 			this.workflow,
 			this.node,
@@ -118,7 +121,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.runExecutionData,
 			replacements?.runIndex ?? this.runIndex,
 			this.connectionInputData,
-			this.inputData,
+			replacements?.inputData ?? this.inputData,
 			this.connectionType,
 			this.executeData,
 			this.closeFunctions,
