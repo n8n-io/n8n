@@ -31,5 +31,6 @@
         "content_hash": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
