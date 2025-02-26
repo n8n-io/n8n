@@ -38,5 +38,6 @@
     "required": [
         "@odata.etag",
         "id"
-    ]
+    ],
+    "version": 1
 }
