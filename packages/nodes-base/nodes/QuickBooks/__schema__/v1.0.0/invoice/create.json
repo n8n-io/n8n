@@ -209,5 +209,6 @@
         "EmailStatus": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
