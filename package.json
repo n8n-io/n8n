@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
-    "@n8n_io/eslint-config": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.2",
@@ -96,7 +96,8 @@
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
-      "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch"
+      "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch",
+      "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch"
     }
   }
 }

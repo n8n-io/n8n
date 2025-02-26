@@ -22,18 +22,27 @@ export const enum COMMANDS {
 const CANVAS_ACTION_TIMEOUT = 10;
 export const historyBus = createEventBus();
 
-export abstract class Undoable {}
+export abstract class Undoable {
+	abstract getTimestamp(): number;
+}
 
 export abstract class Command extends Undoable {
 	readonly name: string;
 
-	constructor(name: string) {
+	readonly timestamp: number;
+
+	constructor(name: string, timestamp: number) {
 		super();
 		this.name = name;
+		this.timestamp = timestamp;
 	}
-	abstract getReverseCommand(): Command;
+	abstract getReverseCommand(timestamp: number): Command;
 	abstract isEqualTo(anotherCommand: Command): boolean;
 	abstract revert(): Promise<void>;
+
+	getTimestamp(): number {
+		return this.timestamp;
+	}
 }
 
 export class BulkCommand extends Undoable {
@@ -42,6 +51,10 @@ export class BulkCommand extends Undoable {
 	constructor(commands: Command[]) {
 		super();
 		this.commands = commands;
+	}
+
+	getTimestamp(): number {
+		return Math.max(0, ...this.commands.map((command) => command.timestamp));
 	}
 }
 
@@ -52,15 +65,20 @@ export class MoveNodeCommand extends Command {
 
 	newPosition: XYPosition;
 
-	constructor(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
-		super(COMMANDS.MOVE_NODE);
+	constructor(
+		nodeName: string,
+		oldPosition: XYPosition,
+		newPosition: XYPosition,
+		timestamp: number,
+	) {
+		super(COMMANDS.MOVE_NODE, timestamp);
 		this.nodeName = nodeName;
 		this.newPosition = newPosition;
 		this.oldPosition = oldPosition;
 	}
 
-	getReverseCommand(): Command {
-		return new MoveNodeCommand(this.nodeName, this.newPosition, this.oldPosition);
+	getReverseCommand(timestamp: number): Command {
+		return new MoveNodeCommand(this.nodeName, this.newPosition, this.oldPosition, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -88,13 +106,13 @@ export class MoveNodeCommand extends Command {
 export class AddNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor(node: INodeUi) {
-		super(COMMANDS.ADD_NODE);
+	constructor(node: INodeUi, timestamp: number) {
+		super(COMMANDS.ADD_NODE, timestamp);
 		this.node = node;
 	}
 
-	getReverseCommand(): Command {
-		return new RemoveNodeCommand(this.node);
+	getReverseCommand(timestamp: number): Command {
+		return new RemoveNodeCommand(this.node, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -112,13 +130,13 @@ export class AddNodeCommand extends Command {
 export class RemoveNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor(node: INodeUi) {
-		super(COMMANDS.REMOVE_NODE);
+	constructor(node: INodeUi, timestamp: number) {
+		super(COMMANDS.REMOVE_NODE, timestamp);
 		this.node = node;
 	}
 
-	getReverseCommand(): Command {
-		return new AddNodeCommand(this.node);
+	getReverseCommand(timestamp: number): Command {
+		return new AddNodeCommand(this.node, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -136,13 +154,13 @@ export class RemoveNodeCommand extends Command {
 export class AddConnectionCommand extends Command {
 	connectionData: [IConnection, IConnection];
 
-	constructor(connectionData: [IConnection, IConnection]) {
-		super(COMMANDS.ADD_CONNECTION);
+	constructor(connectionData: [IConnection, IConnection], timestamp: number) {
+		super(COMMANDS.ADD_CONNECTION, timestamp);
 		this.connectionData = connectionData;
 	}
 
-	getReverseCommand(): Command {
-		return new RemoveConnectionCommand(this.connectionData);
+	getReverseCommand(timestamp: number): Command {
+		return new RemoveConnectionCommand(this.connectionData, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -166,13 +184,13 @@ export class AddConnectionCommand extends Command {
 export class RemoveConnectionCommand extends Command {
 	connectionData: [IConnection, IConnection];
 
-	constructor(connectionData: [IConnection, IConnection]) {
-		super(COMMANDS.REMOVE_CONNECTION);
+	constructor(connectionData: [IConnection, IConnection], timestamp: number) {
+		super(COMMANDS.REMOVE_CONNECTION, timestamp);
 		this.connectionData = connectionData;
 	}
 
-	getReverseCommand(): Command {
-		return new AddConnectionCommand(this.connectionData);
+	getReverseCommand(timestamp: number): Command {
+		return new AddConnectionCommand(this.connectionData, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -202,15 +220,15 @@ export class EnableNodeToggleCommand extends Command {
 
 	newState: boolean;
 
-	constructor(nodeName: string, oldState: boolean, newState: boolean) {
-		super(COMMANDS.ENABLE_NODE_TOGGLE);
+	constructor(nodeName: string, oldState: boolean, newState: boolean, timestamp: number) {
+		super(COMMANDS.ENABLE_NODE_TOGGLE, timestamp);
 		this.nodeName = nodeName;
 		this.newState = newState;
 		this.oldState = oldState;
 	}
 
-	getReverseCommand(): Command {
-		return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState);
+	getReverseCommand(timestamp: number): Command {
+		return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -235,14 +253,14 @@ export class RenameNodeCommand extends Command {
 
 	newName: string;
 
-	constructor(currentName: string, newName: string) {
-		super(COMMANDS.RENAME_NODE);
+	constructor(currentName: string, newName: string, timestamp: number) {
+		super(COMMANDS.RENAME_NODE, timestamp);
 		this.currentName = currentName;
 		this.newName = newName;
 	}
 
-	getReverseCommand(): Command {
-		return new RenameNodeCommand(this.newName, this.currentName);
+	getReverseCommand(timestamp: number): Command {
+		return new RenameNodeCommand(this.newName, this.currentName, timestamp);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {

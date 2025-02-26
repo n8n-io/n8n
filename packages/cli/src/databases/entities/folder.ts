@@ -13,8 +13,8 @@ import { Project } from './project';
 import { TagEntity } from './tag-entity';
 import { type WorkflowEntity } from './workflow-entity';
 
-export type FolderWithWorkflowsCount = Folder & {
-	workflowsCount: boolean;
+export type FolderWithWorkflowCount = Folder & {
+	workflowCount: boolean;
 };
 
 @Entity()
