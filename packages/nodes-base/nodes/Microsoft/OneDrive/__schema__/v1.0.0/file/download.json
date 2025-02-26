@@ -13,5 +13,6 @@
         "webUrl": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
