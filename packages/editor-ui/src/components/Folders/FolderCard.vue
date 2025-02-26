@@ -31,7 +31,7 @@ const emit = defineEmits<{
 	folderOpened: [{ folder: FolderResource }];
 }>();
 
-const breadCrumbsItems = computed<PathItem[]>(() => {
+const breadCrumbsItems = computed<FolderPathItem[]>(() => {
 	if (props.data.parentFolder) {
 		const parent = foldersStore.getCachedFolder(props.data.parentFolder.id);
 		return [
@@ -166,7 +166,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						<n8n-breadcrumbs
 							:items="breadCrumbsItems"
 							:hidden-items="hiddenItems"
-							:path-truncated="true"
+							:path-truncated="breadCrumbsItems[0]?.parentFolder"
 							:show-border="true"
 							:highlight-last-item="false"
 							theme="small"

@@ -332,6 +332,9 @@ const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 const initialize = async () => {
 	loading.value = true;
 	await setFiltersFromQueryString();
+	if (!route.params.folderId) {
+		foldersStore.currentFolderId = null;
+	}
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
