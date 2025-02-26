@@ -37,5 +37,6 @@
         "user",
         "status",
         "is_anonymous"
-    ]
+    ],
+    "version": 1
 }
