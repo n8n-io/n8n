@@ -68,4 +68,48 @@ describe('CanvasNodeStickyNote', () => {
 
 		expect(getComputedStyle(stickyOptions).display).toBe('none');
 	});
+
+	it('should emit "activate" on double click', async () => {
+		const { container, emitted } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						id: 'sticky',
+					}),
+				},
+			},
+		});
+
+		const sticky = container.querySelector('.sticky-textarea');
+		if (!sticky) throw new Error('Sticky not found');
+
+		await fireEvent.dblClick(sticky);
+
+		expect(emitted()).toHaveProperty('activate');
+	});
+
+	it('should emit "deactivate" on blur', async () => {
+		const { container, emitted } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						id: 'sticky',
+					}),
+				},
+			},
+		});
+
+		const sticky = container.querySelector('.sticky-textarea');
+
+		if (!sticky) throw new Error('Sticky not found');
+
+		await fireEvent.dblClick(sticky);
+
+		const stickyTextarea = container.querySelector('.sticky-textarea textarea');
+		if (!stickyTextarea) throw new Error('Textarea not found');
+
+		await fireEvent.blur(stickyTextarea);
+
+		expect(emitted()).toHaveProperty('deactivate');
+	});
 });

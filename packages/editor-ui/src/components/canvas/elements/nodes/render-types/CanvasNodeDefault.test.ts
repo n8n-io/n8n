@@ -5,6 +5,7 @@ import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { fireEvent } from '@testing-library/vue';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	global: {
@@ -332,5 +333,19 @@ describe('CanvasNodeDefault', () => {
 
 			expect(getByTestId('canvas-trigger-node')).toMatchSnapshot();
 		});
+	});
+
+	it('should emit "activate" on double click', async () => {
+		const { getByText, emitted } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+				},
+			},
+		});
+
+		await fireEvent.dblClick(getByText('Test Node'));
+
+		expect(emitted()).toHaveProperty('activate');
 	});
 });

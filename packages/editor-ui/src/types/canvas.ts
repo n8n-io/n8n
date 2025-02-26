@@ -143,7 +143,7 @@ export interface CanvasInjectionData {
 
 export type CanvasNodeEventBusEvents = {
 	'update:sticky:color': never;
-	'update:node:active': never;
+	'update:node:activated': never;
 	'update:node:class': { className: string; add?: boolean };
 };
 
