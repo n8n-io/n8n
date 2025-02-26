@@ -340,5 +340,6 @@
         "num_crossposts",
         "media",
         "is_video"
-    ]
+    ],
+    "version": 1
 }
