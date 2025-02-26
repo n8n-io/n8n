@@ -16,7 +16,7 @@
     "dev": "vite",
     "build": "pnpm run typecheck && tsup",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
