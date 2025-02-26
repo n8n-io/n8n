@@ -112,7 +112,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-		{ includeTags = false, em = this.manager } = {},
+		{ includeTags = false, includeParentFolder = false, em = this.manager } = {},
 	) {
 		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
@@ -138,6 +138,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				workflow: {
 					shared: { project: { projectRelations: { user: true } } },
 					tags: includeTags,
+					parentFolder: includeParentFolder,
 				},
 			},
 		});

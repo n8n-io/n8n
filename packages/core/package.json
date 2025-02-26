@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.79.0",
+  "version": "1.80.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -27,6 +27,7 @@
     "bin"
   ],
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/aws4": "^1.5.1",
     "@types/concat-stream": "^2.0.0",
     "@types/express": "catalog:",
