@@ -157,9 +157,13 @@ const filtersModel = computed({
 });
 
 const showEmptyState = computed(() => {
+	// For paginated lists, we rely on the totalItems prop to determine if there are resources
+	const hasResources =
+		props.type === 'list-paginated' ? props.totalItems > 0 : props.resources.length > 0;
+
 	return (
 		route.params.folderId === undefined &&
-		props.resources.length === 0 &&
+		!hasResources &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&
 		!filtersModel.value.search &&

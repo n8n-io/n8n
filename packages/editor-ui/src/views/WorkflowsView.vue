@@ -196,7 +196,7 @@ const currentParentName = computed(() => {
 });
 
 const workflowListResources = computed<Resource[]>(() => {
-	const resources: Array<Resource | null> = (workflowsAndFolders.value || []).map((resource) => {
+	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
 			return {
 				resourceType: 'folder',
@@ -210,7 +210,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				workflowCount: resource.workflowCount ?? 0,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
-		} else if (resource.resource === 'workflow') {
+		} else {
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
@@ -226,10 +226,8 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 			} as WorkflowResource;
 		}
-		// This should not happen since we are only getting workflows and folders from the API
-		return null;
 	});
-	return resources.filter((r): r is Resource => r !== null);
+	return resources;
 });
 
 const statusFilterOptions = computed(() => [
@@ -399,6 +397,7 @@ const fetchWorkflows = async () => {
 		await foldersStore.getFolderPath(routeProjectId, parentFolder);
 		breadcrumbsLoading.value = false;
 	}
+	await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
 
 	delayedLoading.cancel();
 	workflowsAndFolders.value = fetchedResources;
@@ -774,7 +773,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="workflowsStore.totalWorkflowCount"
+		:total-items="foldersStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"

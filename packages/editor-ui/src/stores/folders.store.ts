@@ -10,6 +10,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	const currentFolderId = ref<string | null>(null);
 
+	const totalWorkflowCount = ref<number>(0);
+
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
@@ -84,7 +86,19 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return result;
 	}
 
+	async function fetchTotalWorkflowsAndFoldersCount(projectId?: string): Promise<number> {
+		const { count } = await workflowsApi.getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			{ projectId },
+			{ skip: 0, take: 1 },
+			true,
+		);
+		totalWorkflowCount.value = count;
+		return count;
+	}
+
 	return {
+		fetchTotalWorkflowsAndFoldersCount,
 		currentFolderId,
 		breadcrumbsCache,
 		currentFolderInfo,
@@ -92,5 +106,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		getCachedFolder,
 		createFolder,
 		getFolderPath,
+		totalWorkflowCount,
 	};
 });
