@@ -28,8 +28,6 @@ vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm', () => (
 }));
 
 const mockReplace = vi.fn();
-
-// const routeMock = vi.fn<typeof useRoute>().mockReturnValue(createRoute());
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
@@ -71,7 +69,7 @@ describe('TestDefinitionRootView', () => {
 		);
 	});
 
-	it.only('should assign an execution to a test', async () => {
+	it('should assign an execution to a test', async () => {
 		(useRoute as Mock).mockReturnValue({
 			query: { executionId: 'execution_id', annotationTags: ['2', '3'] },
 		});
