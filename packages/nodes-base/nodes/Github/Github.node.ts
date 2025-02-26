@@ -2592,6 +2592,7 @@ export class Github implements INodeType {
 							}
 
 							await this.putExecutionToWait(WAIT_INDEFINITELY);
+							return [this.getInputData()];
 						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
