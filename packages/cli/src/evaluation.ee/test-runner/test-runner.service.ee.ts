@@ -12,6 +12,7 @@ import type {
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
@@ -181,7 +182,12 @@ export class TestRunnerService {
 			workflowData: { ...workflow, pinData },
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
-			executionData: {
+		};
+
+		// When in queue mode, we need to pass additional data to the execution
+		// the same way as it would be passed in manual mode
+		if (config.getEnv('executions.mode') === 'queue') {
+			data.executionData = {
 				startData: {
 					startNodes: startNodesData.startNodes,
 				},
@@ -194,8 +200,8 @@ export class TestRunnerService {
 					partialExecutionVersion: 2,
 					triggerToStartFrom: startNodesData.triggerToStartFrom,
 				},
-			},
-		};
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
