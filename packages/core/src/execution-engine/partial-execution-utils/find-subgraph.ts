@@ -13,6 +13,12 @@ function findSubgraphRecursive(
 ) {
 	// If the current node is the chosen trigger keep this branch.
 	if (current === trigger) {
+		// If this graph consists of only one node there won't be any connections
+		// and the loop below won't add anything.
+		// We're adding the trigger here so that graphs with one node and no
+		// connections are handled correctly.
+		newGraph.addNode(trigger);
+
 		for (const connection of currentBranch) {
 			newGraph.addNodes(connection.from, connection.to);
 			newGraph.addConnection(connection);
