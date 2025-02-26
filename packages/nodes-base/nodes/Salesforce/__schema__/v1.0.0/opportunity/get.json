@@ -178,5 +178,6 @@
         "Einstein_scores__c": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }
