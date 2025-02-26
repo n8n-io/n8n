@@ -299,5 +299,6 @@
         "tags",
         "resource_subtype",
         "workspace"
-    ]
+    ],
+    "version": 1
 }
