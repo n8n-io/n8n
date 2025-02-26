@@ -10,7 +10,7 @@ import {
 import { useHistoryStore } from '@/stores/history.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { type CanvasNodeDirtiness } from '@/types';
+import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '@/types';
 import { type INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
 
@@ -128,14 +128,14 @@ export function useNodeDirtiness() {
 	function getDirtinessByParametersUpdate(
 		nodeName: string,
 		after: number,
-	): CanvasNodeDirtiness | undefined {
+	): CanvasNodeDirtinessType | undefined {
 		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
-			return 'parameters-updated';
+			return CanvasNodeDirtiness.PARAMETERS_UPDATED;
 		}
 
 		for (const connection of getParentSubNodes(nodeName)) {
 			if (getDirtinessByParametersUpdate(connection.node, after) !== undefined) {
-				return 'upstream-dirty';
+				return CanvasNodeDirtiness.UPSTREAM_DIRTY;
 			}
 		}
 
@@ -145,7 +145,7 @@ export function useNodeDirtiness() {
 	function getDirtinessByConnectionsUpdate(
 		nodeName: string,
 		after: number,
-	): CanvasNodeDirtiness | undefined {
+	): CanvasNodeDirtinessType | undefined {
 		for (let i = historyStore.undoStack.length - 1; i >= 0; i--) {
 			const command = historyStore.undoStack[i];
 
@@ -162,13 +162,13 @@ export function useNodeDirtiness() {
 					workflowsStore.outgoingConnectionsByNodeName,
 				)
 			) {
-				return 'incoming-connections-updated';
+				return CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED;
 			}
 		}
 
 		for (const connection of getParentSubNodes(nodeName)) {
 			if (getDirtinessByConnectionsUpdate(connection.node, after) !== undefined) {
-				return 'upstream-dirty';
+				return CanvasNodeDirtiness.UPSTREAM_DIRTY;
 			}
 		}
 
@@ -230,10 +230,10 @@ export function useNodeDirtiness() {
 			return {};
 		}
 
-		const dirtiness: Record<string, CanvasNodeDirtiness | undefined> = {};
+		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
 
-		function setDirtiness(nodeName: string, value: CanvasNodeDirtiness) {
+		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
 			const loop = findLoop(nodeName, [], workflowsStore.incomingConnectionsByNodeName);
@@ -250,7 +250,8 @@ export function useNodeDirtiness() {
 
 			if (loopEntryNodeName && depthByName.value[loopEntryNodeName]) {
 				// If a node in a loop becomes dirty, the first node in the loop should also be dirty
-				dirtiness[loopEntryNodeName] = dirtiness[loopEntryNodeName] ?? 'upstream-dirty';
+				dirtiness[loopEntryNodeName] =
+					dirtiness[loopEntryNodeName] ?? CanvasNodeDirtiness.UPSTREAM_DIRTY;
 			}
 		}
 
@@ -289,14 +290,14 @@ export function useNodeDirtiness() {
 				});
 
 			if (hasInputPinnedDataChanged) {
-				setDirtiness(nodeName, 'pinned-data-updated');
+				setDirtiness(nodeName, CanvasNodeDirtiness.PINNED_DATA_UPDATED);
 				continue;
 			}
 
 			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
 
 			if (pinnedDataLastRemovedAt > runAt) {
-				setDirtiness(nodeName, 'pinned-data-updated');
+				setDirtiness(nodeName, CanvasNodeDirtiness.PINNED_DATA_UPDATED);
 				continue;
 			}
 		}

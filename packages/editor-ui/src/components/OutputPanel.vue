@@ -23,6 +23,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from 'n8n-design-system';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { CanvasNodeDirtiness } from '@/types';
 
 // Types
 
@@ -207,7 +208,7 @@ const staleData = computed(() => {
 	}
 
 	if (settings.partialExecutionVersion === 2) {
-		return dirtinessByName.value[node.value.name] === 'parameters-updated';
+		return dirtinessByName.value[node.value.name] === CanvasNodeDirtiness.PARAMETERS_UPDATED;
 	}
 
 	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);

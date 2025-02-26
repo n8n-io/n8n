@@ -10,6 +10,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CanvasNodeDirtiness } from '@/types';
 import { type FrontendSettings } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionType, type IConnections, type IRunData } from 'n8n-workflow';
@@ -74,7 +75,7 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('injecting a node', () => {
-		it("should mark a node as 'incoming-connections-updated' if a new node is injected as its parent", async () => {
+		it('should mark a node as dirty if a new node is injected as its parent', async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a🚨✅ -> b✅');
@@ -89,13 +90,13 @@ describe(useNodeDirtiness, () => {
 			await canvasOperations.addNodes([createTestNode({ name: 'c' })], { trackHistory: true });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'incoming-connections-updated',
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});
 
 	describe('deleting a node', () => {
-		it("should mark a node as 'incoming-connections-updated' if a parent node is replaced by removing a node", async () => {
+		it('should mark a node as dirty if a parent node is replaced by removing a node', async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
@@ -103,11 +104,11 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.deleteNodes([workflowsStore.nodesByName.b.id], { trackHistory: true }); // 'a' becomes new parent of 'c'
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 
-		it("should mark a node as 'incoming-connections-updated' if a parent node get removed", async () => {
+		it('should mark a node as dirty if a parent node get removed', async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
@@ -115,19 +116,19 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.deleteNodes([workflowsStore.nodesByName.a.id], { trackHistory: true }); // 'b' has no parent node anymore
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'incoming-connections-updated',
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});
 
 	describe('updating node parameters', () => {
-		it("should mark a node as 'parameters-updated' if its parameter has changed", () => {
+		it('should mark a node as dirty if its parameter has changed', () => {
 			setupTestWorkflow('a🚨✅, b✅, c✅');
 
 			canvasOperations.setNodeParameters(workflowsStore.nodesByName.b.id, { foo: 1 });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'parameters-updated',
+				b: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
 
@@ -185,7 +186,7 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('adding a connection', () => {
-		it("should mark a node as 'incoming-connections-updated' if a new incoming connection is added", () => {
+		it('should mark a node as dirty if a new incoming connection is added', () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
@@ -196,7 +197,7 @@ describe(useNodeDirtiness, () => {
 			);
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});
@@ -225,7 +226,7 @@ describe(useNodeDirtiness, () => {
 			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 
@@ -247,7 +248,7 @@ describe(useNodeDirtiness, () => {
 			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 
 			await historyHelper.undo();
@@ -275,7 +276,7 @@ describe(useNodeDirtiness, () => {
 			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'pinned-data-updated',
+				b: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
 			});
 		});
 
@@ -286,8 +287,8 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				// 'd' is not marked as pinned-data-updated because it has no run data.
-				c: 'pinned-data-updated',
-				e: 'pinned-data-updated',
+				c: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
+				e: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
 			});
 		});
 	});
@@ -300,8 +301,8 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				// 'e' itself is not marked as parameters-updated, because it has no run data.
-				f: 'upstream-dirty',
-				b: 'upstream-dirty',
+				f: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				b: CanvasNodeDirtiness.UPSTREAM_DIRTY,
 			});
 		});
 
@@ -313,7 +314,7 @@ describe(useNodeDirtiness, () => {
 			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'incoming-connections-updated',
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 
@@ -323,7 +324,7 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.deleteNodes([workflowsStore.nodesByName.d.id], { trackHistory: true });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				b: 'incoming-connections-updated',
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});
@@ -335,8 +336,8 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.setNodeParameters(workflowsStore.nodesByName.e.id, { foo: 1 });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'upstream-dirty',
-				e: 'parameters-updated',
+				c: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				e: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
 
@@ -346,7 +347,7 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.setNodeParameters(workflowsStore.nodesByName.c.id, { foo: 1 });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'parameters-updated',
+				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
 	});
@@ -360,13 +361,13 @@ describe(useNodeDirtiness, () => {
 			canvasOperations.deleteNodes([workflowsStore.nodesByName.b.id], { trackHistory: true }); // 'a' becomes new parent of 'c'
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				c: 'incoming-connections-updated',
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 
 			await canvasOperations.renameNode('c', 'd', { trackHistory: true });
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
-				d: 'incoming-connections-updated',
+				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});

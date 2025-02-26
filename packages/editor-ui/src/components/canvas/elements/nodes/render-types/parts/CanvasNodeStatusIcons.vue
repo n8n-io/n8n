@@ -4,7 +4,7 @@ import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@/composables/useI18n';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from 'n8n-design-system';
 
 const nodeHelpers = useNodeHelpers();
@@ -76,7 +76,11 @@ const dirtiness = computed(() =>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
 				{{
-					i18n.baseText(dirtiness === 'parameters-updated' ? 'node.dirty' : 'node.subjectToChange')
+					i18n.baseText(
+						dirtiness === CanvasNodeDirtiness.PARAMETERS_UPDATED
+							? 'node.dirty'
+							: 'node.subjectToChange',
+					)
 				}}
 			</template>
 			<div data-test-id="canvas-node-status-warning" :class="[$style.status, $style.warning]">
