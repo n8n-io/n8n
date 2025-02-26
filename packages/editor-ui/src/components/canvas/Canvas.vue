@@ -22,6 +22,7 @@ import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, wa
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -43,13 +44,15 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
-	'update:node:active': [id: string];
+	'update:node:activated': [id: string];
+	'update:node:deactivated': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id: string];
+	'update:node:selected': [id?: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'click:node': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -145,28 +148,54 @@ const classes = computed(() => ({
 }));
 
 /**
- * Key bindings
+ * Panning and Selection key bindings
  */
 
-const disableKeyBindings = computed(() => !props.keyBindings);
-
-/**
- * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
- */
-
+// @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
-onKeyDown(panningKeyCode.value, () => {
+function switchToPanningMode() {
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
-});
+}
 
-onKeyUp(panningKeyCode.value, () => {
+function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+}
+
+onKeyDown(panningKeyCode.value, switchToPanningMode, {
+	dedupe: true,
 });
+
+onKeyUp(panningKeyCode.value, switchToSelectionMode);
+
+/**
+ * Rename node key bindings
+ * We differentiate between short and long press because the space key is also used for activating panning
+ */
+
+const renameKeyCode = ' ';
+
+useShortKeyPress(
+	renameKeyCode,
+	() => {
+		if (lastSelectedNode.value) {
+			emit('update:node:name', lastSelectedNode.value.id);
+		}
+	},
+	{
+		disabled: toRef(props, 'readOnly'),
+	},
+);
+
+/**
+ * Key bindings
+ */
+
+const disableKeyBindings = computed(() => !props.keyBindings);
 
 function selectLeftNode(id: string) {
 	const incomingNodes = getIncomingNodes(id);
@@ -218,7 +247,7 @@ function selectUpstreamNodes(id: string) {
 
 const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
-	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+	enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
 	// Support both key and code for zooming in and out
 	'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
@@ -296,6 +325,8 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	emit('click:node', node.id);
+
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
 	}
@@ -307,9 +338,13 @@ function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
-function onSetNodeActive(id: string) {
-	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:active' });
-	emit('update:node:active', id);
+function onSetNodeActivated(id: string) {
+	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:activated' });
+	emit('update:node:activated', id);
+}
+
+function onSetNodeDeactivated(id: string) {
+	emit('update:node:deactivated', id);
 }
 
 function clearSelectedNodes() {
@@ -317,8 +352,7 @@ function clearSelectedNodes() {
 }
 
 function onSelectNode() {
-	if (!lastSelectedNode.value) return;
-	emit('update:node:selected', lastSelectedNode.value.id);
+	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
 function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
@@ -578,7 +612,7 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':
-			return onSetNodeActive(nodeIds[0]);
+			return onSetNodeActivated(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
 		case 'change_color':
@@ -644,6 +678,14 @@ function onMinimapMouseLeave() {
 }
 
 /**
+ * Window Events
+ */
+
+function onWindowBlur() {
+	switchToSelectionMode();
+}
+
+/**
  * Lifecycle
  */
 
@@ -652,11 +694,15 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+
+	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
+
+	window.removeEventListener('blur', onWindowBlur);
 });
 
 onPaneReady(async () => {
@@ -731,7 +777,8 @@ provide(CanvasKey, {
 				@run="onRunNode"
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
-				@activate="onSetNodeActive"
+				@activate="onSetNodeActivated"
+				@deactivate="onSetNodeDeactivated"
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
 				@update:inputs="onUpdateNodeInputs"

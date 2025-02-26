@@ -48,7 +48,7 @@ import {
 } from '@/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 
@@ -714,7 +714,9 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(id);
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(id);
-			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(new RemoveNodeCommand(node));
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
+				new RemoveNodeCommand(node, expect.any(Number)),
+			);
 		});
 
 		it('should delete node without tracking history', () => {

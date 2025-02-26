@@ -9,6 +9,8 @@ import {
 	type Workflow,
 	type IExecuteData,
 	type ITaskData,
+	NodeConnectionType,
+	type INodeConnections,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -21,9 +23,11 @@ import { useI18n } from '@/composables/useI18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
+		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
@@ -37,6 +41,10 @@ vi.mock('@/stores/workflows.store', () => ({
 		nodeIssuesExit: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
+		getPinnedDataLastUpdate: vi.fn(),
+		getPinnedDataLastRemovedAt: vi.fn(),
+		incomingConnectionsByNodeName: vi.fn(),
+		outgoingConnectionsByNodeName: vi.fn(),
 	}),
 }));
 
@@ -326,6 +334,20 @@ describe('useRunWorkflow({ router })', () => {
 			const composable = useRunWorkflow({ router });
 			const parentName = 'When clicking';
 			const executeName = 'Code';
+			vi.mocked(workflowsStore).allNodes = [
+				createTestNode({ name: parentName }),
+				createTestNode({ name: executeName }),
+			];
+			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation((nodeName) =>
+				nodeName === parentName
+					? { main: [[{ node: executeName, type: NodeConnectionType.Main, index: 0 }]] }
+					: ({} as INodeConnections),
+			);
+			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockImplementation((nodeName) =>
+				nodeName === executeName
+					? { main: [[{ node: parentName, type: NodeConnectionType.Main, index: 0 }]] }
+					: ({} as INodeConnections),
+			);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				[parentName]: [
 					{

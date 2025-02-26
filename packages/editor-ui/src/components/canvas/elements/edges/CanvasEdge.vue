@@ -87,7 +87,7 @@ const edgeClasses = computed(() => ({
 
 const edgeLabelStyle = computed(() => ({
 	transform: `translate(0, ${isConnectorStraight.value ? '-100%' : '0%'})`,
-	color: edgeColor.value,
+	color: 'var(--color-text-base)',
 }));
 
 const isConnectorStraight = computed(() => renderData.value.isConnectorStraight);

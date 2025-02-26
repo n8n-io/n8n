@@ -117,7 +117,9 @@ export class Workflow {
 		this.connectionsBySourceNode = parameters.connections;
 
 		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(parameters.connections);
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
+			parameters.connections,
+		);
 
 		this.active = parameters.active || false;
 
@@ -143,7 +145,7 @@ export class Workflow {
 	 * to easily find parent nodes.
 	 *
 	 */
-	__getConnectionsByDestination(connections: IConnections): IConnections {
+	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
 		let connectionInfo;
@@ -446,7 +448,7 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
 			this.connectionsBySourceNode,
 		);
 	}
@@ -458,7 +460,6 @@ export class Workflow {
 	 */
 	getHighestNode(
 		nodeName: string,
-		type: NodeConnectionType = NodeConnectionType.Main,
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -473,7 +474,7 @@ export class Workflow {
 			return currentHighest;
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(type)) {
+		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionType.Main)) {
 			// Node does not have incoming connections of given type
 			return currentHighest;
 		}
@@ -493,14 +494,15 @@ export class Workflow {
 		let connectionsByIndex: IConnection[] | null;
 		for (
 			let connectionIndex = 0;
-			connectionIndex < this.connectionsByDestinationNode[nodeName][type].length;
+			connectionIndex < this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main].length;
 			connectionIndex++
 		) {
 			if (nodeConnectionIndex !== undefined && nodeConnectionIndex !== connectionIndex) {
 				// If a connection-index is given ignore all other ones
 				continue;
 			}
-			connectionsByIndex = this.connectionsByDestinationNode[nodeName][type][connectionIndex];
+			connectionsByIndex =
+				this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main][connectionIndex];
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex?.forEach((connection) => {
 				if (checkedNodes.includes(connection.node)) {
@@ -508,7 +510,10 @@ export class Workflow {
 					return;
 				}
 
-				addNodes = this.getHighestNode(connection.node, type, undefined, checkedNodes);
+				// Ignore connections for nodes that don't exist in this workflow
+				if (!(connection.node in this.nodes)) return;
+
+				addNodes = this.getHighestNode(connection.node, undefined, checkedNodes);
 
 				if (addNodes.length === 0) {
 					// The checked node does not have any further parents so add it

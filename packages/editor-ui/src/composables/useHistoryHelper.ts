@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/ui.store';
 
 import { onMounted, onUnmounted, nextTick } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { getNodeViewTab } from '@/utils/canvasUtils';
+import { getNodeViewTab } from '@/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
@@ -32,13 +32,16 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				if (!command) {
 					return;
 				}
+
+				const timestamp = Date.now();
+
 				if (command instanceof BulkCommand) {
 					historyStore.bulkInProgress = true;
 					const commands = command.commands;
 					const reverseCommands: Command[] = [];
 					for (let i = commands.length - 1; i >= 0; i--) {
 						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand());
+						reverseCommands.push(commands[i].getReverseCommand(timestamp));
 					}
 					historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
 					await nextTick();
@@ -46,7 +49,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				}
 				if (command instanceof Command) {
 					await command.revert();
-					historyStore.pushUndoableToRedo(command.getReverseCommand());
+					historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
 					uiStore.stateIsDirty = true;
 				}
 				trackCommand(command, 'undo');
@@ -61,13 +64,16 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				if (!command) {
 					return;
 				}
+
+				const timestamp = Date.now();
+
 				if (command instanceof BulkCommand) {
 					historyStore.bulkInProgress = true;
 					const commands = command.commands;
 					const reverseCommands = [];
 					for (let i = commands.length - 1; i >= 0; i--) {
 						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand());
+						reverseCommands.push(commands[i].getReverseCommand(timestamp));
 					}
 					historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
 					await nextTick();
@@ -75,7 +81,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 				}
 				if (command instanceof Command) {
 					await command.revert();
-					historyStore.pushCommandToUndo(command.getReverseCommand(), false);
+					historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
 					uiStore.stateIsDirty = true;
 				}
 				trackCommand(command, 'redo');

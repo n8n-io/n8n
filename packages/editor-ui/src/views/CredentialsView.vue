@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import type { ICredentialTypeMap } from '@/Interface';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import ResourcesListLayout, {
 	type Resource,
@@ -12,6 +12,7 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	EnterpriseEditionFeature,
+	VIEWS,
 } from '@/constants';
 import { useUIStore, listenForModalChanges } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -30,6 +31,7 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { N8nCheckbox } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import { isCredentialsResource } from '@/utils/typeGuards';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -75,6 +77,7 @@ const needsSetup = (data: string | undefined): boolean => {
 
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
+		resourceType: 'credential',
 		id: credential.id,
 		name: credential.name,
 		value: '',
@@ -82,10 +85,10 @@ const allCredentials = computed<Resource[]>(() =>
 		createdAt: credential.createdAt,
 		homeProject: credential.homeProject,
 		scopes: credential.scopes,
-		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
+		type: credential.type,
 	})),
 );
 
@@ -123,28 +126,11 @@ listenForModalChanges({
 	},
 });
 
-watch(
-	() => props.credentialId,
-	(id) => {
-		if (!id) return;
-
-		if (id === 'create') {
-			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
-			return;
-		}
-
-		uiStore.openExistingCredential(id);
-	},
-	{
-		immediate: true,
-	},
-);
-
 const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
-	const Resource = resource as ICredentialsResponse & { needsSetup: boolean };
+	if (!isCredentialsResource(resource)) return false;
 	const filtersToApply = newFilters as Filters;
 	if (filtersToApply.type && filtersToApply.type.length > 0) {
-		matches = matches && filtersToApply.type.includes(Resource.type);
+		matches = matches && filtersToApply.type.includes(resource.type);
 	}
 
 	if (filtersToApply.search) {
@@ -152,15 +138,37 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 
 		matches =
 			matches ||
-			(credentialTypesById.value[Resource.type] &&
-				credentialTypesById.value[Resource.type].displayName.toLowerCase().includes(searchString));
+			(credentialTypesById.value[resource.type] &&
+				credentialTypesById.value[resource.type].displayName.toLowerCase().includes(searchString));
 	}
 
 	if (filtersToApply.setupNeeded) {
-		matches = matches && Resource.needsSetup;
+		matches = matches && resource.needsSetup;
 	}
 
 	return matches;
+};
+
+const maybeCreateCredential = () => {
+	if (props.credentialId === 'create') {
+		if (projectPermissions.value.credential.create) {
+			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+		} else {
+			void router.replace({ name: VIEWS.HOMEPAGE });
+		}
+	}
+};
+
+const maybeEditCredential = () => {
+	if (!!props.credentialId && props.credentialId !== 'create') {
+		const credential = credentialsStore.getCredentialById(props.credentialId);
+		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
+		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
+			uiStore.openExistingCredential(props.credentialId);
+		} else {
+			void router.replace({ name: VIEWS.HOMEPAGE });
+		}
+	}
 };
 
 const initialize = async () => {
@@ -177,6 +185,8 @@ const initialize = async () => {
 	];
 
 	await Promise.all(loadPromises);
+	maybeCreateCredential();
+	maybeEditCredential();
 	loading.value = false;
 };
 
@@ -196,6 +206,14 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 watch(() => route?.params?.projectId, initialize);
+
+watch(
+	() => props.credentialId,
+	() => {
+		maybeCreateCredential();
+		maybeEditCredential();
+	},
+);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('credentials.heading'));

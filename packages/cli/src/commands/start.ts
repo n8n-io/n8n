@@ -263,11 +263,11 @@ export class Start extends BaseCommand {
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
-				await this.license.reinit(); // to disable renewal
+				this.license.disableAutoRenewals();
 				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
-				await this.license.reinit(); // to enable renewal
+				this.license.enableAutoRenewals();
 				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
