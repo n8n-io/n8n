@@ -12,10 +12,12 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
+	activate: [id: string];
 }>();
 
 const { initialized, viewport } = useCanvas();
 const {
+	id,
 	label,
 	subtitle,
 	inputs,
@@ -122,10 +124,20 @@ watch(viewport, () => {
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
+
+function onActivate() {
+	emit('activate', id.value);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
+	<div
+		:class="classes"
+		:style="styles"
+		:data-test-id="dataTestId"
+		@contextmenu="openContextMenu"
+		@dblclick.stop="onActivate"
+	>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
