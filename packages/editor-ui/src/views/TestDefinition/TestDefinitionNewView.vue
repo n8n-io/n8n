@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { VIEWS } from '@/constants';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useRootStore } from '@/stores/root.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/root.store';
-import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { useRoute, useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
@@ -16,9 +17,11 @@ const { state, createTest, updateTest } = useTestDefinitionForm();
 const testDefinitionStore = useTestDefinitionStore();
 
 const tagsStore = useAnnotationTagsStore();
+const executionsStore = useExecutionsStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const router = useRouter();
+const route = useRoute();
 
 function generateTagFromName(name: string): string {
 	let tag = name.toLowerCase().replace(/\s+/g, '_');
@@ -50,6 +53,11 @@ void createTest(props.name).then(async (test) => {
 
 	const testTag = await createTag(tag);
 	state.value.tags.value = [testTag.id];
+
+	if (route.query?.executionId && Array.isArray(route.query.annotationTags)) {
+		const newTags = [...route.query.annotationTags, testTag.id];
+		await executionsStore.annotateExecution(route.query.executionId.toString(), { tags: newTags });
+	}
 
 	await updateTest(test.id);
 	testDefinitionStore.updateRunFieldIssues(test.id);
