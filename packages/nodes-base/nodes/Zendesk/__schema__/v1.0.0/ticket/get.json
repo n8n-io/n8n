@@ -191,5 +191,6 @@
         "allow_channelback",
         "allow_attachments",
         "from_messaging_channel"
-    ]
+    ],
+    "version": 1
 }
