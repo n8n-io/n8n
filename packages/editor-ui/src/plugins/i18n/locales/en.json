@@ -2947,6 +2947,7 @@
 	"testDefinition.executions.addTo.new": "Add to Test",
 	"testDefinition.executions.addTo.existing": "Add to \"{name}\"",
 	"testDefinition.executions.addedTo": "Added to \"{name}\"",
+	"testDefinition.executions.removeFrom": "Remove from \"{name}\"",
 	"testDefinition.executions.removedFrom": "Execution removed from \"{name}\"",
 	"testDefinition.executions.toast.addedTo": "Go back to \"{name}\"",
 	"testDefinition.executions.tooltip.noExecutions": "Evaluation executions can not be added to tests",
