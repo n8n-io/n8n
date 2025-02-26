@@ -67,13 +67,13 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
 	populateVectorStore: (
-		context: ISupplyDataFunctions,
+		context: IExecuteFunctions | ISupplyDataFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
 	) => Promise<void>;
 	getVectorStoreClient: (
-		context: ISupplyDataFunctions,
+		context: IExecuteFunctions | ISupplyDataFunctions,
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
