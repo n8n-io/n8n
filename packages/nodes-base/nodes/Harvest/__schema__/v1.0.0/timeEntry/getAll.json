@@ -191,5 +191,6 @@
         "task_assignment",
         "invoice",
         "external_reference"
-    ]
+    ],
+    "version": 1
 }
