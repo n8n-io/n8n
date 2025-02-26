@@ -88,5 +88,6 @@
         "render_pdf",
         "pdf_url",
         "pdf_url_compressed"
-    ]
+    ],
+    "version": 1
 }
