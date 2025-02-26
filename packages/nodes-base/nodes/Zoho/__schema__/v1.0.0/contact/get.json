@@ -234,5 +234,6 @@
         "Last_Name",
         "$in_merge",
         "$approval_state"
-    ]
+    ],
+    "version": 1
 }
