@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
+import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -25,6 +26,7 @@ export class FolderService {
 	constructor(
 		private readonly folderRepository: FolderRepository,
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
@@ -45,7 +47,7 @@ export class FolderService {
 	}
 
 	async updateFolder(folderId: string, projectId: string, { name, tagIds }: UpdateFolderDto) {
-		await this.getFolderInProject(folderId, projectId);
+		await this.findFolderInProjectOrFail(folderId, projectId);
 		if (name) {
 			await this.folderRepository.update({ id: folderId }, { name });
 		}
@@ -116,7 +118,7 @@ export class FolderService {
 
 		return await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveToFolder(folderId, transferToFolderId, tx);
-			await this.workflowsRepository.moveToFolder(folderId, transferToFolderId, tx);
+			await this.workflowRepository.moveToFolder(folderId, transferToFolderId, tx);
 			await tx.delete(Folder, { id: folderId });
 			return;
 		});
