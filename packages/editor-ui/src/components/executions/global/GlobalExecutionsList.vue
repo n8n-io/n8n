@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import { watch, computed, ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
@@ -17,6 +18,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useAsyncState } from '@vueuse/core';
 
 const props = withDefaults(
 	defineProps<{
@@ -36,6 +40,7 @@ const emit = defineEmits<{
 	'execution:stop': [];
 }>();
 
+const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
@@ -50,6 +55,19 @@ const selectedItems = ref<Record<string, boolean>>({});
 
 const message = useMessage();
 const toast = useToast();
+
+const insightsStore = useInsightsStore();
+const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
+	immediate: true,
+});
+const isOverviewSubPage = computed(
+	() =>
+		route.name === VIEWS.WORKFLOWS ||
+		route.name === VIEWS.HOMEPAGE ||
+		route.name === VIEWS.CREDENTIALS ||
+		route.name === VIEWS.EXECUTIONS ||
+		route.name === VIEWS.FOLDERS,
+);
 
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {
@@ -334,7 +352,9 @@ const goToUpgrade = () => {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectHeader />
+		<ProjectHeader>
+			<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
+		</ProjectHeader>
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">

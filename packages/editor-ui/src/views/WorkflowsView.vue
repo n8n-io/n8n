@@ -90,6 +90,14 @@ const insightsStore = useInsightsStore();
 const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
 	immediate: true,
 });
+const isOverviewSubPage = computed(
+	() =>
+		route.name === VIEWS.WORKFLOWS ||
+		route.name === VIEWS.HOMEPAGE ||
+		route.name === VIEWS.CREDENTIALS ||
+		route.name === VIEWS.EXECUTIONS ||
+		route.name === VIEWS.FOLDERS,
+);
 
 const loading = ref(false);
 const filters = ref<Filters>({
@@ -576,7 +584,7 @@ const onFolderOpened = (data: { folder: FolderResource }) => {
 	>
 		<template #header>
 			<ProjectHeader>
-				<InsightsSummary class="summary" :summaries="summaries"> </InsightsSummary>
+				<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
 			</ProjectHeader>
 		</template>
 		<template #callout>

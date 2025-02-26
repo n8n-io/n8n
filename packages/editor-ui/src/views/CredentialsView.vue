@@ -32,6 +32,9 @@ import { N8nCheckbox } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { isCredentialsResource } from '@/utils/typeGuards';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useAsyncState } from '@vueuse/core';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -50,6 +53,19 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+
+const insightsStore = useInsightsStore();
+const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
+	immediate: true,
+});
+const isOverviewSubPage = computed(
+	() =>
+		route.name === VIEWS.WORKFLOWS ||
+		route.name === VIEWS.HOMEPAGE ||
+		route.name === VIEWS.CREDENTIALS ||
+		route.name === VIEWS.EXECUTIONS ||
+		route.name === VIEWS.FOLDERS,
+);
 
 type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
 const updateFilter = (state: Filters) => {
@@ -235,7 +251,9 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 	>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader>
+				<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
+			</ProjectHeader>
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
