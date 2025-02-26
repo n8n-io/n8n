@@ -160,5 +160,6 @@
         "subject",
         "recipient",
         "brand_id"
-    ]
+    ],
+    "version": 1
 }
