@@ -81,6 +81,7 @@ import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/17344
 import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
+import { UpdateParentFolderIdColumn1740445074052 } from '../common/1740445074052-UpdateParentFolderIdColumn';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -164,4 +165,5 @@ export const mysqlMigrations: Migration[] = [
 	AddErrorColumnsToTestRuns1737715421462,
 	CreateFolderTable1738709609940,
 	FixTestDefinitionPrimaryKey1739873751194,
+	UpdateParentFolderIdColumn1740445074052,
 ];

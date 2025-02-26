@@ -1,8 +1,10 @@
-import type { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
+import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 
 export interface SimpleFolderNode {
@@ -22,12 +24,13 @@ export class FolderService {
 	constructor(
 		private readonly folderRepository: FolderRepository,
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
+		private readonly workflowsRepository: WorkflowRepository,
 	) {}
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
 		let parentFolder = null;
 		if (parentFolderId) {
-			parentFolder = await this.getFolderInProject(parentFolderId, projectId);
+			parentFolder = await this.findFolderInProjectOrFail(parentFolderId, projectId);
 		}
 
 		const folderEntity = this.folderRepository.create({
@@ -42,7 +45,7 @@ export class FolderService {
 	}
 
 	async updateFolder(folderId: string, projectId: string, { name, tagIds }: UpdateFolderDto) {
-		await this.getFolderInProject(folderId, projectId);
+		await this.findFolderInProjectOrFail(folderId, projectId);
 		if (name) {
 			await this.folderRepository.update({ id: folderId }, { name });
 		}
@@ -51,7 +54,7 @@ export class FolderService {
 		}
 	}
 
-	async getFolderInProject(folderId: string, projectId: string) {
+	async findFolderInProjectOrFail(folderId: string, projectId: string) {
 		try {
 			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
 		} catch {
@@ -60,7 +63,7 @@ export class FolderService {
 	}
 
 	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
-		await this.getFolderInProject(folderId, projectId);
+		await this.findFolderInProjectOrFail(folderId, projectId);
 
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
@@ -95,6 +98,24 @@ export class FolderService {
 		const result = await mainQuery.getRawMany<FolderPathRow>();
 
 		return this.transformFolderPathToTree(result);
+	}
+
+	async deleteFolder(folderId: string, projectId: string, { transferToFolderId }: DeleteFolderDto) {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		if (!transferToFolderId) {
+			await this.folderRepository.delete({ id: folderId });
+			return;
+		}
+
+		await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+
+		return await this.folderRepository.manager.transaction(async (tx) => {
+			await this.folderRepository.moveToFolder(folderId, transferToFolderId, tx);
+			await this.workflowsRepository.moveToFolder(folderId, transferToFolderId, tx);
+			await tx.delete(Folder, { id: folderId });
+			return;
+		});
 	}
 
 	private transformFolderPathToTree(flatPath: FolderPathRow[]): SimpleFolderNode[] {

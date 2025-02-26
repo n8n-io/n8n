@@ -8,6 +8,7 @@ import type {
 	FindOptionsSelect,
 	FindManyOptions,
 	FindOptionsRelations,
+	EntityManager,
 } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
@@ -19,6 +20,7 @@ import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -388,7 +390,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (filter?.parentFolderId === '0') {
+		if (filter?.parentFolderId === PROJECT_ROOT) {
 			qb.andWhere('workflow.parentFolderId IS NULL');
 		} else if (filter?.parentFolderId) {
 			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
@@ -604,5 +606,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ active: activeState });
+	}
+
+	async moveToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
+		await tx.update(
+			WorkflowEntity,
+			{ parentFolder: { id: fromFolderId } },
+			{
+				parentFolder: {
+					id: toFolderId,
+				},
+			},
+		);
 	}
 }

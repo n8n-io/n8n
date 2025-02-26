@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 
@@ -152,7 +153,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 			});
 		}
 
-		if (filter?.parentFolderId === '0') {
+		if (filter?.parentFolderId === PROJECT_ROOT) {
 			query.andWhere('folder.parentFolderId IS NULL');
 		} else if (filter?.parentFolderId) {
 			query.andWhere('folder.parentFolderId = :parentFolderId', {
@@ -236,5 +237,20 @@ export class FolderRepository extends Repository<FolderWithWorkflowsCount> {
 				},
 			},
 		});
+	}
+
+	async moveToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager): Promise<void> {
+		await tx.update(
+			Folder,
+			{ parentFolder: { id: fromFolderId } },
+			{
+				parentFolder:
+					toFolderId === PROJECT_ROOT
+						? null
+						: {
+								id: toFolderId,
+							},
+			},
+		);
 	}
 }
