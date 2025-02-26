@@ -1327,7 +1327,7 @@
 	"nodeView.redirecting": "Redirecting",
 	"nodeView.refresh": "Refresh",
 	"nodeView.resetZoom": "Reset Zoom",
-	"nodeView.tidyUp": "Tidy up",
+	"nodeView.tidyUp": "Tidy Up",
 	"nodeView.runButtonText.executeWorkflow": "Test workflow",
 	"nodeView.runButtonText.executingWorkflow": "Executing workflow",
 	"nodeView.runButtonText.waitingForTriggerEvent": "Waiting for trigger event",

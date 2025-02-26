@@ -29,12 +29,12 @@ export type LayoutResult = { boundingBox: BoundingBox; nodes: NodeLayoutResult[]
 
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
-const NODE_X_SPACING = GRID_SIZE * 8;
+const NODE_X_SPACING = GRID_SIZE * 6;
 const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
 const AI_X_SPACING = GRID_SIZE * 2;
 const AI_Y_SPACING = GRID_SIZE * 6;
-const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
+const STICKY_BOTTOM_PADDING = GRID_SIZE * 3;
 
 export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 	const {
@@ -300,10 +300,6 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 			]);
 	}
 
-	function snapToGrid(num: number) {
-		return Math.floor(num / GRID_SIZE) * GRID_SIZE;
-	}
-
 	function layout(target: CanvasLayoutTarget): LayoutResult {
 		const { nodes, edges } = getTargetData(target);
 
@@ -509,8 +505,8 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 			nodes: positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
 				return {
 					id,
-					x: snapToGrid(boundingBox.x - anchor.x),
-					y: snapToGrid(boundingBox.y - anchor.y),
+					x: boundingBox.x - anchor.x,
+					y: boundingBox.y - anchor.y,
 				};
 			}),
 		};
