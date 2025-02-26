@@ -396,7 +396,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function clearNodeActive() {
-		ndvStore.activeNodeName = '';
+		ndvStore.activeNodeName = null;
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
