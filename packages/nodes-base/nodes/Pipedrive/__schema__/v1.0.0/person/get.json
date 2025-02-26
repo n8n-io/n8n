@@ -189,5 +189,6 @@
         "postal_address_long": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }
