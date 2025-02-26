@@ -85,5 +85,6 @@
         "popularity",
         "type",
         "uri"
-    ]
+    ],
+    "version": 1
 }
