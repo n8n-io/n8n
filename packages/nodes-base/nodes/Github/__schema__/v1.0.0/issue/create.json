@@ -344,5 +344,6 @@
         "timeline_url",
         "performed_via_github_app",
         "state_reason"
-    ]
+    ],
+    "version": 1
 }
