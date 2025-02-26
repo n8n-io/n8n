@@ -139,5 +139,6 @@
         "family_name",
         "middle_name",
         "owner_id"
-    ]
+    ],
+    "version": 1
 }
