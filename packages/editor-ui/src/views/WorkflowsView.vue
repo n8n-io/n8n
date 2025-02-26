@@ -116,6 +116,12 @@ const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
+/**
+ * Folder actions
+ * These can appear on the list header, and then they are applied to current folder
+ * or on each folder card, and then they are applied to the clicked folder
+ * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
+ */
 const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
 	{
 		label: 'Open',
@@ -269,6 +275,10 @@ const emptyListDescription = computed(() => {
 	}
 });
 
+/**
+ * WATCHERS AND STORE SUBSCRIPTIONS
+ */
+
 watch(
 	() => route.params?.projectId,
 	async () => {
@@ -284,7 +294,15 @@ watch(
 	},
 );
 
-// Lifecycle hooks
+sourceControlStore.$onAction(({ name, after }) => {
+	if (name !== 'pullWorkfolder') return;
+	after(async () => await initialize());
+});
+
+/**
+ * LIFE-CYCLE HOOKS
+ */
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 	void usersStore.showPersonalizationSurvey();
@@ -298,43 +316,11 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 });
 
-// Methods
-const onFiltersUpdated = async () => {
-	currentPage.value = 1;
-	saveFiltersOnQueryString();
-	await fetchWorkflows();
-};
+/**
+ * METHODS
+ */
 
-const onSearchUpdated = async (search: string) => {
-	currentPage.value = 1;
-	saveFiltersOnQueryString();
-	if (search) {
-		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
-	} else {
-		// No need to debounce when clearing search
-		await fetchWorkflows();
-	}
-};
-
-const addWorkflow = () => {
-	uiStore.nodeViewInitialized = false;
-	void router.push({
-		name: VIEWS.NEW_WORKFLOW,
-		query: { projectId: route.params?.projectId, parentFolderId: route.params?.folderId },
-	});
-
-	telemetry.track('User clicked add workflow button', {
-		source: 'Workflows list',
-	});
-	trackEmptyCardClick('blank');
-};
-
-const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
-	telemetry.track('User clicked empty page option', {
-		option,
-	});
-};
-
+// Main component fetch methods
 const initialize = async () => {
 	loading.value = true;
 	await setFiltersFromQueryString();
@@ -351,16 +337,12 @@ const initialize = async () => {
 	loading.value = false;
 };
 
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await fetchWorkflows();
-};
-
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	await fetchWorkflows();
-};
-
+/**
+ * Fetches:
+ * - Current workflows and folders page
+ * - Total count of workflows and folders in the current project
+ * - Path to the current folder (if not cached)
+ */
 const fetchWorkflows = async () => {
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
@@ -380,7 +362,7 @@ const fetchWorkflows = async () => {
 			name: filters.value.search || undefined,
 			active: filters.value.status ? Boolean(filters.value.status) : undefined,
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
-			parentFolderId: parentFolder,
+			parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
 		},
 		showFolders.value,
 	);
@@ -404,6 +386,46 @@ const fetchWorkflows = async () => {
 	return fetchedResources;
 };
 
+// Filter and sort methods
+
+const onSortUpdated = async (sort: string) => {
+	currentSort.value =
+		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	if (currentSort.value !== 'updatedAt:desc') {
+		void router.replace({ query: { ...route.query, sort } });
+	} else {
+		void router.replace({ query: { ...route.query, sort: undefined } });
+	}
+	await fetchWorkflows();
+};
+
+const onFiltersUpdated = async () => {
+	currentPage.value = 1;
+	saveFiltersOnQueryString();
+	await fetchWorkflows();
+};
+
+const onSearchUpdated = async (search: string) => {
+	currentPage.value = 1;
+	saveFiltersOnQueryString();
+	if (search) {
+		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+	} else {
+		// No need to debounce when clearing search
+		await fetchWorkflows();
+	}
+};
+
+const setCurrentPage = async (page: number) => {
+	currentPage.value = page;
+	await fetchWorkflows();
+};
+
+const setPageSize = async (size: number) => {
+	pageSize.value = size;
+	await fetchWorkflows();
+};
+
 const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
@@ -412,6 +434,8 @@ const onClickTag = async (tagId: string) => {
 		await fetchWorkflows();
 	}
 };
+
+// Query string methods
 
 const saveFiltersOnQueryString = () => {
 	// Get current query parameters
@@ -446,10 +470,6 @@ const saveFiltersOnQueryString = () => {
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
-
-function isValidProjectId(projectId: string) {
-	return projectsStore.availableProjects.some((project) => project.id === projectId);
-}
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
@@ -518,10 +538,30 @@ const setFiltersFromQueryString = async () => {
 	void router.replace({ query: newQuery });
 };
 
-sourceControlStore.$onAction(({ name, after }) => {
-	if (name !== 'pullWorkfolder') return;
-	after(async () => await initialize());
-});
+// Misc methods
+
+const addWorkflow = () => {
+	uiStore.nodeViewInitialized = false;
+	void router.push({
+		name: VIEWS.NEW_WORKFLOW,
+		query: { projectId: route.params?.projectId, parentFolderId: route.params?.folderId },
+	});
+
+	telemetry.track('User clicked add workflow button', {
+		source: 'Workflows list',
+	});
+	trackEmptyCardClick('blank');
+};
+
+const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
+	telemetry.track('User clicked empty page option', {
+		option,
+	});
+};
+
+function isValidProjectId(projectId: string) {
+	return projectsStore.availableProjects.some((project) => project.id === projectId);
+}
 
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
@@ -552,17 +592,6 @@ const dismissEasyAICallout = () => {
 	easyAICalloutVisible.value = false;
 };
 
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
-	}
-	await fetchWorkflows();
-};
-
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
 		(w): w is WorkflowListItem => w.id === data.id,
@@ -570,6 +599,8 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	if (!workflow) return;
 	workflow.active = data.active;
 };
+
+// Breadcrumbs methods
 
 /**
  * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
@@ -647,6 +678,70 @@ const cardBreadcrumbs = computed(() => {
 	};
 });
 
+const onBreadcrumbItemClick = (item: PathItem) => {
+	if (item.href) {
+		void router
+			.push(item.href)
+			.then(() => {
+				foldersStore.currentFolderId = item.id;
+			})
+			.catch((error) => {
+				toast.showError(error, 'Error navigating to folder');
+			});
+	}
+};
+
+// Folder actions
+
+// Main header action handlers
+// These render next to the breadcrumbs and are applied to the current folder/project
+const onBreadCrumbsAction = async (action: string) => {
+	switch (action) {
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
+			if (!route.params.projectId) return;
+			const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
+			if (!currentParent) return;
+			await createFolder({
+				id: (route.params.folderId as string) ?? '-1',
+				name: currentParent,
+				type: currentFolder.value ? 'folder' : 'project',
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
+			addWorkflow();
+			break;
+		default:
+			break;
+	}
+};
+
+// Folder card action handlers
+// These render on each folder card and are applied to the clicked folder
+const onFolderCardAction = async (payload: { action: string; folderId: string }) => {
+	const clickedFolder = foldersStore.getCachedFolder(payload.folderId);
+	if (!clickedFolder) return;
+	switch (payload.action) {
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
+			await createFolder({
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+				type: 'folder',
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
+			foldersStore.currentFolderId = clickedFolder.id;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
+			});
+			break;
+		default:
+			break;
+	}
+};
+
+// Reusable action handlers
+// Both action handlers ultimately call these methods once folder to apply action to is determined
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
@@ -700,62 +795,6 @@ const createFolderInCurrent = async () => {
 		name: currentParent,
 		type: currentFolder.value ? 'folder' : 'project',
 	});
-};
-
-const onBreadcrumbItemClick = (item: PathItem) => {
-	if (item.href) {
-		void router
-			.push(item.href)
-			.then(() => {
-				foldersStore.currentFolderId = item.id;
-			})
-			.catch((error) => {
-				toast.showError(error, 'Error navigating to folder');
-			});
-	}
-};
-
-const onBreadCrumbsAction = async (action: string) => {
-	switch (action) {
-		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			if (!route.params.projectId) return;
-			const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
-			if (!currentParent) return;
-			await createFolder({
-				id: (route.params.folderId as string) ?? '-1',
-				name: currentParent,
-				type: currentFolder.value ? 'folder' : 'project',
-			});
-			break;
-		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
-			addWorkflow();
-			break;
-		default:
-			break;
-	}
-};
-
-const onFolderCardAction = async (payload: { action: string; folderId: string }) => {
-	const clickedFolder = foldersStore.getCachedFolder(payload.folderId);
-	if (!clickedFolder) return;
-	switch (payload.action) {
-		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			await createFolder({
-				id: clickedFolder.id,
-				name: clickedFolder.name,
-				type: 'folder',
-			});
-			break;
-		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
-			foldersStore.currentFolderId = clickedFolder.id;
-			void router.push({
-				name: VIEWS.NEW_WORKFLOW,
-				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
-			});
-			break;
-		default:
-			break;
-	}
 };
 </script>
 
