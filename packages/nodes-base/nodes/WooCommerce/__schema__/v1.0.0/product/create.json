@@ -409,5 +409,6 @@
         "permalink_template",
         "generated_slug",
         "_links"
-    ]
+    ],
+    "version": 1
 }
