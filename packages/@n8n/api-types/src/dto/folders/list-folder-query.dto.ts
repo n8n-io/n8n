@@ -1,30 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable n8n-local-rules/no-plain-errors */
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-// Define the input Params type
-export type Params = {
-	filter?: string;
-	skip?: string;
-	take?: string;
-	select?: string;
-	sortBy?: string;
-};
-
-// Define the output Options type
-export type Options = {
-	filter?: Record<string, unknown>;
-	select?: Record<string, true>;
-	skip?: number;
-	take?: number;
-	sortBy?: string;
-};
-
-// Valid select fields
-const validSelectFields = [
+const VALID_SELECT_FIELDS = [
 	'id',
 	'name',
 	'createdAt',
@@ -32,106 +9,172 @@ const validSelectFields = [
 	'project',
 	'tags',
 	'parentFolder',
-	'workflowsCount',
+	'workflowCount',
 ] as const;
 
-// Filter class
-export class FilterDto extends Z.class({
-	parentFolderId: z.string().optional(),
-	name: z.string().optional(),
-}) {}
+const VALID_SORT_OPTIONS = [
+	'name:asc',
+	'name:desc',
+	'createdAt:asc',
+	'createdAt:desc',
+	'updatedAt:asc',
+	'updatedAt:desc',
+] as const;
 
-// Query params validation class
-// Define the schema with transformations
-const queryParamsSchema = {
-	filter: z
-		.string()
-		.optional()
-		.transform((val) => {
-			if (!val) return undefined;
+// Filter schema - only allow specific properties
+export const filterSchema = z
+	.object({
+		parentFolderId: z.string().optional(),
+		name: z.string().optional(),
+	})
+	.strict();
+
+// Common transformers
+const parseJsonArray = (val: string): unknown => {
+	if (!val.trim().startsWith('[')) {
+		throw new Error('Expected a JSON array starting with [');
+	}
+	return JSON.parse(val);
+};
+
+const isArrayOfStrings = (val: unknown): val is string[] => {
+	return Array.isArray(val) && val.every((item) => typeof item === 'string');
+};
+
+// ---------------------
+// Parameter Validators
+// ---------------------
+
+// Filter parameter validation
+const filterValidator = z
+	.string()
+	.optional()
+	.superRefine((val, ctx) => {
+		if (!val) return;
+
+		try {
+			const parsed = JSON.parse(val);
 			try {
-				const parsed = JSON.parse(val);
-				return FilterDto.parse(parsed);
+				filterSchema.parse(parsed);
 			} catch (e) {
-				throw new Error('Invalid filter format');
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid filter fields',
+					path: ['filter'],
+				});
+				return z.NEVER;
 			}
-		}),
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid filter format',
+				path: ['filter'],
+			});
+			return z.NEVER;
+		}
+	})
+	.transform((val) => {
+		if (!val) return undefined;
+		return filterSchema.parse(JSON.parse(val));
+	});
 
-	skip: z
-		.string()
-		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : undefined)),
+// Skip parameter validation
+const skipValidator = z
+	.string()
+	.optional()
+	.transform((val) => (val ? parseInt(val, 10) : 0))
+	.refine((val) => val === undefined || !isNaN(val), {
+		message: 'Skip must be a valid number',
+	});
 
-	take: z
-		.string()
-		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : undefined)),
+// Take parameter validation
+const takeValidator = z
+	.string()
+	.optional()
+	.transform((val) => (val ? parseInt(val, 10) : 10))
+	.refine((val) => val === undefined || !isNaN(val), {
+		message: 'Take must be a valid number',
+	});
 
-	select: z
-		.string()
-		.optional()
-		.transform((val) => {
-			if (!val) return undefined;
+// Select parameter validation
+const selectValidator = z
+	.string()
+	.optional()
+	.superRefine((val, ctx) => {
+		if (!val) return;
 
-			let fields: string[] = [];
+		try {
+			// Parse as JSON array
+			const parsed = parseJsonArray(val);
 
-			// Try to parse as JSON if it starts with [ or {
-			if (val.trim().startsWith('[') || val.trim().startsWith('{')) {
-				try {
-					const parsed = JSON.parse(val);
-					// Handle array format: ["name", "id"]
-					if (Array.isArray(parsed)) {
-						fields = parsed.map((field) => String(field).trim());
-					}
-					// Handle object format: {"name": true, "id": true}
-					else if (typeof parsed === 'object' && parsed !== null) {
-						fields = Object.keys(parsed);
-					}
-				} catch (e) {
-					// If JSON parsing fails, fall back to comma-separated
-					fields = val.split(',').map((field) => field.trim());
+			// Validate it's an array of strings
+			if (!isArrayOfStrings(parsed)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Select must be an array of strings',
+					path: ['select'],
+				});
+				return z.NEVER;
+			}
+
+			// Validate each field
+			for (const field of parsed) {
+				if (!VALID_SELECT_FIELDS.includes(field as any)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Invalid select field: ${field}. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
+						path: ['select'],
+					});
+					return z.NEVER;
 				}
-			} else {
-				// Regular comma-separated format
-				fields = val.split(',').map((field) => field.trim());
 			}
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid select format',
+				path: ['select'],
+			});
+			return z.NEVER;
+		}
+	})
+	.transform((val) => {
+		if (!val) return undefined;
 
-			// Build the select object
+		try {
+			const parsed = parseJsonArray(val) as string[];
 			const selectObject: Record<string, true> = {};
-			for (const field of fields) {
-				if (validSelectFields.includes(field as any)) {
+
+			for (const field of parsed) {
+				if (VALID_SELECT_FIELDS.includes(field as any)) {
 					selectObject[field] = true;
-				} else {
-					throw new Error(`Invalid select field: ${field}`);
 				}
 			}
 
 			return Object.keys(selectObject).length > 0 ? selectObject : undefined;
-		}),
-	sortBy: z
-		.string()
-		.optional()
-		.refine(
-			(val) => {
-				if (!val) return true;
+		} catch (e) {
+			return undefined;
+		}
+	});
 
-				const allowedSortOptions = [
-					'name:asc',
-					'name:desc',
-					'createdAt:asc',
-					'createdAt:desc',
-					'updatedAt:asc',
-					'updatedAt:desc',
-				];
+// SortBy parameter validation
+const sortByValidator = z
+	.string()
+	.optional()
+	.refine(
+		(val) => {
+			if (!val) return true;
+			return VALID_SORT_OPTIONS.includes(val as any);
+		},
+		{
+			message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}`,
+		},
+	);
 
-				return allowedSortOptions.includes(val);
-			},
-			{
-				message:
-					'sortBy must be one of: name:asc, name:desc, createdAt:asc, createdAt:desc, updatedAt:asc, updatedAt:desc',
-			},
-		),
-};
-
-// Create the class with the schema
-export class ListFolderQueryDto extends Z.class(queryParamsSchema) {}
+// Create DTO class using Z.class with the base schema
+export class ListFolderQueryDto extends Z.class({
+	filter: filterValidator,
+	skip: skipValidator,
+	take: takeValidator,
+	select: selectValidator,
+	sortBy: sortByValidator,
+}) {}
