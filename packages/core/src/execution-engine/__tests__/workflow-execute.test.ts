@@ -51,6 +51,10 @@ import { WorkflowExecute } from '../workflow-execute';
 
 const nodeTypes = Helpers.NodeTypes();
 
+beforeEach(() => {
+	jest.resetAllMocks();
+});
+
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
@@ -246,10 +250,6 @@ describe('WorkflowExecute', () => {
 	});
 
 	describe('runPartialWorkflow2', () => {
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
-
 		//                Dirty         ►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
@@ -518,18 +518,19 @@ describe('WorkflowExecute', () => {
 		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
 		const nodeTypes = mock<INodeTypes>();
-		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
-			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
-			if (type === 'unknownNode') return undefined as unknown as INodeType;
-			return mock<INodeType>({
-				description: {
-					properties: [],
-				},
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+				if (type === 'unknownNode') return undefined as unknown as INodeType;
+				return mock<INodeType>({
+					description: {
+						properties: [],
+					},
+				});
 			});
 		});
 		const workflowExecute = new WorkflowExecute(mock(), 'manual');
-
-		beforeEach(() => jest.clearAllMocks());
 
 		it('should return null if there are no nodes', () => {
 			const workflow = new Workflow({
@@ -615,7 +616,9 @@ describe('WorkflowExecute', () => {
 			},
 		});
 
-		nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		});
 
 		const workflow = new Workflow({
 			nodeTypes,
