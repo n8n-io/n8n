@@ -101,7 +101,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="$style['info-cell']"
+							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
 							data-test-id="folder-card-workflow-count"
 						>
 							{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
@@ -109,7 +109,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="$style['info-cell']"
+							:class="[$style['info-cell'], $style['info-cell--updated']]"
 							data-test-id="folder-card-last-updated"
 						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
@@ -118,7 +118,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						<n8n-text
 							size="small"
 							color="text-light"
-							:class="$style['info-cell']"
+							:class="[$style['info-cell'], $style['info-cell--created']]"
 							data-test-id="folder-card-created"
 						>
 							{{ i18n.baseText('workflows.item.created') }}
@@ -128,27 +128,29 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
-						<n8n-breadcrumbs
-							:items="breadcrumbs.visibleItems"
-							:hidden-items="breadcrumbs.hiddenItems"
-							:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
-							:show-border="true"
-							:highlight-last-item="false"
-							theme="small"
-							data-test-id="folder-card-breadcrumbs"
-							@item-selected="onBreadcrumbsItemClick"
-						>
-							<template v-if="data.homeProject" #prepend>
-								<div :class="$style['home-project']">
-									<n8n-link :to="`/projects/${data.homeProject.id}`">
-										<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-										<n8n-text size="small" :compact="true" :bold="true" color="text-base">
-											{{ projectName }}
-										</n8n-text>
-									</n8n-link>
-								</div>
-							</template>
-						</n8n-breadcrumbs>
+						<div :class="$style.breadcrumbs">
+							<n8n-breadcrumbs
+								:items="breadcrumbs.visibleItems"
+								:hidden-items="breadcrumbs.hiddenItems"
+								:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
+								:show-border="true"
+								:highlight-last-item="false"
+								theme="small"
+								data-test-id="folder-card-breadcrumbs"
+								@item-selected="onBreadcrumbsItemClick"
+							>
+								<template v-if="data.homeProject" #prepend>
+									<div :class="$style['home-project']">
+										<n8n-link :to="`/projects/${data.homeProject.id}`">
+											<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+											<n8n-text size="small" :compact="true" :bold="true" color="text-base">
+												{{ projectName }}
+											</n8n-text>
+										</n8n-link>
+									</div>
+								</template>
+							</n8n-breadcrumbs>
+						</div>
 						<n8n-action-toggle
 							v-if="actions.length"
 							:actions="actions"
@@ -221,6 +223,9 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 			width: 100%;
 			justify-content: space-between;
 		}
+	}
+	.info-cell--created {
+		display: none;
 	}
 }
 </style>

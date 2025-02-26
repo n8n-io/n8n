@@ -404,4 +404,10 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		margin-right: auto;
 	}
 }
+
+@include mixins.breakpoint('xs-only') {
+	.breadcrumbs > div {
+		flex-direction: column;
+	}
+}
 </style>
