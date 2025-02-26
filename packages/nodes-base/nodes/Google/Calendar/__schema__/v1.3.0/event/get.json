@@ -194,5 +194,6 @@
         "updated",
         "etag",
         "kind"
-    ]
+    ],
+    "version": 1
 }
