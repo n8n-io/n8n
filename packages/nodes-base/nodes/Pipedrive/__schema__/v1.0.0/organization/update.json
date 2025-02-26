@@ -129,5 +129,6 @@
         "Visible to": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
