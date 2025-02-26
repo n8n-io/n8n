@@ -19,9 +19,9 @@
     "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "devDependencies": {
-    "@n8n/frontend-eslint-config": "workspace:*",
-    "@n8n/frontend-vitest-config": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@n8n/storybook": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/user-event": "^14.6.0",
