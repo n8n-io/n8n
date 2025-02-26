@@ -23,5 +23,6 @@
         "ETag",
         "Size",
         "StorageClass"
-    ]
+    ],
+    "version": 1
 }
