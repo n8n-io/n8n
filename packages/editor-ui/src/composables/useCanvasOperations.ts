@@ -395,6 +395,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		ndvStore.activeNodeName = name;
 	}
 
+	function clearNodeActive() {
+		ndvStore.activeNodeName = null;
+	}
+
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
@@ -1988,6 +1992,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
+		clearNodeActive,
 		setNodeSelected,
 		toggleNodesDisabled,
 		revertToggleNodeDisabled,
