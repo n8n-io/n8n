@@ -185,5 +185,6 @@
         "id",
         "self",
         "key"
-    ]
+    ],
+    "version": 1
 }
