@@ -4,7 +4,7 @@ exports[`useCanvasLayout > should layout a basic workflow 1`] = `
 {
   "boundingBox": {
     "height": 100,
-    "width": 620,
+    "width": 540,
     "x": 0,
     "y": 0,
   },
@@ -16,12 +16,12 @@ exports[`useCanvasLayout > should layout a basic workflow 1`] = `
     },
     {
       "id": "node2",
-      "x": 360,
+      "x": 320,
       "y": 100,
     },
     {
       "id": "node3",
-      "x": 620,
+      "x": 540,
       "y": 100,
     },
   ],
@@ -32,7 +32,7 @@ exports[`useCanvasLayout > should layout a basic workflow with selected nodes 1`
 {
   "boundingBox": {
     "height": 100,
-    "width": 620,
+    "width": 540,
     "x": 0,
     "y": 0,
   },
@@ -44,12 +44,12 @@ exports[`useCanvasLayout > should layout a basic workflow with selected nodes 1`
     },
     {
       "id": "node2",
-      "x": 360,
+      "x": 320,
       "y": 100,
     },
     {
       "id": "node3",
-      "x": 620,
+      "x": 540,
       "y": 100,
     },
   ],
@@ -60,45 +60,45 @@ exports[`useCanvasLayout > should layout a workflow with AI nodes 1`] = `
 {
   "boundingBox": {
     "height": 540,
-    "width": 900,
+    "width": 820,
     "x": 0,
-    "y": 220,
+    "y": 0,
   },
   "nodes": [
     {
       "id": "node1",
       "x": 100,
-      "y": 100,
+      "y": 320,
     },
     {
       "id": "aiTool1",
-      "x": 360,
+      "x": 320,
       "y": 320,
     },
     {
       "id": "aiTool2",
-      "x": 500,
+      "x": 460,
       "y": 320,
     },
     {
       "id": "aiTool3",
-      "x": 640,
+      "x": 600,
       "y": 540,
     },
     {
       "id": "aiAgent",
-      "x": 500,
+      "x": 460,
       "y": 100,
     },
     {
       "id": "configurableAiTool",
-      "x": 640,
+      "x": 600,
       "y": 320,
     },
     {
       "id": "node2",
-      "x": 900,
-      "y": 100,
+      "x": 820,
+      "y": 320,
     },
   ],
 }
@@ -108,7 +108,7 @@ exports[`useCanvasLayout > should layout a workflow with sticky notes 1`] = `
 {
   "boundingBox": {
     "height": 100,
-    "width": 880,
+    "width": 760,
     "x": 0,
     "y": 0,
   },
@@ -120,23 +120,23 @@ exports[`useCanvasLayout > should layout a workflow with sticky notes 1`] = `
     },
     {
       "id": "node2",
-      "x": 260,
+      "x": 220,
       "y": 0,
     },
     {
       "id": "node3",
-      "x": 520,
+      "x": 440,
       "y": 0,
     },
     {
       "id": "node4",
-      "x": 780,
+      "x": 660,
       "y": 0,
     },
     {
       "id": "sticky",
-      "x": 180,
-      "y": -220,
+      "x": 130,
+      "y": -240,
     },
   ],
 }
@@ -146,7 +146,7 @@ exports[`useCanvasLayout > should not reorder nodes vertically as it affects exe
 {
   "boundingBox": {
     "height": 320,
-    "width": 360,
+    "width": 320,
     "x": 0,
     "y": 0,
   },
@@ -154,16 +154,16 @@ exports[`useCanvasLayout > should not reorder nodes vertically as it affects exe
     {
       "id": "node1",
       "x": 0,
-      "y": -100,
+      "y": -90,
     },
     {
       "id": "node3",
-      "x": 260,
+      "x": 220,
       "y": -200,
     },
     {
       "id": "node2",
-      "x": 260,
+      "x": 220,
       "y": 20,
     },
   ],
