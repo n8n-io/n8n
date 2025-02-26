@@ -231,5 +231,6 @@
         "uri": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
