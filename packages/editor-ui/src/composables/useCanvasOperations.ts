@@ -197,7 +197,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.setNodePositionById(id, newPosition);
 
 		if (trackHistory) {
-			historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newPosition));
+			historyStore.pushCommandToUndo(
+				new MoveNodeCommand(node.name, oldPosition, newPosition, Date.now()),
+			);
 		}
 	}
 
@@ -230,7 +232,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflow.renameNode(currentName, newName);
 
 		if (trackHistory) {
-			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName));
+			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, Date.now()));
 		}
 
 		// Update also last selected node and execution data
@@ -281,18 +283,21 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 					if (trackHistory) {
 						historyStore.pushCommandToUndo(
-							new AddConnectionCommand([
-								{
-									node: incomingConnection.node,
-									type,
-									index: incomingConnection.index,
-								},
-								{
-									node: outgoingConnection.node,
-									type,
-									index: outgoingConnection.index,
-								},
-							]),
+							new AddConnectionCommand(
+								[
+									{
+										node: incomingConnection.node,
+										type,
+										index: incomingConnection.index,
+									},
+									{
+										node: outgoingConnection.node,
+										type,
+										index: outgoingConnection.index,
+									},
+								],
+								Date.now(),
+							),
 						);
 					}
 
@@ -336,7 +341,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.removeNodeById(id);
 
 		if (trackHistory) {
-			historyStore.pushCommandToUndo(new RemoveNodeCommand(node));
+			historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
 
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
@@ -614,7 +619,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.addNode(nodeData);
 
 		if (options.trackHistory) {
-			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
+			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
 		}
 
 		if (!options.isAutoAdd) {
@@ -1099,6 +1104,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.pushCommandToUndo(
 				new AddConnectionCommand(
 					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
+					Date.now(),
 				),
 			);
 		}
@@ -1229,7 +1235,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		});
 
 		if (trackHistory) {
-			historyStore.pushCommandToUndo(new RemoveConnectionCommand(mappedConnection));
+			historyStore.pushCommandToUndo(new RemoveConnectionCommand(mappedConnection, Date.now()));
 
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
