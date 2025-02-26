@@ -41,5 +41,6 @@
         "isArchived",
         "isDraft",
         "fieldData"
-    ]
+    ],
+    "version": 1
 }
