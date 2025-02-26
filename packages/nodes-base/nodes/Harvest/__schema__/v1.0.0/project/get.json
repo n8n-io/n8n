@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "is_active": {
+            "type": "boolean"
+        },
+        "is_billable": {
+            "type": "boolean"
+        },
+        "is_fixed_fee": {
+            "type": "boolean"
+        },
+        "bill_by": {
+            "type": "string"
+        },
+        "budget_by": {
+            "type": "string"
+        },
+        "budget_is_monthly": {
+            "type": "boolean"
+        },
+        "notify_when_over_budget": {
+            "type": "boolean"
+        },
+        "over_budget_notification_percentage": {
+            "type": "integer"
+        },
+        "show_budget_to_all": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "cost_budget_include_expenses": {
+            "type": "boolean"
+        },
+        "client": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "currency"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "code",
+        "is_active",
+        "is_billable",
+        "is_fixed_fee",
+        "bill_by",
+        "budget",
+        "budget_by",
+        "budget_is_monthly",
+        "notify_when_over_budget",
+        "over_budget_notification_percentage",
+        "show_budget_to_all",
+        "created_at",
+        "updated_at",
+        "starts_on",
+        "ends_on",
+        "over_budget_notification_date",
+        "notes",
+        "cost_budget",
+        "cost_budget_include_expenses",
+        "hourly_rate",
+        "fee",
+        "client"
+    ],
+    "version": 1
+}
