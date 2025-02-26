@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '@/stores/executions.store';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';

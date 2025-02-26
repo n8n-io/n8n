@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ElDialog } from 'element-plus';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import type { ModalKey } from '@/Interface';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';

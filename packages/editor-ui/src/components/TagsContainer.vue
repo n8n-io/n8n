@@ -4,7 +4,7 @@ import type { ComponentInstance } from 'vue';
 import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { debounce } from 'lodash-es';
 
 interface TagsContainerProps {

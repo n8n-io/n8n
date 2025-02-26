@@ -10,7 +10,7 @@ import type {
 } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',

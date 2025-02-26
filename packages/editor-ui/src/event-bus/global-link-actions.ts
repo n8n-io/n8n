@@ -1,4 +1,4 @@
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type LinkActionFn = (...args: any[]) => void;

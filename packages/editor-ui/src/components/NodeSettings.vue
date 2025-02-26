@@ -40,7 +40,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@/composables/useI18n';
