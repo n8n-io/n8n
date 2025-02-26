@@ -119,5 +119,6 @@
                 "pagination"
             ]
         }
-    }
+    },
+    "version": 1
 }
