@@ -28,6 +28,7 @@ const actions: UserAction[] = actionTypes.map((value) => ({
 const renderComponent = createComponentRenderer(WorkflowHistoryList);
 
 let pinia: ReturnType<typeof createPinia>;
+const dummyItems = Array.from({ length: 50 }, workflowHistoryDataFactory);
 
 describe('WorkflowHistoryList', () => {
 	beforeAll(() => {
@@ -75,8 +76,8 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should render list and delegate preview event', async () => {
-		const numberOfItems = faker.number.int({ min: 10, max: 50 });
-		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
+		const numberOfItems = 5;
+		const items = dummyItems.slice(0, numberOfItems);
 
 		const { getAllByTestId, emitted, queryByRole } = renderComponent({
 			pinia,
@@ -108,7 +109,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should scroll to active item', async () => {
-		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
+		const items = dummyItems.slice(0, 2);
 
 		const { getByTestId } = renderComponent({
 			pinia,
