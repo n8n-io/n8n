@@ -1,4 +1,5 @@
 {
+	"extends": "./tsconfig.common.json",
 	"compilerOptions": {
 		"types": ["node", "jest"]
 	}

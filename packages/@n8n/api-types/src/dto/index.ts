@@ -47,9 +47,12 @@ export { GenerateCredentialNameRequestQuery } from './credentials/generate-crede
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
+export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
+
+export { CreateFolderDto } from './folders/create-folder.dto';

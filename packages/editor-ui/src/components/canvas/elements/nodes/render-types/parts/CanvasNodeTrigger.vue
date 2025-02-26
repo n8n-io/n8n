@@ -2,10 +2,9 @@
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { CHAT_TRIGGER_NODE_TYPE, LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT } from '@/constants';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useLocalStorage } from '@vueuse/core';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -25,16 +24,12 @@ const {
 	class?: string;
 }>();
 
-const variant = useLocalStorage<1 | 2>(LOCAL_STORAGE_CANVAS_TRIGGER_BUTTON_VARIANT, 2);
-
 const style = useCssModule();
 const containerClass = computed(() => ({
 	[cls ?? '']: true,
 	[style.container]: true,
 	[style.interactive]: !disabled && !readOnly,
 	[style.hovered]: !!hovered,
-	[style.variant1]: variant.value === 1,
-	[style.variant2]: variant.value === 2,
 }));
 
 const router = useRouter();
@@ -53,31 +48,13 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 	<!-- click and mousedown event are suppressed to avoid unwanted selection or dragging of the node -->
 	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
-			<div v-if="variant === 2" :class="$style.bolt">
+			<div :class="$style.bolt">
 				<FontAwesomeIcon icon="bolt" size="lg" />
 			</div>
 
 			<template v-if="!readOnly">
 				<N8nButton
-					v-if="variant === 1 && type === CHAT_TRIGGER_NODE_TYPE"
-					type="secondary"
-					size="large"
-					:disabled="isExecuting"
-					:data-test-id="testId"
-					@click.capture="toggleChatOpen('node')"
-					>{{ isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open') }}</N8nButton
-				>
-				<N8nButton
-					v-else-if="variant === 1"
-					type="secondary"
-					size="large"
-					:disabled="isExecuting"
-					:data-test-id="testId"
-					@click.capture="runEntireWorkflow('node', name)"
-					>{{ i18n.baseText('nodeView.runButtonText.executeWorkflow') }}</N8nButton
-				>
-				<N8nButton
-					v-else-if="variant === 2 && type === CHAT_TRIGGER_NODE_TYPE"
+					v-if="type === CHAT_TRIGGER_NODE_TYPE"
 					:type="isChatOpen ? 'secondary' : 'primary'"
 					size="large"
 					:disabled="isExecuting"
@@ -116,23 +93,6 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 		align-items: center;
 	}
 
-	&.interactive.hovered button {
-		pointer-events: all;
-	}
-}
-
-.variant1 {
-	& button {
-		margin-right: var(--spacing-xl);
-		display: none;
-	}
-
-	&.interactive button {
-		display: block;
-	}
-}
-
-.variant2 {
 	& button {
 		margin-right: var(--spacing-s);
 		opacity: 0;
@@ -145,6 +105,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 	&.interactive.hovered button {
 		opacity: 1;
 		translate: 0 0;
+		pointer-events: all;
 	}
 }
 

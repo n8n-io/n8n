@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -9,11 +8,11 @@ import { getResourcePermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
 import { ResourceType } from '@/utils/projects.utils';
+import type { CredentialsResource } from './layouts/ResourcesListLayout.vue';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -27,22 +26,13 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		data: ICredentialsResponse;
+		data: CredentialsResource;
 		readOnly?: boolean;
 		needsSetup?: boolean;
 	}>(),
 	{
-		data: () => ({
-			id: '',
-			createdAt: '',
-			updatedAt: '',
-			type: '',
-			name: '',
-			sharedWithProjects: [],
-			homeProject: {} as ProjectSharingData,
-			isManaged: false,
-		}),
 		readOnly: false,
+		needsSetup: false,
 	},
 );
 
@@ -53,7 +43,9 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
-const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
+const credentialType = computed(() =>
+	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
+);
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
 	const items = [
