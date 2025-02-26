@@ -2949,6 +2949,8 @@
 	"testDefinition.executions.addedTo": "Added to \"{name}\"",
 	"testDefinition.executions.removedFrom": "Execution removed from \"{name}\"",
 	"testDefinition.executions.toast.addedTo": "Go back to \"{name}\"",
+	"testDefinition.executions.tooltip.noExecutions": "Evaluation executions can not be added to tests",
+	"testDefinition.executions.tooltip.onlySuccess": "Only successful executions can be added to tests",
 	"testDefinition.workflow.createNew": "Create new evaluation workflow",
 	"testDefinition.workflow.createNew.or": "or use existing evaluation sub-workflow",
 	"testDefinition.executions.toast.addedTo.title": "Execution added to test ",
