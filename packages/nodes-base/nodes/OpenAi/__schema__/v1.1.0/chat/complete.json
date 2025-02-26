@@ -28,5 +28,6 @@
         "finish_reason": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
