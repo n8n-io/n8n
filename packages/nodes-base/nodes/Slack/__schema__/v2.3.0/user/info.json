@@ -204,5 +204,6 @@
         "is_bot",
         "is_app_user",
         "updated"
-    ]
+    ],
+    "version": 1
 }
