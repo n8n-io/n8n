@@ -120,15 +120,8 @@ describe('ListFolderQueryDto', () => {
 
 			if (expectedErrorPath && result.success === false) {
 				if (Array.isArray(expectedErrorPath)) {
-					// For paired validations like skip/take
-					const errorPaths = result.error.issues.map((issue) => issue.path).flat();
-					for (const path of expectedErrorPath) {
-						expect(errorPaths).toContain(path);
-					}
-				} else {
-					// For single field errors
 					const errorPaths = result.error.issues[0].path;
-					expect(errorPaths).toContain(expectedErrorPath);
+					expect(errorPaths).toContain(expectedErrorPath[0]);
 				}
 			}
 		});

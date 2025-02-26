@@ -170,7 +170,6 @@ const sortByValidator = z
 		},
 	);
 
-// Create DTO class using Z.class with the base schema
 export class ListFolderQueryDto extends Z.class({
 	filter: filterValidator,
 	skip: skipValidator,
