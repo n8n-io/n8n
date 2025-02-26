@@ -227,5 +227,6 @@
         "mod_reports",
         "num_reports",
         "ups"
-    ]
+    ],
+    "version": 1
 }
