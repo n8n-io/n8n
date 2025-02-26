@@ -160,5 +160,6 @@
         "type",
         "message",
         "channel"
-    ]
+    ],
+    "version": 1
 }
