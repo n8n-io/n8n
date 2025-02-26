@@ -1,0 +1,221 @@
+{
+    "type": "object",
+    "properties": {
+        "AllowIPNPayment": {
+            "type": "boolean"
+        },
+        "AllowOnlinePayment": {
+            "type": "boolean"
+        },
+        "AllowOnlineCreditCardPayment": {
+            "type": "boolean"
+        },
+        "AllowOnlineACHPayment": {
+            "type": "boolean"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        },
+        "DocNumber": {
+            "type": "string"
+        },
+        "TxnDate": {
+            "type": "string"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "LinkedTxn": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "TxnId": {
+                        "type": "string"
+                    },
+                    "TxnType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "TxnId",
+                    "TxnType"
+                ]
+            }
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Id": {
+                        "type": "string"
+                    },
+                    "LineNum": {
+                        "type": "integer"
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "DetailType": {
+                        "type": "string"
+                    },
+                    "SalesItemLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "ItemRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "ItemRef",
+                            "TaxCodeRef"
+                        ]
+                    }
+                },
+                "required": [
+                    "Amount",
+                    "DetailType"
+                ]
+            }
+        },
+        "CustomerRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "DueDate": {
+            "type": "string"
+        },
+        "ApplyTaxAfterDiscount": {
+            "type": "boolean"
+        },
+        "PrintStatus": {
+            "type": "string"
+        },
+        "EmailStatus": {
+            "type": "string"
+        },
+        "BillEmail": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Address"
+            ]
+        },
+        "DeliveryInfo": {
+            "type": "object",
+            "properties": {
+                "DeliveryType": {
+                    "type": "string"
+                },
+                "DeliveryTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "DeliveryType",
+                "DeliveryTime"
+            ]
+        }
+    },
+    "required": [
+        "AllowIPNPayment",
+        "AllowOnlinePayment",
+        "AllowOnlineCreditCardPayment",
+        "AllowOnlineACHPayment",
+        "domain",
+        "sparse",
+        "Id",
+        "SyncToken",
+        "MetaData",
+        "CustomField",
+        "TxnDate",
+        "CurrencyRef",
+        "LinkedTxn",
+        "Line",
+        "CustomerRef",
+        "DueDate",
+        "TotalAmt",
+        "ApplyTaxAfterDiscount",
+        "PrintStatus",
+        "EmailStatus",
+        "BillEmail",
+        "Balance",
+        "DeliveryInfo"
+    ],
+    "version": 1
+}
