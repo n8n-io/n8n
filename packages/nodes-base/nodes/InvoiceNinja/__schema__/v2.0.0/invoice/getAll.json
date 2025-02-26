@@ -406,5 +406,6 @@
         "e_invoice",
         "invitations",
         "documents"
-    ]
+    ],
+    "version": 1
 }
