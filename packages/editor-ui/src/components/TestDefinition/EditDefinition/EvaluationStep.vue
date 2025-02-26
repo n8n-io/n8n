@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { ElCollapseTransition } from 'element-plus';
-import { computed, nextTick, ref, useCssModule } from 'vue';
+import { type Modifier, detectOverflow } from '@popperjs/core';
+import { N8nInfoTip, N8nText, N8nTooltip } from 'n8n-design-system';
+import { computed, ref, useCssModule } from 'vue';
 
 interface EvaluationStep {
 	title?: string;
 	warning?: boolean;
-	small?: boolean;
 	expanded?: boolean;
 	description?: string;
 	issues?: Array<{ field: string; message: string }>;
 	showIssues?: boolean;
-	tooltip?: string;
+	tooltip: string;
+	externalTooltip?: boolean;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
 	description: '',
 	warning: false,
-	small: false,
 	expanded: false,
 	issues: () => [],
 	showIssues: true,
@@ -26,110 +26,115 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 
 const locale = useI18n();
 const isExpanded = ref(props.expanded);
-const contentRef = ref<HTMLElement | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
-const showTooltip = ref(false);
 const $style = useCssModule();
+
+const hasIssues = computed(() => props.issues.length > 0);
 
 const containerClass = computed(() => {
 	return {
-		[$style.wrap]: true,
-		[$style.expanded]: isExpanded.value,
-		[$style.hasIssues]: props.issues.length > 0,
+		[$style.evaluationStep]: true,
+		[$style['has-issues']]: true,
 	};
 });
 
-const toggleExpand = async () => {
-	isExpanded.value = !isExpanded.value;
-	if (isExpanded.value) {
-		await nextTick();
-		if (containerRef.value) {
-			containerRef.value.style.height = 'auto';
-		}
-	}
-};
-
-const handleMouseEnter = () => {
-	if (!props.tooltip) return;
-	showTooltip.value = true;
-};
-
-const handleMouseLeave = () => {
-	showTooltip.value = false;
-};
+const toggleExpand = () => (isExpanded.value = !isExpanded.value);
 
 const renderIssues = computed(() => props.showIssues && props.issues.length);
 const issuesList = computed(() => props.issues.map((issue) => issue.message).join(', '));
+
+/**
+ * @see https://popper.js.org/docs/v2/modifiers/#custom-modifiers
+ */
+const resizeModifier: Modifier<'resize', {}> = {
+	name: 'resize',
+	enabled: true,
+	phase: 'beforeWrite',
+	requires: ['preventOverflow'],
+	fn({ state }) {
+		const overflow = detectOverflow(state);
+		const MARGIN_RIGHT = 15;
+
+		const maxWidth = state.rects.popper.width - overflow.right - MARGIN_RIGHT;
+
+		state.styles.popper.width = `${maxWidth}px`;
+	},
+};
+
+const popperModifiers = [
+	resizeModifier,
+	{ name: 'preventOverflow', options: { boundary: 'document' } },
+	{ name: 'flip', enabled: false }, // prevent the tooltip from flipping
+];
 </script>
 
 <template>
-	<div :class="containerClass">
-		<slot name="containerPrefix" />
-		<div
-			ref="containerRef"
-			:class="[$style.evaluationStep, small && $style.small]"
-			data-test-id="evaluation-step"
-			@mouseenter="handleMouseEnter"
-			@mouseleave="handleMouseLeave"
-		>
-			<div :class="$style.content">
+	<div :class="containerClass" data-test-id="evaluation-step">
+		<div :class="$style.content">
+			<N8nTooltip
+				placement="right"
+				:disabled="!externalTooltip"
+				:show-arrow="false"
+				:popper-class="$style.evaluationTooltip"
+				:popper-options="{ modifiers: popperModifiers }"
+				:content="tooltip"
+			>
 				<div :class="$style.header" @click="toggleExpand">
-					<h3 :class="$style.title">
-						<span :class="$style.label">
+					<div :class="$style.label">
+						<N8nText bold>
 							<slot v-if="$slots.title" name="title" />
-							<span v-else>{{ title }}</span>
-							<N8nInfoTip
-								v-if="tooltip"
-								:class="$style.infoTip"
-								:bold="true"
-								type="tooltip"
-								theme="info"
-								tooltip-placement="top"
-							>
-								{{ tooltip }}
-							</N8nInfoTip>
-						</span>
-					</h3>
-					<span v-if="renderIssues" :class="$style.warningIcon">
-						<N8nInfoTip :bold="true" type="tooltip" theme="warning" tooltip-placement="right">
+							<template v-else>{{ title }}</template>
+						</N8nText>
+						<N8nInfoTip
+							v-if="!externalTooltip"
+							:class="$style.infoTip"
+							:bold="true"
+							type="tooltip"
+							theme="info"
+							tooltip-placement="top"
+							:enterable="false"
+						>
+							{{ tooltip }}
+						</N8nInfoTip>
+					</div>
+					<div :class="$style.actions">
+						<N8nInfoTip
+							v-if="renderIssues"
+							:bold="true"
+							type="tooltip"
+							theme="warning"
+							tooltip-placement="top"
+							:enterable="false"
+						>
 							{{ issuesList }}
 						</N8nInfoTip>
-					</span>
-					<button
-						v-if="$slots.cardContent"
-						:class="$style.collapseButton"
-						:aria-expanded="isExpanded"
-						data-test-id="evaluation-step-collapse-button"
-					>
-						{{
-							isExpanded
-								? locale.baseText('testDefinition.edit.step.collapse')
-								: locale.baseText('testDefinition.edit.step.configure')
-						}}
-						<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
-					</button>
-				</div>
-				<ElCollapseTransition v-if="$slots.cardContent">
-					<div v-show="isExpanded" :class="$style.cardContentWrapper">
-						<div
-							ref="contentRef"
-							:class="$style.cardContent"
-							data-test-id="evaluation-step-content"
+						<N8nText
+							v-if="$slots.cardContent"
+							data-test-id="evaluation-step-collapse-button"
+							size="xsmall"
+							:color="hasIssues ? 'primary' : 'text-base'"
+							bold
 						>
-							<div v-if="description" :class="$style.description">{{ description }}</div>
-							<slot name="cardContent" />
-						</div>
+							{{
+								isExpanded
+									? locale.baseText('testDefinition.edit.step.collapse')
+									: locale.baseText('testDefinition.edit.step.configure')
+							}}
+							<font-awesome-icon :icon="isExpanded ? 'angle-up' : 'angle-down'" size="lg" />
+						</N8nText>
 					</div>
-				</ElCollapseTransition>
+				</div>
+			</N8nTooltip>
+			<div v-if="$slots.cardContent && isExpanded" :class="$style.cardContentWrapper">
+				<div :class="$style.cardContent" data-test-id="evaluation-step-content">
+					<N8nText v-if="description" size="small" color="text-light">{{ description }}</N8nText>
+					<slot name="cardContent" />
+				</div>
 			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-.wrap {
-	position: relative;
-}
 .evaluationStep {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -140,11 +145,18 @@ const issuesList = computed(() => props.issues.map((issue) => issue.message).joi
 	color: var(--color-text-dark);
 	position: relative;
 	z-index: 1;
-	&.small {
-		width: 80%;
-		margin-left: auto;
+}
+
+.evaluationTooltip {
+	&:global(.el-popper) {
+		background-color: transparent;
+		font-size: var(--font-size-xs);
+		color: var(--color-text-light);
+		line-height: 1rem;
+		max-width: 25rem;
 	}
 }
+
 .icon {
 	display: flex;
 	align-items: center;
@@ -171,24 +183,23 @@ const issuesList = computed(() => props.issues.map((issue) => issue.message).joi
 	padding: var(--spacing-s);
 }
 
-.title {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-	line-height: 1.125rem;
-}
 .label {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-4xs);
 }
+
 .infoTip {
 	opacity: 0;
 }
 .evaluationStep:hover .infoTip {
 	opacity: 1;
 }
-.warningIcon {
-	color: var(--color-warning);
+
+.actions {
+	margin-left: auto;
+	display: flex;
+	gap: var(--spacing-2xs);
 }
 
 .cardContent {
@@ -196,43 +207,15 @@ const issuesList = computed(() => props.issues.map((issue) => issue.message).joi
 	padding: 0 var(--spacing-s);
 	margin: var(--spacing-s) 0;
 }
-.collapseButton {
-	pointer-events: none;
-	border: none;
-	background: none;
-	padding: 0;
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
-	margin-left: auto;
-	text-wrap: none;
-	overflow: hidden;
-	min-width: fit-content;
 
-	.hasIssues & {
-		color: var(--color-danger);
-	}
-}
 .cardContentWrapper {
-	height: max-content;
-	.expanded & {
-		border-top: var(--border-base);
-	}
+	border-top: var(--border-base);
 }
 
-.description {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
-	line-height: 1rem;
-}
-
-.customTooltip {
-	position: absolute;
-	left: 0;
-	background: var(--color-background-dark);
-	color: var(--color-text-light);
-	padding: var(--spacing-3xs) var(--spacing-2xs);
-	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-2xs);
-	pointer-events: none;
+.has-issues {
+	/**
+		* This comment is needed or the css module
+		* will interpret as undefined
+	 */
 }
 </style>

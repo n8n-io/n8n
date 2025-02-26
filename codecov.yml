@@ -42,7 +42,6 @@ component_management:
     - component_id: frontend_packages
       name: Frontend
       paths:
-        - packages/@n8n/chat/**
         - packages/@n8n/codemirror-lang/**
         - packages/design-system/**
         - packages/editor-ui/**

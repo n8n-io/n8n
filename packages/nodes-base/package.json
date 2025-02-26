@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.79.0",
+  "version": "1.80.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -827,6 +827,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "catalog:",
