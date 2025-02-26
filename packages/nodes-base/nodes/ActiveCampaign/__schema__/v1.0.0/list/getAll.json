@@ -146,5 +146,6 @@
         "user": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
