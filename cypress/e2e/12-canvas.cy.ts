@@ -17,8 +17,8 @@ import {
 	openContextMenu,
 } from '../composables/workflow';
 import { NDV, WorkflowExecutionsTab } from '../pages';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { clearNotifications, successToast } from '../pages/notifications';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
