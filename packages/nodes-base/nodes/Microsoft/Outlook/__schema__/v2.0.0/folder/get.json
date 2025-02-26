@@ -32,5 +32,6 @@
     "required": [
         "@odata.context",
         "id"
-    ]
+    ],
+    "version": 1
 }
