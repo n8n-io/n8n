@@ -246,5 +246,6 @@
         "owner_name": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
