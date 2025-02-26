@@ -54,9 +54,9 @@ void createTest(props.name).then(async (test) => {
 	const testTag = await createTag(tag);
 	state.value.tags.value = [testTag.id];
 
-	if (route.query?.executionId && Array.isArray(route.query.annotationTags)) {
+	if (typeof route.query?.executionId === 'string' && Array.isArray(route.query.annotationTags)) {
 		const newTags = [...route.query.annotationTags, testTag.id];
-		await executionsStore.annotateExecution(route.query.executionId.toString(), { tags: newTags });
+		await executionsStore.annotateExecution(route.query.executionId, { tags: newTags });
 	}
 
 	await updateTest(test.id);
