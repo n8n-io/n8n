@@ -40,5 +40,6 @@
         "optimizationScore": {
             "type": "number"
         }
-    }
+    },
+    "version": 1
 }
