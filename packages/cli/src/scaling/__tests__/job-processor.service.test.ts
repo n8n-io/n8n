@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
+import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow/src';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -55,11 +56,11 @@ describe('JobProcessor', () => {
 			const executionRepository = mock<ExecutionRepository>();
 			executionRepository.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
-					mode,
+					mode: mode as WorkflowExecuteMode,
 					workflowData: { nodes: [] },
-					data: {
+					data: mock<IRunExecutionData>({
 						isTestWebhook: false,
-					},
+					}),
 				}),
 			);
 
