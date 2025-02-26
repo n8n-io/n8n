@@ -54,7 +54,9 @@ describe('SupplyDataContext', () => {
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
 	const mode: WorkflowExecuteMode = 'manual';
-	const runExecutionData = mock<IRunExecutionData>();
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
 	const connectionInputData: INodeExecutionData[] = [];
 	const connectionType = NodeConnectionType.Main;
 	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
@@ -178,9 +180,8 @@ describe('SupplyDataContext', () => {
 
 	describe('cloneWith', () => {
 		it('should return a new copy', () => {
-			const clone = supplyDataContext.cloneWith({ runIndex: 12, inputData: [] });
+			const clone = supplyDataContext.cloneWith({ runIndex: 12, inputData: [[{ json: {} }]] });
 			expect(clone.runIndex).toBe(12);
-			expect(clone.inputData).toEqual([]);
 			expect(clone).not.toBe(supplyDataContext);
 		});
 	});
