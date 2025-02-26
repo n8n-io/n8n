@@ -10,5 +10,6 @@
     },
     "required": [
         "documentId"
-    ]
+    ],
+    "version": 1
 }
