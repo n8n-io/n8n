@@ -1,10 +1,16 @@
-import { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import {
+	CreateFolderDto,
+	DeleteFolderDto,
+	ListFolderQueryDto,
+	UpdateFolderDto,
+} from '@n8n/api-types';
 import { Response } from 'express';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch, Delete } from '@/decorators';
+import { Post, RestController, ProjectScope, Body, Get, Patch, Delete, Query } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 
@@ -85,5 +91,22 @@ export class ProjectController {
 			}
 			throw new InternalServerError();
 		}
+	}
+
+	@Get('/')
+	@ProjectScope('folder:list')
+	async listFolders(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Query payload: ListFolderQueryDto,
+	) {
+		const { projectId } = req.params;
+
+		const [data, count] = await this.folderService.getManyAndCount(
+			projectId,
+			payload as ListQuery.Options,
+		);
+
+		res.json({ count, data });
 	}
 }
