@@ -6,9 +6,9 @@ import type { ErrorReporter } from 'n8n-core';
 import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
 import type { ITaskData } from 'n8n-workflow';
 import path from 'path';
-import config from '@/config';
 
 import type { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestMetric } from '@/databases/entities/test-metric.ee';
