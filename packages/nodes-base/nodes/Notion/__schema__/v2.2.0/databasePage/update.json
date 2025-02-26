@@ -13,5 +13,6 @@
         "property_status": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
