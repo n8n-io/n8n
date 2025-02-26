@@ -120,5 +120,6 @@
         "state": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
