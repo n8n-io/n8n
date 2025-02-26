@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Controls } from '@vue-flow/controls';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import TidyUpIcon from '@/components/TidyUpIcon.vue';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import IconAutoLayout from 'virtual:icons/fluent/glance-horizontal-sparkles-24-filled';
 
 const props = withDefaults(
 	defineProps<{
@@ -103,7 +103,7 @@ function onTidyUp() {
 				:class="$style.iconButton"
 				@click="onTidyUp"
 			>
-				<IconAutoLayout :height="20" :width="20" />
+				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
 	</Controls>
@@ -114,6 +114,11 @@ function onTidyUp() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+
+	svg {
+		width: 16px;
+		height: 16px;
+	}
 }
 </style>
 
