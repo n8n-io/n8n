@@ -18,7 +18,9 @@ export const getSchemaPreview = async (
 ): Promise<JSONSchema7> => {
 	const { nodeType, version, resource, operation } = options;
 	const versionString = padVersion(version);
-	const path = ['schemas', nodeType, versionString, resource, operation].filter(Boolean).join('/');
+	const path = ['schemas', nodeType.replace('@n8n/', ''), versionString, resource, operation]
+		.filter(Boolean)
+		.join('/');
 	return await request({
 		method: 'GET',
 		baseURL: baseUrl,
