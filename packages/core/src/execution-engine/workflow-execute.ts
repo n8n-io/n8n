@@ -40,7 +40,6 @@ import type {
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
-	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
