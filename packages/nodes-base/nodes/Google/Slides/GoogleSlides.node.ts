@@ -275,7 +275,7 @@ export class GoogleSlides implements INodeType {
 									'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
-								displayName: 'Page Names or IDs',
+								displayName: 'Slide Names or IDs',
 								name: 'pageObjectIds',
 								type: 'multiOptions',
 								default: [],
@@ -284,14 +284,14 @@ export class GoogleSlides implements INodeType {
 									loadOptionsDependsOn: ['presentationId'],
 								},
 								description:
-									'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Search For',
 								name: 'text',
 								type: 'string',
 								default: '',
-								description: 'The text to search for in the shape or table',
+								description: 'The text to search for in the slide',
 							},
 							{
 								displayName: 'Replace With',
