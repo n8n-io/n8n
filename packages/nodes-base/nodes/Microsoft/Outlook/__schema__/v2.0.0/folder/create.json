@@ -39,5 +39,6 @@
         "totalItemCount",
         "sizeInBytes",
         "isHidden"
-    ]
+    ],
+    "version": 1
 }
