@@ -117,5 +117,6 @@
         "reactions",
         "date",
         "reply_count"
-    ]
+    ],
+    "version": 1
 }
