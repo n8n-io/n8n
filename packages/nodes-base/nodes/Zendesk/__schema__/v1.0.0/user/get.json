@@ -64,5 +64,6 @@
         "report_csv": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
