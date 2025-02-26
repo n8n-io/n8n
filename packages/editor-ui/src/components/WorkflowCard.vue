@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IUser } from '@/Interface';
+import type { FolderPathItem, IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -21,14 +21,12 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from 'n8n-design-system/utils';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
-import { useFoldersStore } from '@/stores/folders.store';
-import { type FolderPathItem } from './Folders/FolderBreadcrumbs.vue';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -41,6 +39,10 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 const props = withDefaults(
 	defineProps<{
 		data: WorkflowResource;
+		breadcrumbs: {
+			visibleItems: FolderPathItem[];
+			hiddenItems: FolderPathItem[];
+		};
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 	}>(),
@@ -63,14 +65,12 @@ const locale = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const route = useRoute();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const foldersStore = useFoldersStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -117,41 +117,6 @@ const formattedCreatedAtDate = computed(() => {
 		props.data.createdAt,
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
-});
-
-const breadCrumbsItems = computed<FolderPathItem[]>(() => {
-	if (props.data.parentFolder) {
-		const parent = foldersStore.getCachedFolder(props.data.parentFolder.id);
-		return [
-			{
-				id: props.data.parentFolder.id,
-				label: props.data.parentFolder.name,
-				parentFolder: parent?.parentFolder,
-			},
-		];
-	}
-	return [];
-});
-
-const hiddenItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		breadCrumbsItems.value[breadCrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
 });
 
 const projectIcon = computed<CardProjectIcon>(() => {
@@ -335,9 +300,9 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 				/>
 				<div v-else :class="$style.breadcrumbs">
 					<n8n-breadcrumbs
-						:items="breadCrumbsItems"
-						:hidden-items="hiddenItems"
-						:path-truncated="breadCrumbsItems[0]?.parentFolder"
+						:items="breadcrumbs.visibleItems"
+						:hidden-items="breadcrumbs.hiddenItems"
+						:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
 						:show-border="true"
 						:highlight-last-item="false"
 						theme="small"

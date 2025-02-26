@@ -58,6 +58,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
+import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 export * from 'n8n-design-system/types';
 
@@ -350,6 +351,8 @@ export type BaseFolderItem = BaseResource & {
 export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
+
+export type FolderPathItem = PathItem & { parentFolder?: string };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
 

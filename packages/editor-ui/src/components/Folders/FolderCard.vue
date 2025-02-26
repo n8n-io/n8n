@@ -7,13 +7,15 @@ import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { UserAction } from '@/Interface';
-import { type FolderPathItem } from './FolderBreadcrumbs.vue';
-import { useFoldersStore } from '@/stores/folders.store';
+import type { FolderPathItem, UserAction } from '@/Interface';
 
 type Props = {
 	data: FolderResource;
 	actions: UserAction[];
+	breadcrumbs: {
+		visibleItems: FolderPathItem[];
+		hiddenItems: FolderPathItem[];
+	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -24,47 +26,10 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 
-const foldersStore = useFoldersStore();
-
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
 }>();
-
-const breadCrumbsItems = computed<FolderPathItem[]>(() => {
-	if (props.data.parentFolder) {
-		const parent = foldersStore.getCachedFolder(props.data.parentFolder.id);
-		return [
-			{
-				id: props.data.parentFolder.id,
-				label: props.data.parentFolder.name,
-				parentFolder: parent?.parentFolder,
-			},
-		];
-	}
-	return [];
-});
-
-const hiddenItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		breadCrumbsItems.value[breadCrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
-});
 
 const projectIcon = computed<ProjectIcon>(() => {
 	const defaultIcon: ProjectIcon = { type: 'icon', value: 'layer-group' };
@@ -164,9 +129,9 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
 						<n8n-breadcrumbs
-							:items="breadCrumbsItems"
-							:hidden-items="hiddenItems"
-							:path-truncated="breadCrumbsItems[0]?.parentFolder"
+							:items="breadcrumbs.visibleItems"
+							:hidden-items="breadcrumbs.hiddenItems"
+							:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
 							:show-border="true"
 							:highlight-last-item="false"
 							theme="small"

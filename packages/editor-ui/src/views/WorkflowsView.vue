@@ -17,7 +17,13 @@ import {
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
 } from '@/constants';
-import type { IUser, UserAction, WorkflowListResource, WorkflowListItem } from '@/Interface';
+import type {
+	IUser,
+	UserAction,
+	WorkflowListResource,
+	WorkflowListItem,
+	FolderPathItem,
+} from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -564,6 +570,82 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
+/**
+ * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
+ * We do this here and pass to each component to avoid recalculating in each card
+ */
+const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	if (!currentFolder.value) return [];
+	const items: FolderPathItem[] = [];
+	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
+	if (parent) {
+		items.push({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+	}
+	items.push({
+		id: currentFolder.value.id,
+		label: currentFolder.value.name,
+		parentFolder: parent?.parentFolder,
+	});
+	return items;
+});
+
+const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	const lastVisibleParent: FolderPathItem =
+		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
+	if (!lastVisibleParent) return [];
+	const items: FolderPathItem[] = [];
+	// Go through all the parent folders and add them to the hidden items
+	let parentFolder = lastVisibleParent.parentFolder;
+	while (parentFolder) {
+		const parent = foldersStore.getCachedFolder(parentFolder);
+
+		if (!parent) break;
+		items.unshift({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+		parentFolder = parent.parentFolder;
+	}
+	return items;
+});
+
+/**
+ * Main breadcrumbs items that show on top of the list
+ * These show path to the current folder with up to 2 parents visible
+ */
+const mainBreadcrumbs = computed(() => {
+	return {
+		visibleItems: visibleBreadcrumbsItems.value,
+		hiddenItems: hiddenBreadcrumbsItems.value,
+	};
+});
+
+/**
+ * Card breadcrumbs items that show on workflow and folder cards
+ * These show path to the current folder with up to one parent visible
+ */
+const cardBreadcrumbs = computed(() => {
+	const visibleItems = visibleBreadcrumbsItems.value;
+	const hiddenItems = hiddenBreadcrumbsItems.value;
+	if (visibleItems.length > 1) {
+		return {
+			visibleItems: [visibleItems[visibleItems.length - 1]],
+			hiddenItems: [...hiddenItems, ...visibleItems.slice(0, visibleItems.length - 1)],
+		};
+	}
+	return {
+		visibleItems,
+		hiddenItems,
+	};
+});
+
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
@@ -757,6 +839,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			</div>
 			<div v-else-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
 				<FolderBreadcrumbs
+					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
@@ -768,6 +851,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
+				:breadcrumbs="cardBreadcrumbs"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
@@ -776,6 +860,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
+				:breadcrumbs="cardBreadcrumbs"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
