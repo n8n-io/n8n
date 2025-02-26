@@ -450,5 +450,6 @@
         "correlation_id",
         "location",
         "category"
-    ]
+    ],
+    "version": 1
 }
