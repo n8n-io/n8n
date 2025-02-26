@@ -119,5 +119,6 @@
         "name",
         "webUrl",
         "parentReference"
-    ]
+    ],
+    "version": 1
 }
