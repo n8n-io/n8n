@@ -54,5 +54,6 @@
         "tax_exempt": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
