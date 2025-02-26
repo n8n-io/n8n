@@ -4,6 +4,7 @@ import type {
 	IRestApiContext,
 	IWorkflowDb,
 	NewWorkflowResponse,
+	WorkflowListResource,
 } from '@/Interface';
 import type {
 	ExecutionFilters,
@@ -35,6 +36,20 @@ export async function getWorkflow(context: IRestApiContext, id: string, filter?:
 export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {
 	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
+		...(filter ? { filter } : {}),
+		...(options ? options : {}),
+	});
+}
+
+export async function getWorkflowsAndFolders(
+	context: IRestApiContext,
+	filter?: object,
+	options?: object,
+	includeFolders?: boolean,
+) {
+	return await getFullApiResponse<WorkflowListResource[]>(context, 'GET', '/workflows', {
+		includeScopes: true,
+		includeFolders,
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
 	});

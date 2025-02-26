@@ -2,7 +2,6 @@ import { describe, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
-import { createPinia, setActivePinia } from 'pinia';
 import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
@@ -10,8 +9,8 @@ import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
-
-let pinia: ReturnType<typeof createPinia>;
+import { createTestingPinia } from '@pinia/testing';
+import { mockedStore } from '@/__tests__/utils';
 
 const routes = [
 	{ path: '/', name: 'home', component: { template: '<div></div>' } },
@@ -26,10 +25,6 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes,
 });
-
-const $route = {
-	params: {},
-};
 
 const generateUndefinedNullOrString = () => {
 	switch (randomInt(4)) {
@@ -69,23 +64,14 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 			'router-link': RouterLink,
 		},
 		plugins: [router],
-		mocks: {
-			$route,
-		},
 	},
 });
 
 describe('WorkflowExecutionsPreview.vue', () => {
-	let settingsStore: ReturnType<typeof useSettingsStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	const executionData: ExecutionSummary = executionDataFactory();
 
 	beforeEach(() => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-
-		settingsStore = useSettingsStore();
-		workflowsStore = useWorkflowsStore();
+		createTestingPinia();
 	});
 
 	test.each([
@@ -97,12 +83,17 @@ describe('WorkflowExecutionsPreview.vue', () => {
 	])(
 		'when debug enterprise feature is %s with workflow scopes %s it should handle debug link click accordingly',
 		async (availability, scopes, path) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
 			settingsStore.settings.enterprise = {
 				...(settingsStore.settings.enterprise ?? {}),
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			};
 
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({ scopes } as IWorkflowDb);
+			workflowsStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
+
+			await router.push(path);
 
 			const { getByTestId } = renderComponent({ props: { execution: executionData } });
 
@@ -113,13 +104,6 @@ describe('WorkflowExecutionsPreview.vue', () => {
 	);
 
 	it('disables the stop execution button when the user cannot update', () => {
-		settingsStore.settings.enterprise = {
-			...(settingsStore.settings.enterprise ?? {}),
-		};
-		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
-			scopes: undefined,
-		} as IWorkflowDb);
-
 		const { getByTestId } = renderComponent({
 			props: { execution: { ...executionData, status: 'running' } },
 		});

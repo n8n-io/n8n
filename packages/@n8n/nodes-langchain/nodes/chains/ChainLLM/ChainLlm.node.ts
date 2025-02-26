@@ -338,7 +338,7 @@ export class ChainLlm implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
