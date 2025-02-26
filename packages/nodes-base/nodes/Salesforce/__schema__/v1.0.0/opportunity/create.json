@@ -12,5 +12,6 @@
         "id",
         "success",
         "errors"
-    ]
+    ],
+    "version": 1
 }
