@@ -1,6 +1,5 @@
-import type { DirectiveBinding, ObjectDirective } from 'vue';
-
 import { truncate } from '@n8n/utils/string/truncate';
+import type { DirectiveBinding, ObjectDirective } from 'vue';
 
 /**
  * Custom directive `n8nTruncate` to truncate text content of an HTML element.
