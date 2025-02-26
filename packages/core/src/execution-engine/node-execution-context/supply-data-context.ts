@@ -109,6 +109,23 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			)) as ISupplyDataFunctions['getNodeParameter'];
 	}
 
+	cloneWith(replacements: { runIndex?: number }): SupplyDataContext {
+		return new SupplyDataContext(
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.runExecutionData,
+			replacements?.runIndex ?? this.runIndex,
+			this.connectionInputData,
+			this.inputData,
+			this.connectionType,
+			this.executeData,
+			this.closeFunctions,
+			this.abortSignal,
+		);
+	}
+
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
