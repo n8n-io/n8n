@@ -1,6 +1,8 @@
 import { captor, mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 
+import config from '@/config';
+
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
@@ -106,6 +108,78 @@ describe('DeprecationService', () => {
 			[undefined /* warnIfMissing */, true],
 		])('should handle value: %s', (value, mustWarn) => {
 			toTest(envVar, value, mustWarn);
+		});
+	});
+
+	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
+		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
+
+		beforeEach(() => {
+			process.env = { N8N_RUNNERS_ENABLED: 'true' };
+
+			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+				if (key === 'executions.mode') return 'queue';
+				return undefined;
+			});
+		});
+
+		describe('when executions.mode is queue', () => {
+			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is false', () => {
+				process.env[envVar] = 'false';
+
+				const service = new DeprecationService(logger);
+				service.warn();
+
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				const warningMessage = logger.warn.mock.calls[0][0];
+				expect(warningMessage).toContain(envVar);
+			});
+
+			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is empty', () => {
+				process.env[envVar] = '';
+
+				const service = new DeprecationService(logger);
+				service.warn();
+
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				const warningMessage = logger.warn.mock.calls[0][0];
+				expect(warningMessage).toContain(envVar);
+			});
+
+			test('should not warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is true', () => {
+				process.env[envVar] = 'true';
+
+				const service = new DeprecationService(logger);
+				service.warn();
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is undefined', () => {
+				delete process.env[envVar];
+
+				const service = new DeprecationService(logger);
+				service.warn();
+
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				const warningMessage = logger.warn.mock.calls[0][0];
+				expect(warningMessage).toContain(envVar);
+			});
+		});
+
+		describe('when executions.mode is not queue', () => {
+			test('should not warn', () => {
+				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
+					if (key === 'executions.mode') return 'regular';
+					return;
+				});
+				process.env[envVar] = 'false';
+
+				const service = new DeprecationService(logger);
+				service.warn();
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
