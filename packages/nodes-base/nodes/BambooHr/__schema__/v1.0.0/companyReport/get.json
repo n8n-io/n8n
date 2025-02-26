@@ -51,5 +51,6 @@
         "title",
         "fields",
         "employees"
-    ]
+    ],
+    "version": 1
 }
