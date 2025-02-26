@@ -229,5 +229,6 @@
         "collection",
         "created_at",
         "public_uuid"
-    ]
+    ],
+    "version": 1
 }
