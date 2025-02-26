@@ -24,5 +24,6 @@
         "TranscriptionJobStatus": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
