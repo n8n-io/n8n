@@ -360,5 +360,6 @@
                 "securityUpdateEnabled"
             ]
         }
-    }
+    },
+    "version": 1
 }
