@@ -170,5 +170,6 @@
         "lastModifiedBy",
         "parentReference",
         "fileSystemInfo"
-    ]
+    ],
+    "version": 1
 }
