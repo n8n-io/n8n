@@ -42,5 +42,6 @@
         "timezone",
         "created_at",
         "join_url"
-    ]
+    ],
+    "version": 1
 }
