@@ -152,5 +152,6 @@
         "estimateReset",
         "template",
         "public"
-    ]
+    ],
+    "version": 1
 }
