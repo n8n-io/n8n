@@ -266,5 +266,6 @@
         "severity",
         "moved_to_id",
         "service_desk_reply_to"
-    ]
+    ],
+    "version": 1
 }
