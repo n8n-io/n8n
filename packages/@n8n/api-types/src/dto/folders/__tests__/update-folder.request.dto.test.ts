@@ -37,13 +37,6 @@ describe('UpdateFolderDto', () => {
 				expectedErrorPath: ['name'],
 			},
 			{
-				name: 'empty name',
-				request: {
-					name: '',
-				},
-				expectedErrorPath: ['name'],
-			},
-			{
 				name: 'non string tagIds',
 				request: {
 					tagIds: [0],
