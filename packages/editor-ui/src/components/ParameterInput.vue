@@ -408,7 +408,7 @@ const displayIssues = computed(
 		getIssues.value.length > 0,
 );
 
-const editorType = computed<EditorType | 'json' | 'code'>(() => {
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
 	return getArgument<EditorType>('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
@@ -1225,6 +1225,17 @@ onUpdated(async () => {
 							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
+						<HtmlEditor
+							v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							:disable-expression-coloring="!isHtmlNode"
+							:disable-expression-completions="!isHtmlNode"
+							fullscreen
+							type="cssEditor"
+							@update:model-value="valueChangedDebounced"
+						/>
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
@@ -1298,6 +1309,28 @@ onUpdated(async () => {
 					:rows="editorRows"
 					:disable-expression-coloring="!isHtmlNode"
 					:disable-expression-completions="!isHtmlNode"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<N8nIcon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</HtmlEditor>
+
+				<HtmlEditor
+					v-else-if="editorType === 'cssEditor' && !codeEditDialogVisible"
+					:model-value="modelValueString"
+					:is-read-only="isReadOnly"
+					:rows="editorRows"
+					:disable-expression-coloring="!isHtmlNode"
+					:disable-expression-completions="!isHtmlNode"
+					type="cssEditor"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>

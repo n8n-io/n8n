@@ -187,7 +187,7 @@ const descriptionV2: INodeTypeDescription = {
 					type: 'string',
 					typeOptions: {
 						rows: 10,
-						editor: 'htmlEditor',
+						editor: 'cssEditor',
 					},
 					displayOptions: {
 						show: {

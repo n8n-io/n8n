@@ -385,7 +385,7 @@ export class ChatTrigger extends Node {
 						type: 'string',
 						typeOptions: {
 							rows: 10,
-							editor: 'htmlEditor',
+							editor: 'cssEditor',
 						},
 						displayOptions: {
 							show: {

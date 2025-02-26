@@ -43,12 +43,14 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	type?: 'htmlEditor' | 'cssEditor';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	type: 'htmlEditor',
 });
 
 const emit = defineEmits<{
@@ -57,15 +59,14 @@ const emit = defineEmits<{
 
 const htmlEditor = ref<HTMLElement>();
 const editorValue = ref<string>(props.modelValue);
+
+const language = computed(() => (props.type === 'htmlEditor' ? htmlLanguage : cssLanguage));
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
-	new LanguageSupport(cssLanguage, [
-		cssLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-	]),
-	new LanguageSupport(htmlLanguage, [
-		htmlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-		n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
+	new LanguageSupport(language.value, [
+		language.value.data.of({ closeBrackets: expressionCloseBracketsConfig }),
+		n8nCompletionSources().map((source) => language.value.data.of(source)),
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),

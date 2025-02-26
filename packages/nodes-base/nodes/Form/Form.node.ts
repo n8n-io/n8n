@@ -114,7 +114,7 @@ const pageProperties = updateDisplayOptions(
 					type: 'string',
 					typeOptions: {
 						rows: 10,
-						editor: 'htmlEditor',
+						editor: 'cssEditor',
 					},
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
@@ -225,7 +225,7 @@ const completionProperties = updateDisplayOptions(
 					type: 'string',
 					typeOptions: {
 						rows: 10,
-						editor: 'htmlEditor',
+						editor: 'cssEditor',
 					},
 					default: cssVariables.trim(),
 					description: 'Override default styling of the public form interface with CSS',
