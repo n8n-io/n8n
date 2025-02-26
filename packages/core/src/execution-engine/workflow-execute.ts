@@ -111,7 +111,6 @@ export class WorkflowExecute {
 		startNode?: INode,
 		destinationNode?: string,
 		pinData?: IPinData,
-		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
@@ -133,7 +132,7 @@ export class WorkflowExecute {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node: startNode,
-				data: triggerToStartFrom?.data?.data ?? {
+				data: {
 					main: [
 						[
 							{
