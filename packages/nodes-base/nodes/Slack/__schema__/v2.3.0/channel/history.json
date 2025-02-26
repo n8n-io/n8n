@@ -92,5 +92,6 @@
         "team": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
