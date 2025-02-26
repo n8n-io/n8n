@@ -107,5 +107,6 @@
         "updated",
         "softDeletePolicy",
         "locationType"
-    ]
+    ],
+    "version": 1
 }
