@@ -200,5 +200,6 @@
         "pr_count",
         "total_photo_count",
         "has_kudoed"
-    ]
+    ],
+    "version": 1
 }
