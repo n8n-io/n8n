@@ -166,5 +166,6 @@
         "mpp_tracking": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
