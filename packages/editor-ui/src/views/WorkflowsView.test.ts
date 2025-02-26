@@ -14,6 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import * as usersApi from '@/api/users';
+import { useFoldersStore } from '@/stores/folders.store';
 
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
@@ -313,6 +314,8 @@ describe('WorkflowsView', () => {
 			href: '/projects/1/folders/1',
 		});
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const foldersStore = mockedStore(useFoldersStore);
+		foldersStore.totalWorkflowCount = 2;
 		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
 			TEST_WORKFLOW_RESOURCE,
 			TEST_FOLDER_RESOURCE,
