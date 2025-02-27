@@ -4,7 +4,7 @@ import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { Logger } from 'n8n-core';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
+import { NodeOperationError, UserError, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -142,9 +142,7 @@ export class EnterpriseWorkflowService {
 				if (credentialId === undefined) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
-					throw new ApplicationError(
-						'The workflow contains credentials that you do not have access to',
-					);
+					throw new UserError('The workflow contains credentials that you do not have access to');
 				}
 			});
 		});
