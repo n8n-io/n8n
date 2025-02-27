@@ -170,7 +170,7 @@ export class JobProcessor {
 
 		const { startData, resultData, manualData, isTestWebhook } = execution.data;
 
-		if (execution.mode === 'manual' && !isTestWebhook) {
+		if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
