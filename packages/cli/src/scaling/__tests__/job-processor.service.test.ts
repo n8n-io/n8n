@@ -50,13 +50,13 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
-	it.each(['manual', 'evaluation'])(
+	it.each(['manual', 'evaluation'] satisfies WorkflowExecuteMode[])(
 		'should use manualExecutionService to process a job in %p mode',
 		async (mode) => {
 			const executionRepository = mock<ExecutionRepository>();
 			executionRepository.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
-					mode: mode as WorkflowExecuteMode,
+					mode,
 					workflowData: { nodes: [] },
 					data: mock<IRunExecutionData>({
 						isTestWebhook: false,
