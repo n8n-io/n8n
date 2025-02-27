@@ -5,7 +5,7 @@ import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { useToast } from '@/composables/useToast';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useTelemetry } from '@/composables/useTelemetry';

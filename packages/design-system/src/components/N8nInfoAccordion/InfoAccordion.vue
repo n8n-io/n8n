@@ -1,9 +1,9 @@
 <script lang="ts" setup>
+import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { onMounted, ref } from 'vue';
 
 import type { IconColor } from 'n8n-design-system/types/icon';
 
-import { createEventBus, type EventBus } from '../../utils';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 

@@ -1,4 +1,4 @@
-import { createEventBus } from './event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 export interface FormEventBusEvents {
 	submit: never;

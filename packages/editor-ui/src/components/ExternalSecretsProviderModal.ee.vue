@@ -2,7 +2,7 @@
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
@@ -17,7 +17,7 @@ import type {
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };

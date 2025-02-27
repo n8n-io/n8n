@@ -17,7 +17,7 @@ import {
 } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
-import { sublimeSearch } from '@/utils/sortUtils';
+import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
 import { sortBy } from 'lodash-es';
