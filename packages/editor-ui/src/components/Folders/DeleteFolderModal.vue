@@ -26,7 +26,7 @@ const { showMessage, showError } = useToast();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string; parentFolder?: string } | null>(null);
+const selectedFolderId = ref<string | null>(null);
 const projectFolders = ref<FolderListItem[]>([]);
 
 const i18n = useI18n();
@@ -63,7 +63,7 @@ const enabled = computed(() => {
 		return true;
 	}
 
-	if (operation.value === 'transfer' && selectedFolder.value) {
+	if (operation.value === 'transfer' && selectedFolderId.value) {
 		return true;
 	}
 
@@ -105,21 +105,20 @@ async function onSubmit() {
 	try {
 		loading.value = true;
 
-		const params = { id: props.activeId } as { id: string; transferId?: string };
-		if (operation.value === 'transfer' && selectedFolder.value) {
-			params.transferId = selectedFolder.value.id;
-		}
-
-		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId);
+		await foldersStore.deleteFolder(
+			route.params.projectId as string,
+			props.activeId,
+			selectedFolderId.value ?? undefined,
+		);
 
 		let message = '';
-		if (params.transferId) {
-			const transferFolder = projectFolders.value.find((folder) => folder.id === params.transferId);
-			if (transferFolder) {
-				message = i18n.baseText('folders.transfer.confirm.message', {
-					interpolate: { folderName: transferFolder.name ?? '' },
-				});
-			}
+		if (selectedFolderId.value) {
+			const selectedFolder = projectFolders.value.find(
+				(folder) => folder.id === selectedFolderId.value,
+			);
+			message = i18n.baseText('folders.transfer.confirm.message', {
+				interpolate: { folderName: selectedFolder?.name ?? '' },
+			});
 		}
 
 		showMessage({
@@ -174,7 +173,7 @@ onMounted(async () => {
 							i18n.baseText('folders.transfer.selectFolder')
 						}}</n8n-text>
 						<N8nSelect
-							v-model="selectedFolder"
+							v-model="selectedFolderId"
 							option-label="name"
 							option-value="id"
 							:placeholder="i18n.baseText('folders.transfer.selectFolder')"

@@ -103,8 +103,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return count;
 	}
 
-	async function deleteFolder(projectId: string, folderId: string) {
-		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId);
+	async function deleteFolder(projectId: string, folderId: string, newParentId?: string) {
+		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
 	}
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {

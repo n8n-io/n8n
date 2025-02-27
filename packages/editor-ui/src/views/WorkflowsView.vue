@@ -290,7 +290,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onFolderDeleted = (payload: { folderId: string }) => {
+const onFolderDeleted = async (payload: { folderId: string }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
@@ -299,6 +299,8 @@ const onFolderDeleted = (payload: { folderId: string }) => {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: { projectId: route.params.projectId, folderId: folderInfo?.parentFolder ?? '' },
 		});
+	} else {
+		await fetchWorkflows();
 	}
 };
 
