@@ -354,16 +354,52 @@ export class WorkflowExecute {
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
+		let graph = DirectedGraph.fromWorkflow(workflow);
+
+		// Edge Case 1:
+		// Support executing a single node that is not connected to a trigger
+		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
+		if (destinationHasNoParents) {
+			// short cut here, only create a subgraph and the stacks
+			graph = findSubgraph({
+				graph: filterDisabledNodes(graph),
+				destination,
+				trigger: destination,
+			});
+			const filteredNodes = graph.getNodes();
+			runData = cleanRunData(runData, graph, new Set([destination]));
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
+
+			this.status = 'running';
+			this.runExecutionData = {
+				startData: {
+					destinationNode: destinationNodeName,
+					runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+				},
+				resultData: {
+					runData,
+					pinData,
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack,
+					metadata: {},
+					waitingExecution,
+					waitingExecutionSource,
+				},
+			};
+
+			return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		}
+
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
-			throw new ApplicationError(
-				'The destination node is not connected to any trigger. Partial executions need a trigger.',
-			);
+			throw new ApplicationError('Connect a trigger to run this node');
 		}
 
 		// 2. Find the Subgraph
-		let graph = DirectedGraph.fromWorkflow(workflow);
 		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = graph.getNodes();
 
@@ -380,7 +416,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, new Set(startNodes), runData, pinData ?? {});
+			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
