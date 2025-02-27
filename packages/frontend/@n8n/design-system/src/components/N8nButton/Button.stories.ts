@@ -25,7 +25,7 @@ export default {
 	parameters: {
 		design: {
 			type: 'figma',
-			url: 'https://www.figma.com/file/DxLbnIyMK8X0uLkUguFV4n/@n8n/design-system_v1?node-id=5%3A1147',
+			url: 'https://www.figma.com/file/DxLbnIyMK8X0uLkUguFV4n/n8n-design-system_v1?node-id=5%3A1147',
 		},
 	},
 };
