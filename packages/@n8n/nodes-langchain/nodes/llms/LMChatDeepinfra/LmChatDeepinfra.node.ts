@@ -22,6 +22,70 @@ const modelField: INodeProperties = {
 			name: 'Meta-Llama 3.3 70B Instruct',
 			value: 'meta-llama/Llama-3.3-70B-Instruct',
 		},
+		{
+			name: 'Meta-Llama 3.3 70B Instruct Turbo',
+			value: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+		},
+		{
+			name: 'Meta-Llama 3.1 8B Instruct',
+			value: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+		},
+		{
+			name: 'Meta-Llama 3.1 70B Instruct',
+			value: 'meta-llama/Meta-Llama-3.1-70B-Instruct',
+		},
+		{
+			name: 'Meta-Llama 3.1 405B Instruct',
+			value: 'meta-llama/Meta-Llama-3.1-405B-Instruct',
+		},
+		{
+			name: 'Meta-Llama 3.1 8B Instruct Turbo',
+			value: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+		},
+		{
+			name: 'Meta-Llama 3.1 70B Instruct Turbo',
+			value: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+		},
+		{
+			name: 'DeepSeek R1 Turbo',
+			value: 'deepseek-ai/DeepSeek-R1-Turbo',
+		},
+		{
+			name: 'DeepSeek R1',
+			value: 'deepseek-ai/DeepSeek-R1',
+		},
+		{
+			name: 'DeepSeek R1 Distill Llama 70B',
+			value: 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
+		},
+		{
+			name: 'DeepSeek V3',
+			value: 'deepseek-ai/DeepSeek-V3',
+		},
+		{
+			name: 'DeepSeek R1 Distill Qwen 32B',
+			value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+		},
+		{
+			name: 'Mistral Small 24B Instruct 2501',
+			value: 'mistralai/Mistral-Small-24B-Instruct-2501',
+		},
+		{
+			name: 'Phi-4',
+			value: 'microsoft/phi-4',
+		},
+		{
+			name: 'Qwen 2.5 Coder 32B Instruct',
+			value: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+		},
+		{
+			name: 'Qwen 2.5 72B Instruct',
+			value: 'Qwen/Qwen2.5-72B-Instruct',
+		},
+		{
+			name: 'Llama 3.1 Nemotron 70B Instruct',
+			value: 'nvidia/Llama-3.1-Nemotron-70B-Instruct',
+		},
 		// Add more models as needed
 	],
 	description: 'The model which will generate the completion',
