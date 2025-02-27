@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
@@ -16,7 +16,7 @@ export const paginationListQueryMiddleware: RequestHandler = (
 
 	try {
 		if (!rawTake && req.query.skip) {
-			throw new ApplicationError('Please specify `take` when using `skip`');
+			throw new UnexpectedError('Please specify `take` when using `skip`');
 		}
 
 		if (!rawTake) return next();

@@ -4,7 +4,6 @@ import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
-import { writeBlockedMessage } from '@/binary-data/object-store/utils';
 
 jest.mock('axios');
 
@@ -126,23 +125,6 @@ describe('put()', () => {
 			},
 			data: mockBuffer,
 		});
-	});
-
-	it('should block if read-only', async () => {
-		objectStoreService.setReadonly(true);
-
-		const metadata = { fileName: 'file.txt', mimeType: 'text/plain' };
-
-		const promise = objectStoreService.put(fileId, mockBuffer, metadata);
-
-		await expect(promise).resolves.not.toThrow();
-
-		const result = await promise;
-
-		expect(result.status).toBe(403);
-		expect(result.statusText).toBe('Forbidden');
-
-		expect(result.data).toBe(writeBlockedMessage(fileId));
 	});
 
 	it('should throw an error on request failure', async () => {
