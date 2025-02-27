@@ -68,6 +68,7 @@ import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import { isPresent } from '@/utils/typesUtils';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -424,7 +425,22 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
-	return (options ?? []).filter(isINodePropertyOptions);
+	const [safeOptions, invalidOptions] = partition(
+		options ?? [],
+		(option): option is INodePropertyOptions =>
+			isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name),
+	);
+
+	if (invalidOptions.length > 0) {
+		captureMessage('Invalid parameter options', {
+			extra: {
+				invalidOptions,
+				parameter: props.parameter.name,
+				node: node.value,
+			},
+		});
+	}
+	return safeOptions;
 });
 
 const isSwitch = computed(
@@ -645,19 +661,7 @@ async function loadRemoteParameterOptions() {
 			credentials: node.value.credentials,
 		});
 
-		const [safeOptions, invalidOptions] = partition(options, isINodePropertyOptions);
-
-		if (invalidOptions.length > 0) {
-			captureMessage('Invalid parameter options', {
-				level: 'error',
-				extra: {
-					invalidOptions,
-					parameter: props.parameter.name,
-					node: node.value,
-				},
-			});
-		}
-		remoteParameterOptions.value = remoteParameterOptions.value.concat(safeOptions);
+		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
 	} catch (error) {
 		remoteParameterOptionsLoadingIssues.value = error.message;
 	}
