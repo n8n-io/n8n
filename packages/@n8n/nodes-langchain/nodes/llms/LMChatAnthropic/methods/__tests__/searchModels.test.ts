@@ -1,4 +1,5 @@
-import type { ILoadOptionsFunctions, INodeListSearchItems } from 'n8n-workflow';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { searchModels, type AnthropicModel } from '../searchModels';
 
 describe('searchModels', () => {
@@ -65,7 +66,7 @@ describe('searchModels', () => {
 
 	it('should sort models by created_at date, most recent first', async () => {
 		const result = await searchModels.call(mockContext);
-		const sortedResults = result.results as INodeListSearchItems[];
+		const sortedResults = result.results;
 
 		expect(sortedResults[0].value).toBe('claude-3-haiku-20240307');
 		expect(sortedResults[1].value).toBe('claude-3-opus-20240229');
