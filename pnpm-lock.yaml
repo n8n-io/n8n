@@ -775,6 +775,39 @@ importers:
 
   packages/@n8n/typescript-config: {}
 
+  packages/@n8n/utils:
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.0(@testing-library/dom@10.4.0)
+      tsup:
+        specifier: catalog:frontend
+        version: 8.3.6(@microsoft/api-extractor@7.48.0(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.4.49)(typescript@5.7.2)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
+      vite:
+        specifier: catalog:frontend
+        version: 6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
+      vite-plugin-dts:
+        specifier: catalog:frontend
+        version: 4.3.0(@types/node@18.16.16)(rollup@4.24.0)(typescript@5.7.2)(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))
+      vitest:
+        specifier: catalog:frontend
+        version: 3.0.5(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
+
   packages/@n8n/vitest-config:
     devDependencies:
       vite:
@@ -1280,6 +1313,9 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../frontend/@n8n/composables
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@vueuse/core':
         specifier: '*'
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
@@ -1458,6 +1494,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@replit/codemirror-indentation-markers':
         specifier: ^6.5.3
         version: 6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)

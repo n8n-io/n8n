@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, h } from 'vue';
-import { truncate } from 'n8n-design-system';
+import { truncate } from '@n8n/utils/string/truncate';
 import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
@@ -14,8 +14,8 @@ import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuc
 import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
-import { sortByProperty } from '@/utils/sortUtils';
-import type { EventBus } from 'n8n-design-system/utils';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 

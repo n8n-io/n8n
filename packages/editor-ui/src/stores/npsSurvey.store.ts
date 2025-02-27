@@ -14,7 +14,7 @@ import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@/api/npsSurvey';
 import type { IN8nPrompts } from '@/Interface';
 import { getPromptsData } from '@/api/settings';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 

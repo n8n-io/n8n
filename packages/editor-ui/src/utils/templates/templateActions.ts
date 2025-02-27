@@ -19,7 +19,7 @@ import type { TemplatesStore } from '@/stores/templates.store';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
 import { tryToParseNumber } from '@/utils/typesUtils';
 

@@ -5,7 +5,7 @@ import ModalDrawer from '@/components/ModalDrawer.vue';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { ref, computed, watch } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useStyles } from '@/composables/useStyles';
