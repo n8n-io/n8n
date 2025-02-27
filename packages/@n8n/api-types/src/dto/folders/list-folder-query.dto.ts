@@ -26,6 +26,7 @@ export const filterSchema = z
 	.object({
 		parentFolderId: z.string().optional(),
 		name: z.string().optional(),
+		tags: z.array(z.string()).optional(),
 	})
 	.strict();
 

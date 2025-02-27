@@ -26,6 +26,24 @@ describe('ListFolderQueryDto', () => {
 				},
 			},
 			{
+				name: 'filter with tags array',
+				request: {
+					filter: '{"tags":["important","archived"]}',
+				},
+			},
+			{
+				name: 'filter with empty tags array',
+				request: {
+					filter: '{"tags":[]}',
+				},
+			},
+			{
+				name: 'filter with all properties',
+				request: {
+					filter: '{"name":"test","parentFolderId":"abc123","tags":["important"]}',
+				},
+			},
+			{
 				name: 'valid select',
 				request: {
 					select: '["id","name"]',
@@ -47,8 +65,8 @@ describe('ListFolderQueryDto', () => {
 			{
 				name: 'full query parameters',
 				request: {
-					filter: '{"name":"test"}',
-					select: '["id","name","createdAt"]',
+					filter: '{"name":"test","tags":["important"]}',
+					select: '["id","name","createdAt","tags"]',
 					skip: '0',
 					take: '10',
 					sortBy: 'createdAt:desc',
@@ -73,6 +91,20 @@ describe('ListFolderQueryDto', () => {
 				name: 'filter with invalid field',
 				request: {
 					filter: '{"unknownField":"test"}',
+				},
+				expectedErrorPath: ['filter'],
+			},
+			{
+				name: 'filter with tags not as array',
+				request: {
+					filter: '{"tags":"important"}',
+				},
+				expectedErrorPath: ['filter'],
+			},
+			{
+				name: 'filter with tags array containing non-string values',
+				request: {
+					filter: '{"tags":["important", 123]}',
 				},
 				expectedErrorPath: ['filter'],
 			},
