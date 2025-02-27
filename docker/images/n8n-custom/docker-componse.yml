@@ -1,0 +1,14 @@
+version: "3.7"
+
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: docker/images/n8n-custom/Dockerfile
+    ports:
+      - "5678:5678"
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ~/.n8n:/home/node/.n8n
