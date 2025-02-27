@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useRootStore } from '@/stores/root.store';

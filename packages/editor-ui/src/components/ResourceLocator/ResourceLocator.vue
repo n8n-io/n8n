@@ -20,8 +20,8 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	INode,
 	INodeListSearchItems,

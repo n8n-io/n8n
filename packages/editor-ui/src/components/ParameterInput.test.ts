@@ -8,7 +8,7 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;

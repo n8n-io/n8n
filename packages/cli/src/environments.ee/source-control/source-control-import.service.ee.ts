@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
+import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -250,7 +250,7 @@ export class SourceControlImportService {
 			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
 			const upsertResult = await this.workflowRepository.upsert({ ...importedWorkflow }, ['id']);
 			if (upsertResult?.identifiers?.length !== 1) {
-				throw new ApplicationError('Failed to upsert workflow', {
+				throw new UnexpectedError('Failed to upsert workflow', {
 					extra: { workflowId: importedWorkflow.id ?? 'new' },
 				});
 			}
@@ -411,7 +411,7 @@ export class SourceControlImportService {
 					select: ['id'],
 				});
 				if (findByName && findByName.id !== tag.id) {
-					throw new ApplicationError(
+					throw new UserError(
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
@@ -570,7 +570,7 @@ export class SourceControlImportService {
 		assertNever(owner);
 
 		const errorOwner = owner as ResourceOwner;
-		throw new ApplicationError(
+		throw new UnexpectedError(
 			`Unknown resource owner type "${
 				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
 			}" found when importing from source controller`,
