@@ -73,3 +73,8 @@ export function checkDynamicObject(variables: string[], dataMap: Record<string, 
 	}
 	return result;
 }
+
+export const defaultConfig = {
+	retryAfterDays: 1,
+	maxAttempts: 3,
+};

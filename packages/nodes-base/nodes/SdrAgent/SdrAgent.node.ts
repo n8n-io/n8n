@@ -3,16 +3,16 @@ import {
 	INodeTypeDescription,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	NodeConnectionType,
 	IExecuteFunctions,
 	INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { getDbConnection } from '@utils/db';
 
 export class SdrAgent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SDR Agent',
-		name: 'SdrAgent',
+		name: 'sdrAgent',
 		group: ['input'],
 		version: 1,
 		description: 'Select an SDR Agent and Segment.',
@@ -42,7 +42,7 @@ export class SdrAgent implements INodeType {
 					loadOptionsDependsOn: ['sdrAgentId'],
 				},
 				default: '',
-				description: 'Select a segment based on the SDR Agent',
+				description: 'Select a Segment',
 			},
 		],
 	};
@@ -51,8 +51,7 @@ export class SdrAgent implements INodeType {
 		loadOptions: {
 			async getSDRAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const connection = await getDbConnection();
-
-				const [rows] = await connection.execute('SELECT id, agent_identifier_name FROM sdr_agents'); // WHERE company_id = ?',[company_id]
+				const [rows] = await connection.execute('SELECT id, agent_identifier_name FROM sdr_agents');
 				return (rows as { id: number; agent_identifier_name: string }[]).map((row) => ({
 					name: row.agent_identifier_name,
 					value: row.id,
@@ -64,8 +63,7 @@ export class SdrAgent implements INodeType {
 				if (!sdrAgentId) return [];
 
 				const connection = await getDbConnection();
-
-				const [rows] = await connection.execute('SELECT id, name FROM segments'); // WHERE company_id = ?',[company_id]
+				const [rows] = await connection.execute('SELECT id, name FROM segments');
 
 				return (rows as { id: number; name: string }[]).map((row) => ({
 					name: row.name,
@@ -78,8 +76,10 @@ export class SdrAgent implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const sdrAgentId = this.getNodeParameter('sdrAgentId', 0) as number;
 		const segmentId = this.getNodeParameter('segmentId', 0) as number;
-		this.getWorkflowStaticData('global').segmentId = segmentId;
-		this.getWorkflowStaticData('global').sdrAgentId = sdrAgentId;
+
+		// // Save in workflow static data
+		// this.getWorkflowStaticData('global').sdrAgentId = sdrAgentId;
+		// this.getWorkflowStaticData('global').segmentId = segmentId;
 
 		return [[{ json: { sdrAgentId, segmentId } }]];
 	}
