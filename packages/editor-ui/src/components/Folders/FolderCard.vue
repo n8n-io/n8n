@@ -113,8 +113,8 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 							v-if="data.subFolderCount > 0"
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
+							:class="[$style['info-cell'], $style['info-cell--folder-count']]"
+							data-test-id="folder-card-folder-count"
 						>
 							{{ i18n.baseText('generic.folder', { interpolate: { count: data.subFolderCount } }) }}
 						</n8n-text>

@@ -291,6 +291,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		workflowCount: 1,
+		subFolderCount: 0,
 		homeProject: {
 			id: '1',
 			name: 'Project 1',
