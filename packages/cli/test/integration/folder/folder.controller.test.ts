@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
+import { DateTime } from 'luxon';
 
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
@@ -13,8 +15,6 @@ import { createOwner, createMember } from '../shared/db/users';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { Project } from '@/databases/entities/project';
-import { DateTime } from 'luxon';
 
 let owner: User;
 let member: User;
@@ -724,7 +724,7 @@ describe('GET /projects/:projectId/folders', () => {
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: `{ "name": "test" }` })
+			.query({ filter: '{ "name": "test" }' })
 			.expect(200);
 
 		expect(response.body.count).toBe(2);
@@ -760,7 +760,7 @@ describe('GET /projects/:projectId/folders', () => {
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: `{ "parentFolderId": "0" }` })
+			.query({ filter: '{ "parentFolderId": "0" }' })
 			.expect(200);
 
 		expect(response.body.count).toBe(3);
