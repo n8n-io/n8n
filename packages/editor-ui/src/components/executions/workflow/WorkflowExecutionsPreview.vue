@@ -329,12 +329,18 @@ onMounted(async () => {
 					:content="disableAddToTestTooltip"
 					:disabled="!disableAddToTestTooltip"
 				>
-					<ElDropdown trigger="click" placement="bottom-end" @command="handleCommand">
+					<ElDropdown
+						trigger="click"
+						placement="bottom-end"
+						data-test-id="test-execution-crud"
+						@command="handleCommand"
+					>
 						<div v-if="testDefinition" :class="$style.buttonGroup">
 							<N8nButton
 								v-if="executionHasTestTag"
 								:disabled="!!disableAddToTestTooltip"
 								type="secondary"
+								data-test-id="test-execution-remove"
 								@click.stop="removeExecutionTag(testDefinition.annotationTagId!)"
 							>
 								{{
@@ -348,6 +354,7 @@ onMounted(async () => {
 								v-else
 								:disabled="!!disableAddToTestTooltip"
 								type="primary"
+								data-test-id="test-execution-add"
 								@click.stop="addExecutionTag(testDefinition.annotationTagId!)"
 							>
 								{{
@@ -360,10 +367,16 @@ onMounted(async () => {
 								:disabled="!!disableAddToTestTooltip"
 								icon="angle-down"
 								:type="executionHasTestTag ? 'secondary' : 'primary'"
+								data-test-id="test-execution-toggle"
 							/>
 						</div>
 
-						<N8nButton v-else :disabled="!!disableAddToTestTooltip" type="secondary">
+						<N8nButton
+							v-else
+							:disabled="!!disableAddToTestTooltip"
+							type="secondary"
+							data-test-id="test-execution-toggle"
+						>
 							{{ locale.baseText('testDefinition.executions.addTo.new') }}
 							<N8nIcon icon="angle-down" size="small" class="ml-2xs" />
 						</N8nButton>
@@ -375,6 +388,7 @@ onMounted(async () => {
 										v-for="test in testList"
 										:key="test.value"
 										:command="test.command"
+										data-test-id="test-execution-add-to"
 									>
 										<N8nText
 											:color="test.added ? 'primary' : 'text-dark'"
@@ -389,6 +403,7 @@ onMounted(async () => {
 									:class="$style.createTestButton"
 									:command="{ type: 'createTest', id: execution.id }"
 									:disabled="!workflowPermissions.update"
+									data-test-id="test-execution-create"
 								>
 									<N8nText :class="$style.fontMedium">
 										<N8nIcon icon="plus" /> Add to new test
