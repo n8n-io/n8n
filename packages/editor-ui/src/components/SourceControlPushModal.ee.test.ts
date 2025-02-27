@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';

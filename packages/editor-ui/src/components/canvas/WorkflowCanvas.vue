@@ -4,8 +4,8 @@ import { computed, ref, toRef, useCssModule } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 

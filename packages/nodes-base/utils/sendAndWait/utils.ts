@@ -24,7 +24,7 @@ import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
 import { escapeHtml } from '../utilities';
 
-type SendAndWaitConfig = {
+export type SendAndWaitConfig = {
 	title: string;
 	message: string;
 	url: string;
