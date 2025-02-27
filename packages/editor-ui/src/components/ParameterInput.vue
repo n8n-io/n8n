@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
-import { get } from 'lodash-es';
+import { get, partition } from 'lodash-es';
 
 import type {
 	INodeUi,
@@ -22,7 +22,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, isINodePropertyOptions, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -66,6 +66,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
+import { captureMessage } from '@sentry/vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -420,14 +421,9 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getArgument<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
 });
 
-const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
-	if (!hasRemoteMethod.value) {
-		// Options are already given
-		return props.parameter.options as INodePropertyOptions[];
-	}
-
-	// Options get loaded from server
-	return remoteParameterOptions.value;
+const parameterOptions = computed(() => {
+	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	return (options ?? []).filter(isINodePropertyOptions);
 });
 
 const isSwitch = computed(
@@ -648,7 +644,18 @@ async function loadRemoteParameterOptions() {
 			credentials: node.value.credentials,
 		});
 
-		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
+		const [safeOptions, invalidOptions] = partition(options, isINodePropertyOptions);
+
+		if (invalidOptions.length > 0) {
+			captureMessage('Invalid parameter options', {
+				extra: {
+					invalidOptions,
+					parameter: props.parameter.name,
+					node: node.value,
+				},
+			});
+		}
+		remoteParameterOptions.value = remoteParameterOptions.value.concat(safeOptions);
 	} catch (error) {
 		remoteParameterOptionsLoadingIssues.value = error.message;
 	}
@@ -1517,7 +1524,7 @@ onUpdated(async () => {
 			>
 				<N8nOption
 					v-for="option in parameterOptions"
-					:key="`${option.value}`"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 					data-test-id="parameter-input-item"
