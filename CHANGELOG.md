@@ -1,3 +1,12 @@
+## [1.80.4](https://github.com/n8n-io/n8n/compare/n8n@1.80.3...n8n@1.80.4) (2025-02-27)
+
+
+### Bug Fixes
+
+* **Call n8n Workflow Tool Node:** Support concurrent invocations of the tool ([#13526](https://github.com/n8n-io/n8n/issues/13526)) ([de4d26d](https://github.com/n8n-io/n8n/commit/de4d26dc5f42ee572a509bdd5932e9564f5a4aee))
+
+
+
 ## [1.80.3](https://github.com/n8n-io/n8n/compare/n8n@1.80.2...n8n@1.80.3) (2025-02-21)
 
 
