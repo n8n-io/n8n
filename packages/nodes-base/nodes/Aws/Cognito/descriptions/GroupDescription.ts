@@ -69,7 +69,7 @@ export const groupOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "deleted": true } }}',
 								},
 							},
 						],
@@ -140,7 +140,7 @@ export const groupOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "updated": true } }}',
 								},
 							},
 						],

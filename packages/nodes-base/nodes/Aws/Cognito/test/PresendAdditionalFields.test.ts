@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { presendAdditionalFields } from '../GenericFunctions';
 
@@ -42,10 +42,10 @@ describe('presendAdditionalFields', () => {
 		};
 
 		await expect(presendAdditionalFields.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(
-				mockContext.getNode(),
-				'At least one of the additional fields must be provided to update the group.',
-			),
+			new NodeApiError(mockContext.getNode(), {
+				message: 'No group field provided',
+				description: 'Select at least one additional field to update.',
+			}),
 		);
 	});
 });

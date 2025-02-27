@@ -31,17 +31,17 @@ export class AwsCognito implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message: 'Select a parameter to update this resource',
+				message: 'Select at least one user field to update',
 				displayCondition:
-					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
+					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["UserAttributes"].attributes).length === 0}}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 				type: 'warning',
 			},
 			{
-				message: 'Select a parameter to update this resource',
+				message: 'Select at least one group field to update',
 				displayCondition:
-					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["options"]).length === 0}}',
+					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalFields"]).length === 0}}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 				type: 'warning',

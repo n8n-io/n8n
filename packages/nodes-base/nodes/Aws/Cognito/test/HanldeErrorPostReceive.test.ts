@@ -40,28 +40,6 @@ describe('handleErrorPostReceive', () => {
 		);
 	});
 
-	test('should throw error when status code starts with 5 (EntityAlreadyExists for group create operation)', async () => {
-		const response: IN8nHttpFullResponse = {
-			statusCode: 500,
-			body: {
-				__type: 'EntityAlreadyExists',
-				message: 'Group already exists',
-			},
-			headers: {},
-		};
-		mockNodeParameter.mockReturnValueOnce('group');
-		mockNodeParameter.mockReturnValueOnce('create');
-
-		const data: INodeExecutionData[] = [];
-
-		await expect(handleErrorPostReceive.call(mockContext, data, response)).rejects.toThrowError(
-			new NodeApiError(mockGetNode(), response as unknown as JsonObject, {
-				message: 'The group you are trying to create already exists',
-				description: 'Adjust the "Group Name" parameter setting to create the group correctly.',
-			}),
-		);
-	});
-
 	test('should not throw error when status code does not start with 4 or 5', async () => {
 		const response: IN8nHttpFullResponse = {
 			statusCode: 200,
@@ -73,28 +51,6 @@ describe('handleErrorPostReceive', () => {
 
 		const result = await handleErrorPostReceive.call(mockContext, data, response);
 		expect(result).toEqual(data);
-	});
-
-	test('should throw error for user create operation when UsernameExistsException occurs', async () => {
-		const response: IN8nHttpFullResponse = {
-			statusCode: 400,
-			body: {
-				__type: 'UsernameExistsException',
-				message: 'User account already exists',
-			},
-			headers: {},
-		};
-		mockNodeParameter.mockReturnValueOnce('user');
-		mockNodeParameter.mockReturnValueOnce('create');
-
-		const data: INodeExecutionData[] = [];
-
-		await expect(handleErrorPostReceive.call(mockContext, data, response)).rejects.toThrowError(
-			new NodeApiError(mockGetNode(), response as unknown as JsonObject, {
-				message: 'The user you are trying to create already exists',
-				description: 'Adjust the "User Name" parameter setting to create the user correctly.',
-			}),
-		);
 	});
 
 	test('should throw error for user delete operation when UserNotFoundException occurs', async () => {
@@ -115,6 +71,50 @@ describe('handleErrorPostReceive', () => {
 			new NodeApiError(mockGetNode(), response as unknown as JsonObject, {
 				message: 'The user you are requesting could not be found.',
 				description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
+			}),
+		);
+	});
+
+	test('should throw error when status code starts with 5 (EntityAlreadyExists for group create operation)', async () => {
+		const response: IN8nHttpFullResponse = {
+			statusCode: 500,
+			body: {
+				__type: 'EntityAlreadyExists',
+				message: 'Group already exists',
+			},
+			headers: {},
+		};
+		mockNodeParameter.mockReturnValueOnce('group');
+		mockNodeParameter.mockReturnValueOnce('create');
+
+		const data: INodeExecutionData[] = [];
+
+		await expect(handleErrorPostReceive.call(mockContext, data, response)).rejects.toThrowError(
+			new NodeApiError(mockGetNode(), response as unknown as JsonObject, {
+				message: 'The group you are trying to create already exists.',
+				description: 'Adjust the "Group Name" parameter setting to create the group correctly.',
+			}),
+		);
+	});
+
+	test('should throw error for user create operation when UsernameExistsException occurs', async () => {
+		const response: IN8nHttpFullResponse = {
+			statusCode: 400,
+			body: {
+				__type: 'UsernameExistsException',
+				message: 'User account already exists',
+			},
+			headers: {},
+		};
+		mockNodeParameter.mockReturnValueOnce('user');
+		mockNodeParameter.mockReturnValueOnce('create');
+
+		const data: INodeExecutionData[] = [];
+
+		await expect(handleErrorPostReceive.call(mockContext, data, response)).rejects.toThrowError(
+			new NodeApiError(mockGetNode(), response as unknown as JsonObject, {
+				message: 'The user you are trying to create already exists.',
+				description: 'Adjust the "User Name" parameter setting to create the user correctly.',
 			}),
 		);
 	});

@@ -1,6 +1,5 @@
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -339,7 +338,7 @@ export class Aws implements ICredentialType {
 				region = parsed.region;
 			}
 		} else {
-			if (!requestOptions.baseURL && !requestOptions.url && service) {
+			if (!requestOptions.baseURL && !requestOptions.url) {
 				let endpointString: string;
 				if (service === 'lambda' && credentials.lambdaEndpoint) {
 					endpointString = credentials.lambdaEndpoint;

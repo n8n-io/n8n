@@ -44,7 +44,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "addedToGroup": true } }}',
 								},
 							},
 						],
@@ -102,7 +102,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "deleted": true } }}',
 								},
 							},
 						],
@@ -179,7 +179,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "removedFromGroup": true } }}',
 								},
 							},
 						],
@@ -208,7 +208,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "success": true } }}',
+									value: '={{ { "updated": true } }}',
 								},
 							},
 						],
@@ -478,12 +478,12 @@ const getFields: INodeProperties[] = [
 				],
 			},
 		],
-		routing: {
-			send: {
-				type: 'body',
-				property: 'Username',
-			},
-		},
+		// routing: {
+		// 	send: {
+		// 		type: 'body',
+		// 		property: 'Username',
+		// 	},
+		// },
 		required: true,
 		type: 'resourceLocator',
 	},
@@ -862,11 +862,63 @@ const updateFields: INodeProperties[] = [
 				name: 'attributes',
 				values: [
 					{
-						displayName: 'Name',
-						name: 'Name',
+						displayName: 'Attribute Type',
+						name: 'attributeType',
+						type: 'options',
+						default: 'standard',
+						options: [
+							{
+								name: 'Standard Attribute',
+								value: 'standard',
+							},
+							{
+								name: 'Custom Attribute',
+								value: 'custom',
+							},
+						],
+					},
+					{
+						displayName: 'Standard Attribute',
+						name: 'standardName',
+						type: 'options',
+						default: 'address',
+						options: [
+							{ name: 'Address', value: 'address' },
+							{ name: 'Birthdate', value: 'birthdate' },
+							{ name: 'Email', value: 'email' },
+							{ name: 'Family Name', value: 'family_name' },
+							{ name: 'Gender', value: 'gender' },
+							{ name: 'Given Name', value: 'given_name' },
+							{ name: 'Locale', value: 'locale' },
+							{ name: 'Middle Name', value: 'middle_name' },
+							{ name: 'Name', value: 'name' },
+							{ name: 'Nickname', value: 'nickname' },
+							{ name: 'Phone Number', value: 'phone_number' },
+							{ name: 'Preferred Username', value: 'preferred_username' },
+							{ name: 'Profile Picture', value: 'profilepicture' },
+							{ name: 'Updated At', value: 'updated_at' },
+							{ name: 'User Sub', value: 'sub' },
+							{ name: 'Website', value: 'website' },
+							{ name: 'Zone Info', value: 'zoneinfo' },
+						],
+						displayOptions: {
+							show: {
+								attributeType: ['standard'],
+							},
+						},
+					},
+					{
+						displayName: 'Custom Attribute Name',
+						name: 'customName',
 						type: 'string',
 						default: '',
-						description: 'The name of the attribute (e.g., custom:deliverables)',
+						placeholder: 'custom:myAttribute',
+						description: 'The name of the custom attribute (must start with "custom:")',
+						displayOptions: {
+							show: {
+								attributeType: ['custom'],
+							},
+						},
 					},
 					{
 						displayName: 'Value',

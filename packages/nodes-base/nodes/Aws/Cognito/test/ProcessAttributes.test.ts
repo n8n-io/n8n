@@ -18,8 +18,8 @@ describe('processAttributes', () => {
 		const initialBody = { key: 'value' };
 
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
-			{ Name: 'email', Value: 'test@example.com' },
-			{ Name: 'custom:role', Value: 'admin' },
+			{ attributeType: 'standard', standardName: 'email', Value: 'test@example.com' },
+			{ attributeType: 'custom', customName: 'role', Value: 'admin' },
 		]);
 
 		const requestOptions: IHttpRequestOptions = {
@@ -44,7 +44,7 @@ describe('processAttributes', () => {
 		const initialBody = { key: 'value' };
 
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
-			{ Name: 'email', Value: 'user@example.com' },
+			{ attributeType: 'standard', standardName: 'email', Value: 'user@example.com' },
 		]);
 
 		const requestOptions: IHttpRequestOptions = {
@@ -62,6 +62,55 @@ describe('processAttributes', () => {
 		);
 	});
 
+	it('should throw an error if no user attributes are provided', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([]);
+
+		const requestOptions: IHttpRequestOptions = {
+			body: JSON.stringify(initialBody),
+			url: '',
+		};
+
+		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+			'No user field provided',
+		);
+	});
+
+	it('should throw an error if an attribute does not have a value', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
+			{ attributeType: 'standard', standardName: 'email', Value: '' },
+		]);
+
+		const requestOptions: IHttpRequestOptions = {
+			body: JSON.stringify(initialBody),
+			url: '',
+		};
+
+		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+			'Invalid User Attribute',
+		);
+	});
+
+	it('should throw an error if an attribute has an invalid name', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
+			{ attributeType: 'standard', standardName: '', Value: 'test@example.com' },
+		]);
+
+		const requestOptions: IHttpRequestOptions = {
+			body: JSON.stringify(initialBody),
+			url: '',
+		};
+
+		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+			'Invalid Attribute Name',
+		);
+	});
+
 	it('should handle an empty attributes array', async () => {
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([]);
 
@@ -73,7 +122,7 @@ describe('processAttributes', () => {
 
 		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
 			new NodeApiError(mockContext.getNode(), {
-				message: 'No user attribute provided',
+				message: 'No user field provided',
 				description: 'At least one attribute must be provided for the update.',
 			}),
 		);
