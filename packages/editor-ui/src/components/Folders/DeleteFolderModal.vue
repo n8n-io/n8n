@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
+import type { FolderListItem } from '@/Interface';
 
 const props = defineProps<{
 	modalName: string;
@@ -26,6 +27,7 @@ const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
 const selectedFolder = ref<{ id: string; name: string; parentFolder?: string } | null>(null);
+const projectFolders = ref<FolderListItem[]>([]);
 
 const i18n = useI18n();
 const route = useRoute();
@@ -66,10 +68,6 @@ const enabled = computed(() => {
 	}
 
 	return false;
-});
-
-const folders = computed(() => {
-	return Object.values(foldersStore.breadcrumbsCache);
 });
 
 const folderContentWarningMessage = computed(() => {
@@ -116,7 +114,7 @@ async function onSubmit() {
 
 		let message = '';
 		if (params.transferId) {
-			const transferFolder = folders.value.find((folder) => folder.id === params.transferId);
+			const transferFolder = projectFolders.value.find((folder) => folder.id === params.transferId);
 			if (transferFolder) {
 				message = i18n.baseText('folders.transfer.confirm.message', {
 					interpolate: { folderName: transferFolder.name ?? '' },
@@ -138,6 +136,10 @@ async function onSubmit() {
 		loading.value = false;
 	}
 }
+
+onMounted(async () => {
+	projectFolders.value = await foldersStore.fetchProjectFolders(route.params.projectId as string);
+});
 </script>
 
 <template>
@@ -178,11 +180,15 @@ async function onSubmit() {
 							:placeholder="i18n.baseText('folders.transfer.selectFolder')"
 						>
 							<N8nOption
-								v-for="folder in folders"
+								v-for="folder in projectFolders"
 								:key="folder.id"
 								:value="folder.id"
 								:label="folder.name"
 							>
+								<div :class="$style['folder-select-item']">
+									<n8n-icon icon="folder" />
+									<span> {{ folder.name }}</span>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</div>
@@ -243,5 +249,11 @@ async function onSubmit() {
 
 .optionInput {
 	padding-left: var(--spacing-l);
+}
+
+.folder-select-item {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: center;
 }
 </style>

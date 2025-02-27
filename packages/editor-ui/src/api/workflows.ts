@@ -1,5 +1,6 @@
 import type {
 	FolderCreateResponse,
+	FolderListItem,
 	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
@@ -124,4 +125,11 @@ export async function renameFolder(
 	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
 		name,
 	});
+}
+
+export async function getProjectFolders(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<FolderListItem[]> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/folders`);
 }
