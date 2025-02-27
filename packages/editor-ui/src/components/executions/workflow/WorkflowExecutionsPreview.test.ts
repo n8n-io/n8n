@@ -68,7 +68,7 @@ const executionDataFactory = (
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
 	scopes: ['workflow:update'],
-	annotation: { tags, vote: undefined },
+	annotation: { tags, vote: 'up' },
 });
 
 const testCaseFactory = (workflowId: string, annotationTagId?: string): TestDefinitionRecord => ({
