@@ -4,7 +4,8 @@ import { useToast } from '@/composables/useToast';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import Modal from '@/components/Modal.vue';
 import { useUsersStore } from '@/stores/users.store';
-import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
+import { createFormEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 

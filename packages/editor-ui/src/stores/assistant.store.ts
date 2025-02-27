@@ -16,7 +16,7 @@ import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
