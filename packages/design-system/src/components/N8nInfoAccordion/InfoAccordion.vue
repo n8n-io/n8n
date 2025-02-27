@@ -55,13 +55,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 <template>
 	<div :class="['accordion', $style.container]">
 		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
-			<N8nIcon
-				v-if="headerIcon"
-				:icon="headerIcon.icon"
-				:color="headerIcon.color"
-				size="small"
-				class="mr-2xs"
-			/>
+			<N8nIcon v-if="headerIcon" :icon="headerIcon.icon" :color="headerIcon.color" size="small" />
 			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
 				title
 			}}</N8nText>
@@ -102,10 +96,8 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 	display: flex;
 	padding: var(--spacing-s);
 	align-items: center;
-
-	.headerText {
-		flex-grow: 1;
-	}
+	justify-content: flex-start;
+	gap: var(--spacing-3xs);
 }
 
 .expanded {
