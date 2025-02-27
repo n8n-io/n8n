@@ -1258,18 +1258,24 @@ export class AwsSes implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						const params = [`Template.TemplateName=${templateName}`];
+						const params = [`Template.TemplateName=${encodeURIComponent(templateName)}`];
 
 						if (updateFields.textPart) {
-							params.push(`Template.TextPart=${updateFields.textPart}`);
+							params.push(
+								`Template.TextPart=${encodeURIComponent(updateFields.textPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.SubjectPart=${updateFields.subjectPart}`);
+							params.push(
+								`Template.SubjectPart=${encodeURIComponent(updateFields.subjectPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.HtmlPart=${updateFields.htmlPart}`);
+							params.push(
+								`Template.HtmlPart=${encodeURIComponent(updateFields.htmlPart as string)}`,
+							);
 						}
 
 						responseData = await awsApiRequestSOAP.call(
