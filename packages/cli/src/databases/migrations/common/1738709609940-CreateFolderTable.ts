@@ -1,7 +1,12 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateFolderTable1738709609940 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({ runQuery, escape, schemaBuilder: { createTable, column } }: MigrationContext) {
+		const workflowTable = escape.tableName('workflow_entity');
+		const workflowFolderId = escape.columnName('parentFolderId');
+		const folderTable = escape.tableName('folder');
+		const folderId = escape.columnName('id');
+
 		await createTable('folder')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
@@ -36,6 +41,10 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			});
+
+		await runQuery(
+			`ALTER TABLE ${workflowTable} ADD COLUMN ${workflowFolderId} VARCHAR(36) DEFAULT NULL REFERENCES ${folderTable}(${folderId}) ON DELETE SET NULL`,
+		);
 	}
 
 	async down({ runQuery, escape, schemaBuilder: { dropTable } }: MigrationContext) {
