@@ -1802,9 +1802,6 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.6
         version: 4.17.6
-      '@types/luxon':
-        specifier: ^3.2.0
-        version: 3.4.2
       '@types/uuid':
         specifier: 'catalog:'
         version: 10.0.0
@@ -2253,7 +2250,7 @@ importers:
         specifier: 'catalog:'
         version: 4.14.195
       '@types/luxon':
-        specifier: ^3.2.0
+        specifier: 3.2.0
         version: 3.2.0
       '@types/md5':
         specifier: ^2.3.5
@@ -21974,7 +21971,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@4.4.0):
     optionalDependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
 
   for-each@0.3.3:
     dependencies:
