@@ -1,3 +1,17 @@
+## [1.81.1](https://github.com/n8n-io/n8n/compare/n8n@1.81.0...n8n@1.81.1) (2025-02-27)
+
+
+### Bug Fixes
+
+* **Call n8n Workflow Tool Node:** Support concurrent invocations of the tool ([#13526](https://github.com/n8n-io/n8n/issues/13526)) ([3acbd61](https://github.com/n8n-io/n8n/commit/3acbd61c7722f7cb4b141f9a91c97e29974e9034))
+
+
+### Features
+
+* **core:** Support executing single nodes not part of a graph as a partial execution ([#13529](https://github.com/n8n-io/n8n/issues/13529)) ([e7addcf](https://github.com/n8n-io/n8n/commit/e7addcfcece381b4540b8cd5ff3ef2e302bccef9))
+
+
+
 # [1.81.0](https://github.com/n8n-io/n8n/compare/n8n@1.80.0...n8n@1.81.0) (2025-02-24)
 
 
