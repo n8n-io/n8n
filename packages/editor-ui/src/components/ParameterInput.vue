@@ -433,6 +433,7 @@ const parameterOptions = computed(() => {
 
 	if (invalidOptions.length > 0) {
 		captureMessage('Invalid parameter options', {
+			level: 'error',
 			extra: {
 				invalidOptions,
 				parameter: props.parameter.name,
