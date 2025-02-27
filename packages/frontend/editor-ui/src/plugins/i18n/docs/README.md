@@ -50,11 +50,11 @@ Press "o" to open in Browser.
 
 ## Base text
 
-Base text is rendered with no dependencies, i.e. base text is fixed and does not change in any circumstances. Base text is supplied by the user in one file per locale in the `/editor-ui` package.
+Base text is rendered with no dependencies, i.e. base text is fixed and does not change in any circumstances. Base text is supplied by the user in one file per locale in the `/frontend/editor-ui` package.
 
 ### Locating base text
 
-The base text file for each locale is located at `/packages/editor-ui/src/plugins/i18n/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
+The base text file for each locale is located at `/packages/frontend/editor-ui/src/plugins/i18n/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
 
 ```json
 {
@@ -69,10 +69,10 @@ The base text file for each locale is located at `/packages/editor-ui/src/plugin
 1. Select a new locale identifier, e.g. `de`, copy the `en` JSON base text file with a new name:
 
 ```
-cp ./packages/editor-ui/src/plugins/i18n/locales/en.json ./packages/editor-ui/src/plugins/i18n/locales/de.json
+cp ./packages/frontend/editor-ui/src/plugins/i18n/locales/en.json ./packages/frontend/editor-ui/src/plugins/i18n/locales/de.json
 ```
 
-2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `i18n.baseText(key)`, e.g. `i18n.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
+2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/frontend/editor-ui` a call to `i18n.baseText(key)`, e.g. `i18n.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
 
 > **Note**: If you cannot find a string in the new base text file, either it does not belong to base text (i.e., the string might be part of header text, credential text, or node text), or the string might belong to the backend, where i18n is currently unsupported.
 
@@ -462,7 +462,7 @@ Example of `fixedCollection` parameter:
 
 ## Base text
 
-When translating a base text file at `/packages/editor-ui/src/plugins/i18n/locales/{localeIdentifier}.json`:
+When translating a base text file at `/packages/frontend/editor-ui/src/plugins/i18n/locales/{localeIdentifier}.json`:
 
 1. Open a terminal:
 
@@ -475,7 +475,7 @@ pnpm start
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
-cd packages/editor-ui
+cd packages/frontend/editor-ui
 pnpm dev
 ```
 

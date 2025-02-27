@@ -162,7 +162,7 @@ jobs:
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
           version: ${{ needs.publish-to-npm.outputs.release }}
-          sourcemaps: packages/editor-ui/dist
+          sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
         uses: getsentry/action-release@v1.7.0

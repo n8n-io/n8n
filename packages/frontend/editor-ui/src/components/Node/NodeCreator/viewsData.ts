@@ -544,7 +544,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 			// - add "HITL" to the "categories" property of the node's codex
 			// - add "HITL": ["Human in the Loop"] to the "subcategories" property of the node's codex
 			// node has to have the "sendAndWait" operation, if a new operation needs to be included here:
-			// - update getHumanInTheLoopActions in packages/editor-ui/src/components/Node/NodeCreator/Modes/NodesMode.vue
+			// - update getHumanInTheLoopActions in packages/frontend/editor-ui/src/components/Node/NodeCreator/Modes/NodesMode.vue
 			{
 				type: 'subcategory',
 				key: HITL_SUBCATEGORY,
