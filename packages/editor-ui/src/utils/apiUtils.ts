@@ -2,7 +2,7 @@ import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import { parse } from 'flatted';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 
 import { BROWSER_ID_STORAGE_KEY } from '@/constants';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';

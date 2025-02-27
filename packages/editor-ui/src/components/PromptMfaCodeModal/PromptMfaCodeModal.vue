@@ -5,7 +5,7 @@ import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { promptMfaCodeBus } from '@/event-bus';
 import type { IFormInputs } from '@/Interface';
-import { createFormEventBus } from 'n8n-design-system';
+import { createFormEventBus } from 'n8n-design-system/utils';
 import { validate as validateUuid } from 'uuid';
 
 const i18n = useI18n();

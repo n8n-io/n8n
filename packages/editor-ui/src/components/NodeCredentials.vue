@@ -22,7 +22,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 import {
 	getAllNodeCredentialForAuthType,
 	getAuthTypeForNodeCredential,
