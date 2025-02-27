@@ -18,24 +18,26 @@ const { NODE_ENV } = process.env;
 
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
+const packagesDir = resolve(__dirname, '..', '..');
+
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
 		find: /^@n8n\/chat(.+)$/,
-		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'chat', 'src$1'),
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
 	},
 	{
 		find: /^@n8n\/composables(.+)$/,
-		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'composables', 'src$1'),
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
 		find: /^@n8n\/design-system(.+)$/,
-		replacement: resolve(__dirname, '..', 'frontend', '@n8n', 'design-system', 'src$1'),
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
 		find: /^@n8n\/utils(.+)$/,
-		replacement: resolve(__dirname, '..', '@n8n', 'utils', 'src$1'),
+		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),

@@ -6,7 +6,7 @@ import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 
-const packagesDir = resolve(__dirname, '..', '..');
+const packagesDir = resolve(__dirname, '..', '..', '..');
 
 export default mergeConfig(
 	defineConfig({
