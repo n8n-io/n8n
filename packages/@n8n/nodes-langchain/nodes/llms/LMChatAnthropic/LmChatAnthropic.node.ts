@@ -14,7 +14,7 @@ import {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { searchModels } from './methods/loadModels';
+import { searchModels } from './methods/searchModels';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -70,6 +70,7 @@ const modelField: INodeProperties = {
 	default: 'claude-2',
 };
 
+const MIN_THINKING_BUDGET = 1024;
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -250,7 +251,7 @@ export class LmChatAnthropic implements INodeType {
 						displayName: 'Thinking Budget (Tokens)',
 						name: 'thinkingBudget',
 						type: 'number',
-						default: 1000,
+						default: MIN_THINKING_BUDGET,
 						description: 'The maximum number of tokens to use for thinking',
 						displayOptions: {
 							show: {
@@ -300,7 +301,7 @@ export class LmChatAnthropic implements INodeType {
 					type: 'enabled',
 					// If thinking is enabled, we need to set a budget.
 					// We fallback to 1024 as that is the minimum
-					budget_tokens: options.thinkingBudget ?? 1024,
+					budget_tokens: options.thinkingBudget ?? MIN_THINKING_BUDGET,
 				},
 				// These need to be unset when thinking is enabled.
 				// Because the invocationKwargs will override the model options
