@@ -110,3 +110,7 @@ export async function getFolderPath(
 		`/projects/${projectId}/folders/${folderId}/tree`,
 	);
 }
+
+export async function deleteFolder(context: IRestApiContext, projectId: string, folderId: string) {
+	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`);
+}

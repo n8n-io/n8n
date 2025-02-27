@@ -33,6 +33,12 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		});
 	};
 
+	const deleteFoldersFromCache = (folderIds: string[]) => {
+		folderIds.forEach((folderId) => {
+			delete breadcrumbsCache.value[folderId];
+		});
+	};
+
 	const getCachedFolder = (folderId: string) => {
 		return breadcrumbsCache.value[folderId];
 	};
@@ -97,6 +103,10 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return count;
 	}
 
+	async function deleteFolder(projectId: string, folderId: string) {
+		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		currentFolderId,
@@ -107,5 +117,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		createFolder,
 		getFolderPath,
 		totalWorkflowCount,
+		deleteFolder,
+		deleteFoldersFromCache,
 	};
 });

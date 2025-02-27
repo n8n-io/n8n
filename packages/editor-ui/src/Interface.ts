@@ -342,6 +342,7 @@ export type BaseFolderItem = BaseResource & {
 	createdAt: string;
 	updatedAt: string;
 	workflowCount: number;
+	subFolderCount: number;
 	parentFolder?: FolderShortInfo;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
