@@ -1,5 +1,4 @@
-import { jsonParse } from 'n8n-workflow';
-
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -35,7 +34,7 @@ export const filterSchema = z
 // Common transformers
 const parseJsonArray = (val: string): unknown => {
 	if (!val.trim().startsWith('[')) {
-		throw new Error('Expected a JSON array starting with [');
+		throw new ApplicationError('Expected a JSON array starting with [');
 	}
 	return jsonParse(val);
 };

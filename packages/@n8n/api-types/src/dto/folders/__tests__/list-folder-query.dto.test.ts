@@ -150,7 +150,7 @@ describe('ListFolderQueryDto', () => {
 
 			expect(result.success).toBe(false);
 
-			if (expectedErrorPath && result.success === false) {
+			if (expectedErrorPath && !result.success) {
 				if (Array.isArray(expectedErrorPath)) {
 					const errorPaths = result.error.issues[0].path;
 					expect(errorPaths).toContain(expectedErrorPath[0]);
