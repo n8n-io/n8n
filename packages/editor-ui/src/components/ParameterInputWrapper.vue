@@ -16,8 +16,8 @@ import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
 type Props = {

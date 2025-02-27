@@ -5,7 +5,7 @@ import Modal from '@/components/Modal.vue';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useI18n } from '@/composables/useI18n';
 

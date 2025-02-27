@@ -19,7 +19,7 @@ import type {
 	IWorkflowTemplateNode,
 	NodeFilterType,
 } from '@/Interface';
-import type { ComponentPublicInstance } from 'vue/dist/vue';
+import type { ComponentPublicInstance } from 'vue';
 import type { useWebhooksStore } from '@/stores/webhooks.store';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

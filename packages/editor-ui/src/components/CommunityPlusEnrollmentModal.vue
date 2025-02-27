@@ -1,6 +1,6 @@
 <script lang="ts" setup="">
 import { ref } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { Validatable, IValidator } from 'n8n-design-system';
 import { N8nFormInput } from 'n8n-design-system';
 import { VALID_EMAIL_REGEX } from '@/constants';

@@ -1,7 +1,6 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { isArray } from 'lodash';
-import isObject from 'lodash/isObject';
+import { isArray, isObject } from 'lodash';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
@@ -50,10 +49,10 @@ export class WorkflowToolService {
 	private returnAllItems: boolean = false;
 
 	constructor(
-		private context: ISupplyDataFunctions,
+		private baseContext: ISupplyDataFunctions,
 		options?: { returnAllItems: boolean },
 	) {
-		const subWorkflowInputs = this.context.getNode().parameters
+		const subWorkflowInputs = this.baseContext.getNode().parameters
 			.workflowInputs as ResourceMapperValue;
 		this.useSchema = (subWorkflowInputs?.schema ?? []).length > 0;
 		this.returnAllItems = options?.returnAllItems ?? false;
@@ -69,18 +68,26 @@ export class WorkflowToolService {
 		description: string;
 		itemIndex: number;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
+		let runIndex = 0;
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<IDataObject | IDataObject[] | string> => {
-			const { index } = this.context.addInputData(NodeConnectionType.AiTool, [
-				[{ json: { query } }],
-			]);
+			const localRunIndex = runIndex++;
+			// We need to clone the context here to handle runIndex correctly
+			// Otherwise the runIndex will be shared between different executions
+			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
+			const context = this.baseContext.cloneWith({
+				runIndex: localRunIndex,
+				inputData: [[{ json: { query } }]],
+			});
+
+			const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 			try {
-				const response = await this.runFunction(query, itemIndex, runManager);
+				const response = await this.runFunction(context, query, itemIndex, runManager);
 
 				const processedResponse = this.handleToolResponse(response);
 
@@ -107,7 +114,7 @@ export class WorkflowToolService {
 					};
 				}
 
-				void this.context.addOutputData(NodeConnectionType.AiTool, index, [responseData], metadata);
+				void context.addOutputData(NodeConnectionType.AiTool, index, [responseData], metadata);
 
 				return processedResponse;
 			} catch (error) {
@@ -115,11 +122,13 @@ export class WorkflowToolService {
 				const errorResponse = `There was an error: "${executionError.message}"`;
 
 				const metadata = parseErrorMetadata(error);
-				void this.context.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
+				void context.addOutputData(
+					NodeConnectionType.AiTool,
+					localRunIndex,
+					executionError,
+					metadata,
+				);
 				return errorResponse;
-			} finally {
-				// @ts-expect-error this accesses a private member on the actual implementation to fix https://linear.app/n8n/issue/ADO-3186/bug-workflowtool-v2-always-uses-first-row-of-input-data
-				this.context.runIndex++;
 			}
 		};
 
@@ -147,7 +156,7 @@ export class WorkflowToolService {
 		}
 
 		if (typeof response !== 'string') {
-			throw new NodeOperationError(this.context.getNode(), 'Wrong output type returned', {
+			throw new NodeOperationError(this.baseContext.getNode(), 'Wrong output type returned', {
 				description: `The response property should be a string, but it is an ${typeof response}`,
 			});
 		}
@@ -159,6 +168,7 @@ export class WorkflowToolService {
 	 * Executes specified sub-workflow with provided inputs
 	 */
 	private async executeSubWorkflow(
+		context: ISupplyDataFunctions,
 		workflowInfo: IExecuteWorkflowInfo,
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
@@ -166,21 +176,16 @@ export class WorkflowToolService {
 	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
-			receivedData = await this.context.executeWorkflow(
-				workflowInfo,
-				items,
-				runManager?.getChild(),
-				{
-					parentExecution: {
-						executionId: workflowProxy.$execution.id,
-						workflowId: workflowProxy.$workflow.id,
-					},
+			receivedData = await context.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
+				parentExecution: {
+					executionId: workflowProxy.$execution.id,
+					workflowId: workflowProxy.$workflow.id,
 				},
-			);
+			});
 			// Set sub-workflow execution id so it can be used in other places
 			this.subExecutionId = receivedData.executionId;
 		} catch (error) {
-			throw new NodeOperationError(this.context.getNode(), error as Error);
+			throw new NodeOperationError(context.getNode(), error as Error);
 		}
 
 		let response: IDataObject | INodeExecutionData[] | undefined;
@@ -191,7 +196,7 @@ export class WorkflowToolService {
 		}
 		if (response === undefined) {
 			throw new NodeOperationError(
-				this.context.getNode(),
+				context.getNode(),
 				'There was an error: "The workflow did not return a response"',
 			);
 		}
@@ -204,20 +209,27 @@ export class WorkflowToolService {
 	 * This function will be called as part of the tool execution (from the toolHandler)
 	 */
 	private async runFunction(
+		context: ISupplyDataFunctions,
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
 	): Promise<string | IDataObject | INodeExecutionData[]> {
-		const source = this.context.getNodeParameter('source', itemIndex) as string;
-		const workflowProxy = this.context.getWorkflowDataProxy(0);
+		const source = context.getNodeParameter('source', itemIndex) as string;
+		const workflowProxy = context.getWorkflowDataProxy(0);
 
-		const { workflowInfo } = await this.getSubWorkflowInfo(source, itemIndex, workflowProxy);
-		const rawData = this.prepareRawData(query, itemIndex);
-		const items = await this.prepareWorkflowItems(query, itemIndex, rawData);
+		const { workflowInfo } = await this.getSubWorkflowInfo(
+			context,
+			source,
+			itemIndex,
+			workflowProxy,
+		);
+		const rawData = this.prepareRawData(context, query, itemIndex);
+		const items = await this.prepareWorkflowItems(context, query, itemIndex, rawData);
 
 		this.subWorkflowId = workflowInfo.id;
 
 		const { response } = await this.executeSubWorkflow(
+			context,
 			workflowInfo,
 			items,
 			workflowProxy,
@@ -230,6 +242,7 @@ export class WorkflowToolService {
 	 * Gets the sub-workflow info based on the source (database or parameter)
 	 */
 	private async getSubWorkflowInfo(
+		context: ISupplyDataFunctions,
 		source: string,
 		itemIndex: number,
 		workflowProxy: IWorkflowDataProxyData,
@@ -241,7 +254,7 @@ export class WorkflowToolService {
 		let subWorkflowId: string;
 
 		if (source === 'database') {
-			const { value } = this.context.getNodeParameter(
+			const { value } = context.getNodeParameter(
 				'workflowId',
 				itemIndex,
 				{},
@@ -249,14 +262,14 @@ export class WorkflowToolService {
 			workflowInfo.id = value as string;
 			subWorkflowId = workflowInfo.id;
 		} else if (source === 'parameter') {
-			const workflowJson = this.context.getNodeParameter('workflowJson', itemIndex) as string;
+			const workflowJson = context.getNodeParameter('workflowJson', itemIndex) as string;
 			try {
 				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
 				// subworkflow is same as parent workflow
 				subWorkflowId = workflowProxy.$workflow.id;
 			} catch (error) {
 				throw new NodeOperationError(
-					this.context.getNode(),
+					context.getNode(),
 					`The provided workflow is not valid JSON: "${(error as Error).message}"`,
 					{ itemIndex },
 				);
@@ -266,9 +279,13 @@ export class WorkflowToolService {
 		return { workflowInfo, subWorkflowId: subWorkflowId! };
 	}
 
-	private prepareRawData(query: string | IDataObject, itemIndex: number): IDataObject {
+	private prepareRawData(
+		context: ISupplyDataFunctions,
+		query: string | IDataObject,
+		itemIndex: number,
+	): IDataObject {
 		const rawData: IDataObject = { query };
-		const workflowFieldsJson = this.context.getNodeParameter('fields.values', itemIndex, [], {
+		const workflowFieldsJson = context.getNodeParameter('fields.values', itemIndex, [], {
 			rawExpressions: true,
 		}) as SetField[];
 
@@ -286,6 +303,7 @@ export class WorkflowToolService {
 	 * Prepares the sub-workflow items for execution
 	 */
 	private async prepareWorkflowItems(
+		context: ISupplyDataFunctions,
 		query: string | IDataObject,
 		itemIndex: number,
 		rawData: IDataObject,
@@ -294,17 +312,17 @@ export class WorkflowToolService {
 		let jsonData = typeof query === 'object' ? query : { query };
 
 		if (this.useSchema) {
-			const currentWorkflowInputs = getCurrentWorkflowInputData.call(this.context);
+			const currentWorkflowInputs = getCurrentWorkflowInputData.call(context);
 			jsonData = currentWorkflowInputs[itemIndex].json;
 		}
 
 		const newItem = await manual.execute.call(
-			this.context,
+			context,
 			{ json: jsonData },
 			itemIndex,
 			options,
 			rawData,
-			this.context.getNode(),
+			context.getNode(),
 		);
 
 		return [newItem] as INodeExecutionData[];
@@ -335,7 +353,7 @@ export class WorkflowToolService {
 
 	private async extractFromAIParameters(): Promise<FromAIArgument[]> {
 		const collectedArguments: FromAIArgument[] = [];
-		traverseNodeParameters(this.context.getNode().parameters, collectedArguments);
+		traverseNodeParameters(this.baseContext.getNode().parameters, collectedArguments);
 
 		const uniqueArgsMap = new Map<string, FromAIArgument>();
 		for (const arg of collectedArguments) {

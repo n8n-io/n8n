@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { CanvasNodeRenderType } from '@/types';
 
 const $style = useCssModule();
 
-const { hasRunData } = useCanvasNode();
+const { hasRunData, render } = useCanvasNode();
 
 const classes = computed(() => {
 	return {
 		[$style.disabledStrikeThrough]: true,
 		[$style.success]: hasRunData.value,
+		[$style.warning]:
+			render.value.type === CanvasNodeRenderType.Default &&
+			render.value.options.dirtiness !== undefined,
 	};
 });
 </script>
@@ -30,5 +34,9 @@ const classes = computed(() => {
 
 .success {
 	border-color: var(--color-success-light);
+}
+
+.warning {
+	border-color: var(--color-warning-tint-1);
 }
 </style>

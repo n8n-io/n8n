@@ -37,9 +37,9 @@ ENV DOCKER_BUILD=true
 RUN pnpm install --frozen-lockfile
 
 # TS config files
-COPY --chown=node:node ./tsconfig.json /app/tsconfig.json
-COPY --chown=node:node ./tsconfig.build.json /app/tsconfig.build.json
-COPY --chown=node:node ./tsconfig.backend.json /app/tsconfig.backend.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.common.json /app/packages/@n8n/typescript-config/tsconfig.common.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.build.json /app/packages/@n8n/typescript-config/tsconfig.build.json
+COPY --chown=node:node ./packages/@n8n/typescript-config/tsconfig.backend.json /app/packages/@n8n/typescript-config/tsconfig.backend.json
 COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.json /app/packages/@n8n/benchmark/tsconfig.json
 COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.build.json /app/packages/@n8n/benchmark/tsconfig.build.json
 

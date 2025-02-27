@@ -370,6 +370,7 @@
       "dist/credentials/UptimeRobotApi.credentials.js",
       "dist/credentials/UrlScanIoApi.credentials.js",
       "dist/credentials/VeroApi.credentials.js",
+      "dist/credentials/VerticaApi.credentials.js",
       "dist/credentials/VirusTotalApi.credentials.js",
       "dist/credentials/VonageApi.credentials.js",
       "dist/credentials/VenafiTlsProtectCloudApi.credentials.js",
@@ -827,6 +828,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "catalog:",

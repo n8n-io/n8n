@@ -13,7 +13,7 @@ import type {
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
@@ -61,9 +61,8 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				`Worker failed to find data for execution ${executionId} (job ${job.id})`,
-				{ level: 'warning' },
 			);
 		}
 
@@ -92,9 +91,8 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				throw new ApplicationError(
+				throw new UnexpectedError(
 					`Worker failed to find workflow ${workflowId} to run execution ${executionId} (job ${job.id})`,
-					{ level: 'warning' },
 				);
 			}
 
