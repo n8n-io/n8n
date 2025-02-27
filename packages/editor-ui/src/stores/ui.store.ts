@@ -67,7 +67,7 @@ import {
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
-import { EventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system';
 
 let savedTheme: ThemeOption = 'system';
 
