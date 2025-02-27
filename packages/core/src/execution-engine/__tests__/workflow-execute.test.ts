@@ -52,6 +52,10 @@ import { WorkflowExecute } from '../workflow-execute';
 
 const nodeTypes = Helpers.NodeTypes();
 
+beforeEach(() => {
+	jest.resetAllMocks();
+});
+
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
@@ -455,6 +459,56 @@ describe('WorkflowExecute', () => {
 				new Set([node1]),
 			);
 		});
+
+		//                 ►►
+		//                ┌──────┐
+		//                │orphan│
+		//                └──────┘
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│destination│
+		//  └───────┘     └───────────┘
+		test('works with a single node', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const orphan = createNodeData({ name: 'orphan' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination, orphan)
+				.addConnections({ from: trigger, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[destination.name]: [toITaskData([{ data: { nodeName: destination.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				orphan.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(
+				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
+			);
+		});
 	});
 
 	describe('checkReadyForExecution', () => {
@@ -465,18 +519,19 @@ describe('WorkflowExecute', () => {
 		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
 		const nodeTypes = mock<INodeTypes>();
-		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
-			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
-			if (type === 'unknownNode') return undefined as unknown as INodeType;
-			return mock<INodeType>({
-				description: {
-					properties: [],
-				},
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+				if (type === 'unknownNode') return undefined as unknown as INodeType;
+				return mock<INodeType>({
+					description: {
+						properties: [],
+					},
+				});
 			});
 		});
 		const workflowExecute = new WorkflowExecute(mock(), 'manual');
-
-		beforeEach(() => jest.clearAllMocks());
 
 		it('should return null if there are no nodes', () => {
 			const workflow = new Workflow({
@@ -562,7 +617,9 @@ describe('WorkflowExecute', () => {
 			},
 		});
 
-		nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		});
 
 		const workflow = new Workflow({
 			nodeTypes,
