@@ -48,7 +48,7 @@ describe('TestDefinitionRootView', () => {
 		vi.clearAllMocks();
 	});
 
-	it.only('should create a test adn redirect', async () => {
+	it('should create a test adn redirect', async () => {
 		const testDefinitionStore = mockedStore(useTestDefinitionStore);
 		const annotationTagsStore = mockedStore(useAnnotationTagsStore);
 
