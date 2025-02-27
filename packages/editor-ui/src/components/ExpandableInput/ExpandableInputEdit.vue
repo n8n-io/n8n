@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
 import { onClickOutside } from '@vueuse/core';

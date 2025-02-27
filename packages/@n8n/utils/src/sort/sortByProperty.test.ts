@@ -1,4 +1,4 @@
-import { sortByProperty } from '@/utils/sortUtils';
+import { sortByProperty } from './sortByProperty';
 
 const arrayOfObjects = [
 	{ name: 'Álvaro', age: 30 },
@@ -7,8 +7,8 @@ const arrayOfObjects = [
 	{ name: 'Bob', age: 35 },
 ];
 
-describe('sortUtils', () => {
-	it('"sortByProperty" should sort an array of objects by a property', () => {
+describe('sortByProperty', () => {
+	it('should sort an array of objects by a property', () => {
 		const sortedArray = sortByProperty('name', arrayOfObjects);
 		expect(sortedArray).toEqual([
 			{ name: 'Álvaro', age: 30 },
@@ -18,7 +18,7 @@ describe('sortUtils', () => {
 		]);
 	});
 
-	it('"sortByProperty" should sort an array of objects by a property in descending order', () => {
+	it('should sort an array of objects by a property in descending order', () => {
 		const sortedArray = sortByProperty('name', arrayOfObjects, 'desc');
 		expect(sortedArray).toEqual([
 			{ name: 'Željko', age: 25 },
@@ -28,7 +28,7 @@ describe('sortUtils', () => {
 		]);
 	});
 
-	it('"sortByProperty" should sort an array of objects by a property if its number', () => {
+	it('should sort an array of objects by a property if its number', () => {
 		const sortedArray = sortByProperty('age', arrayOfObjects);
 		expect(sortedArray).toEqual([
 			{ name: 'Željko', age: 25 },
@@ -38,7 +38,7 @@ describe('sortUtils', () => {
 		]);
 	});
 
-	it('"sortByProperty" should sort an array of objects by a property in descending order if its number', () => {
+	it('should sort an array of objects by a property in descending order if its number', () => {
 		const sortedArray = sortByProperty('age', arrayOfObjects, 'desc');
 		expect(sortedArray).toEqual([
 			{ name: 'Bob', age: 35 },
