@@ -567,14 +567,14 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
 
-		// // Check folders
+		// Check folders
 		const rootFolderInDb = await folderRepository.findOneBy({ id: rootFolder.id });
 		const childFolderInDb = await folderRepository.findOneBy({ id: childFolder.id });
 
 		expect(rootFolderInDb).toBeNull();
 		expect(childFolderInDb).toBeNull();
 
-		// // // Check workflows
+		// Check workflows
 		const workflow1InDb = await workflowRepository.findOneBy({ id: workflow1.id });
 		const workflow2InDb = await workflowRepository.findOneBy({ id: workflow2.id });
 		expect(workflow1InDb).toBeNull();
