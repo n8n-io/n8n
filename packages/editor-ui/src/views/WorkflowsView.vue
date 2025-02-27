@@ -151,16 +151,6 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 		disabled: true,
 	},
 	{
-		label: 'Change Owner',
-		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
-		disabled: true,
-	},
-	{
-		label: 'Manage Tags',
-		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
-		disabled: true,
-	},
-	{
 		label: 'Delete',
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
 		disabled: false,
@@ -902,6 +892,9 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 						subFolderCount: 0,
 					},
 				];
+				foldersStore.cacheFolders([
+					{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
+				]);
 			} else {
 				// Else fetch again with same filters & pagination applied
 				await fetchWorkflows();
