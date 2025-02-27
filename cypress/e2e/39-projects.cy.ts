@@ -472,6 +472,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			// Create a project and add a user to it
 			projects.createProject('Project 1');
 			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+
+			clearNotifications();
 			projects.getProjectSettingsSaveButton().click();
 
 			// Move the workflow from Home to Project 1
