@@ -118,9 +118,8 @@ export class Odoo implements INodeType {
 				const response = await odooGetModelFields.call(this, db, userID, password, resource, url);
 				const options = Object.entries(response).map(([key, field]) => {
 					const optionField = field as { [key: string]: string };
-					let name = '';
 					try {
-						name = capitalCase(optionField.name);
+						optionField.name = capitalCase(optionField.name);
 					} catch (error) {
 						optionField.name = optionField.string;
 					}
