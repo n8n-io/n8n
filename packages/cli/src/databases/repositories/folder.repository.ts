@@ -244,7 +244,11 @@ export class FolderRepository extends Repository<FolderWithWorkflowCount> {
 		});
 	}
 
-	async moveToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager): Promise<void> {
+	async moveAllToFolder(
+		fromFolderId: string,
+		toFolderId: string,
+		tx: EntityManager,
+	): Promise<void> {
 		await tx.update(
 			Folder,
 			{ parentFolder: { id: fromFolderId } },

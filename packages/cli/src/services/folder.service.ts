@@ -117,8 +117,8 @@ export class FolderService {
 		await this.findFolderInProjectOrFail(transferToFolderId, projectId);
 
 		return await this.folderRepository.manager.transaction(async (tx) => {
-			await this.folderRepository.moveToFolder(folderId, transferToFolderId, tx);
-			await this.workflowRepository.moveToFolder(folderId, transferToFolderId, tx);
+			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
+			await this.workflowRepository.moveAllToFolder(folderId, transferToFolderId, tx);
 			await tx.delete(Folder, { id: folderId });
 			return;
 		});

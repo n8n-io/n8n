@@ -614,7 +614,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.findBy({ active: activeState });
 	}
 
-	async moveToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
+	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
 		await tx.update(
 			WorkflowEntity,
 			{ parentFolder: { id: fromFolderId } },
