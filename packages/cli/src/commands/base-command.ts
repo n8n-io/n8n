@@ -10,7 +10,7 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -151,7 +151,7 @@ export abstract class BaseCommand extends Command {
 		if (!isSelected && !isAvailable) return;
 
 		if (isSelected && !isAvailable) {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
