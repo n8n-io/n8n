@@ -5,7 +5,7 @@ import {
 	type NodePropertyTypes,
 } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type OverrideContext = {

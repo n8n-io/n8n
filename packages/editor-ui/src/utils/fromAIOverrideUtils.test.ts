@@ -1,4 +1,4 @@
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import type { FromAIOverride, OverrideContext } from './fromAIOverrideUtils';
 import {
 	buildValueFromOverride,
