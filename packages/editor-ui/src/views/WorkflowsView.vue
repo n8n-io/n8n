@@ -368,6 +368,14 @@ const fetchWorkflows = async () => {
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
+	const tags = filters.value.tags.length
+		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
+		: [];
+	const activeFilter = filters.value.status ? Boolean(filters.value.status) : undefined;
+
+	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
+	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+
 	try {
 		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
@@ -376,11 +384,11 @@ const fetchWorkflows = async () => {
 			currentSort.value,
 			{
 				name: filters.value.search || undefined,
-				active: filters.value.status ? Boolean(filters.value.status) : undefined,
-				tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+				active: activeFilter,
+				tags,
 				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
 			},
-			showFolders.value,
+			fetchFolders,
 		);
 
 		foldersStore.cacheFolders(
