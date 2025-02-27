@@ -135,7 +135,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(getByTestId('stop-execution')).toBeDisabled();
 	});
 
-	describe.only('test execution crud', () => {
+	describe('test execution crud', () => {
 		it('should add an execution to a testcase', async () => {
 			const tag = { id: 'tag_id', name: 'tag_name' };
 			const execution = executionDataFactory([]);
