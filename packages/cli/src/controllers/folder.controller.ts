@@ -1,7 +1,7 @@
-import { CreateFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
 import { Response } from 'express';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch } from '@/decorators';
+import { Post, RestController, ProjectScope, Body, Get, Patch, Delete } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -26,7 +26,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
@@ -45,7 +45,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
@@ -64,7 +64,26 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Delete('/:folderId')
+	@ProjectScope('folder:delete')
+	async deleteFolder(
+		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
+		_res: Response,
+		@Body payload: DeleteFolderDto,
+	) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			await this.folderService.deleteFolder(folderId, projectId, payload);
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
 		}
 	}
 }
