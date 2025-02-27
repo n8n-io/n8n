@@ -53,7 +53,7 @@ const generateUndefinedNullOrString = () => {
 };
 
 const executionDataFactory = (
-	tags?: Array<{ id: string; name: string }>,
+	tags: Array<{ id: string; name: string }> = [],
 ): ExecutionSummaryWithScopes => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
