@@ -71,6 +71,7 @@ const modelField: INodeProperties = {
 };
 
 const MIN_THINKING_BUDGET = 1024;
+const DEFAULT_MAX_TOKENS = 4096;
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -194,7 +195,7 @@ export class LmChatAnthropic implements INodeType {
 					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokensToSample',
-						default: 4096,
+						default: DEFAULT_MAX_TOKENS,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
@@ -303,6 +304,9 @@ export class LmChatAnthropic implements INodeType {
 					// We fallback to 1024 as that is the minimum
 					budget_tokens: options.thinkingBudget ?? MIN_THINKING_BUDGET,
 				},
+				// The default Langchain max_tokens is -1 (no limit) but Anthropic requires a number
+				// higher than budget_tokens
+				max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
 				// These need to be unset when thinking is enabled.
 				// Because the invocationKwargs will override the model options
 				// we can pass options to the model and then override them here
