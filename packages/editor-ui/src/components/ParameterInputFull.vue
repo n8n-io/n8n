@@ -27,7 +27,6 @@ import {
 	makeOverrideValue,
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
@@ -69,7 +68,6 @@ const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
 const ndvStore = useNDVStore();
-const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 
 const node = computed(() => ndvStore.activeNode);

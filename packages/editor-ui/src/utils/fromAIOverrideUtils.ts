@@ -1,7 +1,6 @@
 import {
 	extractFromAICalls,
 	FROM_AI_AUTO_GENERATED_MARKER,
-	type INodeTypeDescription,
 	type NodeParameterValueType,
 	type NodePropertyTypes,
 } from 'n8n-workflow';
