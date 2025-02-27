@@ -62,6 +62,7 @@
     "zod": "^3.0.0"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
     "zod": "catalog:"
   }

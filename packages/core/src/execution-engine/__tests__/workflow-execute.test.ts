@@ -31,6 +31,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 	RelatedExecution,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -1460,6 +1461,92 @@ describe('WorkflowExecute', () => {
 
 			expect(hasInputData).toBe(false);
 			expect(runExecutionData.executionData?.nodeExecutionStack).toContain(executionData);
+		});
+	});
+
+	describe('customOperations', () => {
+		const nodeTypes = mock<INodeTypes>();
+		const testNode = mock<INode>();
+
+		const workflow = new Workflow({
+			nodeTypes,
+			nodes: [testNode],
+			connections: {},
+			active: false,
+		});
+
+		const executionData = mock<IExecuteData>({
+			node: { parameters: { resource: 'test', operation: 'test' } },
+			data: { main: [[{ json: {} }]] },
+		});
+		const runExecutionData = mock<IRunExecutionData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+		test('should execute customOperations', async () => {
+			const nodeType = mock<INodeType>({
+				description: {
+					properties: [],
+				},
+				execute: undefined,
+				customOperations: {
+					test: {
+						async test(this: IExecuteFunctions) {
+							return [[{ json: { customOperationsRun: true } }]];
+						},
+					},
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const runPromise = workflowExecute.runNode(
+				workflow,
+				executionData,
+				runExecutionData,
+				0,
+				additionalData,
+				'manual',
+			);
+
+			const result = await runPromise;
+
+			expect(result).toEqual({ data: [[{ json: { customOperationsRun: true } }]], hints: [] });
+		});
+
+		test('should throw error if customOperation and execute both defined', async () => {
+			const nodeType = mock<INodeType>({
+				description: {
+					properties: [],
+				},
+				async execute(this: IExecuteFunctions) {
+					return [];
+				},
+				customOperations: {
+					test: {
+						async test(this: IExecuteFunctions) {
+							return [];
+						},
+					},
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			try {
+				await workflowExecute.runNode(
+					workflow,
+					executionData,
+					runExecutionData,
+					0,
+					additionalData,
+					'manual',
+				);
+			} catch (error) {
+				expect(error.message).toBe(
+					'Node type cannot have both customOperations and execute defined',
+				);
+			}
 		});
 	});
 });

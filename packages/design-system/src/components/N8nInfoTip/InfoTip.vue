@@ -7,7 +7,7 @@ import type { IconColor } from 'n8n-design-system/types/icon';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-const THEME = ['info', 'info-light', 'warning', 'danger', 'success'] as const;
+const THEME = ['info', 'info-light', 'warning', 'warning-light', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;
 
 const ICON_MAP = {
@@ -15,9 +15,23 @@ const ICON_MAP = {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'info-light': 'info-circle',
 	warning: 'exclamation-triangle',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'warning-light': 'triangle', // NOTE: This requires a custom icon
 	danger: 'exclamation-triangle',
 	success: 'check-circle',
 } as const;
+
+const COLOR_MAP: Record<keyof IconMap, IconColor> = {
+	info: 'text-base',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'info-light': 'text-base',
+	warning: 'warning',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'warning-light': 'warning',
+	danger: 'danger',
+	success: 'success',
+};
+
 type IconMap = typeof ICON_MAP;
 
 interface InfoTipProps {
@@ -25,6 +39,7 @@ interface InfoTipProps {
 	type?: (typeof TYPE)[number];
 	bold?: boolean;
 	tooltipPlacement?: Placement;
+	enterable?: boolean;
 }
 
 defineOptions({ name: 'N8nInfoTip' });
@@ -33,12 +48,13 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	type: 'note',
 	bold: true,
 	tooltipPlacement: 'top',
+	enterable: true,
 });
 
 const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
 	return {
 		icon: ICON_MAP[props.theme],
-		color: props.theme === 'info' || props.theme === 'info-light' ? 'text-base' : props.theme,
+		color: COLOR_MAP[props.theme],
 	} as const;
 });
 </script>
@@ -60,6 +76,7 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 			:placement="tooltipPlacement"
 			:popper-class="$style.tooltipPopper"
 			:disabled="type !== 'tooltip'"
+			:enterable
 		>
 			<span :class="$style.iconText">
 				<N8nIcon :icon="iconData.icon" :color="iconData.color" />

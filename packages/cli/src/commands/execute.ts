@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
+import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -44,7 +44,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (flags.file) {
-			throw new ApplicationError(
+			throw new UserError(
 				'The --file flag is no longer supported. Please first import the workflow and then execute it using the --id flag.',
 				{ level: 'warning' },
 			);
@@ -64,7 +64,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (!workflowData) {
-			throw new ApplicationError('Failed to retrieve workflow data for requested workflow');
+			throw new UnexpectedError('Failed to retrieve workflow data for requested workflow');
 		}
 
 		if (!isWorkflowIdValid(workflowId)) {
@@ -87,7 +87,7 @@ export class Execute extends BaseCommand {
 		const data = await activeExecutions.getPostExecutePromise(executionId);
 
 		if (data === undefined) {
-			throw new ApplicationError('Workflow did not return any data');
+			throw new UnexpectedError('Workflow did not return any data');
 		}
 
 		if (data.data.resultData.error) {

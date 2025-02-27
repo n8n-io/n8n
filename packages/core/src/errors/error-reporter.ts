@@ -172,8 +172,8 @@ export class ErrorReporter {
 		}
 
 		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (originalException instanceof ApplicationError) {
-			if (this.isIgnoredApplicationError(originalException)) return null;
+		if (originalException instanceof ApplicationError || originalException instanceof BaseError) {
+			if (this.isIgnoredN8nError(originalException)) return null;
 
 			this.extractEventDetailsFromN8nError(event, originalException);
 		}
@@ -227,8 +227,8 @@ export class ErrorReporter {
 		);
 	}
 
-	private isIgnoredApplicationError(error: ApplicationError) {
-		return error.level === 'warning';
+	private isIgnoredN8nError(error: ApplicationError | BaseError) {
+		return error.level === 'warning' || error.level === 'info';
 	}
 
 	private extractEventDetailsFromN8nError(

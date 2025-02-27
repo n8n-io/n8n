@@ -1,7 +1,7 @@
 import { waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { createCanvasNodeElement, createCanvasConnection } from '@/__tests__/data';
 import type { Workflow } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';

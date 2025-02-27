@@ -6,9 +6,9 @@ import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@/composables/useI18n';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

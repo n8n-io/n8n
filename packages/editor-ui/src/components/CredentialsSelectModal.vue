@@ -5,7 +5,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nSelect } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import Modal from './Modal.vue';

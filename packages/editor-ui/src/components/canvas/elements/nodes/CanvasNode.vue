@@ -32,8 +32,8 @@ import {
 	createCanvasConnectionHandleString,
 	insertSpacersBetweenEndpoints,
 } from '@/utils/canvasUtils';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { isEqual } from 'lodash-es';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
 
@@ -59,6 +59,7 @@ const emit = defineEmits<{
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
+	deactivate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
 	'update:inputs': [id: string];
@@ -258,6 +259,10 @@ function onActivate() {
 	emit('activate', props.id);
 }
 
+function onDeactivate() {
+	emit('deactivate', props.id);
+}
+
 function onOpenContextMenuFromToolbar(event: MouseEvent) {
 	emit('open:contextmenu', props.id, event, 'node-button');
 }
@@ -395,7 +400,8 @@ onBeforeUnmount(() => {
 		/>
 
 		<CanvasNodeRenderer
-			@dblclick.stop="onActivate"
+			@activate="onActivate"
+			@deactivate="onDeactivate"
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"

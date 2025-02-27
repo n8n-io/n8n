@@ -58,6 +58,19 @@ const commonChildRoutes: RouteRecordRaw[] = [
 			},
 		},
 	},
+	{
+		path: 'folders/:folderId?/workflows',
+		components: {
+			default: WorkflowsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: (options) => checkProjectAvailability(options?.to),
+			},
+		},
+	},
 ];
 
 const commonChildRouteExtensions = {
@@ -71,6 +84,9 @@ const commonChildRouteExtensions = {
 		{
 			name: VIEWS.EXECUTIONS,
 		},
+		{
+			name: VIEWS.FOLDERS,
+		},
 	],
 	projects: [
 		{
@@ -81,6 +97,9 @@ const commonChildRouteExtensions = {
 		},
 		{
 			name: VIEWS.PROJECTS_EXECUTIONS,
+		},
+		{
+			name: VIEWS.PROJECTS_FOLDERS,
 		},
 	],
 };
