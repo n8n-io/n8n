@@ -1,55 +1,57 @@
-import { createPinia, setActivePinia } from 'pinia';
-import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
-
-import { setupServer } from '@/__tests__/server';
+import { nextTick } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { afterAll, beforeAll } from 'vitest';
-import { within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-
+import type { FrontendSettings } from '@n8n/api-types';
+import { createComponentRenderer } from '@/__tests__/render';
+import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
+import { EnterpriseEditionFeature } from '@/constants';
+import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals, getDropdownItems } from '@/__tests__/utils';
-import { EnterpriseEditionFeature, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+vi.mock('vue-router', async () => ({
+	useRouter: vi.fn(),
+	useRoute: () => ({
+		params: {
+			name: '1',
+		},
+	}),
+	RouterLink: {
+		template: '<a><slot /></a>',
+	},
+}));
 
-import { nextTick } from 'vue';
-import type { IWorkflowDb } from '@/Interface';
-import * as permissions from '@/permissions';
-import type { PermissionsRecord } from '@/permissions';
-
-let pinia: ReturnType<typeof createPinia>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
-let uiStore: ReturnType<typeof useUIStore>;
+let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
+let pinia: ReturnType<typeof createTestingPinia>;
 
 let fetchAllWorkflowsSpy: MockInstance<(typeof workflowsStore)['fetchAllWorkflows']>;
 
-const createComponent = createComponentRenderer(WorkflowSettingsVue);
+const createComponent = createComponentRenderer(WorkflowSettingsVue, {
+	global: {
+		stubs: {
+			Modal: {
+				template:
+					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			},
+		},
+	},
+});
 
 describe('WorkflowSettingsVue', () => {
-	let server: ReturnType<typeof setupServer>;
-	beforeAll(() => {
-		server = setupServer();
-	});
-
 	beforeEach(async () => {
-		pinia = createPinia();
-		setActivePinia(pinia);
+		pinia = createTestingPinia();
+		workflowsStore = mockedStore(useWorkflowsStore);
+		settingsStore = mockedStore(useSettingsStore);
 
-		createAppModals();
-
-		workflowsStore = useWorkflowsStore();
-		settingsStore = useSettingsStore();
-		uiStore = useUIStore();
-
-		await settingsStore.getSettings();
-
-		vi.spyOn(workflowsStore, 'workflowName', 'get').mockReturnValue('Test Workflow');
-		vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('1');
-		fetchAllWorkflowsSpy = vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue([
+		settingsStore.settings = {
+			enterprise: {},
+		} as FrontendSettings;
+		workflowsStore.workflowName = 'Test Workflow';
+		workflowsStore.workflowId = '1';
+		fetchAllWorkflowsSpy = workflowsStore.fetchAllWorkflows.mockResolvedValue([
 			{
 				id: '1',
 				name: 'Test Workflow',
@@ -61,7 +63,7 @@ describe('WorkflowSettingsVue', () => {
 				versionId: '123',
 			},
 		]);
-		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+		workflowsStore.getWorkflowById.mockImplementation(() => ({
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
@@ -70,24 +72,12 @@ describe('WorkflowSettingsVue', () => {
 			createdAt: 1,
 			updatedAt: 1,
 			versionId: '123',
-		} as IWorkflowDb);
-		vi.spyOn(permissions, 'getResourcePermissions').mockReturnValue({
-			workflow: {
-				update: true,
-			},
-		} as PermissionsRecord);
-
-		uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY] = {
-			open: true,
-		};
+			scopes: ['workflow:update'],
+		}));
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
-	});
-
-	afterAll(() => {
-		server.shutdown();
+		vi.clearAllMocks();
 	});
 
 	it('should render correctly', async () => {
@@ -220,4 +210,41 @@ describe('WorkflowSettingsVue', () => {
 			expect(dropdownItems[0]).toHaveTextContent(optionText);
 		},
 	);
+
+	it('should save time saved per execution correctly', async () => {
+		const { container, getByRole } = createComponent({ pinia });
+		await nextTick();
+
+		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
+
+		await userEvent.type(container.querySelector('#timeSavedPerExecution') as Element, '10');
+		expect(container.querySelector('#timeSavedPerExecution')).toHaveValue(10);
+
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ settings: expect.objectContaining({ timeSavedPerExecution: 10 }) }),
+		);
+	});
+
+	it('should remove time saved per execution setting', async () => {
+		workflowsStore.workflowSettings.timeSavedPerExecution = 10;
+
+		const { container, getByRole } = createComponent({ pinia });
+		await nextTick();
+
+		expect(container.querySelector('#timeSavedPerExecution')).toBeVisible();
+		await waitFor(() => expect(container.querySelector('#timeSavedPerExecution')).toHaveValue(10));
+
+		await userEvent.clear(container.querySelector('#timeSavedPerExecution') as Element);
+		expect(container.querySelector('#timeSavedPerExecution')).not.toHaveValue();
+
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				settings: expect.not.objectContaining({ timeSavedPerExecution: 10 }),
+			}),
+		);
+	});
 });
