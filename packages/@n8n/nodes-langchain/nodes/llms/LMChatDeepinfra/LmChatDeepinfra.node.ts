@@ -1,8 +1,6 @@
-import { DeepInfraLLM } from '@langchain/community/llms/deepinfra';
-import type { LLMResult } from '@langchain/core/outputs';
+import { ChatDeepInfra } from '@langchain/community/chat_models/deepinfra';
 import {
 	NodeConnectionType,
-	type INodePropertyOptions,
 	type INodeProperties,
 	type ISupplyDataFunctions,
 	type INodeType,
@@ -114,7 +112,7 @@ export class LmChatDeepinfra implements INodeType {
 			temperature: number;
 		};
 
-		const model = new DeepInfraLLM({
+		const model = new ChatDeepInfra({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			maxTokens: options.maxTokensToSample,
