@@ -10,6 +10,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
 import { merge } from 'lodash-es';
 import type { TestingPinia } from '@pinia/testing';
+import { createRouter, createWebHistory } from 'vue-router';
 
 export type RenderComponent = Parameters<typeof render>[0];
 export type RenderOptions = Parameters<typeof render>[1] & {
@@ -38,6 +39,15 @@ const defaultOptions = {
 			GlobalComponentsPlugin,
 			GlobalDirectivesPlugin,
 			TelemetryPlugin,
+			createRouter({
+				history: createWebHistory(),
+				routes: [
+					{
+						path: '/',
+						component: { template: '<div></div>' },
+					},
+				],
+			}),
 		],
 	},
 };
