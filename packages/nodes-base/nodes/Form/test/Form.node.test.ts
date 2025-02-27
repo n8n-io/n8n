@@ -342,7 +342,7 @@ describe('Form Node', () => {
 			expect(mockResponseObject.render).toHaveBeenCalledWith(
 				'form-trigger',
 				expect.objectContaining({
-					customCss: '.form-container { background-color: #f5f5f5; }',
+					dangerousCustomCss: '.form-container { background-color: #f5f5f5; }',
 				}),
 			);
 		});
@@ -385,7 +385,7 @@ describe('Form Node', () => {
 			expect(mockResponseObject.render).toHaveBeenCalledWith(
 				'form-trigger-completion',
 				expect.objectContaining({
-					customCss: '.completion-container { color: blue; }',
+					dangerousCustomCss: '.completion-container { color: blue; }',
 				}),
 			);
 		});

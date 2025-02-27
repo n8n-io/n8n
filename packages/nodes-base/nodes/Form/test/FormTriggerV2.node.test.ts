@@ -263,7 +263,7 @@ describe('FormTrigger', () => {
 		expect(response.render).toHaveBeenCalledWith(
 			'form-trigger',
 			expect.objectContaining({
-				customCss: '.form-input { border-color: red; }',
+				dangerousCustomCss: '.form-input { border-color: red; }',
 			}),
 		);
 	});

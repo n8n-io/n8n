@@ -5,7 +5,7 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { sanitizeHtml } from './utils';
+import { sanitizeCustomCss, sanitizeHtml } from './utils';
 
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
@@ -35,7 +35,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
-		customCss: options.customCss,
+		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});
 
