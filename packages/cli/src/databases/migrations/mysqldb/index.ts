@@ -82,7 +82,7 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
-import { UpdateParentFolderIdColumn1740445074052 } from '../common/1740445074052-UpdateParentFolderIdColumn';
+import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
