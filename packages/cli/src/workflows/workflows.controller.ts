@@ -9,7 +9,7 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { Project } from '@/databases/entities/project';
@@ -154,7 +154,7 @@ export class WorkflowsController {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new ApplicationError('No personal project found');
+				throw new UnexpectedError('No personal project found');
 			}
 
 			if (parentFolderId) {
@@ -401,15 +401,11 @@ export class WorkflowsController {
 		@Query query: ManualRunQueryDto,
 	) {
 		if (!req.body.workflowData.id) {
-			throw new ApplicationError('You cannot execute a workflow without an ID', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('You cannot execute a workflow without an ID');
 		}
 
 		if (req.params.workflowId !== req.body.workflowData.id) {
-			throw new ApplicationError('Workflow ID in body does not match workflow ID in URL', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('Workflow ID in body does not match workflow ID in URL');
 		}
 
 		if (this.license.isSharingEnabled()) {

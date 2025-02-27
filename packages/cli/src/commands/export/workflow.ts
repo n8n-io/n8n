@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -107,7 +107,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		});
 
 		if (workflows.length === 0) {
-			throw new ApplicationError('No workflows found with specified filters');
+			throw new UserError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {

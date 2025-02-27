@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -110,14 +110,14 @@ export class WaitTracker {
 		});
 
 		if (!fullExecutionData) {
-			throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
+			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
 		if (fullExecutionData.finished) {
-			throw new ApplicationError('The execution did succeed and can so not be started again.');
+			throw new UnexpectedError('The execution did succeed and can so not be started again.');
 		}
 
 		if (!fullExecutionData.workflowData.id) {
-			throw new ApplicationError('Only saved workflows can be resumed.');
+			throw new UnexpectedError('Only saved workflows can be resumed.');
 		}
 
 		const workflowId = fullExecutionData.workflowData.id;
