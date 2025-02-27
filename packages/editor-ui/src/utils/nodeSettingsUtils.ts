@@ -103,8 +103,8 @@ export function updateDynamicConnections(
 					const newRulesvalues = parameterData.value as IDataObject[];
 					const updatedConnectionsIndex: number[] = [];
 
-					for (const rule of curentRulesvalues) {
-						const index = newRulesvalues.findIndex((newRule) => isEqual(rule, newRule));
+					for (const newRule of newRulesvalues) {
+						const index = curentRulesvalues.findIndex((rule) => isEqual(rule, newRule));
 						if (index !== -1) {
 							updatedConnectionsIndex.push(index);
 						}
