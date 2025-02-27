@@ -125,33 +125,33 @@ const currentSort = ref('updatedAt:desc');
  */
 const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
 	{
-		label: 'Open',
+		label: i18n.baseText('generic.open'),
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
 		disabled: false,
 		onlyAvailableOn: 'card',
 	},
 	{
-		label: 'Create Folder',
+		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
 		disabled: false,
 	},
 	{
-		label: 'Create Workflow',
+		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
 		disabled: false,
 	},
 	{
-		label: 'Rename',
+		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
 		disabled: false,
 	},
 	{
-		label: 'Move to Folder',
+		label: i18n.baseText('folders.actions.moveToFolder'),
 		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
 		disabled: true,
 	},
 	{
-		label: 'Delete',
+		label: i18n.baseText('generic.delete'),
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
 		disabled: false,
 	},
