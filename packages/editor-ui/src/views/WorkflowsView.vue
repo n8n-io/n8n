@@ -853,7 +853,8 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
-			let newFolderURL = `/projects/${route.params.projectId}`;
+			let newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
+
 			if (newFolder.parentFolder) {
 				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
