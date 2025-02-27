@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -35,7 +37,7 @@ const parseJsonArray = (val: string): unknown => {
 	if (!val.trim().startsWith('[')) {
 		throw new Error('Expected a JSON array starting with [');
 	}
-	return JSON.parse(val);
+	return jsonParse(val);
 };
 
 const isArrayOfStrings = (val: unknown): val is string[] => {
@@ -54,7 +56,7 @@ const filterValidator = z
 		if (!val) return;
 
 		try {
-			const parsed = JSON.parse(val);
+			const parsed = jsonParse(val);
 			try {
 				filterSchema.parse(parsed);
 			} catch (e) {
@@ -76,7 +78,7 @@ const filterValidator = z
 	})
 	.transform((val) => {
 		if (!val) return undefined;
-		return filterSchema.parse(JSON.parse(val));
+		return filterSchema.parse(jsonParse(val));
 	});
 
 // Skip parameter validation
@@ -120,7 +122,7 @@ const selectValidator = z
 
 			// Validate each field
 			for (const field of parsed) {
-				if (!VALID_SELECT_FIELDS.includes(field as any)) {
+				if (!VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						message: `Invalid select field: ${field}. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
@@ -146,7 +148,7 @@ const selectValidator = z
 			const selectObject: Record<string, true> = {};
 
 			for (const field of parsed) {
-				if (VALID_SELECT_FIELDS.includes(field as any)) {
+				if (VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
 					selectObject[field] = true;
 				}
 			}
@@ -164,7 +166,7 @@ const sortByValidator = z
 	.refine(
 		(val) => {
 			if (!val) return true;
-			return VALID_SORT_OPTIONS.includes(val as any);
+			return VALID_SORT_OPTIONS.includes(val as (typeof VALID_SORT_OPTIONS)[number]);
 		},
 		{
 			message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}`,
