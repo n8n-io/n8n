@@ -906,7 +906,7 @@
 	"folders.delete.action": "Delete all workflows and subfolders",
 	"folders.delete.error.message": "Problem while deleting folder",
 	"folders.delete.confirmation.message": "Type \"delete {folderName}\" to confirm",
-	"folders.transfer.confirm.message": "Data transferred to {folderName}",
+	"folders.transfer.confirm.message": "Data transferred to \"{folderName}\"",
 	"folders.transfer.action": "Transfer workflows and subfolders to another folder",
 	"folders.transfer.selectFolder": "Folder to to transfer to",
 	"folders.transfer.select.placeholder": "Select folder",

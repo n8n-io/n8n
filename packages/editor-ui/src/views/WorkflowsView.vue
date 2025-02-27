@@ -785,10 +785,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			if (!route.params.folderId) return;
 			const subFolderCount = getCurrentFolderSubFolderCount();
 			const workflowCount = getCurrentFolderWorkflowCount();
-			uiStore.openDeleteFolderModal(route.params.folderId as string, workflowListEventBus, {
-				subFolderCount,
-				workflowCount,
-			});
+			await deleteFolder(route.params.folderId as string, workflowCount, subFolderCount);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			if (!route.params.folderId) return;
@@ -821,16 +818,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
 			const content = getFolderContent(clickedFolder.id);
-			if (content.subFolderCount || content.workflowCount) {
-				uiStore.openDeleteFolderModal(clickedFolder.id, workflowListEventBus, content);
-			} else {
-				await foldersStore.deleteFolder(route.params.projectId as string, clickedFolder.id);
-				toast.showMessage({
-					title: i18n.baseText('folders.delete.success.message'),
-					type: 'success',
-				});
-				await fetchWorkflows();
-			}
+			await deleteFolder(clickedFolder.id, content.workflowCount, content.subFolderCount);
 			break;
 		}
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
@@ -949,6 +937,22 @@ const createFolderInCurrent = async () => {
 		name: currentParent,
 		type: currentFolder.value ? 'folder' : 'project',
 	});
+};
+
+const deleteFolder = async (folderId: string, workflowCount: number, subFolderCount: number) => {
+	if (subFolderCount || workflowCount) {
+		uiStore.openDeleteFolderModal(folderId, workflowListEventBus, {
+			workflowCount,
+			subFolderCount,
+		});
+	} else {
+		await foldersStore.deleteFolder(route.params.projectId as string, folderId);
+		toast.showMessage({
+			title: i18n.baseText('folders.delete.success.message'),
+			type: 'success',
+		});
+		await fetchWorkflows();
+	}
 };
 </script>
 

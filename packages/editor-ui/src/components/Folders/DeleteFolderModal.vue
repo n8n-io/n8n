@@ -33,6 +33,13 @@ const i18n = useI18n();
 const route = useRoute();
 const foldersStore = useFoldersStore();
 
+// Available folders to transfer are all folders except the current folder and its children
+const availableFolders = computed(() => {
+	return projectFolders.value.filter(
+		(folder) => folder.id !== props.activeId && folder.parentFolder?.id !== props.activeId,
+	);
+});
+
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
 
@@ -113,7 +120,7 @@ async function onSubmit() {
 
 		let message = '';
 		if (selectedFolderId.value) {
-			const selectedFolder = projectFolders.value.find(
+			const selectedFolder = availableFolders.value.find(
 				(folder) => folder.id === selectedFolderId.value,
 			);
 			message = i18n.baseText('folders.transfer.confirm.message', {
@@ -179,7 +186,7 @@ onMounted(async () => {
 							:placeholder="i18n.baseText('folders.transfer.selectFolder')"
 						>
 							<N8nOption
-								v-for="folder in projectFolders"
+								v-for="folder in availableFolders"
 								:key="folder.id"
 								:value="folder.id"
 								:label="folder.name"
