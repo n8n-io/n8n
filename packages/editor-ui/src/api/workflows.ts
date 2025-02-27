@@ -116,10 +116,10 @@ export async function deleteFolder(
 	context: IRestApiContext,
 	projectId: string,
 	folderId: string,
-	transferToParentId?: string,
+	transferToFolderId?: string,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`, {
-		transferToParentId,
+		transferToFolderId,
 	});
 }
 

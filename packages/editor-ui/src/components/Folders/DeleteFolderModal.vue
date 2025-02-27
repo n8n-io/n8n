@@ -33,10 +33,17 @@ const i18n = useI18n();
 const route = useRoute();
 const foldersStore = useFoldersStore();
 
-// Available folders to transfer are all folders except the current folder and its children
+const currentFolder = computed(() => {
+	return projectFolders.value.find((folder) => folder.id === props.activeId);
+});
+
+// Available folders to transfer are all folders except the current folder, it's parent and its children
 const availableFolders = computed(() => {
 	return projectFolders.value.filter(
-		(folder) => folder.id !== props.activeId && folder.parentFolder?.id !== props.activeId,
+		(folder) =>
+			folder.id !== props.activeId &&
+			folder.parentFolder?.id !== props.activeId &&
+			folder.id !== currentFolder.value?.parentFolder?.id,
 	);
 });
 
