@@ -32,7 +32,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
@@ -51,7 +51,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
@@ -70,7 +70,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
@@ -89,7 +89,7 @@ export class ProjectController {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
-			throw new InternalServerError();
+			throw new InternalServerError(undefined, e);
 		}
 	}
 
