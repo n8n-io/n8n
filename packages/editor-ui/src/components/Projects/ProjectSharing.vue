@@ -4,7 +4,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import type { RoleMap } from '@/types/roles.types';
-import { sortByProperty } from '@/utils/sortUtils';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 
 const locale = useI18n();
 

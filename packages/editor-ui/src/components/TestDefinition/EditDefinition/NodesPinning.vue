@@ -7,7 +7,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { createEventBus, N8nTooltip } from 'n8n-design-system';
+import { N8nTooltip } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 

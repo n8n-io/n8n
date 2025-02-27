@@ -7,7 +7,7 @@ import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerU
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
-import { sortByProperty } from '@/utils/sortUtils';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useI18n } from '@/composables/useI18n';
 
 let interval: NodeJS.Timer;

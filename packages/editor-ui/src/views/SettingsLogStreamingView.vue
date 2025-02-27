@@ -11,7 +11,7 @@ import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { ref, getCurrentInstance } from 'vue';
 import { useI18n } from '@/composables/useI18n';

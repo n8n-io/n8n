@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { IConnections, NodeParameterValueType } from 'n8n-workflow';
+import type { IConnections, NodeParameterValueType, IDataObject } from 'n8n-workflow';
 import { updateDynamicConnections } from './nodeSettingsUtils';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -140,6 +140,43 @@ describe('updateDynamicConnections', () => {
 		expect(updatedConnections?.TestNode.main[3]?.[0].node).toEqual('Node3');
 	});
 
+	it('should maintain correct connections after rules are reordered', () => {
+		const node = mock<INodeUi>({
+			name: 'TestNode',
+			type: SWITCH_NODE_TYPE,
+			parameters: {
+				rules: { values: [{ id: 'rule1' }, { id: 'rule2' }, { id: 'rule3' }] },
+				options: { fallbackOutput: 'extra' },
+			},
+		});
+
+		const connections = mock<IConnections>({
+			TestNode: {
+				main: [
+					[{ node: 'Node1' }],
+					[{ node: 'Node2' }],
+					[{ node: 'Node3' }],
+					[{ node: 'Fallback' }],
+				],
+			},
+		});
+
+		const currentRules = (node.parameters.rules as { values?: IDataObject[] })?.values;
+		const reorderedRules = [currentRules?.[2], currentRules?.[0], currentRules?.[1]];
+
+		const parameterData = mock<IUpdateInformation<NodeParameterValueType>>({
+			name: 'parameters.rules.values',
+			value: reorderedRules,
+		});
+
+		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
+
+		expect(updatedConnections?.TestNode.main).toHaveLength(4);
+		expect(updatedConnections?.TestNode.main[0]?.[0].node).toEqual('Node3');
+		expect(updatedConnections?.TestNode.main[1]?.[0].node).toEqual('Node1');
+		expect(updatedConnections?.TestNode.main[2]?.[0].node).toEqual('Node2');
+		expect(updatedConnections?.TestNode.main[3]?.[0].node).toEqual('Fallback');
+	});
 	it('should return null if no conditions are met', () => {
 		const node = mock<INodeUi>({
 			name: 'TestNode',

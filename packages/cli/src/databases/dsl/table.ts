@@ -1,6 +1,6 @@
 import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
 import { Table, TableColumn, TableForeignKey } from '@n8n/typeorm';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import LazyPromise from 'p-lazy';
 
 import { Column } from './column';
@@ -176,7 +176,7 @@ class ModifyNotNull extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnName, isNullable } = this;
 		const table = await queryRunner.getTable(`${prefix}${tableName}`);
-		if (!table) throw new ApplicationError('No table found', { extra: { tableName } });
+		if (!table) throw new UnexpectedError('No table found', { extra: { tableName } });
 		const oldColumn = table.findColumnByName(columnName)!;
 		const newColumn = oldColumn.clone();
 		newColumn.isNullable = isNullable;

@@ -37,9 +37,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/types/projects.types';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';

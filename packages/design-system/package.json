@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@n8n/composables": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
