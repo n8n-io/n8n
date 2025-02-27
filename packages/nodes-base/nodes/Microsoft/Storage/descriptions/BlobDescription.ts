@@ -629,8 +629,8 @@ const createFields: INodeProperties[] = [
 				description: 'Specifies the time when the blob is set to expire as an absolute time',
 				default: '',
 				displayOptions: {
-					show: {
-						'/options.expiryOption': ['Absolute'],
+					hide: {
+						'/options.expiryOption': ['NeverExpire'],
 					},
 				},
 				routing: {
