@@ -8,7 +8,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { importCurlEventBus } from '@/event-bus';
 import type { BaseTextKey } from '@/plugins/i18n';
-import { assert } from '@/utils/assert';
+import { assert } from '@n8n/utils/assert';
 import type { CurlToJSONResponse } from '@/Interface';
 
 interface Parameter {

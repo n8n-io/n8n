@@ -4,7 +4,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { computed, onMounted, ref } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 const emit = defineEmits<{
 	change: [value: boolean];

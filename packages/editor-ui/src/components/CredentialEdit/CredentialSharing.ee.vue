@@ -14,7 +14,7 @@ import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types
 import { ProjectTypes } from '@/types/projects.types';
 import type { RoleMap } from '@/types/roles.types';
 import { splitName } from '@/utils/projects.utils';
-import type { EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 

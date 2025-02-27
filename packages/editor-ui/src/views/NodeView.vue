@@ -102,7 +102,8 @@ import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons
 import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { createEventBus, N8nCallout } from 'n8n-design-system';
+import { N8nCallout } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
