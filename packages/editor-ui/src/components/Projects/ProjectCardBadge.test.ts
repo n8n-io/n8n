@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { truncate } from 'n8n-design-system';
+import { truncate } from '@n8n/utils/string/truncate';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 

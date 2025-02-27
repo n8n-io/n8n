@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import type { ITag } from '@/Interface';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 import type { EditableField } from '../types';
 

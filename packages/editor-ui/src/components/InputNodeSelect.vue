@@ -7,7 +7,7 @@ import { isPresent } from '@/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
-import { truncate } from 'n8n-design-system';
+import { truncate } from '@n8n/utils/string/truncate';
 
 type Props = {
 	nodes: IConnectedNode[];

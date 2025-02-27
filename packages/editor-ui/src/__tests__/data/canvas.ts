@@ -12,9 +12,9 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 export function createCanvasNodeData({
 	id = 'node',

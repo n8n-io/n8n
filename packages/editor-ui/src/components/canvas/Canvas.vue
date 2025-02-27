@@ -29,8 +29,8 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';

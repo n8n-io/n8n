@@ -61,6 +61,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
+		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 	};
 });
 
@@ -262,6 +263,10 @@ function onActivate() {
 
 	&.success {
 		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
+	}
+
+	&.warning {
+		border-color: var(--color-warning);
 	}
 
 	&.error {

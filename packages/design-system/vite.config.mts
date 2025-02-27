@@ -6,6 +6,7 @@ import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 
+const n8nDir = resolve(__dirname, '..', '@n8n');
 const frontendDir = resolve(__dirname, '..', 'frontend');
 
 export default mergeConfig(
@@ -31,6 +32,7 @@ export default mergeConfig(
 				'@': resolve(__dirname, 'src'),
 				'n8n-design-system': resolve(__dirname, 'src'),
 				'@n8n/composables(.*)': resolve(frontendDir, '@n8n', 'composables', 'src$1'),
+				'@n8n/utils(.*)': resolve(n8nDir, '@n8n', 'utils', 'src$1'),
 				lodash: 'lodash-es',
 			},
 		},

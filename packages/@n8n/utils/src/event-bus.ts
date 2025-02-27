@@ -7,7 +7,6 @@ type Payloads<ListenerMap> = {
 
 type Listener<Payload> = (payload: Payload) => void;
 
-// TODO: Fix all usages of `createEventBus` and convert `any` to `unknown`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface EventBus<ListenerMap extends Payloads<ListenerMap> = Record<string, any>> {
 	on<EventName extends keyof ListenerMap & string>(
@@ -42,7 +41,6 @@ export interface EventBus<ListenerMap extends Payloads<ListenerMap> = Record<str
  * }>();
  */
 export function createEventBus<
-	// TODO: Fix all usages of `createEventBus` and convert `any` to `unknown`
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ListenerMap extends Payloads<ListenerMap> = Record<string, any>,
 >(): EventBus<ListenerMap> {
@@ -77,7 +75,9 @@ export function createEventBus<
 		emit(eventName, event) {
 			const eventFns = handlers.get(eventName);
 			if (eventFns) {
-				eventFns.slice().forEach((handler) => handler(event));
+				eventFns.slice().forEach((handler) => {
+					handler(event);
+				});
 			}
 		},
 	};

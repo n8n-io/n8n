@@ -1,8 +1,7 @@
 /*
-	Constants and utility functions used for searching for node types in node creator component
-*/
-
-// based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
+ * Constants and utility functions used for searching for node types in node creator component
+ * based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
+ */
 
 const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
 const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
@@ -32,33 +31,6 @@ function fuzzyMatchSimple(pattern: string, target: string): boolean {
 	}
 
 	return pattern.length !== 0 && target.length !== 0 && patternIdx === pattern.length;
-}
-
-/**
- * Does a fuzzy search to find pattern inside a string.
- * @param {*} pattern string        pattern to search for
- * @param {*} target     string        string which is being searched
- * @returns [boolean, number]       a boolean which tells if pattern was
- *                                  found or not and a search score
- */
-function fuzzyMatch(pattern: string, target: string): { matched: boolean; outScore: number } {
-	const recursionCount = 0;
-	const recursionLimit = 5;
-	const matches: number[] = [];
-	const maxMatches = 256;
-
-	return fuzzyMatchRecursive(
-		pattern,
-		target,
-		0 /* patternCurIndex */,
-		0 /* strCurrIndex */,
-		null /* srcMatces */,
-		matches,
-		maxMatches,
-		0 /* nextMatch */,
-		recursionCount,
-		recursionLimit,
-	);
 }
 
 function fuzzyMatchRecursive(
@@ -195,6 +167,33 @@ function fuzzyMatchRecursive(
 	return { matched: false, outScore };
 }
 
+/**
+ * Does a fuzzy search to find pattern inside a string.
+ * @param {*} pattern string        pattern to search for
+ * @param {*} target     string        string which is being searched
+ * @returns [boolean, number]       a boolean which tells if pattern was
+ *                                  found or not and a search score
+ */
+function fuzzyMatch(pattern: string, target: string): { matched: boolean; outScore: number } {
+	const recursionCount = 0;
+	const recursionLimit = 5;
+	const matches: number[] = [];
+	const maxMatches = 256;
+
+	return fuzzyMatchRecursive(
+		pattern,
+		target,
+		0 /* patternCurIndex */,
+		0 /* strCurrIndex */,
+		null /* srcMatces */,
+		matches,
+		maxMatches,
+		0 /* nextMatch */,
+		recursionCount,
+		recursionLimit,
+	);
+}
+
 // prop = 'key'
 // prop = 'key1.key2'
 // prop = ['key1', 'key2']
@@ -225,6 +224,7 @@ export function sublimeSearch<T extends object>(
 		keys.forEach(({ key, weight }) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				values = values.concat(value.map((v) => ({ value: v, weight })));
 			} else if (typeof value === 'string') {
 				values.push({
@@ -237,24 +237,24 @@ export function sublimeSearch<T extends object>(
 		// for each item, check every key and get maximum score
 		const itemMatch = values.reduce(
 			(
-				accu: null | { matched: boolean; outScore: number },
+				result: null | { matched: boolean; outScore: number },
 				{ value, weight }: { value: string; weight: number },
 			) => {
 				if (!fuzzyMatchSimple(filter, value)) {
-					return accu;
+					return result;
 				}
 
 				const match = fuzzyMatch(filter, value);
 				match.outScore *= weight;
 
 				const { matched, outScore } = match;
-				if (!accu && matched) {
+				if (!result && matched) {
 					return match;
 				}
-				if (matched && accu && outScore > accu.outScore) {
+				if (matched && result && outScore > result.outScore) {
 					return match;
 				}
-				return accu;
+				return result;
 			},
 			null,
 		);
@@ -275,16 +275,3 @@ export function sublimeSearch<T extends object>(
 
 	return results;
 }
-
-export const sortByProperty = <T>(
-	property: keyof T,
-	arr: T[],
-	order: 'asc' | 'desc' = 'asc',
-): T[] =>
-	arr.sort((a, b) => {
-		const result = String(a[property]).localeCompare(String(b[property]), undefined, {
-			numeric: true,
-			sensitivity: 'base',
-		});
-		return order === 'asc' ? result : -result;
-	});
