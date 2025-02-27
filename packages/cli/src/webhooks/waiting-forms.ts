@@ -85,7 +85,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
+			return { noWebhookResponse: true };
 		}
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;

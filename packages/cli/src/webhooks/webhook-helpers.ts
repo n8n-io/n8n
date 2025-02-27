@@ -112,6 +112,12 @@ export function autoDetectResponseMode(
 		return undefined;
 	}
 	if (
+		workflowStartNode.type === FORM_NODE_TYPE &&
+		workflowStartNode.parameters.operation === 'completion'
+	) {
+		return 'onReceived';
+	}
+	if (
 		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
 		method === 'POST'
 	) {
