@@ -1,7 +1,14 @@
 {
-  "name": "@n8n_io/eslint-config",
+  "name": "@n8n/eslint-config",
   "private": true,
   "version": "0.0.1",
+  "exports": {
+    "./base": "./base.js",
+    "./frontend": "./frontend.js",
+    "./local-rules": "./local-rules.js",
+    "./node": "./node.js",
+    "./shared": "./shared.js"
+  },
   "devDependencies": {
     "@types/eslint": "^8.56.5",
     "@typescript-eslint/eslint-plugin": "^7.2.0",

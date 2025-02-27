@@ -17,14 +17,6 @@
 	@include mixins.e(wrap) {
 		overflow: scroll;
 		height: 100%;
-
-		@include mixins.m(hidden-default) {
-			scrollbar-width: none;
-			&::-webkit-scrollbar {
-				width: 0;
-				height: 0;
-			}
-		}
 	}
 
 	@include mixins.e(thumb) {

@@ -29,6 +29,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import { N8nButton, N8nCallout, N8nNotice } from 'n8n-design-system';
+import { isEqual } from 'lodash-es';
 
 type Props = {
 	parameter: INodeProperties;
@@ -354,11 +355,11 @@ async function loadAndSetFieldsToMap(): Promise<void> {
 			}
 			return field;
 		});
-		state.paramValue = {
-			...state.paramValue,
-			schema: newSchema,
-		};
-		emitValueChanged();
+
+		if (!isEqual(newSchema, state.paramValue.schema)) {
+			state.paramValue.schema = newSchema;
+			emitValueChanged();
+		}
 	}
 }
 

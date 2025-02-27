@@ -136,7 +136,7 @@ function onClickAdd() {
 	left: 50%;
 	transform: translate(-50%, -150%);
 	font-size: var(--font-size-xs);
-	color: var(--color-success);
+	color: var(--color-text-base);
 }
 </style>
 

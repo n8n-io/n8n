@@ -1,3 +1,10 @@
-const { createFrontendEslintConfig } = require('@n8n/frontend-eslint-config');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
-module.exports = createFrontendEslintConfig(__dirname);
+/**
+ * @type {import('@types/eslint').ESLint.ConfigData}
+ */
+module.exports = {
+	extends: ['@n8n/eslint-config/frontend'],
+
+	...sharedOptions(__dirname, 'frontend'),
+};

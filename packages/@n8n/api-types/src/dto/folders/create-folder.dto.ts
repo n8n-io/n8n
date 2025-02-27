@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
+import { folderNameSchema } from '../../schemas/folder.schema';
+
 export class CreateFolderDto extends Z.class({
-	name: z.string().trim().min(1).max(128),
+	name: folderNameSchema,
 	parentFolderId: z.string().optional(),
 }) {}
