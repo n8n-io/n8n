@@ -15,7 +15,7 @@
 	}
 
 	@include mixins.e(wrap) {
-		overflow: scroll;
+		overflow: auto;
 		height: 100%;
 	}
 
