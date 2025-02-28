@@ -1,8 +1,9 @@
-import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
+import { type IPairedItemData, type IRunData, type ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse, TargetItem } from '@/Interface';
 import { isNotNull } from '@/utils/typeGuards';
 
 export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
+const MAX_PAIR_COUNT = 100000;
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -85,6 +86,12 @@ function addPairedItemIdsRec(
 	paths: { [item: string]: string[][] },
 	pinned: Set<string>,
 ) {
+	const size = Object.values(paths).reduce((sum, pathsForName) => sum + pathsForName.length, 0);
+
+	if (size > MAX_PAIR_COUNT) {
+		throw Error();
+	}
+
 	const key = `${node}_r${runIndex}`;
 	if (seen.has(key)) {
 		return;
@@ -205,15 +212,20 @@ export function getPairedItemsMapping(executionResponse: Partial<IExecutionRespo
 		return {};
 	}
 
-	const seen = new Set<string>();
-	const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData || {}));
-
 	const paths: { [item: string]: string[][] } = {};
-	Object.keys(runData).forEach((node) => {
-		runData[node].forEach((_, runIndex: number) => {
-			addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);
+
+	try {
+		const seen = new Set<string>();
+		const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData ?? {}));
+
+		Object.keys(runData).forEach((node) => {
+			runData[node].forEach((_, runIndex: number) => {
+				addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);
+			});
 		});
-	});
+	} catch {
+		return {};
+	}
 
 	return getMapping(paths);
 }
