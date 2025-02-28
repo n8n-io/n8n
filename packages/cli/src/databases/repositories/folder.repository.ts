@@ -213,7 +213,9 @@ export class FolderRepository extends Repository<FolderWithWorkflowCount> {
 		direction: 'DESC' | 'ASC',
 	): void {
 		if (field === 'name') {
-			query.orderBy('LOWER(folder.name)', direction);
+			query
+				.addSelect('LOWER(folder.name)', 'folder_name_lower')
+				.orderBy('folder_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`folder.${field}`, direction);
 		}

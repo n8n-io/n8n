@@ -556,6 +556,15 @@ describe('FolderRepository', () => {
 				]);
 			});
 
+			it('should sort by name:desc when select does not include the name', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					sortBy: 'name:desc',
+					select: { id: true },
+				});
+
+				expect(folders.length).toBe(4);
+			});
+
 			it('should sort by createdAt:asc', async () => {
 				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'createdAt:asc',
