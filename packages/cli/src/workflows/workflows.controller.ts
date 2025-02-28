@@ -159,7 +159,7 @@ export class WorkflowsController {
 
 			if (parentFolderId) {
 				try {
-					const parentFolder = await this.folderService.getFolderInProject(
+					const parentFolder = await this.folderService.findFolderInProjectOrFail(
 						parentFolderId,
 						project.id,
 						transactionManager,

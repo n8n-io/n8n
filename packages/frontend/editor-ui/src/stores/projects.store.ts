@@ -10,7 +10,6 @@ import { ProjectTypes } from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { STORES } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
@@ -21,7 +20,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const usersStore = useUsersStore();
 
@@ -168,7 +166,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				destinationProjectId: projectId,
 				shareCredentials,
 			});
-			await workflowsStore.fetchAllWorkflows(currentProjectId.value);
 		} else {
 			await credentialsEEApi.moveCredentialToProject(
 				rootStore.restApiContext,
