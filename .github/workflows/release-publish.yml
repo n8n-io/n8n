@@ -74,7 +74,7 @@ jobs:
     needs: [publish-to-npm]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -162,7 +162,7 @@ jobs:
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
           version: ${{ needs.publish-to-npm.outputs.release }}
-          sourcemaps: packages/editor-ui/dist
+          sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
         uses: getsentry/action-release@v1.7.0
