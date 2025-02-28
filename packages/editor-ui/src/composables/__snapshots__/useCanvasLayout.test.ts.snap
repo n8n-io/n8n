@@ -62,13 +62,13 @@ exports[`useCanvasLayout > should layout a workflow with AI nodes 1`] = `
     "height": 540,
     "width": 820,
     "x": 0,
-    "y": 0,
+    "y": 220,
   },
   "nodes": [
     {
       "id": "node1",
       "x": 100,
-      "y": 320,
+      "y": 100,
     },
     {
       "id": "aiTool1",
@@ -98,7 +98,7 @@ exports[`useCanvasLayout > should layout a workflow with AI nodes 1`] = `
     {
       "id": "node2",
       "x": 820,
-      "y": 320,
+      "y": 100,
     },
   ],
 }
@@ -145,7 +145,7 @@ exports[`useCanvasLayout > should layout a workflow with sticky notes 1`] = `
 exports[`useCanvasLayout > should not reorder nodes vertically as it affects execution order 1`] = `
 {
   "boundingBox": {
-    "height": 320,
+    "height": 300,
     "width": 320,
     "x": 0,
     "y": 0,
@@ -154,7 +154,7 @@ exports[`useCanvasLayout > should not reorder nodes vertically as it affects exe
     {
       "id": "node1",
       "x": 0,
-      "y": -90,
+      "y": -100,
     },
     {
       "id": "node3",
@@ -164,7 +164,7 @@ exports[`useCanvasLayout > should not reorder nodes vertically as it affects exe
     {
       "id": "node2",
       "x": 220,
-      "y": 20,
+      "y": 0,
     },
   ],
 }

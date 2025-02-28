@@ -2,10 +2,15 @@ import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
 import { ref } from 'vue';
 import { createCanvasGraphEdge, createCanvasGraphNode } from '../__tests__/data';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../types';
-import { useCanvasLayout } from './useCanvasLayout';
+import { useCanvasLayout, type LayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '../constants';
+import { GRID_SIZE } from '../utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
+
+function matchesGrid(result: LayoutResult) {
+	return result.nodes.every((node) => node.x % GRID_SIZE === 0 && node.y % GRID_SIZE === 0);
+}
 
 describe('useCanvasLayout', () => {
 	function createTestSetup(
@@ -49,7 +54,9 @@ describe('useCanvasLayout', () => {
 		];
 
 		const { layout } = createTestSetup(nodes, connections);
-		expect(layout('all')).toMatchSnapshot();
+		const result = layout('all');
+		expect(result).toMatchSnapshot();
+		expect(matchesGrid(result)).toBe(true);
 	});
 
 	test('should layout a basic workflow with selected nodes', () => {
@@ -67,7 +74,9 @@ describe('useCanvasLayout', () => {
 		];
 
 		const { layout } = createTestSetup(nodes, connections, ['node1', 'node2', 'node3']);
-		expect(layout('selection')).toMatchSnapshot();
+		const result = layout('selection');
+		expect(result).toMatchSnapshot();
+		expect(matchesGrid(result)).toBe(true);
 	});
 
 	test('should layout a workflow with AI nodes', () => {
@@ -111,7 +120,9 @@ describe('useCanvasLayout', () => {
 		];
 
 		const { layout } = createTestSetup(nodes, connections);
-		expect(layout('all')).toMatchSnapshot();
+		const result = layout('all');
+		expect(result).toMatchSnapshot();
+		expect(matchesGrid(result)).toBe(true);
 	});
 
 	test('should layout a workflow with sticky notes', () => {
@@ -135,7 +146,8 @@ describe('useCanvasLayout', () => {
 		];
 
 		const { layout } = createTestSetup(nodes, connections);
-		expect(layout('all')).toMatchSnapshot();
+		const result = layout('all');
+		expect(result).toMatchSnapshot();
 	});
 
 	test('should not reorder nodes vertically as it affects execution order', () => {
@@ -151,6 +163,8 @@ describe('useCanvasLayout', () => {
 		];
 
 		const { layout } = createTestSetup(nodes, connections);
-		expect(layout('all')).toMatchSnapshot();
+		const result = layout('all');
+		expect(result).toMatchSnapshot();
+		expect(matchesGrid(result)).toBe(true);
 	});
 });
