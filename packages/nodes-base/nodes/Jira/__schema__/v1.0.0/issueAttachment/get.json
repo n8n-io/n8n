@@ -80,5 +80,6 @@
         "mimeType",
         "properties",
         "content"
-    ]
+    ],
+    "version": 1
 }

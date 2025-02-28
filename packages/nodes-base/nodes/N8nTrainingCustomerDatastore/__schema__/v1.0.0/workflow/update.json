@@ -79,5 +79,6 @@
         "pinData",
         "versionId",
         "triggerCount"
-    ]
+    ],
+    "version": 1
 }

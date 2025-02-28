@@ -316,5 +316,6 @@
         "identity-profiles",
         "merge-audits",
         "addedAt"
-    ]
+    ],
+    "version": 1
 }

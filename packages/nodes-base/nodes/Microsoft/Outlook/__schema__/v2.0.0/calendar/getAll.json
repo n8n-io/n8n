@@ -74,5 +74,6 @@
         "isTallyingResponses",
         "isRemovable",
         "owner"
-    ]
+    ],
+    "version": 1
 }

@@ -25,5 +25,6 @@
         "isInline": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

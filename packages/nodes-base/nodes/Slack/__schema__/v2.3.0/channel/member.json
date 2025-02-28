@@ -188,5 +188,6 @@
         "who_can_share_contact_card": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

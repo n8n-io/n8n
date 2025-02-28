@@ -456,5 +456,6 @@
         "stock_status",
         "has_options",
         "_links"
-    ]
+    ],
+    "version": 1
 }

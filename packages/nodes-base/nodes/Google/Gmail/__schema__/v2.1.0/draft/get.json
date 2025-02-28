@@ -143,5 +143,6 @@
         "from",
         "messageId",
         "html"
-    ]
+    ],
+    "version": 1
 }

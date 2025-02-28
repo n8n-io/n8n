@@ -68,5 +68,6 @@
         "status",
         "links",
         "webViewLink"
-    ]
+    ],
+    "version": 1
 }

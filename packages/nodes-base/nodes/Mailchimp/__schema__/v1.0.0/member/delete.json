@@ -4,5 +4,6 @@
         "error": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

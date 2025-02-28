@@ -57,5 +57,6 @@
     },
     "required": [
         "metadata"
-    ]
+    ],
+    "version": 1
 }

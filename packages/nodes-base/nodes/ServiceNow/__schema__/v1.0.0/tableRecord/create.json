@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "parent": {
+            "type": "string"
+        },
+        "sys_updated_on": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "sys_updated_by": {
+            "type": "string"
+        },
+        "sys_created_on": {
+            "type": "string"
+        },
+        "sys_domain": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "link",
+                "value"
+            ]
+        },
+        "sys_created_by": {
+            "type": "string"
+        },
+        "order": {
+            "type": "string"
+        },
+        "active": {
+            "type": "string"
+        },
+        "sys_domain_path": {
+            "type": "string"
+        },
+        "work_notes": {
+            "type": "string"
+        },
+        "short_description": {
+            "type": "string"
+        },
+        "assignment_group": {
+            "type": "string"
+        },
+        "sys_class_name": {
+            "type": "string"
+        },
+        "sys_id": {
+            "type": "string"
+        },
+        "assigned_to": {
+            "type": "string"
+        },
+        "comments": {
+            "type": "string"
+        },
+        "sys_mod_count": {
+            "type": "string"
+        },
+        "sys_tags": {
+            "type": "string"
+        },
+        "correlation_id": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "sys_updated_on",
+        "sys_updated_by",
+        "sys_created_on",
+        "sys_created_by",
+        "sys_id",
+        "sys_mod_count",
+        "sys_tags"
+    ],
+    "version": 1
+}

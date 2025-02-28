@@ -10,5 +10,6 @@
         "created": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

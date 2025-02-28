@@ -11,5 +11,6 @@
     "required": [
         "status",
         "request"
-    ]
+    ],
+    "version": 1
 }

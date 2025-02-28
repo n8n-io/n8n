@@ -10,5 +10,6 @@
     },
     "required": [
         "gid"
-    ]
+    ],
+    "version": 1
 }

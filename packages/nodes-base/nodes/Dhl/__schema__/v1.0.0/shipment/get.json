@@ -204,5 +204,6 @@
         "status",
         "details",
         "events"
-    ]
+    ],
+    "version": 1
 }

@@ -299,5 +299,6 @@
         "join_url",
         "settings",
         "pre_schedule"
-    ]
+    ],
+    "version": 1
 }

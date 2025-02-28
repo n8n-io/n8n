@@ -592,5 +592,6 @@
                 "hs_object_source_label"
             ]
         }
-    }
+    },
+    "version": 1
 }

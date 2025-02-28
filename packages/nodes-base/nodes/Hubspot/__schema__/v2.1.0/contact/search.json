@@ -39,5 +39,6 @@
         "createdAt",
         "updatedAt",
         "archived"
-    ]
+    ],
+    "version": 1
 }

@@ -52,5 +52,6 @@
         "deadline": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }

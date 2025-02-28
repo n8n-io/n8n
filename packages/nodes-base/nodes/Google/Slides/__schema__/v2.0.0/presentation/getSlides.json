@@ -640,5 +640,6 @@
         "pageElements",
         "slideProperties",
         "pageProperties"
-    ]
+    ],
+    "version": 1
 }

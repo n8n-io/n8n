@@ -335,5 +335,6 @@
         "attachments",
         "stickers",
         "limits"
-    ]
+    ],
+    "version": 1
 }

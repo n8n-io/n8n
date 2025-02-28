@@ -176,5 +176,6 @@
         "market_cap_rank",
         "status_updates",
         "last_updated"
-    ]
+    ],
+    "version": 1
 }

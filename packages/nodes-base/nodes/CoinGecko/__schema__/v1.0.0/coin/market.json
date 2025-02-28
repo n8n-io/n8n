@@ -74,5 +74,6 @@
         "atl_date",
         "roi",
         "last_updated"
-    ]
+    ],
+    "version": 1
 }
