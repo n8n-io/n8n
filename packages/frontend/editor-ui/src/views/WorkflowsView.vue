@@ -23,6 +23,7 @@ import type {
 	WorkflowListResource,
 	WorkflowListItem,
 	FolderPathItem,
+	FolderListItem,
 } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -164,7 +165,7 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: 'Delete',
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
-		disabled: true,
+		disabled: false,
 	},
 ]);
 const folderCardActions = computed(() =>
@@ -218,6 +219,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
 				workflowCount: resource.workflowCount,
+				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
@@ -280,7 +282,7 @@ const emptyListDescription = computed(() => {
 });
 
 /**
- * WATCHERS AND STORE SUBSCRIPTIONS
+ * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
 
 watch(
@@ -303,6 +305,18 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+const onFolderDeleted = (payload: { folderId: string }) => {
+	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
+	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
+	// If the deleted folder is the current folder, navigate to the parent folder
+	if (route.params.folderId === payload.folderId) {
+		void router.push({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: folderInfo?.parentFolder ?? '' },
+		});
+	}
+};
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -313,11 +327,13 @@ onMounted(async () => {
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
+	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 });
 
 onBeforeUnmount(() => {
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
+	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 });
 
 /**
@@ -605,6 +621,42 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
+const getFolderListItem = (folderId: string): FolderListItem | undefined => {
+	return workflowsAndFolders.value.find(
+		(resource): resource is FolderListItem =>
+			resource.resource === 'folder' && resource.id === folderId,
+	);
+};
+// TODO: This will only count the workflows and folders in the current page
+// Check if we need to add counts to /tree endpoint or not show them in modal
+const getCurrentFolderWorkflowCount = () => {
+	const workflows = workflowsAndFolders.value.filter(
+		(resource): resource is WorkflowListItem => resource.resource === 'workflow',
+	);
+	return workflows.length;
+};
+const getCurrentFolderSubFolderCount = () => {
+	const folders = workflowsAndFolders.value.filter(
+		(resource): resource is FolderListItem => resource.resource === 'folder',
+	);
+	return folders.length;
+};
+const getFolderContent = (folderId: string) => {
+	const folderListItem = getFolderListItem(folderId);
+	if (!folderListItem) {
+		toast.showMessage({
+			title: i18n.baseText('folders.delete.error.message'),
+			message: i18n.baseText('folders.not.found.message'),
+			type: 'error',
+		});
+		return { workflowCount: 0, subFolderCount: 0 };
+	}
+	return {
+		workflowCount: folderListItem.workflowCount,
+		subFolderCount: folderListItem.subFolderCount,
+	};
+};
+
 // Breadcrumbs methods
 
 /**
@@ -717,6 +769,15 @@ const onBreadCrumbsAction = async (action: string) => {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			addWorkflow();
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.DELETE:
+			if (!route.params.folderId) return;
+			const subFolderCount = getCurrentFolderSubFolderCount();
+			const workflowCount = getCurrentFolderWorkflowCount();
+			uiStore.openDeleteFolderModal(route.params.folderId as string, workflowListEventBus, {
+				subFolderCount,
+				workflowCount,
+			});
+			break;
 		default:
 			break;
 	}
@@ -742,6 +803,20 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
 			});
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
+			const content = getFolderContent(clickedFolder.id);
+			if (content.subFolderCount || content.workflowCount) {
+				uiStore.openDeleteFolderModal(clickedFolder.id, workflowListEventBus, content);
+			} else {
+				await foldersStore.deleteFolder(route.params.projectId as string, clickedFolder.id);
+				toast.showMessage({
+					title: i18n.baseText('folders.delete.success.message'),
+					type: 'success',
+				});
+				await fetchWorkflows();
+			}
+			break;
+		}
 		default:
 			break;
 	}
@@ -797,6 +872,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 						homeProject: projectsStore.currentProject as ProjectSharingData,
 						sharedWithProjects: [],
 						workflowCount: 0,
+						subFolderCount: 0,
 					},
 				];
 			} else {
