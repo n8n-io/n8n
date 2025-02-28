@@ -198,6 +198,7 @@ const handleTooltipClose = () => {
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
 					}"
+					:title="item.label"
 					data-test-id="breadcrumbs-item"
 					@click.prevent="emitItemSelected(item.id)"
 				>
@@ -233,6 +234,13 @@ const handleTooltipClose = () => {
 	display: flex;
 	list-style: none;
 	align-items: center;
+}
+
+.item * {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .item.current span {
@@ -316,6 +324,10 @@ const handleTooltipClose = () => {
 		gap: var(--spacing-5xs);
 	}
 
+	.item {
+		max-width: var(--spacing-3xl);
+	}
+
 	.item,
 	.item * {
 		color: var(--color-text-base);
@@ -343,6 +355,10 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-m);
+	}
+
+	.item {
+		max-width: var(--spacing-5xl);
 	}
 
 	.item a:hover * {

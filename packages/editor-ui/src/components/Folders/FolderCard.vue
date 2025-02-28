@@ -92,7 +92,13 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 					/>
 				</template>
 				<template #header>
-					<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+					<n8n-heading
+						tag="h2"
+						bold
+						size="small"
+						data-test-id="folder-card-name"
+						:class="$style['folder-card-name']"
+					>
 						{{ data.name }}
 					</n8n-heading>
 				</template>
@@ -195,6 +201,10 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	border-radius: 50%;
 	align-content: center;
 	text-align: center;
+}
+
+.folder-card-name {
+	padding-right: var(--spacing-xs);
 }
 
 .card-footer {
