@@ -1447,10 +1447,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
 		}
 
-		if (!sendData.parentFolderId && foldersStore.currentFolderId) {
-			(sendData as unknown as IDataObject).parentFolderId = foldersStore.currentFolderId;
-		}
-
 		const newWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
