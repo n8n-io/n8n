@@ -1,7 +1,7 @@
 import { Z } from 'zod-class';
 
-import { folderId } from '../../schemas/folder.schema';
+import { folderIdSchema } from '../../schemas/folder.schema';
 
 export class DeleteFolderDto extends Z.class({
-	transferToFolderId: folderId.optional(),
+	transferToFolderId: folderIdSchema.optional(),
 }) {}
