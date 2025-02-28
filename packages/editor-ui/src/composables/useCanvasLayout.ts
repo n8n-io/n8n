@@ -30,7 +30,7 @@ export type LayoutResult = { boundingBox: BoundingBox; nodes: NodeLayoutResult[]
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
 const NODE_X_SPACING = GRID_SIZE * 6;
-const NODE_Y_SPACING = GRID_SIZE * 6;
+const NODE_Y_SPACING = GRID_SIZE * 5;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
 const AI_X_SPACING = GRID_SIZE * 2;
 const AI_Y_SPACING = GRID_SIZE * 6;
