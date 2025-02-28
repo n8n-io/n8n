@@ -67,6 +67,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
 import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import CssEditor from './CssEditor/CssEditor.vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -408,7 +409,7 @@ const displayIssues = computed(
 		getIssues.value.length > 0,
 );
 
-const editorType = computed<EditorType | 'json' | 'code'>(() => {
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
 	return getArgument<EditorType>('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
@@ -1225,6 +1226,14 @@ onUpdated(async () => {
 							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
+						<CssEditor
+							v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
@@ -1311,6 +1320,25 @@ onUpdated(async () => {
 						/>
 					</template>
 				</HtmlEditor>
+
+				<CssEditor
+					v-else-if="editorType === 'cssEditor' && !codeEditDialogVisible"
+					:model-value="modelValueString"
+					:is-read-only="isReadOnly"
+					:rows="editorRows"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<N8nIcon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</CssEditor>
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
