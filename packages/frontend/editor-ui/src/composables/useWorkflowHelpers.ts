@@ -34,6 +34,7 @@ import type {
 	ITag,
 	IUpdateInformation,
 	IWorkflowData,
+	IWorkflowDataCreate,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	TargetItem,
@@ -811,9 +812,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		const isLoading = useCanvasStore().isLoading;
 		const currentWorkflow = id || (router.currentRoute.value.params.name as string);
+		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return await saveAsNewWorkflow({ name, tags }, redirect);
+			return await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect);
 		}
 
 		// Workflow exists already so update it
@@ -914,6 +916,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			resetWebhookUrls,
 			resetNodeIds,
 			openInNewWindow,
+			parentFolderId,
 			data,
 		}: {
 			name?: string;
@@ -921,14 +924,15 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			resetWebhookUrls?: boolean;
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
-			data?: IWorkflowDataUpdate;
+			parentFolderId?: string;
+			data?: IWorkflowDataCreate;
 		} = {},
 		redirect = true,
 	): Promise<boolean> {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataUpdate = data || (await getWorkflowDataToSave());
+			const workflowDataRequest: IWorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {
@@ -956,6 +960,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			if (tags) {
 				workflowDataRequest.tags = tags;
+			}
+
+			if (parentFolderId) {
+				workflowDataRequest.parentFolderId = parentFolderId;
 			}
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
