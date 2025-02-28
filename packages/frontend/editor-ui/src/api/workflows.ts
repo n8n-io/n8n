@@ -1,4 +1,6 @@
 import type {
+	FolderCreateResponse,
+	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRestApiContext,
@@ -82,5 +84,29 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 		context,
 		'GET',
 		`/executions/${executionId}`,
+	);
+}
+
+export async function createFolder(
+	context: IRestApiContext,
+	projectId: string,
+	name: string,
+	parentFolderId?: string,
+): Promise<FolderCreateResponse> {
+	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/folders`, {
+		name,
+		parentFolderId,
+	});
+}
+
+export async function getFolderPath(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<FolderTreeResponseItem[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/tree`,
 	);
 }

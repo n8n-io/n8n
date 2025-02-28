@@ -11,6 +11,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { VIEWS } from '@/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -43,14 +44,17 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 
 let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		projectsStore.teamProjectsLimit = -1;
+		settingsStore.settings.folders = { enabled: false };
 	});
 
 	afterEach(() => {
