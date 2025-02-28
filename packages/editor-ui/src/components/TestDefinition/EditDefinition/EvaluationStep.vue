@@ -143,8 +143,6 @@ const popperModifiers = [
 	border: var(--border-base);
 	width: 100%;
 	color: var(--color-text-dark);
-	position: relative;
-	z-index: 1;
 }
 
 .evaluationTooltip {
