@@ -140,6 +140,31 @@ export const opportunityDescription: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['opportunity'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:get                             */
@@ -198,7 +223,7 @@ export const opportunityDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -217,8 +242,19 @@ export const opportunityDescription: INodeProperties[] = [
 					loadOptionsMethod: 'getModelFields',
 				},
 			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:update                          */
 	/* -------------------------------------------------------------------------- */
@@ -312,6 +348,60 @@ export const opportunityDescription: INodeProperties[] = [
 				typeOptions: {
 					maxValue: 100,
 					minValue: 0,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['opportunity'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:delete                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['opportunity'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
 				},
 			},
 		],

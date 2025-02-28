@@ -9,7 +9,7 @@ import type {
 import { NodeApiError, randomInt } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
-const methodJSONRPC = 'execute';
+const methodJSONRPC = 'execute_kw';
 
 export const mapOperationToJSONRPC = {
 	create: 'create',
@@ -147,7 +147,7 @@ export async function odooGetModelFields(
 			method: 'call',
 			params: {
 				service: serviceJSONRPC,
-				method: methodJSONRPC,
+				method: 'execute',
 				args: [
 					db,
 					userID,
@@ -177,6 +177,7 @@ export async function odooCreate(
 	operation: OdooCRUD,
 	url: string,
 	newItem: IDataObject,
+	context?: IDataObject,
 ) {
 	try {
 		const body = {
@@ -191,7 +192,8 @@ export async function odooCreate(
 					password,
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
-					newItem || {},
+					[newItem || {}],
+					{ context: context || {} },
 				],
 			},
 			id: randomInt(100),
@@ -214,6 +216,7 @@ export async function odooGet(
 	url: string,
 	itemsID: string,
 	fieldsToReturn?: IDataObject[],
+	context?: IDataObject,
 ) {
 	try {
 		if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {
@@ -235,7 +238,10 @@ export async function odooGet(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					itemsID ? [+itemsID] : [],
-					fieldsToReturn || [],
+					{
+						fields: fieldsToReturn || [],
+						context: context || {},
+					}
 				],
 			},
 			id: randomInt(100),
@@ -259,6 +265,7 @@ export async function odooGetAll(
 	filters?: IOdooFilterOperations,
 	fieldsToReturn?: IDataObject[],
 	limit = 0,
+	context?: IDataObject,
 ) {
 	try {
 		const body = {
@@ -273,10 +280,13 @@ export async function odooGetAll(
 					password,
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
-					(filters && processFilters(filters)) || [],
-					fieldsToReturn || [],
-					0, // offset
-					limit,
+					[(filters && processFilters(filters)) || []],
+					{
+						fields: fieldsToReturn || [],
+						offset: 0,
+						limit: limit,
+						context: context || {},
+					}
 				],
 			},
 			id: randomInt(100),
@@ -299,6 +309,7 @@ export async function odooUpdate(
 	url: string,
 	itemsID: string,
 	fieldsToUpdate: IDataObject,
+	context?: IDataObject,
 ) {
 	try {
 		if (!Object.keys(fieldsToUpdate).length) {
@@ -325,8 +336,8 @@ export async function odooUpdate(
 					password,
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
-					itemsID ? [+itemsID] : [],
-					fieldsToUpdate,
+					[itemsID ? [+itemsID] : [], fieldsToUpdate],
+					{ context: context || {} },
 				],
 			},
 			id: randomInt(100),
@@ -348,6 +359,7 @@ export async function odooDelete(
 	operation: OdooCRUD,
 	url: string,
 	itemsID: string,
+	context?: IDataObject,
 ) {
 	if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {
 		throw new NodeApiError(this.getNode(), {
@@ -369,6 +381,7 @@ export async function odooDelete(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					itemsID ? [+itemsID] : [],
+					{ context: context || {} },
 				],
 			},
 			id: randomInt(100),
