@@ -28,7 +28,6 @@ import { n8nCompletionSources } from '@/plugins/codemirror/completions/addComple
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
-import { cssLanguage } from '@codemirror/lang-css';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
@@ -43,14 +42,12 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
-	type?: 'htmlEditor' | 'cssEditor';
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
-	type: 'htmlEditor',
 });
 
 const emit = defineEmits<{
@@ -60,13 +57,12 @@ const emit = defineEmits<{
 const htmlEditor = ref<HTMLElement>();
 const editorValue = ref<string>(props.modelValue);
 
-const language = computed(() => (props.type === 'htmlEditor' ? htmlLanguage : cssLanguage));
-const extensions = computed(() => [
+const extensions = [
 	bracketMatching(),
 	n8nAutocompletion(),
-	new LanguageSupport(language.value, [
-		language.value.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-		n8nCompletionSources().map((source) => language.value.data.of(source)),
+	new LanguageSupport(htmlLanguage, [
+		htmlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
+		n8nCompletionSources().map((source) => htmlLanguage.data.of(source)),
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),
@@ -86,11 +82,12 @@ const extensions = computed(() => [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
-]);
+];
 const {
 	editor: editorRef,
 	segments,
 	readEditorValue,
+	isDirty,
 } = useExpressionEditor({
 	editorRef: htmlEditor,
 	editorValue,
@@ -234,6 +231,7 @@ watch(segments.display, () => {
 });
 
 onMounted(() => {
+	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.on('format-html', formatHtml);
 });
 

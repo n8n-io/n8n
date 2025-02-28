@@ -67,6 +67,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
 import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import CssEditor from './CssEditor/CssEditor.vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -1225,15 +1226,12 @@ onUpdated(async () => {
 							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
-						<HtmlEditor
+						<CssEditor
 							v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							:disable-expression-coloring="!isHtmlNode"
-							:disable-expression-completions="!isHtmlNode"
 							fullscreen
-							type="cssEditor"
 							@update:model-value="valueChangedDebounced"
 						/>
 						<SqlEditor
@@ -1323,14 +1321,11 @@ onUpdated(async () => {
 					</template>
 				</HtmlEditor>
 
-				<HtmlEditor
+				<CssEditor
 					v-else-if="editorType === 'cssEditor' && !codeEditDialogVisible"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
-					:disable-expression-coloring="!isHtmlNode"
-					:disable-expression-completions="!isHtmlNode"
-					type="cssEditor"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1343,7 +1338,7 @@ onUpdated(async () => {
 							@click="displayEditDialog()"
 						/>
 					</template>
-				</HtmlEditor>
+				</CssEditor>
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
