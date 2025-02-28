@@ -1,3 +1,12 @@
+## [1.80.5](https://github.com/n8n-io/n8n/compare/n8n@1.80.4...n8n@1.80.5) (2025-02-28)
+
+
+### Bug Fixes
+
+* **Postgres Node:** Accommodate null values in query parameters for expressions ([#13544](https://github.com/n8n-io/n8n/issues/13544)) ([1940b09](https://github.com/n8n-io/n8n/commit/1940b098e89a6d38ce932d8e5ed7c2d597113623))
+
+
+
 ## [1.80.4](https://github.com/n8n-io/n8n/compare/n8n@1.80.3...n8n@1.80.4) (2025-02-27)
 
 
