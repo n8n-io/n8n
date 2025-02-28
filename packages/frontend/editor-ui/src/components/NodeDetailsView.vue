@@ -836,7 +836,7 @@ onBeforeUnmount(() => {
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-l)) !important;
+	height: 100%;
 	margin-top: var(--spacing-xl) !important;
 	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;

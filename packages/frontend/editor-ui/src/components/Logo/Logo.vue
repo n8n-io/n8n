@@ -65,9 +65,7 @@ onMounted(() => {
 	<div :class="containerClasses" data-test-id="n8n-logo">
 		<LogoIcon :class="$style.logo" ref="logo" />
 		<LogoText v-if="showLogoText" :class="$style.logoText" />
-		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
-			{{ releaseChannel }}
-		</div>
+		<div v-if="showReleaseChannelTag" :class="$style.releaseChannelTag">{{ releaseChannel }}</div>
 		<slot />
 	</div>
 </template>
@@ -76,6 +74,7 @@ onMounted(() => {
 .logoContainer {
 	display: flex;
 	justify-content: center;
+	align-items: center;
 }
 
 .logoText {
@@ -91,12 +90,11 @@ onMounted(() => {
 	background-color: var(--color-background-base);
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-4xs);
+	font-size: var(--font-size-3xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: capitalize;
 	line-height: var(--font-line-height-regular);
-	height: var(--spacing-s);
-	margin: 10px 0 0 3px;
+	margin: 8px 0 0 3px;
 }
 
 .authView {
@@ -104,12 +102,18 @@ onMounted(() => {
 	margin-bottom: var(--spacing-xl);
 }
 
-.sidebar {
+.logo,
+.logoText {
 	transform: scale(1.3);
 }
 
-.sidebarExpanded .logo {
+.logoText {
 	margin-left: var(--spacing-xs);
+	margin-right: var(--spacing-3xs);
+}
+
+.sidebarExpanded .logo {
+	margin-left: var(--spacing-3xs);
 }
 
 .sidebarCollapsed .logo {

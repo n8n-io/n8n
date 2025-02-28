@@ -15,6 +15,7 @@ import { STORES } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -22,6 +23,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const settingsStore = useSettingsStore();
 	const credentialsStore = useCredentialsStore();
 	const usersStore = useUsersStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -60,8 +62,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const canCreateProjects = computed<boolean>(
 		() =>
-			hasUnlimitedProjects.value ||
-			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
+			(hasUnlimitedProjects.value ||
+				(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value)) &&
+			!sourceControlStore.preferences.branchReadOnly,
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
