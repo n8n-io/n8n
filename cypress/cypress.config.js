@@ -14,6 +14,8 @@ module.exports = defineConfig({
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
+		viewportWidth: 1536,
+		viewportHeight: 960,
 		video: true,
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
