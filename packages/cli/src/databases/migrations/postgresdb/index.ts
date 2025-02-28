@@ -44,6 +44,7 @@ import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTime
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
+import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -164,4 +165,5 @@ export const postgresMigrations: Migration[] = [
 	AddErrorColumnsToTestRuns1737715421462,
 	CreateFolderTable1738709609940,
 	CreateAnalyticsTables1739549398681,
+	UpdateParentFolderIdColumn1740445074052,
 ];

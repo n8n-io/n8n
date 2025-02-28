@@ -22,5 +22,5 @@ export const RESOURCES = {
 	variable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
-	folder: ['create', 'read', 'update'] as const,
+	folder: ['create', 'read', 'update', 'delete'] as const,
 } as const;
