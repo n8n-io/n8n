@@ -1,3 +1,42 @@
+# [1.81.0](https://github.com/n8n-io/n8n/compare/n8n@1.80.0...n8n@1.81.0) (2025-02-24)
+
+
+### Bug Fixes
+
+* Always clear popupWindowState  before showing popup from form trigger ([#13363](https://github.com/n8n-io/n8n/issues/13363)) ([b7f1265](https://github.com/n8n-io/n8n/commit/b7f12650f1f42c0ff15c1da3e5ade350fb1e23d2))
+* **Code Node:** Fix `$items` in Code node when using task runner ([#13368](https://github.com/n8n-io/n8n/issues/13368)) ([87b3c50](https://github.com/n8n-io/n8n/commit/87b3c508b3d5a7d6f3b9f8377de66567a04fa970))
+* **core:** Avoid renewing the license on init to prevent excessive duplicate renewal calls ([#13347](https://github.com/n8n-io/n8n/issues/13347)) ([1e1f528](https://github.com/n8n-io/n8n/commit/1e1f52846641515ad4479ab1088e78a9266e452d))
+* **core:** Ensure that 'workflow-post-execute' event has userId whenever it's available ([#13326](https://github.com/n8n-io/n8n/issues/13326)) ([f41e353](https://github.com/n8n-io/n8n/commit/f41e353887fef4269510d25fa87b73da4cf925f9))
+* **core:** Fix DB migrations for MySQL ([#13261](https://github.com/n8n-io/n8n/issues/13261)) ([d0968a1](https://github.com/n8n-io/n8n/commit/d0968a10d56ac5c97974129742ba8f8a85997dac))
+* **core:** Fix resuming executions on test webhooks from Wait forms ([#13410](https://github.com/n8n-io/n8n/issues/13410)) ([8ffd316](https://github.com/n8n-io/n8n/commit/8ffd3167d58d30f087fd31010e6f79f1398d8f49))
+* **core:** Handle connections for missing nodes in a workflow ([#13362](https://github.com/n8n-io/n8n/issues/13362)) ([1e5feb1](https://github.com/n8n-io/n8n/commit/1e5feb195d50054939f85c9e1b5a32885c579901))
+* **core:** Make sure middleware works with legacy API Keys ([#13390](https://github.com/n8n-io/n8n/issues/13390)) ([ca76ef4](https://github.com/n8n-io/n8n/commit/ca76ef4bc248a3bcde844bc8378d38eed269f032))
+* **core:** Return original hooks errors to the frontend ([#13365](https://github.com/n8n-io/n8n/issues/13365)) ([5439181](https://github.com/n8n-io/n8n/commit/5439181e92f20fef1423575cabec7acbe1740b26))
+* **editor:** Correctly close node creator when selecting/deselecting a node ([#13338](https://github.com/n8n-io/n8n/issues/13338)) ([c3dc66e](https://github.com/n8n-io/n8n/commit/c3dc66ee7372927fcfd6baac3b9d853690e39c99))
+* **editor:** Do not show credential details popup for users without necessary scopes with direct link ([#13264](https://github.com/n8n-io/n8n/issues/13264)) ([a5401d0](https://github.com/n8n-io/n8n/commit/a5401d06a58ef026f44499d05b42a8d0dbe2520e))
+* **editor:** Do not show project settings for users without permission with direct link ([#13246](https://github.com/n8n-io/n8n/issues/13246)) ([fa488f1](https://github.com/n8n-io/n8n/commit/fa488f15619f798a0360c96492f2928ac661d9ee))
+* **editor:** Don't open form popup window if different trigger node is used ([#13391](https://github.com/n8n-io/n8n/issues/13391)) ([57a9a5b](https://github.com/n8n-io/n8n/commit/57a9a5b15f55aae0301851e93847ed87feb081e8))
+* **editor:** Fix configurable node description margins and text alignment ([#13318](https://github.com/n8n-io/n8n/issues/13318)) ([c881ea2](https://github.com/n8n-io/n8n/commit/c881ea2c7b43a4fb610533dd553520a6de51f22d))
+* **editor:** Fix workflow moving E2E tests ([#13396](https://github.com/n8n-io/n8n/issues/13396)) ([073b05b](https://github.com/n8n-io/n8n/commit/073b05b10c81e3a0451c310bc0bde25170e1591e))
+* **editor:** Optionally share credentials used by the workflow when moving the workflow between projects ([#12524](https://github.com/n8n-io/n8n/issues/12524)) ([7bd83d7](https://github.com/n8n-io/n8n/commit/7bd83d7d330b6f01b5798461f2218254a9964d87))
+* **editor:** Polyfill `Array.prototype.toSorted` (no-chanhelog) ([#13463](https://github.com/n8n-io/n8n/issues/13463)) ([f2b15ea](https://github.com/n8n-io/n8n/commit/f2b15ea086fcc541a5a584998985d712335210ec))
+* **editor:** Register/unregister keybindings on window focus/blur ([#13419](https://github.com/n8n-io/n8n/issues/13419)) ([7a504dc](https://github.com/n8n-io/n8n/commit/7a504dc30fcf0c7641528ed469835811f82bb098))
+* **editor:** Switch back to selection mode on window blur ([#13341](https://github.com/n8n-io/n8n/issues/13341)) ([415e25b](https://github.com/n8n-io/n8n/commit/415e25b5d524b0d3c391403f129468e57bbb918e))
+* Prevent flicker during paginated workflow navigation ([#13348](https://github.com/n8n-io/n8n/issues/13348)) ([d277e0b](https://github.com/n8n-io/n8n/commit/d277e0ba0e5d87500457538b4b0f1363e267f071))
+
+
+### Features
+
+* **core:** Hackmation - Add last activity metric ([#13237](https://github.com/n8n-io/n8n/issues/13237)) ([272f55b](https://github.com/n8n-io/n8n/commit/272f55b80f1d4576d1675040bd2775210c4ab5e9))
+* **editor:** Change rename node keyboard shortcut to Space on new canvas ([#11872](https://github.com/n8n-io/n8n/issues/11872)) ([c90d0d9](https://github.com/n8n-io/n8n/commit/c90d0d9161ec161cd1afd6aa5b56345c1611f9c9))
+* **editor:** Implement breadcrumbs component ([#13317](https://github.com/n8n-io/n8n/issues/13317)) ([db297f1](https://github.com/n8n-io/n8n/commit/db297f107d81738d57e298135a9c279ad83345dc))
+* **editor:** Implement folder navigation in workflows list ([#13370](https://github.com/n8n-io/n8n/issues/13370)) ([0eae14e](https://github.com/n8n-io/n8n/commit/0eae14e27ab4fab3229750d6b2a32868db1e8dd4))
+* **editor:** Rename 'Text' fields on AI nodes to 'Prompt' ([#13416](https://github.com/n8n-io/n8n/issues/13416)) ([4fa666b](https://github.com/n8n-io/n8n/commit/4fa666b976423365299e915130384e10c8e12528))
+* Enable partial exections v2 by default ([#13344](https://github.com/n8n-io/n8n/issues/13344)) ([29ae239](https://github.com/n8n-io/n8n/commit/29ae2396c99d54d8f3db71e6370516f0dc354d00))
+* **n8n Form Node:** Limit wait time parameters ([#13160](https://github.com/n8n-io/n8n/issues/13160)) ([14b6f8b](https://github.com/n8n-io/n8n/commit/14b6f8b97275e38ba4a4c1819e8e32b711de21ba))
+
+
+
 # [1.80.0](https://github.com/n8n-io/n8n/compare/n8n@1.79.0...n8n@1.80.0) (2025-02-17)
 
 

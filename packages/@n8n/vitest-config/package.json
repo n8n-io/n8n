@@ -1,0 +1,25 @@
+{
+  "name": "@n8n/vitest-config",
+  "version": "1.1.0",
+  "type": "module",
+  "peerDependencies": {
+    "vite": "catalog:frontend",
+    "vitest": "catalog:frontend"
+  },
+  "devDependencies": {
+    "vite": "catalog:frontend",
+    "vitest": "catalog:frontend"
+  },
+  "files": [
+    "frontend.mjs"
+  ],
+  "exports": {
+    "./frontend": {
+      "import": "./frontend.mjs",
+      "require": "./frontend.mjs",
+      "types": "./frontend.d.ts"
+    },
+    "./*": "./*"
+  },
+  "license": "See LICENSE.md file in the root of the repository"
+}

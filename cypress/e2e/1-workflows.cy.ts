@@ -1,9 +1,11 @@
+import { WorkflowSharingModal } from '../pages';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
+const workflowSharingModal = new WorkflowSharingModal();
 
 const multipleWorkflowsCount = 5;
 
@@ -137,5 +139,11 @@ describe('Workflows', () => {
 		cy.url().should('include', 'tags=');
 		cy.url().should('include', 'sort=lastCreated');
 		cy.url().should('include', 'pageSize=25');
+	});
+
+	it('should be able to share workflows from workflows list', () => {
+		WorkflowsPage.getters.workflowCardActions('Empty State Card Workflow').click();
+		WorkflowsPage.getters.workflowActionItem('share').click();
+		workflowSharingModal.getters.modal().should('be.visible');
 	});
 });

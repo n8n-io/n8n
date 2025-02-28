@@ -363,6 +363,26 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 	});
 
+	it('should execute queries with null key/value pairs', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2)',
+			options: {
+				queryReplacement: '"={{ betty }}, {{ null }}"',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
 	it('should execute queries with multiple json key/value pairs', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
