@@ -3,7 +3,13 @@ import type { IExecutionResponse, TargetItem } from '@/Interface';
 import { isNotNull } from '@/utils/typeGuards';
 
 export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
+
 const MAX_PAIR_COUNT = 100000;
+
+interface Paths {
+	data: { [item: string]: string[][] };
+	size: number;
+}
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -52,29 +58,36 @@ export function getSourceItems(
 }
 
 function addPairing(
-	paths: { [item: string]: string[][] },
+	paths: Paths,
 	pairedItemId: string,
 	pairedItem: IPairedItemData,
 	sources: ITaskData['source'],
 ) {
-	paths[pairedItemId] = paths[pairedItemId] || [];
+	if (paths.size >= MAX_PAIR_COUNT) {
+		throw Error();
+	}
+
+	paths.data[pairedItemId] = paths.data[pairedItemId] || [];
 
 	const input = pairedItem.input || 0;
 	const sourceNode = sources[input]?.previousNode;
 	if (!sourceNode) {
 		// trigger nodes for example
-		paths[pairedItemId].push([pairedItemId]);
+		paths.data[pairedItemId].push([pairedItemId]);
+		paths.size++;
 		return;
 	}
 	const sourceNodeOutput = sources[input]?.previousNodeOutput || 0;
 	const sourceNodeRun = sources[input]?.previousNodeRun || 0;
 
 	const sourceItem = getPairedItemId(sourceNode, sourceNodeRun, sourceNodeOutput, pairedItem.item);
-	if (!paths[sourceItem]) {
-		paths[sourceItem] = [[sourceItem]]; // pinned data case
+	if (!paths.data[sourceItem]) {
+		paths.data[sourceItem] = [[sourceItem]]; // pinned data case
+		paths.size++;
 	}
-	paths[sourceItem]?.forEach((path) => {
-		paths?.[pairedItemId]?.push([...path, pairedItemId]);
+	paths.data[sourceItem]?.forEach((path) => {
+		paths.data[pairedItemId]?.push([...path, pairedItemId]);
+		paths.size++;
 	});
 }
 
@@ -83,15 +96,9 @@ function addPairedItemIdsRec(
 	runIndex: number,
 	runData: IRunData,
 	seen: Set<string>,
-	paths: { [item: string]: string[][] },
+	paths: Paths,
 	pinned: Set<string>,
 ) {
-	const size = Object.values(paths).reduce((sum, pathsForName) => sum + pathsForName.length, 0);
-
-	if (size > MAX_PAIR_COUNT) {
-		throw Error();
-	}
-
 	const key = `${node}_r${runIndex}`;
 	if (seen.has(key)) {
 		return;
@@ -135,7 +142,7 @@ function addPairedItemIdsRec(
 		outputData.forEach((executionData, item: number) => {
 			const pairedItemId = getPairedItemId(node, runIndex, output, item);
 			if (!executionData.pairedItem) {
-				paths[pairedItemId] = [];
+				paths.data[pairedItemId] = [];
 				return;
 			}
 
@@ -157,11 +164,11 @@ function addPairedItemIdsRec(
 	});
 }
 
-function getMapping(paths: { [item: string]: string[][] }): { [item: string]: Set<string> } {
+function getMapping(paths: Paths): { [item: string]: Set<string> } {
 	const mapping: { [itemId: string]: Set<string> } = {};
 
-	Object.keys(paths).forEach((item) => {
-		paths?.[item]?.forEach((path) => {
+	Object.keys(paths.data).forEach((item) => {
+		paths.data[item]?.forEach((path) => {
 			path.forEach((otherItem) => {
 				if (otherItem !== item) {
 					mapping[otherItem] = mapping[otherItem] || new Set();
@@ -212,7 +219,7 @@ export function getPairedItemsMapping(executionResponse: Partial<IExecutionRespo
 		return {};
 	}
 
-	const paths: { [item: string]: string[][] } = {};
+	const paths: Paths = { size: 0, data: {} };
 
 	try {
 		const seen = new Set<string>();
