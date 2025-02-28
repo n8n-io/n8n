@@ -12,7 +12,7 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Call n8n Workflow Tool',
 	},
-	version: [2],
+	version: [2, 2.1],
 	inputs: [],
 	outputs: [NodeConnectionType.AiTool],
 	outputNames: ['Tool'],
