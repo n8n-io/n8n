@@ -31,7 +31,8 @@ export type ContextMenuAction =
 	| 'deselect_all'
 	| 'add_node'
 	| 'add_sticky'
-	| 'change_color';
+	| 'change_color'
+	| 'tidy_up';
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
@@ -120,7 +121,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			},
 		};
 
-		const selectionActions = [
+		const selectionActions: ActionDropdownItem[] = [
 			{
 				id: 'select_all',
 				divided: true,
@@ -132,6 +133,17 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'deselect_all',
 				label: i18n.baseText('contextMenu.deselectAll'),
 				disabled: nodes.length === 0,
+			},
+		];
+
+		const layoutActions: ActionDropdownItem[] = [
+			{
+				id: 'tidy_up',
+				divided: true,
+				label: i18n.baseText(
+					nodes.length < 2 ? 'contextMenu.tidyUpWorkflow' : 'contextMenu.tidyUpSelection',
+				),
+				shortcut: { shiftKey: true, altKey: true, keys: ['T'] },
 			},
 		];
 
@@ -149,6 +161,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					label: i18n.baseText('contextMenu.addSticky'),
 					disabled: isReadOnly.value,
 				},
+				...layoutActions,
 				...selectionActions,
 			];
 		} else {
@@ -180,6 +193,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					shortcut: { metaKey: true, keys: ['D'] },
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
+				...layoutActions,
 				...selectionActions,
 				{
 					id: 'delete',
