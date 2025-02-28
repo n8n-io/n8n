@@ -14,7 +14,7 @@
 		"paths": {
 			"@n8n/design-system*": ["./src*"],
 			"@n8n/composables*": ["../composables/src*"],
-			"@n8n/utils*": ["../../@n8n/utils/src*"]
+			"@n8n/utils*": ["../../../@n8n/utils/src*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]
