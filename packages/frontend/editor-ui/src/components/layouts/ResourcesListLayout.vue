@@ -555,22 +555,24 @@ const loadPaginationFromQueryString = async () => {
 									/>
 								</n8n-select>
 							</div>
-							<ResourceFiltersDropdown
-								v-if="showFiltersDropdown"
-								:keys="filterKeys"
-								:reset="resetFilters"
-								:model-value="filtersModel"
-								:shareable="shareable"
-								:just-icon="true"
-								@update:model-value="onUpdateFilters"
-								@update:filters-length="onUpdateFiltersLength"
-							>
-								<template #default="resourceFiltersSlotProps">
-									<slot name="filters" v-bind="resourceFiltersSlotProps" />
-								</template>
-							</ResourceFiltersDropdown>
+							<div :class="$style['sort-and-filter']">
+								<ResourceFiltersDropdown
+									v-if="showFiltersDropdown"
+									:keys="filterKeys"
+									:reset="resetFilters"
+									:model-value="filtersModel"
+									:shareable="shareable"
+									:just-icon="true"
+									@update:model-value="onUpdateFilters"
+									@update:filters-length="onUpdateFiltersLength"
+								>
+									<template #default="resourceFiltersSlotProps">
+										<slot name="filters" v-bind="resourceFiltersSlotProps" />
+									</template>
+								</ResourceFiltersDropdown>
+								<slot name="add-button"></slot>
+							</div>
 						</div>
-						<slot name="add-button"></slot>
 					</div>
 
 					<slot name="callout"></slot>
@@ -680,19 +682,20 @@ const loadPaginationFromQueryString = async () => {
 	justify-content: end;
 	width: 100%;
 
-	@include mixins.breakpoint('xs-only') {
-		grid-template-columns: 1fr auto;
-		grid-auto-flow: row;
+	.sort-and-filter {
+		display: flex;
+		gap: var(--spacing-2xs);
+		align-items: center;
+	}
 
-		> *:last-child {
-			grid-column: auto;
-		}
+	@include mixins.breakpoint('xs-only') {
+		grid-auto-flow: row;
+		grid-auto-columns: unset;
+		grid-template-columns: 1fr;
 	}
 }
 
 .search {
-	// max-width: 240px;
-
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}

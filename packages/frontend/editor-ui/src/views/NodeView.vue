@@ -385,7 +385,11 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
-	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
+	await workflowsStore.getNewWorkflowData(
+		undefined,
+		projectsStore.currentProjectId,
+		route.query.parentFolderId as string | undefined,
+	);
 	workflowsStore.makeNewWorkflowShareable();
 
 	uiStore.nodeViewInitialized = true;
@@ -483,9 +487,10 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 
 	isBlankRedirect.value = true;
 	const templateId = workflow.meta.templateId;
+	const parentFolderId = route.query.parentFolderId as string | undefined;
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId },
+		query: { templateId, parentFolderId },
 	});
 
 	await importTemplate({ id: templateId, name: workflow.name, workflow });

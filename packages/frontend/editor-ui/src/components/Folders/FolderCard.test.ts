@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import FolderCard from './FolderCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
-import type { UserAction } from '@/Interface';
+import type { FolderPathItem, UserAction } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -61,6 +61,11 @@ const PARENT_FOLDER: FolderResource = {
 	},
 } as const satisfies FolderResource;
 
+const DEFAULT_BREADCRUMBS: { visibleItems: FolderPathItem[]; hiddenItems: FolderPathItem[] } = {
+	visibleItems: [{ id: '1', label: 'Parent 2' }],
+	hiddenItems: [{ id: '2', label: 'Parent 1', parentFolder: '1' }],
+};
+
 const renderComponent = createComponentRenderer(FolderCard, {
 	props: {
 		data: DEFAULT_FOLDER,
@@ -68,6 +73,7 @@ const renderComponent = createComponentRenderer(FolderCard, {
 			{ label: 'Open', value: 'open', disabled: false },
 			{ label: 'Delete', value: 'delete', disabled: false },
 		] as const satisfies UserAction[],
+		breadcrumbs: DEFAULT_BREADCRUMBS,
 	},
 	global: {
 		stubs: {
@@ -144,6 +150,10 @@ describe('FolderCard', () => {
 						updatedAt: new Date().toISOString(),
 					},
 					parentFolder: PARENT_FOLDER,
+				},
+				breadcrumbs: {
+					visibleItems: [{ id: PARENT_FOLDER.id, label: PARENT_FOLDER.name, parentFolder: '1' }],
+					hiddenItems: [],
 				},
 			},
 		});

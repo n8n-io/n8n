@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IUser } from '@/Interface';
+import type { FolderPathItem, IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -39,6 +39,10 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 const props = withDefaults(
 	defineProps<{
 		data: WorkflowResource;
+		breadcrumbs: {
+			visibleItems: FolderPathItem[];
+			hiddenItems: FolderPathItem[];
+		};
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 	}>(),
@@ -113,18 +117,6 @@ const formattedCreatedAtDate = computed(() => {
 		props.data.createdAt,
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
-});
-
-const breadCrumbsItems = computed(() => {
-	if (props.data.parentFolder) {
-		return [
-			{
-				id: props.data.parentFolder.id,
-				label: props.data.parentFolder.name,
-			},
-		];
-	}
-	return [];
 });
 
 const projectIcon = computed<CardProjectIcon>(() => {
@@ -306,26 +298,28 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
-				<n8n-breadcrumbs
-					v-else
-					:items="breadCrumbsItems"
-					:path-truncated="true"
-					:show-border="true"
-					:highlight-last-item="false"
-					theme="small"
-					data-test-id="folder-card-breadcrumbs"
-				>
-					<template v-if="data.homeProject" #prepend>
-						<div :class="$style['home-project']">
-							<n8n-link :to="`/projects/${data.homeProject.id}`">
-								<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-								<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-									projectName
-								}}</n8n-text>
-							</n8n-link>
-						</div>
-					</template>
-				</n8n-breadcrumbs>
+				<div v-else :class="$style.breadcrumbs">
+					<n8n-breadcrumbs
+						:items="breadcrumbs.visibleItems"
+						:hidden-items="breadcrumbs.hiddenItems"
+						:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
+						:show-border="true"
+						:highlight-last-item="false"
+						theme="small"
+						data-test-id="folder-card-breadcrumbs"
+					>
+						<template v-if="data.homeProject" #prepend>
+							<div :class="$style['home-project']">
+								<n8n-link :to="`/projects/${data.homeProject.id}`">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+										projectName
+									}}</n8n-text>
+								</n8n-link>
+							</div>
+						</template>
+					</n8n-breadcrumbs>
+				</div>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -405,8 +399,15 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		padding: 0 var(--spacing-s) var(--spacing-s);
 	}
 
-	.cardBadge {
+	.cardBadge,
+	.breadcrumbs {
 		margin-right: auto;
+	}
+}
+
+@include mixins.breakpoint('xs-only') {
+	.breadcrumbs > div {
+		flex-direction: column;
 	}
 }
 </style>

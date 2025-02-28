@@ -14,6 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import * as usersApi from '@/api/users';
+import { useFoldersStore } from '@/stores/folders.store';
 
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
@@ -40,6 +41,8 @@ const router = createRouter({
 });
 
 let pinia: ReturnType<typeof createTestingPinia>;
+let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
+let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 const renderComponent = createComponentRenderer(WorkflowsView, {
 	global: {
@@ -56,13 +59,18 @@ describe('WorkflowsView', () => {
 		await router.push('/');
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
 	});
 
 	describe('should show empty state', () => {
 		it('for non setup user', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 			expect(getByText('👋 Welcome!')).toBeVisible();
@@ -72,10 +80,6 @@ describe('WorkflowsView', () => {
 			const userStore = mockedStore(useUsersStore);
 			userStore.currentUser = { firstName: 'John' } as IUser;
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
-
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
@@ -83,17 +87,9 @@ describe('WorkflowsView', () => {
 		});
 
 		describe('when onboardingExperiment -> False', () => {
-			beforeEach(() => {
-				pinia = createTestingPinia({ initialState });
-			});
-
 			it('for readOnlyEnvironment', async () => {
 				const sourceControl = mockedStore(useSourceControlStore);
 				sourceControl.preferences.branchReadOnly = true;
-
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-				workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 
 				const { getByText } = renderComponent({ pinia });
 				await waitAllPromises();
@@ -103,10 +99,6 @@ describe('WorkflowsView', () => {
 			});
 
 			it('for noPermission', async () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-				workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
-
 				const { getByText } = renderComponent({ pinia });
 				await waitAllPromises();
 				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
@@ -115,9 +107,6 @@ describe('WorkflowsView', () => {
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-				workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 
 				const { getByText } = renderComponent({ pinia });
 				await waitAllPromises();
@@ -128,10 +117,6 @@ describe('WorkflowsView', () => {
 		it('should allow workflow creation', async () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
@@ -145,10 +130,6 @@ describe('WorkflowsView', () => {
 	});
 
 	describe('filters', () => {
-		beforeEach(async () => {
-			pinia = createTestingPinia({ initialState });
-		});
-
 		it('should set tag filter based on query parameters', async () => {
 			await router.replace({ query: { tags: 'test-tag' } });
 
@@ -159,7 +140,6 @@ describe('WorkflowsView', () => {
 			tagStore.tagsById = {
 				'test-tag': TEST_TAG,
 			};
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
@@ -180,7 +160,6 @@ describe('WorkflowsView', () => {
 		it('should set search filter based on query parameters', async () => {
 			await router.replace({ query: { search: 'one' } });
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
@@ -201,7 +180,6 @@ describe('WorkflowsView', () => {
 		it('should set status filter based on query parameters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			renderComponent({ pinia });
@@ -222,7 +200,6 @@ describe('WorkflowsView', () => {
 		it('should reset filters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 
 			const { queryByTestId, getByTestId } = renderComponent({ pinia });
@@ -240,7 +217,6 @@ describe('WorkflowsView', () => {
 
 		it('should remove incomplete properties', async () => {
 			await router.replace({ query: { tags: '' } });
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 			renderComponent({ pinia });
 			await waitAllPromises();
@@ -249,7 +225,6 @@ describe('WorkflowsView', () => {
 
 		it('should remove invalid tags', async () => {
 			await router.replace({ query: { tags: 'non-existing-tag' } });
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 			const tagStore = mockedStore(useTagsStore);
 			tagStore.allTags = [{ id: 'test-tag', name: 'tag' }];
@@ -259,60 +234,79 @@ describe('WorkflowsView', () => {
 		});
 	});
 
-	it('should reinitialize on source control pullWorkfolder', async () => {
-		vi.spyOn(usersApi, 'getUsers').mockResolvedValue([]);
-		pinia = createTestingPinia({ initialState, stubActions: false });
-		const userStore = mockedStore(useUsersStore);
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+	describe('source control', () => {
+		beforeEach(async () => {
+			pinia = createTestingPinia({ initialState, stubActions: false });
+			foldersStore = mockedStore(useFoldersStore);
+			foldersStore.totalWorkflowCount = 0;
+			foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+			workflowsStore = mockedStore(useWorkflowsStore);
 
-		const sourceControl = useSourceControlStore();
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		});
+		it('should reinitialize on source control pullWorkfolder', async () => {
+			vi.spyOn(usersApi, 'getUsers').mockResolvedValue([]);
+			const userStore = mockedStore(useUsersStore);
 
-		renderComponent({ pinia });
+			const sourceControl = useSourceControlStore();
 
-		await sourceControl.pullWorkfolder(true);
-		expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
+			renderComponent({ pinia });
+
+			await sourceControl.pullWorkfolder(true);
+			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
+		});
+	});
+});
+
+describe('Folders', () => {
+	beforeEach(async () => {
+		await router.push('/');
+		await router.isReady();
+		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
 	});
 
-	it('should render workflow and folder cards', async () => {
-		const TEST_WORKFLOW_RESOURCE: WorkflowListResource = {
-			resource: 'workflow',
+	const TEST_WORKFLOW_RESOURCE: WorkflowListResource = {
+		resource: 'workflow',
+		id: '1',
+		name: 'Workflow 1',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		active: true,
+		homeProject: {
 			id: '1',
-			name: 'Workflow 1',
+			name: 'Project 1',
+			icon: null,
+			type: 'team',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			active: true,
-			homeProject: {
-				id: '1',
-				name: 'Project 1',
-				icon: null,
-				type: 'team',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-			},
-		};
-		const TEST_FOLDER_RESOURCE: WorkflowListResource = {
-			resource: 'folder',
-			id: '2',
-			name: 'Folder 2',
+		},
+	};
+	const TEST_FOLDER_RESOURCE: WorkflowListResource = {
+		resource: 'folder',
+		id: '2',
+		name: 'Folder 2',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		workflowCount: 1,
+		homeProject: {
+			id: '1',
+			name: 'Project 1',
+			icon: null,
+			type: 'team',
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			workflowCount: 1,
-			homeProject: {
-				id: '1',
-				name: 'Project 1',
-				icon: null,
-				type: 'team',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-			},
-		};
+		},
+	};
+
+	it('should render workflow and folder cards', async () => {
 		// mock router resolve:
 		router.resolve = vi.fn().mockResolvedValue({
 			href: '/projects/1/folders/1',
 		});
-		const workflowsStore = mockedStore(useWorkflowsStore);
+		foldersStore.totalWorkflowCount = 2;
 		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
 			TEST_WORKFLOW_RESOURCE,
 			TEST_FOLDER_RESOURCE,

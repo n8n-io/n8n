@@ -72,6 +72,8 @@ const save = async (): Promise<void> => {
 		return;
 	}
 
+	const parentFolderId = router.currentRoute.value.params.folderId as string | undefined;
+
 	const currentWorkflowId = props.data.id;
 	isSaving.value = true;
 
@@ -102,6 +104,7 @@ const save = async (): Promise<void> => {
 			resetWebhookUrls: true,
 			openInNewWindow: true,
 			resetNodeIds: true,
+			parentFolderId,
 		});
 
 		if (saved) {

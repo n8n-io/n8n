@@ -58,6 +58,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 export * from '@n8n/design-system/types';
 
@@ -243,6 +244,7 @@ export interface IWorkflowDataUpdate {
 
 export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
+	parentFolderId?: string;
 }
 
 /**
@@ -333,6 +335,7 @@ export type WorkflowListItem = Omit<
 export type FolderShortInfo = {
 	id: string;
 	name: string;
+	parentFolder?: string;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -349,7 +352,20 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
+export type FolderPathItem = PathItem & { parentFolder?: string };
+
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
+
+export type FolderCreateResponse = Omit<
+	FolderListItem,
+	'workflowCount' | 'tags' | 'sharedWithProjects' | 'homeProject'
+>;
+
+export type FolderTreeResponseItem = {
+	id: string;
+	name: string;
+	children: FolderTreeResponseItem[];
+};
 
 // Identical to cli.Interfaces.ts
 export interface IWorkflowShortResponse {
