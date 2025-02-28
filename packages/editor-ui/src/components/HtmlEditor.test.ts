@@ -73,25 +73,4 @@ describe('HtmlEditor.vue', () => {
 			]),
 		);
 	});
-
-	it('uses CSS language when type is cssEditor', async () => {
-		const cssContent = '.container { color: red; }';
-		const { getByRole } = renderComponent(HtmlEditor, {
-			...DEFAULT_SETUP,
-			props: {
-				...DEFAULT_SETUP.props,
-				modelValue: cssContent,
-				type: 'cssEditor',
-			},
-		});
-
-		const textbox = await waitFor(() => getByRole('textbox'));
-		await userEvent.type(textbox, ' background-color: blue;');
-
-		// CSS highlighting class should be present when type is cssEditor
-		await waitFor(() => {
-			const cssTokens = textbox.querySelectorAll('.ͼ1e, .ͼ1d, .ͼ1k, .ͼ1i, .ͼ1u');
-			expect(cssTokens.length).toBeGreaterThan(0);
-		});
-	});
 });

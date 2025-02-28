@@ -56,8 +56,7 @@ const emit = defineEmits<{
 
 const htmlEditor = ref<HTMLElement>();
 const editorValue = ref<string>(props.modelValue);
-
-const extensions = [
+const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
 	new LanguageSupport(htmlLanguage, [
@@ -82,7 +81,7 @@ const extensions = [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
-];
+]);
 const {
 	editor: editorRef,
 	segments,
@@ -231,11 +230,11 @@ watch(segments.display, () => {
 });
 
 onMounted(() => {
-	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.on('format-html', formatHtml);
 });
 
 onBeforeUnmount(() => {
+	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
 
