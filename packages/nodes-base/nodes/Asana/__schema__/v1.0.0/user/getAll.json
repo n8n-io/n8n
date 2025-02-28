@@ -15,5 +15,6 @@
         "gid",
         "name",
         "resource_type"
-    ]
+    ],
+    "version": 1
 }

@@ -73,5 +73,6 @@
         "timeCreated",
         "updated",
         "timeStorageClassUpdated"
-    ]
+    ],
+    "version": 1
 }

@@ -82,5 +82,6 @@
         "last_reported",
         "last_updated",
         "context"
-    ]
+    ],
+    "version": 1
 }

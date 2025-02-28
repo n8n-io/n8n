@@ -7,5 +7,6 @@
         "success": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

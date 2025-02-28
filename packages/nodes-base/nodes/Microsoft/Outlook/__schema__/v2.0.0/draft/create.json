@@ -223,5 +223,6 @@
         "bccRecipients",
         "replyTo",
         "flag"
-    ]
+    ],
+    "version": 1
 }

@@ -25,5 +25,6 @@
         "isHidden": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

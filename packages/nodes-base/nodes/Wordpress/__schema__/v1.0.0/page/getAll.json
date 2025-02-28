@@ -339,5 +339,6 @@
         "author",
         "featured_media",
         "_links"
-    ]
+    ],
+    "version": 1
 }

@@ -1,14 +1,15 @@
 {
-	"type": "object",
-	"properties": {
-		"resourceName": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"contactId": {
-			"type": "string"
-		}
-	}
+    "type": "object",
+    "properties": {
+        "resourceName": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

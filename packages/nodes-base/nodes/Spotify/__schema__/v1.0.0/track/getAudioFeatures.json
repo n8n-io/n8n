@@ -52,5 +52,6 @@
         "time_signature": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

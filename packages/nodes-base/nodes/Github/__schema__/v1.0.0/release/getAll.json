@@ -145,5 +145,6 @@
         "tarball_url",
         "zipball_url",
         "body"
-    ]
+    ],
+    "version": 1
 }

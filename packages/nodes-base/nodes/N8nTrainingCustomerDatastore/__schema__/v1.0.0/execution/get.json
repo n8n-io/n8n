@@ -28,5 +28,6 @@
         "workflowId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

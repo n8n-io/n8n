@@ -201,5 +201,6 @@
         "doi_status": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

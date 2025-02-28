@@ -27,5 +27,6 @@
         "stoppedAt",
         "workflowId",
         "waitTill"
-    ]
+    ],
+    "version": 1
 }

@@ -85,5 +85,6 @@
         "ContactPersons",
         "HasAttachments",
         "HasValidationErrors"
-    ]
+    ],
+    "version": 1
 }

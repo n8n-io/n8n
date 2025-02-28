@@ -8,5 +8,6 @@
     "required": [
         "errors",
         "success"
-    ]
+    ],
+    "version": 1
 }

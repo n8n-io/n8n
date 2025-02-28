@@ -10,5 +10,6 @@
         "message_timestamp": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

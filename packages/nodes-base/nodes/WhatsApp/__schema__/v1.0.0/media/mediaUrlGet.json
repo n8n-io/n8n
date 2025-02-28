@@ -27,5 +27,6 @@
         "file_size",
         "id",
         "messaging_product"
-    ]
+    ],
+    "version": 1
 }

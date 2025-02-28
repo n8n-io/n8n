@@ -277,5 +277,6 @@
         "attachments",
         "mentions",
         "reactions"
-    ]
+    ],
+    "version": 1
 }

@@ -41,5 +41,6 @@
         "docstatus",
         "idx",
         "doctype"
-    ]
+    ],
+    "version": 1
 }

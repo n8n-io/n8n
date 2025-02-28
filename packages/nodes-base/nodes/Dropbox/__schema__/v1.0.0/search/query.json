@@ -37,5 +37,6 @@
         "path_lower": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

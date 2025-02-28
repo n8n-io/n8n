@@ -113,5 +113,6 @@
         "groups",
         "ims",
         "comments_count"
-    ]
+    ],
+    "version": 1
 }

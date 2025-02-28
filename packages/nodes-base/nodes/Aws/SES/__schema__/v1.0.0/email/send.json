@@ -44,5 +44,6 @@
                 "ResponseMetadata"
             ]
         }
-    }
+    },
+    "version": 1
 }

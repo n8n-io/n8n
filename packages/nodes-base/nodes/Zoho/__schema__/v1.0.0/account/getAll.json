@@ -147,5 +147,6 @@
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

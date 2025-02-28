@@ -13,5 +13,6 @@
         "role": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

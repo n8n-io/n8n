@@ -1,0 +1,137 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "username": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "nickname": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "registered_date": {
+            "type": "string"
+        },
+        "capabilities": {
+            "type": "object",
+            "properties": {
+                "read": {
+                    "type": "boolean"
+                },
+                "level_0": {
+                    "type": "boolean"
+                },
+                "subscriber": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "read",
+                "level_0",
+                "subscriber"
+            ]
+        },
+        "extra_capabilities": {
+            "type": "object",
+            "properties": {
+                "subscriber": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "subscriber"
+            ]
+        },
+        "avatar_urls": {
+            "type": "object",
+            "properties": {
+                "24": {
+                    "type": "string"
+                },
+                "48": {
+                    "type": "string"
+                },
+                "96": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "24",
+                "48",
+                "96"
+            ]
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "self",
+                "collection"
+            ]
+        }
+    },
+    "version": 1
+}

@@ -26,5 +26,6 @@
     "required": [
         "@odata.type",
         "id"
-    ]
+    ],
+    "version": 1
 }
