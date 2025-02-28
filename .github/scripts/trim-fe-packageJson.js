@@ -14,5 +14,5 @@ const trimPackageJson = (packageName) => {
 };
 
 trimPackageJson('frontend/@n8n/chat');
-trimPackageJson('design-system');
-trimPackageJson('editor-ui');
+trimPackageJson('frontend/@n8n/design-system');
+trimPackageJson('frontend/editor-ui');
