@@ -58,7 +58,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 export * from '@n8n/design-system/types';
 

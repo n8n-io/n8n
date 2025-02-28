@@ -3,8 +3,8 @@ import { useI18n } from '@/composables/useI18n';
 import type { FolderPathItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
-import { type UserAction } from 'n8n-design-system';
-import { type PathItem } from 'n8n-design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { UserAction } from '@n8n/design-system/types';
+import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed } from 'vue';
 
 type Props = {
