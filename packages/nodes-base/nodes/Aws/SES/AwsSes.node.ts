@@ -1176,13 +1176,15 @@ export class AwsSes implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
-							`Template.TemplateName=${templateName}`,
-							`Template.SubjectPart=${subjectPart}`,
-							`Template.HtmlPart=<h1>${htmlPart}</h1>`,
+							`Template.TemplateName=${encodeURIComponent(templateName)}`,
+							`Template.SubjectPart=${encodeURIComponent(subjectPart)}`,
+							`Template.HtmlPart=${encodeURIComponent(htmlPart)}`,
 						];
 
 						if (additionalFields.textPart) {
-							params.push(`Template.TextPart=${additionalFields.textPart}`);
+							params.push(
+								`Template.TextPart=${encodeURIComponent(additionalFields.textPart as string)}`,
+							);
 						}
 
 						responseData = await awsApiRequestSOAP.call(
@@ -1256,18 +1258,24 @@ export class AwsSes implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						const params = [`Template.TemplateName=${templateName}`];
+						const params = [`Template.TemplateName=${encodeURIComponent(templateName)}`];
 
 						if (updateFields.textPart) {
-							params.push(`Template.TextPart=${updateFields.textPart}`);
+							params.push(
+								`Template.TextPart=${encodeURIComponent(updateFields.textPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.SubjectPart=${updateFields.subjectPart}`);
+							params.push(
+								`Template.SubjectPart=${encodeURIComponent(updateFields.subjectPart as string)}`,
+							);
 						}
 
 						if (updateFields.subjectPart) {
-							params.push(`Template.HtmlPart=${updateFields.htmlPart}`);
+							params.push(
+								`Template.HtmlPart=${encodeURIComponent(updateFields.htmlPart as string)}`,
+							);
 						}
 
 						responseData = await awsApiRequestSOAP.call(
