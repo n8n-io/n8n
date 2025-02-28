@@ -638,6 +638,9 @@ importers:
       redis:
         specifier: 4.6.12
         version: 4.6.12
+      sanitize-html:
+        specifier: 2.12.1
+        version: 2.12.1
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -672,6 +675,9 @@ importers:
       '@types/pg':
         specifier: ^8.11.6
         version: 8.11.6
+      '@types/sanitize-html':
+        specifier: ^2.11.0
+        version: 2.11.0
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
@@ -1434,6 +1440,9 @@ importers:
       '@codemirror/commands':
         specifier: ^6.5.0
         version: 6.5.0
+      '@codemirror/lang-css':
+        specifier: ^6.0.1
+        version: 6.0.1(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
       '@codemirror/lang-javascript':
         specifier: ^6.2.2
         version: 6.2.2
@@ -8007,9 +8016,6 @@ packages:
 
   domutils@2.8.0:
     resolution: {integrity: sha512-w96Cjofp72M5IIhpjgobBimYEfoPjx1Vx0BSX9P30WBdZW2WIKU0T1Bd0kz2eNZ9ikjKgHbEyKx8BB6H1L3h3A==}
-
-  domutils@3.0.1:
-    resolution: {integrity: sha512-z08c1l761iKhDFtfXO04C7kTdPBLi41zwOZl00WS8b5eiaebNpY00HKbztwBq+e3vyqWNwWF3mP9YLUeqIrF+Q==}
 
   domutils@3.1.0:
     resolution: {integrity: sha512-H78uMmQtI2AhgDJjWeQmHwJJ2bLPD3GMmO7Zja/ZZh84wkm+4ut+IUnUdRa8uCGX88DiVx1j6FRe1XfxEgjEZA==}
@@ -21254,12 +21260,6 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 4.3.1
 
-  domutils@3.0.1:
-    dependencies:
-      dom-serializer: 2.0.0
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-
   domutils@3.1.0:
     dependencies:
       dom-serializer: 2.0.0
@@ -22732,7 +22732,7 @@ snapshots:
     dependencies:
       domelementtype: 2.3.0
       domhandler: 5.0.3
-      domutils: 3.0.1
+      domutils: 3.1.0
       entities: 4.5.0
 
   htmlparser2@9.1.0:
@@ -26350,7 +26350,7 @@ snapshots:
       htmlparser2: 8.0.2
       is-plain-object: 5.0.0
       parse-srcset: 1.0.2
-      postcss: 8.4.38
+      postcss: 8.4.49
 
   sass@1.64.1:
     dependencies:
