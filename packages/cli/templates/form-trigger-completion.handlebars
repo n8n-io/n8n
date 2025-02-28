@@ -79,6 +79,26 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			const binary = "{{{responseBinary}}}" ? JSON.parse(decodeURIComponent("{{{responseBinary}}}")) : '';
+
+			if (binary) {
+				const decodedBinary = atob(binary.data);
+				const blob = new Blob([decodedBinary], {
+					fileExtension: binary.fileExtension ?? "",
+					fileName: binary.fileName ?? "",
+					type: binary.mimeType ?? "",
+				});
+
+				const link = document.createElement("a");
+				link.href = URL.createObjectURL(blob);
+				link.download = binary.fileName ?? "file";
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			}
+		});
+
 			fetch('', {
 					method: 'POST',
 					body: {}

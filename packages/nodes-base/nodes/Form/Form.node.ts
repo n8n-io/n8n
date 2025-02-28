@@ -141,6 +141,11 @@ const completionProperties = updateDisplayOptions(
 					value: 'showText',
 					description: 'Display simple text or HTML',
 				},
+				{
+					name: 'Return Binary File',
+					value: 'returnBinary',
+					description: 'Return incoming binary file',
+				},
 			],
 		},
 		{
@@ -164,7 +169,7 @@ const completionProperties = updateDisplayOptions(
 			required: true,
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -178,7 +183,7 @@ const completionProperties = updateDisplayOptions(
 			},
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -198,6 +203,21 @@ const completionProperties = updateDisplayOptions(
 			placeholder: 'e.g. Thanks for filling the form',
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
+		{
+			displayName: 'Input Data Field Name',
+			name: 'inputDataFieldName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					respondWith: ['returnBinary'],
+				},
+			},
+			default: 'data',
+			placeholder: 'e.g. data',
+			description:
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
+			hint: 'The name of the input field containing the binary file data to be returned',
+		},
 		...waitTimeProperties,
 		{
 			displayName: 'Options',
@@ -208,7 +228,7 @@ const completionProperties = updateDisplayOptions(
 			options: [{ ...formTitle, required: false, displayName: 'Completion Page Title' }],
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
