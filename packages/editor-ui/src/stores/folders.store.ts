@@ -1,14 +1,12 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
 import { STORES } from '@/constants';
 import type { FolderCreateResponse, FolderShortInfo, FolderTreeResponseItem } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
+import { ref } from 'vue';
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
-
-	const currentFolderId = ref<string | null>(null);
 
 	const totalWorkflowCount = ref<number>(0);
 
@@ -16,10 +14,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
 	const breadcrumbsCache = ref<Record<string, FolderShortInfo>>({});
-
-	const currentFolderInfo = computed(() => {
-		return currentFolderId.value ? breadcrumbsCache.value[currentFolderId.value] : null;
-	});
 
 	const cacheFolders = (folders: FolderShortInfo[]) => {
 		folders.forEach((folder) => {
@@ -57,7 +51,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		const tree = await workflowsApi.getFolderPath(rootStore.restApiContext, projectId, folderId);
 		const forCache = extractFoldersForCache(tree);
 		cacheFolders(forCache);
-		currentFolderId.value = folderId;
 
 		return tree;
 	}
@@ -99,9 +92,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
-		currentFolderId,
 		breadcrumbsCache,
-		currentFolderInfo,
 		cacheFolders,
 		getCachedFolder,
 		createFolder,

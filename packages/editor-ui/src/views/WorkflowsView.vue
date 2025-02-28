@@ -116,6 +116,8 @@ const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
+const currentFolderId = ref<string | null>(null);
+
 /**
  * Folder actions
  * These can appear on the list header, and then they are applied to current folder
@@ -183,7 +185,10 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
-const currentFolder = computed(() => foldersStore.currentFolderInfo);
+
+const currentFolder = computed(() => {
+	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -288,7 +293,7 @@ watch(
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
-		foldersStore.currentFolderId = newVal as string;
+		currentFolderId.value = newVal as string;
 		await fetchWorkflows();
 	},
 );
@@ -324,7 +329,7 @@ const initialize = async () => {
 	loading.value = true;
 	await setFiltersFromQueryString();
 	if (!route.params.folderId) {
-		foldersStore.currentFolderId = null;
+		currentFolderId.value = null;
 	}
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
@@ -375,6 +380,7 @@ const fetchWorkflows = async () => {
 	if (needToFetchFolderPath) {
 		breadcrumbsLoading.value = true;
 		await foldersStore.getFolderPath(routeProjectId, parentFolder);
+		currentFolderId.value = parentFolder;
 		breadcrumbsLoading.value = false;
 	}
 	await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
@@ -683,7 +689,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 		void router
 			.push(item.href)
 			.then(() => {
-				foldersStore.currentFolderId = item.id;
+				currentFolderId.value = item.id;
 				loading.value = false;
 			})
 			.catch((error) => {
@@ -700,7 +706,7 @@ const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			if (!route.params.projectId) return;
-			const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
+			const currentParent = currentFolder.value?.name || projectName.value;
 			if (!currentParent) return;
 			await createFolder({
 				id: (route.params.folderId as string) ?? '-1',
@@ -730,7 +736,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			});
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
-			foldersStore.currentFolderId = clickedFolder.id;
+			currentFolderId.value = clickedFolder.id;
 			void router.push({
 				name: VIEWS.NEW_WORKFLOW,
 				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
@@ -805,7 +811,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 
 const createFolderInCurrent = async () => {
 	if (!route.params.projectId) return;
-	const currentParent = foldersStore.currentFolderInfo?.name || projectName.value;
+	const currentParent = currentFolder.value?.name || projectName.value;
 	if (!currentParent) return;
 	await createFolder({
 		id: (route.params.folderId as string) ?? '-1',
