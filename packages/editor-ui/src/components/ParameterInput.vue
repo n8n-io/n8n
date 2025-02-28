@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
-import { get } from 'lodash-es';
+import { get, partition } from 'lodash-es';
 
 import type {
 	INodeUi,
@@ -22,7 +22,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, isINodePropertyOptions, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -66,7 +66,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
+import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import { isPresent } from '@/utils/typesUtils';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -421,14 +423,25 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getArgument<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
 });
 
-const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
-	if (!hasRemoteMethod.value) {
-		// Options are already given
-		return props.parameter.options as INodePropertyOptions[];
-	}
+const parameterOptions = computed(() => {
+	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const [safeOptions, invalidOptions] = partition(
+		options ?? [],
+		(option): option is INodePropertyOptions =>
+			isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name),
+	);
 
-	// Options get loaded from server
-	return remoteParameterOptions.value;
+	if (invalidOptions.length > 0) {
+		captureMessage('Invalid parameter options', {
+			level: 'error',
+			extra: {
+				invalidOptions,
+				parameter: props.parameter.name,
+				node: node.value,
+			},
+		});
+	}
+	return safeOptions;
 });
 
 const isSwitch = computed(
