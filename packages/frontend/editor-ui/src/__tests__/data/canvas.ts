@@ -12,9 +12,9 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { ViewportTransform } from '@vue-flow/core';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -66,6 +66,35 @@ export function createCanvasNodeElement({
 		label,
 		position,
 		data: createCanvasNodeData({ id, type, ...data }),
+	};
+}
+
+export function createCanvasGraphNode({
+	id = '1',
+	type = 'default',
+	label = 'Node',
+	position = { x: 100, y: 100 },
+	dimensions = { width: 100, height: 100 },
+	data,
+	...rest
+}: Partial<
+	Omit<GraphNode<CanvasNodeData>, 'data'> & { data: Partial<CanvasNodeData> }
+> = {}): GraphNode<CanvasNodeData> {
+	return {
+		id,
+		type,
+		label,
+		position,
+		computedPosition: { ...position, z: 0 },
+		dimensions,
+		dragging: false,
+		isParent: false,
+		selected: false,
+		resizing: false,
+		handleBounds: {},
+		events: {},
+		data: createCanvasNodeData({ id, type, ...data }),
+		...rest,
 	};
 }
 
@@ -192,6 +221,33 @@ export function createCanvasConnection(
 		id: `${nodeA.id}-${nodeB.id}`,
 		source: nodeA.id,
 		target: nodeB.id,
+		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
+		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
+	};
+}
+
+export function createCanvasGraphEdge(
+	nodeA: GraphNode,
+	nodeB: GraphNode,
+	{ sourceIndex = 0, targetIndex = 0 } = {},
+): GraphEdge {
+	const nodeAOutput = nodeA.data?.outputs[sourceIndex];
+	const nodeBInput = nodeA.data?.inputs[targetIndex];
+
+	return {
+		id: `${nodeA.id}-${nodeB.id}`,
+		source: nodeA.id,
+		target: nodeB.id,
+		sourceX: nodeA.position.x,
+		sourceY: nodeA.position.y,
+		targetX: nodeB.position.x,
+		targetY: nodeB.position.y,
+		type: 'default',
+		selected: false,
+		sourceNode: nodeA,
+		targetNode: nodeB,
+		data: {},
+		events: {},
 		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
 		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
 	};
