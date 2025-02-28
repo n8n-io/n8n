@@ -13,8 +13,8 @@ import { Project } from './project';
 import { TagEntity } from './tag-entity';
 import { type WorkflowEntity } from './workflow-entity';
 
-export type FolderWithWorkflowsCount = Folder & {
-	workflowsCount: boolean;
+export type FolderWithWorkflowCount = Folder & {
+	workflowCount: boolean;
 };
 
 @Entity()
@@ -22,7 +22,7 @@ export class Folder extends WithTimestampsAndStringId {
 	@Column()
 	name: string;
 
-	@ManyToOne(() => Folder, { nullable: true })
+	@ManyToOne(() => Folder, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'parentFolderId' })
 	parentFolder: Folder | null;
 
