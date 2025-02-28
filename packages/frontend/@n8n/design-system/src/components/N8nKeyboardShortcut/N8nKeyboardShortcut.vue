@@ -14,16 +14,16 @@ const keys = computed(() => {
 		allKeys.unshift('⌘');
 	}
 
-	if (props.shiftKey) {
-		allKeys.unshift('⇧');
+	if (props.metaKey && !isMacOs) {
+		allKeys.unshift('Ctrl');
 	}
 
 	if (props.altKey) {
 		allKeys.unshift(isMacOs ? '⌥' : 'Alt');
 	}
 
-	if (props.metaKey && !isMacOs) {
-		allKeys.unshift('Ctrl');
+	if (props.shiftKey) {
+		allKeys.unshift('⇧');
 	}
 
 	return allKeys;

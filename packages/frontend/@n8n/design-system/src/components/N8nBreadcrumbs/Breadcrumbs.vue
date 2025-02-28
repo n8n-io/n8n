@@ -340,12 +340,12 @@ const handleTooltipClose = () => {
 
 	.item,
 	.item * {
-		color: var(--color-text-light);
+		color: var(--color-text-base);
 		font-size: var(--font-size-m);
 	}
 
 	.item a:hover * {
-		color: var(--color-text-base);
+		color: var(--color-text-dark);
 	}
 
 	.ellipsis {
@@ -359,7 +359,7 @@ const handleTooltipClose = () => {
 
 	.separator {
 		font-size: var(--font-size-xl);
-		color: var(--prim-gray-670);
+		color: var(--color-foreground-base);
 	}
 }
 </style>
