@@ -12,6 +12,14 @@ describe('Google Sheet - Update', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockGoogleSheet = mock<GoogleSheet>();
+
+		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.5 }));
+
+		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
+	});
+
+	afterEach(() => {
+		jest.resetAllMocks();
 	});
 
 	it('should update by row_number and not insert it as a new column', async () => {
@@ -29,7 +37,6 @@ describe('Google Sheet - Update', () => {
 			},
 		]);
 
-		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.5 }));
 		mockExecuteFunctions.getNodeParameter
 			.mockReturnValueOnce('USER_ENTERED') // valueInputMode
 			.mockReturnValueOnce({}); // options
@@ -57,8 +64,6 @@ describe('Google Sheet - Update', () => {
 				},
 			],
 		});
-
-		mockGoogleSheet.batchUpdate.mockResolvedValueOnce([]);
 
 		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1');
 
