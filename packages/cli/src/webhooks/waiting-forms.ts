@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
-import { FORM_NODE_TYPE, Workflow } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -74,6 +74,11 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
+		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
+			res.send(execution?.status ?? null);
+			return { noWebhookResponse: true };
+		}
+
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
@@ -85,7 +90,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			throw new ConflictError(`The execution "${executionId}" is running already.`);
+			return { noWebhookResponse: true };
 		}
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
