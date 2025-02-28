@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { N8nHeading } from 'n8n-design-system';
-
 type Summary = {
 	id: string;
 	title: string;
