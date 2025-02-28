@@ -296,7 +296,6 @@ export class WorkflowRunner {
 						fullRunData.finished = false;
 					}
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
-					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
 				.catch(

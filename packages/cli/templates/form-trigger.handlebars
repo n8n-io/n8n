@@ -761,6 +761,43 @@
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
+
+					if (window.location.href.includes('form-waiting')) {
+						let interval = 1000;
+						let intervalId;
+
+						const checkStatus = async () => {
+								try {
+									const response = await fetch(`${window.location.href}/n8n-execution-status`);
+									const text = (await response.text()).trim();
+
+									if (text === "success") {
+										form.style.display = 'none';
+										document.querySelector('#submitted-form').style.display = 'block';
+										clearTimeout(timeoutId);
+										return;
+									}
+
+									if(["canceled", "crashed", "error" ].includes(text)) {
+										form.style.display = 'none';
+										document.querySelector('#submitted-form').style.display = 'block';
+										document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+										document.querySelector('#submitted-content').textContent =
+											'Please try again or contact support if the problem persists';
+										clearTimeout(timeoutId);
+										return;
+									}
+
+									interval = Math.round(interval * 1.2);
+									intervalId = setTimeout(checkStatus, interval);
+								} catch (error) {
+									console.error("Error fetching data:", error);
+								}
+						};
+
+						intervalId = setTimeout(checkStatus, interval);
+					}
+
 					fetch('', {
 						method: 'POST',
 						body: formData,

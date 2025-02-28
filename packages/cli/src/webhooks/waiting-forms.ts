@@ -74,6 +74,11 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
+		if (suffix === 'n8n-execution-status') {
+			res.send(execution?.status ?? null);
+			return { noWebhookResponse: true };
+		}
+
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
