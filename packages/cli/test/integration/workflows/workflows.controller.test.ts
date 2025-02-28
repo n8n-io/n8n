@@ -1320,7 +1320,7 @@ describe('GET /workflows?includeFolders=true', () => {
 						type: ownerPersonalProject.type,
 					},
 					parentFolder: null,
-					workflowsCount: 0,
+					workflowCount: 0,
 				}),
 			]),
 		});

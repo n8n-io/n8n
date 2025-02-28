@@ -30,7 +30,7 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	ApplicationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -238,7 +238,7 @@ export class ActiveWorkflowManager {
 		});
 
 		if (workflowData === null) {
-			throw new ApplicationError('Could not find workflow', { extra: { workflowId } });
+			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
 		const workflow = new Workflow({

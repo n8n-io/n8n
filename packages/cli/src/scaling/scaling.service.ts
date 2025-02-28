@@ -2,12 +2,12 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
 import {
-	ApplicationError,
 	BINARY_ENCODING,
 	sleep,
 	jsonStringify,
 	ensureError,
 	ExecutionCancelledError,
+	UnexpectedError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -93,7 +93,7 @@ export class ScalingService {
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				if (!this.hasValidJobData(job)) {
-					throw new ApplicationError('Worker received invalid job', {
+					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
 					});
 				}
@@ -369,13 +369,13 @@ export class ScalingService {
 	private assertQueue() {
 		if (this.queue) return;
 
-		throw new ApplicationError('This method must be called after `setupQueue`');
+		throw new UnexpectedError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
 		if (this.instanceSettings.instanceType === 'worker') return;
 
-		throw new ApplicationError('This method must be called on a `worker` instance');
+		throw new UnexpectedError('This method must be called on a `worker` instance');
 	}
 
 	// #region Queue metrics
