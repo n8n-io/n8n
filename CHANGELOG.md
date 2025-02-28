@@ -1,3 +1,14 @@
+## [1.81.2](https://github.com/n8n-io/n8n/compare/n8n@1.81.1...n8n@1.81.2) (2025-02-28)
+
+
+### Bug Fixes
+
+* **editor:** Add workflows to the store when fetching current page ([#13583](https://github.com/n8n-io/n8n/issues/13583)) ([127f213](https://github.com/n8n-io/n8n/commit/127f21366c1c66471f379a59b07587d8380e2ed9))
+* **editor:** Undo keybinding changes related to window focus/blur events ([#13559](https://github.com/n8n-io/n8n/issues/13559)) ([ee07621](https://github.com/n8n-io/n8n/commit/ee07621df1921dabe93a57dc367a051669ef650b))
+* **Postgres Node:** Accommodate null values in query parameters for expressions ([#13544](https://github.com/n8n-io/n8n/issues/13544)) ([bdb1870](https://github.com/n8n-io/n8n/commit/bdb1870e7feb187863fabb6ee8a20fcb381b5c2d))
+
+
+
 ## [1.81.1](https://github.com/n8n-io/n8n/compare/n8n@1.81.0...n8n@1.81.1) (2025-02-27)
 
 
