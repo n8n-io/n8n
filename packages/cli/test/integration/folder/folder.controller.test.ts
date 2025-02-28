@@ -473,6 +473,194 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		expect(folderWithTags?.tags).toHaveLength(1);
 		expect(folderWithTags?.tags[0].id).toBe(tag3.id);
 	});
+
+	test('should update folder parent folder ID', async () => {
+		const project = await createTeamProject('test project', owner);
+		await createFolder(project, { name: 'Original Folder' });
+		const targetFolder = await createFolder(project, { name: 'Target Folder' });
+
+		const folderToMove = await createFolder(project, {
+			name: 'Folder To Move',
+		});
+
+		const payload = {
+			parentFolderId: targetFolder.id,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
+			.send(payload);
+
+		console.log(response.body);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder?.id).toBe(targetFolder.id);
+	});
+
+	test('should not update folder parent when target folder does not exist', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folderToMove = await createFolder(project, { name: 'Folder To Move' });
+
+		const payload = {
+			parentFolderId: 'non-existing-folder-id',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
+			.send(payload)
+			.expect(404);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder).toBeNull();
+	});
+
+	test('should not update folder parent when target folder is in another project', async () => {
+		const project1 = await createTeamProject('Project 1', owner);
+		const project2 = await createTeamProject('Project 2', owner);
+
+		const folderToMove = await createFolder(project1, { name: 'Folder To Move' });
+		const targetFolder = await createFolder(project2, { name: 'Target Folder' });
+
+		const payload = {
+			parentFolderId: targetFolder.id,
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project1.id}/folders/${folderToMove.id}`)
+			.send(payload)
+			.expect(404);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder).toBeNull();
+	});
+
+	test('should allow moving a folder to root level by setting parentFolderId to "0"', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const parentFolder = await createFolder(project, { name: 'Parent Folder' });
+
+		const folderToMove = await createFolder(project, {
+			name: 'Folder To Move',
+			parentFolder,
+		});
+
+		// Verify initial state
+		let folder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+		expect(folder?.parentFolder?.id).toBe(parentFolder.id);
+
+		const payload = {
+			parentFolderId: '0',
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
+			.send(payload)
+			.expect(200);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder).toBeNull();
+	});
+
+	test('should not update folder parent if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		await createFolder(project, { name: 'Parent Folder' });
+		const targetFolder = await createFolder(project, { name: 'Target Folder' });
+
+		const folderToMove = await createFolder(project, {
+			name: 'Folder To Move',
+		});
+
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const payload = {
+			parentFolderId: targetFolder.id,
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
+			.send(payload)
+			.expect(403);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder).toBeNull();
+	});
+
+	test('should update folder parent folder if user has project:editor role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const targetFolder = await createFolder(project, { name: 'Target Folder' });
+
+		const folderToMove = await createFolder(project, {
+			name: 'Folder To Move',
+		});
+
+		await linkUserToProject(member, project, 'project:editor');
+
+		const payload = {
+			parentFolderId: targetFolder.id,
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
+			.send(payload)
+			.expect(200);
+
+		const updatedFolder = await folderRepository.findOne({
+			where: { id: folderToMove.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedFolder).toBeDefined();
+		expect(updatedFolder?.parentFolder?.id).toBe(targetFolder.id);
+	});
+
+	test('should not allow setting a folder as its own parent', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Test Folder' });
+
+		const payload = {
+			parentFolderId: folder.id,
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(400);
+
+		const folderInDb = await folderRepository.findOne({
+			where: { id: folder.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(folderInDb).toBeDefined();
+		expect(folderInDb?.parentFolder).toBeNull();
+	});
 });
 
 describe('DELETE /projects/:projectId/folders/:folderId', () => {
@@ -673,6 +861,30 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 			.expect(404);
 
 		const folderInDb = await folderRepository.findOneBy({ id: sourceFolder.id });
+		expect(folderInDb).toBeDefined();
+	});
+
+	test('should not allow transferring contents to the same folder being deleted', async () => {
+		const project = await createTeamProject('test', owner);
+		const folder = await createFolder(project, { name: 'Folder To Delete' });
+
+		await createWorkflow({ parentFolder: folder }, owner);
+
+		const payload = {
+			transferToFolderId: folder.id, // Try to transfer contents to the same folder
+		};
+
+		const response = await authOwnerAgent
+			.delete(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain(
+			'Cannot transfer folder contents to the folder being deleted',
+		);
+
+		// Verify the folder still exists
+		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
 		expect(folderInDb).toBeDefined();
 	});
 });
