@@ -83,7 +83,7 @@ export class ProjectController {
 	async deleteFolder(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
-		@Body payload: DeleteFolderDto,
+		@Query payload: DeleteFolderDto,
 	) {
 		const { projectId, folderId } = req.params;
 

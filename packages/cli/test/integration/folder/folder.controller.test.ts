@@ -487,11 +487,7 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			parentFolderId: targetFolder.id,
 		};
 
-		const response = await authOwnerAgent
-			.patch(`/projects/${project.id}/folders/${folderToMove.id}`)
-			.send(payload);
-
-		console.log(response.body);
+		await authOwnerAgent.patch(`/projects/${project.id}/folders/${folderToMove.id}`).send(payload);
 
 		const updatedFolder = await folderRepository.findOne({
 			where: { id: folderToMove.id },
@@ -795,7 +791,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/folders/${sourceFolder.id}`)
-			.send(payload)
+			.query(payload)
 			.expect(200);
 
 		const sourceFolderInDb = await folderRepository.findOne({
@@ -838,7 +834,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/folders/${folder.id}`)
-			.send(payload)
+			.query(payload)
 			.expect(404);
 
 		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
@@ -857,7 +853,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project1.id}/folders/${sourceFolder.id}`)
-			.send(payload)
+			.query(payload)
 			.expect(404);
 
 		const folderInDb = await folderRepository.findOneBy({ id: sourceFolder.id });
@@ -876,7 +872,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 
 		const response = await authOwnerAgent
 			.delete(`/projects/${project.id}/folders/${folder.id}`)
-			.send(payload)
+			.query(payload)
 			.expect(400);
 
 		expect(response.body.message).toContain(
