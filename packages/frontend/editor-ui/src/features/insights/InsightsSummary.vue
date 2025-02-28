@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
 type Summary = {
 	id: string;
 	title: string;
@@ -11,19 +13,38 @@ defineProps<{
 	summaries: Summary[];
 }>();
 
+const i18n = useI18n();
+
 const getSign = (count: number) => (count > 0 ? '+' : undefined);
 </script>
 
 <template>
 	<div :class="$style.insights">
-		<N8nHeading bold tag="h3" size="medium" class="mb-xs"
-			>Production executions for the last 7 days</N8nHeading
-		>
+		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
+			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
+		}}</N8nHeading>
 		<ul>
 			<li v-for="{ id, title, count, sign, deviation, evaluation } in summaries" :key="id">
 				<p>
 					<strong>{{ title }}</strong>
-					<span>
+					<span v-if="count === 0 && id === 'timeSaved'" :class="$style.empty">
+						<em>--</em>
+						<small>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									<i18n-t keypath="insights.banner.timeSaved.tooltip">
+										<template #link>
+											<a href="#">{{
+												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+											}}</a>
+										</template>
+									</i18n-t>
+								</template>
+								<N8nIcon :class="$style.icon" icon="info-circle" />
+							</N8nTooltip>
+						</small>
+					</span>
+					<span v-else>
 						<em
 							>{{ count }} <i>{{ sign }}</i></em
 						>
@@ -69,7 +90,7 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 
 			strong {
 				color: var(--color-text-dark);
-				font-size: 14px;
+				font-size: var(--font-size-s);
 				font-weight: 400;
 				white-space: nowrap;
 				margin-bottom: var(--spacing-2xs);
@@ -79,6 +100,24 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 				display: flex;
 				align-items: baseline;
 				gap: var(--spacing-xs);
+
+				&.empty {
+					em {
+						color: var(--color-text-lighter);
+					}
+					small {
+						padding: 0;
+						height: 21px;
+
+						.icon {
+							height: 20px;
+							width: 8px;
+							top: -3px;
+							transform: translateY(0);
+							color: var(--color-text-light);
+						}
+					}
+				}
 			}
 
 			em {
@@ -86,7 +125,7 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 				align-items: baseline;
 				justify-content: flex-start;
 				color: var(--color-text-dark);
-				font-size: 32px;
+				font-size: var(--font-size-2xl);
 				line-height: 100%;
 				font-weight: 600;
 				font-style: normal;
