@@ -165,7 +165,7 @@ exports[`InputPanel > should render 1`] = `
       appear="false"
       class="uiBlocker"
       css="true"
-      data-v-249d9307=""
+      data-v-1a77a378=""
       data-v-2e5cd75c=""
       mode="out-in"
       name="fade"
@@ -174,7 +174,7 @@ exports[`InputPanel > should render 1`] = `
       <div
         aria-hidden="true"
         class="n8n-block-ui uiBlocker"
-        data-v-249d9307=""
+        data-v-1a77a378=""
         role="dialog"
         style="display: none;"
       />
