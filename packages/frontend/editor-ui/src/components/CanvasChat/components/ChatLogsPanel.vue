@@ -2,18 +2,42 @@
 import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useI18n } from '@/composables/useI18n';
+import { ref, watch } from 'vue';
 
 const emit = defineEmits<{
 	close: [];
 }>();
 
-defineProps<{
+const props = defineProps<{
 	node: INode | null;
 	slim?: boolean;
 	workflow: Workflow;
 }>();
 
 const locale = useI18n();
+const child = ref<Window>();
+
+async function handleClickPopOut() {
+	window.addEventListener('message', (message) => {
+		if (!child.value || !('type' in message.data) || !props.node) {
+			return;
+		}
+
+		child.value.postMessage({ type: 'setNode', node: props.node.name }, window.location.origin);
+	});
+
+	child.value =
+		window.open(`/workflow/${props.workflow.id}/logs`, '_blank', 'popup=false') ?? undefined;
+}
+
+watch(
+	() => props.node?.name,
+	(name) => {
+		if (child.value) {
+			child.value.postMessage({ type: 'setNode', node: name }, window.location.origin);
+		}
+	},
+);
 </script>
 
 <template>
@@ -27,6 +51,7 @@ const locale = useI18n();
 					}}
 				</span>
 			</div>
+			<button @click="handleClickPopOut">Pop out</button>
 			<n8n-icon-button
 				:class="$style.close"
 				outline

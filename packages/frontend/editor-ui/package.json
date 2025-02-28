@@ -72,6 +72,7 @@
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
     "pinia": "^2.2.4",
+    "pinia-shared-state": "^1.0.1",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
     "stream-browserify": "^3.0.0",
@@ -94,11 +95,11 @@
     "xss": "catalog:"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.0.2",
+    "@iconify/json": "^2.2.228",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@faker-js/faker": "^8.0.2",
-    "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
