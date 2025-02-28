@@ -96,7 +96,7 @@ export async function request(config: {
 	) {
 		options.withCredentials = options.withCredentials ?? true;
 	}
-	if (['POST', 'PATCH', 'PUT'].includes(method)) {
+	if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
 		options.data = data;
 	} else if (data) {
 		options.params = data;

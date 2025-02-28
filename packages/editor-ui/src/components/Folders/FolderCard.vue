@@ -92,19 +92,37 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 					/>
 				</template>
 				<template #header>
-					<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+					<n8n-heading
+						tag="h2"
+						bold
+						size="small"
+						data-test-id="folder-card-name"
+						:class="$style['folder-card-name']"
+					>
 						{{ data.name }}
 					</n8n-heading>
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
 						<n8n-text
+							v-if="data.workflowCount > 0"
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
 							data-test-id="folder-card-workflow-count"
 						>
-							{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
+							{{
+								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
+							}}
+						</n8n-text>
+						<n8n-text
+							v-if="data.subFolderCount > 0"
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--folder-count']]"
+							data-test-id="folder-card-folder-count"
+						>
+							{{ i18n.baseText('generic.folder', { interpolate: { count: data.subFolderCount } }) }}
 						</n8n-text>
 						<n8n-text
 							size="small"
@@ -185,6 +203,10 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	text-align: center;
 }
 
+.folder-card-name {
+	padding-right: var(--spacing-xs);
+}
+
 .card-footer {
 	display: flex;
 }
@@ -207,7 +229,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	color: var(—color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {
