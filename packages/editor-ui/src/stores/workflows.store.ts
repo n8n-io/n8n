@@ -517,17 +517,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		totalWorkflowCount.value = count;
+		// Also set fetched workflows to store
 		// When fetching workflows from overview page, they don't have resource property
 		// so in order to filter out folders, we need to check if resource is not folder
-		const onlyWorkflows: IWorkflowDb[] = data
+		data
 			.filter((item) => item.resource !== 'folder')
-			.map((item) => ({
-				...item,
-				nodes: [],
-				connections: {},
-				versionId: '',
-			}));
-		setWorkflows(onlyWorkflows);
+			.forEach((item) => {
+				addWorkflow({
+					...item,
+					nodes: [],
+					connections: {},
+					versionId: '',
+				});
+			});
 		return data;
 	}
 
