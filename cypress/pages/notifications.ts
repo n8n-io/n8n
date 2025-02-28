@@ -16,9 +16,11 @@ export const clearNotifications = () => {
 	const notificationSelector = '.el-notification:has(.el-notification--success)';
 	cy.get('body').then(($body) => {
 		if ($body.find(notificationSelector).length) {
-			cy.get(notificationSelector)
-				.find('.el-notification__closeBtn')
-				.click({ multiple: true, force: true });
+			cy.get(notificationSelector).each(($el) => {
+				if ($el.find('.el-notification__closeBtn').length) {
+					cy.wrap($el).find('.el-notification__closeBtn').click({ force: true });
+				}
+			});
 		}
 	});
 };
