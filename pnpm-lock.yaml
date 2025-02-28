@@ -638,6 +638,9 @@ importers:
       redis:
         specifier: 4.6.12
         version: 4.6.12
+      sanitize-html:
+        specifier: 2.12.1
+        version: 2.12.1
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -672,6 +675,9 @@ importers:
       '@types/pg':
         specifier: ^8.11.6
         version: 8.11.6
+      '@types/sanitize-html':
+        specifier: ^2.11.0
+        version: 2.11.0
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
@@ -1543,6 +1549,9 @@ importers:
       '@codemirror/commands':
         specifier: ^6.5.0
         version: 6.5.0
+      '@codemirror/lang-css':
+        specifier: ^6.0.1
+        version: 6.0.1(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
       '@codemirror/lang-javascript':
         specifier: ^6.2.2
         version: 6.2.2
