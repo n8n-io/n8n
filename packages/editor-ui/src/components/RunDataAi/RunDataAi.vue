@@ -1,28 +1,22 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type { ITaskDataConnections, NodeConnectionType, Workflow, ITaskData } from 'n8n-workflow';
-import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import {
+	type AIResult,
+	createAiData,
+	getReferencedData,
+	getTreeNodeData,
+	type TreeNode,
+} from '@/components/RunDataAi/utils';
+import type { IAiData, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';
 import { useI18n } from '@/composables/useI18n';
+import type { Workflow } from 'n8n-workflow';
 
-interface AIResult {
-	node: string;
-	runIndex: number;
-	data: IAiDataContent | undefined;
-}
-interface TreeNode {
-	node: string;
-	id: string;
-	children: TreeNode[];
-	depth: number;
-	startTime: number;
-	runIndex: number;
-}
 export interface Props {
 	node: INodeUi;
 	runIndex?: number;
@@ -38,46 +32,6 @@ const i18n = useI18n();
 
 function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
-}
-
-function getReferencedData(
-	taskData: ITaskData,
-	withInput: boolean,
-	withOutput: boolean,
-): IAiDataContent[] {
-	if (!taskData) {
-		return [];
-	}
-
-	const returnData: IAiDataContent[] = [];
-
-	function addFunction(data: ITaskDataConnections | undefined, inOut: 'input' | 'output') {
-		if (!data) {
-			return;
-		}
-
-		Object.keys(data).map((type) => {
-			returnData.push({
-				data: data[type][0],
-				inOut,
-				type: type as NodeConnectionType,
-				metadata: {
-					executionTime: taskData.executionTime,
-					startTime: taskData.startTime,
-					subExecution: taskData.metadata?.subExecution,
-				},
-			});
-		});
-	}
-
-	if (withInput) {
-		addFunction(taskData.inputOverride, 'input');
-	}
-	if (withOutput) {
-		addFunction(taskData.data, 'output');
-	}
-
-	return returnData;
 }
 
 function toggleTreeItem(node: { expanded: boolean }) {
@@ -125,79 +79,13 @@ function selectFirst() {
 	}
 }
 
-const createNode = (
-	nodeName: string,
-	currentDepth: number,
-	r?: AIResult,
-	children: TreeNode[] = [],
-): TreeNode => ({
-	node: nodeName,
-	id: nodeName,
-	depth: currentDepth,
-	startTime: r?.data?.metadata?.startTime ?? 0,
-	runIndex: r?.runIndex ?? 0,
-	children,
-});
+const aiData = computed<AIResult[]>(() =>
+	createAiData(props.node.name, props.workflow, workflowsStore.getWorkflowResultDataByNodeName),
+);
 
-function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
-	const connections = props.workflow.connectionsByDestinationNode[nodeName];
-	const resultData = aiData.value?.filter((data) => data.node === nodeName) ?? [];
-
-	if (!connections) {
-		return resultData.map((d) => createNode(nodeName, currentDepth, d));
-	}
-
-	// Get the first level of children
-	const connectedSubNodes = props.workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
-
-	const children = connectedSubNodes
-		// Only include sub-nodes which have data
-		.filter((name) => aiData.value?.find((data) => data.node === name))
-		.flatMap((name) => getTreeNodeData(name, currentDepth + 1));
-
-	children.sort((a, b) => a.startTime - b.startTime);
-
-	if (resultData.length) {
-		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
-	}
-
-	return [createNode(nodeName, currentDepth, undefined, children)];
-}
-
-const aiData = computed<AIResult[]>(() => {
-	const result: AIResult[] = [];
-	const connectedSubNodes = props.workflow.getParentNodes(props.node.name, 'ALL_NON_MAIN');
-
-	connectedSubNodes.forEach((nodeName) => {
-		const nodeRunData = workflowsStore.getWorkflowResultDataByNodeName(nodeName) ?? [];
-
-		nodeRunData.forEach((run, runIndex) => {
-			const referenceData = {
-				data: getReferencedData(run, false, true)[0],
-				node: nodeName,
-				runIndex,
-			};
-
-			result.push(referenceData);
-		});
-	});
-
-	// Sort the data by start time
-	result.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime ?? 0;
-		const bTime = b.data?.metadata?.startTime ?? 0;
-		return aTime - bTime;
-	});
-
-	return result;
-});
-
-const executionTree = computed<TreeNode[]>(() => {
-	const rootNode = props.node;
-
-	const tree = getTreeNodeData(rootNode.name, 0);
-	return tree || [];
-});
+const executionTree = computed<TreeNode[]>(() =>
+	getTreeNodeData(props.node.name, props.workflow, aiData.value),
+);
 
 watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
