@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@/composables/useI18n';
 import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
@@ -10,12 +11,18 @@ import { getResourcePermissions } from '@/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
+
+const emit = defineEmits<{
+	createFolder: [];
+}>();
 
 const headerIcon = computed((): ProjectIcon => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
@@ -49,31 +56,43 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+const isFoldersFeatureEnabled = computed(() => settingsStore.settings.folders.enabled);
 
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
+	FOLDER: 'folder',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
-	label: 'Create Workflow',
+	label: i18n.baseText('projects.header.create.workflow'),
 	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
-const menu = computed(() => [
-	{
-		value: ACTION_TYPES.CREDENTIAL,
-		label: 'Create credential',
-		disabled:
-			sourceControlStore.preferences.branchReadOnly ||
-			!getResourcePermissions(homeProject.value?.scopes).credential.create,
-	},
-]);
+const menu = computed(() => {
+	const items: UserAction[] = [
+		{
+			value: ACTION_TYPES.CREDENTIAL,
+			label: i18n.baseText('projects.header.create.credential'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).credential.create,
+		},
+	];
+	if (isFoldersFeatureEnabled.value) {
+		items.push({
+			value: ACTION_TYPES.FOLDER,
+			label: i18n.baseText('projects.header.create.folder'),
+			disabled: false,
+		});
+	}
+	return items;
+});
 
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
@@ -81,6 +100,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			name: VIEWS.NEW_WORKFLOW,
 			query: {
 				projectId,
+				parentFolderId: route.params.folderId as string,
 			},
 		});
 	},
@@ -92,6 +112,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 				credentialId: 'create',
 			},
 		});
+	},
+	[ACTION_TYPES.FOLDER]: async () => {
+		emit('createFolder');
 	},
 } as const;
 
