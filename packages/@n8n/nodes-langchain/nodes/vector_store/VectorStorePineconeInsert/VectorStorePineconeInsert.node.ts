@@ -13,7 +13,7 @@ import {
 import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
 import { pineconeIndexRLC } from '../shared/descriptions';
-import { pineconeIndexSearch } from '../shared/methods/listSearch';
+import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStorePinecone instead.

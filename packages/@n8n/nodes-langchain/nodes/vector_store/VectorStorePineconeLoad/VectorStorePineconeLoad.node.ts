@@ -15,7 +15,7 @@ import { logWrapper } from '@utils/logWrapper';
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { pineconeIndexRLC } from '../shared/descriptions';
-import { pineconeIndexSearch } from '../shared/methods/listSearch';
+import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
