@@ -295,7 +295,7 @@ const fromAIOverride = ref<FromAIOverride | null>(
 			value: props.modelValue?.value ?? '',
 			...props,
 		},
-		props.node && nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
+		props.node,
 	),
 );
 
