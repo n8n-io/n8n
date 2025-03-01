@@ -148,7 +148,7 @@ describe('POST /login', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	test('should fail on invalid email in the payload is the current authentication method is email', async () => {
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
 		config.set('userManagement.authenticationMethod', 'email');
 
 		const response = await testServer.authlessAgent.post('/login').send({
