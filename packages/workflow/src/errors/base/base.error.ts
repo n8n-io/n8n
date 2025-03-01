@@ -13,7 +13,7 @@ export abstract class BaseError extends Error {
 	 * Error level. Defines which level the error should be logged/reported
 	 * @default 'error'
 	 */
-	readonly level: ErrorLevel;
+	level: ErrorLevel;
 
 	/**
 	 * Whether the error should be reported to Sentry.

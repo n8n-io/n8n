@@ -6,7 +6,7 @@ import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/Pos
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
@@ -129,7 +129,7 @@ export function getConnectionOptions(): DataSourceOptions {
 		case 'mysqldb':
 			return getMysqlConnectionOptions(dbType);
 		default:
-			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
+			throw new UserError('Database type currently not supported', { extra: { dbType } });
 	}
 }
 

@@ -9,7 +9,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypes,
 	IRunExecutionData,
 	NodeParameterValueType,
 } from '@/Interfaces';
@@ -1871,16 +1870,9 @@ describe('Workflow', () => {
 		});
 	});
 
-	describe('__getConnectionsByDestination', () => {
+	describe('getConnectionsByDestination', () => {
 		it('should return empty object when there are no connections', () => {
-			const workflow = new Workflow({
-				nodes: [],
-				connections: {},
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-
-			const result = workflow.__getConnectionsByDestination({});
+			const result = Workflow.getConnectionsByDestination({});
 
 			expect(result).toEqual({});
 		});
@@ -1896,13 +1888,7 @@ describe('Workflow', () => {
 					],
 				},
 			};
-			const workflow = new Workflow({
-				nodes: [],
-				connections,
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-			const result = workflow.__getConnectionsByDestination(connections);
+			const result = Workflow.getConnectionsByDestination(connections);
 			expect(result).toEqual({
 				Node2: {
 					[NodeConnectionType.Main]: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
@@ -1926,14 +1912,7 @@ describe('Workflow', () => {
 				},
 			};
 
-			const workflow = new Workflow({
-				nodes: [],
-				connections,
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-
-			const result = workflow.__getConnectionsByDestination(connections);
+			const result = Workflow.getConnectionsByDestination(connections);
 			expect(result).toEqual({
 				Node2: {
 					[NodeConnectionType.Main]: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
@@ -1953,14 +1932,7 @@ describe('Workflow', () => {
 				},
 			};
 
-			const workflow = new Workflow({
-				nodes: [],
-				connections,
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-
-			const result = workflow.__getConnectionsByDestination(connections);
+			const result = Workflow.getConnectionsByDestination(connections);
 			expect(result).toEqual({});
 		});
 
@@ -1975,14 +1947,7 @@ describe('Workflow', () => {
 				},
 			};
 
-			const workflow = new Workflow({
-				nodes: [],
-				connections,
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-
-			const result = workflow.__getConnectionsByDestination(connections);
+			const result = Workflow.getConnectionsByDestination(connections);
 			expect(result).toEqual({
 				Node2: {
 					[NodeConnectionType.Main]: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 1 }]],
@@ -2000,14 +1965,7 @@ describe('Workflow', () => {
 				},
 			};
 
-			const workflow = new Workflow({
-				nodes: [],
-				connections,
-				active: false,
-				nodeTypes: mock<INodeTypes>(),
-			});
-
-			const result = workflow.__getConnectionsByDestination(connections);
+			const result = Workflow.getConnectionsByDestination(connections);
 			expect(result).toEqual({
 				Node2: {
 					[NodeConnectionType.Main]: [
