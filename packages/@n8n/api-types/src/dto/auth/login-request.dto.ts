@@ -7,7 +7,7 @@ export class LoginRequestDto extends Z.class({
 	 * is not enforced here. The controller determines whether this is an
 	 * email and validates when LDAP is disabled
 	 */
-	emailOrLdapUsername: z.string(),
+	emailOrLdapUsername: z.string().trim(),
 	password: z.string().min(1),
 	mfaCode: z.string().optional(),
 	mfaRecoveryCode: z.string().optional(),

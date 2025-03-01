@@ -44,9 +44,9 @@ describe('LoginRequestDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
-				name: 'invalid email',
+				name: 'invalid emailOrLdapUsername',
 				request: {
-					emailOrLdapUsername: 'invalid-email',
+					emailOrLdapUsername: 0,
 					password: 'securePassword123',
 				},
 				expectedErrorPath: ['emailOrLdapUsername'],
@@ -72,14 +72,6 @@ describe('LoginRequestDto', () => {
 					emailOrLdapUsername: 'test@example.com',
 				},
 				expectedErrorPath: ['password'],
-			},
-			{
-				name: 'whitespace in emailOrLdapUsername and password',
-				request: {
-					emailOrLdapUsername: '  test@example.com  ',
-					password: '  securePassword123  ',
-				},
-				expectedErrorPath: ['emailOrLdapUsername'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = LoginRequestDto.safeParse(request);
