@@ -463,8 +463,6 @@ export class Github implements INodeType {
 						placeholder: 'Select a workflow...',
 						typeOptions: {
 							searchListMethod: 'getWorkflows',
-							searchable: true,
-							searchFilterRequired: true,
 						},
 					},
 					{
