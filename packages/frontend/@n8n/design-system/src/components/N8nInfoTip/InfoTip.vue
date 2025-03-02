@@ -40,7 +40,6 @@ interface InfoTipProps {
 	bold?: boolean;
 	tooltipPlacement?: Placement;
 	enterable?: boolean;
-	showIcon?: boolean;
 }
 
 defineOptions({ name: 'N8nInfoTip' });
@@ -50,7 +49,6 @@ const props = withDefaults(defineProps<InfoTipProps>(), {
 	bold: true,
 	tooltipPlacement: 'top',
 	enterable: true,
-	showIcon: true,
 });
 
 const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(() => {
@@ -81,7 +79,7 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 			:enterable
 		>
 			<span :class="$style.iconText">
-				<N8nIcon v-if="showIcon" :icon="iconData.icon" :color="iconData.color" />
+				<N8nIcon :icon="iconData.icon" :color="iconData.color" />
 			</span>
 			<template #content>
 				<span>
@@ -90,7 +88,7 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 			</template>
 		</N8nTooltip>
 		<span v-else :class="$style.iconText">
-			<N8nIcon v-if="showIcon" :icon="iconData.icon" :color="iconData.color" />
+			<N8nIcon :icon="iconData.icon" :color="iconData.color" />
 			<span>
 				<slot />
 			</span>

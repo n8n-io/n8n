@@ -117,7 +117,7 @@ function onEdit(id: string) {
 			</n8n-heading>
 		</div>
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
-			<n8n-info-tip :show-icon="false" :bold="false">
+			<n8n-text>
 				<i18n-t keypath="settings.api.view.info" tag="span">
 					<template #apiAction>
 						<a
@@ -136,7 +136,7 @@ function onEdit(id: string) {
 						/>
 					</template>
 				</i18n-t>
-			</n8n-info-tip>
+			</n8n-text>
 		</p>
 		<template v-if="apiKeysSortByCreationDate.length">
 			<el-row
