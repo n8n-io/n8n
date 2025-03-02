@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
