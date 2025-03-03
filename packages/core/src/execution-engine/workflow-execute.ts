@@ -465,7 +465,7 @@ export class WorkflowExecute {
 						taskData.metadata = { ...taskData.metadata, ...metaRunData };
 					} else {
 						Container.get(ErrorReporter).error(
-							new UnexpectedError('Taskdata missing at the end of an execution'),
+							new ApplicationError('Taskdata missing at the end of an execution'),
 							{ extra: { nodeName, index } },
 						);
 					}
