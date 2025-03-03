@@ -49,7 +49,6 @@ const emit = defineEmits<{
 	dragstart: [{ position: number }];
 	dragend: [{ position: number; windowWidth: number }];
 	switchSelectedNode: [string];
-	saveWorkflow: [event: KeyboardEvent];
 	close: [];
 }>();
 
@@ -212,8 +211,6 @@ const fixedPanelWidth = computed((): number => {
 
 const onSwitchSelectedNode = (node: string) => emit('switchSelectedNode', node);
 
-const onSaveWorkflow = (e: KeyboardEvent) => emit('saveWorkflow', e);
-
 function getInitialLeftPosition(width: number): number {
 	if (currentNodePaneType.value === 'dragless')
 		return pxToRelativeWidth(SIDE_MARGIN + 1 + fixedPanelWidth.value);
@@ -364,7 +361,6 @@ function onDragEnd() {
 			v-if="ndvStore.activeNode"
 			:root-node="ndvStore.activeNode"
 			@switch-selected-node="onSwitchSelectedNode"
-			@save-workflow="onSaveWorkflow"
 		/>
 		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>

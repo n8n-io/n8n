@@ -601,11 +601,25 @@ const onSearch = (search: string) => {
 	isPairedItemHoveringEnabled.value = !search;
 };
 
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', onKeyDown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', onKeyDown, true);
+};
+
 //watchers
 
 watch(
 	activeNode,
 	(node, oldNode) => {
+		if (node) {
+			registerKeyboardListener();
+		} else {
+			unregisterKeyboardListener();
+		}
+
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
 			runOutputIndex.value = -1;
@@ -659,6 +673,7 @@ watch(
 	},
 	{ immediate: true },
 );
+
 watch(maxOutputRun, () => {
 	runOutputIndex.value = -1;
 });
@@ -685,6 +700,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	unregisterKeyboardListener();
 });
 </script>
 
@@ -737,7 +753,6 @@ onBeforeUnmount(() => {
 				:node-type="activeNodeType"
 				@switch-selected-node="onSwitchSelectedNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
-				@save-workflow="onSaveWorkflow"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
