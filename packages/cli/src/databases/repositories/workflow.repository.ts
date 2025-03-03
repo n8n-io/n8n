@@ -8,7 +8,9 @@ import type {
 	FindOptionsSelect,
 	FindManyOptions,
 	FindOptionsRelations,
+	EntityManager,
 } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
@@ -394,7 +396,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (filter?.parentFolderId === '0') {
+		if (filter?.parentFolderId === PROJECT_ROOT) {
 			qb.andWhere('workflow.parentFolderId IS NULL');
 		} else if (filter?.parentFolderId) {
 			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
@@ -610,5 +612,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ active: activeState });
+	}
+
+	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
+		await tx.update(
+			WorkflowEntity,
+			{ parentFolder: { id: fromFolderId } },
+			{
+				parentFolder: {
+					id: toFolderId,
+				},
+			},
+		);
 	}
 }

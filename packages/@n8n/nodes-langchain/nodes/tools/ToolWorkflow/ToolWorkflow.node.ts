@@ -10,6 +10,7 @@ export class ToolWorkflow extends VersionedNodeType {
 			displayName: 'Call n8n Sub-Workflow Tool',
 			name: 'toolWorkflow',
 			icon: 'fa:network-wired',
+			iconColor: 'black',
 			group: ['transform'],
 			description:
 				'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
