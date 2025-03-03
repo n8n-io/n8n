@@ -62,7 +62,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 } from 'n8n-workflow';
-import { findLast } from 'lodash-es';
+import { findLast, pick, isEqual } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
 import * as workflowsApi from '@/api/workflows';
@@ -1144,9 +1144,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
 			const node = workflow.value.nodes[nodeIndex];
-			const changed = Object.entries(nodeData).some(
-				([key, value]) => !(key in node) || node[key as keyof INodeUi] !== value,
-			);
+			const changed = !isEqual(pick(node, Object.keys(nodeData)), nodeData);
 			Object.assign(node, nodeData);
 			return changed;
 		}
