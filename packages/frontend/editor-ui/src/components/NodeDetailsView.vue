@@ -739,8 +739,8 @@ onBeforeUnmount(() => {
 			v-if="activeNode"
 			ref="container"
 			class="data-display"
+			data-test-id="ndv-modal"
 			tabindex="0"
-			@keydown.capture="onKeyDown"
 		>
 			<div :class="$style.modalBackground" @click="close"></div>
 			<NDVDraggablePanels
