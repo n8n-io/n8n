@@ -205,7 +205,12 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
-			const result = await service['executeSubWorkflow'](workflowInfo, items, workflowProxyMock);
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
 
 			expect(result.response).toBe(TEST_RESPONSE_1);
 			expect(result.subExecutionId).toBe('test-execution');
@@ -231,6 +236,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
 			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
 				workflowInfo,
 				items,
 				workflowProxyMock,
