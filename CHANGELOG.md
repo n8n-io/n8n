@@ -1,3 +1,12 @@
+## [1.81.4](https://github.com/n8n-io/n8n/compare/n8n@1.81.3...n8n@1.81.4) (2025-03-03)
+
+
+### Bug Fixes
+
+* **core:** Do not validate email when LDAP is enabled ([#13605](https://github.com/n8n-io/n8n/issues/13605)) ([c55330c](https://github.com/n8n-io/n8n/commit/c55330c95770a7191fdcfd4d09a612c1f1690273))
+
+
+
 ## [1.81.3](https://github.com/n8n-io/n8n/compare/n8n@1.81.2...n8n@1.81.3) (2025-03-03)
 
 
