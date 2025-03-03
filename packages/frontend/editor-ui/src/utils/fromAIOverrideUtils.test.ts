@@ -1,3 +1,4 @@
+import type { INodeUi } from '@/Interface';
 import type { FromAIOverride, OverrideContext } from './fromAIOverrideUtils';
 import {
 	buildValueFromOverride,
@@ -7,6 +8,14 @@ import {
 	parseOverrides,
 } from './fromAIOverrideUtils';
 import type { INodeTypeDescription, NodePropertyTypes } from 'n8n-workflow';
+
+const getNodeType = vi.fn();
+
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeType,
+	})),
+}));
 
 const DISPLAY_NAME = 'aDisplayName';
 const PARAMETER_NAME = 'aName';
@@ -26,7 +35,7 @@ const makeContext = (
 });
 
 const MOCK_NODE_TYPE_MIXIN = {
-	version: 0,
+	version: 1,
 	defaults: {},
 	inputs: [],
 	outputs: [],
@@ -74,22 +83,39 @@ const NON_AI_NODE_TYPE: INodeTypeDescription = {
 	...MOCK_NODE_TYPE_MIXIN,
 };
 
+function mockNodeFromType(type: INodeTypeDescription) {
+	return vi.mocked<INodeUi>({
+		type: type.name,
+		typeVersion: type.version as number,
+	} as never);
+}
+
 describe('makeOverrideValue', () => {
 	test.each<[string, ...Parameters<typeof makeOverrideValue>]>([
 		['null nodeType', makeContext(''), null],
-		['non-ai node type', makeContext(''), NON_AI_NODE_TYPE],
-		['ai node type on denylist', makeContext(''), AI_DENYLIST_NODE_TYPE],
-		['vector store type', makeContext(''), AI_VECTOR_STORE_NODE_TYPE],
-		['denied parameter name', makeContext('', 'parameters.toolName'), AI_NODE_TYPE],
-		['denied parameter type', makeContext('', undefined, 'credentialsSelect'), AI_NODE_TYPE],
+		['non-ai node type', makeContext(''), mockNodeFromType(NON_AI_NODE_TYPE)],
+		['ai node type on denylist', makeContext(''), mockNodeFromType(AI_DENYLIST_NODE_TYPE)],
+		['vector store type', makeContext(''), mockNodeFromType(AI_VECTOR_STORE_NODE_TYPE)],
+		[
+			'denied parameter name',
+			makeContext('', 'parameters.toolName'),
+			mockNodeFromType(AI_NODE_TYPE),
+		],
+		[
+			'denied parameter type',
+			makeContext('', undefined, 'credentialsSelect'),
+			mockNodeFromType(AI_NODE_TYPE),
+		],
 	])('should not create an override for %s', (_name, context, nodeType) => {
+		getNodeType.mockReturnValue(nodeType);
 		expect(makeOverrideValue(context, nodeType)).toBeNull();
 	});
 
 	it('should create an fromAI override', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
 		const result = makeOverrideValue(
 			makeContext(`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}') }}`),
-			AI_NODE_TYPE,
+			mockNodeFromType(AI_NODE_TYPE),
 		);
 
 		expect(result).not.toBeNull();
@@ -97,12 +123,14 @@ describe('makeOverrideValue', () => {
 	});
 
 	it('parses existing fromAI overrides', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+
 		const description = 'a description';
 		const result = makeOverrideValue(
 			makeContext(
 				`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`${description}\`) }}`,
 			),
-			AI_NODE_TYPE,
+			mockNodeFromType(AI_NODE_TYPE),
 		);
 
 		expect(result).toBeDefined();
@@ -110,9 +138,11 @@ describe('makeOverrideValue', () => {
 	});
 
 	it('parses an existing fromAI override with default values without adding extraPropValue entry', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+
 		const result = makeOverrideValue(
 			makeContext("={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aName', ``) }}"),
-			AI_NODE_TYPE,
+			mockNodeFromType(AI_NODE_TYPE),
 		);
 
 		expect(result).toBeDefined();
