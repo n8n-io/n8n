@@ -1,4 +1,5 @@
 import { WorkflowSharingModal } from '../pages';
+import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
@@ -68,6 +69,7 @@ describe('Workflows', () => {
 			cy.getByTestId('workflow-card-actions').first().click();
 			WorkflowsPage.getters.workflowDeleteButton().click();
 			cy.get('button').contains('delete').click();
+			successToast().should('be.visible');
 		}
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
