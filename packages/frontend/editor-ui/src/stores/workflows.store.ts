@@ -91,6 +91,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
+import _ from 'lodash';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -328,6 +329,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
+		debugger;
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
@@ -1138,10 +1140,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return true;
 	}
 
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): void {
+	/**
+	 * @returns `true` if the object was changed
+	 */
+	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
-			Object.assign(workflow.value.nodes[nodeIndex], nodeData);
+			const node = workflow.value.nodes[nodeIndex];
+			const changed = !_.isEqual(_.pick(node, Object.keys(nodeData)), nodeData);
+			Object.assign(node, nodeData);
+			return changed;
 		}
+		return false;
 	}
 
 	function setNodeIssue(nodeIssueData: INodeIssueData): boolean {
@@ -1270,11 +1279,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			);
 		}
 
-		uiStore.stateIsDirty = true;
-
-		updateNodeAtIndex(nodeIndex, {
+		const changed = updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
+
+		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
 
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
