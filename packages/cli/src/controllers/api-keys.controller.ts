@@ -36,12 +36,6 @@ export class ApiKeysController {
 		_res: Response,
 		@Body { label, expiresAt }: CreateApiKeyRequestDto,
 	) {
-		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
-
-		if (currentNumberOfApiKeys >= this.license.getApiKeysPerUserLimit()) {
-			throw new BadRequestError('You have reached the maximum number of API keys allowed.');
-		}
-
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
 			label,
 			expiresAt,
