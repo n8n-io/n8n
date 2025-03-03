@@ -155,7 +155,7 @@ const disabledHint = computed(() => {
 		return i18n.baseText('ndv.execute.generatingCode');
 	}
 
-	if (isTriggerNode.value && node?.value?.disabled) {
+	if (node?.value?.disabled) {
 		return i18n.baseText('ndv.execute.nodeIsDisabled');
 	}
 
