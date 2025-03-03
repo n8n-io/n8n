@@ -6,8 +6,16 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	getFileSha,
@@ -17,6 +25,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import { getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { defaultWebhookDescription } from '../Webhook/description';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,6 +42,24 @@ export class Github implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		webhooks: [
+			{
+				...defaultWebhookDescription,
+				path: '',
+				restartWebhook: true,
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+			},
+			// {
+			// 	name: 'default',
+			// 	httpMethod: 'POST',
+			// 	responseMode: 'onReceived',
+			// 	path: '',
+			// 	restartWebhook: true,
+			// 	isFullPath: true,
+			// 	isForm: true,
+			// },
+		],
 		credentials: [
 			{
 				name: 'githubApi',
@@ -417,7 +444,7 @@ export class Github implements INodeType {
 						action: 'Disable a workflow',
 					},
 					{
-						name: 'Dispatch',
+						name: 'Dispatch Workflow Event',
 						value: 'dispatch',
 						description: 'Dispatch a workflow event',
 						action: 'Dispatch a workflow event',
@@ -642,7 +669,20 @@ export class Github implements INodeType {
 					},
 				},
 			},
-
+			{
+				displayName: 'Wait for Workflow Completion',
+				name: 'waitForCompletion',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+			},
 			// ----------------------------------
 			//         file
 			// ----------------------------------
@@ -1986,6 +2026,14 @@ export class Github implements INodeType {
 		},
 	};
 
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const requestObject = this.getRequestObject();
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(requestObject.body)],
+		};
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -2494,14 +2542,16 @@ export class Github implements INodeType {
 						const workflowId = this.getNodeParameter('workflowId', i) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
-					} else if (operation === 'dispatch') {
+					}
+					if (operation === 'dispatch') {
 						// ----------------------------------
 						//         dispatch
 						// ----------------------------------
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 						body.ref = this.getNodeParameter('ref', i) as string;
@@ -2515,6 +2565,36 @@ export class Github implements INodeType {
 							});
 						}
 						body.inputs = inputs;
+
+						const waitForCompletion = this.getNodeParameter('waitForCompletion', i) as boolean;
+
+						if (waitForCompletion) {
+							// Generate a webhook URL for the GitHub workflow to call when done
+							const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+
+							body.inputs = {
+								...body.inputs,
+								resumeUrl,
+							};
+
+							try {
+								responseData = await githubApiRequest.call(this, requestMethod, endpoint, body);
+							} catch (error) {
+								// Check if the error is a 404 (Not Found)
+								if (error.httpCode === '404' || error.statusCode === 404) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
+										{ itemIndex: i },
+									);
+								} else {
+									throw new NodeApiError(this.getNode(), error as JsonObject);
+								}
+							}
+
+							await this.putExecutionToWait(WAIT_INDEFINITELY);
+							return [this.getInputData()];
+						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
 						//         enable
