@@ -159,7 +159,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 			// Check if collection exists
 			const collections = await db.listCollections({ name: collectionName }).toArray();
 			if (collections.length === 0) {
-				db.createCollection(collectionName);
+				await db.createCollection(collectionName);
 			}
 			const collection = db.collection(collectionName);
 			await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
