@@ -22,5 +22,8 @@
   ],
   "dependencies": {
     "reflect-metadata": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

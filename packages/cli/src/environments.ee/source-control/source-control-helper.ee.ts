@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
 
@@ -171,7 +171,7 @@ export function getTrackingInformationFromPostPushResult(result: SourceControlle
  * Normalizes and validates the given source controlled file path. Ensures
  * the path is absolute and contained within the git folder.
  *
- * @throws {ApplicationError} If the path is not within the git folder
+ * @throws {UserError} If the path is not within the git folder
  */
 export function normalizeAndValidateSourceControlledFilePath(
 	gitFolderPath: string,
@@ -182,7 +182,7 @@ export function normalizeAndValidateSourceControlledFilePath(
 	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
 
 	if (!isContainedWithin(gitFolderPath, filePath)) {
-		throw new ApplicationError(`File path ${filePath} is invalid`);
+		throw new UserError(`File path ${filePath} is invalid`);
 	}
 
 	return normalizedPath;
