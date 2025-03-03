@@ -911,6 +911,7 @@
 	"readOnlyEnv.tooltip.link": "More info.",
 	"readOnlyEnv.cantAdd.workflow": "You can't add new workflows to a protected n8n instance",
 	"readOnlyEnv.cantAdd.credential": "You can't add new credentials to a protected n8n instance",
+	"readOnlyEnv.cantAdd.project": "You can't add new projects to a protected n8n instance",
 	"readOnlyEnv.cantAdd.any": "You can't create new workflows or credentials on a protected n8n instance",
 	"readOnlyEnv.cantEditOrRun": "This workflow can't be edited or run manually because it's on a protected instance",
 	"mainSidebar.aboutN8n": "About n8n",
