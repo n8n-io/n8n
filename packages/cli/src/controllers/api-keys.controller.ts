@@ -1,11 +1,8 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { RequestHandler } from 'express';
 
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -23,8 +20,6 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
-		private readonly apiKeysRepository: ApiKeyRepository,
-		private readonly license: License,
 	) {}
 
 	/**
