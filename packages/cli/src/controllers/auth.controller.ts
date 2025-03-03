@@ -45,19 +45,19 @@ export class AuthController {
 		res: Response,
 		@Body payload: LoginRequestDto,
 	): Promise<PublicUser | undefined> {
-		const { emailOrLdapUsername, password, mfaCode, mfaRecoveryCode } = payload;
+		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
 
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
 
-		if (usedAuthenticationMethod === 'email' && !isEmail(emailOrLdapUsername)) {
+		if (usedAuthenticationMethod === 'email' && !isEmail(emailOrLdapLoginId)) {
 			throw new BadRequestError('Invalid email address');
 		}
 
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
-			const preliminaryUser = await handleEmailLogin(emailOrLdapUsername, password);
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			// if the user is an owner, continue with the login
 			if (
 				preliminaryUser?.role === 'global:owner' ||
@@ -69,15 +69,15 @@ export class AuthController {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
-			const preliminaryUser = await handleEmailLogin(emailOrLdapUsername, password);
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			if (preliminaryUser?.role === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				user = await handleLdapLogin(emailOrLdapUsername, password);
+				user = await handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
-			user = await handleEmailLogin(emailOrLdapUsername, password);
+			user = await handleEmailLogin(emailOrLdapLoginId, password);
 		}
 
 		if (user) {
@@ -107,7 +107,7 @@ export class AuthController {
 		}
 		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
-			userEmail: emailOrLdapUsername,
+			userEmail: emailOrLdapLoginId,
 			reason: 'wrong credentials',
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');

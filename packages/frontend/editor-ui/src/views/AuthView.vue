@@ -3,7 +3,7 @@ import Logo from '@/components/Logo/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { EmailOrLdapUsernameAndPassword } from './SigninView.vue';
+import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
 
 withDefaults(
 	defineProps<{
@@ -20,7 +20,7 @@ withDefaults(
 
 const emit = defineEmits<{
 	update: [{ name: string; value: string }];
-	submit: [values: EmailOrLdapUsernameAndPassword];
+	submit: [values: EmailOrLdapLoginIdAndPassword];
 	secondaryClick: [];
 }>();
 
@@ -28,7 +28,7 @@ const onUpdate = (e: { name: string; value: string }) => {
 	emit('update', e);
 };
 
-const onSubmit = (values: EmailOrLdapUsernameAndPassword) => {
+const onSubmit = (values: EmailOrLdapLoginIdAndPassword) => {
 	emit('submit', values);
 };
 

@@ -268,7 +268,7 @@ describe('Change password with MFA enabled', () => {
 			.authAgentFor(user)
 			.post('/login')
 			.send({
-				emailOrLdapUsername: user.email,
+				emailOrLdapLoginId: user.email,
 				password: newPassword,
 				mfaCode: new TOTPService().generateTOTP(rawSecret),
 			})
@@ -308,7 +308,7 @@ describe('Login', () => {
 
 		await testServer.authlessAgent
 			.post('/login')
-			.send({ emailOrLdapUsername: user.email, password })
+			.send({ emailOrLdapLoginId: user.email, password })
 			.expect(200);
 	});
 
@@ -326,7 +326,7 @@ describe('Login', () => {
 
 		await testServer.authlessAgent
 			.post('/login')
-			.send({ emailOrLdapUsername: user.email, password: rawPassword })
+			.send({ emailOrLdapLoginId: user.email, password: rawPassword })
 			.expect(401);
 	});
 
@@ -336,7 +336,7 @@ describe('Login', () => {
 
 			await testServer.authlessAgent
 				.post('/login')
-				.send({ emailOrLdapUsername: user.email, password: rawPassword, mfaCode: 'wrongvalue' })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: 'wrongvalue' })
 				.expect(401);
 		});
 
@@ -345,7 +345,7 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ emailOrLdapUsername: user.email, password: rawPassword })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword })
 				.expect(401);
 
 			expect(response.body.code).toBe(998);
@@ -358,7 +358,7 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ emailOrLdapUsername: user.email, password: rawPassword, mfaCode: token })
+				.send({ emailOrLdapLoginId: user.email, password: rawPassword, mfaCode: token })
 				.expect(200);
 
 			const data = response.body.data;
@@ -374,7 +374,7 @@ describe('Login', () => {
 			await testServer.authlessAgent
 				.post('/login')
 				.send({
-					emailOrLdapUsername: user.email,
+					emailOrLdapLoginId: user.email,
 					password: rawPassword,
 					mfaRecoveryCode: 'wrongvalue',
 				})
@@ -387,7 +387,7 @@ describe('Login', () => {
 			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({
-					emailOrLdapUsername: user.email,
+					emailOrLdapLoginId: user.email,
 					password: rawPassword,
 					mfaRecoveryCode: rawRecoveryCodes[0],
 				})

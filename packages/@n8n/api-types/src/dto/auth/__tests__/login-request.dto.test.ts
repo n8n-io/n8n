@@ -6,7 +6,7 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'complete valid login request',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaCode: '123456',
 				},
@@ -14,14 +14,14 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'login request without optional MFA',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 				},
 			},
 			{
 				name: 'login request with both mfaCode and mfaRecoveryCode',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaCode: '123456',
 					mfaRecoveryCode: 'recovery-code-123',
@@ -30,7 +30,7 @@ describe('LoginRequestDto', () => {
 			{
 				name: 'login request with only mfaRecoveryCode',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: 'securePassword123',
 					mfaRecoveryCode: 'recovery-code-123',
 				},
@@ -44,32 +44,32 @@ describe('LoginRequestDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
-				name: 'invalid emailOrLdapUsername',
+				name: 'invalid emailOrLdapLoginId',
 				request: {
-					emailOrLdapUsername: 0,
+					emailOrLdapLoginId: 0,
 					password: 'securePassword123',
 				},
-				expectedErrorPath: ['emailOrLdapUsername'],
+				expectedErrorPath: ['emailOrLdapLoginId'],
 			},
 			{
 				name: 'empty password',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 					password: '',
 				},
 				expectedErrorPath: ['password'],
 			},
 			{
-				name: 'missing emailOrLdapUsername',
+				name: 'missing emailOrLdapLoginId',
 				request: {
 					password: 'securePassword123',
 				},
-				expectedErrorPath: ['emailOrLdapUsername'],
+				expectedErrorPath: ['emailOrLdapLoginId'],
 			},
 			{
 				name: 'missing password',
 				request: {
-					emailOrLdapUsername: 'test@example.com',
+					emailOrLdapLoginId: 'test@example.com',
 				},
 				expectedErrorPath: ['password'],
 			},

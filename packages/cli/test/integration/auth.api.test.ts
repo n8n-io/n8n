@@ -43,7 +43,7 @@ describe('POST /login', () => {
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			emailOrLdapUsername: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -87,7 +87,7 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			emailOrLdapUsername: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
@@ -131,7 +131,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			emailOrLdapUsername: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -152,7 +152,7 @@ describe('POST /login', () => {
 		config.set('userManagement.authenticationMethod', 'email');
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			emailOrLdapUsername: 'invalid-email',
+			emailOrLdapLoginId: 'invalid-email',
 			password: ownerPassword,
 		});
 

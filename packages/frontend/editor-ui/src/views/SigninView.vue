@@ -17,9 +17,9 @@ import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 
-export type EmailOrLdapUsernameAndPassword = Pick<
+export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
-	'emailOrLdapUsername' | 'password'
+	'emailOrLdapLoginId' | 'password'
 >;
 
 export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRecoveryCode'>;
@@ -37,7 +37,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
-const emailOrLdapUsername = ref('');
+const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
@@ -58,7 +58,7 @@ const formConfig: IFormBoxConfig = reactive({
 	redirectLink: '/forgot-password',
 	inputs: [
 		{
-			name: 'emailOrLdapUsername',
+			name: 'emailOrLdapLoginId',
 			properties: {
 				label: emailLabel.value,
 				type: 'email',
@@ -88,14 +88,14 @@ const formConfig: IFormBoxConfig = reactive({
 
 const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	await login({
-		emailOrLdapUsername: emailOrLdapUsername.value,
+		emailOrLdapLoginId: emailOrLdapLoginId.value,
 		password: password.value,
 		mfaCode: form.mfaCode,
 		mfaRecoveryCode: form.mfaRecoveryCode,
 	});
 };
 
-const onEmailPasswordSubmitted = async (form: EmailOrLdapUsernameAndPassword) => {
+const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => {
 	await login(form);
 };
 
@@ -116,7 +116,7 @@ const login = async (form: LoginRequestDto) => {
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
-			emailOrLdapUsername: form.emailOrLdapUsername,
+			emailOrLdapLoginId: form.emailOrLdapLoginId,
 			password: form.password,
 			mfaCode: form.mfaCode,
 			mfaRecoveryCode: form.mfaRecoveryCode,
@@ -181,8 +181,8 @@ const onFormChanged = (toForm: string) => {
 		reportError.value = false;
 	}
 };
-const cacheCredentials = (form: EmailOrLdapUsernameAndPassword) => {
-	emailOrLdapUsername.value = form.emailOrLdapUsername;
+const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
+	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
 </script>

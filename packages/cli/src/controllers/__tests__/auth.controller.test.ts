@@ -39,7 +39,7 @@ describe('AuthController', () => {
 	const postHog = Container.get(PostHogClient);
 
 	describe('login', () => {
-		it('should not validate email in "emailOrLdapUsername if LDAP is enabled"', async () => {
+		it('should not validate email in "emailOrLdapLoginId" if LDAP is enabled', async () => {
 			// Arrange
 
 			const browserId = '1';
@@ -51,7 +51,7 @@ describe('AuthController', () => {
 			});
 
 			const body = mock<LoginRequestDto>({
-				emailOrLdapUsername: 'non email',
+				emailOrLdapLoginId: 'non email',
 				password: 'password',
 			});
 
@@ -76,11 +76,11 @@ describe('AuthController', () => {
 			// Assert
 
 			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
-				body.emailOrLdapUsername,
+				body.emailOrLdapLoginId,
 				body.password,
 			);
 			expect(mockedAuth.handleLdapLogin).toHaveBeenCalledWith(
-				body.emailOrLdapUsername,
+				body.emailOrLdapLoginId,
 				body.password,
 			);
 
