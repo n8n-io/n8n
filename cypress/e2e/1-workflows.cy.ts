@@ -64,13 +64,17 @@ describe('Workflows', () => {
 	it('should delete all the workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
-		WorkflowsPage.getters.workflowCards().each(($el) => {
-			const workflowName = $el.find('[data-test-id="workflow-card-name"]').text();
+		WorkflowsPage.getters.workflowCards().then(($cards) => {
+			const workflowNames = $cards
+				.map((_, $el) => Cypress.$($el).find('[data-test-id="workflow-card-name"]').text())
+				.get();
 
-			WorkflowsPage.getters.workflowCardActions(workflowName).click();
-			WorkflowsPage.getters.workflowDeleteButton().click();
+			workflowNames.forEach((workflowName) => {
+				WorkflowsPage.getters.workflowCardActions(workflowName).click();
+				WorkflowsPage.getters.workflowDeleteButton().click();
 
-			cy.get('button').contains('delete').click();
+				cy.get('button').contains('delete').click();
+			});
 		});
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
