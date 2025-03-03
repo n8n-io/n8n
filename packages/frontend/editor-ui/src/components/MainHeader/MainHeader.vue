@@ -10,6 +10,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_EVALUATION_EXPERIMENT,
+	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -241,13 +242,13 @@ function hideGithubButton() {
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
 						<GithubButton
-							href="https://github.com/n8n-io/n8n"
+							:href="N8N_MAIN_GITHUB_REPO_URL"
 							:data-color-scheme="uiStore.appliedTheme"
 							data-size="large"
 							data-show-count="true"
-							aria-label="Star n8n-io/n8n on GitHub"
+							:aria-label="locale.baseText('editor.mainHeader.githubButton.label')"
 						>
-							Star
+							{{ locale.baseText('generic.star') }}
 						</GithubButton>
 						<N8nIcon
 							:class="$style['close-github-button']"
