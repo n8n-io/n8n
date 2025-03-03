@@ -15,6 +15,7 @@ const ignoredErrors = [
 ] as const;
 
 export function beforeSend(event: Sentry.ErrorEvent, { originalException }: Sentry.EventHint) {
+	console.log({ event });
 	if (
 		!originalException ||
 		ignoredErrors.some((entry) => {
@@ -53,6 +54,11 @@ export const SentryPlugin: Plugin = {
 			dsn,
 			release,
 			environment,
+			integrations: [
+				Sentry.rewriteFramesIntegration({
+					root: window.location.origin + '/',
+				}),
+			],
 			beforeSend,
 		});
 
