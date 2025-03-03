@@ -198,6 +198,16 @@ const onSelect = (value: number) => {
 	expirationDate.value = '';
 	showExpirationDateSelector.value = false;
 };
+
+async function handleEnterKey(event: KeyboardEvent) {
+	if (event.key === 'Enter') {
+		if (props.mode === 'new') {
+			await onSave();
+		} else {
+			await onEdit();
+		}
+	}
+}
 </script>
 
 <template>
@@ -212,7 +222,7 @@ const onSelect = (value: number) => {
 		:show-close="true"
 	>
 		<template #content>
-			<div>
+			<div @keyup.enter="handleEnterKey">
 				<n8n-card v-if="newApiKey" class="mb-4xs">
 					<CopyInput
 						:label="newApiKey.label"
