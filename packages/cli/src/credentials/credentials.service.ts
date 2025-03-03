@@ -15,7 +15,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -405,7 +405,7 @@ export class CredentialsService {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new ApplicationError('No personal project found');
+				throw new UnexpectedError('No personal project found');
 			}
 
 			const newSharedCredential = this.sharedCredentialsRepository.create({

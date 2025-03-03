@@ -6,7 +6,7 @@ import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { Logger, WorkflowExecute } from 'n8n-core';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -105,7 +105,7 @@ export async function getWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new ApplicationError(
+		throw new UnexpectedError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
@@ -120,7 +120,7 @@ export async function getWorkflowData(
 		);
 
 		if (workflowData === undefined || workflowData === null) {
-			throw new ApplicationError('Workflow does not exist.', {
+			throw new UnexpectedError('Workflow does not exist.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
