@@ -462,10 +462,15 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = {
-						...(runData[nodeName][index].metadata ?? {}),
-						...metaRunData,
-					};
+					const taskData = runData[nodeName]?.[index];
+					if (taskData) {
+						taskData.metadata = { ...taskData.metadata, ...metaRunData };
+					} else {
+						Container.get(ErrorReporter).error(
+							new UnexpectedError('Taskdata missing at the end of an execution'),
+							{ extra: { nodeName, index } },
+						);
+					}
 				}
 			}
 		}
