@@ -2,7 +2,7 @@ coverage
 dist
 package.json
 pnpm-lock.yaml
-packages/editor-ui/index.html
+packages/frontend/editor-ui/index.html
 packages/nodes-base/nodes/**/test
 packages/cli/templates/form-trigger.handlebars
 packages/cli/templates/form-trigger-completion.handlebars
