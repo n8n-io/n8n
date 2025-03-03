@@ -5,6 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 interface Props {
 	rootNode: INodeUi;
@@ -20,7 +21,9 @@ const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
+	saveWorkflow: [event: KeyboardEvent];
 }>();
+const deviceSupport = useDeviceSupport();
 
 interface NodeConfig {
 	node: INodeUi;
@@ -47,6 +50,8 @@ function onKeyDown(e: KeyboardEvent) {
 		if (matchingDirection) {
 			moveNodeDirection(matchingDirection);
 		}
+	} else if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
+		emit('saveWorkflow', e);
 	}
 }
 function getINodesFromNames(names: string[]): NodeConfig[] {

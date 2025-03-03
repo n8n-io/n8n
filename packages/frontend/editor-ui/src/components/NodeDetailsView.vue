@@ -352,13 +352,17 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		e.stopPropagation();
-		e.preventDefault();
-
-		if (props.readOnly) return;
-
-		emit('saveKeyboardShortcut', e);
+		onSaveWorkflow(e);
 	}
+};
+
+const onSaveWorkflow = (e: KeyboardEvent) => {
+	e.stopPropagation();
+	e.preventDefault();
+
+	if (props.readOnly) return;
+
+	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -733,6 +737,7 @@ onBeforeUnmount(() => {
 				:node-type="activeNodeType"
 				@switch-selected-node="onSwitchSelectedNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@save-workflow="onSaveWorkflow"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
