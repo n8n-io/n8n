@@ -1,6 +1,6 @@
 {
   "name": "n8n-node-dev",
-  "version": "1.79.0",
+  "version": "1.80.0",
   "description": "CLI to simplify n8n credentials/node development",
   "main": "dist/src/index",
   "types": "dist/src/index.d.ts",
@@ -36,6 +36,7 @@
     "src/tsconfig-build.json"
   ],
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/inquirer": "^6.5.0"
   },
   "dependencies": {

@@ -123,11 +123,12 @@ export class ChainRetrievalQa implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
 				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
 				typeOptions: {
 					rows: 2,
 				},
