@@ -55,7 +55,6 @@ export class PythonSandbox extends Sandbox {
 
 	private async runCodeInPython<T>() {
 		const workerFilePath = await this.createWorkerFile();
-		console.log(workerFilePath);
 
 		try {
 			return await this.executePythonInWorker<T>(workerFilePath);
