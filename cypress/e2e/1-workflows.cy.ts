@@ -65,9 +65,11 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
 		WorkflowsPage.getters.workflowCards().then(($cards) => {
-			$cards.each((_, $el) => {
-				const workflowName = Cypress.$($el).find('[data-test-id="workflow-card-name"]').text();
+			const workflowNames = $cards
+				.map((_, $el) => Cypress.$($el).find('[data-test-id="workflow-card-name"]').text())
+				.get();
 
+			workflowNames.forEach((workflowName) => {
 				WorkflowsPage.getters.workflowCardActions(workflowName).click();
 				WorkflowsPage.getters.workflowDeleteButton().click();
 
