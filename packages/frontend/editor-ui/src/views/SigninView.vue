@@ -15,6 +15,14 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
+import type { LoginRequestDto } from '@n8n/api-types';
+
+export type EmailOrLdapLoginIdAndPassword = Pick<
+	LoginRequestDto,
+	'emailOrLdapLoginId' | 'password'
+>;
+
+export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRecoveryCode'>;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -29,7 +37,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
-const email = ref('');
+const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
@@ -50,7 +58,7 @@ const formConfig: IFormBoxConfig = reactive({
 	redirectLink: '/forgot-password',
 	inputs: [
 		{
-			name: 'email',
+			name: 'emailOrLdapLoginId',
 			properties: {
 				label: emailLabel.value,
 				type: 'email',
@@ -78,23 +86,16 @@ const formConfig: IFormBoxConfig = reactive({
 	],
 });
 
-const onMFASubmitted = async (form: { mfaCode?: string; mfaRecoveryCode?: string }) => {
+const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	await login({
-		email: email.value,
+		emailOrLdapLoginId: emailOrLdapLoginId.value,
 		password: password.value,
 		mfaCode: form.mfaCode,
 		mfaRecoveryCode: form.mfaRecoveryCode,
 	});
 };
 
-const isFormWithEmailAndPassword = (values: {
-	[key: string]: string;
-}): values is { email: string; password: string } => {
-	return 'email' in values && 'password' in values;
-};
-
-const onEmailPasswordSubmitted = async (form: { [key: string]: string }) => {
-	if (!isFormWithEmailAndPassword(form)) return;
+const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => {
 	await login(form);
 };
 
@@ -111,16 +112,11 @@ const getRedirectQueryParameter = () => {
 	return redirect;
 };
 
-const login = async (form: {
-	email: string;
-	password: string;
-	mfaCode?: string;
-	mfaRecoveryCode?: string;
-}) => {
+const login = async (form: LoginRequestDto) => {
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
-			email: form.email,
+			emailOrLdapLoginId: form.emailOrLdapLoginId,
 			password: form.password,
 			mfaCode: form.mfaCode,
 			mfaRecoveryCode: form.mfaRecoveryCode,
@@ -185,8 +181,8 @@ const onFormChanged = (toForm: string) => {
 		reportError.value = false;
 	}
 };
-const cacheCredentials = (form: { email: string; password: string }) => {
-	email.value = form.email;
+const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
+	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
 </script>
