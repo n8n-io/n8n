@@ -91,7 +91,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
-import _ from 'lodash';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -329,7 +328,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
-		debugger;
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
@@ -1146,7 +1144,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
 			const node = workflow.value.nodes[nodeIndex];
-			const changed = !_.isEqual(_.pick(node, Object.keys(nodeData)), nodeData);
+			const changed = Object.entries(nodeData).some(
+				([key, value]) => !(key in node) || node[key as keyof INodeUi] !== value,
+			);
 			Object.assign(node, nodeData);
 			return changed;
 		}
