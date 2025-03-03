@@ -34,7 +34,7 @@ export const chatCompletionsOperations: INodeProperties[] = [
 
 export const chatCompletionsFields: INodeProperties[] = [
 	{
-		displayName: 'Model', //TODO Fix resource locator to load the models
+		displayName: 'Model',
 		name: 'model',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -45,22 +45,25 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					options: [
-						{ name: 'Sonar Deep Research', value: 'sonar-deep-research' },
-						{ name: 'Sonar Reasoning Pro', value: 'sonar-reasoning-pro' },
-						{ name: 'Sonar Reasoning', value: 'sonar-reasoning' },
-						{ name: 'Sonar Pro', value: 'sonar-pro' },
-						{ name: 'Sonar', value: 'sonar' },
-						{ name: 'R1-1776', value: 'r1-1776' },
-					],
+					searchListMethod: 'getModels',
 					searchable: true,
-				} as any,
+				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				placeholder: 'e.g. sonar-deep-research',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9-]+$',
+							errorMessage:
+								'Not a valid Perplexity model ID. Model IDs must contain only alphanumeric characters and hyphens.',
+						},
+					},
+				],
 			},
 		],
 		description: 'The model which will generate the completion',
@@ -150,6 +153,9 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'frequency_penalty',
 				type: 'number',
 				default: 1,
+				typeOptions: {
+					minValue: 1,
+				},
 				description:
 					"Values greater than 1.0 penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
 				routing: {
@@ -181,9 +187,8 @@ export const chatCompletionsFields: INodeProperties[] = [
 				description:
 					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
 				typeOptions: {
-					min: -2.0,
-					max: 2.0,
-					numberPrecision: 1,
+					minValue: -2.0,
+					maxValue: 2.0,
 				},
 				routing: {
 					send: {
@@ -219,9 +224,8 @@ export const chatCompletionsFields: INodeProperties[] = [
 				description:
 					'The amount of randomness in the response, valued between 0 inclusive and 2 exclusive. Higher values are more random, and lower values are more deterministic.',
 				typeOptions: {
-					min: 0,
-					max: 2,
-					numberPrecision: 1,
+					minValue: 0,
+					maxValue: 2,
 				},
 				routing: {
 					send: {
@@ -238,9 +242,8 @@ export const chatCompletionsFields: INodeProperties[] = [
 				description:
 					'The number of tokens to keep for highest top-k filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, top-k filtering is disabled. We recommend either altering Top K or Top P, but not both.',
 				typeOptions: {
-					min: 0,
-					max: 2048,
-					numberPrecision: 1,
+					minValue: 0,
+					maxValue: 2048,
 				},
 				routing: {
 					send: {
@@ -257,9 +260,8 @@ export const chatCompletionsFields: INodeProperties[] = [
 				description:
 					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with top_p probability mass. We recommend either altering top_k or top_p, but not both.',
 				typeOptions: {
-					min: 0,
-					max: 1,
-					numberPrecision: 1,
+					minValue: 0,
+					maxValue: 1,
 				},
 				routing: {
 					send: {
@@ -302,11 +304,13 @@ export const chatCompletionsFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Limit the citations used by the online model to URLs from the specified domains. For blacklisting add a - to the beginning of the domain string. Requires Perplexity API usage Tier-3.',
+					'Limit the citations used by the online model to URLs from the specified domains. For blacklisting, add a - to the beginning of the domain string (e.g., -domain1). Currently limited to 3 domains. Requires Perplexity API usage Tier-3.',
+				placeholder: 'e.g. domain1,domain2,-domain3',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'search_domain_filter',
+						value: '={{ $value.split(",").map(domain => domain.trim()) }}',
 					},
 				},
 			},
