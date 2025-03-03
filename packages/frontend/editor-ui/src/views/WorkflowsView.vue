@@ -64,8 +64,8 @@ interface Filters extends BaseFilters {
 }
 
 const StatusFilter = {
-	ACTIVE: true,
-	DEACTIVATED: false,
+	ACTIVE: 'active',
+	DEACTIVATED: 'deactivated',
 	ALL: '',
 };
 
@@ -364,7 +364,10 @@ const fetchWorkflows = async () => {
 		currentSort.value,
 		{
 			name: filters.value.search || undefined,
-			active: filters.value.status ? Boolean(filters.value.status) : undefined,
+			active:
+				filters.value.status === StatusFilter.ALL
+					? undefined
+					: filters.value.status === StatusFilter.ACTIVE,
 			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
 			parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
 		},
@@ -453,8 +456,8 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.search;
 	}
 
-	if (typeof filters.value.status !== 'string') {
-		currentQuery.status = filters.value.status.toString();
+	if (filters.value.status !== StatusFilter.ALL) {
+		currentQuery.status = (filters.value.status === StatusFilter.ACTIVE).toString();
 	} else {
 		delete currentQuery.status;
 	}
@@ -523,10 +526,10 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle status
-	const validStatusValues = [StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()];
+	const validStatusValues = ['true', 'false'];
 	if (isValidString(status) && validStatusValues.includes(status)) {
 		newQuery.status = status;
-		filters.value.status = status === 'true';
+		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
 		delete newQuery.status;
 	}
