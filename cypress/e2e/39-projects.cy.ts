@@ -318,7 +318,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_MEMBERS[0].email}")`).click();
+			getVisibleSelect()
+				.find('li')
+				.filter(`:contains("${INSTANCE_MEMBERS[0].emailOrLdapLoginId}")`)
+				.click();
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
@@ -343,7 +346,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
+			getVisibleSelect()
+				.find('li')
+				.filter(`:contains("${INSTANCE_OWNER.emailOrLdapLoginId}")`)
+				.click();
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
@@ -391,7 +397,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_ADMIN.email}")`).click();
+			getVisibleSelect()
+				.find('li')
+				.filter(`:contains("${INSTANCE_ADMIN.emailOrLdapLoginId}")`)
+				.click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 			cy.wait('@getResources');
@@ -413,7 +422,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
+			getVisibleSelect()
+				.find('li')
+				.filter(`:contains("${INSTANCE_OWNER.emailOrLdapLoginId}")`)
+				.click();
 
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
@@ -471,7 +483,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// Create a project and add a user to it
 			projects.createProject('Project 1');
-			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+			projects.addProjectMember(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
 
 			clearNotifications();
 			projects.getProjectSettingsSaveButton().click();
@@ -506,7 +518,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			mainSidebar.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 
-			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 

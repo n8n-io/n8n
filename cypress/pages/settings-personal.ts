@@ -44,7 +44,7 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.saveSettingsButton().realClick();
 		},
 		loginAndVisit: (email: string, password: string) => {
-			cy.signin({ email, password });
+			cy.signin({ emailOrLdapLoginId: email, password });
 			cy.visit(this.url);
 		},
 		updateFirstAndLastName: (newFirstName: string, newLastName: string) => {

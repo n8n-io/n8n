@@ -62,7 +62,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
 
-Cypress.Commands.add('signin', ({ email, password }) => {
+Cypress.Commands.add('signin', ({ emailOrLdapLoginId: email, password }) => {
 	void Cypress.session.clearAllSavedSessions();
 	cy.session([email, password], () => {
 		return cy

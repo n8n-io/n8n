@@ -11,7 +11,7 @@ const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
 const RECOVERY_CODE = 'd04ea17f-e8b2-4afa-a9aa-57a2c735b30e';
 
 const user = {
-	email: INSTANCE_OWNER.email,
+	email: INSTANCE_OWNER.emailOrLdapLoginId,
 	password: INSTANCE_OWNER.password,
 	firstName: 'User',
 	lastName: 'A',
@@ -21,7 +21,7 @@ const user = {
 };
 
 const admin = {
-	email: INSTANCE_ADMIN.email,
+	email: INSTANCE_ADMIN.emailOrLdapLoginId,
 	password: INSTANCE_ADMIN.password,
 	firstName: 'Admin',
 	lastName: 'B',
