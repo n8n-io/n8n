@@ -54,7 +54,9 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const hasExecutionData = computed(
+	() => (useNDVStore().ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
@@ -71,7 +73,7 @@ function getErrorMessageByStatusCode(statusCode: number) {
 		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
 		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
-
+	console.log(statusCode);
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
 }
 
