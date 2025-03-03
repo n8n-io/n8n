@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
-import { get, partition } from 'lodash-es';
+import { get } from 'lodash-es';
 
 import type {
 	INodeUi,
@@ -18,6 +18,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
 	INodePropertyOptions,
 	IParameterLabel,
 	NodeParameterValueType,
@@ -426,22 +427,8 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
-	const [safeOptions, invalidOptions] = partition(
-		options ?? [],
-		(option): option is INodePropertyOptions =>
-			isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name),
-	);
+	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	if (invalidOptions.length > 0) {
-		captureMessage('Invalid parameter options', {
-			level: 'error',
-			extra: {
-				invalidOptions,
-				parameter: props.parameter.name,
-				node: node.value,
-			},
-		});
-	}
 	return safeOptions;
 });
 
@@ -583,6 +570,12 @@ const shouldCaptureForPosthog = computed(() => {
 	}
 	return false;
 });
+
+function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name);
+}
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1096,6 +1089,26 @@ watch(isModelValueExpression, async (isExpression, wasExpression) => {
 		await setFocus();
 	}
 });
+
+const unwatchParameterOptions = watch(
+	[remoteParameterOptions, () => props.parameter.options],
+	([remoteOptions, options]) => {
+		const allOptions = [...remoteOptions, ...(options ?? [])];
+		const invalidOptions = allOptions.filter((option) => !isValidParameterOption(option));
+
+		if (invalidOptions.length > 0) {
+			captureMessage('Invalid parameter options', {
+				level: 'error',
+				extra: {
+					invalidOptions,
+					parameter: props.parameter.name,
+					node: node.value,
+				},
+			});
+			unwatchParameterOptions();
+		}
+	},
+);
 
 onUpdated(async () => {
 	await nextTick();
