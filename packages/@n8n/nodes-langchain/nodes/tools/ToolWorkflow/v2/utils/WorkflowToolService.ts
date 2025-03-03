@@ -84,8 +84,6 @@ export class WorkflowToolService {
 				inputData: [[{ json: { query } }]],
 			});
 
-			const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
 			try {
 				const response = await this.runFunction(context, query, itemIndex, runManager);
 
@@ -114,7 +112,12 @@ export class WorkflowToolService {
 					};
 				}
 
-				void context.addOutputData(NodeConnectionType.AiTool, index, [responseData], metadata);
+				void context.addOutputData(
+					NodeConnectionType.AiTool,
+					localRunIndex,
+					[responseData],
+					metadata,
+				);
 
 				return processedResponse;
 			} catch (error) {
