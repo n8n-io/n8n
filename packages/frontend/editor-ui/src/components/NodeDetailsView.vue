@@ -614,9 +614,9 @@ const unregisterKeyboardListener = () => {
 watch(
 	activeNode,
 	(node, oldNode) => {
-		if (node) {
+		if (node && !oldNode) {
 			registerKeyboardListener();
-		} else {
+		} else if (!node) {
 			unregisterKeyboardListener();
 		}
 
