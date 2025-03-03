@@ -1,3 +1,13 @@
+## [1.81.3](https://github.com/n8n-io/n8n/compare/n8n@1.81.2...n8n@1.81.3) (2025-03-03)
+
+
+### Bug Fixes
+
+* **core:** Gracefully handle missing tasks metadata ([#13632](https://github.com/n8n-io/n8n/issues/13632)) ([cecf61a](https://github.com/n8n-io/n8n/commit/cecf61a6d7d5ac759f5af278549566013e930bbd))
+* **n8n Form Trigger Node:** Sanitize HTML for formNode ([#13595](https://github.com/n8n-io/n8n/issues/13595)) ([d0074d6](https://github.com/n8n-io/n8n/commit/d0074d6d86c10dce9dd53f8198cf4aeeab618ae8))
+
+
+
 ## [1.81.2](https://github.com/n8n-io/n8n/compare/n8n@1.81.1...n8n@1.81.2) (2025-02-28)
 
 
