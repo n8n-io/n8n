@@ -2,33 +2,22 @@
 import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useI18n } from '@/composables/useI18n';
-import { ref, watch } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 const emit = defineEmits<{
 	close: [];
+	requestPopOut: [];
 }>();
 
 const props = defineProps<{
 	node: INode | null;
 	slim?: boolean;
 	workflow: Workflow;
+	isPoppedOut: boolean;
 }>();
 
 const locale = useI18n();
 const child = ref<Window>();
-
-async function handleClickPopOut() {
-	window.addEventListener('message', (message) => {
-		if (!child.value || !('type' in message.data) || !props.node) {
-			return;
-		}
-
-		child.value.postMessage({ type: 'setNode', node: props.node.name }, window.location.origin);
-	});
-
-	child.value =
-		window.open(`/workflow/${props.workflow.id}/logs`, '_blank', 'popup=false') ?? undefined;
-}
 
 watch(
 	() => props.node?.name,
@@ -51,15 +40,18 @@ watch(
 					}}
 				</span>
 			</div>
-			<button @click="handleClickPopOut">Pop out</button>
-			<n8n-icon-button
-				:class="$style.close"
-				outline
-				icon="times"
-				type="secondary"
-				size="mini"
-				@click="emit('close')"
-			/>
+			<div :class="$style.buttons">
+				<button v-if="!isPoppedOut" @click="emit('requestPopOut')">Pop out</button>
+				<n8n-icon-button
+					v-if="!isPoppedOut"
+					:class="$style.close"
+					outline
+					icon="times"
+					type="secondary"
+					size="mini"
+					@click="emit('close')"
+				/>
+			</div>
 		</header>
 		<div :class="$style.logs">
 			<RunDataAi
@@ -112,5 +104,11 @@ watch(
 	padding: var(--spacing-s) 0;
 	flex-grow: 1;
 	overflow: auto;
+}
+
+.buttons {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
 }
 </style>

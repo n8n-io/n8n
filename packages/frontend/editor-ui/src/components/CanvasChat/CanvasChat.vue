@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
-import { provide, watch, computed, ref, watchEffect } from 'vue';
+import { provide, watch, computed, ref, watchEffect, useTemplateRef, onMounted } from 'vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import type { Router } from 'vue-router';
 import { useRouter } from 'vue-router';
@@ -37,6 +37,7 @@ const router = useRouter();
 const messages = ref<ChatMessage[]>([]);
 const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
+const isPopOut = ref(false);
 const container = ref<HTMLElement>();
 
 // Computed properties
@@ -226,6 +227,47 @@ const { chatConfig, chatOptions } = createChatConfig({
 provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
 
+const outerEl = useTemplateRef('outer');
+const logsEl = useTemplateRef('logs');
+
+async function handleClickPopOut() {
+	const player = logsEl.value;
+
+	if (!player) {
+		return;
+	}
+
+	// Open a Picture-in-Picture window.
+	const pipWindow = await (window as any).documentPictureInPicture.requestWindow();
+
+	// Copy style sheets over from the initial document
+	// so that the player looks the same.
+	[...document.styleSheets].forEach((styleSheet) => {
+		try {
+			const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+			const style = document.createElement('style');
+
+			style.textContent = cssRules;
+			pipWindow.document.head.appendChild(style);
+		} catch (e) {
+			const link = document.createElement('link');
+
+			link.rel = 'stylesheet';
+			link.type = styleSheet.type;
+			pipWindow.document.head.appendChild(link);
+		}
+	});
+
+	// Move the player to the Picture-in-Picture window.
+	pipWindow.document.body.append(player);
+	pipWindow.title = workflow.value.name;
+	pipWindow.addEventListener('pagehide', () => {
+		isPopOut.value = false;
+		outerEl.value?.appendChild(player);
+	});
+	isPopOut.value = true;
+}
+
 // Watchers
 watch(
 	() => isChatOpen.value,
@@ -267,54 +309,75 @@ watchEffect(() => {
 </script>
 
 <template>
-	<N8nResizeWrapper
-		v-if="chatTriggerNode"
-		:is-resizing-enabled="isChatOpen || isLogsOpen"
-		:supported-directions="['top']"
-		:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
-		:height="height"
-		:style="rootStyles"
-		@resize="onResizeDebounced"
-	>
-		<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
-			<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
-				<n8n-resize-wrapper
-					v-if="isChatOpen"
-					:supported-directions="['right']"
-					:width="chatWidth"
-					:class="$style.chat"
-					@resize="onResizeChatDebounced"
-				>
-					<div :class="$style.inner">
-						<ChatMessagesPanel
-							data-test-id="canvas-chat"
-							:messages="messages"
-							:session-id="currentSessionId"
-							:past-chat-messages="previousChatMessages"
-							:show-close-button="!connectedNode"
-							@close="closePanel"
-							@refresh-session="handleRefreshSession"
-							@display-execution="handleDisplayExecution"
-							@send-message="sendMessage"
-						/>
+	<div ref="outer">
+		<div ref="logs" :class="$style.wrapper">
+			<N8nResizeWrapper
+				v-if="chatTriggerNode"
+				:is-resizing-enabled="isChatOpen || isLogsOpen"
+				:supported-directions="['top']"
+				:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
+				:height="height"
+				:style="rootStyles"
+				@resize="onResizeDebounced"
+			>
+				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
+					<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
+						<n8n-resize-wrapper
+							v-if="isChatOpen"
+							:supported-directions="['right']"
+							:width="chatWidth"
+							:class="$style.chat"
+							@resize="onResizeChatDebounced"
+						>
+							<div :class="$style.inner">
+								<ChatMessagesPanel
+									data-test-id="canvas-chat"
+									:messages="messages"
+									:session-id="currentSessionId"
+									:past-chat-messages="previousChatMessages"
+									:show-close-button="!connectedNode"
+									@close="closePanel"
+									@refresh-session="handleRefreshSession"
+									@display-execution="handleDisplayExecution"
+									@send-message="sendMessage"
+								/>
+							</div>
+						</n8n-resize-wrapper>
+						<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
+							<ChatLogsPanel
+								:key="`${resultData?.length ?? messages?.length}`"
+								:workflow="workflow"
+								:is-popped-out="isPopOut"
+								data-test-id="canvas-chat-logs"
+								:node="connectedNode"
+								:slim="logsWidth < 700"
+								@close="closePanel"
+								@request-pop-out="handleClickPopOut"
+							/>
+						</div>
 					</div>
-				</n8n-resize-wrapper>
-				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
-					<ChatLogsPanel
-						:key="`${resultData?.length ?? messages?.length}`"
-						:workflow="workflow"
-						data-test-id="canvas-chat-logs"
-						:node="connectedNode"
-						:slim="logsWidth < 700"
-						@close="closePanel"
-					/>
 				</div>
-			</div>
+			</N8nResizeWrapper>
 		</div>
-	</N8nResizeWrapper>
+	</div>
 </template>
 
 <style lang="scss" module>
+@media all and (display-mode: picture-in-picture) {
+	.logs {
+		width: 400px;
+	}
+
+	.resizeWrapper {
+		height: 100% !important;
+		max-height: 100vh !important;
+	}
+}
+
+.wrapper {
+	height: 100%;
+}
+
 .resizeWrapper {
 	height: var(--panel-height);
 	min-height: 4rem;
