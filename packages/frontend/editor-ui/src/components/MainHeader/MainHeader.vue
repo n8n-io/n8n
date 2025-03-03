@@ -223,9 +223,11 @@ function hideGithubButton() {
 </script>
 
 <template>
-	<div class="container">
-		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
-			<div v-show="!hideMenuBar" class="top-menu">
+	<div :class="$style.container">
+		<div
+			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+		>
+			<div v-show="!hideMenuBar" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
@@ -236,6 +238,25 @@ function hideGithubButton() {
 					:active="workflow.active"
 					:read-only="readOnly"
 				/>
+				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
+					<div :class="$style['github-button-container']">
+						<GithubButton
+							href="https://github.com/n8n-io/n8n"
+							:data-color-scheme="uiStore.appliedTheme"
+							data-size="large"
+							data-show-count="true"
+							aria-label="Star n8n-io/n8n on GitHub"
+						>
+							Star
+						</GithubButton>
+						<N8nIcon
+							:class="$style['close-github-button']"
+							icon="times-circle"
+							size="medium"
+							@click="hideGithubButton"
+						/>
+					</div>
+				</div>
 			</div>
 			<TabBar
 				v-if="onWorkflowPage"
@@ -244,29 +265,10 @@ function hideGithubButton() {
 				@update:model-value="onTabSelected"
 			/>
 		</div>
-		<div v-if="showGitHubButton" class="github-button hidden-sm-and-down">
-			<div class="github-button-container">
-				<GithubButton
-					href="https://github.com/n8n-io/n8n"
-					:data-color-scheme="uiStore.appliedTheme"
-					data-size="large"
-					data-show-count="true"
-					aria-label="Star n8n-io/n8n on GitHub"
-				>
-					Star
-				</GithubButton>
-				<N8nIcon
-					class="close-github-button"
-					icon="times-circle"
-					size="medium"
-					@click="hideGithubButton"
-				/>
-			</div>
-		</div>
 	</div>
 </template>
 
-<style lang="scss">
+<style module lang="scss">
 .container {
 	display: flex;
 	position: relative;
@@ -288,22 +290,15 @@ function hideGithubButton() {
 	align-items: center;
 	font-size: 0.9em;
 	font-weight: 400;
-	padding: var(--spacing-xs) var(--spacing-m);
 	overflow: auto;
 }
 
 .github-button {
 	display: flex;
-	position: relative;
 	align-items: center;
 	align-self: stretch;
-	justify-content: center;
-	min-width: 170px;
-	padding-top: 2px;
-	padding-left: var(--spacing-m);
-	padding-right: var(--spacing-m);
+	padding: var(--spacing-5xs) var(--spacing-m) 0;
 	background-color: var(--color-background-xlight);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
