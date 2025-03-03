@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@/composables/useI18n';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
@@ -29,17 +28,13 @@ const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
-const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { createApiKey, updateApiKey, apiKeysById } = useApiKeysStore();
-const { baseUrl } = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
 const expirationDaysFromNow = ref(EXPIRATION_OPTIONS['30_DAYS']);
 const modalBus = createEventBus();
 const newApiKey = ref<ApiKeyWithRawValue | null>(null);
-const apiDocsURL = ref('');
 const loading = ref(false);
 const rawApiKey = ref('');
 const customExpirationDate = ref('');
@@ -110,10 +105,6 @@ onMounted(() => {
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
 	}
-
-	apiDocsURL.value = isSwaggerUIEnabled
-		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
-		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 });
 
 function onInput(value: string): void {
@@ -222,26 +213,6 @@ const onSelect = (value: number) => {
 	>
 		<template #content>
 			<div>
-				<p v-if="newApiKey" class="mb-s">
-					<n8n-info-tip :bold="false">
-						<i18n-t keypath="settings.api.view.info" tag="span">
-							<template #apiAction>
-								<a
-									href="https://docs.n8n.io/api"
-									target="_blank"
-									v-text="i18n.baseText('settings.api.view.info.api')"
-								/>
-							</template>
-							<template #webhookAction>
-								<a
-									href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
-									target="_blank"
-									v-text="i18n.baseText('settings.api.view.info.webhook')"
-								/>
-							</template>
-						</i18n-t>
-					</n8n-info-tip>
-				</p>
 				<n8n-card v-if="newApiKey" class="mb-4xs">
 					<CopyInput
 						:label="newApiKey.label"
@@ -253,23 +224,6 @@ const onSelect = (value: number) => {
 					/>
 				</n8n-card>
 
-				<div v-if="newApiKey" :class="$style.hint">
-					<N8nText size="small">
-						{{
-							i18n.baseText(
-								`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-							)
-						}}
-					</N8nText>
-					{{ ' ' }}
-					<n8n-link :to="apiDocsURL" :new-window="true" size="small">
-						{{
-							i18n.baseText(
-								`settings.api.view.${isSwaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
-							)
-						}}
-					</n8n-link>
-				</div>
 				<div v-else :class="$style.form">
 					<N8nInputLabel
 						:label="i18n.baseText('settings.api.view.modal.form.label')"
@@ -360,11 +314,6 @@ const onSelect = (value: number) => {
 <style module lang="scss">
 .notice {
 	margin: 0;
-}
-
-.hint {
-	color: var(--color-text-light);
-	margin-bottom: var(--spacing-s);
 }
 
 .form {
