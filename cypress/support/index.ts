@@ -8,7 +8,7 @@ Cypress.Keyboard.defaults({
 });
 
 interface SigninPayload {
-	emailOrLdapLoginId: string;
+	email: string;
 	password: string;
 }
 

@@ -36,7 +36,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it('should login and logout', () => {
 		cy.visit('/');
-		cy.get('input[name="email"]').type(INSTANCE_OWNER.emailOrLdapLoginId);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_OWNER.email);
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
@@ -47,7 +47,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.openUserMenu();
 		cy.getByTestId('user-menu-item-logout').click();
 
-		cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 		cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
@@ -57,110 +57,86 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it('should prevent non-owners to access UM settings', () => {
 		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_MEMBERS[0].emailOrLdapLoginId,
+			INSTANCE_MEMBERS[0].email,
 			INSTANCE_MEMBERS[0].password,
 			false,
 		);
 	});
 
 	it('should allow instance owner to access UM settings', () => {
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-			true,
-		);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 	});
 
 	it('should properly render UM settings page for instance owners', () => {
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-			true,
-		);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		// All items in user list should be there
 		usersSettingsPage.getters.userListItems().should('have.length', 4);
 		// List item for current user should have the `Owner` badge
 		usersSettingsPage.getters
-			.userItem(INSTANCE_OWNER.emailOrLdapLoginId)
+			.userItem(INSTANCE_OWNER.email)
 			.find('.n8n-badge:contains("Owner")')
 			.should('exist');
 		// Other users list items should contain action pop-up list
-		usersSettingsPage.getters
-			.userActionsToggle(INSTANCE_MEMBERS[0].emailOrLdapLoginId)
-			.should('exist');
-		usersSettingsPage.getters
-			.userActionsToggle(INSTANCE_MEMBERS[1].emailOrLdapLoginId)
-			.should('exist');
-		usersSettingsPage.getters.userActionsToggle(INSTANCE_ADMIN.emailOrLdapLoginId).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[0].email).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_ADMIN.email).should('exist');
 	});
 
 	it('should be able to change user role to Admin and back', () => {
 		cy.enableFeature('advancedPermissions');
 
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-			true,
-		);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 
 		// Change role from Member to Admin
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_MEMBERS[0].emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
 			.find('input')
 			.should('contain.value', 'Member');
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].emailOrLdapLoginId).click();
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
 		getVisibleSelect().find('li').contains('Admin').click();
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_MEMBERS[0].emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
 			.find('input')
 			.should('contain.value', 'Admin');
 
 		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_MEMBERS[0].emailOrLdapLoginId,
+			INSTANCE_MEMBERS[0].email,
 			INSTANCE_MEMBERS[0].password,
 			true,
 		);
 
 		// Change role from Admin to Member, then back to Admin
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_ADMIN.emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_ADMIN.email)
 			.find('input')
 			.should('contain.value', 'Admin');
 
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.emailOrLdapLoginId).click();
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
 		getVisibleSelect().find('li').contains('Member').click();
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_ADMIN.emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_ADMIN.email)
 			.find('input')
 			.should('contain.value', 'Member');
 
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, false);
 		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_ADMIN.emailOrLdapLoginId,
-			INSTANCE_ADMIN.password,
-			false,
-		);
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_MEMBERS[0].emailOrLdapLoginId,
+			INSTANCE_MEMBERS[0].email,
 			INSTANCE_MEMBERS[0].password,
 			true,
 		);
 
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.emailOrLdapLoginId).click();
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
 		getVisibleSelect().find('li').contains('Admin').click();
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_ADMIN.emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_ADMIN.email)
 			.find('input')
 			.should('contain.value', 'Admin');
 
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_ADMIN.emailOrLdapLoginId,
-			INSTANCE_ADMIN.password,
-			true,
-		);
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].emailOrLdapLoginId).click();
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, true);
+		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
 		getVisibleSelect().find('li').contains('Member').click();
 		usersSettingsPage.getters
-			.userRoleSelect(INSTANCE_MEMBERS[0].emailOrLdapLoginId)
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
 			.find('input')
 			.should('contain.value', 'Member');
 
@@ -168,10 +144,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it('should be able to change theme', () => {
-		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-		);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 
 		personalSettingsPage.actions.changeTheme('Dark');
 		cy.get('body').should('have.attr', 'data-theme', 'dark');
@@ -181,12 +154,8 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it('should delete user and their data', () => {
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-			true,
-		);
-		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
+		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[0].email);
 		usersSettingsPage.getters.deleteDataRadioButton().click();
 		usersSettingsPage.getters.deleteDataInput().type('delete all data');
 		usersSettingsPage.getters.deleteUserButton().click();
@@ -194,12 +163,8 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it('should delete user and transfer their data', () => {
-		usersSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-			true,
-		);
-		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[1].emailOrLdapLoginId);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
+		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[1].email);
 		usersSettingsPage.getters.transferDataRadioButton().click();
 		usersSettingsPage.getters.userSelectDropDown().click();
 		usersSettingsPage.getters.userSelectOptions().first().click();
@@ -208,10 +173,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it('should allow user to change their personal data', () => {
-		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-		);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.actions.updateFirstAndLastName(
 			updatedPersonalData.newFirstName,
 			updatedPersonalData.newLastName,
@@ -223,10 +185,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it("shouldn't allow user to set weak password", () => {
-		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-		);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.getters.changePasswordLink().click();
 		for (const weakPass of updatedPersonalData.invalidPasswords) {
 			personalSettingsPage.actions.tryToSetWeakPassword(INSTANCE_OWNER.password, weakPass);
@@ -234,20 +193,14 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	});
 
 	it("shouldn't allow user to change password if old password is wrong", () => {
-		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-		);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
 		errorToast().closest('div').should('contain', 'Provided current password is incorrect.');
 	});
 
 	it('should change current user password', () => {
-		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
-			INSTANCE_OWNER.password,
-		);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword(
 			INSTANCE_OWNER.password,
@@ -255,14 +208,14 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		);
 		successToast().should('contain', 'Password updated');
 		personalSettingsPage.actions.loginWithNewData(
-			INSTANCE_OWNER.emailOrLdapLoginId,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 	});
 
 	it("shouldn't allow users to set invalid email", () => {
 		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 		// try without @ part
@@ -273,7 +226,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it('should change user email', () => {
 		personalSettingsPage.actions.loginAndVisit(
-			INSTANCE_OWNER.emailOrLdapLoginId,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);

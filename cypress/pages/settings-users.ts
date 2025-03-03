@@ -46,8 +46,8 @@ export class SettingsUsersPage extends BasePage {
 
 	actions = {
 		goToOwnerSetup: () => this.getters.setUpOwnerButton().click(),
-		loginAndVisit: (emailOrLdapLoginId: string, password: string, isOwner: boolean) => {
-			cy.signin({ emailOrLdapLoginId, password });
+		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
+			cy.signin({ email, password });
 			workflowPage.actions.visit();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {

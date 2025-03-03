@@ -6,14 +6,14 @@ export const N8N_AUTH_COOKIE = 'n8n-auth';
 const DEFAULT_USER_PASSWORD = 'CypressTest123';
 
 export const INSTANCE_OWNER = {
-	emailOrLdapLoginId: 'nathan@n8n.io',
+	email: 'nathan@n8n.io',
 	password: DEFAULT_USER_PASSWORD,
 	firstName: randFirstName(),
 	lastName: randLastName(),
 };
 
 export const INSTANCE_ADMIN = {
-	emailOrLdapLoginId: 'admin@n8n.io',
+	email: 'admin@n8n.io',
 	password: DEFAULT_USER_PASSWORD,
 	firstName: randFirstName(),
 	lastName: randLastName(),
@@ -21,13 +21,13 @@ export const INSTANCE_ADMIN = {
 
 export const INSTANCE_MEMBERS = [
 	{
-		emailOrLdapLoginId: 'rebecca@n8n.io',
+		email: 'rebecca@n8n.io',
 		password: DEFAULT_USER_PASSWORD,
 		firstName: randFirstName(),
 		lastName: randLastName(),
 	},
 	{
-		emailOrLdapLoginId: 'mustafa@n8n.io',
+		email: 'mustafa@n8n.io',
 		password: DEFAULT_USER_PASSWORD,
 		firstName: randFirstName(),
 		lastName: randLastName(),

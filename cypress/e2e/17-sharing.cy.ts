@@ -55,7 +55,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 
 		workflowPage.actions.openShareModal();
-		workflowSharingModal.actions.addUser(INSTANCE_MEMBERS[1].emailOrLdapLoginId);
+		workflowSharingModal.actions.addUser(INSTANCE_MEMBERS[1].email);
 		workflowSharingModal.actions.save();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
@@ -78,8 +78,8 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.getters.connectionParameter('Access Token').type('1234567890');
 		credentialsModal.actions.setName('Credential C2');
 		credentialsModal.actions.changeTab('Sharing');
-		credentialsModal.actions.addUser(INSTANCE_OWNER.emailOrLdapLoginId);
-		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
+		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].email);
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
 	});
@@ -185,12 +185,12 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.find('[data-test-id="project-sharing-info"]')
 			.filter(':visible')
 			.should('have.length', 3)
-			.contains(INSTANCE_ADMIN.emailOrLdapLoginId)
+			.contains(INSTANCE_ADMIN.email)
 			.should('have.length', 1);
-		getVisibleSelect().contains(INSTANCE_OWNER.emailOrLdapLoginId.toLowerCase()).click();
+		getVisibleSelect().contains(INSTANCE_OWNER.email.toLowerCase()).click();
 
-		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].emailOrLdapLoginId);
-		credentialsModal.actions.addUser(INSTANCE_ADMIN.emailOrLdapLoginId);
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[1].email);
+		credentialsModal.actions.addUser(INSTANCE_ADMIN.email);
 		credentialsModal.actions.saveSharing();
 		credentialsModal.actions.close();
 	});
@@ -312,7 +312,7 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API', false);
 		credentialsModal.actions.changeTab('Sharing');
-		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].email);
 		credentialsModal.actions.saveSharing();
 
 		// As the member, create a new notion credential and a workflow
@@ -341,7 +341,7 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.setWorkflowName(workflowName);
 		workflowPage.actions.openShareModal();
-		workflowSharingModal.actions.addUser(INSTANCE_MEMBERS[0].emailOrLdapLoginId);
+		workflowSharingModal.actions.addUser(INSTANCE_MEMBERS[0].email);
 		workflowSharingModal.actions.save();
 
 		// As the member, create a new notion credential
@@ -383,8 +383,8 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.setWorkflowName(workflowName);
 		workflowPage.actions.openShareModal();
-		workflowSharingModal.actions.addUser(INSTANCE_OWNER.emailOrLdapLoginId);
-		workflowSharingModal.actions.addUser(INSTANCE_ADMIN.emailOrLdapLoginId);
+		workflowSharingModal.actions.addUser(INSTANCE_OWNER.email);
+		workflowSharingModal.actions.addUser(INSTANCE_ADMIN.email);
 		workflowSharingModal.actions.save();
 
 		// As the global owner, create a new notion credential and open the shared
