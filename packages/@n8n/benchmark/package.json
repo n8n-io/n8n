@@ -40,6 +40,7 @@
     "zx": "^8.1.4"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@types/convict": "^6.1.1",
     "@types/k6": "^0.52.0"
   },

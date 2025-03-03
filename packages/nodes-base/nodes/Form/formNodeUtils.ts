@@ -2,13 +2,11 @@ import { type Response } from 'express';
 import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
 	type FormFieldsParameter,
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { renderForm } from './utils';
+import { renderForm, sanitizeHtml } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -21,6 +19,7 @@ export const renderFormNode = async (
 		formTitle: string;
 		formDescription: string;
 		buttonLabel: string;
+		customCss?: string;
 	};
 
 	let title = options.formTitle;
@@ -43,18 +42,10 @@ export const renderFormNode = async (
 			) as string) || 'Submit';
 	}
 
-	const responseMode = 'onReceived';
-
-	let redirectUrl;
-
-	const connectedNodes = context.getChildNodes(context.getNode().name);
-
-	const hasNextPage = connectedNodes.some(
-		(node) => !node.disabled && (node.type === FORM_NODE_TYPE || node.type === WAIT_NODE_TYPE),
-	);
-
-	if (hasNextPage) {
-		redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
+	for (const field of fields) {
+		if (field.fieldType === 'html') {
+			field.html = sanitizeHtml(field.html as string);
+		}
 	}
 
 	const appendAttribution = context.evaluateExpression(
@@ -67,11 +58,12 @@ export const renderFormNode = async (
 		formTitle: title,
 		formDescription: description,
 		formFields: fields,
-		responseMode,
+		responseMode: 'responseNode',
 		mode,
-		redirectUrl,
+		redirectUrl: undefined,
 		appendAttribution,
 		buttonLabel,
+		customCss: options.customCss,
 	});
 
 	return {

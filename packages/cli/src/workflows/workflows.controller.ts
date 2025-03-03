@@ -1,13 +1,16 @@
-import { ImportWorkflowFromUrlDto, ManualRunQueryDto } from '@n8n/api-types';
+import {
+	ImportWorkflowFromUrlDto,
+	ManualRunQueryDto,
+	TransferWorkflowBodyDto,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
 
 import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
@@ -18,7 +21,19 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
-import { Delete, Get, Patch, Post, ProjectScope, Put, Query, RestController } from '@/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Licensed,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	Query,
+	RestController,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -31,6 +46,7 @@ import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
+import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -67,6 +83,7 @@ export class WorkflowsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderService: FolderService,
 	) {}
 
 	@Post('/')
@@ -118,7 +135,7 @@ export class WorkflowsController {
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const { projectId } = req.body;
+			const { projectId, parentFolderId } = req.body;
 			project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
@@ -137,7 +154,18 @@ export class WorkflowsController {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new ApplicationError('No personal project found');
+				throw new UnexpectedError('No personal project found');
+			}
+
+			if (parentFolderId) {
+				try {
+					const parentFolder = await this.folderService.findFolderInProjectOrFail(
+						parentFolderId,
+						project.id,
+						transactionManager,
+					);
+					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
+				} catch {}
 			}
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
@@ -152,7 +180,7 @@ export class WorkflowsController {
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true },
+				{ em: transactionManager, includeTags: true, includeParentFolder: true },
 			);
 		});
 
@@ -197,6 +225,7 @@ export class WorkflowsController {
 				req.user,
 				req.listQueryOptions,
 				!!req.query.includeScopes,
+				!!req.query.includeFolders,
 			);
 
 			res.json({ count, data });
@@ -372,15 +401,11 @@ export class WorkflowsController {
 		@Query query: ManualRunQueryDto,
 	) {
 		if (!req.body.workflowData.id) {
-			throw new ApplicationError('You cannot execute a workflow without an ID', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('You cannot execute a workflow without an ID');
 		}
 
 		if (req.params.workflowId !== req.body.workflowData.id) {
-			throw new ApplicationError('Workflow ID in body does not match workflow ID in URL', {
-				level: 'warning',
-			});
+			throw new UnexpectedError('Workflow ID in body does not match workflow ID in URL');
 		}
 
 		if (this.license.isSharingEnabled()) {
@@ -402,11 +427,10 @@ export class WorkflowsController {
 		);
 	}
 
+	@Licensed('feat:sharing')
 	@Put('/:workflowId/share')
 	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
-		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
-
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
 
@@ -472,13 +496,17 @@ export class WorkflowsController {
 
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
-	async transfer(req: WorkflowRequest.Transfer) {
-		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
+	async transfer(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: TransferWorkflowBodyDto,
+	) {
 		return await this.enterpriseWorkflowService.transferOne(
 			req.user,
-			req.params.workflowId,
+			workflowId,
 			body.destinationProjectId,
+			body.shareCredentials,
 		);
 	}
 }
