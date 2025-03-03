@@ -35,9 +35,7 @@ export class CallProcessor implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const [inputData] = this.getInputData();
-
 		const { sdrAgentId, segmentId, maxAttempts, retryAfterDays } = inputData.json;
-		console.log({ sdrAgentId, segmentId, maxAttempts, retryAfterDays });
 
 		if (!sdrAgentId || !segmentId) {
 			throw new Error('SDR Agent ID and Segment ID are required.');

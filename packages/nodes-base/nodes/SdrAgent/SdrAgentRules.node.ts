@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { defaultConfig } from './helper';
 
 export class SdrAgentRules implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,14 +25,14 @@ export class SdrAgentRules implements INodeType {
 				displayName: 'Retry After (Days)',
 				name: 'retryAfterDays',
 				type: 'number',
-				default: 3,
+				default: defaultConfig.retryAfterDays,
 				description: 'Number of days before retrying a failed call.',
 			},
 			{
 				displayName: 'Max Attempts',
 				name: 'maxAttempts',
 				type: 'number',
-				default: 5,
+				default: defaultConfig.maxAttempts,
 				description: 'Maximum number of call attempts before stopping.',
 			},
 		],
@@ -45,225 +46,12 @@ export class SdrAgentRules implements INodeType {
 			throw new Error('SDR Agent ID and Segment ID are required.');
 		}
 
-		const retryAfterDays = this.getNodeParameter('retryAfterDays', 0) as number;
-		const maxAttempts = this.getNodeParameter('maxAttempts', 0) as number;
+		const retryAfterDays = this.getNodeParameter(
+			'retryAfterDays',
+			defaultConfig.retryAfterDays,
+		) as number;
+		const maxAttempts = this.getNodeParameter('maxAttempts', defaultConfig.maxAttempts) as number;
 
 		return [[{ json: { sdrAgentId, segmentId, retryAfterDays, maxAttempts } }]];
 	}
 }
-
-// import {
-// 	INodeType,
-// 	INodeTypeDescription,
-// 	ITriggerFunctions,
-// 	ITriggerResponse,
-// 	NodeConnectionType,
-// } from 'n8n-workflow';
-// import {
-// 	adjustTimeByOffset,
-// 	checkDynamicObject,
-// 	checkTimeSlotDayWise,
-// 	createDynamicObject,
-// 	defaultConfig,
-// 	getWeekDayOfToday,
-// 	NormalObjT,
-// } from './helper';
-// import Retell from 'retell-sdk';
-// import { getDbConnection } from '@utils/db';
-
-// export class SdrAgentRules implements INodeType {
-// 	description: INodeTypeDescription = {
-// 		displayName: 'SDR Agent Rules',
-// 		name: 'SdrAgentRules',
-// 		group: ['trigger'],
-// 		version: 1,
-// 		description: 'Triggers when a new call needs to be made based on retry rules.',
-// 		defaults: {
-// 			name: 'SDR Agent Trigger',
-// 			color: '#FF5733',
-// 		},
-// 		inputs: [NodeConnectionType.Main],
-// 		outputs: [NodeConnectionType.Main],
-// 		properties: [
-// 			{
-// 				displayName: 'Retry After (Days)',
-// 				name: 'retryAfterDays',
-// 				type: 'number',
-// 				default: defaultConfig.retryAfterDays,
-// 				description: 'Number of days to wait before retrying failed calls.',
-
-// 			},
-// 			{
-// 				displayName: 'Max Attempts',
-// 				name: 'maxAttempts',
-// 				type: 'number',
-// 				default: defaultConfig.maxAttempts,
-// 				description: 'Maximum number of call attempts before stopping.',
-// 			},
-// 		],
-// 	};
-
-// 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-// 		try {
-// 			const getActivationMode = this.getActivationMode();
-// 			const getChildNodes = this.getChildNodes('SdrAgent');
-// 			const getChildNodesSet = this.getChildNodes('Set');
-// 			const getMode = this.getMode();
-// 			const getNode = this.getNode();
-// 			const getWorkflow = this.getWorkflow();
-
-// 			const getParentNodes = this.getParentNodes('SdrAgent');
-// 			const getParentNodesSet = this.getParentNodes('Set');
-
-// 			console.log({ getActivationMode, getChildNodes, getChildNodesSet, getMode, getNode, getWorkflow, getParentNodes, getParentNodesSet, });
-
-// 			const workflowData = this.getWorkflowStaticData('global');
-// 			const sdrAgentId = workflowData.sdrAgentId as number;
-// 			const segmentId = workflowData.segmentId as number;
-
-// 			console.log({ workflowData });
-// 			const retryAfterDays = this.getNodeParameter('retryAfterDays', defaultConfig.retryAfterDays) as number;
-// 			const maxAttempts = this.getNodeParameter('maxAttempts', defaultConfig.maxAttempts) as number;
-// 			console.log({ sdrAgentId, segmentId });
-
-// 			if (!sdrAgentId || !segmentId) {
-// 				throw new Error('SDR Agent ID and Segment ID are required.');
-// 			}
-
-// 			const connection = await getDbConnection();
-// 			const sdrAgent = await fetchSDRAgent(connection, sdrAgentId);
-
-// 			if (!sdrAgent) {
-// 				console.log('No active SDR agent found.');
-// 				return { closeFunction: async () => console.info('Trigger node stopped.') };
-// 			}
-
-// 			const isAvailable = checkTimeSlotDayWise(
-// 				sdrAgent.scheduling_hours,
-// 				getWeekDayOfToday(sdrAgent.offset),
-// 				sdrAgent.offset
-// 			);
-
-// 			if (!isAvailable) {
-// 				console.log('Agent not available in the current time slot.');
-// 				return { closeFunction: async () => console.info('Trigger node stopped.') };
-// 			}
-
-// 			const contacts = await fetchContacts(connection, segmentId, sdrAgent.offset, maxAttempts, retryAfterDays);
-// 			if (!contacts.length) {
-// 				console.log('No eligible contacts found.');
-// 				return { closeFunction: async () => console.log('Trigger node stopped.') };
-// 			}
-
-// 			await processCalls(contacts, sdrAgent);
-
-// 			return { closeFunction: async () => console.log('Trigger node stopped.') };
-// 		} catch (error) {
-// 			console.error('Error in SDR Agent Trigger:', error);
-// 			return { closeFunction: async () => console.log('Trigger node stopped due to an error.') };
-// 		}
-// 	}
-// }
-
-// // 🔹 Fetch SDR Agent details from DB
-// async function fetchSDRAgent(connection: any, sdrAgentId: number) {
-// 	const [results] = await connection.execute(
-// 		`SELECT sa.*, sa.id as agent_id, sasd.scheduling_hours, sasd.retry_after_days, sasd.max_attempts,
-//                 sasd.is_enabled, sasd.timezone, tz.*
-//          FROM sdr_agents AS sa
-//          JOIN s_a_scheduling_details AS sasd ON sa.id = sasd.sdr_agent_id
-//          JOIN timezones AS tz ON sasd.timezone = tz.id
-//          WHERE sa.id = ? AND sa.status = 'ACTIVE' AND sasd.is_enabled = TRUE`,
-// 		[sdrAgentId]
-// 	);
-// 	return results.length ? results[0] : null;
-// }
-
-// // 🔹 Fetch eligible contacts from DB
-// async function fetchContacts(connection: any, segmentId: number, offset: string, maxAttempts: number, retryAfterDays: number) {
-// 	const [contacts] = await connection.execute(
-// 		`SELECT DISTINCT cal.*
-//          FROM customers_and_leads_segments AS cals
-//          JOIN customers_and_leads AS cal ON cals.customers_and_leads_id = cal.id
-//          LEFT JOIN sdr_agents_call_details AS sacd ON sacd.lead_id = cal.id
-//          WHERE cals.segment_id = ?
-//          AND cal.id = 28084
-//          AND cal.status NOT IN ('calling', 'non-responsive', 'do-not-call')
-//          AND (cal.status != 'call-back'
-//               OR (CONVERT_TZ(NOW(), '+00:00', IFNULL(?, "+00:00")) >=
-//                   CONVERT_TZ(cal.callback_timestamp, '+00:00', IFNULL(?, "+00:00"))))
-//          AND (
-//              (SELECT COUNT(*) FROM sdr_agents_call_details WHERE lead_id = cal.id) < ?
-//              AND COALESCE((SELECT MAX(created_at) FROM sdr_agents_call_details WHERE lead_id = cal.id), '1970-01-01')
-//              <= DATE_SUB(NOW(), INTERVAL COALESCE(?, 0) DAY)
-//          )`,
-// 		[segmentId, offset, offset, maxAttempts, retryAfterDays]
-// 	);
-// 	return contacts;
-// }
-
-// // 🔹 Process calls for each eligible contact
-// async function processCalls(contacts: any[], sdrAgent: any) {
-// 	const callPromises = contacts.map(async (contact) => {
-// 		try {
-// 			console.log(`Calling ${contact.phone_number} from ${sdrAgent.agent_phone_number}...`);
-// 			const dynamicVariables = (contact.dynamic_variables as string[]) || [];
-// 			dynamicVariables.push('companyName');
-
-// 			const dynamicVariableObj = createDynamicObject(contact?.custom_fields);
-// 			dynamicVariableObj['leadName'] = contact.name.split(' ')[0];
-// 			dynamicVariableObj['productName'] = contact.product_of_interest;
-// 			dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), sdrAgent.offset);
-// 			dynamicVariableObj['companyName'] = contact.company_name;
-
-// 			if (checkDynamicObject(dynamicVariables, { ...dynamicVariableObj, ...contact, })) {
-// 				const callData = await createPhoneCall(
-// 					sdrAgent.agent_phone_number,
-// 					contact.phone_number,
-// 					dynamicVariableObj,
-// 					contact.company_id
-// 				);
-
-// 				await storeCallDetails([sdrAgent.agent_id, callData.call_status, callData.call_id, contact.company_id, contact.id]);
-// 				await updateCallStatus(contact.id, 'calling');
-// 			} else {
-// 				console.log(`Skipping call for lead ${contact.id} (not eligible).`);
-// 			}
-// 		} catch (error) {
-// 			console.error(`Error processing lead ${contact.id}:`, error);
-// 			throw new Error(error);
-// 		}
-// 	});
-
-// 	return Promise.all(callPromises);
-// }
-
-// // 🔹 Database Helper Functions
-// async function storeCallDetails(records: any[]) {
-// 	const connection = await getDbConnection();
-// 	await connection.execute(
-// 		'INSERT INTO sdr_agents_call_details (sdr_agent_id, call_current_status, retell_call_id, company_id, lead_id) VALUES (?, ?, ?, ?, ?)',
-// 		records
-// 	);
-// }
-
-// async function updateCallStatus(contactId: number, status: string) {
-// 	const connection = await getDbConnection();
-// 	await connection.execute(
-// 		'UPDATE customers_and_leads SET status = ?, callback_timestamp = NULL WHERE id = ?',
-// 		[status, contactId]
-// 	);
-// }
-
-// // 🔹 Retell API Helper Functions
-// async function getRetellClient(companyId: number) {
-// 	const connection = await getDbConnection();
-// 	const [companies] = await connection.execute(`SELECT retell_api_key FROM companies WHERE id = ?`, [companyId]) as any[];
-// 	if (!companies?.length) throw new Error('Retell API key not found.');
-// 	return new Retell({ apiKey: companies[0]?.retell_api_key });
-// }
-
-// async function createPhoneCall(fromNumber: string, toNumber: string, dynamicVariables: NormalObjT, companyId: number) {
-// 	const client = await getRetellClient(companyId);
-// 	return client?.call?.createPhoneCall({ from_number: fromNumber, to_number: toNumber, retell_llm_dynamic_variables: dynamicVariables });
-// }

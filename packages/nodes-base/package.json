@@ -656,6 +656,7 @@
       "dist/nodes/SdrAgent/SdrAgent.node.js",
       "dist/nodes/SdrAgent/SdrAgentRules.node.js",
       "dist/nodes/SdrAgent/CallProcessor.node.js",
+      "dist/nodes/Contacts/Contacts.node.js",
       "dist/nodes/N8n/N8n.node.js",
       "dist/nodes/N8nTrainingCustomerDatastore/N8nTrainingCustomerDatastore.node.js",
       "dist/nodes/N8nTrainingCustomerMessenger/N8nTrainingCustomerMessenger.node.js",
