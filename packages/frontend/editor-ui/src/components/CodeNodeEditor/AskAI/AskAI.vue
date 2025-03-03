@@ -73,6 +73,7 @@ function getErrorMessageByStatusCode(statusCode: number) {
 		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
 		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
+
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
 }
 
