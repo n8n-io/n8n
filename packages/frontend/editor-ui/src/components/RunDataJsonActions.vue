@@ -175,7 +175,7 @@ function handleCopyClick(commandData: { command: string }) {
 </script>
 
 <template>
-	<div :class="$style.actionsGroup">
+	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<n8n-icon-button
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
