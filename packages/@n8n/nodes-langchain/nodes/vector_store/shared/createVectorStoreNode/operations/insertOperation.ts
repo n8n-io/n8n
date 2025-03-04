@@ -20,6 +20,7 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 	args: VectorStoreNodeConstructorArgs<T>,
 	embeddings: Embeddings,
 ): Promise<INodeExecutionData[]> {
+	const nodeVersion = context.getNode().typeVersion;
 	// Get the input items and document data
 	const items = context.getInputData();
 	const documentInput = (await context.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
@@ -48,11 +49,30 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 		// Add the processed documents to the documents to embedd
 		documentsForEmbedding.push(...processedDocuments.processedDocuments);
 
+		// For the version 1, we run the populateVectorStore(embedding and insert) function for each item
+		if (nodeVersion === 1) {
+			await args.populateVectorStore(
+				context,
+				embeddings,
+				processedDocuments.processedDocuments,
+				itemIndex,
+			);
+		}
 		// Log the AI event for analytics
 		logAiEvent(context, 'ai-vector-store-populated');
 	}
-	// Populate the vector store with the processed documents
-	await args.populateVectorStore(context, embeddings, documentsForEmbedding, 0);
+
+	// For the version 1.1, we run the populateVectorStore in batches
+	if (nodeVersion >= 1.1) {
+		const embeddingBatchSize =
+			(context.getNodeParameter('embeddingBatchSize', 0, 200) as number) ?? 200;
+
+		// Populate the vector store with the processed documents in batches
+		for (let i = 0; i < documentsForEmbedding.length; i += embeddingBatchSize) {
+			const nextBatch = documentsForEmbedding.slice(i, i + embeddingBatchSize);
+			await args.populateVectorStore(context, embeddings, nextBatch, 0);
+		}
+	}
 
 	return resultData;
 }

@@ -83,6 +83,7 @@ export class MyVectorStoreNode {
 - Processes documents from input
 - Embeds and stores documents in the vector store
 - Returns serialized documents with metadata
+- Supports batched processing with configurable embedding batch size
 
 ### 3. `retrieve` Mode
 - Returns the vector store instance for use with AI nodes
@@ -104,6 +105,8 @@ export class MyVectorStoreNode {
 ### 1. NodeConstructorArgs Interface
 Defines the configuration and callbacks that specific vector store implementations must provide:
 
+> **Note:** In node version 1.1+, the `populateVectorStore` function must handle receiving multiple documents at once for batch processing.
+
 ```typescript
 interface VectorStoreNodeConstructorArgs<T extends VectorStore> {
   meta: NodeMeta;                    // Node metadata (name, description, etc.)
@@ -115,7 +118,7 @@ interface VectorStoreNodeConstructorArgs<T extends VectorStore> {
   updateFields?: INodeProperties[];  // Fields specific to update mode
   
   // Core implementation functions
-  populateVectorStore: Function;     // Store documents in vector store
+  populateVectorStore: Function;     // Store documents in vector store (accepts batches in v1.1+)
   getVectorStoreClient: Function;    // Get vector store instance
   releaseVectorStoreClient?: Function; // Clean up resources
 }
@@ -131,6 +134,13 @@ export async function handleLoadOperation<T extends VectorStore>(
   args: VectorStoreNodeConstructorArgs<T>,
   embeddings: Embeddings,
   itemIndex: number
+): Promise<INodeExecutionData[]>
+
+// Example: insertOperation.ts (v1.1+)
+export async function handleInsertOperation<T extends VectorStore>(
+  context: IExecuteFunctions,
+  args: VectorStoreNodeConstructorArgs<T>,
+  embeddings: Embeddings
 ): Promise<INodeExecutionData[]>
 ```
 
@@ -197,7 +207,7 @@ const vectorStoreTool = new DynamicTool({
 
 1. **Resource Management**: Each operation properly handles resource cleanup with `releaseVectorStoreClient`.
 
-2. **Batched Processing**: Operations like `insert` process items in batches and check for cancellation.
+2. **Batched Processing**: The `insert` operation processes documents in configurable batches. In node version 1.1+, a single embedding operation is performed for all documents in a batch, significantly improving performance by reducing API calls.
 
 3. **Metadata Filtering**: Filters can be applied during search operations to reduce result sets.
 

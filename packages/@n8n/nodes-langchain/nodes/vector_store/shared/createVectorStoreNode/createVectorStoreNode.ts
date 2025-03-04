@@ -43,7 +43,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			icon: args.meta.icon,
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
-			version: 1,
+			version: [1, 1.1],
 			defaults: {
 				name: args.meta.displayName,
 			},
@@ -145,6 +145,19 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					},
 				},
 				...args.sharedFields,
+				{
+					displayName: 'Embedding Batch Size',
+					name: 'embeddingBatchSize',
+					type: 'number',
+					default: 200,
+					description: 'Number of documents to embed in a single batch',
+					displayOptions: {
+						show: {
+							mode: ['insert'],
+							'@version': [{ _cnd: { gte: 1.1 } }],
+						},
+					},
+				},
 				...transformDescriptionForOperationMode(args.insertFields ?? [], 'insert'),
 				// Prompt and topK are always used for the load operation
 				{
