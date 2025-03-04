@@ -20,7 +20,7 @@ export class LmChatXAiGrok implements INodeType {
 		displayName: 'xAI Grok Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatXAiGrok',
-		icon: 'file:logo.svg',
+		icon: { light: 'file:logo.dark.svg', dark: 'file:logo.svg' },
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
