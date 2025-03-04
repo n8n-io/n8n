@@ -9,16 +9,14 @@ import type { Settings } from '@/databases/entities/settings';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { EventService } from '@/events/event.service';
+import { mockInstance, mockLogger } from '@test/mocking';
+
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 	LDAP_FEATURE_NAME,
-} from '@/ldap/constants';
-import { LdapService } from '@/ldap/ldap.service.ee';
-import type { LdapConfig } from '@/ldap/types';
-import { mockInstance, mockLogger } from '@test/mocking';
-
+} from '../constants';
 import {
 	getLdapIds,
 	createFilter,
@@ -29,6 +27,8 @@ import {
 	saveLdapSynchronization,
 	resolveEntryBinaryAttributes,
 } from '../helpers.ee';
+import { LdapService } from '../ldap.service.ee';
+import type { LdapConfig } from '../types';
 
 // Mock ldapts client
 jest.mock('ldapts', () => {
