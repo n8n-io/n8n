@@ -259,5 +259,7 @@ function onEdit(id: string) {
 .apiKeysContainer {
 	max-height: 45vh;
 	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: none;
 }
 </style>
