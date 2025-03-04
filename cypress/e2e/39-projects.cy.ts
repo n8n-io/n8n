@@ -54,11 +54,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.changeQuota('maxTeamProjects', -1);
 		});
 
-		/**
-		 * @TODO: New Canvas - Fix this test
-		 */
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		it.skip('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
+		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -453,6 +449,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -474,15 +472,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			// Create a project and add a user to it
 			projects.createProject('Project 1');
 			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+
+			clearNotifications();
 			projects.getProjectSettingsSaveButton().click();
 
 			// Move the workflow from Home to Project 1
 			projects.getHomeButton().click();
-			workflowsPage.getters
-				.workflowCards()
-				.should('have.length', 1)
-				.filter(':contains("Personal")')
-				.should('exist');
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
 			workflowsPage.getters.workflowCardActions('My workflow').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
@@ -492,12 +489,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 4)
-				.filter(':contains("Project 1")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 4);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+
+			clearNotifications();
+			cy.wait('@getResources');
 
 			workflowsPage.getters
 				.workflowCards()
@@ -509,7 +506,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			mainSidebar.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 
-			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 
