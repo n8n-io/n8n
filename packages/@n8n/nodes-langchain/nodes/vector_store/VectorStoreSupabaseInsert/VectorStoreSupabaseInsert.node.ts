@@ -12,8 +12,8 @@ import {
 
 import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
