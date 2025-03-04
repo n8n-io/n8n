@@ -1,3 +1,14 @@
+## [1.82.1](https://github.com/n8n-io/n8n/compare/n8n@1.82.0...n8n@1.82.1) (2025-03-04)
+
+
+### Bug Fixes
+
+* **core:** Do not validate email when LDAP is enabled ([#13605](https://github.com/n8n-io/n8n/issues/13605)) ([4d83067](https://github.com/n8n-io/n8n/commit/4d8306718050ba92e36603d7e5a79cd4d213c161))
+* **editor:** Fix RLC dropdown vanishing when focusing search input ([#13579](https://github.com/n8n-io/n8n/issues/13579)) ([fce83dd](https://github.com/n8n-io/n8n/commit/fce83ddfeaee6faa06b91ba65697440e8ffa2c2f))
+* **n8n Form Trigger Node:** Sanitize HTML for formNode ([#13595](https://github.com/n8n-io/n8n/issues/13595)) ([acde2e8](https://github.com/n8n-io/n8n/commit/acde2e8173dfbfbc0f4203d0f1f641162f0aa60b))
+
+
+
 # [1.82.0](https://github.com/n8n-io/n8n/compare/n8n@1.81.0...n8n@1.82.0) (2025-03-03)
 
 
