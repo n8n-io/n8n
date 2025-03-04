@@ -8,6 +8,7 @@ import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import type { ListQuery } from '@/requests';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -155,5 +156,10 @@ export class FolderService {
 		});
 
 		return rootNode ? [rootNode] : [];
+	}
+
+	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+		options.filter = { ...options.filter, projectId };
+		return await this.folderRepository.getManyAndCount(options);
 	}
 }
