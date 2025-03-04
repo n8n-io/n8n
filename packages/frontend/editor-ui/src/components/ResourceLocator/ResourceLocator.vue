@@ -789,10 +789,12 @@ function removeOverride() {
 					:class="$style.error"
 					data-test-id="rlc-error-container"
 				>
-					<n8n-text bold size="small">
-						{{ i18n.baseText('resourceLocator.mode.list.error.title') }} -
+					<n8n-text color="text-dark" align="center" tag="div" class="mb-3xs">
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
+					</n8n-text>
+					<n8n-text size="small">
 						<span v-if="currentResponse.errorDetails.httpCode">
-							{{ currentResponse.errorDetails.httpCode }}
+							{{ currentResponse.errorDetails.httpCode }} -
 						</span>
 						{{ currentResponse.errorDetails.message?.split('-')[0]?.trim() }}
 					</n8n-text>
