@@ -28,7 +28,7 @@ import { until } from '@vueuse/core';
 
 self.process = { env: {} } as NodeJS.Process;
 
-const worker: LanguageServiceWorkerInit = {
+export const worker: LanguageServiceWorkerInit = {
 	async init(options, nodeDataFetcher) {
 		const loadedNodeTypesMap: Map<string, { type: string; typeName: string }> = reactive(new Map());
 
@@ -157,11 +157,11 @@ const worker: LanguageServiceWorkerInit = {
 		});
 
 		const applyChangesToCode = bufferChangeSets((bufferedChanges) => {
-			bufferedChanges.iterChanges((start, end, _fromNew, _toNew, text) => {
+			bufferedChanges.iterChanges((start, end, fromNew, _toNew, text) => {
 				const length = end - start;
 
 				env.updateFile(codeFileName, text.toString(), {
-					start: editorPositionToTypescript(start),
+					start: editorPositionToTypescript(fromNew),
 					length,
 				});
 			});
