@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/unbound-method */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
 
@@ -31,7 +33,7 @@ describe('handleLoadOperation', () => {
 		};
 
 		mockContext = mock<IExecuteFunctions>();
-		mockContext.getNodeParameter.mockImplementation((parameterName, itemIndex, fallbackValue) => {
+		mockContext.getNodeParameter.mockImplementation((parameterName, _itemIndex, fallbackValue) => {
 			if (typeof parameterName !== 'string') return fallbackValue;
 			return nodeParameters[parameterName] ?? fallbackValue;
 		});
@@ -87,9 +89,9 @@ describe('handleLoadOperation', () => {
 		const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
 		expect(result[0].json.document).toHaveProperty('metadata');
-		expect(result[0].json.document.metadata).toEqual({ test: 'metadata 1' });
-		expect(result[0].json.document.pageContent).toEqual('test content 1');
-		expect(result[0].json.score).toEqual(0.95);
+		expect((result[0].json?.document as IDataObject)?.metadata).toEqual({ test: 'metadata 1' });
+		expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
+		expect(result[0].json?.score).toEqual(0.95);
 	});
 
 	it('should exclude document metadata when includeDocumentMetadata is false', async () => {
@@ -97,9 +99,9 @@ describe('handleLoadOperation', () => {
 
 		const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
-		expect(result[0].json.document).not.toHaveProperty('metadata');
-		expect(result[0].json.document.pageContent).toEqual('test content 1');
-		expect(result[0].json.score).toEqual(0.95);
+		expect(result[0].json?.document).not.toHaveProperty('metadata');
+		expect((result[0].json?.document as IDataObject)?.pageContent).toEqual('test content 1');
+		expect(result[0].json?.score).toEqual(0.95);
 	});
 
 	it('should use the topK parameter to limit results', async () => {

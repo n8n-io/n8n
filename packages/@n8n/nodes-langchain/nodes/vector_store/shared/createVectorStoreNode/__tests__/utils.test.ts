@@ -1,13 +1,14 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+
+import { DEFAULT_OPERATION_MODES } from '../constants';
+import type { VectorStoreNodeConstructorArgs, NodeOperationMode } from '../types';
 import {
 	transformDescriptionForOperationMode,
 	isUpdateSupported,
 	getOperationModeOptions,
 } from '../utils';
-import type { VectorStoreNodeConstructorArgs, NodeOperationMode } from '../types';
-import { DEFAULT_OPERATION_MODES, OPERATION_MODE_DESCRIPTIONS } from '../constants';
 
 describe('Vector Store Utilities', () => {
 	describe('transformDescriptionForOperationMode', () => {

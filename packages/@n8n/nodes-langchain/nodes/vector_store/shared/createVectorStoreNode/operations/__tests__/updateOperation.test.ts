@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
@@ -22,7 +23,7 @@ jest.mock('@utils/helpers', () => ({
 }));
 
 jest.mock('../../../processDocuments', () => ({
-	processDocument: jest.fn().mockImplementation((documentInput, itemData, itemIndex) => {
+	processDocument: jest.fn().mockImplementation((_documentInput, _itemData, itemIndex) => {
 		const mockProcessed = [
 			{
 				pageContent: `updated content ${itemIndex}`,
@@ -76,7 +77,7 @@ describe('handleUpdateOperation', () => {
 
 		// Setup vector store mock
 		mockVectorStore = mock<VectorStore>();
-		mockVectorStore.addDocuments = jest.fn().mockResolvedValue(undefined);
+		mockVectorStore.addDocuments.mockResolvedValue(undefined);
 
 		// Setup args mock
 		mockArgs = {

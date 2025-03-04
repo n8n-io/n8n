@@ -30,7 +30,7 @@ describe('Vector Store Operation Handlers', () => {
 		};
 
 		mockContext = mock<IExecuteFunctions & ISupplyDataFunctions>();
-		mockContext.getNodeParameter.mockImplementation((parameterName, itemIndex, fallbackValue) => {
+		mockContext.getNodeParameter.mockImplementation((parameterName, _itemIndex, fallbackValue) => {
 			if (typeof parameterName !== 'string') return fallbackValue;
 			return nodeParameters[parameterName] ?? fallbackValue;
 		});

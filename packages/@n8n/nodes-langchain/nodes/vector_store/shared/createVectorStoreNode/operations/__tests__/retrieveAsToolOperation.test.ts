@@ -1,13 +1,16 @@
-import { mock, MockProxy } from 'jest-mock-extended';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
+/* eslint-disable @typescript-eslint/unbound-method */
 import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import type { MockProxy } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import { DynamicTool } from 'langchain/tools';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
+
 import { logWrapper } from '@utils/logWrapper';
 
-import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
+import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 
 // Mock the helper functions
 jest.mock('@utils/helpers', () => ({
@@ -34,7 +37,7 @@ describe('handleRetrieveAsToolOperation', () => {
 		};
 
 		mockContext = mock<ISupplyDataFunctions>();
-		mockContext.getNodeParameter.mockImplementation((parameterName, itemIndex, fallbackValue) => {
+		mockContext.getNodeParameter.mockImplementation((parameterName, _itemIndex, fallbackValue) => {
 			if (typeof parameterName !== 'string') return fallbackValue;
 			return nodeParameters[parameterName] ?? fallbackValue;
 		});
@@ -68,7 +71,14 @@ describe('handleRetrieveAsToolOperation', () => {
 	});
 
 	it('should create a dynamic tool with the correct name and description', async () => {
-		const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
+		const result = (await handleRetrieveAsToolOperation(
+			mockContext,
+			mockArgs,
+			mockEmbeddings,
+			0,
+		)) as {
+			response: DynamicTool;
+		};
 
 		expect(result).toHaveProperty('response');
 		expect(result.response).toBeInstanceOf(DynamicTool);

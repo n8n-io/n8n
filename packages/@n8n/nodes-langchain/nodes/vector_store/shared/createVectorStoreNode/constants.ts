@@ -1,5 +1,6 @@
 import { NodeConnectionType } from 'n8n-workflow';
 import type { INodePropertyOptions } from 'n8n-workflow';
+
 import type { NodeOperationMode } from './types';
 
 export const DEFAULT_OPERATION_MODES: NodeOperationMode[] = [
