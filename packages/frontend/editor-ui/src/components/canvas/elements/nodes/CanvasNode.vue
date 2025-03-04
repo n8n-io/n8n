@@ -18,7 +18,6 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
@@ -36,12 +35,15 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { isEqual } from 'lodash-es';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
+	nodeTypeDescription: INodeTypeDescription;
+	simulatedNodeTypeDescription?: INodeTypeDescription;
 };
 
 const slots = defineSlots<{
@@ -71,7 +73,6 @@ const style = useCssModule();
 
 const props = defineProps<Props>();
 
-const nodeTypesStore = useNodeTypesStore();
 const contextMenu = useContextMenu();
 
 const { connectingHandle } = useCanvas();
@@ -97,10 +98,6 @@ const {
 });
 
 const isDisabled = computed(() => props.data.disabled);
-
-const nodeTypeDescription = computed(() => {
-	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
-});
 
 const classes = computed(() => ({
 	[style.canvasNode]: true,
@@ -407,7 +404,7 @@ onBeforeUnmount(() => {
 			@open:contextmenu="onOpenContextMenuFromNode"
 		>
 			<NodeIcon
-				:node-type="nodeTypeDescription"
+				:node-type="simulatedNodeTypeDescription ?? nodeTypeDescription"
 				:size="nodeIconSize"
 				:shrink="false"
 				:disabled="isDisabled"

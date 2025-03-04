@@ -95,6 +95,7 @@ export interface CanvasNodeData {
 	subtitle: string;
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
+	simulatedType?: INodeUi['type'];
 	disabled: INodeUi['disabled'];
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];

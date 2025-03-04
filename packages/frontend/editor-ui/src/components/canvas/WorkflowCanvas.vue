@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
 import { computed, ref, toRef, useCssModule } from 'vue';
-import type { Workflow } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE } from '@/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -34,6 +36,8 @@ const props = withDefaults(
 
 const $style = useCssModule();
 
+const nodeTypesStore = useNodeTypesStore();
+
 const { onNodesInitialized } = useVueFlow({ id: props.id });
 
 const workflow = toRef(props, 'workflow');
@@ -52,6 +56,33 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	workflowObject,
 });
 
+const nodeTypeDescriptions = computed(() => {
+	return mappedNodes.value.reduce<Record<string, INodeTypeDescription>>((acc, node) => {
+		if (!node.data) {
+			return acc;
+		}
+
+		if (node.data.simulatedType) {
+			const simulatedNodeType = nodeTypesStore.getNodeType(node.data.simulatedType);
+			if (simulatedNodeType) {
+				acc[simulatedNodeType.name] = simulatedNodeType;
+			}
+		}
+
+		const key = `${node.data.type}@${node.data.typeVersion}`;
+		if (acc[key]) {
+			return acc;
+		}
+
+		const nodeTypeDescription = nodeTypesStore.getNodeType(node.data.type, node.data.typeVersion);
+		if (nodeTypeDescription) {
+			acc[key] = nodeTypeDescription;
+		}
+
+		return acc;
+	}, {});
+});
+
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 onNodesInitialized(() => {
 	if (!initialFitViewDone.value || props.showFallbackNodes) {
@@ -68,6 +99,7 @@ onNodesInitialized(() => {
 				v-if="workflow"
 				:id="id"
 				:nodes="mappedNodes"
+				:node-type-descriptions="nodeTypeDescriptions"
 				:connections="mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"

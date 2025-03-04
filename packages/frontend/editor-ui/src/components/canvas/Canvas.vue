@@ -45,6 +45,7 @@ import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
@@ -96,6 +97,7 @@ const props = withDefaults(
 	defineProps<{
 		id?: string;
 		nodes: CanvasNode[];
+		nodeTypeDescriptions: Record<string, INodeTypeDescription>;
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
@@ -804,6 +806,10 @@ provide(CanvasKey, {
 				:event-bus="eventBus"
 				:hovered="nodesHoveredById[nodeProps.id]"
 				:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+				:node-type-description="
+					nodeTypeDescriptions[`${nodeProps.data.type}@${nodeProps.data.typeVersion}`]
+				"
+				:simulated-node-type-description="nodeTypeDescriptions[nodeProps.data.simulatedType]"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
