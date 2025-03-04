@@ -265,6 +265,8 @@ function showPip() {
 	// Move the player to the Picture-in-Picture window.
 	pipWindow.value?.document.body.append(logsEl.value);
 	pipWindow.value?.addEventListener('pagehide', () => {
+		pipWindow.value = undefined;
+
 		if (logsEl.value) {
 			outerEl.value?.appendChild(logsEl.value);
 		}
