@@ -300,6 +300,12 @@ async function onConnectionStateChange() {
 	flex-direction: row;
 	align-items: center;
 	flex: 1;
+
+	svg,
+	img {
+		max-width: 28px;
+		max-height: 28px;
+	}
 }
 
 .providerActions {
