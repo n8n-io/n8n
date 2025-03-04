@@ -53,11 +53,17 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
+import { N8nNotice } from '@n8n/design-system';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
 	nextPageToken: unknown;
 	error: boolean;
+	errorDetails?: {
+		message?: string;
+		description?: string;
+		httpCode?: string;
+	};
 	loading: boolean;
 }
 
@@ -148,13 +154,9 @@ const selectedMode = computed(() => {
 
 const isListMode = computed(() => selectedMode.value === 'list');
 
-const hasCredential = computed(() => {
-	const node = ndvStore.activeNode;
-	if (!node) {
-		return false;
-	}
-	return !!(node?.credentials && Object.keys(node.credentials).length === 1);
-});
+const hasPermissionError = computed(() =>
+	['401', '403'].includes(currentResponse.value?.errorDetails?.httpCode ?? ''),
+);
 
 const credentialsNotSet = computed(() => {
 	if (!props.node) return false;
@@ -643,6 +645,11 @@ async function loadResources() {
 		setResponse(paramsKey, {
 			loading: false,
 			error: true,
+			errorDetails: {
+				message: e.message,
+				description: e.description,
+				httpCode: e.httpCode,
+			},
 		});
 	}
 }
@@ -777,19 +784,37 @@ function removeOverride() {
 			@load-more="loadResourcesDebounced"
 		>
 			<template #error>
-				<div :class="$style.error" data-test-id="rlc-error-container">
-					<n8n-text color="text-dark" align="center" tag="div">
-						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
+				<div
+					v-if="currentResponse.errorDetails"
+					:class="$style.error"
+					data-test-id="rlc-error-container"
+				>
+					<n8n-text bold size="small">
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }} -
+						<span v-if="currentResponse.errorDetails.httpCode">
+							{{ currentResponse.errorDetails.httpCode }}
+						</span>
+						{{ currentResponse.errorDetails.message?.split('-')[0]?.trim() }}
 					</n8n-text>
-					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
-						{{ i18n.baseText('resourceLocator.mode.list.error.description.part1') }}
-						<a v-if="credentialsNotSet" @click="createNewCredential">{{
-							i18n.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
-						}}</a>
-						<a v-else-if="hasCredential" @click="openCredential">{{
-							i18n.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
-						}}</a>
-					</n8n-text>
+					<N8nNotice
+						v-if="currentResponse.errorDetails.description"
+						theme="warning"
+						class="mt-s mb-s text-left"
+					>
+						{{ currentResponse.errorDetails.description }}
+					</N8nNotice>
+					<div v-if="hasPermissionError" data-test-id="permission-error-link">
+						<a
+							v-if="credentialsNotSet"
+							:class="$style['credential-link']"
+							@click="createNewCredential"
+						>
+							{{ i18n.baseText('resourceLocator.mode.list.error.description.noCredentials') }}
+						</a>
+						<a v-else :class="$style['credential-link']" @click="openCredential">
+							{{ i18n.baseText('resourceLocator.mode.list.error.description.checkCredentials') }}
+						</a>
+					</div>
 				</div>
 			</template>
 			<div
@@ -820,6 +845,7 @@ function removeOverride() {
 						<n8n-option
 							v-for="mode in parameter.modes"
 							:key="mode.name"
+							:data-test-id="`mode-${mode.name}`"
 							:value="mode.name"
 							:label="getModeLabel(mode)"
 							:disabled="isValueExpression && mode.name === 'list'"
