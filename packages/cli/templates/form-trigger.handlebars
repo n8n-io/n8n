@@ -770,10 +770,12 @@
 			});
 
 			let interval = 1000;
-			let intervalId;
+			let timeoutId;
 			let formWaitingUrl;
 
 			const checkExecutionStatus = async () => {
+				if (!interval) return;
+
 				try {
 					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
 					const text = (await response.text()).trim();
@@ -811,7 +813,7 @@
 					}
 
 					interval = Math.round(interval * 1.1);
-					intervalId = setTimeout(checkExecutionStatus, interval);
+					timeoutId = setTimeout(checkExecutionStatus, interval);
 				} catch (error) {
 					console.error("Error fetching data:", error);
 				}
@@ -903,6 +905,13 @@
 								if (text) {
 									document.body.innerHTML = text;
 									return;
+								}
+
+								if (text === '') {
+									// this is empty cleanup response from responsePromise
+									// no need to keep checking execution status
+									clearTimeout(timeoutId);
+									interval = 0;
 								}
 							}
 
