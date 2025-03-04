@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, cleanup, fireEvent, within } from '@testing-library/vue';
+import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vue';
 
 import RunDataJsonActions from './RunDataJsonActions.vue';
 import { nonExistingJsonPath, VIEWS } from '@/constants';
@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { useI18n } from '@/composables/useI18n';
 
 vi.mock('vue-router', () => {
 	return {
@@ -28,6 +29,8 @@ vi.mock('@/composables/useClipboard', () => ({
 		copy,
 	}),
 }));
+
+const i18n = useI18n();
 
 async function createPiniaWithActiveNode() {
 	const node = mockNodes[0];
@@ -137,7 +140,7 @@ describe('RunDataJsonActions', () => {
 		server.shutdown();
 	});
 
-	it('should copy output from current run index on click', async () => {
+	it('should copy unselected JSON output from latest run on click', async () => {
 		const { pinia, activeNode } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
@@ -189,7 +192,7 @@ describe('RunDataJsonActions', () => {
 		);
 	});
 
-	it('should copy output from selected previous run index on click', async () => {
+	it('should copy unselected JSON output from selected previous run on click', async () => {
 		const { pinia, activeNode } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
 			props: {
@@ -243,5 +246,134 @@ describe('RunDataJsonActions', () => {
 				2,
 			),
 		);
+	});
+
+	it("should copy selected JSON value on 'Copy Selection' click", async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode,
+				paneType: 'output',
+				pushRef: 'ref',
+				displayMode: 'json',
+				distanceFromActive: 0,
+				selectedJsonPath: '[0].name',
+				jsonData: [
+					{
+						id: 3,
+						name: 'Second run 1',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		renderComponent({
+			pinia,
+		});
+
+		await waitFor(() =>
+			expect(screen.getByText(i18n.baseText('runData.copyValue'))).toBeInTheDocument(),
+		);
+
+		const option = screen.getByText(i18n.baseText('runData.copyValue'));
+
+		await fireEvent.click(option);
+
+		expect(copy).toHaveBeenCalledWith('Second run 1');
+	});
+
+	it("should copy selected JSON value's item path on 'Copy Item Path' click", async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode,
+				paneType: 'output',
+				pushRef: 'ref',
+				displayMode: 'json',
+				distanceFromActive: 0,
+				selectedJsonPath: '[0].name',
+				jsonData: [
+					{
+						id: 3,
+						name: 'Second run 1',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		renderComponent({
+			pinia,
+		});
+
+		await waitFor(() =>
+			expect(screen.getByText(i18n.baseText('runData.copyItemPath'))).toBeInTheDocument(),
+		);
+
+		const option = screen.getByText(i18n.baseText('runData.copyItemPath'));
+
+		await fireEvent.click(option);
+
+		expect(copy).toHaveBeenCalledWith('{{ $item("0").$node["Manual Trigger"].json["name"] }}');
+	});
+
+	it("should copy selected JSON value's parameter path on 'Copy Parameter Path' click", async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode,
+				paneType: 'output',
+				pushRef: 'ref',
+				displayMode: 'json',
+				distanceFromActive: 0,
+				selectedJsonPath: '[0].name',
+				jsonData: [
+					{
+						id: 3,
+						name: 'Second run 1',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		renderComponent({
+			pinia,
+		});
+
+		await waitFor(() =>
+			expect(screen.getByText(i18n.baseText('runData.copyParameterPath'))).toBeInTheDocument(),
+		);
+
+		const option = screen.getByText(i18n.baseText('runData.copyParameterPath'));
+
+		await fireEvent.click(option);
+
+		expect(copy).toHaveBeenCalledWith('{{ $node["Manual Trigger"].json["name"] }}');
 	});
 });
