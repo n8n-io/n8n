@@ -681,6 +681,55 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('updateNodeAtIndex', () => {
+		it.each([
+			{
+				description: 'should update node at given index with provided data',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Updated Node' }],
+				expectedResult: true,
+			},
+			{
+				description: 'should not update node if index is invalid',
+				nodeIndex: -1,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should return false if node data is unchanged',
+				nodeIndex: 0,
+				nodeData: { name: 'Original Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should update multiple properties of a node',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node', type: 'newType' },
+				initialNodes: [{ name: 'Original Node', type: 'oldType' }],
+				expectedNodes: [{ name: 'Updated Node', type: 'newType' }],
+				expectedResult: true,
+			},
+		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
+			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
+
+			const result = workflowsStore.updateNodeAtIndex(nodeIndex, nodeData);
+
+			expect(result).toBe(expectedResult);
+			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
+		});
+
+		it('should throw error if out of bounds', () => {
+			workflowsStore.workflow.nodes = [];
+			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
+		});
+	});
+
 	test.each([
 		// check userVersion behavior
 		[-1, 1, 1], // userVersion -1, use default (1)
