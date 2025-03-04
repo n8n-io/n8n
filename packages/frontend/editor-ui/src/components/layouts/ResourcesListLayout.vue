@@ -144,8 +144,11 @@ const slots = defineSlots<{
 		filters: Record<string, boolean | string | string[]>;
 		setKeyValue: (key: string, value: unknown) => void;
 	}): unknown;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+	default(props: {
+		data: unknown;
+		columns?: DatatableColumn[];
+		updateItemSize?: (data: unknown) => void;
+	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
 }>();
@@ -418,7 +421,7 @@ const getColumns = () => {
 	if ('columns' in props.typeProps) {
 		return props.typeProps.columns;
 	}
-	return {};
+	return [];
 };
 
 const sendSortingTelemetry = () => {
