@@ -1141,19 +1141,20 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					showClose: true,
 				},
 			);
-
 			if (confirmModal === MODAL_CONFIRM) {
 				const saved = await saveCurrentWorkflow({}, false);
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
 					uiStore.stateIsDirty = false;
 					const goToNext = await confirm();
-					if (goToNext) {
-						next();
-					}
+					next(goToNext);
 				} else {
-					router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowsStore.workflow.id } });
-					next(false);
+					next(
+						router.resolve({
+							name: VIEWS.WORKFLOW,
+							params: { name: workflowsStore.workflow.id },
+						}),
+					);
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
 				await cancel();
@@ -1162,8 +1163,12 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				next();
 			} else if (confirmModal === MODAL_CLOSE) {
 				// The route may have already changed due to the browser back button, so let's restore it
-				router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowsStore.workflow.id } });
-				next(false);
+				next(
+					router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: workflowsStore.workflow.id },
+					}),
+				);
 			}
 		} else {
 			next();
