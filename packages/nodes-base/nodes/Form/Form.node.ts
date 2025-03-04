@@ -284,6 +284,14 @@ export class Form extends Node {
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName:
+					"Ensure each branch of your workflow has a 'form ending' page type to avoid unexpected behavior",
+				name: 'completionPageNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Page Type',
 				name: 'operation',
 				type: 'options',
