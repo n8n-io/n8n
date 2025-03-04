@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
 import 'core-js/proposals/set-methods-v2';
 

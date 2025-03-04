@@ -94,11 +94,11 @@
     "xss": "catalog:"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.0.2",
+    "@iconify/json": "^2.2.228",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@faker-js/faker": "^8.0.2",
-    "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
@@ -111,6 +111,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:frontend",
     "browserslist-to-esbuild": "^2.1.1",
+    "fake-indexeddb": "^6.0.0",
     "miragejs": "^0.1.48",
     "unplugin-icons": "^0.19.0",
     "unplugin-vue-components": "^0.27.2",
