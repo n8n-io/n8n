@@ -51,7 +51,7 @@ export const mockNode = ({
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
-	icon = 'icon',
+	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
 	inputs = [NodeConnectionType.Main],
