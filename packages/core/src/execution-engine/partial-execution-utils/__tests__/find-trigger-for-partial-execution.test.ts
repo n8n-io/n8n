@@ -127,8 +127,57 @@ describe('findTriggerForPartialExecution', () => {
 					{ from: manualTriggerNode, to: setNode },
 				],
 				destinationNodeName: setNode.name,
-				pinData: { PinnedTrigger: [{ json: { test: true } }] },
+				pinData: { [pinnedTrigger.name]: [{ json: { test: true } }] },
 				expectedTrigger: pinnedTrigger,
+			},
+			{
+				description: 'should prioritize pinned webhook triggers',
+				nodes: [pinnedTrigger, manualTriggerNode, webhookNode, setNode],
+				connections: [
+					{ from: pinnedTrigger, to: setNode },
+					{ from: webhookNode, to: setNode },
+					{ from: manualTriggerNode, to: setNode },
+				],
+				destinationNodeName: setNode.name,
+				pinData: {
+					[pinnedTrigger.name]: [{ json: { test: true } }],
+					[webhookNode.name]: [{ json: { test: true } }],
+				},
+				expectedTrigger: webhookNode,
+			},
+			{
+				description: 'should prioritize the first connected pinned webhook triggers',
+				nodes: [webhookNode, webhookNode1, pinnedTrigger, manualTriggerNode, setNode],
+				connections: [
+					{ from: pinnedTrigger, to: setNode },
+					{ from: webhookNode, to: setNode },
+					{ from: webhookNode1, to: setNode },
+					{ from: manualTriggerNode, to: setNode },
+				],
+				destinationNodeName: setNode.name,
+				pinData: {
+					[pinnedTrigger.name]: [{ json: { test: true } }],
+					[webhookNode.name]: [{ json: { test: true } }],
+					[webhookNode1.name]: [{ json: { test: true } }],
+				},
+				expectedTrigger: webhookNode,
+			},
+			{
+				description: 'should prioritize the first connected pinned webhook triggers (reverse)',
+				nodes: [webhookNode1, webhookNode, pinnedTrigger, manualTriggerNode, setNode],
+				connections: [
+					{ from: pinnedTrigger, to: setNode },
+					{ from: webhookNode1, to: setNode },
+					{ from: webhookNode, to: setNode },
+					{ from: manualTriggerNode, to: setNode },
+				],
+				destinationNodeName: setNode.name,
+				pinData: {
+					[pinnedTrigger.name]: [{ json: { test: true } }],
+					[webhookNode.name]: [{ json: { test: true } }],
+					[webhookNode1.name]: [{ json: { test: true } }],
+				},
+				expectedTrigger: webhookNode1,
 			},
 		],
 	};
