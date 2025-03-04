@@ -62,7 +62,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 } from 'n8n-workflow';
-import { findLast } from 'lodash-es';
+import { findLast, pick, isEqual } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
 import * as workflowsApi from '@/api/workflows';
@@ -1138,10 +1138,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return true;
 	}
 
-	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): void {
+	/**
+	 * @returns `true` if the object was changed
+	 */
+	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
 		if (nodeIndex !== -1) {
-			Object.assign(workflow.value.nodes[nodeIndex], nodeData);
+			const node = workflow.value.nodes[nodeIndex];
+			const changed = !isEqual(pick(node, Object.keys(nodeData)), nodeData);
+			Object.assign(node, nodeData);
+			return changed;
 		}
+		return false;
 	}
 
 	function setNodeIssue(nodeIssueData: INodeIssueData): boolean {
@@ -1270,11 +1277,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			);
 		}
 
-		uiStore.stateIsDirty = true;
-
-		updateNodeAtIndex(nodeIndex, {
+		const changed = updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
+
+		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
 
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
