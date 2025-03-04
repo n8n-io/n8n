@@ -65,6 +65,7 @@ export async function execute(
 			const options = this.getNodeParameter('options', i, {});
 
 			const body: IDataObject = {
+				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
 				typecast: options.typecast ? true : false,
 			};
 
