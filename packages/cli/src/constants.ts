@@ -20,7 +20,7 @@ export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui'))
 
 const packageJsonPath = join(CLI_DIR, 'package.json');
 const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 'utf8'));
-export const N8N_VERSION = n8nPackageJson.version + (inDevelopment ? '-dev' : '');
+export const N8N_VERSION = n8nPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
