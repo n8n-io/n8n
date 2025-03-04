@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import { useSettingsStore } from '@/stores/settings.store';
+
 import {
 	TEST_NODE_NO_ISSUES,
 	TEST_PARAMETERS,
@@ -40,7 +40,6 @@ vi.mock('vue-router', async () => {
 });
 
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
-let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 const renderComponent = createComponentRenderer(ParameterInputList, {
 	props: {
@@ -121,10 +120,6 @@ describe('ParameterInputList', () => {
 				default: '',
 			},
 		];
-
-		beforeEach(() => {
-			settingsStore = mockedStore(useSettingsStore);
-		});
 
 		afterAll(() => {
 			workflowHelpersMock.mockRestore();
