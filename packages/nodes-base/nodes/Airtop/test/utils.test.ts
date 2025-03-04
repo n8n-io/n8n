@@ -3,6 +3,7 @@ import { NodeApiError } from 'n8n-workflow';
 import { createMockExecuteFunction } from './node/helpers';
 import { ERROR_MESSAGES } from '../constants';
 import {
+	createSessionAndWindow,
 	validateProfileName,
 	validateTimeoutMinutes,
 	validateSaveProfileOnTermination,
@@ -11,7 +12,31 @@ import {
 	validateSessionId,
 	validateUrl,
 	validateRequiredStringField,
+	shouldCreateNewSession,
 } from '../GenericFunctions';
+import type * as transport from '../transport';
+
+jest.mock('../transport', () => {
+	const originalModule = jest.requireActual<typeof transport>('../transport');
+	return {
+		...originalModule,
+		apiRequest: jest.fn(async (method: string, endpoint: string) => {
+			// create session
+			if (endpoint.includes('/create-session')) {
+				return { sessionId: 'new-session-123' };
+			}
+
+			// create window
+			if (method === 'POST' && endpoint.endsWith('/windows')) {
+				return { data: { windowId: 'new-window-123' } };
+			}
+
+			return {
+				success: true,
+			};
+		}),
+	};
+});
 
 describe('Test Airtop utils', () => {
 	describe('validateRequiredStringField', () => {
@@ -326,6 +351,60 @@ describe('Test Airtop utils', () => {
 
 			const expectedError = new NodeApiError(mockNode, { message: 'Error 1\nError 2' });
 			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(expectedError);
+		});
+	});
+
+	describe('shouldCreateNewSession', () => {
+		it("should return true when 'sessionMode' is 'new'", () => {
+			const nodeParameters = {
+				sessionMode: 'new',
+			};
+
+			const result = shouldCreateNewSession.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe(true);
+		});
+
+		it("should return false when 'sessionMode' is 'existing'", () => {
+			const nodeParameters = {
+				sessionMode: 'existing',
+			};
+
+			const result = shouldCreateNewSession.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe(false);
+		});
+
+		it("should return false when 'sessionMode' is empty", () => {
+			const nodeParameters = {
+				sessionMode: '',
+			};
+
+			const result = shouldCreateNewSession.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe(false);
+		});
+
+		it("should return false when 'sessionMode' is not set", () => {
+			const nodeParameters = {};
+
+			const result = shouldCreateNewSession.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('createSessionAndWindow', () => {
+		it("should create a new session and window when sessionMode is 'new'", async () => {
+			const nodeParameters = {
+				sessionMode: 'new',
+				url: 'https://example.com',
+			};
+
+			const result = await createSessionAndWindow.call(
+				createMockExecuteFunction(nodeParameters),
+				0,
+			);
+			expect(result).toEqual({
+				sessionId: 'new-session-123',
+				windowId: 'new-window-123',
+			});
 		});
 	});
 });

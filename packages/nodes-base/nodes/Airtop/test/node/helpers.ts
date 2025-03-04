@@ -41,6 +41,9 @@ export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			},
 		},
 		continueOnFail: () => false,
+		logger: {
+			info: () => {},
+		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };

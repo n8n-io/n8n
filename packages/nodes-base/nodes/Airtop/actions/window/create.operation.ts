@@ -9,14 +9,11 @@ import { NodeApiError } from 'n8n-workflow';
 import { validateAirtopApiResponse, validateSessionId, validateUrl } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
 import type { IAirtopResponse } from '../../transport/types';
+import { urlField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'URL',
-		name: 'url',
-		type: 'string',
-		default: '',
-		placeholder: 'https://google.com',
+		...urlField,
 		description: 'Initial URL to load in the window. Defaults to http://google.com.',
 		displayOptions: {
 			show: {

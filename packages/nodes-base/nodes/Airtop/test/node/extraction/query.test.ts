@@ -2,14 +2,16 @@ import nock from 'nock';
 
 import * as query from '../../../actions/extraction/query.operation';
 import { ERROR_MESSAGES } from '../../../constants';
+import * as GenericFunctions from '../../../GenericFunctions';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
 const baseNodeParameters = {
-	resource: 'window',
+	resource: 'extraction',
 	operation: 'query',
 	sessionId: 'test-session-123',
 	windowId: 'win-123',
+	sessionMode: 'existing',
 };
 
 const mockResponse = {
@@ -27,8 +29,28 @@ jest.mock('../../../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: jest.fn(async function (method: string, endpoint: string) {
+			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+				return { status: 'success' };
+			}
 			return mockResponse;
+		}),
+	};
+});
+
+jest.mock('../../../GenericFunctions', () => {
+	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+	return {
+		...originalModule,
+		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+			return {
+				sessionId: 'new-session-456',
+				windowId: 'new-win-456',
+			};
+		}),
+		shouldCreateNewSession: jest.fn().mockImplementation(function (this: any) {
+			const sessionMode = this.getNodeParameter('sessionMode', 0);
+			return sessionMode === 'new';
 		}),
 	};
 });
@@ -41,13 +63,14 @@ describe('Test Airtop, query page operation', () => {
 	afterAll(() => {
 		nock.restore();
 		jest.unmock('../../../transport');
+		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	it('should query page with minimal parameters', async () => {
+	it('should query the page with minimal parameters using existing session', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			prompt: 'How many products are on the page and what is their price range?',
@@ -55,6 +78,8 @@ describe('Test Airtop, query page operation', () => {
 
 		const result = await query.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
+		expect(GenericFunctions.shouldCreateNewSession).toHaveBeenCalledTimes(1);
+		expect(GenericFunctions.createSessionAndWindow).not.toHaveBeenCalled();
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
@@ -76,7 +101,7 @@ describe('Test Airtop, query page operation', () => {
 		]);
 	});
 
-	it('should query page with output schema', async () => {
+	it('should query the page with output schema using existing session', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			prompt: 'How many products are on the page and what is their price range?',
@@ -87,6 +112,8 @@ describe('Test Airtop, query page operation', () => {
 
 		const result = await query.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
+		expect(GenericFunctions.shouldCreateNewSession).toHaveBeenCalledTimes(1);
+		expect(GenericFunctions.createSessionAndWindow).not.toHaveBeenCalled();
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
@@ -110,7 +137,40 @@ describe('Test Airtop, query page operation', () => {
 		]);
 	});
 
-	it('should throw error when sessionId is empty', async () => {
+	it('should query the page using a new session', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			sessionMode: 'new',
+			url: 'https://example.com',
+			prompt: 'How many products are on the page and what is their price range?',
+			autoTerminateSession: true,
+		};
+
+		const result = await query.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(GenericFunctions.shouldCreateNewSession).toHaveBeenCalledTimes(1);
+		expect(GenericFunctions.createSessionAndWindow).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2); // One for query, one for session deletion
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			'/sessions/new-session-456/windows/new-win-456/page-query',
+			{
+				prompt: 'How many products are on the page and what is their price range?',
+				configuration: {},
+			},
+		);
+
+		expect(result).toEqual([
+			{
+				json: {
+					data: mockResponse.data,
+				},
+			},
+		]);
+	});
+
+	it("should throw error when 'sessionId' is empty in 'existing' session mode", async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			sessionId: '',
@@ -122,7 +182,7 @@ describe('Test Airtop, query page operation', () => {
 		);
 	});
 
-	it('should throw error when windowId is empty', async () => {
+	it("should throw error when 'windowId' is empty in 'existing' session mode", async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			windowId: '',

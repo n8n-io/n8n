@@ -4,38 +4,9 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { validateSessionAndWindowId, validateAirtopApiResponse } from '../../GenericFunctions';
-import { apiRequest } from '../../transport';
+import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Session ID',
-		name: 'sessionId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['extraction'],
-				operation: ['query'],
-			},
-		},
-		default: '={{ $json["sessionId"] }}',
-		description: 'The ID of the session',
-	},
-	{
-		displayName: 'Window ID',
-		name: 'windowId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["windowId"] }}',
-		displayOptions: {
-			show: {
-				resource: ['extraction'],
-				operation: ['query'],
-			},
-		},
-		description: 'The ID of the window to query',
-	},
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -82,24 +53,17 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const { sessionId, windowId } = validateSessionAndWindowId.call(this, index);
 	const prompt = this.getNodeParameter('prompt', index, '') as string;
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		`/sessions/${sessionId}/windows/${windowId}/page-query`,
-		{
+	return await executeRequestWithSessionManagement.call(this, index, {
+		method: 'POST',
+		path: '/sessions/{sessionId}/windows/{windowId}/page-query',
+		body: {
 			prompt,
 			configuration: {
 				...additionalFields,
 			},
 		},
-	);
-
-	// validate response
-	validateAirtopApiResponse(this.getNode(), response);
-
-	return this.helpers.returnJsonArray({ sessionId, windowId, ...response });
+	});
 }

@@ -11,35 +11,18 @@ import {
 	validateAirtopApiResponse,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { urlField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Window ID',
-		name: 'windowId',
-		type: 'string',
+		...urlField,
 		required: true,
-		default: '={{ $json["windowId"] }}',
 		displayOptions: {
 			show: {
 				resource: ['window'],
 				operation: ['load'],
 			},
 		},
-	},
-	{
-		displayName: 'URL',
-		name: 'url',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'https://google.com',
-		displayOptions: {
-			show: {
-				resource: ['window'],
-				operation: ['load'],
-			},
-		},
-		description: 'The URL to load in the window',
 	},
 	{
 		displayName: 'Additional Fields',

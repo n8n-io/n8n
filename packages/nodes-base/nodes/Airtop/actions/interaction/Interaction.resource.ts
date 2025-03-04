@@ -3,7 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as click from './click.operation';
 import * as hover from './hover.operation';
 import * as type from './type.operation';
-
+import { sessionIdField, windowIdField } from '../common/fields';
 export { click, hover, type };
 
 export const description: INodeProperties[] = [
@@ -40,25 +40,15 @@ export const description: INodeProperties[] = [
 		default: 'click',
 	},
 	{
-		displayName: 'Session ID',
-		name: 'sessionId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["sessionId"] }}',
+		...sessionIdField,
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
 			},
 		},
-		description: 'The ID of the session to use for the interaction',
 	},
 	{
-		displayName: 'Window ID',
-		name: 'windowId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["windowId"] }}',
-		description: 'The ID of the window to use for the interaction',
+		...windowIdField,
 		displayOptions: {
 			show: {
 				resource: ['interaction'],

@@ -4,6 +4,7 @@ import * as close from './close.operation';
 import * as create from './create.operation';
 import * as getScreenshot from './getScreenshot.operation';
 import * as load from './load.operation';
+import { sessionIdField, windowIdField } from '../common/fields';
 
 export { create, close, getScreenshot, load };
 
@@ -47,20 +48,22 @@ export const description: INodeProperties[] = [
 		default: 'create',
 	},
 	{
-		displayName: 'Session ID',
-		name: 'sessionId',
-		type: 'string',
-		required: true,
+		...sessionIdField,
 		displayOptions: {
 			show: {
 				resource: ['window'],
 			},
 		},
-		default: '={{ $json["sessionId"] }}',
-		description: 'The ID of the session',
 	},
-	...close.description,
+	{
+		...windowIdField,
+		displayOptions: {
+			show: {
+				resource: ['window'],
+				operation: ['close', 'getScreenshot', 'load'],
+			},
+		},
+	},
 	...create.description,
-	...getScreenshot.description,
 	...load.description,
 ];

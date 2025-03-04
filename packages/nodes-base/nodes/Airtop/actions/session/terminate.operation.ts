@@ -7,21 +7,17 @@ import {
 
 import { validateAirtopApiResponse, validateSessionId } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { sessionIdField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Session ID',
-		name: 'sessionId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["sessionId"] }}',
+		...sessionIdField,
 		displayOptions: {
 			show: {
 				resource: ['session'],
 				operation: ['terminate'],
 			},
 		},
-		description: 'The ID of the session to terminate',
 	},
 ];
 

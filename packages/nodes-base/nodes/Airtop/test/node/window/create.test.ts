@@ -122,7 +122,6 @@ describe('Test Airtop, window create operation', () => {
 			...baseNodeParameters,
 			getLiveView: true,
 			disableResize: true,
-			additionalFields: {},
 		};
 
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);

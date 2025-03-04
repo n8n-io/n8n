@@ -1,12 +1,15 @@
 import { NodeApiError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { SESSION_MODE } from './actions/common/fields';
 import {
 	ERROR_MESSAGES,
 	DEFAULT_TIMEOUT_MINUTES,
 	MIN_TIMEOUT_MINUTES,
 	MAX_TIMEOUT_MINUTES,
+	INTEGRATION_URL,
 } from './constants';
+import { apiRequest } from './transport';
 import type { IAirtopResponse } from './transport/types';
 
 /**
@@ -191,4 +194,59 @@ export function validateAirtopApiResponse(node: INode, response: IAirtopResponse
 			message: errorMessage,
 		});
 	}
+}
+
+/**
+ * Check if a new session should be created
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns True if a new session should be created, false otherwise
+ */
+export function shouldCreateNewSession(this: IExecuteFunctions, index: number) {
+	const sessionMode = this.getNodeParameter('sessionMode', index) as string;
+	return Boolean(sessionMode && sessionMode === SESSION_MODE.NEW);
+}
+
+/**
+ * Create a new session and window
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns The session ID and window ID
+ */
+export async function createSessionAndWindow(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<{ sessionId: string; windowId: string }> {
+	const node = this.getNode();
+	const noCodeEndpoint = `${INTEGRATION_URL}/create-session`;
+	const profileName = validateProfileName.call(this, index);
+	const url = validateRequiredStringField.call(this, index, 'url', 'URL');
+
+	const { sessionId } = await apiRequest.call(this, 'POST', noCodeEndpoint, {
+		configuration: {
+			profileName,
+		},
+	});
+
+	if (!sessionId) {
+		throw new NodeApiError(node, {
+			message: 'Failed to create session',
+			code: 500,
+		});
+	}
+	this.logger.info(`[${node.name}] Session successfully created.`);
+
+	const windowResponse = await apiRequest.call(this, 'POST', `/sessions/${sessionId}/windows`, {
+		url,
+	});
+	const windowId = windowResponse?.data?.windowId as string;
+
+	if (!windowId) {
+		throw new NodeApiError(node, {
+			message: 'Failed to create window',
+			code: 500,
+		});
+	}
+	this.logger.info(`[${node.name}] Window successfully created.`);
+	return { sessionId, windowId };
 }

@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as getPaginated from './getPaginated.operation';
 import * as query from './query.operation';
 import * as scrape from './scrape.operation';
+import { getSessionModeFields } from '../common/fields';
 
 export { getPaginated, query, scrape };
 
@@ -39,7 +40,7 @@ export const description: INodeProperties[] = [
 		],
 		default: 'getPaginated',
 	},
+	...getSessionModeFields('extraction', ['getPaginated', 'query', 'scrape']),
 	...getPaginated.description,
 	...query.description,
-	...scrape.description,
 ];

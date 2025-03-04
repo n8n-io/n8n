@@ -4,38 +4,9 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { validateSessionAndWindowId, validateAirtopApiResponse } from '../../GenericFunctions';
-import { apiRequest } from '../../transport';
+import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Session ID',
-		name: 'sessionId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["sessionId"] }}',
-		displayOptions: {
-			show: {
-				resource: ['extraction'],
-				operation: ['getPaginated'],
-			},
-		},
-		description: 'The ID of the session to use for the extraction',
-	},
-	{
-		displayName: 'Window ID',
-		name: 'windowId',
-		type: 'string',
-		required: true,
-		default: '={{ $json["windowId"] }}',
-		displayOptions: {
-			show: {
-				resource: ['extraction'],
-				operation: ['getPaginated'],
-			},
-		},
-		description: 'The ID of the window to use for the extraction',
-	},
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -121,24 +92,17 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const { sessionId, windowId } = validateSessionAndWindowId.call(this, index);
 	const prompt = this.getNodeParameter('prompt', index, '') as string;
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		`/sessions/${sessionId}/windows/${windowId}/paginated-extraction`,
-		{
+	return await executeRequestWithSessionManagement.call(this, index, {
+		method: 'POST',
+		path: '/sessions/{sessionId}/windows/{windowId}/paginated-extraction',
+		body: {
 			prompt,
 			configuration: {
 				...additionalFields,
 			},
 		},
-	);
-
-	// validate response
-	validateAirtopApiResponse(this.getNode(), response);
-
-	return this.helpers.returnJsonArray({ sessionId, windowId, ...response });
+	});
 }
