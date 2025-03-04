@@ -1,13 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
-
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
+import { simplifyData } from '../generalFunctions/helpers';
+import { handlePagination } from '../generalFunctions/pagination';
 import {
-	handleErrorPostReceive,
-	handlePagination,
+	presendAttributes,
 	presendFilters,
 	presendUserFields,
-	processAttributes,
-	simplifyData,
-} from '../GenericFunctions';
+} from '../generalFunctions/presendFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -193,7 +192,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Update user',
 				routing: {
 					send: {
-						preSend: [processAttributes, presendUserFields],
+						preSend: [presendAttributes, presendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -271,7 +270,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User Name',
-		name: 'UsernameNew',
+		name: 'newUserName',
 		default: '',
 		description:
 			'Depending on the user pool settings, this parameter requires the username, the email, or the phone number. No whitespace is allowed.',
@@ -307,7 +306,7 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Message Action',
-				name: 'MessageAction',
+				name: 'messageAction',
 				default: 'RESEND',
 				description:
 					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message.",
@@ -331,7 +330,7 @@ const createFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Force Alias Creation',
-				name: 'ForceAliasCreation',
+				name: 'forceAliasCreation',
 				type: 'boolean',
 				validateType: 'boolean',
 				default: false,
@@ -346,7 +345,7 @@ const createFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Desired Delivery Mediums',
-				name: 'DesiredDeliveryMediums',
+				name: 'desiredDeliveryMediums',
 				default: ['SMS'],
 				description:
 					'Specify EMAIL if email will be used to send the welcome message. Specify SMS if the phone number will be used. The default value is SMS. You can specify more than one value.',
@@ -439,7 +438,7 @@ const getFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User',
-		name: 'Username',
+		name: 'userName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -839,7 +838,7 @@ const updateFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User Attributes',
-		name: 'UserAttributes',
+		name: 'userAttributes',
 		type: 'fixedCollection',
 		placeholder: 'Add Attribute',
 		default: {
@@ -985,7 +984,7 @@ const addToGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User',
-		name: 'Username',
+		name: 'userName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -1035,7 +1034,7 @@ const addToGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -1138,7 +1137,7 @@ const removeFromGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User',
-		name: 'Username',
+		name: 'userName',
 		default: {
 			mode: 'list',
 			value: '',

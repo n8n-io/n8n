@@ -1,8 +1,8 @@
 import { NodeApiError, type IExecuteSingleFunctions, type IHttpRequestOptions } from 'n8n-workflow';
 
-import { processAttributes } from '../GenericFunctions';
+import { presendAttributes } from '../generalFunctions/presendFunctions';
 
-describe('processAttributes', () => {
+describe('presendAttributes', () => {
 	let mockContext: IExecuteSingleFunctions;
 
 	beforeEach(() => {
@@ -27,7 +27,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		const result = await processAttributes.call(mockContext, requestOptions);
+		const result = await presendAttributes.call(mockContext, requestOptions);
 
 		expect(result.body).toEqual(
 			JSON.stringify({
@@ -52,7 +52,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		const result = await processAttributes.call(mockContext, requestOptions);
+		const result = await presendAttributes.call(mockContext, requestOptions);
 
 		expect(result.body).toEqual(
 			JSON.stringify({
@@ -72,7 +72,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+		await expect(presendAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
 			'No user field provided',
 		);
 	});
@@ -89,7 +89,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+		await expect(presendAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
 			'Invalid User Attribute',
 		);
 	});
@@ -106,7 +106,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+		await expect(presendAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
 			'Invalid Attribute Name',
 		);
 	});
@@ -120,7 +120,7 @@ describe('processAttributes', () => {
 			url: '',
 		};
 
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
+		await expect(presendAttributes.call(mockContext, requestOptions)).rejects.toThrowError(
 			new NodeApiError(mockContext.getNode(), {
 				message: 'No user field provided',
 				description: 'At least one attribute must be provided for the update.',

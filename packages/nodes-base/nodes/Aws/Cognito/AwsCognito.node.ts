@@ -10,12 +10,12 @@ import {
 	groupFields,
 } from './descriptions';
 import {
-	presendStringifyBody,
 	searchUserPools,
 	searchGroups,
 	searchUsers,
 	searchGroupsForUser,
-} from './GenericFunctions';
+} from './generalFunctions/dataHandling';
+import { presendStringifyBody } from './generalFunctions/presendFunctions';
 
 export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,13 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
-
+import { processGroupsResponse } from '../generalFunctions/dataHandling';
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
+import { handlePagination } from '../generalFunctions/pagination';
 import {
-	handleErrorPostReceive,
-	handlePagination,
 	presendAdditionalFields,
 	presendGroupFields,
 	presendVerifyPath,
-	processGroupsResponse,
-} from '../GenericFunctions';
+} from '../generalFunctions/presendFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -204,7 +203,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group Name',
-		name: 'NewGroupName',
+		name: 'newGroupName',
 		default: '',
 		placeholder: 'e.g. MyNewGroup',
 		description: 'The name of the new group to create',
@@ -238,7 +237,7 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Description',
-				name: 'Description',
+				name: 'description',
 				default: '',
 				placeholder: 'e.g. New group description',
 				description: 'A description for the new group',
@@ -252,7 +251,7 @@ const createFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Precedence',
-				name: 'Precedence',
+				name: 'precedence',
 				default: '',
 				placeholder: 'e.g. 10',
 				description: 'Precedence value for the group. Lower values indicate higher priority.',
@@ -352,7 +351,7 @@ const deleteFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -454,7 +453,7 @@ const getFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -642,7 +641,7 @@ const updateFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -703,7 +702,7 @@ const updateFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Description',
-				name: 'Description',
+				name: 'description',
 				default: '',
 				placeholder: 'e.g. Updated group description',
 				description: 'A new description for the group',
@@ -717,7 +716,7 @@ const updateFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Precedence',
-				name: 'Precedence',
+				name: 'precedence',
 				default: '',
 				placeholder: 'e.g. 10',
 				description:

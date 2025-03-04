@@ -1,6 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-
-import { simplifyData } from '../GenericFunctions';
+import { simplifyData } from '../generalFunctions/helpers';
 
 export const userPoolOperations: INodeProperties[] = [
 	{
