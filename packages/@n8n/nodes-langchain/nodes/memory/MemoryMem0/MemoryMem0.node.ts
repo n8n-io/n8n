@@ -12,7 +12,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
-import type { BaseChatMemory } from '@langchain/core/memory';
+import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
@@ -21,34 +21,48 @@ import { ChatMessageHistory } from '@langchain/community/stores/message/in_memor
 /**
  * Implementation of mem0.ai memory integration for langchain
  */
-class Mem0Memory implements BaseChatMemory {
+class Mem0Memory extends BaseChatMemory {
 	private apiKey: string;
 	private apiUrl: string = 'https://api.mem0.ai/v1';
 	private userId: string;
 	private sessionId: string;
-	private chatHistory: ChatMessageHistory;
-	
+	private _memoryKey: string = 'chat_history';
+	chatHistory: ChatMessageHistory;
+
 	constructor(fields: {
 		apiKey: string;
 		userId: string;
 		sessionId: string;
 		apiUrl?: string;
+		returnMessages?: boolean;
+		inputKey?: string;
+		outputKey?: string;
+		chatHistory?: ChatMessageHistory;
+		memoryKey?: string;
 	}) {
+		super({
+			returnMessages: fields.returnMessages ?? true,
+			inputKey: fields.inputKey ?? 'input',
+			outputKey: fields.outputKey ?? 'output',
+			chatHistory: fields.chatHistory ?? new ChatMessageHistory(),
+		});
+
 		this.apiKey = fields.apiKey;
 		this.userId = fields.userId;
 		this.sessionId = fields.sessionId;
+		this.chatHistory = fields.chatHistory ?? new ChatMessageHistory();
+
+		if (fields.memoryKey) {
+			this._memoryKey = fields.memoryKey;
+		}
+
 		if (fields.apiUrl) {
 			this.apiUrl = fields.apiUrl;
 		}
-		this.chatHistory = new ChatMessageHistory();
 	}
 
 	get memoryKeys() {
-		return ["chat_history"];
-	}
-
-	get memoryVariables(): string[] {
-		return ["chat_history"];
+		return [this._memoryKey];
 	}
 
 	// Load previous messages from mem0
@@ -65,7 +79,7 @@ class Mem0Memory implements BaseChatMemory {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Token ${this.apiKey}`,
+					Authorization: `Token ${this.apiKey}`,
 				},
 				body: JSON.stringify(payload),
 			});
@@ -76,10 +90,10 @@ class Mem0Memory implements BaseChatMemory {
 			}
 
 			const results = await response.json();
-			
+
 			// Clear existing chat history
 			this.chatHistory = new ChatMessageHistory();
-			
+
 			// Process and add each memory to chat history
 			for (const result of results) {
 				const memory = result.memory;
@@ -88,13 +102,9 @@ class Mem0Memory implements BaseChatMemory {
 					try {
 						// Check if memory contains a role marker
 						if (memory.startsWith('user:')) {
-							await this.chatHistory.addMessage(
-								new HumanMessage(memory.substring(5).trim())
-							);
+							await this.chatHistory.addMessage(new HumanMessage(memory.substring(5).trim()));
 						} else if (memory.startsWith('assistant:')) {
-							await this.chatHistory.addMessage(
-								new AIMessage(memory.substring(10).trim())
-							);
+							await this.chatHistory.addMessage(new AIMessage(memory.substring(10).trim()));
 						} else {
 							// If no role marker, assume it's a user message
 							await this.chatHistory.addMessage(new HumanMessage(memory));
@@ -108,36 +118,40 @@ class Mem0Memory implements BaseChatMemory {
 			// Return the chat history in the format expected by langchain
 			const messages = await this.chatHistory.getMessages();
 			return {
-				chat_history: messages,
+				[this._memoryKey]: messages,
 			};
 		} catch (error) {
 			console.error('Error loading memory variables:', error);
-			return { chat_history: [] };
+			return { [this._memoryKey]: [] };
 		}
 	}
 
 	// Save messages to mem0
 	async saveContext(inputValues: InputValues, outputValues: InputValues): Promise<void> {
+		// Ensure inputKey and outputKey are defined
+		const inputKey = this.inputKey ?? 'input';
+		const outputKey = this.outputKey ?? 'output';
+
+		const inputValue = inputValues[inputKey];
+		const outputValue = outputValues[outputKey];
+
+		if (!inputValue || !outputValue) {
+			return;
+		}
+
+		// Add messages to local chat history
+		await this.chatHistory.addMessage(new HumanMessage(inputValue));
+		await this.chatHistory.addMessage(new AIMessage(outputValue));
+
 		try {
-			const input = inputValues.input;
-			const output = outputValues.output;
-
-			if (!input || !output) {
-				return;
-			}
-
-			// Add messages to local chat history
-			await this.chatHistory.addMessage(new HumanMessage(input));
-			await this.chatHistory.addMessage(new AIMessage(output));
-
 			// Prepare payload for mem0
 			const payload = {
 				messages: [
-					{ role: 'user', content: input },
-					{ role: 'assistant', content: output }
+					{ role: 'user', content: inputValue },
+					{ role: 'assistant', content: outputValue },
 				],
 				user_id: this.userId,
-				metadata: { session_id: this.sessionId }
+				metadata: { session_id: this.sessionId },
 			};
 
 			// Make API request to add memory
@@ -145,7 +159,7 @@ class Mem0Memory implements BaseChatMemory {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Token ${this.apiKey}`,
+					Authorization: `Token ${this.apiKey}`,
 				},
 				body: JSON.stringify(payload),
 			});
@@ -216,20 +230,14 @@ export class MemoryMem0 implements INodeType {
 				required: true,
 				description: 'The user ID to use for memory operations',
 			},
-			{
-				displayName: 'API URL',
-				name: 'apiUrl',
-				type: 'string',
-				default: 'https://api.mem0.ai/v1',
-				description: 'The URL of the Mem0 API',
-				required: false,
-			},
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<{
 			apiKey: string;
+			useCustomApiUrl?: boolean;
+			apiUrl?: string;
 		}>('mem0Api');
 
 		if (!credentials.apiKey) {
@@ -238,10 +246,15 @@ export class MemoryMem0 implements INodeType {
 
 		const sessionId = getSessionId(this, itemIndex);
 		const userId = this.getNodeParameter('userId', itemIndex) as string;
-		const apiUrl = this.getNodeParameter('apiUrl', itemIndex, 'https://api.mem0.ai/v1') as string;
 
 		if (!userId) {
 			throw new NodeOperationError(this.getNode(), 'User ID is required for Mem0 memory');
+		}
+
+		// Determine API URL
+		let apiUrl = 'https://api.mem0.ai/v1';
+		if (credentials.useCustomApiUrl && credentials.apiUrl) {
+			apiUrl = credentials.apiUrl;
 		}
 
 		const memory = new Mem0Memory({
@@ -249,6 +262,10 @@ export class MemoryMem0 implements INodeType {
 			userId,
 			sessionId,
 			apiUrl,
+			returnMessages: true,
+			inputKey: 'input',
+			outputKey: 'output',
+			memoryKey: 'chat_history',
 		});
 
 		return {
