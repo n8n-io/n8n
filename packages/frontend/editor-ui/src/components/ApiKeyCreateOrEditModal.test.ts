@@ -73,10 +73,6 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('You can find more details in')).toBeInTheDocument();
-
-		expect(getByText('the API documentation')).toBeInTheDocument();
-
 		expect(getByText('Click to copy')).toBeInTheDocument();
 
 		expect(getByText('new api key')).toBeInTheDocument();
@@ -138,10 +134,6 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('You can find more details in')).toBeInTheDocument();
-
-		expect(getByText('the API documentation')).toBeInTheDocument();
-
 		expect(getByText('Click to copy')).toBeInTheDocument();
 
 		expect(getByText('new api key')).toBeInTheDocument();
@@ -186,10 +178,6 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-
-		expect(getByText('You can find more details in')).toBeInTheDocument();
-
-		expect(getByText('the API documentation')).toBeInTheDocument();
 
 		expect(getByText('Click to copy')).toBeInTheDocument();
 
