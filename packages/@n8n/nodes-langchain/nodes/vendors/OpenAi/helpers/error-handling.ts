@@ -1,3 +1,4 @@
+import { OperationalError } from 'n8n-workflow';
 import { RateLimitError } from 'openai';
 import { OpenAIError } from 'openai/error';
 
@@ -20,17 +21,8 @@ export const openAiFailedAttemptHandler = (error: any) => {
 		// If the error is a rate limit error, we want to handle it differently
 		// because OpenAI has multiple different rate limit errors
 		const errorCode = error?.code;
-		if (errorCode) {
-			const customErrorMessage = getCustomErrorMessage(errorCode);
-
-			if (customErrorMessage) {
-				if (error.error) {
-					(error.error as { message: string }).message = customErrorMessage;
-					error.message = customErrorMessage;
-				}
-			}
-		}
-
-		throw error;
+		const errorMessage =
+			getCustomErrorMessage(errorCode ?? 'rate_limit_exceeded') ?? errorMap.rate_limit_exceeded;
+		throw new OperationalError(errorMessage, { cause: error });
 	}
 };

@@ -63,7 +63,6 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 	},
 	publicApi: {
-		apiKeysPerUserLimit: 0,
 		enabled: false,
 		latestVersion: 0,
 		path: '',

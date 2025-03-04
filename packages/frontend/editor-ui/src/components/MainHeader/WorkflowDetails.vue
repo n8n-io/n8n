@@ -771,6 +771,7 @@ $--header-spacing: 20px;
 .container {
 	position: relative;
 	width: 100%;
+	padding: var(--spacing-xs) var(--spacing-m);
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
