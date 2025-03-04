@@ -301,7 +301,8 @@ async function onConnectionStateChange() {
 	align-items: center;
 	flex: 1;
 
-	svg {
+	svg,
+	img {
 		max-width: 28px;
 		max-height: 28px;
 	}
