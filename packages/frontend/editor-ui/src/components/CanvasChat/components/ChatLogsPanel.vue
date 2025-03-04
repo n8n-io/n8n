@@ -2,14 +2,13 @@
 import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useI18n } from '@/composables/useI18n';
-import { ref, useTemplateRef, watch } from 'vue';
 
 const emit = defineEmits<{
 	close: [];
 	requestPopOut: [];
 }>();
 
-const props = defineProps<{
+defineProps<{
 	node: INode | null;
 	slim?: boolean;
 	workflow: Workflow;
@@ -17,16 +16,6 @@ const props = defineProps<{
 }>();
 
 const locale = useI18n();
-const child = ref<Window>();
-
-watch(
-	() => props.node?.name,
-	(name) => {
-		if (child.value) {
-			child.value.postMessage({ type: 'setNode', node: name }, window.location.origin);
-		}
-	},
-);
 </script>
 
 <template>
