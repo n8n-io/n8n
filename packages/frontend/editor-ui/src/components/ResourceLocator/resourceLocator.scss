@@ -141,9 +141,14 @@ $--mode-selector-width: 92px;
 }
 
 .error {
-	max-width: 170px;
+	width: 80%;
 	word-break: normal;
 	text-align: center;
+	color: var(--color-text-base);
+}
+
+.credential-link {
+	font-size: 12px;
 }
 
 .openResourceLink {
