@@ -12,7 +12,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
@@ -40,7 +39,6 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 let ndvStore: MockedStore<typeof useNDVStore>;
-let executionsStore: MockedStore<typeof useExecutionsStore>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
@@ -63,7 +61,6 @@ describe('NodeExecuteButton', () => {
 		uiStore = mockedStore(useUIStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		ndvStore = mockedStore(useNDVStore);
-		executionsStore = mockedStore(useExecutionsStore);
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();
@@ -153,7 +150,7 @@ describe('NodeExecuteButton', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(executionsStore.stopCurrentExecution).toHaveBeenCalledWith('test-execution-id');
+		expect(runWorkflow.stopCurrentExecution).toHaveBeenCalledWith('test-execution-id');
 		expect(emitted().stopExecution).toBeTruthy();
 	});
 
