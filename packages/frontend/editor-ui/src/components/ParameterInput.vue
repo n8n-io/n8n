@@ -1090,6 +1090,8 @@ watch(isModelValueExpression, async (isExpression, wasExpression) => {
 	}
 });
 
+// Investigate invalid parameter options
+// Sentry issue: https://n8nio.sentry.io/issues/6275981089/?project=4503960699273216
 const unwatchParameterOptions = watch(
 	[remoteParameterOptions, () => props.parameter.options],
 	([remoteOptions, options]) => {
