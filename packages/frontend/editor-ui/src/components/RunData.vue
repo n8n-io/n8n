@@ -1171,7 +1171,7 @@ function init() {
 	} else if (displayMode.value === 'binary') {
 		ndvStore.setPanelDisplayMode({
 			pane: props.paneType,
-			mode: 'table',
+			mode: 'schema',
 		});
 	}
 }
