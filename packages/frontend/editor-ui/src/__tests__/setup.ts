@@ -82,7 +82,22 @@ class Worker {
 	terminate = vi.fn();
 }
 
+class DataTransfer {
+	private data: Record<string, unknown> = {};
+
+	setData = vi.fn((type, data) => {
+		this.data[type] = data;
+	});
+
+	getData = vi.fn((type) => this.data[type] ?? null);
+}
+
 Object.defineProperty(window, 'Worker', {
 	writable: true,
 	value: Worker,
+});
+
+Object.defineProperty(window, 'DataTransfer', {
+	writable: true,
+	value: DataTransfer,
 });
