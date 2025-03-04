@@ -314,7 +314,7 @@ const onDragEnd = (el: HTMLElement) => {
 							@click="toggleNodeAndScrollTop(item.id)"
 						/>
 						<VirtualSchemaItem
-							v-else
+							v-else-if="item.type === 'item'"
 							v-bind="item"
 							:search="search"
 							:draggable="mappingEnabled"
@@ -323,6 +323,10 @@ const onDragEnd = (el: HTMLElement) => {
 							@click="toggleLeaf(item.id)"
 						>
 						</VirtualSchemaItem>
+
+						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
+							<N8nIcon :size="14" :icon="item.icon" class="icon" />
+						</N8nTooltip>
 					</DynamicScrollerItem>
 				</template>
 			</DynamicScroller>
@@ -346,5 +350,12 @@ const onDragEnd = (el: HTMLElement) => {
 .no-results {
 	text-align: center;
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+}
+
+.icon {
+	display: inline-flex;
+	margin-left: var(--spacing-xl);
+	color: var(--color-text-light);
+	margin-bottom: var(--spacing-s);
 }
 </style>
