@@ -9,13 +9,13 @@
 	text-align: center;
 	vertical-align: middle;
 	user-select: none;
-	color: var(--chat--button--color, var(--chat--color-light));
-	background-color: var(--chat--button--background, var(--chat--color-primary));
+	color: var(--chat--button--color);
+	background-color: var(--chat--button--background);
 	border: 1px solid transparent;
-	padding: var(--chat--button--padding, calc(var(--chat--spacing) * 1 / 2) var(--chat--spacing));
+	padding: var(--chat--button--padding);
 	font-size: 1rem;
 	line-height: 1.5;
-	border-radius: var(--chat--button--border-radius, var(--chat--border-radius));
+	border-radius: var(--chat--button--border-radius);
 	transition:
 		color var(--chat--transition-duration) ease-in-out,
 		background-color var(--chat--transition-duration) ease-in-out,
@@ -24,8 +24,8 @@
 	cursor: pointer;
 
 	&:hover {
-		color: var(--chat--button--hover--color, var(--chat--color-light));
-		background-color: var(--chat--button--hover--background, var(--chat--color-primary-shade-50));
+		color: var(--chat--button--hover--color);
+		background-color: var(--chat--button--hover--background);
 		text-decoration: none;
 	}
 

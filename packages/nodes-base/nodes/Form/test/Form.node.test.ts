@@ -306,6 +306,90 @@ describe('Form Node', () => {
 			}
 		});
 
+		it('should pass customCss to form template', async () => {
+			const mockResponseObject = {
+				render: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'formFields.values') return [];
+				if (paramName === 'options') {
+					return {
+						customCss: '.form-container { background-color: #f5f5f5; }',
+					};
+				}
+				return undefined;
+			});
+
+			mockWebhookFunctions.getChildNodes.mockReturnValue([]);
+
+			await form.webhook(mockWebhookFunctions);
+
+			expect(mockResponseObject.render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					dangerousCustomCss: '.form-container { background-color: #f5f5f5; }',
+				}),
+			);
+		});
+
+		it('should pass customCss to form completion template', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'completionTitle') return 'Completion Title';
+				if (paramName === 'completionMessage') return 'Completion Message';
+				if (paramName === 'options')
+					return {
+						customCss: '.completion-container { color: blue; }',
+					};
+				if (paramName === 'formFields.values') return [];
+				return {};
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
+
+			const mockResponseObject = {
+				render: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					dangerousCustomCss: '.completion-container { color: blue; }',
+				}),
+			);
+		});
+
 		it('should handle completion operation and redirect', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {

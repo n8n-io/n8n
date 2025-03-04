@@ -6,7 +6,7 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { renderForm } from './utils';
+import { renderForm, sanitizeHtml } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -19,6 +19,7 @@ export const renderFormNode = async (
 		formTitle: string;
 		formDescription: string;
 		buttonLabel: string;
+		customCss?: string;
 	};
 
 	let title = options.formTitle;
@@ -41,6 +42,12 @@ export const renderFormNode = async (
 			) as string) || 'Submit';
 	}
 
+	for (const field of fields) {
+		if (field.fieldType === 'html') {
+			field.html = sanitizeHtml(field.html as string);
+		}
+	}
+
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
@@ -56,6 +63,7 @@ export const renderFormNode = async (
 		redirectUrl: undefined,
 		appendAttribution,
 		buttonLabel,
+		customCss: options.customCss,
 	});
 
 	return {
