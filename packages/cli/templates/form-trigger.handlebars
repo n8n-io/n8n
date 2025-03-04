@@ -774,7 +774,6 @@
 			let formWaitingUrl;
 
 			const checkExecutionStatus = async () => {
-
 				try {
 					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
 					const text = (await response.text()).trim();
@@ -787,6 +786,16 @@
 					if (text === "success") {
 						form.style.display = 'none';
 						document.querySelector('#submitted-form').style.display = 'block';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					if (text === "null") {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						document.querySelector('#submitted-header').textContent = 'Could not get execution status';
+						document.querySelector('#submitted-content').textContent =
+							'Make sure "Save successful production executions" is enabled in your workflow settings';
 						clearTimeout(timeoutId);
 						return;
 					}

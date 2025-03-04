@@ -79,9 +79,9 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution && suffix === WAITING_FORMS_EXECUTION_STATUS) {
-			let status: string = execution?.status;
-			const { node } = execution.data.executionData?.nodeExecutionStack[0] ?? {};
+		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
+			let status: string = execution?.status ?? 'null';
+			const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
 
 			if (node && status === 'waiting') {
 				if (node.type === FORM_NODE_TYPE) {
@@ -91,7 +91,7 @@ export class WaitingForms extends WaitingWebhooks {
 					status = 'form-waiting';
 				}
 			}
-			res.send(status ?? null);
+			res.send(status);
 			return { noWebhookResponse: true };
 		}
 
