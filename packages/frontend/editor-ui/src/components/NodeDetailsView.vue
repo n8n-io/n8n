@@ -352,13 +352,17 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		e.stopPropagation();
-		e.preventDefault();
-
-		if (props.readOnly) return;
-
-		emit('saveKeyboardShortcut', e);
+		onSaveWorkflow(e);
 	}
+};
+
+const onSaveWorkflow = (e: KeyboardEvent) => {
+	e.stopPropagation();
+	e.preventDefault();
+
+	if (props.readOnly) return;
+
+	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -597,11 +601,25 @@ const onSearch = (search: string) => {
 	isPairedItemHoveringEnabled.value = !search;
 };
 
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', onKeyDown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', onKeyDown, true);
+};
+
 //watchers
 
 watch(
 	activeNode,
 	(node, oldNode) => {
+		if (node && !oldNode) {
+			registerKeyboardListener();
+		} else if (!node) {
+			unregisterKeyboardListener();
+		}
+
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
 			runOutputIndex.value = -1;
@@ -655,6 +673,7 @@ watch(
 	},
 	{ immediate: true },
 );
+
 watch(maxOutputRun, () => {
 	runOutputIndex.value = -1;
 });
@@ -681,6 +700,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	unregisterKeyboardListener();
 });
 </script>
 
@@ -719,8 +739,8 @@ onBeforeUnmount(() => {
 			v-if="activeNode"
 			ref="container"
 			class="data-display"
+			data-test-id="ndv-modal"
 			tabindex="0"
-			@keydown.capture="onKeyDown"
 		>
 			<div :class="$style.modalBackground" @click="close"></div>
 			<NDVDraggablePanels
