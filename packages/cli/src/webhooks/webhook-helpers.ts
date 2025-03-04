@@ -108,13 +108,33 @@ export function autoDetectResponseMode(
 	workflow: Workflow,
 	method: string,
 ) {
+	if (workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST') {
+		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+
+		for (const nodeName of connectedNodes) {
+			const node = workflow.nodes[nodeName];
+
+			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
+				continue;
+			}
+
+			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+				return 'formPage';
+			}
+		}
+	}
+
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return undefined;
 	}
+
 	if (
-		[FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) &&
-		method === 'POST'
+		workflowStartNode.type === FORM_NODE_TYPE &&
+		workflowStartNode.parameters.operation === 'completion'
 	) {
+		return 'onReceived';
+	}
+	if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) && method === 'POST') {
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 
 		for (const nodeName of connectedNodes) {
@@ -244,7 +264,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	);
 
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -582,6 +602,12 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		if (responseMode === 'formPage' && !didSendResponse) {
+			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			process.nextTick(() => res.end());
+			didSendResponse = true;
+		}
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
