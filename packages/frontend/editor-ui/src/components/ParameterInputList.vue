@@ -28,7 +28,7 @@ import {
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
+
 import {
 	getMainAuthField,
 	getNodeAuthFields,
@@ -117,11 +117,7 @@ const filteredParameters = computedWithControl(
 		}
 
 		if (activeNode && activeNode.type === FORM_NODE_TYPE) {
-			return updateFormParameters(
-				parameters,
-				activeNode.name,
-				activeNode.parameters.operation === 'completion',
-			);
+			return updateFormParameters(parameters, activeNode.name);
 		}
 
 		if (
@@ -277,21 +273,13 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 	return parameters;
 }
 
-function updateFormParameters(
-	parameters: INodeProperties[],
-	nodeName: string,
-	formEnding: boolean,
-) {
+function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
 	const workflow = workflowHelpers.getCurrentWorkflow();
 	const parentNodes = workflow.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
 		(node) => workflow.nodes[node].type === FORM_TRIGGER_NODE_TYPE,
 	);
-
-	if (!formTriggerName || formEnding || !useSettingsStore().isQueueModeEnabled) {
-		parameters = parameters.filter((parameter) => parameter.name !== 'completionPageNotice');
-	}
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
 

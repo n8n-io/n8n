@@ -120,12 +120,6 @@ describe('ParameterInputList', () => {
 				type: 'notice',
 				default: '',
 			},
-			{
-				displayName: 'COMPLETION PAGE NOTICE',
-				name: 'completionPageNotice',
-				type: 'notice',
-				default: '',
-			},
 		];
 
 		beforeEach(() => {
@@ -183,124 +177,6 @@ describe('ParameterInputList', () => {
 			});
 
 			const el = queryByText('TRIGGER NOTICE');
-
-			expect(el).not.toBeInTheDocument();
-		});
-
-		it('should show completionPageNotice if Form Trigger is connected and isQueueModeEnabled is true', () => {
-			ndvStore.activeNode = { name: 'From', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
-			settingsStore.isQueueModeEnabled = true;
-
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => {
-					return {
-						getParentNodes: vi.fn(() => ['Form Trigger']),
-						nodes: {
-							'Form Trigger': {
-								type: FORM_TRIGGER_NODE_TYPE,
-								parameters: {},
-							},
-						},
-					};
-				}),
-			});
-
-			const { getByText } = renderComponent({
-				props: {
-					parameters: formParameters,
-					nodeValues: {},
-				},
-			});
-
-			expect(getByText('COMPLETION PAGE NOTICE')).toBeInTheDocument();
-		});
-
-		it('should not show completionPageNotice if Form Trigger is not connected', () => {
-			ndvStore.activeNode = { name: 'From', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
-			settingsStore.isQueueModeEnabled = true;
-
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => {
-					return {
-						getParentNodes: vi.fn(() => []),
-						nodes: {},
-					};
-				}),
-			});
-
-			const { queryByText } = renderComponent({
-				props: {
-					parameters: formParameters,
-					nodeValues: {},
-				},
-			});
-			const el = queryByText('COMPLETION PAGE NOTICE');
-
-			expect(el).not.toBeInTheDocument();
-		});
-
-		it('should not show completionPageNotice if operation = completion ', () => {
-			ndvStore.activeNode = {
-				name: 'From',
-				type: FORM_NODE_TYPE,
-				parameters: { operation: 'completion' },
-			} as unknown as INodeUi;
-			settingsStore.isQueueModeEnabled = true;
-
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => {
-					return {
-						getParentNodes: vi.fn(() => ['Form Trigger']),
-						nodes: {
-							'Form Trigger': {
-								type: FORM_TRIGGER_NODE_TYPE,
-								parameters: {},
-							},
-						},
-					};
-				}),
-			});
-
-			const { queryByText } = renderComponent({
-				props: {
-					parameters: formParameters,
-					nodeValues: {},
-				},
-			});
-			const el = queryByText('COMPLETION PAGE NOTICE');
-
-			expect(el).not.toBeInTheDocument();
-		});
-
-		it('should not show completionPageNotice if Form Trigger is connected and isQueueModeEnabled is false', () => {
-			ndvStore.activeNode = {
-				name: 'From',
-				type: FORM_NODE_TYPE,
-				parameters: {},
-			} as INodeUi;
-			settingsStore.isQueueModeEnabled = false;
-
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => {
-					return {
-						getParentNodes: vi.fn(() => ['Form Trigger']),
-						nodes: {
-							'Form Trigger': {
-								type: FORM_TRIGGER_NODE_TYPE,
-								parameters: {},
-							},
-						},
-					};
-				}),
-			});
-
-			const { queryByText } = renderComponent({
-				props: {
-					parameters: formParameters,
-					nodeValues: {},
-				},
-			});
-			const el = queryByText('COMPLETION PAGE NOTICE');
 
 			expect(el).not.toBeInTheDocument();
 		});
