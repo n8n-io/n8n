@@ -6,7 +6,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
+import type { IWebhookResponsePromiseData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
 
 describe('WaitingWebhooks', () => {
 	const executionRepository = mock<ExecutionRepository>();
@@ -85,7 +85,7 @@ describe('WaitingWebhooks', () => {
 			// @ts-expect-error Protected method
 			.spyOn(waitingWebhooks, 'getWebhookExecutionData')
 			// @ts-expect-error Protected method
-			.mockResolvedValue(mock<IWebhookResponseCallbackData>());
+			.mockResolvedValue(mock<IWebhookResponsePromiseData>());
 
 		const execution = mock<IExecutionResponse>({
 			finished: false,

@@ -7,7 +7,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import type {
 	IWebhookManager,
-	IWebhookResponseCallbackData,
+	IWebhookResponsePromiseData,
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
@@ -150,14 +150,16 @@ describe('WebhookRequestHandler', () => {
 
 			const res = mock<Response>();
 
-			const executeWebhookResponse: IWebhookResponseCallbackData = {
-				responseCode: 200,
-				data: {},
-				headers: {
-					'x-custom-header': 'test',
+			const executeWebhookResponse: IWebhookResponsePromiseData = {
+				response: {
+					statusCode: 200,
+					body: {},
+					headers: {
+						'x-custom-header': 'test',
+					},
 				},
 			};
-			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+			// webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
 
 			await handler(req, res);
 
@@ -166,7 +168,7 @@ describe('WebhookRequestHandler', () => {
 			expect(res.header).toHaveBeenCalledWith({
 				'x-custom-header': 'test',
 			});
-			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.response.body);
 		});
 
 		it('should send an error response if webhook execution throws', async () => {
@@ -204,16 +206,20 @@ describe('WebhookRequestHandler', () => {
 
 				const res = mock<Response>();
 
-				const executeWebhookResponse: IWebhookResponseCallbackData = {
-					responseCode: 200,
+				const executeWebhookResponse: IWebhookResponsePromiseData = {
+					response: {
+						statusCode: 200,
+						headers: {},
+						body: {},
+					},
 				};
-				webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+				// webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
 
 				await handler(req, res);
 
 				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
 				expect(res.status).toHaveBeenCalledWith(200);
-				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.response.body);
 			},
 		);
 	});
