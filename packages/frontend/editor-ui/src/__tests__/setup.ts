@@ -65,20 +65,21 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 class Worker {
-	onmessage: (message: string) => void;
+	onmessage = vi.fn();
 
 	url: string;
 
 	constructor(url: string) {
 		this.url = url;
-		this.onmessage = () => {};
 	}
 
-	postMessage(message: string) {
+	postMessage = vi.fn((message: string) => {
 		this.onmessage(message);
-	}
+	});
 
-	addEventListener() {}
+	addEventListener = vi.fn();
+
+	terminate = vi.fn();
 }
 
 Object.defineProperty(window, 'Worker', {
