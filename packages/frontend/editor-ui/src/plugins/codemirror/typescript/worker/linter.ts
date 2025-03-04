@@ -52,7 +52,7 @@ function isIgnoredDiagnostic(diagnostic: ts.Diagnostic) {
 	switch (diagnostic.code) {
 		// No implicit any
 		case 7006:
-		// Cannot find module 'test' or its corresponding type declarations.
+		// Cannot find module or its corresponding type declarations.
 		case 2307:
 			return true;
 	}
