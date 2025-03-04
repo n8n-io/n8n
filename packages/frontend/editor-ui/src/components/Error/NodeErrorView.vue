@@ -654,7 +654,6 @@ async function onAskAssistantClick() {
 <style lang="scss">
 .node-error-view {
 	&__header {
-		max-width: 960px;
 		margin: 0 auto var(--spacing-s) auto;
 		padding-bottom: var(--spacing-3xs);
 		background-color: var(--color-background-xlight);
@@ -755,7 +754,6 @@ async function onAskAssistantClick() {
 	}
 
 	&__info {
-		max-width: 960px;
 		margin: 0 auto;
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
