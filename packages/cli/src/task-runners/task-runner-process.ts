@@ -63,6 +63,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'N8N_VERSION',
 		'ENVIRONMENT',
 		'DEPLOYMENT_NAME',
+		'NODE_PATH',
 	] as const;
 
 	constructor(
