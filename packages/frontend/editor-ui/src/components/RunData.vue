@@ -528,8 +528,7 @@ const showPinButton = computed(() => {
 
 const pinButtonDisabled = computed(
 	() =>
-		pinnedData.hasData.value ||
-		!rawInputData.value.length ||
+		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
 		readOnlyEnv.value,
