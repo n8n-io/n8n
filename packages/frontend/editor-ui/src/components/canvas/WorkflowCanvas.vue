@@ -9,7 +9,6 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE } from '@/constants';
 
 defineOptions({
 	inheritAttrs: false,
