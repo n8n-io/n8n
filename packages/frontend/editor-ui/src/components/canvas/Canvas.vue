@@ -97,8 +97,8 @@ const props = withDefaults(
 	defineProps<{
 		id?: string;
 		nodes: CanvasNode[];
-		nodeTypeDescriptions: Record<string, INodeTypeDescription>;
 		connections: CanvasConnection[];
+		nodeTypeDescriptions?: Record<string, INodeTypeDescription>;
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
@@ -110,6 +110,7 @@ const props = withDefaults(
 		id: 'canvas',
 		nodes: () => [],
 		connections: () => [],
+		nodeTypeDescriptions: () => ({}),
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,

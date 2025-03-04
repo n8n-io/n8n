@@ -11,6 +11,7 @@ import { N8nTooltip } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -51,6 +52,23 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	connections,
 	workflowObject,
 });
+
+const nodeTypeDescriptions = computed(() => {
+	return nodes.value.reduce<Record<string, INodeTypeDescription>>((acc, node) => {
+		const key = `${node.type}@${node.typeVersion}`;
+		if (acc[key]) {
+			return acc;
+		}
+
+		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (nodeTypeDescription) {
+			acc[key] = nodeTypeDescription;
+		}
+
+		return acc;
+	}, {});
+});
+
 async function loadData() {
 	workflowsStore.resetState();
 	resetWorkspace();
@@ -141,6 +159,7 @@ onMounted(loadData);
 			:class="{ [$style.canvas]: true }"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
+			:node-type-descriptions="nodeTypeDescriptions"
 			:show-bug-reporting-button="false"
 			:read-only="true"
 			:event-bus="eventBus"
