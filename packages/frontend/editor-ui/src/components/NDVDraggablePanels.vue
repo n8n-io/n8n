@@ -9,7 +9,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import type { MainPanelType, XYPosition } from '@/Interface';
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
 
@@ -43,7 +43,7 @@ const props = defineProps<Props>();
 
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
-const containerWidth = ref<number>(uiStore.appGridWidth);
+const containerWidth = ref<number>(uiStore.appGridDimensions.width);
 
 const emit = defineEmits<{
 	init: [{ position: number }];
@@ -86,14 +86,15 @@ onBeforeUnmount(() => {
 });
 
 watch(
-	() => uiStore.appGridWidth,
-	(width) => {
+	() => uiStore.appGridDimensions,
+	async (dimensions) => {
 		const ndv = document.getElementById('ndv');
 		if (ndv) {
+			await nextTick();
 			const { width: ndvWidth } = ndv.getBoundingClientRect();
 			containerWidth.value = ndvWidth;
 		} else {
-			containerWidth.value = width;
+			containerWidth.value = dimensions.width;
 		}
 		const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
 		const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
@@ -107,7 +108,7 @@ watch(
 		const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
 
 		// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
-		if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
+		if (dimensions.width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
 			setMainPanelWidth(minRelativeWidth);
 			setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
 		}
