@@ -1,127 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"album_type": {
-			"type": "string"
-		},
-		"total_tracks": {
-			"type": "integer"
-		},
-		"available_markets": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"external_urls": {
-			"type": "object",
-			"properties": {
-				"spotify": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"spotify"
-			]
-		},
-		"href": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"images": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"height": {
-						"type": "integer"
-					},
-					"url": {
-						"type": "string"
-					},
-					"width": {
-						"type": "integer"
-					}
-				},
-				"required": [
-					"height",
-					"url",
-					"width"
-				]
-			}
-		},
-		"name": {
-			"type": "string"
-		},
-		"release_date": {
-			"type": "string"
-		},
-		"release_date_precision": {
-			"type": "string"
-		},
-		"type": {
-			"type": "string"
-		},
-		"uri": {
-			"type": "string"
-		},
-		"artists": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"external_urls": {
-						"type": "object",
-						"properties": {
-							"spotify": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"spotify"
-						]
-					},
-					"href": {
-						"type": "string"
-					},
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					},
-					"uri": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"external_urls",
-					"href",
-					"id",
-					"name",
-					"type",
-					"uri"
-				]
-			}
-		}
-	},
-	"required": [
-		"album_type",
-		"total_tracks",
-		"external_urls",
-		"href",
-		"id",
-		"images",
-		"name",
-		"release_date",
-		"release_date_precision",
-		"type",
-		"uri",
-		"artists"
-	]
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json",
+    "sha": "f4c3db22584bafafd260982942b5d329a5d43b1e",
+    "size": 1784,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f4c3db22584bafafd260982942b5d329a5d43b1e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJhbGJ1\nbV90eXBlIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkidG90YWxf\ndHJhY2tzIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJImF2YWls\nYWJsZV9tYXJrZXRzIjogewoJCQkidHlwZSI6ICJhcnJheSIsCgkJCSJpdGVt\ncyI6IHsKCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJfQoJCX0sCgkJImV4dGVy\nbmFsX3VybHMiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0\naWVzIjogewoJCQkJInNwb3RpZnkiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5n\nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkic3BvdGlmeSIK\nCQkJXQoJCX0sCgkJImhyZWYiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9\nLAoJCSJpZCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImltYWdl\ncyI6IHsKCQkJInR5cGUiOiAiYXJyYXkiLAoJCQkiaXRlbXMiOiB7CgkJCQki\ndHlwZSI6ICJvYmplY3QiLAoJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJImhl\naWdodCI6IHsKCQkJCQkJInR5cGUiOiAiaW50ZWdlciIKCQkJCQl9LAoJCQkJ\nCSJ1cmwiOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJ\nCSJ3aWR0aCI6IHsKCQkJCQkJInR5cGUiOiAiaW50ZWdlciIKCQkJCQl9CgkJ\nCQl9LAoJCQkJInJlcXVpcmVkIjogWwoJCQkJCSJoZWlnaHQiLAoJCQkJCSJ1\ncmwiLAoJCQkJCSJ3aWR0aCIKCQkJCV0KCQkJfQoJCX0sCgkJIm5hbWUiOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJyZWxlYXNlX2RhdGUiOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJyZWxlYXNlX2RhdGVfcHJl\nY2lzaW9uIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkidHlwZSI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInVyaSI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImFydGlzdHMiOiB7CgkJCSJ0eXBlIjog\nImFycmF5IiwKCQkJIml0ZW1zIjogewoJCQkJInR5cGUiOiAib2JqZWN0IiwK\nCQkJCSJwcm9wZXJ0aWVzIjogewoJCQkJCSJleHRlcm5hbF91cmxzIjogewoJ\nCQkJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkJCQkicHJvcGVydGllcyI6IHsK\nCQkJCQkJCSJzcG90aWZ5IjogewoJCQkJCQkJCSJ0eXBlIjogInN0cmluZyIK\nCQkJCQkJCX0KCQkJCQkJfSwKCQkJCQkJInJlcXVpcmVkIjogWwoJCQkJCQkJ\nInNwb3RpZnkiCgkJCQkJCV0KCQkJCQl9LAoJCQkJCSJocmVmIjogewoJCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQkiaWQiOiB7CgkJCQkJ\nCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJuYW1lIjogewoJCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQkidHlwZSI6IHsKCQkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0sCgkJCQkJInVyaSI6IHsKCQkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0KCQkJCX0sCgkJCQkicmVxdWly\nZWQiOiBbCgkJCQkJImV4dGVybmFsX3VybHMiLAoJCQkJCSJocmVmIiwKCQkJ\nCQkiaWQiLAoJCQkJCSJuYW1lIiwKCQkJCQkidHlwZSIsCgkJCQkJInVyaSIK\nCQkJCV0KCQkJfQoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJImFsYnVtX3R5\ncGUiLAoJCSJ0b3RhbF90cmFja3MiLAoJCSJleHRlcm5hbF91cmxzIiwKCQki\naHJlZiIsCgkJImlkIiwKCQkiaW1hZ2VzIiwKCQkibmFtZSIsCgkJInJlbGVh\nc2VfZGF0ZSIsCgkJInJlbGVhc2VfZGF0ZV9wcmVjaXNpb24iLAoJCSJ0eXBl\nIiwKCQkidXJpIiwKCQkiYXJ0aXN0cyIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f4c3db22584bafafd260982942b5d329a5d43b1e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/album/search.json"
+    },
+    "version": 1
 }
