@@ -1,43 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "createdate": {
-                    "type": "string"
-                },
-                "hs_lastmodifieddate": {
-                    "type": "string"
-                },
-                "hs_object_id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdate",
-                "hs_lastmodifieddate",
-                "hs_object_id"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "updatedAt": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json",
+    "sha": "af98ede29b5ec12ab384d3b0430e86b057086887",
+    "size": 940,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/af98ede29b5ec12ab384d3b0430e86b057086887",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgImNyZWF0ZWRhdGUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJoc19sYXN0bW9kaWZpZWRkYXRlIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAiaHNfb2JqZWN0X2lkIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgImNyZWF0ZWRhdGUiLAogICAgICAgICAgICAg\nICAgImhzX2xhc3Rtb2RpZmllZGRhdGUiLAogICAgICAgICAgICAgICAgImhz\nX29iamVjdF9pZCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAg\nImNyZWF0ZWRBdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInVwZGF0ZWRBdCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAg\nICAicHJvcGVydGllcyIsCiAgICAgICAgImNyZWF0ZWRBdCIsCiAgICAgICAg\nInVwZGF0ZWRBdCIsCiAgICAgICAgImFyY2hpdmVkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/af98ede29b5ec12ab384d3b0430e86b057086887",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/search.json"
     },
-    "required": [
-        "id",
-        "properties",
-        "createdAt",
-        "updatedAt",
-        "archived"
-    ]
+    "version": 1
 }
