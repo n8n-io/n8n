@@ -1,84 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "self": {
-            "type": "string"
-        },
-        "filename": {
-            "type": "string"
-        },
-        "author": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string"
-                },
-                "accountId": {
-                    "type": "string"
-                },
-                "avatarUrls": {
-                    "type": "object",
-                    "properties": {
-                        "48x48": {
-                            "type": "string"
-                        },
-                        "24x24": {
-                            "type": "string"
-                        },
-                        "16x16": {
-                            "type": "string"
-                        },
-                        "32x32": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "48x48",
-                        "24x24",
-                        "16x16",
-                        "32x32"
-                    ]
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "active": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "self",
-                "accountId",
-                "avatarUrls",
-                "displayName",
-                "active"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "mimeType": {
-            "type": "string"
-        },
-        "content": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json",
+    "sha": "b5f43eaca3d1ff09fb71b3e4611578c1f90af397",
+    "size": 2046,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b5f43eaca3d1ff09fb71b3e4611578c1f90af397",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJzZWxmIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZmlsZW5hbWUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJhdXRob3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nInNlbGYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhY2NvdW50\nSWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhdmF0YXJVcmxz\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICI0OHg0OCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgIjI0eDI0IjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAiMTZ4MTYiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgICAgICIzMngzMiI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAg\nICAiNDh4NDgiLAogICAgICAgICAgICAgICAgICAgICAgICAiMjR4MjQiLAog\nICAgICAgICAgICAgICAgICAgICAgICAiMTZ4MTYiLAogICAgICAgICAgICAg\nICAgICAgICAgICAiMzJ4MzIiCiAgICAgICAgICAgICAgICAgICAgXQogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJkaXNwbGF5TmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImFjdGl2ZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgICAgICAgICAic2VsZiIsCiAgICAgICAgICAgICAgICAi\nYWNjb3VudElkIiwKICAgICAgICAgICAgICAgICJhdmF0YXJVcmxzIiwKICAg\nICAgICAgICAgICAgICJkaXNwbGF5TmFtZSIsCiAgICAgICAgICAgICAgICAi\nYWN0aXZlIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiY3Jl\nYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInNpemUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgfSwKICAgICAgICAibWltZVR5cGUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJj\nb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAog\nICAgICAgICJzZWxmIiwKICAgICAgICAiZmlsZW5hbWUiLAogICAgICAgICJh\ndXRob3IiLAogICAgICAgICJjcmVhdGVkIiwKICAgICAgICAic2l6ZSIsCiAg\nICAgICAgIm1pbWVUeXBlIiwKICAgICAgICAicHJvcGVydGllcyIsCiAgICAg\nICAgImNvbnRlbnQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b5f43eaca3d1ff09fb71b3e4611578c1f90af397",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json"
     },
-    "required": [
-        "id",
-        "self",
-        "filename",
-        "author",
-        "created",
-        "size",
-        "mimeType",
-        "properties",
-        "content"
-    ]
+    "version": 1
 }
