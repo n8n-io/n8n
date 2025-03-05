@@ -506,7 +506,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			mainSidebar.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 
-			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 
