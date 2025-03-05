@@ -1,99 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "author": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string"
-                },
-                "accountId": {
-                    "type": "string"
-                },
-                "avatarUrls": {
-                    "type": "object",
-                    "properties": {
-                        "48x48": {
-                            "type": "string"
-                        },
-                        "24x24": {
-                            "type": "string"
-                        },
-                        "16x16": {
-                            "type": "string"
-                        },
-                        "32x32": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "48x48",
-                        "24x24",
-                        "16x16",
-                        "32x32"
-                    ]
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "timeZone": {
-                    "type": "string"
-                },
-                "accountType": {
-                    "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "self",
-                "accountId",
-                "avatarUrls",
-                "displayName",
-                "active",
-                "timeZone",
-                "accountType"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "items": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "field": {
-                        "type": "string"
-                    },
-                    "fieldtype": {
-                        "type": "string"
-                    },
-                    "fieldId": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "field",
-                    "fieldtype",
-                    "from",
-                    "fromString",
-                    "to"
-                ]
-            }
-        }
+    "name": "changelog.json",
+    "path": "packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json",
+    "sha": "203c0f31dc4fa6f9ce81b8320ffb9d31b2e93e75",
+    "size": 2639,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/203c0f31dc4fa6f9ce81b8320ffb9d31b2e93e75",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImF1dGhvciI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAic2VsZiI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgImFjY291bnRJZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImF2YXRhclVybHMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgIjQ4eDQ4IjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAi\nMjR4MjQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICIxNngxNiI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgIjMyeDMyIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAgICAgICAgICI0OHg0OCIsCiAgICAgICAgICAgICAgICAgICAg\nICAgICIyNHgyNCIsCiAgICAgICAgICAgICAgICAgICAgICAgICIxNngxNiIs\nCiAgICAgICAgICAgICAgICAgICAgICAgICIzMngzMiIKICAgICAgICAgICAg\nICAgICAgICBdCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImRpc3BsYXlOYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nYWN0aXZlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInRpbWVa\nb25lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYWNjb3VudFR5\ncGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJlbWFpbEFkZHJl\nc3MiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAic2VsZiIsCiAgICAgICAg\nICAgICAgICAiYWNjb3VudElkIiwKICAgICAgICAgICAgICAgICJhdmF0YXJV\ncmxzIiwKICAgICAgICAgICAgICAgICJkaXNwbGF5TmFtZSIsCiAgICAgICAg\nICAgICAgICAiYWN0aXZlIiwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSIs\nCiAgICAgICAgICAgICAgICAiYWNjb3VudFR5cGUiCiAgICAgICAgICAgIF0K\nICAgICAgICB9LAogICAgICAgICJjcmVhdGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0\nZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nICAgICJmaWVsZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgImZpZWxkdHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgImZpZWxkSWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICJmaWVsZCIsCiAgICAgICAg\nICAgICAgICAgICAgImZpZWxkdHlwZSIsCiAgICAgICAgICAgICAgICAgICAg\nImZyb20iLAogICAgICAgICAgICAgICAgICAgICJmcm9tU3RyaW5nIiwKICAg\nICAgICAgICAgICAgICAgICAidG8iCiAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgIH0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwog\nICAgICAgICJpZCIsCiAgICAgICAgImF1dGhvciIsCiAgICAgICAgImNyZWF0\nZWQiLAogICAgICAgICJpdGVtcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/203c0f31dc4fa6f9ce81b8320ffb9d31b2e93e75",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/changelog.json"
     },
-    "required": [
-        "id",
-        "author",
-        "created",
-        "items"
-    ]
+    "version": 1
 }
