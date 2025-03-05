@@ -1,11 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"success": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"success"
-	]
+    "name": "close.json",
+    "path": "packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json",
+    "sha": "1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+    "size": 114,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJzdWNj\nZXNzIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0KCX0sCgkicmVxdWly\nZWQiOiBbCgkJInN1Y2Nlc3MiCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/close.json"
+    },
+    "version": 1
 }
