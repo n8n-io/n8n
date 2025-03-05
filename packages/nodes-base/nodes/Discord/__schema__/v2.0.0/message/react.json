@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "success": {
-            "type": "boolean"
-        }
+    "name": "react.json",
+    "path": "packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json",
+    "sha": "a19052ad7bae16d92eb1b30f5e301dcce4f36cba",
+    "size": 156,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a19052ad7bae16d92eb1b30f5e301dcce4f36cba",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdWNjZXNzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgInN1Y2Nlc3MiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a19052ad7bae16d92eb1b30f5e301dcce4f36cba",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/react.json"
     },
-    "required": [
-        "success"
-    ]
+    "version": 1
 }
