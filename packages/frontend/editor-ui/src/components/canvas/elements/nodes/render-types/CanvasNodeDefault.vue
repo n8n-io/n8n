@@ -326,7 +326,7 @@ function onActivate() {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: var(--font-line-height-compact);
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 
 .statusIcons {

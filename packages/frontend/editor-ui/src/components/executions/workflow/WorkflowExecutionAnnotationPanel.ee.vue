@@ -278,7 +278,7 @@ const onTagsEditEsc = () => {
 	}
 
 	.key {
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 	}
 }
 

@@ -228,7 +228,7 @@ const alertBoxClassNames = computed(() => {
 .title {
 	font-size: $alert-title-font-size;
 	line-height: 18px;
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .description {

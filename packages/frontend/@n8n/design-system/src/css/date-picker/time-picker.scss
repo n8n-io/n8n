@@ -80,7 +80,7 @@
 		color: var(--color-text-dark);
 
 		&.confirm {
-			font-weight: 800;
+			font-weight: var(--font-weight-bold);
 			color: var.$datepicker-active-color;
 		}
 	}

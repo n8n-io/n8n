@@ -416,7 +416,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .addResourceText {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .addResourceIcon {

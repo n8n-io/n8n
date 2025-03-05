@@ -152,7 +152,7 @@
 
 		&.is-checked {
 			color: var.$cascader-menu-selected-font-color;
-			font-weight: bold;
+			font-weight: var(--font-weight-bold);
 		}
 
 		> span {

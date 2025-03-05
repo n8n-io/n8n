@@ -715,7 +715,7 @@ $--header-spacing: 20px;
 
 .activator {
 	color: $custom-font-dark;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	font-size: 13px;
 	line-height: $--text-line-height;
 	align-items: center;
@@ -729,7 +729,7 @@ $--header-spacing: 20px;
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 
 	&:hover {
