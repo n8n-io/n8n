@@ -1,26 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "to": {
-            "type": "string"
-        },
-        "message-id": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "remaining-balance": {
-            "type": "string"
-        },
-        "message-price": {
-            "type": "string"
-        },
-        "network": {
-            "type": "string"
-        }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json",
+    "sha": "d3d02a19b09c97378cf3c5925dd91aa69e9f1cf6",
+    "size": 472,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d3d02a19b09c97378cf3c5925dd91aa69e9f1cf6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0byI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm1lc3NhZ2UtaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzdGF0dXMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJyZW1haW5pbmctYmFsYW5jZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1lc3NhZ2UtcHJp\nY2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJuZXR3b3JrIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAic3RhdHVzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d3d02a19b09c97378cf3c5925dd91aa69e9f1cf6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Vonage/__schema__/v1.0.0/sms/send.json"
     },
-    "required": [
-        "status"
-    ]
+    "version": 1
 }
