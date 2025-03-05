@@ -1,0 +1,139 @@
+{
+    "type": "object",
+    "properties": {
+        "system_mandatory": {
+            "type": "boolean"
+        },
+        "webhook": {
+            "type": "boolean"
+        },
+        "json_type": {
+            "type": "string"
+        },
+        "crypt": {
+            "type": "null"
+        },
+        "field_label": {
+            "type": "string"
+        },
+        "created_source": {
+            "type": "string"
+        },
+        "field_read_only": {
+            "type": "boolean"
+        },
+        "display_label": {
+            "type": "string"
+        },
+        "ui_type": {
+            "type": "integer"
+        },
+        "read_only": {
+            "type": "boolean"
+        },
+        "association_details": {
+            "type": "null"
+        },
+        "businesscard_supported": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "custom_field": {
+            "type": "boolean"
+        },
+        "convert_mapping": {
+            "type": "object",
+            "properties": {
+                "Deals": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "Contacts",
+                "Deals",
+                "Accounts"
+            ]
+        },
+        "visible": {
+            "type": "boolean"
+        },
+        "length": {
+            "type": "integer"
+        },
+        "view_type": {
+            "type": "object",
+            "properties": {
+                "view": {
+                    "type": "boolean"
+                },
+                "edit": {
+                    "type": "boolean"
+                },
+                "quick_create": {
+                    "type": "boolean"
+                },
+                "create": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "view",
+                "edit",
+                "quick_create",
+                "create"
+            ]
+        },
+        "subform": {
+            "type": "null"
+        },
+        "external": {
+            "type": "null"
+        },
+        "api_name": {
+            "type": "string"
+        },
+        "history_tracking": {
+            "type": "boolean"
+        },
+        "data_type": {
+            "type": "string"
+        },
+        "decimal_place": {
+            "type": "null"
+        },
+        "mass_update": {
+            "type": "boolean"
+        },
+        "pick_list_values": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "display_value": {
+                        "type": "string"
+                    },
+                    "reference_value": {
+                        "type": "string"
+                    },
+                    "actual_value": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "display_value",
+                    "reference_value",
+                    "actual_value"
+                ]
+            }
+        },
+        "quick_sequence_number": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "version": 1
+}
