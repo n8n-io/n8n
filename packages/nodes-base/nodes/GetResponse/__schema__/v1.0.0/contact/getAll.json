@@ -1,71 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "contactId": {
-            "type": "string"
-        },
-        "href": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "note": {
-            "type": "null"
-        },
-        "origin": {
-            "type": "string"
-        },
-        "changedOn": {
-            "type": "string"
-        },
-        "timeZone": {
-            "type": "string"
-        },
-        "ipAddress": {
-            "type": "string"
-        },
-        "activities": {
-            "type": "string"
-        },
-        "campaign": {
-            "type": "object",
-            "properties": {
-                "campaignId": {
-                    "type": "string"
-                },
-                "href": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "campaignId",
-                "href",
-                "name"
-            ]
-        },
-        "createdOn": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "6a6e5ce74c72ba91178a2c27af9306c7da78a30c",
+    "size": 1457,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a6e5ce74c72ba91178a2c27af9306c7da78a30c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb250YWN0SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJocmVmIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZW1haWwi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJub3RlIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgIm9yaWdpbiI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNoYW5nZWRPbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInRpbWVab25lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiaXBBZGRyZXNzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYWN0\naXZpdGllcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImNhbXBhaWduIjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJjYW1wYWlnbklkIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAiaHJlZiI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiY2FtcGFpZ25J\nZCIsCiAgICAgICAgICAgICAgICAiaHJlZiIsCiAgICAgICAgICAgICAgICAi\nbmFtZSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0\nZWRPbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImNvbnRhY3RJ\nZCIsCiAgICAgICAgImhyZWYiLAogICAgICAgICJuYW1lIiwKICAgICAgICAi\nZW1haWwiLAogICAgICAgICJub3RlIiwKICAgICAgICAib3JpZ2luIiwKICAg\nICAgICAiZGF5T2ZDeWNsZSIsCiAgICAgICAgImNoYW5nZWRPbiIsCiAgICAg\nICAgInRpbWVab25lIiwKICAgICAgICAiaXBBZGRyZXNzIiwKICAgICAgICAi\nYWN0aXZpdGllcyIsCiAgICAgICAgImNhbXBhaWduIiwKICAgICAgICAiY3Jl\nYXRlZE9uIiwKICAgICAgICAic2NvcmluZyIsCiAgICAgICAgImVuZ2FnZW1l\nbnRTY29yZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a6e5ce74c72ba91178a2c27af9306c7da78a30c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/GetResponse/__schema__/v1.0.0/contact/getAll.json"
     },
-    "required": [
-        "contactId",
-        "href",
-        "name",
-        "email",
-        "note",
-        "origin",
-        "dayOfCycle",
-        "changedOn",
-        "timeZone",
-        "ipAddress",
-        "activities",
-        "campaign",
-        "createdOn",
-        "scoring",
-        "engagementScore"
-    ]
+    "version": 1
 }
