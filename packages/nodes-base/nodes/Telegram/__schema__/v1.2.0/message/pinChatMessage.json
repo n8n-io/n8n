@@ -1,15 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "boolean"
-        }
+    "name": "pinChatMessage.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json",
+    "sha": "02ca8aa86316c856190c41ba2fc7172e3b459be2",
+    "size": 225,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/02ca8aa86316c856190c41ba2fc7172e3b459be2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAib2siLAogICAgICAgICJyZXN1bHQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/02ca8aa86316c856190c41ba2fc7172e3b459be2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/pinChatMessage.json"
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }
