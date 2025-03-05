@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "vid": {
-            "type": "integer"
-        },
-        "isNew": {
-            "type": "boolean"
-        }
-    }
+    "name": "upsert.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json",
+    "sha": "9b07c7b8ae2fe45be6811b77fb004999ed47b052",
+    "size": 169,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9b07c7b8ae2fe45be6811b77fb004999ed47b052",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ2aWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgfSwKICAgICAgICAiaXNOZXciOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9b07c7b8ae2fe45be6811b77fb004999ed47b052",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contact/upsert.json"
+    },
+    "version": 1
 }
