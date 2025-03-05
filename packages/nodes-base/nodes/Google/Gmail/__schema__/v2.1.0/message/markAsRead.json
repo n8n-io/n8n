@@ -1,21 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
+    "name": "markAsRead.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json",
+    "sha": "6a422c6d2ee6adca3ea32c23d378c519d5b25ca5",
+    "size": 359,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a422c6d2ee6adca3ea32c23d378c519d5b25ca5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRocmVhZElkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFiZWxJZHMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAiaWQiLAogICAgICAgICJ0aHJlYWRJZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a422c6d2ee6adca3ea32c23d378c519d5b25ca5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsRead.json"
     },
-    "required": [
-        "id",
-        "threadId"
-    ]
+    "version": 1
 }
