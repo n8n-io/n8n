@@ -1,50 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "assigner_id": {
-            "type": "null"
-        },
-        "assignee_id": {
-            "type": "null"
-        },
-        "project_id": {
-            "type": "string"
-        },
-        "order": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "is_completed": {
-            "type": "boolean"
-        },
-        "labels": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "comment_count": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json",
+    "sha": "1f3d9c1ef6b3ffb3d8117ca50ca0ab4b6742c395",
+    "size": 996,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1f3d9c1ef6b3ffb3d8117ca50ca0ab4b6742c395",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImFzc2lnbmVyX2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImFzc2lnbmVl\nX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgInByb2plY3RfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvcmRlciI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJj\nb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiZGVzY3JpcHRpb24iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpc19jb21wbGV0\nZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAg\nfSwKICAgICAgICAibGFiZWxzIjogewogICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAg\nICAgICAgInByaW9yaXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgImNvbW1lbnRfY291bnQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiY3JlYXRvcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWRfYXQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1cmwi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1f3d9c1ef6b3ffb3d8117ca50ca0ab4b6742c395",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/get.json"
+    },
+    "version": 1
 }
