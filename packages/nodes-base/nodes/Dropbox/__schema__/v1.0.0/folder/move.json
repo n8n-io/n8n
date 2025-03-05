@@ -1,61 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "metadata": {
-            "type": "object",
-            "properties": {
-                ".tag": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "path_lower": {
-                    "type": "string"
-                },
-                "path_display": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "parent_shared_folder_id": {
-                    "type": "string"
-                },
-                "sharing_info": {
-                    "type": "object",
-                    "properties": {
-                        "read_only": {
-                            "type": "boolean"
-                        },
-                        "parent_shared_folder_id": {
-                            "type": "string"
-                        },
-                        "traverse_only": {
-                            "type": "boolean"
-                        },
-                        "no_access": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "read_only",
-                        "parent_shared_folder_id",
-                        "traverse_only",
-                        "no_access"
-                    ]
-                }
-            },
-            "required": [
-                ".tag",
-                "name",
-                "path_lower",
-                "path_display",
-                "id"
-            ]
-        }
+    "name": "move.json",
+    "path": "packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json",
+    "sha": "236ea801c085b4f5a23eb6931f79f16a7f68d0ca",
+    "size": 1729,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/236ea801c085b4f5a23eb6931f79f16a7f68d0ca",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXRhZGF0YSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAiLnRhZyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm5h\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJwYXRoX2xvd2Vy\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicGF0aF9kaXNwbGF5\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJwYXJlbnRfc2hhcmVkX2ZvbGRlcl9p\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInNoYXJpbmdfaW5m\nbyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAog\nICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAicmVhZF9vbmx5IjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInBhcmVudF9z\naGFyZWRfZm9sZGVyX2lkIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAidHJhdmVyc2Vfb25seSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICJub19hY2Nlc3MiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICJyZWFk\nX29ubHkiLAogICAgICAgICAgICAgICAgICAgICAgICAicGFyZW50X3NoYXJl\nZF9mb2xkZXJfaWQiLAogICAgICAgICAgICAgICAgICAgICAgICAidHJhdmVy\nc2Vfb25seSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJub19hY2Nlc3Mi\nCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAiLnRhZyIsCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAg\nICAgICAgICAgICAicGF0aF9sb3dlciIsCiAgICAgICAgICAgICAgICAicGF0\naF9kaXNwbGF5IiwKICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAgICAg\nXQogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nIm1ldGFkYXRhIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/236ea801c085b4f5a23eb6931f79f16a7f68d0ca",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/folder/move.json"
     },
-    "required": [
-        "metadata"
-    ]
+    "version": 1
 }
