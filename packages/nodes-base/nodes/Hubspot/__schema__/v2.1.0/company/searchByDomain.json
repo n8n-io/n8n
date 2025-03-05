@@ -1,109 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "portalId": {
-            "type": "integer"
-        },
-        "companyId": {
-            "type": "integer"
-        },
-        "isDeleted": {
-            "type": "boolean"
-        },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "domain": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceVid": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "requestId": {
-                                        "type": "string"
-                                    },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                }
-            }
-        },
-        "additionalDomains": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "domain": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "sourceId": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "domain",
-                    "timestamp",
-                    "source",
-                    "sourceId"
-                ]
-            }
-        }
-    }
+    "name": "searchByDomain.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json",
+    "sha": "5203bbb4a9285c352876be400fd06c239e5df73b",
+    "size": 3814,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5203bbb4a9285c352876be400fd06c239e5df73b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwb3J0YWxJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJjb21wYW55SWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\naXNEZWxldGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0sCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgImRvbWFpbiI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAidmFsdWUi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0aW1lc3RhbXAiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAic291cmNlIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICAgICAidmVyc2lvbnMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInRpbWVzdGFtcCI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzb3Vy\nY2VJZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInNvdXJjZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInNvdXJjZVZpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAicmVxdWVzdElkIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidXNlVGltZXN0YW1wQXNQZXJzaXN0ZW5jZVRpbWVz\ndGFtcCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5h\nbWUiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidmFs\ndWUiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGlt\nZXN0YW1wIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInNvdXJjZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJzb3VyY2VWaWQiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nXQogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ2YWx1ZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJ0aW1lc3Rh\nbXAiLAogICAgICAgICAgICAgICAgICAgICAgICAic291cmNlIiwKICAgICAg\nICAgICAgICAgICAgICAgICAgInNvdXJjZUlkIiwKICAgICAgICAgICAgICAg\nICAgICAgICAgInVwZGF0ZWRCeVVzZXJJZCIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICJ2ZXJzaW9ucyIKICAgICAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAg\nICJhZGRpdGlvbmFsRG9tYWlucyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgImRvbWFpbiI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInRpbWVzdGFtcCI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJz\nb3VyY2UiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICJzb3VyY2VJZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAgICAgImRvbWFpbiIsCiAgICAgICAgICAgICAgICAgICAg\nInRpbWVzdGFtcCIsCiAgICAgICAgICAgICAgICAgICAgInNvdXJjZSIsCiAg\nICAgICAgICAgICAgICAgICAgInNvdXJjZUlkIgogICAgICAgICAgICAgICAg\nXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5203bbb4a9285c352876be400fd06c239e5df73b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/searchByDomain.json"
+    },
+    "version": 1
 }
