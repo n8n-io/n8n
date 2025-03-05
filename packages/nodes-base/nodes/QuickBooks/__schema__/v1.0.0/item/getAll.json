@@ -1,94 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Name": {
-            "type": "string"
-        },
-        "Active": {
-            "type": "boolean"
-        },
-        "FullyQualifiedName": {
-            "type": "string"
-        },
-        "Taxable": {
-            "type": "boolean"
-        },
-        "Type": {
-            "type": "string"
-        },
-        "IncomeAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "PurchaseCost": {
-            "type": "integer"
-        },
-        "TrackQtyOnHand": {
-            "type": "boolean"
-        },
-        "domain": {
-            "type": "string"
-        },
-        "sparse": {
-            "type": "boolean"
-        },
-        "Id": {
-            "type": "string"
-        },
-        "SyncToken": {
-            "type": "string"
-        },
-        "MetaData": {
-            "type": "object",
-            "properties": {
-                "CreateTime": {
-                    "type": "string"
-                },
-                "LastUpdatedTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
-        },
-        "ExpenseAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json",
+    "sha": "fbd4491349892e64a4bc331663d71c2510963334",
+    "size": 2056,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fbd4491349892e64a4bc331663d71c2510963334",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJOYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiQWN0aXZlIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIkZ1bGx5UXVh\nbGlmaWVkTmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIlRheGFibGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiVHlwZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIkluY29tZUFjY291bnRSZWYiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAg\nICAgICAgICAgInZhbHVlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ2YWx1ZSIsCiAg\nICAgICAgICAgICAgICAibmFtZSIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgIlB1cmNoYXNlQ29zdCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJUcmFja1F0eU9uSGFu\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9\nLAogICAgICAgICJkb21haW4iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzcGFyc2UiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiSWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJTeW5jVG9rZW4iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJNZXRhRGF0YSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAiQ3JlYXRlVGltZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgIkxhc3RVcGRhdGVkVGltZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICJDcmVhdGVUaW1lIiwKICAgICAgICAgICAg\nICAgICJMYXN0VXBkYXRlZFRpbWUiCiAgICAgICAgICAgIF0KICAgICAgICB9\nLAogICAgICAgICJFeHBlbnNlQWNjb3VudFJlZiI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7\nCiAgICAgICAgICAgICAgICAidmFsdWUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInZh\nbHVlIiwKICAgICAgICAgICAgICAgICJuYW1lIgogICAgICAgICAgICBdCiAg\nICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiTmFt\nZSIsCiAgICAgICAgIkFjdGl2ZSIsCiAgICAgICAgIkZ1bGx5UXVhbGlmaWVk\nTmFtZSIsCiAgICAgICAgIlR5cGUiLAogICAgICAgICJkb21haW4iLAogICAg\nICAgICJzcGFyc2UiLAogICAgICAgICJJZCIsCiAgICAgICAgIlN5bmNUb2tl\nbiIsCiAgICAgICAgIk1ldGFEYXRhIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fbd4491349892e64a4bc331663d71c2510963334",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/item/getAll.json"
     },
-    "required": [
-        "Name",
-        "Active",
-        "FullyQualifiedName",
-        "Type",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData"
-    ]
+    "version": 1
 }
