@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "uploadId": {
-            "type": "string"
-        }
-    }
+    "name": "upload.json",
+    "path": "packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json",
+    "sha": "a239010c451b198e78f579f188ae06ff1c0716a2",
+    "size": 113,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a239010c451b198e78f579f188ae06ff1c0716a2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cGxvYWRJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a239010c451b198e78f579f188ae06ff1c0716a2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/upload.json"
+    },
+    "version": 1
 }
