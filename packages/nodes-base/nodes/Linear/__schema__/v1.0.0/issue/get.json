@@ -1,67 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "identifier": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "archivedAt": {
-            "type": "null"
-        },
-        "state": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "displayName"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json",
+    "sha": "1b822a218326aae9629f2a2d9f11457c34bfddb4",
+    "size": 1387,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1b822a218326aae9629f2a2d9f11457c34bfddb4",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImlkZW50aWZpZXIiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0aXRsZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInByaW9yaXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVkQXQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAic3Rh\ndGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImlkIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAibmFtZSIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWRBdCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgImNyZWF0b3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZGlzcGxheU5h\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAg\nICAgICAgImRpc3BsYXlOYW1lIgogICAgICAgICAgICBdCiAgICAgICAgfQog\nICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAg\nICJpZGVudGlmaWVyIiwKICAgICAgICAidGl0bGUiLAogICAgICAgICJwcmlv\ncml0eSIsCiAgICAgICAgImFyY2hpdmVkQXQiLAogICAgICAgICJhc3NpZ25l\nZSIsCiAgICAgICAgInN0YXRlIiwKICAgICAgICAiY3JlYXRlZEF0IiwKICAg\nICAgICAiY3JlYXRvciIsCiAgICAgICAgImRlc2NyaXB0aW9uIiwKICAgICAg\nICAiZHVlRGF0ZSIsCiAgICAgICAgImN5Y2xlIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1b822a218326aae9629f2a2d9f11457c34bfddb4",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/get.json"
     },
-    "required": [
-        "id",
-        "identifier",
-        "title",
-        "priority",
-        "archivedAt",
-        "assignee",
-        "state",
-        "createdAt",
-        "creator",
-        "description",
-        "dueDate",
-        "cycle"
-    ]
+    "version": 1
 }
