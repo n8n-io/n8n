@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "spaceThreadingState": {
+            "type": "string"
+        },
+        "spaceType": {
+            "type": "string"
+        },
+        "spaceHistoryState": {
+            "type": "string"
+        },
+        "lastActiveTime": {
+            "type": "string"
+        },
+        "membershipCount": {
+            "type": "object",
+            "properties": {
+                "joinedDirectHumanUserCount": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "joinedDirectHumanUserCount"
+            ]
+        },
+        "spaceUri": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "type",
+        "spaceThreadingState",
+        "spaceType",
+        "spaceHistoryState",
+        "lastActiveTime",
+        "membershipCount",
+        "spaceUri"
+    ],
+    "version": 1
+}
