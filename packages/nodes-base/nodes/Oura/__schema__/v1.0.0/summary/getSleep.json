@@ -1,59 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"contributors": {
-			"type": "object",
-			"properties": {
-				"deep_sleep": {
-					"type": "integer"
-				},
-				"efficiency": {
-					"type": "integer"
-				},
-				"latency": {
-					"type": "integer"
-				},
-				"rem_sleep": {
-					"type": "integer"
-				},
-				"restfulness": {
-					"type": "integer"
-				},
-				"timing": {
-					"type": "integer"
-				},
-				"total_sleep": {
-					"type": "integer"
-				}
-			},
-			"required": [
-				"deep_sleep",
-				"efficiency",
-				"latency",
-				"rem_sleep",
-				"restfulness",
-				"timing",
-				"total_sleep"
-			]
-		},
-		"day": {
-			"type": "string"
-		},
-		"score": {
-			"type": "integer"
-		},
-		"timestamp": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"contributors",
-		"day",
-		"score",
-		"timestamp"
-	]
+    "name": "getSleep.json",
+    "path": "packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json",
+    "sha": "9e9ff279e8e58d85f0d8185b9f61aa852f1db326",
+    "size": 828,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9e9ff279e8e58d85f0d8185b9f61aa852f1db326",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNvbnRyaWJ1dG9ycyI6\nIHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJ\nCQkiZGVlcF9zbGVlcCI6IHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJ\nfSwKCQkJCSJlZmZpY2llbmN5IjogewoJCQkJCSJ0eXBlIjogImludGVnZXIi\nCgkJCQl9LAoJCQkJImxhdGVuY3kiOiB7CgkJCQkJInR5cGUiOiAiaW50ZWdl\nciIKCQkJCX0sCgkJCQkicmVtX3NsZWVwIjogewoJCQkJCSJ0eXBlIjogImlu\ndGVnZXIiCgkJCQl9LAoJCQkJInJlc3RmdWxuZXNzIjogewoJCQkJCSJ0eXBl\nIjogImludGVnZXIiCgkJCQl9LAoJCQkJInRpbWluZyI6IHsKCQkJCQkidHlw\nZSI6ICJpbnRlZ2VyIgoJCQkJfSwKCQkJCSJ0b3RhbF9zbGVlcCI6IHsKCQkJ\nCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQi\nOiBbCgkJCQkiZGVlcF9zbGVlcCIsCgkJCQkiZWZmaWNpZW5jeSIsCgkJCQki\nbGF0ZW5jeSIsCgkJCQkicmVtX3NsZWVwIiwKCQkJCSJyZXN0ZnVsbmVzcyIs\nCgkJCQkidGltaW5nIiwKCQkJCSJ0b3RhbF9zbGVlcCIKCQkJXQoJCX0sCgkJ\nImRheSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInNjb3JlIjog\newoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJInRpbWVzdGFtcCI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJ\nImlkIiwKCQkiY29udHJpYnV0b3JzIiwKCQkiZGF5IiwKCQkic2NvcmUiLAoJ\nCSJ0aW1lc3RhbXAiCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9e9ff279e8e58d85f0d8185b9f61aa852f1db326",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getSleep.json"
+    },
+    "version": 1
 }
