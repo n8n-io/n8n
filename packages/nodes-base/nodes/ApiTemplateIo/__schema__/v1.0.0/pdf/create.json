@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "download_url": {
-            "type": "string"
-        },
-        "template_id": {
-            "type": "string"
-        },
-        "transaction_ref": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json",
+    "sha": "8f4f7c88bb9c14d7c6f9a744ca6c341fe43ff7bf",
+    "size": 427,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8f4f7c88bb9c14d7c6f9a744ca6c341fe43ff7bf",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkb3dubG9hZF91cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0ZW1wbGF0ZV9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInRyYW5zYWN0aW9uX3JlZiI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgImRvd25sb2FkX3VybCIsCiAgICAgICAg\nInRlbXBsYXRlX2lkIiwKICAgICAgICAidHJhbnNhY3Rpb25fcmVmIiwKICAg\nICAgICAic3RhdHVzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8f4f7c88bb9c14d7c6f9a744ca6c341fe43ff7bf",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ApiTemplateIo/__schema__/v1.0.0/pdf/create.json"
     },
-    "required": [
-        "download_url",
-        "template_id",
-        "transaction_ref",
-        "status"
-    ]
+    "version": 1
 }
