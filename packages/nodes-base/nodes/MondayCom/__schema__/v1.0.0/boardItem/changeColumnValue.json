@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        }
-    }
+    "name": "changeColumnValue.json",
+    "path": "packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json",
+    "sha": "6b84d794c15946f77c81b5b498ef41a3968d0b5a",
+    "size": 107,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6b84d794c15946f77c81b5b498ef41a3968d0b5a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6b84d794c15946f77c81b5b498ef41a3968d0b5a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/changeColumnValue.json"
+    },
+    "version": 1
 }
