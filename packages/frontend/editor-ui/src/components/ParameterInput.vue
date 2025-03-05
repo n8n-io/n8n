@@ -987,7 +987,7 @@ async function optionSelected(command: string) {
 onMounted(() => {
 	props.eventBus.on('optionSelected', optionSelected);
 
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 
 	if (node.value) {
 		nodeName.value = node.value.name;
@@ -1003,7 +1003,7 @@ onMounted(() => {
 		displayValue.value !== null &&
 		displayValue.value.toString().charAt(0) !== '#'
 	) {
-		const newValue = rgbaToHex(displayValue.value as string);
+		const newValue = rgbaToHex(displayValue.value);
 		if (newValue !== null) {
 			tempValue.value = newValue;
 		}
@@ -1074,12 +1074,12 @@ watch(
 			// Do not set for color with alpha else wrong value gets displayed in field
 			return;
 		}
-		tempValue.value = displayValue.value as string;
+		tempValue.value = displayValue.value;
 	},
 );
 
 watch(remoteParameterOptionsLoading, () => {
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 });
 
 // Focus input field when changing between fixed and expression
@@ -1598,8 +1598,8 @@ onUpdated(async () => {
 						</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>
@@ -1631,8 +1631,8 @@ onUpdated(async () => {
 						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>

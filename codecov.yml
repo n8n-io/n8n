@@ -15,7 +15,7 @@ github_checks:
 flags:
   tests:
     paths:
-      - "**"
+      - '**'
     carryforward: true
 
 component_management:
@@ -24,7 +24,7 @@ component_management:
       - type: project
         target: auto
         branches:
-          - "!master"
+          - '!master'
   individual_components:
     - component_id: backend_packages
       name: Backend
