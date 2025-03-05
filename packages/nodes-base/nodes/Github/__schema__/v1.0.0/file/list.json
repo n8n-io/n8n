@@ -1,48 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "path": {
-            "type": "string"
-        },
-        "sha": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "url": {
-            "type": "string"
-        },
-        "html_url": {
-            "type": "string"
-        },
-        "git_url": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "_links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string"
-                },
-                "git": {
-                    "type": "string"
-                },
-                "html": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "self",
-                "git",
-                "html"
-            ]
-        }
-    }
+    "name": "list.json",
+    "path": "packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json",
+    "sha": "9cead63e56314a1b07be237955a19fd20938dad2",
+    "size": 979,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9cead63e56314a1b07be237955a19fd20938dad2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAicGF0aCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNoYSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInNpemUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgfSwKICAgICAgICAidXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaHRtbF91cmwiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJn\naXRfdXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIl9saW5rcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAic2VsZiI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImdpdCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgImh0bWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAic2VsZiIs\nCiAgICAgICAgICAgICAgICAiZ2l0IiwKICAgICAgICAgICAgICAgICJodG1s\nIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9cead63e56314a1b07be237955a19fd20938dad2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/file/list.json"
+    },
+    "version": 1
 }
