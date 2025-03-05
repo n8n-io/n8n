@@ -1,156 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "opportunity": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "monetaryValue": {
-                    "type": "integer"
-                },
-                "pipelineId": {
-                    "type": "string"
-                },
-                "pipelineStageId": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "lastStatusChangeAt": {
-                    "type": "string"
-                },
-                "lastStageChangeAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "contactId": {
-                    "type": "string"
-                },
-                "isAttribute": {
-                    "type": "boolean"
-                },
-                "internalSource": {
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "apiVersion": {
-                            "type": "string"
-                        },
-                        "channel": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type",
-                        "id"
-                    ]
-                },
-                "locationId": {
-                    "type": "string"
-                },
-                "lastActionDate": {
-                    "type": "string"
-                },
-                "followers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "contact": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        },
-                        "phone": {
-                            "type": "string"
-                        },
-                        "tags": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "name",
-                        "email",
-                        "phone",
-                        "tags",
-                        "followers"
-                    ]
-                },
-                "customFields": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "fieldValue"
-                        ]
-                    }
-                },
-                "indexVersion": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "monetaryValue",
-                "pipelineId",
-                "pipelineStageId",
-                "status",
-                "lastStatusChangeAt",
-                "lastStageChangeAt",
-                "createdAt",
-                "updatedAt",
-                "contactId",
-                "isAttribute",
-                "internalSource",
-                "locationId",
-                "lastActionDate",
-                "followers",
-                "contact"
-            ]
-        },
-        "traceId": {
-            "type": "string"
-        }
-    }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json",
+    "sha": "386b77a39ff5e83dce3a254919fc1dfe0595efc8",
+    "size": 4730,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/386b77a39ff5e83dce3a254919fc1dfe0595efc8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvcHBvcnR1bml0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJu\nYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAibW9uZXRhcnlW\nYWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJwaXBlbGlu\nZUlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicGlwZWxpbmVT\ndGFnZUlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAic3RhdHVz\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAic291cmNlIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAibGFzdFN0YXR1c0NoYW5nZUF0\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAibGFzdFN0YWdlQ2hh\nbmdlQXQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjcmVhdGVk\nQXQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ1cGRhdGVkQXQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0SWQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpc0F0dHJpYnV0ZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpbnRlcm5hbFNvdXJjZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiYXBp\nVmVyc2lvbiI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgImNoYW5uZWwiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2Ui\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAgICAgICAgICAg\nICAgICAgICAiaWQiCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJsb2NhdGlvbklkIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAibGFzdEFjdGlvbkRhdGUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJmb2xsb3dlcnMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJwaG9uZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgInRhZ3MiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICJuYW1lIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgImVtYWlsIiwKICAgICAgICAgICAgICAgICAgICAgICAgInBob25lIiwK\nICAgICAgICAgICAgICAgICAgICAgICAgInRhZ3MiLAogICAgICAgICAgICAg\nICAgICAgICAgICAiZm9sbG93ZXJzIgogICAgICAgICAgICAgICAgICAgIF0K\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY3VzdG9tRmll\nbGRzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwK\nICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgImlkIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJmaWVs\nZFZhbHVlIgogICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAg\nICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJpbmRleFZlcnNpb24iOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImlk\nIiwKICAgICAgICAgICAgICAgICJuYW1lIiwKICAgICAgICAgICAgICAgICJt\nb25ldGFyeVZhbHVlIiwKICAgICAgICAgICAgICAgICJwaXBlbGluZUlkIiwK\nICAgICAgICAgICAgICAgICJwaXBlbGluZVN0YWdlSWQiLAogICAgICAgICAg\nICAgICAgInN0YXR1cyIsCiAgICAgICAgICAgICAgICAibGFzdFN0YXR1c0No\nYW5nZUF0IiwKICAgICAgICAgICAgICAgICJsYXN0U3RhZ2VDaGFuZ2VBdCIs\nCiAgICAgICAgICAgICAgICAiY3JlYXRlZEF0IiwKICAgICAgICAgICAgICAg\nICJ1cGRhdGVkQXQiLAogICAgICAgICAgICAgICAgImNvbnRhY3RJZCIsCiAg\nICAgICAgICAgICAgICAiaXNBdHRyaWJ1dGUiLAogICAgICAgICAgICAgICAg\nImludGVybmFsU291cmNlIiwKICAgICAgICAgICAgICAgICJsb2NhdGlvbklk\nIiwKICAgICAgICAgICAgICAgICJsYXN0QWN0aW9uRGF0ZSIsCiAgICAgICAg\nICAgICAgICAiZm9sbG93ZXJzIiwKICAgICAgICAgICAgICAgICJjb250YWN0\nIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAidHJhY2VJZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAg\nIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/386b77a39ff5e83dce3a254919fc1dfe0595efc8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/update.json"
+    },
+    "version": 1
 }
