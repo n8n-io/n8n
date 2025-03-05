@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "task": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "dueDate": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "contactId": {
+                    "type": "string"
+                },
+                "businessId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "title",
+                "dueDate",
+                "completed",
+                "contactId"
+            ]
+        },
+        "traceId": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "task",
+        "traceId",
+        "contactId"
+    ]
+}

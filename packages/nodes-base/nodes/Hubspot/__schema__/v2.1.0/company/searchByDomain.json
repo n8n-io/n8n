@@ -1,0 +1,109 @@
+{
+    "type": "object",
+    "properties": {
+        "portalId": {
+            "type": "integer"
+        },
+        "companyId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "value",
+                                    "timestamp",
+                                    "source",
+                                    "sourceVid"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "timestamp",
+                        "source",
+                        "sourceId",
+                        "updatedByUserId",
+                        "versions"
+                    ]
+                }
+            }
+        },
+        "additionalDomains": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "domain": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "sourceId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "domain",
+                    "timestamp",
+                    "source",
+                    "sourceId"
+                ]
+            }
+        }
+    }
+}

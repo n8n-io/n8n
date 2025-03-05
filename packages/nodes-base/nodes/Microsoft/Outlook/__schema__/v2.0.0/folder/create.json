@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "childFolderCount": {
+            "type": "integer"
+        },
+        "unreadItemCount": {
+            "type": "integer"
+        },
+        "totalItemCount": {
+            "type": "integer"
+        },
+        "sizeInBytes": {
+            "type": "integer"
+        },
+        "isHidden": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "@odata.context",
+        "id",
+        "displayName",
+        "parentFolderId",
+        "childFolderCount",
+        "unreadItemCount",
+        "totalItemCount",
+        "sizeInBytes",
+        "isHidden"
+    ]
+}

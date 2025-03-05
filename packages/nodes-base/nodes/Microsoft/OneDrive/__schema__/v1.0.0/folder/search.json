@@ -1,0 +1,123 @@
+{
+    "type": "object",
+    "properties": {
+        "createdDateTime": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveId": {
+                    "type": "string"
+                },
+                "driveType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "siteId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "driveId",
+                "driveType",
+                "id"
+            ]
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "createdDateTime",
+                "lastModifiedDateTime"
+            ]
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "childCount": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "childCount"
+            ]
+        }
+    },
+    "required": [
+        "createdDateTime",
+        "id",
+        "lastModifiedDateTime",
+        "name",
+        "webUrl",
+        "parentReference"
+    ]
+}

@@ -169,8 +169,12 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		this.logger.warn(`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Trimming...`);
 
-		if (type === 'nodeExecuteAfter') pushMsgCopy.data.data.data = TRIMMED_TASK_DATA_CONNECTIONS;
-		else if (type === 'executionFinished') pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
+		if (type === 'nodeExecuteAfter') {
+			pushMsgCopy.data.itemCount = pushMsgCopy.data.data.data?.main[0]?.length ?? 1;
+			pushMsgCopy.data.data.data = TRIMMED_TASK_DATA_CONNECTIONS;
+		} else if (type === 'executionFinished') {
+			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
+		}
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',

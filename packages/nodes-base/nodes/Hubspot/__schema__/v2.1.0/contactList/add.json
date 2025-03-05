@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "updated": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "discarded": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "invalidVids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "invalidEmails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": [
+        "updated",
+        "discarded",
+        "invalidVids",
+        "invalidEmails"
+    ]
+}

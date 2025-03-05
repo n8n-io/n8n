@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "ShippingLatitude": {
+            "type": "null"
+        },
+        "ShippingLongitude": {
+            "type": "null"
+        },
+        "ShippingGeocodeAccuracy": {
+            "type": "null"
+        },
+        "Fax": {
+            "type": "null"
+        },
+        "PhotoUrl": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        },
+        "JigsawCompanyId": {
+            "type": "null"
+        },
+        "SicDesc": {
+            "type": "null"
+        },
+        "Sic": {
+            "type": "null"
+        },
+        "AnnualRevenue": {
+            "type": "null"
+        }
+    }
+}

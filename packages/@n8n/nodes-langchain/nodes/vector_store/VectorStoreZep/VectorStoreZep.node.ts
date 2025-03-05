@@ -46,7 +46,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreZep extends createVectorStoreNode({
+export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCloudVectorStore>({
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',

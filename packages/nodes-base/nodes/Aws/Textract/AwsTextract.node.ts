@@ -26,6 +26,7 @@ export class AwsTextract implements INodeType {
 		defaults: {
 			name: 'AWS Textract',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

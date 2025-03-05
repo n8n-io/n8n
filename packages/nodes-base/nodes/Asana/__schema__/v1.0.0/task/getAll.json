@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "gid": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "gid"
+    ]
+}

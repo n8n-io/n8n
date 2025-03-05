@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Agent } from 'https';
 import * as qs from 'querystring';
 
@@ -10,7 +8,7 @@ import type { ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { ClientOAuth2Token } from './ClientOAuth2Token';
 import { CodeFlow } from './CodeFlow';
 import { CredentialsFlow } from './CredentialsFlow';
-import type { Headers } from './types';
+import type { Headers, OAuth2AccessTokenErrorResponse } from './types';
 import { getAuthError } from './utils';
 
 export interface ClientOAuth2RequestObject {
@@ -38,10 +36,10 @@ export interface ClientOAuth2Options {
 	ignoreSSLIssues?: boolean;
 }
 
-class ResponseError extends Error {
+export class ResponseError extends Error {
 	constructor(
 		readonly status: number,
-		readonly body: object,
+		readonly body: unknown,
 		readonly code = 'ESTATUS',
 	) {
 		super(`HTTP status ${status}`);
@@ -74,21 +72,12 @@ export class ClientOAuth2 {
 	}
 
 	/**
-	 * Attempt to parse response body as JSON, fall back to parsing as a query string.
+	 * Request an access token from the OAuth2 server.
+	 *
+	 * @throws {ResponseError} If the response is an unexpected status code.
+	 * @throws {AuthError} If the response is an authentication error.
 	 */
-	private parseResponseBody<T extends object>(body: string): T {
-		try {
-			return JSON.parse(body);
-		} catch (e) {
-			return qs.parse(body) as T;
-		}
-	}
-
-	/**
-	 * Using the built-in request method, we'll automatically attempt to parse
-	 * the response.
-	 */
-	async request<T extends object>(options: ClientOAuth2RequestObject): Promise<T> {
+	async accessTokenRequest(options: ClientOAuth2RequestObject): Promise<ClientOAuth2TokenData> {
 		let url = options.url;
 		const query = qs.stringify(options.query);
 
@@ -101,7 +90,7 @@ export class ClientOAuth2 {
 			method: options.method,
 			data: qs.stringify(options.body),
 			headers: options.headers,
-			transformResponse: (res) => res,
+			transformResponse: (res: unknown) => res,
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
@@ -113,16 +102,36 @@ export class ClientOAuth2 {
 
 		const response = await axios.request(requestConfig);
 
-		const body = this.parseResponseBody<T>(response.data);
+		if (response.status >= 400) {
+			const body = this.parseResponseBody<OAuth2AccessTokenErrorResponse>(response);
+			const authErr = getAuthError(body);
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		const authErr = getAuthError(body);
-		if (authErr) throw authErr;
+			if (authErr) throw authErr;
+			else throw new ResponseError(response.status, response.data);
+		}
 
-		if (response.status < 200 || response.status >= 399)
+		if (response.status >= 300) {
 			throw new ResponseError(response.status, response.data);
+		}
 
-		return body;
+		return this.parseResponseBody<ClientOAuth2TokenData>(response);
+	}
+
+	/**
+	 * Attempt to parse response body based on the content type.
+	 */
+	private parseResponseBody<T extends object>(response: AxiosResponse<unknown>): T {
+		const contentType = (response.headers['content-type'] as string) ?? '';
+		const body = response.data as string;
+
+		if (contentType.startsWith('application/json')) {
+			return JSON.parse(body) as T;
+		}
+
+		if (contentType.startsWith('application/x-www-form-urlencoded')) {
+			return qs.parse(body) as T;
+		}
+
+		throw new Error(`Unsupported content type: ${contentType}`);
 	}
 }

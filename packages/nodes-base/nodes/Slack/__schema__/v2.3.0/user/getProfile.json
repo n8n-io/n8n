@@ -1,0 +1,126 @@
+{
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "skype": {
+            "type": "string"
+        },
+        "real_name": {
+            "type": "string"
+        },
+        "real_name_normalized": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
+        "display_name_normalized": {
+            "type": "string"
+        },
+        "status_text": {
+            "type": "string"
+        },
+        "status_emoji": {
+            "type": "string"
+        },
+        "status_emoji_display_info": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emoji_name": {
+                        "type": "string"
+                    },
+                    "display_url": {
+                        "type": "string"
+                    },
+                    "unicode": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "emoji_name",
+                    "display_url"
+                ]
+            }
+        },
+        "status_expiration": {
+            "type": "integer"
+        },
+        "avatar_hash": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "image_24": {
+            "type": "string"
+        },
+        "image_32": {
+            "type": "string"
+        },
+        "image_48": {
+            "type": "string"
+        },
+        "image_72": {
+            "type": "string"
+        },
+        "image_192": {
+            "type": "string"
+        },
+        "image_512": {
+            "type": "string"
+        },
+        "status_text_canonical": {
+            "type": "string"
+        },
+        "image_original": {
+            "type": "string"
+        },
+        "is_custom_image": {
+            "type": "boolean"
+        },
+        "image_1024": {
+            "type": "string"
+        },
+        "huddle_state": {
+            "type": "string"
+        },
+        "huddle_state_expiration_ts": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "title",
+        "phone",
+        "skype",
+        "real_name",
+        "real_name_normalized",
+        "display_name",
+        "display_name_normalized",
+        "fields",
+        "status_text",
+        "status_emoji",
+        "status_emoji_display_info",
+        "status_expiration",
+        "avatar_hash",
+        "image_24",
+        "image_32",
+        "image_48",
+        "image_72",
+        "image_192",
+        "image_512",
+        "status_text_canonical"
+    ]
+}

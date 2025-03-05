@@ -10,15 +10,22 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
+import {
+	LICENSE_FEATURES,
+	N8N_VERSION,
+	N8N_RELEASE_DATE,
+	inDevelopment,
+	inTest,
+} from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -61,10 +68,16 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
-		await this.errorReporter.init(
-			this.instanceSettings.instanceType,
-			this.globalConfig.sentry.backendDsn,
-		);
+
+		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
+		await this.errorReporter.init({
+			serverType: this.instanceSettings.instanceType,
+			dsn: backendDsn,
+			environment,
+			release: N8N_VERSION,
+			serverName: deploymentName,
+			releaseDate: N8N_RELEASE_DATE,
+		});
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -140,92 +153,28 @@ export abstract class BaseCommand extends Command {
 		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
 
-		if (!isSelected && !isAvailable) return;
+		if (!isSelected) return;
 
 		if (isSelected && !isAvailable) {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
 
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
-
-		if (isSelected && isAvailable && isLicensed) {
-			this.logger.debug(
-				'License found for external storage - object store to init in read-write mode',
+		if (!isLicensed) {
+			this.logger.error(
+				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 			);
-
-			await this._initObjectStoreService();
-
-			return;
+			return this.exit(1);
 		}
 
-		if (isSelected && isAvailable && !isLicensed) {
-			this.logger.debug(
-				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
-			);
-
-			await this._initObjectStoreService({ isReadOnly: true });
-
-			return;
-		}
-
-		if (!isSelected && isAvailable) {
-			this.logger.debug(
-				'External storage unselected but available - object store to init with writes unused',
-			);
-
-			await this._initObjectStoreService();
-
-			return;
-		}
-	}
-
-	private async _initObjectStoreService(options = { isReadOnly: false }) {
-		const objectStoreService = Container.get(ObjectStoreService);
-
-		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
-
-		if (host === '') {
-			throw new ApplicationError(
-				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
-			);
-		}
-
-		if (bucket.name === '') {
-			throw new ApplicationError(
-				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
-			);
-		}
-
-		if (bucket.region === '') {
-			throw new ApplicationError(
-				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
-			);
-		}
-
-		if (credentials.accessKey === '') {
-			throw new ApplicationError(
-				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
-			);
-		}
-
-		if (credentials.accessSecret === '') {
-			throw new ApplicationError(
-				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
-			);
-		}
-
-		this.logger.debug('Initializing object store service');
-
+		this.logger.debug('License found for external storage - Initializing object store service');
 		try {
-			await objectStoreService.init(host, bucket, credentials);
-			objectStoreService.setReadonly(options.isReadOnly);
-
+			await Container.get(ObjectStoreService).init();
 			this.logger.debug('Object store init completed');
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-
 			this.logger.debug('Object store init failed', { error });
 		}
 	}
@@ -286,6 +235,10 @@ export abstract class BaseCommand extends Command {
 		Container.get(WorkflowHistoryManager).init();
 	}
 
+	async cleanupTestRunner() {
+		await Container.get(TestRunnerService).cleanupIncompleteRuns();
+	}
+
 	async finally(error: Error | undefined) {
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
@@ -315,6 +268,8 @@ export abstract class BaseCommand extends Command {
 			this.shutdownService.shutdown();
 
 			await this.shutdownService.waitForShutdown();
+
+			await this.errorReporter.shutdown();
 
 			await this.stopProcess();
 

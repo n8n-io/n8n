@@ -54,6 +54,33 @@ BQIDAQAB
 	airtableApi: {
 		apiKey: 'key123',
 	},
+	azureStorageOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		accessTokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope: 'https://storage.azure.com/user_impersonation',
+		authQueryParameters: 'response_mode=query',
+		authentication: 'body',
+		oauthTokenData: {
+			token_type: 'Bearer',
+			scope: 'https://storage.azure.com/user_impersonation',
+			expires_in: 4730,
+			ext_expires_in: 4730,
+			access_token: 'ACCESSTOKEN',
+			callbackQueryString: {
+				session_state: 'SESSIONSTATE',
+			},
+		},
+		account: 'myaccount',
+		baseUrl: 'https://myaccount.blob.core.windows.net',
+	},
+	azureStorageSharedKeyApi: {
+		account: 'devstoreaccount1',
+		key: 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
+		baseUrl: 'https://myaccount.blob.core.windows.net',
+	},
 	gongApi: {
 		baseUrl: 'https://api.gong.io',
 		accessKey: 'accessKey123',
@@ -186,5 +213,25 @@ BQIDAQAB
 			token_type: 'bearer',
 			expires_in: 86400,
 		},
+	},
+	spotifyOAuth2Api: {
+		accessTokenUrl: 'https://accounts.spotify.com/api/token',
+		authQueryParameters: '',
+		authUrl: 'https://accounts.spotify.com/authorize',
+		authentication: 'header',
+		clientId: 'CLIENT_ID',
+		clientSecret: 'CLIENT_SECRET',
+		grantType: 'authorizationCode',
+		oauthTokenData: {
+			access_token: 'ACCESS_TOKEN',
+			expires_in: 3600,
+			refresh_token: 'REFRESH_TOKEN',
+			scope:
+				'playlist-read-private playlist-read-collaborative user-modify-playback-state user-library-read user-follow-read playlist-modify-private playlist-modify-public user-read-playback-state user-read-currently-playing user-read-recently-played',
+			token_type: 'Bearer',
+		},
+		scope:
+			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
+		server: 'https://api.spotify.com/',
 	},
 } as const;

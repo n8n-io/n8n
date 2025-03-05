@@ -12,8 +12,9 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	ExecutionStatusList,
+	UnexpectedError,
+	UserError,
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -36,7 +37,6 @@ import type {
 	CreateExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
-	IWorkflowDb,
 } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -147,7 +147,7 @@ export class ExecutionService {
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
 		if (execution.finished) {
-			throw new ApplicationError('The execution succeeded, so it cannot be retried.');
+			throw new UnexpectedError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
@@ -189,7 +189,7 @@ export class ExecutionService {
 			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
-				throw new ApplicationError(
+				throw new UserError(
 					'Workflow could not be found and so the data not be loaded for the retry.',
 					{ extra: { workflowId } },
 				);
@@ -233,7 +233,7 @@ export class ExecutionService {
 		const executionData = await this.activeExecutions.getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
-			throw new ApplicationError('The retry did not start for an unknown reason.');
+			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
 		return !!executionData.finished;
@@ -268,7 +268,7 @@ export class ExecutionService {
 	async createErrorExecution(
 		error: ExecutionError,
 		node: INode,
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
 	) {

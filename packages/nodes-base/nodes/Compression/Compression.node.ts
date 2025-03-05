@@ -56,6 +56,7 @@ export class Compression implements INodeType {
 			name: 'Compression',
 			color: '#408000',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

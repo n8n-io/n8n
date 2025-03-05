@@ -39,6 +39,7 @@ export class Crypto implements INodeType {
 			name: 'Crypto',
 			color: '#408000',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

@@ -17,14 +17,21 @@ jobs:
   build:
     name: Install & Build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
+    if: |
+      (github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')) &&
+      !contains(github.event.pull_request.labels.*.name, 'community')
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
@@ -34,7 +41,7 @@ jobs:
         run: pnpm build:backend
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:workflow-tests
@@ -46,18 +53,23 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:workflow-tests

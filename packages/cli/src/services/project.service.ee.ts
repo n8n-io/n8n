@@ -1,16 +1,15 @@
+import type { CreateProjectDto, ProjectRole, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
-import type { ProjectIcon, ProjectType } from '@/databases/entities/project';
 import { Project } from '@/databases/entities/project';
 import { ProjectRelation } from '@/databases/entities/project-relation';
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
@@ -24,7 +23,7 @@ import { License } from '@/license';
 import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
-export class TeamProjectOverQuotaError extends ApplicationError {
+export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
 		super(
 			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
@@ -32,7 +31,7 @@ export class TeamProjectOverQuotaError extends ApplicationError {
 	}
 }
 
-export class UnlicensedProjectRoleError extends ApplicationError {
+export class UnlicensedProjectRoleError extends UserError {
 	constructor(role: ProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
@@ -131,7 +130,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedCredential of ownedCredentials) {
-				await credentialsService.delete(sharedCredential.credentials);
+				await credentialsService.delete(user, sharedCredential.credentials.id);
 			}
 		}
 
@@ -168,12 +167,7 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(
-		name: string,
-		adminUser: User,
-		id?: string,
-		icon?: ProjectIcon,
-	): Promise<Project> {
+	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
 		const limit = this.license.getTeamProjectLimit();
 		if (
 			limit !== UNLIMITED_LICENSE_QUOTA &&
@@ -183,12 +177,7 @@ export class ProjectService {
 		}
 
 		const project = await this.projectRepository.save(
-			this.projectRepository.create({
-				id,
-				name,
-				icon,
-				type: 'team',
-			}),
+			this.projectRepository.create({ ...data, type: 'team' }),
 		);
 
 		// Link admin
@@ -198,20 +187,10 @@ export class ProjectService {
 	}
 
 	async updateProject(
-		name: string,
 		projectId: string,
-		icon?: { type: 'icon' | 'emoji'; value: string },
+		data: Pick<UpdateProjectDto, 'name' | 'icon'>,
 	): Promise<Project> {
-		const result = await this.projectRepository.update(
-			{
-				id: projectId,
-				type: 'team',
-			},
-			{
-				name,
-				icon,
-			},
-		);
+		const result = await this.projectRepository.update({ id: projectId, type: 'team' }, data);
 
 		if (!result.affected) {
 			throw new ForbiddenError('Project not found');

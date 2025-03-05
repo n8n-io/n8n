@@ -4,7 +4,7 @@ import axios from 'axios';
 import type express from 'express';
 import https from 'https';
 import { Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
@@ -124,7 +124,7 @@ export class SamlService {
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
@@ -137,7 +137,7 @@ export class SamlService {
 
 	getServiceProviderInstance(): ServiceProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}

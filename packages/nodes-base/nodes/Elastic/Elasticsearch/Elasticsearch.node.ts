@@ -29,6 +29,7 @@ export class Elasticsearch implements INodeType {
 		defaults: {
 			name: 'Elasticsearch',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

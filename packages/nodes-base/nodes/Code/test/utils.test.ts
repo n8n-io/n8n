@@ -1,49 +1,46 @@
-import type { INodeExecutionData } from 'n8n-workflow';
-import { NodeExecutionOutput } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { addPostExecutionWarning } from '../utils';
 
 describe('addPostExecutionWarning', () => {
+	const context = mock<IExecuteFunctions>();
 	const inputItemsLength = 2;
 
-	it('should return a NodeExecutionOutput warning when returnData length differs from inputItemsLength', () => {
+	beforeEach(() => jest.resetAllMocks());
+
+	it('should add execution hints when returnData length differs from inputItemsLength', () => {
 		const returnData: INodeExecutionData[] = [{ json: {}, pairedItem: 0 }];
 
-		const result = addPostExecutionWarning(returnData, inputItemsLength);
+		addPostExecutionWarning(context, returnData, inputItemsLength);
 
-		expect(result).toBeInstanceOf(NodeExecutionOutput);
-		expect((result as NodeExecutionOutput)?.getHints()).toEqual([
-			{
-				message:
-					'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
-				location: 'outputPane',
-			},
-		]);
+		expect(context.addExecutionHints).toHaveBeenCalledWith({
+			message:
+				'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
+			location: 'outputPane',
+		});
 	});
 
-	it('should return a NodeExecutionOutput warning when any item has undefined pairedItem', () => {
+	it('should add execution hints when any item has undefined pairedItem', () => {
 		const returnData: INodeExecutionData[] = [{ json: {}, pairedItem: 0 }, { json: {} }];
 
-		const result = addPostExecutionWarning(returnData, inputItemsLength);
+		addPostExecutionWarning(context, returnData, inputItemsLength);
 
-		expect(result).toBeInstanceOf(NodeExecutionOutput);
-		expect((result as NodeExecutionOutput)?.getHints()).toEqual([
-			{
-				message:
-					'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
-				location: 'outputPane',
-			},
-		]);
+		expect(context.addExecutionHints).toHaveBeenCalledWith({
+			message:
+				'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
+			location: 'outputPane',
+		});
 	});
 
-	it('should return returnData array when all items match inputItemsLength and have defined pairedItem', () => {
+	it('should not add execution hints when all items match inputItemsLength and have defined pairedItem', () => {
 		const returnData: INodeExecutionData[] = [
 			{ json: {}, pairedItem: 0 },
 			{ json: {}, pairedItem: 1 },
 		];
 
-		const result = addPostExecutionWarning(returnData, inputItemsLength);
+		addPostExecutionWarning(context, returnData, inputItemsLength);
 
-		expect(result).toEqual([returnData]);
+		expect(context.addExecutionHints).not.toHaveBeenCalled();
 	});
 });

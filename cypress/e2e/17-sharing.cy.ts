@@ -297,10 +297,9 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the credential in this project (+ the 'Create new' option) should
-		// be in the dropdown
+		// Only the credential in this project should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 2);
+		getVisibleSelect().find('li').should('have.length', 1);
 	});
 
 	it('should only show credentials in their personal project for members', () => {
@@ -325,10 +324,9 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the own credential the shared one (+ the 'Create new' option)
-		// should be in the dropdown
+		// Only the own credential the shared one should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 3);
+		getVisibleSelect().find('li').should('have.length', 2);
 	});
 
 	it('should only show credentials in their personal project for members if the workflow was shared with them', () => {
@@ -355,10 +353,9 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the own credential the shared one (+ the 'Create new' option)
-		// should be in the dropdown
+		// Only the own credential the shared one should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 2);
+		getVisibleSelect().find('li').should('have.length', 1);
 	});
 
 	it("should show all credentials from all personal projects the workflow's been shared into for the global owner", () => {
@@ -400,10 +397,9 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the personal credentials of the workflow owner and the global owner
-		// should show up.
+		// Only the personal credentials of the workflow owner and the global owner should show up.
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 4);
+		getVisibleSelect().find('li').should('have.length', 3);
 	});
 
 	it('should show all personal credentials if the global owner owns the workflow', () => {
@@ -421,6 +417,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Show all personal credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.have.length', 2);
+		getVisibleSelect().find('li').should('have.have.length', 1);
 	});
 });

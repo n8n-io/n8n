@@ -74,17 +74,12 @@ const meResult = {
 describe('Test Twitter Request Node', () => {
 	beforeAll(() => {
 		const baseUrl = 'https://api.twitter.com/2';
-		nock.disableNetConnect();
 		//GET
 		nock(baseUrl).get('/users/me').reply(200, meResult);
 
 		nock(baseUrl)
 			.get('/tweets/search/recent?query=bloomberg&max_results=10')
 			.reply(200, searchResult);
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const workflows = getWorkflowFilenames(__dirname);

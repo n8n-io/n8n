@@ -1,18 +1,25 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
+import {
+	WorkflowHasIssuesError,
+	InstanceSettings,
+	WorkflowExecute,
+	ErrorReporter,
+	Logger,
+} from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -54,9 +61,8 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				`Worker failed to find data for execution ${executionId} (job ${job.id})`,
-				{ level: 'warning' },
 			);
 		}
 
@@ -85,9 +91,8 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				throw new ApplicationError(
+				throw new UnexpectedError(
 					`Worker failed to find workflow ${workflowId} to run execution ${executionId} (job ${job.id})`,
-					{ level: 'warning' },
 				);
 			}
 
@@ -124,30 +129,32 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-			execution.mode,
-			job.data.executionId,
-			execution.workflowData,
-			{ retryOf: execution.retryOf as string, pushRef },
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(
+			{
+				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				retryOf: execution.retryOf,
+				pushRef,
+			},
+			executionId,
 		);
+		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const msg: RespondToWebhookMessage = {
-					kind: 'respond-to-webhook',
-					executionId,
-					response: this.encodeWebhookResponse(response),
-					workerId: this.instanceSettings.hostId,
-				};
+		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			const msg: RespondToWebhookMessage = {
+				kind: 'respond-to-webhook',
+				executionId,
+				response: this.encodeWebhookResponse(response),
+				workerId: this.instanceSettings.hostId,
+			};
 
-				await job.progress(msg);
-			},
-		];
+			await job.progress(msg);
+		});
 
 		additionalData.executionId = executionId;
 
@@ -163,7 +170,7 @@ export class JobProcessor {
 
 		const { startData, resultData, manualData, isTestWebhook } = execution.data;
 
-		if (execution.mode === 'manual' && !isTestWebhook) {
+		if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
@@ -177,13 +184,33 @@ export class JobProcessor {
 				userId: manualData?.userId,
 			};
 
-			workflowRun = this.manualExecutionService.runManually(
-				data,
-				workflow,
-				additionalData,
-				executionId,
-				resultData.pinData,
-			);
+			try {
+				workflowRun = this.manualExecutionService.runManually(
+					data,
+					workflow,
+					additionalData,
+					executionId,
+					resultData.pinData,
+				);
+			} catch (error) {
+				if (error instanceof WorkflowHasIssuesError) {
+					// execution did not even start, but we call `workflowExecuteAfter` to notify main
+
+					const now = new Date();
+					const runData: IRun = {
+						mode: 'manual',
+						status: 'error',
+						finished: false,
+						startedAt: now,
+						stoppedAt: now,
+						data: { resultData: { error, runData: {} } },
+					};
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
+					return { success: false };
+				}
+				throw error;
+			}
 		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
@@ -202,7 +229,7 @@ export class JobProcessor {
 			workflowName: execution.workflowData.name,
 			mode: execution.mode,
 			startedAt,
-			retryOf: execution.retryOf ?? '',
+			retryOf: execution.retryOf ?? undefined,
 			status: execution.status,
 		};
 

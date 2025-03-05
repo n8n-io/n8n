@@ -1,0 +1,8 @@
+{
+    "type": "object",
+    "properties": {
+        "messageId": {
+            "type": "string"
+        }
+    }
+}

@@ -1,5 +1,4 @@
 import type { IHttpRequestMethods, INodeTypes, WorkflowTestData } from 'n8n-workflow';
-import nock from 'nock';
 
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 
@@ -64,16 +63,6 @@ jest.mock('../../../../V2/GenericFunctions', () => {
 describe('Test SlackV2, channel => create', () => {
 	const workflows = ['nodes/Slack/test/v2/node/channel/create.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../V2/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

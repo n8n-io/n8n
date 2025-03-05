@@ -1,0 +1,14 @@
+{
+	"type": "object",
+	"properties": {
+		"resourceName": {
+			"type": "string"
+		},
+		"etag": {
+			"type": "string"
+		},
+		"contactId": {
+			"type": "string"
+		}
+	}
+}

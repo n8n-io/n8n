@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "messagesTotal": {
+            "type": "integer"
+        },
+        "messagesUnread": {
+            "type": "integer"
+        },
+        "threadsTotal": {
+            "type": "integer"
+        },
+        "threadsUnread": {
+            "type": "integer"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "labelListVisibility": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "type",
+        "messagesTotal",
+        "messagesUnread",
+        "threadsTotal",
+        "threadsUnread"
+    ]
+}

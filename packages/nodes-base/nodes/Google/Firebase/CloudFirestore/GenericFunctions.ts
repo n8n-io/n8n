@@ -82,6 +82,8 @@ export async function googleApiRequestAllItems(
 const isValidDate = (str: string) =>
 	moment(str, ['YYYY-MM-DD HH:mm:ss Z', moment.ISO_8601], true).isValid();
 
+const protoKeys = ['__proto__', 'prototype', 'constructor'];
+
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
@@ -104,10 +106,11 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 	} else if (value && value.constructor === Array) {
 		return { arrayValue: { values: value.map((v) => jsonToDocument(v)) } };
 	} else if (typeof value === 'object') {
-		const obj = {};
-		for (const o of Object.keys(value)) {
-			//@ts-ignore
-			obj[o] = jsonToDocument(value[o] as IDataObject);
+		const obj: IDataObject = {};
+		for (const key of Object.keys(value)) {
+			if (value.hasOwnProperty(key) && !protoKeys.includes(key)) {
+				obj[key] = jsonToDocument((value as IDataObject)[key] as IDataObject);
+			}
 		}
 		return { mapValue: { fields: obj } };
 	}

@@ -1,0 +1,51 @@
+{
+    "type": "object",
+    "properties": {
+        "_index": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        },
+        "_version": {
+            "type": "integer"
+        },
+        "result": {
+            "type": "string"
+        },
+        "_shards": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "successful": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "total",
+                "successful",
+                "failed"
+            ]
+        },
+        "_seq_no": {
+            "type": "integer"
+        },
+        "_primary_term": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "_index",
+        "_id",
+        "_version",
+        "result",
+        "_shards",
+        "_seq_no",
+        "_primary_term"
+    ]
+}

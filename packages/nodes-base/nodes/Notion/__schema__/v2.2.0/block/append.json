@@ -1,0 +1,181 @@
+{
+    "type": "object",
+    "properties": {
+        "object": {
+            "type": "string"
+        },
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "object": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "parent": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "page_id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    "created_time": {
+                        "type": "string"
+                    },
+                    "last_edited_time": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "object": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "object",
+                            "id"
+                        ]
+                    },
+                    "last_edited_by": {
+                        "type": "object",
+                        "properties": {
+                            "object": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "object",
+                            "id"
+                        ]
+                    },
+                    "has_children": {
+                        "type": "boolean"
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "in_trash": {
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "paragraph": {
+                        "type": "object",
+                        "properties": {
+                            "color": {
+                                "type": "string"
+                            },
+                            "text": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "content",
+                                                "link"
+                                            ]
+                                        },
+                                        "annotations": {
+                                            "type": "object",
+                                            "properties": {
+                                                "bold": {
+                                                    "type": "boolean"
+                                                },
+                                                "italic": {
+                                                    "type": "boolean"
+                                                },
+                                                "strikethrough": {
+                                                    "type": "boolean"
+                                                },
+                                                "underline": {
+                                                    "type": "boolean"
+                                                },
+                                                "code": {
+                                                    "type": "boolean"
+                                                },
+                                                "color": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "bold",
+                                                "italic",
+                                                "strikethrough",
+                                                "underline",
+                                                "code",
+                                                "color"
+                                            ]
+                                        },
+                                        "plain_text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "type",
+                                        "annotations",
+                                        "plain_text",
+                                        "href"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "color",
+                            "text"
+                        ]
+                    }
+                },
+                "required": [
+                    "object",
+                    "id",
+                    "parent",
+                    "created_time",
+                    "last_edited_time",
+                    "created_by",
+                    "last_edited_by",
+                    "has_children",
+                    "archived",
+                    "in_trash",
+                    "type"
+                ]
+            }
+        },
+        "next_cursor": {
+            "type": "null"
+        },
+        "has_more": {
+            "type": "boolean"
+        },
+        "request_id": {
+            "type": "string"
+        }
+    }
+}

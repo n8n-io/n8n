@@ -8,6 +8,7 @@ import {
 	testMetricPatchRequestBodySchema,
 } from '@/evaluation.ee/metric.schema';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { Telemetry } from '@/telemetry';
 
 import { TestDefinitionService } from './test-definition.service.ee';
 import { TestMetricsRequest } from './test-definitions.types.ee';
@@ -17,6 +18,7 @@ export class TestMetricsController {
 	constructor(
 		private readonly testDefinitionService: TestDefinitionService,
 		private readonly testMetricRepository: TestMetricRepository,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	// This method is used in multiple places in the controller to get the test definition
@@ -105,7 +107,16 @@ export class TestMetricsController {
 
 		if (!metric) throw new NotFoundError('Metric not found');
 
-		await this.testMetricRepository.update(metricId, bodyParseResult.data);
+		const updateResult = await this.testMetricRepository.update(metricId, bodyParseResult.data);
+
+		// Send telemetry event if the metric was updated
+		if (updateResult.affected === 1 && metric.name !== bodyParseResult.data.name) {
+			this.telemetry.track('User added metrics to test', {
+				metric_id: metricId,
+				metric_name: bodyParseResult.data.name,
+				test_id: testDefinitionId,
+			});
+		}
 
 		// Respond with the updated metric
 		return await this.testMetricRepository.findOneBy({ id: metricId });

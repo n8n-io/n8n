@@ -1,16 +1,18 @@
-import { Container, Service } from '@n8n/di';
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowDb } from '@/interfaces';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -29,7 +31,6 @@ import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { ResourceOwner } from './types/resource-owner';
-import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
 
 @Service()
@@ -44,6 +45,10 @@ export class SourceControlExportService {
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -80,7 +85,7 @@ export class SourceControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(
-		workflowsToBeExported: WorkflowEntity[],
+		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, ResourceOwner>,
 	) {
 		await Promise.all(
@@ -106,17 +111,18 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows =
-				await Container.get(SharedWorkflowRepository).findByWorkflowIds(workflowIds);
-			const workflows = await Container.get(WorkflowRepository).findByIds(workflowIds);
+			const sharedWorkflows = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
+			const workflows = await this.workflowRepository.findByIds(workflowIds);
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, ResourceOwner> = {};
-			sharedWorkflows.forEach((e) => {
-				const project = e.project;
+			sharedWorkflows.forEach((sharedWorkflow) => {
+				const project = sharedWorkflow.project;
 
 				if (!project) {
-					throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+					throw new UnexpectedError(
+						`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
+					);
 				}
 
 				if (project.type === 'personal') {
@@ -124,20 +130,22 @@ export class SourceControlExportService {
 						(pr) => pr.role === 'project:personalOwner',
 					);
 					if (!ownerRelation) {
-						throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+						throw new UnexpectedError(
+							`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
+						);
 					}
-					owners[e.workflowId] = {
+					owners[sharedWorkflow.workflowId] = {
 						type: 'personal',
 						personalEmail: ownerRelation.user.email,
 					};
 				} else if (project.type === 'team') {
-					owners[e.workflowId] = {
+					owners[sharedWorkflow.workflowId] = {
 						type: 'team',
 						teamId: project.id,
 						teamName: project.name,
 					};
 				} else {
-					throw new ApplicationError(
+					throw new UnexpectedError(
 						`Workflow belongs to unknown project type: ${project.type as string}`,
 					);
 				}
@@ -156,7 +164,8 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
+			if (error instanceof UnexpectedError) throw error;
+			throw new UnexpectedError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -186,7 +195,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export variables to work folder', {
+			throw new UnexpectedError('Failed to export variables to work folder', {
 				cause: error,
 			});
 		}
@@ -204,7 +213,7 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const mappings = await Container.get(WorkflowTagMappingRepository).find();
+			const mappings = await this.workflowTagMappingRepository.find();
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			await fsWriteFile(
 				fileName,
@@ -228,7 +237,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
+			throw new UnexpectedError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -260,9 +269,10 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await Container.get(
-				SharedCredentialsRepository,
-			).findByCredentialIds(credentialIds, 'credential:owner');
+			const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
+				credentialIds,
+				'credential:owner',
+			);
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -326,7 +336,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
+			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

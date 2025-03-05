@@ -45,19 +45,23 @@ switch (scenario) {
 			startCommand: 'start',
 			url: 'http://localhost:5678/favicon.ico',
 			testCommand: 'cypress open',
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
 		});
 		break;
-	case 'dev':
+	case 'dev:v1':
 		runTests({
 			startCommand: 'develop',
 			url: 'http://localhost:8080/favicon.ico',
 			testCommand: 'cypress open',
 			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 1,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
 			},
 		});
 		break;
-	case 'dev:v2':
+	case 'dev':
 		runTests({
 			startCommand: 'develop',
 			url: 'http://localhost:8080/favicon.ico',
@@ -76,6 +80,9 @@ switch (scenario) {
 			startCommand: 'start',
 			url: 'http://localhost:5678/favicon.ico',
 			testCommand: `cypress run --headless ${specParam}`,
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
 		});
 		break;
 	default:

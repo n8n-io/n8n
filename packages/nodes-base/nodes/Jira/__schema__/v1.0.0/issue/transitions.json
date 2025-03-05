@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "to": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "self": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "self",
+                        "id",
+                        "key",
+                        "colorName",
+                        "name"
+                    ]
+                }
+            },
+            "required": [
+                "self",
+                "description",
+                "iconUrl",
+                "name",
+                "id",
+                "statusCategory"
+            ]
+        },
+        "hasScreen": {
+            "type": "boolean"
+        },
+        "isGlobal": {
+            "type": "boolean"
+        },
+        "isInitial": {
+            "type": "boolean"
+        },
+        "isAvailable": {
+            "type": "boolean"
+        },
+        "isConditional": {
+            "type": "boolean"
+        },
+        "isLooped": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "to",
+        "hasScreen",
+        "isGlobal",
+        "isInitial",
+        "isAvailable",
+        "isConditional",
+        "isLooped"
+    ]
+}

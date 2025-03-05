@@ -22,6 +22,7 @@ export class Rundeck implements INodeType {
 		defaults: {
 			name: 'Rundeck',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

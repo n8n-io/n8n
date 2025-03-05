@@ -1,5 +1,4 @@
 import type { INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
@@ -54,16 +53,6 @@ discordApiRequestSpy.mockImplementation(async (method: string) => {
 describe('Test DiscordV2, member => getAll', () => {
 	const workflows = ['nodes/Discord/test/v2/node/member/getAll.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.resetAllMocks();
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

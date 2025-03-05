@@ -1,0 +1,235 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "transactionId": {
+            "type": "null"
+        },
+        "originalStartTimeZone": {
+            "type": "string"
+        },
+        "originalEndTimeZone": {
+            "type": "string"
+        },
+        "iCalUId": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "reminderMinutesBeforeStart": {
+            "type": "integer"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "sensitivity": {
+            "type": "string"
+        },
+        "isAllDay": {
+            "type": "boolean"
+        },
+        "isCancelled": {
+            "type": "boolean"
+        },
+        "isOrganizer": {
+            "type": "boolean"
+        },
+        "responseRequested": {
+            "type": "boolean"
+        },
+        "seriesMasterId": {
+            "type": "null"
+        },
+        "showAs": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
+        },
+        "isOnlineMeeting": {
+            "type": "boolean"
+        },
+        "onlineMeetingProvider": {
+            "type": "string"
+        },
+        "allowNewTimeProposals": {
+            "type": "boolean"
+        },
+        "occurrenceId": {
+            "type": "null"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "hideAttendees": {
+            "type": "boolean"
+        },
+        "responseStatus": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "response",
+                "time"
+            ]
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "contentType",
+                "content"
+            ]
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dateTime",
+                "timeZone"
+            ]
+        },
+        "end": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dateTime",
+                "timeZone"
+            ]
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "locationType": {
+                    "type": "string"
+                },
+                "uniqueIdType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "displayName",
+                "locationType",
+                "uniqueIdType"
+            ]
+        },
+        "locations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "locationType": {
+                        "type": "string"
+                    },
+                    "uniqueId": {
+                        "type": "string"
+                    },
+                    "uniqueIdType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "displayName",
+                    "locationType",
+                    "uniqueId",
+                    "uniqueIdType"
+                ]
+            }
+        },
+        "recurrence": {
+            "type": "null"
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "address": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "address"
+                    ]
+                }
+            },
+            "required": [
+                "emailAddress"
+            ]
+        }
+    }
+}

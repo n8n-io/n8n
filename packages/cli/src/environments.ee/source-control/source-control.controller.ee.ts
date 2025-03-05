@@ -1,9 +1,12 @@
+import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
+import type { SourceControlledFile } from '@n8n/api-types';
 import express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { Get, Post, Patch, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, Patch, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { AuthenticatedRequest } from '@/requests';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
@@ -17,7 +20,6 @@ import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-import type { SourceControlledFile } from './types/source-controlled-file';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -164,19 +166,16 @@ export class SourceControlController {
 	@Post('/push-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	@GlobalScope('sourceControl:push')
 	async pushWorkfolder(
-		req: SourceControlRequest.PushWorkFolder,
+		req: AuthenticatedRequest,
 		res: express.Response,
+		@Body payload: PushWorkFolderRequestDto,
 	): Promise<SourceControlledFile[]> {
-		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
-			throw new BadRequestError('Cannot push onto read-only branch.');
-		}
-
 		try {
 			await this.sourceControlService.setGitUserDetails(
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder(req.body);
+			const result = await this.sourceControlService.pushWorkfolder(payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
@@ -187,15 +186,12 @@ export class SourceControlController {
 	@Post('/pull-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	@GlobalScope('sourceControl:pull')
 	async pullWorkfolder(
-		req: SourceControlRequest.PullWorkFolder,
+		req: AuthenticatedRequest,
 		res: express.Response,
+		@Body payload: PullWorkFolderRequestDto,
 	): Promise<SourceControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
-			const result = await this.sourceControlService.pullWorkfolder({
-				force: req.body.force,
-				variables: req.body.variables,
-				userId: req.user.id,
-			});
+			const result = await this.sourceControlService.pullWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {

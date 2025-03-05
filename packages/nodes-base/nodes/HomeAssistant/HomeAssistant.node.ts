@@ -38,6 +38,7 @@ export class HomeAssistant implements INodeType {
 		defaults: {
 			name: 'Home Assistant',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

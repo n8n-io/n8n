@@ -36,6 +36,7 @@ export class AwsS3V2 implements INodeType {
 			defaults: {
 				name: 'AWS S3',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			credentials: [

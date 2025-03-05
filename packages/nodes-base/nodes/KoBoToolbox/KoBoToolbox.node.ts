@@ -33,6 +33,7 @@ export class KoBoToolbox implements INodeType {
 		defaults: {
 			name: 'KoBoToolbox',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

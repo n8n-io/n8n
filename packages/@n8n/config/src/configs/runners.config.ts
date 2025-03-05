@@ -12,7 +12,6 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_ENABLED')
 	enabled: boolean = false;
 
-	// Defaults to true for now
 	@Env('N8N_RUNNERS_MODE')
 	mode: TaskRunnerMode = 'internal';
 
@@ -23,12 +22,12 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** IP address task runners server should listen on */
-	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT')
+	/** IP address task runners broker should listen on */
+	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;
 
-	/** IP address task runners server should listen on */
-	@Env('N8N_RUNNERS_SERVER_LISTEN_ADDRESS')
+	/** IP address task runners broker should listen on */
+	@Env('N8N_RUNNERS_BROKER_LISTEN_ADDRESS')
 	listenAddress: string = '127.0.0.1';
 
 	/** Maximum size of a payload sent to the runner in bytes, Default 1G */
@@ -42,7 +41,7 @@ export class TaskRunnersConfig {
 	/**
 	 * How many concurrent tasks can a runner execute at a time
 	 *
-	 * @note Kept high for backwards compatibility - n8n v2 will reduce this to `5`
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
 	 */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 10;
@@ -52,7 +51,7 @@ export class TaskRunnersConfig {
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
 	 *
-	 * @note Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 300; // 5 minutes

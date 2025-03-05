@@ -24,6 +24,7 @@ export class Uplead implements INodeType {
 		defaults: {
 			name: 'Uplead',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

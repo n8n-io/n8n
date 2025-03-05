@@ -10,15 +10,8 @@ describe('Test RSS Feed Trigger Node', () => {
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		nock('https://lorem-rss.herokuapp.com').get('/feed?length=3').reply(200, feed);
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

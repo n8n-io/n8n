@@ -32,11 +32,16 @@ describe('ExecuteWorkflowTrigger', () => {
 
 	it('should filter out parent input in `Using Fields below` mode', async () => {
 		executeFns.getNodeParameter.mockReturnValueOnce(WORKFLOW_INPUTS);
-		const mockNewParams = [
-			{ name: 'value1', type: 'string' },
-			{ name: 'value2', type: 'number' },
-			{ name: 'foo', type: 'string' },
-		] as FieldValueOption[];
+		const mockNewParams: {
+			fields: FieldValueOption[];
+			noFieldsMessage?: string;
+		} = {
+			fields: [
+				{ name: 'value1', type: 'string' },
+				{ name: 'value2', type: 'number' },
+				{ name: 'foo', type: 'string' },
+			],
+		};
 		const getFieldEntriesMock = (getFieldEntries as jest.Mock).mockReturnValue(mockNewParams);
 
 		const result = await new ExecuteWorkflowTrigger().execute.call(executeFns);

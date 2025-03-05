@@ -76,6 +76,7 @@ export class ZohoCrm implements INodeType {
 		defaults: {
 			name: 'Zoho CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

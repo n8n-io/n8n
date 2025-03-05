@@ -2,12 +2,11 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
+import type { IWebhookData, IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WebhookEntity } from '@/databases/entities/webhook-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
@@ -36,8 +35,8 @@ const externalHooks = mockInstance(ExternalHooks);
 
 let activeWorkflowManager: ActiveWorkflowManager;
 
-let createActiveWorkflow: () => Promise<WorkflowEntity>;
-let createInactiveWorkflow: () => Promise<WorkflowEntity>;
+let createActiveWorkflow: () => Promise<IWorkflowBase>;
+let createInactiveWorkflow: () => Promise<IWorkflowBase>;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -76,10 +75,7 @@ describe('init()', () => {
 	it('should call external hook', async () => {
 		await activeWorkflowManager.init();
 
-		const [hook, arg] = externalHooks.run.mock.calls[0];
-
-		expect(hook).toBe('activeWorkflows.initialized');
-		expect(arg).toBeEmptyArray();
+		expect(externalHooks.run).toHaveBeenCalledWith('activeWorkflows.initialized');
 	});
 
 	it('should check that workflow can be activated', async () => {

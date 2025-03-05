@@ -1,13 +1,13 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
 import {
-	ApplicationError,
 	BINARY_ENCODING,
 	sleep,
 	jsonStringify,
 	ensureError,
 	ExecutionCancelledError,
+	UnexpectedError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -17,7 +17,6 @@ import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
@@ -93,6 +92,12 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				if (!this.hasValidJobData(job)) {
+					throw new UnexpectedError('Worker received invalid job', {
+						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
+					});
+				}
+
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
 				await this.reportJobProcessingError(ensureError(error), job);
@@ -265,10 +270,6 @@ export class ScalingService {
 		this.queue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
-			if (error.message.includes('job stalled more than maxStalledCount')) {
-				throw new MaxStalledCountError(error);
-			}
-
 			/**
 			 * Non-recoverable error on worker start with Redis unavailable.
 			 * Even if Redis recovers, worker will remain unable to process jobs.
@@ -368,13 +369,13 @@ export class ScalingService {
 	private assertQueue() {
 		if (this.queue) return;
 
-		throw new ApplicationError('This method must be called after `setupQueue`');
+		throw new UnexpectedError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
 		if (this.instanceSettings.instanceType === 'worker') return;
 
-		throw new ApplicationError('This method must be called on a `worker` instance');
+		throw new UnexpectedError('This method must be called on a `worker` instance');
 	}
 
 	// #region Queue metrics
@@ -501,6 +502,10 @@ export class ScalingService {
 		return error instanceof Error
 			? error.message
 			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private hasValidJobData(job: Job) {
+		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
 	}
 
 	// #endregion

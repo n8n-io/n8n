@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    }
+}

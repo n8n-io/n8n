@@ -20,6 +20,7 @@ export class TimescaleDb implements INodeType {
 		defaults: {
 			name: 'TimescaleDB',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',

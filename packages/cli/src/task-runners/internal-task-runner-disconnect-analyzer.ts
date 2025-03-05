@@ -1,12 +1,13 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import type { DisconnectErrorOptions } from '@/task-runners/task-broker/task-broker-types';
+
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
 import { SlidingWindowSignal } from './sliding-window-signal';
 import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process';
 import { TaskRunnerProcess } from './task-runner-process';
-import type { DisconnectErrorOptions } from './task-runner-types';
 
 /**
  * Analyzes the disconnect reason of a task runner process to provide a more

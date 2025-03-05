@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { Credentials } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -123,7 +123,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 		}
 
 		if (credentials.length === 0) {
-			throw new ApplicationError('No credentials found with specified filters');
+			throw new UserError('No credentials found with specified filters');
 		}
 
 		if (flags.separate) {

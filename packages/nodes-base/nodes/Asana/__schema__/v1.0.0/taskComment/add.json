@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "properties": {
+        "gid": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "num_likes": {
+            "type": "integer"
+        },
+        "num_hearts": {
+            "type": "integer"
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "is_edited": {
+            "type": "boolean"
+        },
+        "text": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "is_pinned": {
+            "type": "boolean"
+        },
+        "source": {
+            "type": "string"
+        },
+        "hearted": {
+            "type": "boolean"
+        },
+        "liked": {
+            "type": "boolean"
+        },
+        "is_editable": {
+            "type": "boolean"
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
+        },
+        "target": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_subtype": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name",
+                "resource_subtype"
+            ]
+        }
+    },
+    "required": [
+        "gid",
+        "resource_type",
+        "created_at",
+        "num_likes",
+        "num_hearts",
+        "resource_subtype",
+        "is_edited",
+        "text",
+        "type",
+        "is_pinned",
+        "source",
+        "hearts",
+        "likes",
+        "hearted",
+        "liked",
+        "previews",
+        "is_editable",
+        "created_by",
+        "target"
+    ]
+}

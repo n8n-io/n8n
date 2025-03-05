@@ -1,0 +1,184 @@
+{
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "sequence_id": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "path_collection": {
+            "type": "object",
+            "properties": {
+                "total_count": {
+                    "type": "integer"
+                },
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "id",
+                            "sequence_id",
+                            "etag",
+                            "name"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "total_count",
+                "entries"
+            ]
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "id",
+                "name",
+                "login"
+            ]
+        },
+        "modified_by": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "id",
+                "name",
+                "login"
+            ]
+        },
+        "trashed_at": {
+            "type": "null"
+        },
+        "purged_at": {
+            "type": "null"
+        },
+        "content_created_at": {
+            "type": "string"
+        },
+        "content_modified_at": {
+            "type": "string"
+        },
+        "owned_by": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "id",
+                "name",
+                "login"
+            ]
+        },
+        "shared_link": {
+            "type": "null"
+        },
+        "folder_upload_email": {
+            "type": "null"
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "id",
+                "sequence_id",
+                "etag",
+                "name"
+            ]
+        },
+        "item_status": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "type",
+        "id",
+        "etag"
+    ]
+}

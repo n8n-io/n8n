@@ -6,7 +6,7 @@ export type RunningJobSummary = {
 	workflowName: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	retryOf: string;
+	retryOf?: string;
 	status: ExecutionStatus;
 };
 

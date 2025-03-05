@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "closed": {
+            "type": "boolean"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "null"
+        },
+        "datasource": {
+            "type": "object",
+            "properties": {
+                "filter": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "filter"
+            ]
+        }
+    },
+    "required": [
+        "id"
+    ]
+}

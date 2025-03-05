@@ -23,11 +23,16 @@ jobs:
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
@@ -37,7 +42,7 @@ jobs:
         run: pnpm build:backend
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -52,18 +57,23 @@ jobs:
       DB_SQLITE_POOL_SIZE: 4
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -81,18 +91,23 @@ jobs:
       DB_MYSQLDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -108,6 +123,50 @@ jobs:
         working-directory: packages/cli
         run: pnpm test:mariadb --testTimeout 30000
 
+  mysql:
+    name: MySQL (${{ matrix.service-name }})
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        service-name: [ 'mysql-8.0.13', 'mysql-8.4' ]
+    env:
+      DB_MYSQLDB_PASSWORD: password
+    steps:
+      - uses: actions/checkout@v4.1.1
+
+      - uses: actions/setup-node@v4.2.0
+        with:
+          node-version: 20.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}:db-tests
+
+      - name: Start MySQL
+        uses: isbang/compose-action@v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            ${{ matrix.service-name }}
+
+      - name: Test MySQL
+        working-directory: packages/cli
+        run: pnpm test:mysql --testTimeout 30000
+
   postgres:
     name: Postgres
     runs-on: ubuntu-latest
@@ -118,18 +177,23 @@ jobs:
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
       - uses: actions/checkout@v4.1.1
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-          cache: 'pnpm'
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -148,7 +212,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [mariadb, postgres]
+    needs: [mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
@@ -157,4 +221,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Postgres or MariaDB tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: Postgres, MariaDB or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

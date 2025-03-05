@@ -51,6 +51,7 @@ export class Salesforce implements INodeType {
 		defaults: {
 			name: 'Salesforce',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

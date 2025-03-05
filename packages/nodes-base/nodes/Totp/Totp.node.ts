@@ -19,6 +19,7 @@ export class Totp implements INodeType {
 		defaults: {
 			name: 'TOTP',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

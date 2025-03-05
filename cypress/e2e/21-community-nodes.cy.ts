@@ -89,7 +89,7 @@ describe('Community and custom nodes in canvas', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('E2E Node with native n8n credential', true, true);
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
 	});
@@ -98,7 +98,7 @@ describe('Community and custom nodes in canvas', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('E2E Node with custom credential', true, true);
 		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
 	});

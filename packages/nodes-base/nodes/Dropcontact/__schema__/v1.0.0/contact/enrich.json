@@ -1,0 +1,56 @@
+{
+    "type": "object",
+    "properties": {
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "full_name": {
+            "type": "string"
+        },
+        "civility": {
+            "type": "string"
+        },
+        "linkedin": {
+            "type": "string"
+        },
+        "email": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "qualification": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "qualification"
+                ]
+            }
+        },
+        "company": {
+            "type": "string"
+        },
+        "website": {
+            "type": "string"
+        },
+        "country": {
+            "type": "string"
+        },
+        "company_linkedin": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "nb_employees": {
+            "type": "string"
+        }
+    }
+}

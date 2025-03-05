@@ -48,6 +48,7 @@ export class Keap implements INodeType {
 		defaults: {
 			name: 'Keap',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

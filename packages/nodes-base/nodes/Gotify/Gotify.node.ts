@@ -22,6 +22,7 @@ export class Gotify implements INodeType {
 		defaults: {
 			name: 'Gotify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

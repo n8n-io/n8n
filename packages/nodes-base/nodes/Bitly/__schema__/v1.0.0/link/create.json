@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "long_url": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "references": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "group"
+            ]
+        }
+    },
+    "required": [
+        "created_at",
+        "id",
+        "link",
+        "custom_bitlinks",
+        "long_url",
+        "archived",
+        "tags",
+        "deeplinks",
+        "references"
+    ]
+}

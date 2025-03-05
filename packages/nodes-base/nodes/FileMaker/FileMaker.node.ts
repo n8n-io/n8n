@@ -37,6 +37,7 @@ export class FileMaker implements INodeType {
 		defaults: {
 			name: 'FileMaker',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

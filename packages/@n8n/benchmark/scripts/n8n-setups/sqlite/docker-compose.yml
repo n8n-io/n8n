@@ -14,6 +14,9 @@ services:
       - N8N_USER_FOLDER=/n8n
       - DB_SQLITE_POOL_SIZE=3
       - DB_SQLITE_ENABLE_WAL=true
+      # Task Runner config
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=internal
     ports:
       - 5678:5678
     volumes:

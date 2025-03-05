@@ -27,11 +27,6 @@ on:
         description: 'URL to call after workflow is done.'
         required: false
         default: ''
-      node_view_version:
-        description: 'Node View version to run tests with.'
-        required: false
-        default: '1'
-        type: string
 
 jobs:
   calls-start-url:
@@ -51,7 +46,6 @@ jobs:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
-      node_view_version: ${{ github.event.inputs.node_view_version || '1' }}
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 

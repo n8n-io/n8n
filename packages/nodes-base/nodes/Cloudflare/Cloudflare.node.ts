@@ -24,6 +24,7 @@ export class Cloudflare implements INodeType {
 		defaults: {
 			name: 'Cloudflare',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

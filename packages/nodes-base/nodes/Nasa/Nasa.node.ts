@@ -23,6 +23,7 @@ export class Nasa implements INodeType {
 		defaults: {
 			name: 'NASA',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

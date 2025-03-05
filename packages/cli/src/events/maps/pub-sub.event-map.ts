@@ -1,6 +1,5 @@
 import type { PushMessage, WorkerStatus } from '@n8n/api-types';
-
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
 
@@ -70,7 +69,7 @@ export type PubSubCommandMap = {
 
 	'clear-test-webhooks': {
 		webhookKey: string;
-		workflowEntity: IWorkflowDb;
+		workflowEntity: IWorkflowBase;
 		pushRef: string;
 	};
 

@@ -2,8 +2,9 @@
  * @jest-environment jsdom
  */
 
+import { arrayExtensions } from '@/Extensions/ArrayExtensions';
+
 import { evaluate } from './Helpers';
-import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {

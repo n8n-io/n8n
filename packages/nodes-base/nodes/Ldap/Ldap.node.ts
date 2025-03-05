@@ -28,6 +28,7 @@ export class Ldap implements INodeType {
 		defaults: {
 			name: 'LDAP',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

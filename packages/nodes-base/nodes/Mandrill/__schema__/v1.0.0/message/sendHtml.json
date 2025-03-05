@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "email",
+        "status",
+        "_id"
+    ]
+}

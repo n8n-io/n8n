@@ -1404,7 +1404,7 @@ function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))

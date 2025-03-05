@@ -15,7 +15,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
+import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -600,11 +600,6 @@ export class TelemetryEventRelay extends EventRelay {
 			return;
 		}
 
-		if (runData?.status === 'waiting') {
-			// No need to send telemetry or logs when the workflow hasn't finished yet.
-			return;
-		}
-
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
@@ -701,6 +696,7 @@ export class TelemetryEventRelay extends EventRelay {
 					sharing_role: userRole,
 					credential_type: null,
 					is_managed: false,
+					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {

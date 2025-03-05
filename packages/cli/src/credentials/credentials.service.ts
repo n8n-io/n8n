@@ -1,3 +1,4 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -7,20 +8,19 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
-import { Credentials, Logger } from 'n8n-core';
+import { CredentialDataError, Credentials, ErrorReporter, Logger } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -45,6 +45,10 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
+type CreateCredentialOptions = CreateCredentialDto & {
+	isManaged: boolean;
+};
+
 @Service()
 export class CredentialsService {
 	constructor(
@@ -52,6 +56,7 @@ export class CredentialsService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
@@ -85,23 +90,6 @@ export class CredentialsService {
 			listQueryOptions.includeData = true;
 		}
 
-		let projectRelations: ProjectRelation[] | undefined = undefined;
-		if (includeScopes) {
-			projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			if (listQueryOptions.filter?.projectId && user.hasGlobalScope('credential:list')) {
-				// Only instance owners and admins have the credential:list scope
-				// Those users should be able to use _all_ credentials within their workflows.
-				// TODO: Change this so we filter by `workflowId` in this case. Require a slight FE change
-				const projectRelation = projectRelations.find(
-					(relation) => relation.projectId === listQueryOptions.filter?.projectId,
-				);
-				if (projectRelation?.role === 'project:personalOwner') {
-					// Will not affect team projects as these have admins, not owners.
-					delete listQueryOptions.filter?.projectId;
-				}
-			}
-		}
-
 		if (returnAll) {
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
@@ -123,16 +111,22 @@ export class CredentialsService {
 			}
 
 			if (includeScopes) {
-				credentials = credentials.map((c) =>
-					this.roleService.addScopes(c, user, projectRelations!),
-				);
+				const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+				credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 			}
 
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (data?.oauthTokenData) {
+						data.oauthTokenData = true;
+					}
+
 					return {
 						...c,
-						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+						data,
 					} as unknown as CredentialsEntity;
 				});
 			}
@@ -179,7 +173,8 @@ export class CredentialsService {
 		}
 
 		if (includeScopes) {
-			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 		}
 
 		if (includeData) {
@@ -290,20 +285,6 @@ export class CredentialsService {
 		});
 	}
 
-	async prepareCreateData(
-		data: CredentialRequest.CredentialProperties,
-	): Promise<CredentialsEntity> {
-		const { id, ...rest } = data;
-
-		// This saves us a merge but requires some type casting. These
-		// types are compatible for this case.
-		const newCredentials = this.credentialsRepository.create(rest as ICredentialsDb);
-
-		await validateEntity(newCredentials);
-
-		return newCredentials;
-	}
-
 	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
@@ -328,10 +309,18 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
-		const credentials = new Credentials({ id: credentialId, name: data.name }, data.type);
+	createEncryptedData(credential: {
+		id: string | null;
+		name: string;
+		type: string;
+		data: ICredentialDataDecryptedObject;
+	}): ICredentialsDb {
+		const credentials = new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
+		credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -348,11 +337,23 @@ export class CredentialsService {
 	 */
 	decrypt(credential: CredentialsEntity, includeRawData = false) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		const data = coreCredential.getData();
-		if (includeRawData) {
-			return data;
+		try {
+			const data = coreCredential.getData();
+			if (includeRawData) {
+				return data;
+			}
+			return this.redact(data, credential);
+		} catch (error) {
+			if (error instanceof CredentialDataError) {
+				this.errorReporter.error(error, {
+					level: 'error',
+					extra: { credentialId: credential.id },
+					tags: { credentialType: credential.type },
+				});
+				return {};
+			}
+			throw error;
 		}
-		return this.redact(data, credential);
 	}
 
 	async update(credentialId: string, newCredentialData: ICredentialsDb) {
@@ -404,7 +405,7 @@ export class CredentialsService {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new ApplicationError('No personal project found');
+				throw new UnexpectedError('No personal project found');
 			}
 
 			const newSharedCredential = this.sharedCredentialsRepository.create({
@@ -424,14 +425,30 @@ export class CredentialsService {
 		return result;
 	}
 
-	async delete(credentials: CredentialsEntity) {
-		await this.externalHooks.run('credentials.delete', [credentials.id]);
+	/**
+	 * Deletes a credential.
+	 *
+	 * If the user does not have permission to delete the credential this does
+	 * nothing and returns void.
+	 */
+	async delete(user: User, credentialId: string) {
+		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		await this.credentialsRepository.remove(credentials);
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:delete'],
+		);
+
+		if (!credential) {
+			return;
+		}
+
+		await this.credentialsRepository.remove(credential);
 	}
 
-	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
+	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
+		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
@@ -542,7 +559,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.decrypt(sharing.credentials, true);
+			decryptedData = this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -558,6 +575,11 @@ export class CredentialsService {
 		const { data: _, ...rest } = credential;
 
 		if (decryptedData) {
+			// We never want to expose the oauthTokenData to the frontend, but it
+			// expects it to check if the credential is already connected.
+			if (decryptedData?.oauthTokenData) {
+				decryptedData.oauthTokenData = true;
+			}
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };
@@ -650,16 +672,36 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createCredential(credentialsData: CredentialRequest.CredentialProperties, user: User) {
-		const newCredential = await this.prepareCreateData(credentialsData);
+	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: false }, user);
+	}
 
-		const encryptedData = this.createEncryptedData(null, newCredential);
+	/**
+	 * Create a new managed credential in user's account and return it along the scopes.
+	 * Managed credentials are managed by n8n and cannot be edited by the user.
+	 */
+	async createManagedCredential(dto: CreateCredentialDto, user: User) {
+		return await this.createCredential({ ...dto, isManaged: true }, user);
+	}
+
+	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const encryptedCredential = this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: opts.data as ICredentialDataDecryptedObject,
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: opts.isManaged,
+		});
 
 		const { shared, ...credential } = await this.save(
-			newCredential,
-			encryptedData,
+			credentialEntity,
+			encryptedCredential,
 			user,
-			credentialsData.projectId,
+			opts.projectId,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);

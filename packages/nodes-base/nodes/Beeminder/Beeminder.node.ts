@@ -30,6 +30,7 @@ export class Beeminder implements INodeType {
 		defaults: {
 			name: 'Beeminder',
 		},
+		usableAsTool: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:beeminder.png',
 		inputs: [NodeConnectionType.Main],

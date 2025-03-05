@@ -39,6 +39,7 @@ export class InvoiceNinja implements INodeType {
 		defaults: {
 			name: 'Invoice Ninja',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

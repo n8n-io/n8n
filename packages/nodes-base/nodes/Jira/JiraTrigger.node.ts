@@ -46,6 +46,16 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Credentials to Connect to Jira',
+				name: 'jiraSoftwareServerPatApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['serverPat'],
+					},
+				},
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpQueryAuth',
 				displayName: 'Credentials to Authenticate Webhook',
@@ -86,6 +96,10 @@ export class JiraTrigger implements INodeType {
 					{
 						name: 'Server (Self Hosted)',
 						value: 'server',
+					},
+					{
+						name: 'Server (Pat) (Self Hosted)',
+						value: 'serverPat',
 					},
 				],
 				default: 'cloud',

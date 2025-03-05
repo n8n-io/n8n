@@ -14,7 +14,6 @@ describe('Test S3 V1 Node', () => {
 
 			await initBinaryDataService();
 
-			nock.disableNetConnect();
 			mock = nock('https://bucket.s3.eu-central-1.amazonaws.com');
 		});
 
@@ -38,10 +37,6 @@ describe('Test S3 V1 Node', () => {
 				)
 				.once()
 				.reply(200, { success: true });
-		});
-
-		afterAll(() => {
-			nock.restore();
 		});
 
 		testWorkflows(workflows);

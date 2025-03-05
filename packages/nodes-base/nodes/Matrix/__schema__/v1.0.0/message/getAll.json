@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "object",
+            "properties": {
+                "msgtype": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "com.beeper.linkpreviews": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "og:url": {
+                                "type": "string"
+                            },
+                            "og:title": {
+                                "type": "string"
+                            },
+                            "og:image": {
+                                "type": "string"
+                            },
+                            "matrix:image:size": {
+                                "type": "integer"
+                            },
+                            "og:image:width": {
+                                "type": "integer"
+                            },
+                            "og:image:height": {
+                                "type": "integer"
+                            },
+                            "og:image:type": {
+                                "type": "string"
+                            },
+                            "matched_url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "og:url",
+                            "og:title",
+                            "og:image",
+                            "matrix:image:size",
+                            "og:image:width",
+                            "og:image:height",
+                            "og:image:type",
+                            "matched_url"
+                        ]
+                    }
+                }
+            }
+        },
+        "origin_server_ts": {
+            "type": "integer"
+        },
+        "room_id": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "unsigned": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "integer"
+                }
+            }
+        },
+        "event_id": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "string"
+        },
+        "age": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "content",
+        "origin_server_ts",
+        "room_id",
+        "sender",
+        "type",
+        "unsigned",
+        "event_id"
+    ]
+}
