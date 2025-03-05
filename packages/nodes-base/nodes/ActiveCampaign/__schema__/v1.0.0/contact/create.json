@@ -1,170 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "email": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "cdate": {
-            "type": "string"
-        },
-        "udate": {
-            "type": "string"
-        },
-        "orgid": {
-            "type": "string"
-        },
-        "orgname": {
-            "type": "string"
-        },
-        "links": {
-            "type": "object",
-            "properties": {
-                "bounceLogs": {
-                    "type": "string"
-                },
-                "contactAutomations": {
-                    "type": "string"
-                },
-                "contactData": {
-                    "type": "string"
-                },
-                "contactGoals": {
-                    "type": "string"
-                },
-                "contactLists": {
-                    "type": "string"
-                },
-                "contactLogs": {
-                    "type": "string"
-                },
-                "contactTags": {
-                    "type": "string"
-                },
-                "contactDeals": {
-                    "type": "string"
-                },
-                "deals": {
-                    "type": "string"
-                },
-                "fieldValues": {
-                    "type": "string"
-                },
-                "geoIps": {
-                    "type": "string"
-                },
-                "notes": {
-                    "type": "string"
-                },
-                "organization": {
-                    "type": "string"
-                },
-                "plusAppend": {
-                    "type": "string"
-                },
-                "trackingLogs": {
-                    "type": "string"
-                },
-                "scoreValues": {
-                    "type": "string"
-                },
-                "accountContacts": {
-                    "type": "string"
-                },
-                "automationEntryCounts": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "bounceLogs",
-                "contactAutomations",
-                "contactData",
-                "contactGoals",
-                "contactLists",
-                "contactLogs",
-                "contactTags",
-                "contactDeals",
-                "deals",
-                "fieldValues",
-                "geoIps",
-                "notes",
-                "organization",
-                "plusAppend",
-                "trackingLogs",
-                "scoreValues",
-                "automationEntryCounts"
-            ]
-        },
-        "fieldValues": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "id": {
-            "type": "string"
-        },
-        "segmentio_id": {
-            "type": "string"
-        },
-        "bounced_hard": {
-            "type": "string"
-        },
-        "bounced_soft": {
-            "type": "string"
-        },
-        "ip": {
-            "type": "string"
-        },
-        "hash": {
-            "type": "string"
-        },
-        "socialdata_lastcheck": {
-            "type": "null"
-        },
-        "email_local": {
-            "type": "string"
-        },
-        "email_domain": {
-            "type": "string"
-        },
-        "sentcnt": {
-            "type": "string"
-        },
-        "gravatar": {
-            "type": "string"
-        },
-        "deleted": {
-            "type": "string"
-        },
-        "anonymized": {
-            "type": "string"
-        },
-        "deleted_at": {
-            "type": "null"
-        },
-        "created_utc_timestamp": {
-            "type": "string"
-        },
-        "updated_utc_timestamp": {
-            "type": "string"
-        },
-        "created_timestamp": {
-            "type": "string"
-        },
-        "updated_timestamp": {
-            "type": "string"
-        },
-        "mpp_tracking": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json",
+    "sha": "69965af2a234dce66d00cb3c1a0e19f38eec3053",
+    "size": 4186,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/69965af2a234dce66d00cb3c1a0e19f38eec3053",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInBob25lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZmlyc3ROYW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdE5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJjZGF0ZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVkYXRl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAib3JnaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJvcmduYW1lIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGlua3Mi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAg\nICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImJvdW5jZUxvZ3Mi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0QXV0b21h\ndGlvbnMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0\nRGF0YSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3RH\nb2FscyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3RM\naXN0cyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3RM\nb2dzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdFRh\nZ3MiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0RGVh\nbHMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJkZWFscyI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgImZpZWxkVmFsdWVzIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZ2VvSXBzIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAibm90ZXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJvcmdhbml6YXRpb24iOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJwbHVzQXBwZW5kIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAidHJhY2tpbmdMb2dzIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAic2NvcmVWYWx1ZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJhY2NvdW50Q29udGFjdHMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJhdXRvbWF0aW9uRW50cnlDb3VudHMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAiYm91bmNlTG9ncyIsCiAgICAgICAgICAgICAg\nICAiY29udGFjdEF1dG9tYXRpb25zIiwKICAgICAgICAgICAgICAgICJjb250\nYWN0RGF0YSIsCiAgICAgICAgICAgICAgICAiY29udGFjdEdvYWxzIiwKICAg\nICAgICAgICAgICAgICJjb250YWN0TGlzdHMiLAogICAgICAgICAgICAgICAg\nImNvbnRhY3RMb2dzIiwKICAgICAgICAgICAgICAgICJjb250YWN0VGFncyIs\nCiAgICAgICAgICAgICAgICAiY29udGFjdERlYWxzIiwKICAgICAgICAgICAg\nICAgICJkZWFscyIsCiAgICAgICAgICAgICAgICAiZmllbGRWYWx1ZXMiLAog\nICAgICAgICAgICAgICAgImdlb0lwcyIsCiAgICAgICAgICAgICAgICAibm90\nZXMiLAogICAgICAgICAgICAgICAgIm9yZ2FuaXphdGlvbiIsCiAgICAgICAg\nICAgICAgICAicGx1c0FwcGVuZCIsCiAgICAgICAgICAgICAgICAidHJhY2tp\nbmdMb2dzIiwKICAgICAgICAgICAgICAgICJzY29yZVZhbHVlcyIsCiAgICAg\nICAgICAgICAgICAiYXV0b21hdGlvbkVudHJ5Q291bnRzIgogICAgICAgICAg\nICBdCiAgICAgICAgfSwKICAgICAgICAiZmllbGRWYWx1ZXMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICB9CiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzZWdtZW50aW9f\naWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJib3VuY2VkX2hhcmQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJib3VuY2VkX3NvZnQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJpcCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImhhc2giOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzb2NpYWxkYXRhX2xh\nc3RjaGVjayI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJlbWFpbF9sb2NhbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsX2RvbWFp\nbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInNlbnRjbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJncmF2YXRhciI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRl\nbGV0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJhbm9ueW1pemVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZGVsZXRlZF9hdCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAg\nICAgICJjcmVhdGVkX3V0Y190aW1lc3RhbXAiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVkX3V0\nY190aW1lc3RhbXAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX3RpbWVzdGFtcCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInVwZGF0ZWRfdGltZXN0YW1wIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAibXBwX3RyYWNraW5nIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/69965af2a234dce66d00cb3c1a0e19f38eec3053",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/create.json"
+    },
+    "version": 1
 }
