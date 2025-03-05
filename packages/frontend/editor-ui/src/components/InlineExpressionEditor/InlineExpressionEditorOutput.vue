@@ -53,7 +53,7 @@ onBeforeUnmount(() => {
 			>
 			</ExpressionOutput>
 		</n8n-text>
-		<div :class="$style.footer" v-if="!isReadOnly">
+		<div v-if="!isReadOnly" :class="$style.footer">
 			<InlineExpressionTip
 				:editor-state="editorState"
 				:selection="selection"
