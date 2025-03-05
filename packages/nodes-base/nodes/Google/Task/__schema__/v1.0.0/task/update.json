@@ -1,41 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "position": {
-            "type": "string"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "due": {
-            "type": "string"
-        },
-        "webViewLink": {
-            "type": "string"
-        },
-        "completed": {
-            "type": "string"
-        }
-    }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json",
+    "sha": "1a1e93cef7f7eb4b03fa46f1d43249ac1c8bf0b9",
+    "size": 771,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a1e93cef7f7eb4b03fa46f1d43249ac1c8bf0b9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ndGl0bGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJ1cGRhdGVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2VsZkxpbmsiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJwb3NpdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5vdGVzIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiZHVlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAid2ViVmlld0xpbmsiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjb21wbGV0ZWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a1e93cef7f7eb4b03fa46f1d43249ac1c8bf0b9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json"
+    },
+    "version": 1
 }
