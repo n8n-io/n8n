@@ -52,8 +52,8 @@ export class BitwardenApi implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'Server Geographies',
-			name: 'serverLocation',
+			displayName: 'Region',
+			name: 'region',
 			type: 'options',
 			default: 'bitwarden.com',
 			options: [

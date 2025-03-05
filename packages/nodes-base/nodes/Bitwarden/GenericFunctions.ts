@@ -13,10 +13,10 @@ import { NodeApiError } from 'n8n-workflow';
  * Return the access token URL based on the user's environment.
  */
 async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain, serverLocation } = await this.getCredentials('bitwardenApi');
+	const { environment, domain, region } = await this.getCredentials('bitwardenApi');
 
 	return environment === 'cloudHosted'
-		? `https://identity.${serverLocation}/connect/token`
+		? `https://identity.${region}/connect/token`
 		: `${domain}/identity/connect/token`;
 }
 
@@ -24,9 +24,9 @@ async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
  * Return the base API URL based on the user's environment.
  */
 async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain, serverLocation } = await this.getCredentials('bitwardenApi');
+	const { environment, domain, region } = await this.getCredentials('bitwardenApi');
 
-	return environment === 'cloudHosted' ? `https://api.${serverLocation}` : `${domain}/api`;
+	return environment === 'cloudHosted' ? `https://api.${region}` : `${domain}/api`;
 }
 
 /**
