@@ -677,6 +677,7 @@ async function loadResources() {
 				message: removeDuplicateTextFromErrorMessage(e.message),
 				description: e.description,
 				httpCode: e.httpCode,
+				stackTrace: e.stacktrace,
 			},
 		});
 	}
