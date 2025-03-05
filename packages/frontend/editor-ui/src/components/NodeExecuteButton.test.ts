@@ -221,6 +221,7 @@ describe('NodeExecuteButton', () => {
 		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
+
 		expect(getByRole('tooltip')).toBeVisible();
 		expect(getByRole('tooltip')).toHaveTextContent('Enable node to execute');
 	});
@@ -239,6 +240,7 @@ describe('NodeExecuteButton', () => {
 		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
+
 		expect(getByRole('tooltip')).toBeVisible();
 		expect(getByRole('tooltip')).toHaveTextContent('Workflow is already running');
 	});
@@ -371,6 +373,7 @@ describe('NodeExecuteButton', () => {
 		const { getByRole, emitted } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
+
 		expect(generateCodeForAiTransformSpy).toHaveBeenCalledTimes(1);
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted().valueChanged).toEqual([
