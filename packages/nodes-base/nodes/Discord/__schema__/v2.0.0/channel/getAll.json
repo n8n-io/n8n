@@ -1,83 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "flags": {
-            "type": "integer"
-        },
-        "guild_id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "position": {
-            "type": "integer"
-        },
-        "permission_overwrites": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "integer"
-                    },
-                    "allow": {
-                        "type": "string"
-                    },
-                    "deny": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "type",
-                    "allow",
-                    "deny"
-                ]
-            }
-        },
-        "rate_limit_per_user": {
-            "type": "integer"
-        },
-        "nsfw": {
-            "type": "boolean"
-        },
-        "icon_emoji": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "null"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
-        "theme_color": {
-            "type": "null"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json",
+    "sha": "b3fb5df33c25c40db2408cd79e68906190c9de28",
+    "size": 1868,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b3fb5df33c25c40db2408cd79e68906190c9de28",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiZmxhZ3MiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiZ3VpbGRfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicG9zaXRpb24iOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAicGVybWlzc2lvbl9vdmVyd3JpdGVzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\newogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImFs\nbG93IjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAiZGVueSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICAgICAidHlwZSIsCiAg\nICAgICAgICAgICAgICAgICAgImFsbG93IiwKICAgICAgICAgICAgICAgICAg\nICAiZGVueSIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAg\nICAgIH0sCiAgICAgICAgInJhdGVfbGltaXRfcGVyX3VzZXIiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\nbnNmdyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICB9LAogICAgICAgICJpY29uX2Vtb2ppIjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJudWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImlkIiwKICAgICAg\nICAgICAgICAgICJuYW1lIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAidGhlbWVfY29sb3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAiaWQiLAogICAgICAgICJ0eXBlIiwKICAgICAgICAiZmxhZ3MiLAogICAg\nICAgICJndWlsZF9pZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJwYXJl\nbnRfaWQiLAogICAgICAgICJwb3NpdGlvbiIsCiAgICAgICAgInBlcm1pc3Np\nb25fb3ZlcndyaXRlcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b3fb5df33c25c40db2408cd79e68906190c9de28",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/getAll.json"
     },
-    "required": [
-        "id",
-        "type",
-        "flags",
-        "guild_id",
-        "name",
-        "parent_id",
-        "position",
-        "permission_overwrites"
-    ]
+    "version": 1
 }
