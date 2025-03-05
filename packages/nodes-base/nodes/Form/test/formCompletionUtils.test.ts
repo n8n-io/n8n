@@ -71,7 +71,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Form has been submitted successfully',
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: '',
 				responseText: '',
 				title: 'Form Completion',
 			});
@@ -173,7 +173,7 @@ describe('formCompletionUtils', () => {
 					formTitle: 'Form Title',
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
-					responseBinary: encodeURIComponent(JSON.stringify(expectedBinaryResponse.inputData)),
+					responseBinary: encodeURIComponent(atob(expectedBinaryResponse.inputData.data)),
 					responseText: '',
 					title: 'Form Completion',
 				});
