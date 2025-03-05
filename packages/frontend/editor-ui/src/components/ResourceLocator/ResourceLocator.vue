@@ -63,6 +63,7 @@ interface IResourceLocatorQuery {
 		message?: string;
 		description?: string;
 		httpCode?: string;
+		stackTrace?: string;
 	};
 	loading: boolean;
 }
@@ -154,9 +155,26 @@ const selectedMode = computed(() => {
 
 const isListMode = computed(() => selectedMode.value === 'list');
 
-const hasPermissionError = computed(() =>
-	['401', '403'].includes(currentResponse.value?.errorDetails?.httpCode ?? ''),
-);
+const hasCredentialError = computed(() => {
+	const PERMISSION_ERROR_CODES = ['401', '403'];
+	// Some of our NodeAPIErrors just return 500 without any details,
+	// so checking messages and stack traces for permission errors
+	const NODE_API_AUTH_ERROR_MESSAGES = [
+		'NodeApiError: Authorization failed',
+		'NodeApiError: Unable to sign without access token',
+		'secretOrPrivateKey must be an asymmetric key when using RS256',
+	];
+	// Check if error stack trace contains permission error messages
+	const stackTraceContainsCredentialError = (currentResponse.value?.errorDetails?.stackTrace ?? '')
+		.split('\n')
+		.some((line) => NODE_API_AUTH_ERROR_MESSAGES.includes(line.trim()));
+
+	return (
+		PERMISSION_ERROR_CODES.includes(currentResponse.value?.errorDetails?.httpCode ?? '') ||
+		NODE_API_AUTH_ERROR_MESSAGES.includes(currentResponse.value?.errorDetails?.message ?? '') ||
+		stackTraceContainsCredentialError
+	);
+});
 
 const credentialsNotSet = computed(() => {
 	if (!props.node) return false;
@@ -784,28 +802,31 @@ function removeOverride() {
 			@load-more="loadResourcesDebounced"
 		>
 			<template #error>
-				<div
-					v-if="currentResponse.errorDetails"
-					:class="$style.error"
-					data-test-id="rlc-error-container"
-				>
-					<n8n-text color="text-dark" align="center" tag="div" class="mb-3xs">
+				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
+					<n8n-text
+						v-if="credentialsNotSet || currentResponse.errorDetails"
+						color="text-dark"
+						align="center"
+						tag="div"
+					>
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
-					<n8n-text size="small">
-						<span v-if="currentResponse.errorDetails.httpCode">
-							{{ currentResponse.errorDetails.httpCode }} -
-						</span>
-						{{ currentResponse.errorDetails.message?.split('-')[0]?.trim() }}
-					</n8n-text>
-					<N8nNotice
-						v-if="currentResponse.errorDetails.description"
-						theme="warning"
-						class="mt-s mb-s text-left"
-					>
-						{{ currentResponse.errorDetails.description }}
-					</N8nNotice>
-					<div v-if="hasPermissionError" data-test-id="permission-error-link">
+					<div v-if="currentResponse.errorDetails" :class="$style.errorDetails">
+						<n8n-text size="small">
+							<span v-if="currentResponse.errorDetails.httpCode">
+								{{ currentResponse.errorDetails.httpCode }} -
+							</span>
+							{{ currentResponse.errorDetails.message }}
+						</n8n-text>
+						<N8nNotice
+							v-if="currentResponse.errorDetails.description"
+							theme="warning"
+							:class="$style.errorDescription"
+						>
+							{{ currentResponse.errorDetails.description }}
+						</N8nNotice>
+					</div>
+					<div v-if="hasCredentialError || credentialsNotSet" data-test-id="permission-error-link">
 						<a
 							v-if="credentialsNotSet"
 							:class="$style['credential-link']"
