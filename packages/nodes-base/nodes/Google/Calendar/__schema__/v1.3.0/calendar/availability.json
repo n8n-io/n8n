@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "available": {
-            "type": "boolean"
-        }
-    }
+    "name": "availability.json",
+    "path": "packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json",
+    "sha": "a93cdc2366958879c98ead2b5728e6088e9e4938",
+    "size": 115,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a93cdc2366958879c98ead2b5728e6088e9e4938",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdmFpbGFibGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a93cdc2366958879c98ead2b5728e6088e9e4938",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/calendar/availability.json"
+    },
+    "version": 1
 }
