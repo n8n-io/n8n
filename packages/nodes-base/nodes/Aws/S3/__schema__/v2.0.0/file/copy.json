@@ -1,22 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "$": {
-            "type": "object",
-            "properties": {
-                "xmlns": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "xmlns"
-            ]
-        },
-        "LastModified": {
-            "type": "string"
-        },
-        "ETag": {
-            "type": "string"
-        }
-    }
+    "name": "copy.json",
+    "path": "packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json",
+    "sha": "74f3e776aceb011991aaa81af32cfcc5801114d7",
+    "size": 420,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/74f3e776aceb011991aaa81af32cfcc5801114d7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICIkIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAog\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ4\nbWxucyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ4bWxucyIKICAgICAg\nICAgICAgXQogICAgICAgIH0sCiAgICAgICAgIkxhc3RNb2RpZmllZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIkVUYWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/74f3e776aceb011991aaa81af32cfcc5801114d7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/copy.json"
+    },
+    "version": 1
 }
