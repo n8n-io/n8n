@@ -1,160 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "shareId": {
-            "type": "null"
-        },
-        "shortId": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "culprit": {
-            "type": "string"
-        },
-        "permalink": {
-            "type": "string"
-        },
-        "level": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "substatus": {
-            "type": "string"
-        },
-        "isPublic": {
-            "type": "boolean"
-        },
-        "platform": {
-            "type": "string"
-        },
-        "project": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "platform": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "slug",
-                "platform"
-            ]
-        },
-        "type": {
-            "type": "string"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "initial_priority": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "initial_priority"
-            ]
-        },
-        "numComments": {
-            "type": "integer"
-        },
-        "isBookmarked": {
-            "type": "boolean"
-        },
-        "isSubscribed": {
-            "type": "boolean"
-        },
-        "hasSeen": {
-            "type": "boolean"
-        },
-        "issueType": {
-            "type": "string"
-        },
-        "issueCategory": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "string"
-        },
-        "isUnhandled": {
-            "type": "boolean"
-        },
-        "count": {
-            "type": "string"
-        },
-        "userCount": {
-            "type": "integer"
-        },
-        "firstSeen": {
-            "type": "string"
-        },
-        "lastSeen": {
-            "type": "string"
-        },
-        "stats": {
-            "type": "object",
-            "properties": {
-                "24h": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    }
-                }
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json",
+    "sha": "6176e198b57bbf01b3d55a22b87c07fbb84dc3ee",
+    "size": 3478,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6176e198b57bbf01b3d55a22b87c07fbb84dc3ee",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInNoYXJlSWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAic2hvcnRJZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInRpdGxlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiY3VscHJpdCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBlcm1hbGluayI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImxldmVsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3Vic3RhdHVz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiaXNQdWJsaWMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAicGxhdGZvcm0iOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJw\ncm9qZWN0IjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJpZCI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJzbHVnIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAicGxhdGZvcm0iOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAiaWQiLAogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAg\nICAgICAgInNsdWciLAogICAgICAgICAgICAgICAgInBsYXRmb3JtIgogICAg\nICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAidHlwZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1l\ndGFkYXRhIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJpbml0\naWFsX3ByaW9yaXR5IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJpbml0\naWFsX3ByaW9yaXR5IgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAg\nICAibnVtQ29tbWVudHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAiaXNCb29rbWFya2VkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nImlzU3Vic2NyaWJlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJoYXNTZWVuIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzc3Vl\nVHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgImlzc3VlQ2F0ZWdvcnkiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwcmlvcml0eSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImlzVW5oYW5kbGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImNvdW50IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXNl\nckNvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgImZpcnN0U2VlbiI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxhc3RTZWVuIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAic3RhdHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nIjI0aCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgIH0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwog\nICAgICAgICJpZCIsCiAgICAgICAgInNoYXJlSWQiLAogICAgICAgICJzaG9y\ndElkIiwKICAgICAgICAidGl0bGUiLAogICAgICAgICJjdWxwcml0IiwKICAg\nICAgICAicGVybWFsaW5rIiwKICAgICAgICAibG9nZ2VyIiwKICAgICAgICAi\nbGV2ZWwiLAogICAgICAgICJzdGF0dXMiLAogICAgICAgICJzdGF0dXNEZXRh\naWxzIiwKICAgICAgICAic3Vic3RhdHVzIiwKICAgICAgICAiaXNQdWJsaWMi\nLAogICAgICAgICJwbGF0Zm9ybSIsCiAgICAgICAgInByb2plY3QiLAogICAg\nICAgICJ0eXBlIiwKICAgICAgICAibWV0YWRhdGEiLAogICAgICAgICJudW1D\nb21tZW50cyIsCiAgICAgICAgImFzc2lnbmVkVG8iLAogICAgICAgICJpc0Jv\nb2ttYXJrZWQiLAogICAgICAgICJpc1N1YnNjcmliZWQiLAogICAgICAgICJz\ndWJzY3JpcHRpb25EZXRhaWxzIiwKICAgICAgICAiaGFzU2VlbiIsCiAgICAg\nICAgImFubm90YXRpb25zIiwKICAgICAgICAiaXNzdWVUeXBlIiwKICAgICAg\nICAiaXNzdWVDYXRlZ29yeSIsCiAgICAgICAgInByaW9yaXR5IiwKICAgICAg\nICAicHJpb3JpdHlMb2NrZWRBdCIsCiAgICAgICAgImlzVW5oYW5kbGVkIiwK\nICAgICAgICAiY291bnQiLAogICAgICAgICJ1c2VyQ291bnQiLAogICAgICAg\nICJmaXJzdFNlZW4iLAogICAgICAgICJsYXN0U2VlbiIsCiAgICAgICAgInN0\nYXRzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6176e198b57bbf01b3d55a22b87c07fbb84dc3ee",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SentryIo/__schema__/v1.0.0/issue/getAll.json"
     },
-    "required": [
-        "id",
-        "shareId",
-        "shortId",
-        "title",
-        "culprit",
-        "permalink",
-        "logger",
-        "level",
-        "status",
-        "statusDetails",
-        "substatus",
-        "isPublic",
-        "platform",
-        "project",
-        "type",
-        "metadata",
-        "numComments",
-        "assignedTo",
-        "isBookmarked",
-        "isSubscribed",
-        "subscriptionDetails",
-        "hasSeen",
-        "annotations",
-        "issueType",
-        "issueCategory",
-        "priority",
-        "priorityLockedAt",
-        "isUnhandled",
-        "count",
-        "userCount",
-        "firstSeen",
-        "lastSeen",
-        "stats"
-    ]
+    "version": 1
 }
