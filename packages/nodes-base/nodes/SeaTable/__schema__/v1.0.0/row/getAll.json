@@ -1,13 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_id": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json",
+    "sha": "9dc99e9c7cc731baa6cd9f15f5f7e45fe36f3af7",
+    "size": 183,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9dc99e9c7cc731baa6cd9f15f5f7e45fe36f3af7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJf\naWQiLAogICAgICAgICJfY3RpbWUiLAogICAgICAgICJfbXRpbWUiCiAgICBd\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9dc99e9c7cc731baa6cd9f15f5f7e45fe36f3af7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/getAll.json"
     },
-    "required": [
-        "_id",
-        "_ctime",
-        "_mtime"
-    ]
+    "version": 1
 }
