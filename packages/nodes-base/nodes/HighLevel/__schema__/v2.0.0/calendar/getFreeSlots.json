@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "traceId": {
+            "type": "string"
+        },
+        "2025-02-24": {
+            "type": "object",
+            "properties": {
+                "slots": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "slots"
+            ]
+        }
+    },
+    "required": [
+        "traceId"
+    ],
+    "version": 1
+}
