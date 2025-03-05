@@ -1,89 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
-        "source": {
-            "type": "string"
-        },
-        "timezone": {
-            "type": "string"
-        },
-        "fingerprint": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "customField": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        },
-        "assignedTo": {
-            "type": "string"
-        },
-        "address1": {
-            "type": "string"
-        },
-        "city": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "postalCode": {
-            "type": "string"
-        }
-    }
+    "name": "lookup.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json",
+    "sha": "9d11f5ae987b177e91e435cbf0c5a80b5a5f6d15",
+    "size": 1880,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9d11f5ae987b177e91e435cbf0c5a80b5a5f6d15",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImRhdGVBZGRlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJsb2NhdGlvbklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiZmlyc3ROYW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZmly\nc3ROYW1lTG93ZXJDYXNlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiZnVsbE5hbWVMb3dlckNhc2UiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJsYXN0TmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImxhc3ROYW1lTG93ZXJDYXNlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiZW1haWwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJlbWFpbExvd2VyQ2FzZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBob25l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiY291bnRyeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgInNvdXJjZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInRpbWV6\nb25lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiZmluZ2VycHJpbnQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgfQogICAgICAgIH0sCiAgICAgICAgImN1c3RvbUZpZWxkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAi\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgInZhbHVlIgogICAgICAg\nICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAi\nYXNzaWduZWRUbyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImFkZHJlc3MxIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY2l0eSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInN0YXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAicG9zdGFsQ29kZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9d11f5ae987b177e91e435cbf0c5a80b5a5f6d15",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v1.0.0/contact/lookup.json"
+    },
+    "version": 1
 }
