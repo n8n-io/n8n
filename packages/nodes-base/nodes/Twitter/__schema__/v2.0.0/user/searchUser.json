@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        }
-    }
+    "name": "searchUser.json",
+    "path": "packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json",
+    "sha": "f5ac3afd1c1e00b3ea6e55089be58cccf686f63c",
+    "size": 227,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f5ac3afd1c1e00b3ea6e55089be58cccf686f63c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1c2VybmFtZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0K\nfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f5ac3afd1c1e00b3ea6e55089be58cccf686f63c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/user/searchUser.json"
+    },
+    "version": 1
 }
