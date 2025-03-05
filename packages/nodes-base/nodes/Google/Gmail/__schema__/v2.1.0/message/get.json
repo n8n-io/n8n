@@ -1,170 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "sizeEstimate": {
-            "type": "integer"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "headers": {
-            "type": "object",
-            "properties": {
-                "delivered-to": {
-                    "type": "string"
-                },
-                "received": {
-                    "type": "string"
-                },
-                "x-google-smtp-source": {
-                    "type": "string"
-                },
-                "x-received": {
-                    "type": "string"
-                },
-                "arc-seal": {
-                    "type": "string"
-                },
-                "arc-message-signature": {
-                    "type": "string"
-                },
-                "arc-authentication-results": {
-                    "type": "string"
-                },
-                "return-path": {
-                    "type": "string"
-                },
-                "received-spf": {
-                    "type": "string"
-                },
-                "authentication-results": {
-                    "type": "string"
-                },
-                "dkim-signature": {
-                    "type": "string"
-                },
-                "content-type": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "mime-version": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "message-id": {
-                    "type": "string"
-                },
-                "from": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "content-type",
-                "date",
-                "mime-version",
-                "subject",
-                "message-id",
-                "from"
-            ]
-        },
-        "text": {
-            "type": "string"
-        },
-        "textAsHtml": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
-        },
-        "to": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "messageId": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json",
+    "sha": "2f25dca1683f2e117c32a50474c69fa4af81e30d",
+    "size": 4597,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2f25dca1683f2e117c32a50474c69fa4af81e30d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRocmVhZElkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2l6ZUVzdGlt\nYXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nIH0sCiAgICAgICAgImxhYmVsSWRzIjogewogICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0s\nCiAgICAgICAgImhlYWRlcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgImRlbGl2ZXJlZC10byI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInJlY2VpdmVkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAieC1nb29nbGUtc210cC1zb3VyY2UiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ4LXJlY2VpdmVkIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAiYXJjLXNlYWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJhcmMtbWVzc2FnZS1zaWduYXR1cmUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJhcmMtYXV0aGVudGljYXRpb24tcmVzdWx0cyI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInJldHVybi1wYXRoIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVjZWl2ZWQtc3BmIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYXV0aGVudGljYXRpb24tcmVz\ndWx0cyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRraW0tc2ln\nbmF0dXJlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGVu\ndC10eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZGF0ZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm1pbWUtdmVyc2lvbiI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInRvIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAic3ViamVjdCI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgIm1lc3NhZ2UtaWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJmcm9tIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nImNvbnRlbnQtdHlwZSIsCiAgICAgICAgICAgICAgICAiZGF0ZSIsCiAgICAg\nICAgICAgICAgICAibWltZS12ZXJzaW9uIiwKICAgICAgICAgICAgICAgICJz\ndWJqZWN0IiwKICAgICAgICAgICAgICAgICJtZXNzYWdlLWlkIiwKICAgICAg\nICAgICAgICAgICJmcm9tIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAidGV4dCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRleHRBc0h0bWwiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzdWJqZWN0\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiZGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInRvIjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAog\nICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJhZGRyZXNzIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJhZGRyZXNzIiwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJuYW1lIgogICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJodG1sIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidGV4\ndCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ2YWx1ZSIsCiAgICAgICAg\nICAgICAgICAiaHRtbCIsCiAgICAgICAgICAgICAgICAidGV4dCIKICAgICAg\nICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImZyb20iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgInZhbHVlIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAi\naXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgImFkZHJlc3MiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgImFkZHJlc3MiLAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgICAgICAgICAgICAgIF0K\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgImh0bWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJ0ZXh0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInZhbHVlIiwK\nICAgICAgICAgICAgICAgICJodG1sIiwKICAgICAgICAgICAgICAgICJ0ZXh0\nIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAibWVzc2FnZUlk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQog\nICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2f25dca1683f2e117c32a50474c69fa4af81e30d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/get.json"
+    },
+    "version": 1
 }
