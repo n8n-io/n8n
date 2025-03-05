@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "mimeType": {
-            "type": "string"
-        }
+    "name": "move.json",
+    "path": "packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json",
+    "sha": "257c64b3befe75fd3a9bd9022aa0f8a45471d6bb",
+    "size": 375,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/257c64b3befe75fd3a9bd9022aa0f8a45471d6bb",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nbWltZVR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJraW5k\nIiwKICAgICAgICAiaWQiLAogICAgICAgICJuYW1lIiwKICAgICAgICAibWlt\nZVR5cGUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/257c64b3befe75fd3a9bd9022aa0f8a45471d6bb",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/move.json"
     },
-    "required": [
-        "kind",
-        "id",
-        "name",
-        "mimeType"
-    ]
+    "version": 1
 }
