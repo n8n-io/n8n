@@ -741,6 +741,30 @@ function onBlur() {
 	isFocused.value = false;
 }
 
+function onPaste(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+	const input = event.target;
+
+	if (!(input instanceof HTMLInputElement)) return;
+
+	const start = input.selectionStart ?? 0;
+
+	// When a value starting with `=` is pasted that does not contain expression syntax ({{}})
+	// Add an extra `=` to go into expression mode and preserve the original pasted text
+	if (pastedText && pastedText.startsWith('=') && !pastedText.match(/{{.*?}}/g) && start === 0) {
+		event.preventDefault();
+
+		const end = input.selectionEnd ?? start;
+		const text = input.value;
+		const withExpressionPrefix = '=' + pastedText;
+
+		input.value = text.substring(0, start) + withExpressionPrefix + text.substring(end);
+		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
+
+		valueChanged(input.value);
+	}
+}
+
 function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
@@ -951,7 +975,9 @@ async function optionSelected(command: string) {
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
-				newValue = modelValueString.value ? modelValueString.value.toString().substring(1) : null;
+				newValue = modelValueString.value
+					? modelValueString.value.toString().replace(/^=+/, '')
+					: null;
 			} else if (newValue === null) {
 				// Invalid expressions land here
 				if (['number', 'boolean'].includes(props.parameter.type)) {
@@ -1460,6 +1486,7 @@ onUpdated(async () => {
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
+					@paste="onPaste"
 				>
 					<template #suffix>
 						<N8nIcon
