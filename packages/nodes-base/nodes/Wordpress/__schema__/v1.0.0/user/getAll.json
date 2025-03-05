@@ -1,89 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
-        },
-        "avatar_urls": {
-            "type": "object",
-            "properties": {
-                "24": {
-                    "type": "string"
-                },
-                "48": {
-                    "type": "string"
-                },
-                "96": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "24",
-                "48",
-                "96"
-            ]
-        },
-        "_links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "collection": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "self",
-                "collection"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json",
+    "sha": "3bf350fa3bf0e2ba742e0206d67d381d859046b4",
+    "size": 2137,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3bf350fa3bf0e2ba742e0206d67d381d859046b4",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXJsIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nZGVzY3JpcHRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJsaW5rIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2x1ZyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImF2YXRhcl91cmxzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICIyNCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIjQ4Ijogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiOTYiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAiMjQiLAogICAgICAgICAgICAgICAgIjQ4IiwKICAgICAg\nICAgICAgICAgICI5NiIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIl9saW5rcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAi\nc2VsZiI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJocmVmIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgImhyZWYiCiAgICAgICAgICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImNvbGxlY3Rpb24iOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAiaHJlZiI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJocmVmIgogICAgICAgICAgICAg\nICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgICAgICAgICAic2VsZiIsCiAgICAgICAgICAgICAgICAi\nY29sbGVjdGlvbiIKICAgICAgICAgICAgXQogICAgICAgIH0KICAgIH0sCiAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAgICAibmFtZSIs\nCiAgICAgICAgInVybCIsCiAgICAgICAgImRlc2NyaXB0aW9uIiwKICAgICAg\nICAibGluayIsCiAgICAgICAgInNsdWciLAogICAgICAgICJtZXRhIiwKICAg\nICAgICAiX2xpbmtzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3bf350fa3bf0e2ba742e0206d67d381d859046b4",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/user/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "url",
-        "description",
-        "link",
-        "slug",
-        "meta",
-        "_links"
-    ]
+    "version": 1
 }
