@@ -354,13 +354,8 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		// process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 		// set ODE_TLS_REJECT_UNAUTHORIZED to '0' value in order to skip SSL trust issue(i.e. self cert)
-		// e.g. if you use ProxyMan, you can add the following two values in your n8n config file, i.e. ~/.n8n/config:
-		// 	"https_proxy":"http://127.0.0.1:9091",
-		//  "NODE_TLS_REJECT_UNAUTHORIZED":"0"
-		//
-		// This does NOT work by setting the value in terminal as following:
+		// This works by setting the value in terminal as following:
 		// export https_proxy=http://127.0.0.1:9091 NODE_TLS_REJECT_UNAUTHORIZED=0
 		const httpProxy = process.env.http_proxy ?? process.env.https_proxy;
 		if (httpProxy) {
