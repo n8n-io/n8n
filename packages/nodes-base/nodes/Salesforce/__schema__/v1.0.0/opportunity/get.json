@@ -1,182 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "AccountId": {
-            "type": "string"
-        },
-        "IsPrivate": {
-            "type": "boolean"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "StageName": {
-            "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
-        },
-        "CloseDate": {
-            "type": "string"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "IsWon": {
-            "type": "boolean"
-        },
-        "ForecastCategory": {
-            "type": "string"
-        },
-        "ForecastCategoryName": {
-            "type": "string"
-        },
-        "HasOpportunityLineItem": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "AgeInDays": {
-            "type": "integer"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "PushCount": {
-            "type": "integer"
-        },
-        "LastStageChangeInDays": {
-            "type": "integer"
-        },
-        "FiscalQuarter": {
-            "type": "integer"
-        },
-        "FiscalYear": {
-            "type": "integer"
-        },
-        "Fiscal": {
-            "type": "string"
-        },
-        "PartnerAccountId": {
-            "type": "null"
-        },
-        "SyncedQuoteId": {
-            "type": "null"
-        },
-        "ContractId": {
-            "type": "null"
-        },
-        "HasOpenActivity": {
-            "type": "boolean"
-        },
-        "HasOverdueTask": {
-            "type": "boolean"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
-        },
-        "HasUnlikelyToCloseInsight": {
-            "type": "boolean"
-        },
-        "ActivityMetricId": {
-            "type": "string"
-        },
-        "Budget_Confirmed__c": {
-            "type": "boolean"
-        },
-        "Discovery_Completed__c": {
-            "type": "boolean"
-        },
-        "ROI_Analysis_Completed__c": {
-            "type": "boolean"
-        },
-        "Loss_Reason__c": {
-            "type": "null"
-        },
-        "Campagne_lead__c": {
-            "type": "null"
-        },
-        "Opmerking__c": {
-            "type": "null"
-        },
-        "Partner_land__c": {
-            "type": "null"
-        },
-        "Demo_gegeven__c": {
-            "type": "boolean"
-        },
-        "Partner__c": {
-            "type": "null"
-        },
-        "LID__CurrentGenerators__c": {
-            "type": "null"
-        },
-        "LID__DeliveryInstallationStatus__c": {
-            "type": "null"
-        },
-        "LID__Is_Influenced__c": {
-            "type": "boolean"
-        },
-        "LID__LinkedIn_Company_Id__c": {
-            "type": "null"
-        },
-        "LID__MainCompetitors__c": {
-            "type": "null"
-        },
-        "LID__My_DateTime__c": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Latitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Longitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__c": {
-            "type": "null"
-        },
-        "LID__OrderNumber__c": {
-            "type": "null"
-        },
-        "LID__TrackingNumber__c": {
-            "type": "null"
-        },
-        "Einstein_scores__c": {
-            "type": "null"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json",
+    "sha": "e89aa3118981db14a6e39a4beb9fad947ca73be3",
+    "size": 4149,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e89aa3118981db14a6e39a4beb9fad947ca73be3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiSXNEZWxldGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIkFjY291bnRJZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgIklzUHJpdmF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9LAogICAgICAgICJOYW1lIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiU3RhZ2VO\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiUHJvYmFiaWxpdHkiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiQ2xvc2VEYXRlIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiSXNDbG9zZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgfSwKICAgICAgICAiSXNXb24iOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiRm9yZWNh\nc3RDYXRlZ29yeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIkZvcmVjYXN0Q2F0ZWdvcnlOYW1lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiSGFzT3Bwb3J0dW5pdHlMaW5lSXRlbSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJPd25lcklkIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiQ3JlYXRlZERhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJBZ2VJbkRheXMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\nQ3JlYXRlZEJ5SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJMYXN0TW9kaWZpZWREYXRlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nTGFzdE1vZGlmaWVkQnlJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIlN5c3RlbU1vZHN0YW1wIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiUHVzaENvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgIH0sCiAgICAgICAgIkxhc3RTdGFnZUNoYW5nZUluRGF5cyI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJGaXNjYWxRdWFydGVyIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIkZpc2NhbFllYXIiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiRmlzY2FsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiUGFydG5lckFjY291bnRJZCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJT\neW5jZWRRdW90ZUlkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgIkNvbnRyYWN0SWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiSGFzT3BlbkFj\ndGl2aXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgIkhhc092ZXJkdWVUYXNrIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIklzUHJp\nb3JpdHlSZWNvcmQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgfSwKICAgICAgICAiSGFzVW5saWtlbHlUb0Nsb3NlSW5zaWdo\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9\nLAogICAgICAgICJBY3Rpdml0eU1ldHJpY0lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQnVkZ2V0X0Nv\nbmZpcm1lZF9fYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJEaXNjb3ZlcnlfQ29tcGxldGVkX19jIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgIlJPSV9BbmFseXNpc19Db21wbGV0ZWRfX2MiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiTG9z\nc19SZWFzb25fX2MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiQ2FtcGFnbmVfbGVhZF9fYyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJPcG1l\ncmtpbmdfX2MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAiUGFydG5lcl9sYW5kX19jIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkRlbW9fZ2Vn\nZXZlbl9fYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICJQYXJ0bmVyX19jIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkxJRF9fQ3VycmVu\ndEdlbmVyYXRvcnNfX2MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAiTElEX19EZWxpdmVyeUluc3RhbGxhdGlv\nblN0YXR1c19fYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJMSURfX0lzX0luZmx1ZW5jZWRfX2MiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAg\nICAiTElEX19MaW5rZWRJbl9Db21wYW55X0lkX19jIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkxJRF9fTWFp\nbkNvbXBldGl0b3JzX19jIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxs\nIgogICAgICAgIH0sCiAgICAgICAgIkxJRF9fTXlfRGF0ZVRpbWVfX2MiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAg\nICAiTElEX19NeV9HZW9sb2NhdGlvbl9fTGF0aXR1ZGVfX3MiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiTElE\nX19NeV9HZW9sb2NhdGlvbl9fTG9uZ2l0dWRlX19zIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkxJRF9fTXlf\nR2VvbG9jYXRpb25fX2MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAiTElEX19PcmRlck51bWJlcl9fYyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJMSURfX1RyYWNraW5nTnVtYmVyX19jIjogewogICAgICAgICAgICAidHlw\nZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkVpbnN0ZWluX3Njb3Jl\nc19fYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nCiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e89aa3118981db14a6e39a4beb9fad947ca73be3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/opportunity/get.json"
+    },
+    "version": 1
 }
