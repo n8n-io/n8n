@@ -1,26 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json",
+    "sha": "5f7a1540d87b1556a62cf764b4cb931fa1b646a9",
+    "size": 509,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5f7a1540d87b1556a62cf764b4cb931fa1b646a9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiYXR0cmli\ndXRlcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5f7a1540d87b1556a62cf764b4cb931fa1b646a9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/getAll.json"
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 1
 }
