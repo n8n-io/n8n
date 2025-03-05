@@ -85,7 +85,7 @@ describe('SigninView', () => {
 		await userEvent.click(submitButton);
 
 		expect(usersStore.loginWithCreds).toHaveBeenCalledWith({
-			email: 'test@n8n.io',
+			emailOrLdapLoginId: 'test@n8n.io',
 			password: 'password',
 			mfaCode: undefined,
 			mfaRecoveryCode: undefined,
